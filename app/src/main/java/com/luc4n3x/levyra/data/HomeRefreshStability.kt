@@ -16,6 +16,8 @@ internal object HomeRefreshStability {
     private const val MIN_SECTION_TRACKS = 3
     private const val MAX_SECTIONS = 10
     private const val MAX_TRACKS_PER_SECTION = 20
+    private const val MIN_SECTION_OVERLAP = 2
+    private const val MIN_SECTION_OVERLAP_RATIO = 0.35
 
     fun sanitizeSections(sections: List<HomeSection>): List<HomeSection> {
         val occurrences = HashMap<String, Int>()
@@ -29,7 +31,7 @@ internal object HomeRefreshStability {
                 HomeSection(title = title, tracks = tracks)
             }
             .filter { section ->
-                val base = sectionIdentity(section.title)
+                val base = sectionTitleIdentity(section.title)
                 val occurrence = occurrences.getOrDefault(base, 0)
                 occurrences[base] = occurrence + 1
                 occurrence < 2
@@ -53,7 +55,7 @@ internal object HomeRefreshStability {
         }
 
         val oldEntries = keyedSections(oldSections)
-        val newEntries = keyedSections(newSections)
+        val newEntries = keyedSections(newSections, oldEntries)
         val oldKeys = oldEntries.map { it.first }
         val newKeys = newEntries.map { it.first }
         val structuralChange = oldKeys != newKeys
@@ -87,7 +89,7 @@ internal object HomeRefreshStability {
         return first.indices.all { index -> sameSection(first[index], second[index]) }
     }
 
-    fun sectionIdentity(title: String): String {
+    fun sectionTitleIdentity(title: String): String {
         val compatibilityNormalized = Normalizer.normalize(title.trim(), Normalizer.Form.NFKC)
         val latinFolded = Normalizer.normalize(compatibilityNormalized, Normalizer.Form.NFD)
             .replace(Regex("(\\p{IsLatin})\\p{M}+")) { match -> match.groupValues[1] }
@@ -98,14 +100,76 @@ internal object HomeRefreshStability {
         return normalized.ifBlank { "section" }
     }
 
-    private fun keyedSections(sections: List<HomeSection>): List<Pair<String, HomeSection>> {
+    fun sectionIdentity(section: HomeSection): String {
+        val trackKeys = sectionTrackIdentities(section).sorted()
+        return if (trackKeys.isEmpty()) {
+            "section"
+        } else {
+            "tracks:${trackKeys.joinToString("\u001F")}" 
+        }
+    }
+
+    private fun keyedSections(
+        sections: List<HomeSection>,
+        previousEntries: List<Pair<String, HomeSection>> = emptyList()
+    ): List<Pair<String, HomeSection>> {
         val occurrences = HashMap<String, Int>()
-        return sections.map { section ->
-            val base = sectionIdentity(section.title)
+        val directEntries = sections.map { section ->
+            val base = sectionIdentity(section)
             val occurrence = occurrences.getOrDefault(base, 0)
             occurrences[base] = occurrence + 1
             "$base#$occurrence" to section
         }
+        if (previousEntries.isEmpty()) return directEntries
+
+        val unmatchedPrevious = previousEntries.toMutableList()
+        return directEntries.map { directEntry ->
+            val exactIndex = unmatchedPrevious.indexOfFirst { it.first == directEntry.first }
+            val matchedIndex = if (exactIndex >= 0) {
+                exactIndex
+            } else {
+                bestOverlapIndex(unmatchedPrevious, directEntry.second)
+            }
+            if (matchedIndex < 0) {
+                directEntry
+            } else {
+                val stableKey = unmatchedPrevious.removeAt(matchedIndex).first
+                stableKey to directEntry.second
+            }
+        }
+    }
+
+    private fun bestOverlapIndex(
+        candidates: List<Pair<String, HomeSection>>,
+        incoming: HomeSection
+    ): Int {
+        val incomingKeys = sectionTrackIdentities(incoming)
+        if (incomingKeys.isEmpty()) return -1
+        var bestIndex = -1
+        var bestOverlap = 0
+        var bestRatio = 0.0
+        candidates.forEachIndexed { index, (_, candidate) ->
+            val candidateKeys = sectionTrackIdentities(candidate)
+            if (candidateKeys.isEmpty()) return@forEachIndexed
+            val overlap = incomingKeys.count(candidateKeys::contains)
+            val ratio = overlap.toDouble() / minOf(incomingKeys.size, candidateKeys.size).toDouble()
+            if (overlap > bestOverlap || (overlap == bestOverlap && ratio > bestRatio)) {
+                bestIndex = index
+                bestOverlap = overlap
+                bestRatio = ratio
+            }
+        }
+        return bestIndex.takeIf {
+            bestOverlap >= MIN_SECTION_OVERLAP && bestRatio >= MIN_SECTION_OVERLAP_RATIO
+        } ?: -1
+    }
+
+    private fun sectionTrackIdentities(section: HomeSection): Set<String> {
+        return section.tracks
+            .asSequence()
+            .map(::trackIdentity)
+            .filter(String::isNotBlank)
+            .toCollection(LinkedHashSet())
     }
 
     private fun mergeSection(previous: HomeSection?, incoming: HomeSection): HomeSection {
@@ -122,7 +186,6 @@ internal object HomeRefreshStability {
         }
         return HomeSection(title = incoming.title, tracks = tracks)
     }
-
 
     private fun mergeTrack(previous: Track, incoming: Track): Track {
         val artworkMerged = LevyraPersonalOrbit.preferAlbumArtwork(incoming, previous)
