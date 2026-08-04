@@ -1,0 +1,74 @@
+name: One-shot extractor hardening PR runner
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  run-focused-port:
+    if: github.head_ref == 'agent/extractor-security-aa-potoken-sabr' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      REPORT_FILE: /tmp/levyra-extractor-hardening-report.txt
+    steps:
+      - name: Check out implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/extractor-security-aa-potoken-sabr
+          fetch-depth: 0
+
+      - name: Extract focused patch script
+        shell: python
+        run: |
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/one-shot-extractor-hardening.yml')
+          lines = workflow.read_text(encoding='utf-8').splitlines()
+          start = next(i for i, line in enumerate(lines) if line.strip() == '- name: Apply focused extractor changes')
+          run_line = next(i for i in range(start, len(lines)) if lines[i].strip() == 'run: |')
+          end = next(i for i in range(run_line + 1, len(lines)) if lines[i].startswith('      - name:'))
+          block = lines[run_line + 1:end]
+          non_empty = [len(line) - len(line.lstrip()) for line in block if line.strip()]
+          indent = min(non_empty)
+          script = '\n'.join(line[indent:] if line.strip() else '' for line in block) + '\n'
+          Path('/tmp/apply-focused-extractor.sh').write_text(script, encoding='utf-8')
+
+      - name: Apply focused extractor changes
+        shell: bash
+        run: bash /tmp/apply-focused-extractor.sh
+
+      - name: Test vendored extractor
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test 2>&1 | tee -a "$REPORT_FILE"
+
+      - name: Compile Android release sources
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon :app:compileReleaseKotlin 2>&1 | tee -a "$REPORT_FILE"
+
+      - name: Commit verified extractor changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/workflows/one-shot-extractor-hardening.yml \
+            .github/workflows/one-shot-extractor-hardening-pr.yml \
+            .github/extractor-hardening-trigger \
+            .github/extractor-hardening-report.txt \
+            .github/extractor-hardening-status.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add third_party/LevyraExtractor .github
+          git diff --cached --check
+          git commit -m "Harden vendored extractor PoToken and SABR recovery"
+          git push origin HEAD:agent/extractor-security-aa-potoken-sabr
