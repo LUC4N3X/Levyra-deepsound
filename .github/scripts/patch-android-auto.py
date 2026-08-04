@@ -110,20 +110,9 @@ replace_once(
 """,
     "Android Auto local search",
 )
-replace_once(
-    """    private fun String.cleanQuery(): String = trim()
-        .replace(Regex("[^\\p{L}\\p{M}\\p{N} .,'’&+_-]+"), " ")
-        .replace(Regex("\\s+"), " ")
-        .take(90)
-        .trim()
-""",
-    """    private fun String.cleanQuery(): String = trim()
-        .replace(Regex("[^\\p{L}\\p{M}\\p{N} .,'’&+_-]+"), " ")
-        .replace(Regex("\\s+"), " ")
-        .take(90)
-        .trim()
 
-    private fun String.voiceSearchQuery(): String {
+helper_marker = "    private fun String.sha256(): String = MessageDigest.getInstance(\"SHA-256\")\n"
+helpers = """    private fun String.voiceSearchQuery(): String {
         var value = cleanQuery()
         VOICE_COMMAND_PREFIXES.firstOrNull { value.startsWith(it, ignoreCase = true) }
             ?.let { prefix -> value = value.drop(prefix.length).trim() }
@@ -136,9 +125,9 @@ replace_once(
         .map(String::trim)
         .filter { it.length >= 2 && it !in SEARCH_STOP_WORDS }
         .distinct()
-""",
-    "Android Auto voice helpers",
-)
+
+"""
+replace_once(helper_marker, helpers + helper_marker, "Android Auto voice helpers")
 replace_once(
     "        private const val SEARCH_TTL_MS = 3L * 60L * 1000L\n",
     "        private const val SEARCH_TTL_MS = 3L * 60L * 1000L\n"
