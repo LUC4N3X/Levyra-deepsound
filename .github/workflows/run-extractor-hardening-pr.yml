@@ -39,69 +39,72 @@ jobs:
                   raise SystemExit(f'{label}: expected one match, found {count}')
               text = text.replace(old, new, 1)
 
-          replace_once(
-              'import kotlinx.coroutines.CoroutineScope\n'
-              'import kotlinx.coroutines.Dispatchers\n'
-              'import kotlinx.coroutines.Job\n'
-              'import kotlinx.coroutines.SupervisorJob\n'
+          old_imports = ''.join((
+              'import kotlinx.coroutines.CoroutineScope\n',
+              'import kotlinx.coroutines.Dispatchers\n',
+              'import kotlinx.coroutines.Job\n',
+              'import kotlinx.coroutines.SupervisorJob\n',
               'import kotlinx.coroutines.launch\n',
-              'import kotlinx.coroutines.CancellationException\n'
-              'import kotlinx.coroutines.CoroutineScope\n'
-              'import kotlinx.coroutines.CoroutineStart\n'
-              'import kotlinx.coroutines.Dispatchers\n'
-              'import kotlinx.coroutines.Job\n'
-              'import kotlinx.coroutines.SupervisorJob\n'
+          ))
+          new_imports = ''.join((
+              'import kotlinx.coroutines.CancellationException\n',
+              'import kotlinx.coroutines.CoroutineScope\n',
+              'import kotlinx.coroutines.CoroutineStart\n',
+              'import kotlinx.coroutines.Dispatchers\n',
+              'import kotlinx.coroutines.Job\n',
+              'import kotlinx.coroutines.SupervisorJob\n',
               'import kotlinx.coroutines.launch\n',
-              'coroutine imports',
-          )
+          ))
+          replace_once(old_imports, new_imports, 'coroutine imports')
 
-          replace_once(
-              '''    fun preloadSearch(query: String) {
-        val clean = query.voiceSearchQuery()
-        if (clean.isBlank()) return
-        val now = System.currentTimeMillis()
-        if (searchCache[clean]?.let { now - it.createdAt < SEARCH_TTL_MS } == true) return
-        if (searchInFlight.containsKey(clean)) return
-
-        val job = searchScope.launch {
-            try {
-                searchTracks(clean)
-            } catch (error: Throwable) {
-                Timber.d(error, "Android Auto search preload failed")
-            } finally {
-                searchInFlight.remove(clean)
-            }
-        }
-        searchInFlight.putIfAbsent(clean, job)?.let { job.cancel() }
-    }
-''',
-              '''    fun preloadSearch(query: String) {
-        val clean = query.voiceSearchQuery()
-        if (clean.isBlank()) return
-        val now = System.currentTimeMillis()
-        if (searchCache[clean]?.let { now - it.createdAt < SEARCH_TTL_MS } == true) return
-
-        val job = searchScope.launch(start = CoroutineStart.LAZY) {
-            try {
-                searchTracks(clean)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.d(error, "Android Auto search preload failed")
-            } finally {
-                searchInFlight.remove(clean)
-            }
-        }
-        if (searchInFlight.putIfAbsent(clean, job) == null) {
-            job.start()
-        } else {
-            job.cancel()
-        }
-    }
-''',
-              'preloadSearch',
-          )
-
+          old_preload = '\n'.join((
+              '    fun preloadSearch(query: String) {',
+              '        val clean = query.voiceSearchQuery()',
+              '        if (clean.isBlank()) return',
+              '        val now = System.currentTimeMillis()',
+              '        if (searchCache[clean]?.let { now - it.createdAt < SEARCH_TTL_MS } == true) return',
+              '        if (searchInFlight.containsKey(clean)) return',
+              '',
+              '        val job = searchScope.launch {',
+              '            try {',
+              '                searchTracks(clean)',
+              '            } catch (error: Throwable) {',
+              '                Timber.d(error, "Android Auto search preload failed")',
+              '            } finally {',
+              '                searchInFlight.remove(clean)',
+              '            }',
+              '        }',
+              '        searchInFlight.putIfAbsent(clean, job)?.let { job.cancel() }',
+              '    }',
+              '',
+          ))
+          new_preload = '\n'.join((
+              '    fun preloadSearch(query: String) {',
+              '        val clean = query.voiceSearchQuery()',
+              '        if (clean.isBlank()) return',
+              '        val now = System.currentTimeMillis()',
+              '        if (searchCache[clean]?.let { now - it.createdAt < SEARCH_TTL_MS } == true) return',
+              '',
+              '        val job = searchScope.launch(start = CoroutineStart.LAZY) {',
+              '            try {',
+              '                searchTracks(clean)',
+              '            } catch (cancelled: CancellationException) {',
+              '                throw cancelled',
+              '            } catch (error: Exception) {',
+              '                Timber.d(error, "Android Auto search preload failed")',
+              '            } finally {',
+              '                searchInFlight.remove(clean)',
+              '            }',
+              '        }',
+              '        if (searchInFlight.putIfAbsent(clean, job) == null) {',
+              '            job.start()',
+              '        } else {',
+              '            job.cancel()',
+              '        }',
+              '    }',
+              '',
+          ))
+          replace_once(old_preload, new_preload, 'preloadSearch')
           path.write_text(text, encoding='utf-8')
 
       - name: Check patch integrity
