@@ -105,7 +105,7 @@ internal object HomeRefreshStability {
         return if (trackKeys.isEmpty()) {
             "section"
         } else {
-            "tracks:${trackKeys.joinToString(separator = "\u001F")}" 
+            "tracks:${trackKeys.joinToString(separator = "\u001F")}"
         }
     }
 
