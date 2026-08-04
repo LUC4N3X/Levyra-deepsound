@@ -49,25 +49,26 @@ jobs:
               '# Remove the global TLS bypass and expose the session PoToken provider.',
               merge_start,
           )
-          stream_patch = '''# Preserve Levyra's multi-client aggregation. The upstream stream extractor
-# is intentionally not merged because it would replace the independent Android VR,
-# Safari and TVHTML5 responses. Apply only the request-localization hardening here.
-stream_relative = (
-    "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/"
-    "extractors/YoutubeStreamExtractor.java"
-)
-stream_target = root / stream_relative
-stream_text = stream_target.read_text(encoding="utf-8")
-stream_text = replace_once(
-    stream_text,
-    '        final Localization localization = new Localization("en");\n',
-    '        final Localization localization = '
-    'YoutubeParsingHelper.getPlayerRequestLocalization();\n',
-    "Youtube player request localization",
-)
-stream_target.write_text(stream_text, encoding="utf-8")
-
-'''
+          stream_patch = '\n'.join((
+              '# Preserve Levyra multi-client aggregation. The upstream stream extractor',
+              '# is intentionally not merged because it would replace Android VR, Safari and TV.',
+              'stream_relative = (',
+              '    "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/"',
+              '    "extractors/YoutubeStreamExtractor.java"',
+              ')',
+              'stream_target = root / stream_relative',
+              'stream_text = stream_target.read_text(encoding="utf-8")',
+              'stream_text = replace_once(',
+              '    stream_text,',
+              '    \'        final Localization localization = new Localization("en");\\n\',',
+              '    \'        final Localization localization = \'',
+              '    \'YoutubeParsingHelper.getPlayerRequestLocalization();\\n\',',
+              '    "Youtube player request localization",',
+              ')',
+              'stream_target.write_text(stream_text, encoding="utf-8")',
+              '',
+              '',
+          ))
           script = script[:merge_start] + stream_patch + script[merge_end:]
           Path('/tmp/apply-extractor-hardening.sh').write_text(script, encoding='utf-8')
 
