@@ -4,7 +4,7 @@
 
 **Name:** Android Home identity audit and dead-code cleanup  
 **Roadmap track:** Track 3 - Responsive, accessible interface; Track 6 - Distribution and repository integrity  
-**Status:** Implementation complete; automated validation is blocked in the connector environment  
+**Status:** Implementation complete; Gradle validation is blocked in the connector environment  
 **Scope:** Correct Home section identity for non-Latin scripts, add focused regression coverage, and remove the unused demo catalog stub. No playback, persistence schema, version, dependency, signing, packaging, Desktop, or release behavior is changed.
 
 ## Verified current behavior and root cause
@@ -17,6 +17,7 @@
 
 - Home section identity preserves Unicode letters, combining marks, and numbers.
 - Compatibility-equivalent Unicode forms normalize deterministically.
+- Existing Latin accent folding remains compatible (`Café` and `Cafe` keep the same identity).
 - Distinct non-Latin Home shelves are not discarded as duplicate fallback sections.
 - Whitespace and punctuation still normalize to stable separators.
 - Focused unit tests cover the original localized failure path and scripts that require combining marks.
@@ -29,7 +30,8 @@
 - [x] Confirm the failure path against supported non-Latin locales.
 - [x] Replace ASCII-only identity filtering with Unicode-aware normalization.
 - [x] Preserve combining marks used by Indic, Thai, Arabic, and other writing systems.
-- [x] Add focused regression coverage for Arabic, Chinese, Japanese, Korean, Hindi, and Thai shelf titles.
+- [x] Preserve the previous Latin diacritic-folding behavior.
+- [x] Add focused regression coverage for Arabic, Chinese, Japanese, Korean, Hindi, Thai, and accented Latin titles.
 - [x] Verify `DemoCatalogRepository` has no production or test callers.
 - [x] Remove the unused demo catalog stub.
 - [x] Inspect the branch diff for unrelated version, dependency, workflow, binary, generated-file, or secret changes.
@@ -43,6 +45,7 @@
 | --- | --- | --- |
 | Root cause reproduced by code inspection | Yes | Verified against the ASCII-only identity filter and duplicate cap |
 | Focused regression test added | Yes | Added; execution blocked because the connector environment has no repository checkout or Gradle runtime |
+| JDK Unicode normalization/regex smoke check | Supporting | Passed for accented Latin, Arabic, Chinese, Japanese, Hindi, and Thai samples |
 | `DemoCatalogRepository` reference search | Yes | Verified: no callers outside the deleted file |
 | Complete branch diff inspection | Yes | Verified: only the focused implementation, regression test, dead stub deletion, and active-task record changed |
 | `./gradlew --no-daemon :app:testDebugUnitTest` | Yes | Blocked in the connector environment |
@@ -56,7 +59,7 @@
 
 ## Behavior preserved
 
-- The existing Home sanitization limits, merge ordering, track identity, cached-content retention, and structural-defer behavior remain unchanged.
+- The existing Home sanitization limits, merge ordering, track identity, cached-content retention, structural-defer behavior, and Latin accent folding remain unchanged.
 - No user-visible strings or locale catalogs are modified.
 - Playback, MediaSession, notification, Android Auto, queue, downloads, favorites, playlists, history, settings, backups, and Room schemas are untouched.
 - Android and Desktop versions, artifacts, tags, signing, packaging, and release workflows remain independent and unchanged.
