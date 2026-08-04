@@ -147,7 +147,10 @@ fun PremiumSeekbar(
             Box(
                 modifier = Modifier
                     .offset { IntOffset(offsetX.roundToInt(), with(density) { (-35).dp.roundToPx() }) }
-                    .background(Color(0xFF111116).copy(alpha = 0.96f), LevyraPlayerDesign.ShapePill)
+                    .background(
+                        LevyraPlayerDesign.ScrubTooltipSurface.copy(alpha = 0.96f),
+                        LevyraPlayerDesign.ShapePill
+                    )
                     .border(
                         width = LevyraPlayerDesign.Hairline,
                         color = activeColor.copy(alpha = 0.52f),
@@ -305,8 +308,8 @@ fun PremiumSeekbar(
             }
 
             drawCircle(
-                color = Color.Black.copy(alpha = 0.28f),
-                radius = handleDiameter / 2f + 2.dp.toPx(),
+                color = trailingColor.copy(alpha = 0.18f),
+                radius = handleDiameter / 2f + 3.dp.toPx(),
                 center = Offset(handleX, centerY)
             )
             drawCircle(
