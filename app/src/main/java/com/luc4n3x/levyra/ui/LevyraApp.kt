@@ -387,6 +387,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
+import com.luc4n3x.levyra.ui.player.LevyraPlayerScreen
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
@@ -1231,7 +1232,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         LevyraTab.Player -> {
                             val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                             val screenState by playerViewModel.state.collectAsStateWithLifecycle()
-                            PlayerScreen(
+                            LevyraPlayerScreen(
                                 playerViewModel,
                                 screenState,
                                 sharedTransitionScope = this@SharedTransitionLayout,
@@ -11453,8 +11454,6 @@ private fun PlayerInlineLyricsSection(
 
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
-private fun PlayerScreen(
-    viewModel: PlayerViewModel,
     state: LevyraUiState,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope
@@ -11541,12 +11540,12 @@ private fun PlayerScreen(
         label = "artwork-scale"
     )
     val artCorner by animateDpAsState(
-        targetValue = if (state.isPlaying) LevyraPlayerDesign.CornerLg else LevyraPlayerDesign.CornerXl,
+        targetValue = if (state.isPlaying) LevyraPlayerDesign.CornerXl else LevyraPlayerDesign.CornerLg,
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "artwork-corner"
     )
     val artShadow by animateFloatAsState(
-        targetValue = if (state.isPlaying) 28f else 14f,
+        targetValue = if (state.isPlaying) 32f else 16f,
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.smoothSpring() else snap(),
         label = "artwork-shadow"
     )

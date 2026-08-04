@@ -221,18 +221,23 @@ private fun PlayerModeToggleButton(
     onClick: () -> Unit
 ) {
     val fill = if (active) {
-        Color.White.playerMix(accent, 0.06f).copy(alpha = 0.12f)
+        Color.White.playerMix(accent, 0.12f).copy(alpha = 0.18f)
     } else {
         Color.Transparent
     }
     val activeTint = remember(accentTarget) {
-        Color.White.playerMix(accentTarget, 0.04f)
+        Color.White.playerMix(accentTarget, 0.08f)
     }
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
     val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.18f else 0f,
+        targetValue = if (active) 0.28f else 0f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-border"
+    )
+    val indicatorScale by animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-toggle-indicator"
     )
 
     SpringIconButton(
@@ -251,7 +256,7 @@ private fun PlayerModeToggleButton(
                 .size(size)
                 .background(fill, CircleShape)
                 .border(
-                    BorderStroke(LevyraPlayerDesign.Hairline, Color.White.playerMix(accent, 0.08f).copy(alpha = borderAlpha)),
+                    BorderStroke(LevyraPlayerDesign.Hairline, Color.White.playerMix(accent, 0.16f).copy(alpha = borderAlpha)),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -262,6 +267,15 @@ private fun PlayerModeToggleButton(
                 tint = tint,
                 modifier = Modifier.size(iconSize)
             )
+            if (indicatorScale > 0.01f) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(y = (-4).dp)
+                        .size(4.dp)
+                        .background(accentTarget.copy(alpha = indicatorScale), CircleShape)
+                )
+            }
         }
     }
 }
@@ -278,17 +292,17 @@ private fun Modifier.playerPrimarySurface(
     end: Color
 ): Modifier = this
     .shadow(
-        elevation = 3.dp,
+        elevation = 8.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.18f),
-        spotColor = Color.Black.copy(alpha = 0.24f)
+        ambientColor = start.copy(alpha = 0.35f),
+        spotColor = end.copy(alpha = 0.45f)
     )
     .background(Brush.linearGradient(listOf(start, end)), shape)
     .border(
         BorderStroke(
             LevyraPlayerDesign.Hairline,
-            Color.White.copy(alpha = 0.12f)
+            Color.White.copy(alpha = 0.22f)
         ),
         shape
     )

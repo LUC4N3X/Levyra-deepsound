@@ -19,12 +19,14 @@ object LevyraPlayerDesign {
     val CornerMd: Dp = 22.dp
     val CornerLg: Dp = 28.dp
     val CornerXl: Dp = 34.dp
+    val CornerHuge: Dp = 38.dp
 
     val ShapeXs: Shape = RoundedCornerShape(CornerXs)
     val ShapeSm: Shape = RoundedCornerShape(CornerSm)
     val ShapeMd: Shape = RoundedCornerShape(CornerMd)
     val ShapeLg: Shape = RoundedCornerShape(CornerLg)
     val ShapeXl: Shape = RoundedCornerShape(CornerXl)
+    val ShapeHuge: Shape = RoundedCornerShape(CornerHuge)
     val ShapePill: Shape = RoundedCornerShape(percent = 50)
 
     val SpaceXxs: Dp = 2.dp
@@ -41,13 +43,13 @@ object LevyraPlayerDesign {
     val HeaderButtonCompact: Dp = 40.dp
     val UtilityButton: Dp = 44.dp
     val UtilityButtonCompact: Dp = 42.dp
-    val TransportButton: Dp = 52.dp
-    val TransportButtonCompact: Dp = 48.dp
-    val PrimaryWidth: Dp = 74.dp
-    val PrimaryWidthCompact: Dp = 70.dp
-    val PrimaryHeight: Dp = 62.dp
+    val TransportButton: Dp = 54.dp
+    val TransportButtonCompact: Dp = 50.dp
+    val PrimaryWidth: Dp = 76.dp
+    val PrimaryWidthCompact: Dp = 72.dp
+    val PrimaryHeight: Dp = 64.dp
     val PrimaryHeightCompact: Dp = 60.dp
-    val PrimaryCorner: Dp = 28.dp
+    val PrimaryCorner: Dp = 32.dp
     val MinimumTouchTarget: Dp = 48.dp
 
     val Hairline: Dp = 1.dp
