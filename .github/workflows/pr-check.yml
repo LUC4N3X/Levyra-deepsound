@@ -98,6 +98,7 @@ jobs:
       - name: Motion, Canvas, Artwork, Lyrics, and DSP Unit Tests
         run: |
           ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
             --tests 'com.luc4n3x.levyra.feature.motion.*' \
             --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
             --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
