@@ -153,3 +153,80 @@ jobs:
           name: pr-check-reports-${{ github.run_number }}
           path: artifacts
           if-no-files-found: ignore
+
+  pr294_renderer_repair:
+    name: Repair PR 294 renderer recovery
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 294 &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+        with:
+          cache-disabled: true
+
+      - name: Apply focused recovery fixes
+        run: python3 .github/pr294_fix.py
+
+      - name: Validate focused diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test ! -e .github/workflows/pr294-self-fix.yml
+          test ! -e .github/pr294_fix.py
+          grep -q "YoutubeAnalyzedConfigFailureException" \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt
+          grep -q "renderer evaluation timeout" \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt
+
+      - name: Run decoder tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.YoutubeLocalDecoderTest'
+
+      - name: Restore workflow and commit verified patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/pr-check.yml
+          printf '%s\n' \
+            'PR #294 renderer recovery patch passed YoutubeLocalDecoderTest.' \
+            > .github/pr294-fix-verified
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix renderer recovery edge cases"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
