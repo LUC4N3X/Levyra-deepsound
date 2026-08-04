@@ -45,7 +45,6 @@ public final class NewPipe {
     private static WebViewAvailabilityChecker webViewAvailabilityChecker;
 
     private NewPipe() {
-
     }
 
     public static void init(final Downloader d) {
@@ -174,7 +173,7 @@ public final class NewPipe {
     }
 
     public static void setYoutubeSessionPoTokenProvider(
-  @Nullable final YoutubeSessionPoTokenProvider provider) {
+            @Nullable final YoutubeSessionPoTokenProvider provider) {
         youtubeSessionPoTokenProvider = provider;
     }
 
@@ -194,6 +193,4 @@ public final class NewPipe {
             checker.checkWebViewAvailable();
         }
     }
-
-
 }
