@@ -14,6 +14,8 @@ class HomeRefreshStabilityTest {
             HomeRefreshStability.sectionIdentity("中国"),
             HomeRefreshStability.sectionIdentity("日本")
         )
+        assertEquals("भारत", HomeRefreshStability.sectionIdentity("भारत"))
+        assertEquals("ประเทศไทย", HomeRefreshStability.sectionIdentity("ประเทศไทย"))
     }
 
     @Test
@@ -22,7 +24,9 @@ class HomeRefreshStabilityTest {
             section("موسيقى جديدة", "ar"),
             section("热门歌曲", "zh"),
             section("おすすめ", "ja"),
-            section("인기 음악", "ko")
+            section("인기 음악", "ko"),
+            section("नया संगीत", "hi"),
+            section("เพลงยอดนิยม", "th")
         )
 
         val sanitized = HomeRefreshStability.sanitizeSections(sections)
