@@ -1,0 +1,6 @@
+Cloning into '/tmp/tmp.sWOFR8Kakq'...
+From https://github.com/InfinityLoop1308/PipePipeExtractor
+ * branch              64f864135d2133a6a13a9944608de5a2c3e7e851 -> FETCH_HEAD
+ * branch              7673caed56001d78aad65b48daf9198359b466aa -> FETCH_HEAD
+CONFLICT extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java
+git merge-file failed for extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java: 
