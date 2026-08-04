@@ -12,50 +12,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  refine-player-layout:
-    name: Apply Player Layout Refinement
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 296 && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v7
-        with:
-          ref: agent/pixel-inspired-player
-          fetch-depth: 0
-
-      - name: Apply transformation
-        shell: bash
-        run: |
-          python3 scripts/patch_refine_player_selector.py
-          python3 scripts/refine_player_layout.py
-
-      - name: Commit player layout
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo "Expected player layout changes were not produced."
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
-                  app/src/main/java/com/luc4n3x/levyra/ui/components/PlayerControls.kt
-          git commit -m "refactor(player): fit core controls without scrolling"
-          git push origin HEAD:agent/pixel-inspired-player
-
   android:
     name: Lint and Release Compile
-    needs: refine-player-layout
-    if: always() && (needs.refine-player-layout.result == 'success' || needs.refine-player-layout.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
