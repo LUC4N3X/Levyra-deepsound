@@ -1,4 +1,4 @@
-name: Run isolated extractor hardening
+name: Verify extractor hardening
 
 on:
   pull_request:
@@ -10,101 +10,32 @@ on:
       - reopened
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  run:
+  verify:
     if: github.head_ref == 'automation/extractor-hardening-runner'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Check out helper branch
+      - name: Check out implementation branch
         uses: actions/checkout@v4
         with:
-          ref: automation/extractor-hardening-runner
+          ref: agent/extractor-security-aa-potoken-sabr
           fetch-depth: 0
 
-      - name: Prepare patch scripts
-        shell: python
-        run: |
-          from pathlib import Path
-
-          workflow = Path('.github/workflows/apply-extractor-hardening.yml')
-          lines = workflow.read_text(encoding='utf-8').splitlines()
-          start = next(i for i, line in enumerate(lines)
-                       if line.strip() == '- name: Apply reviewed upstream extractor changes')
-          run_line = next(i for i in range(start, len(lines)) if lines[i].strip() == 'run: |')
-          end = next(i for i in range(run_line + 1, len(lines))
-                     if lines[i].startswith('      - name:'))
-          indent = '          '
-          script = '\n'.join(
-              line[len(indent):] if line.startswith(indent) else line
-              for line in lines[run_line + 1:end]
-          ) + '\n'
-
-          merge_start = script.index(
-              '# Merge the upstream player-request changes into Levyra\'s multi-client extractor.'
-          )
-          merge_end = script.index(
-              '# Remove the global TLS bypass and expose the session PoToken provider.',
-              merge_start,
-          )
-          stream_patch = '\n'.join((
-              '# Preserve Levyra multi-client aggregation.',
-              'stream_relative = (',
-              '    "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/"',
-              '    "extractors/YoutubeStreamExtractor.java"',
-              ')',
-              'stream_target = root / stream_relative',
-              'stream_text = stream_target.read_text(encoding="utf-8")',
-              'stream_text = replace_once(',
-              '    stream_text,',
-              '    \'        final Localization localization = new Localization("en");\\n\',',
-              '    \'        final Localization localization = \'',
-              '    \'YoutubeParsingHelper.getPlayerRequestLocalization();\\n\',',
-              '    "Youtube player request localization",',
-              ')',
-              'stream_target.write_text(stream_text, encoding="utf-8")',
-              '',
-              '',
-          ))
-          script = script[:merge_start] + stream_patch + script[merge_end:]
-          Path('/tmp/apply-extractor-hardening.sh').write_text(script, encoding='utf-8')
-          Path('/tmp/patch-android-auto.py').write_text(
-              Path('.github/scripts/patch-android-auto.py').read_text(encoding='utf-8'),
-              encoding='utf-8',
-          )
-
-      - name: Check out target implementation branch
+      - name: Check patch integrity
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin agent/extractor-security-aa-potoken-sabr
-          git checkout -B agent/extractor-security-aa-potoken-sabr \
-            origin/agent/extractor-security-aa-potoken-sabr
+          git diff --check origin/main...HEAD
+          ! grep -R --line-number -E 'trustEveryone|X509TrustManager|setDefaultHostnameVerifier' \
+            third_party/LevyraExtractor/extractor/src/main/java
 
-      - name: Apply reviewed extractor changes
-        shell: bash
-        run: bash /tmp/apply-extractor-hardening.sh
-
-      - name: Improve Android Auto search
-        run: python /tmp/patch-android-auto.py
-
-      - name: Compile vendored extractor production sources
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:compileJava
+      - name: Run vendored extractor tests
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
 
       - name: Compile Android sources
         env:
           YOUTUBE_INNERTUBE_API_KEY: ci-placeholder-key
         run: ./gradlew --no-daemon :app:compileDebugKotlin
-
-      - name: Commit verified changes
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app third_party/LevyraExtractor
-          git diff --cached --check
-          git commit -m "feat: harden extractor security and Android Auto search"
-          git push origin HEAD:agent/extractor-security-aa-potoken-sabr
