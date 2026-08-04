@@ -493,11 +493,67 @@ class LyricsParsingTest {
 
         assertEquals(2, lines.size)
         assertEquals(0L, lines[0].startMs)
-        assertTrue(lines[0].endMs > lines[0].startMs)
         assertEquals(2_000L, lines[0].endMs)
-        assertTrue(lines[0].words.all { it.endMs > it.startMs })
+        assertEquals(listOf(0L to 1_000L, 1_000L to 2_000L), lines[0].words.map { it.startMs to it.endMs })
         assertEquals(8_000L, lines[1].startMs)
         assertEquals(10_000L, lines[1].endMs)
+    }
+
+    @Test
+    fun ttmlParserKeepsWordTimingOrderedAndNonOverlappingUnderNegativeOffset() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <head>
+                <metadata>
+                  <audio lyricOffset="-4.0"/>
+                </metadata>
+              </head>
+              <body>
+                <div>
+                  <p begin="00:01.000" end="00:04.000">
+                    <span begin="00:01.000" end="00:02.000">One</span>
+                    <span begin="00:02.000" end="00:03.000">two</span>
+                    <span begin="00:03.000" end="00:04.000">three</span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        val words = lines.single().words
+        assertEquals(3, words.size)
+        words.zipWithNext().forEach { (earlier, later) ->
+            assertTrue(later.startMs > earlier.startMs)
+            assertTrue(later.startMs >= earlier.endMs)
+        }
+        assertTrue(words.all { it.startMs >= 0L && it.endMs > it.startMs })
+        assertEquals(3_000L, words.last().endMs - words.first().startMs)
+    }
+
+    @Test
+    fun ttmlParserIgnoresEarlyTranslationSpanWhenRecoveringLineStart() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <body>
+                <div>
+                  <p>
+                    <span ttm:role="x-translation" begin="00:01.000" end="00:02.000">Traduzione</span>
+                    <span begin="00:09.000" end="00:09.500">Main </span>
+                    <span begin="00:09.500" end="00:10.000">line</span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        val main = lines.first { it.role != LyricVocalRole.BACKGROUND }
+        assertEquals(9_000L, main.startMs)
+        assertEquals("Main line", main.text)
+        assertEquals("Traduzione", main.translated)
     }
 
     @Test
