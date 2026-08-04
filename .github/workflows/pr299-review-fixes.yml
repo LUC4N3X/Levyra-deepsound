@@ -32,8 +32,10 @@ jobs:
           python .github/scripts/pr299_repair_app_patch.py
           python .github/scripts/pr299_fix_extractor.py
           python .github/scripts/pr299_fix_app.py
+          python .github/scripts/pr299_repair_tests.py
           rm .github/scripts/pr299_repair_staged_patch.py
           rm .github/scripts/pr299_repair_app_patch.py
+          rm .github/scripts/pr299_repair_tests.py
           rm .github/scripts/pr299_fix_extractor.py
           rm .github/scripts/pr299_fix_app.py
           git diff --check
