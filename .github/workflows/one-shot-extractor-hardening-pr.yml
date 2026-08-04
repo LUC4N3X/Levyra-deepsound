@@ -74,6 +74,14 @@ jobs:
               '',
           ))
           script = script[:sabr_start] + coherent_sabr_sync + script[sabr_end:]
+
+          safari_label = script.index('"Safari player PoToken"')
+          safari_start = script.rfind('helper = replace_once(', 0, safari_label)
+          safari_end = script.index('helper_path.write_text', safari_label)
+          if safari_start < 0:
+              raise RuntimeError('Safari rewrite start not found')
+          script = script[:safari_start] + script[safari_end:]
+
           Path('/tmp/apply-focused-extractor.sh').write_text(script, encoding='utf-8')
 
       - name: Apply focused extractor changes
