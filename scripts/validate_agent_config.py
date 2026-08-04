@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Levyra's repository-local AI planning and skill configuration."""
+"""Validate Levyra's repository-local AI planning and agent configuration."""
 
 from __future__ import annotations
 
@@ -22,8 +22,10 @@ REQUIRED_FILES = (
     "docs/project/ROADMAP.md",
     "docs/project/TASKS.md",
     ".agents/README.md",
+    ".agents/rules/levyra-workspace.md",
     "docs/ai/README.md",
     "docs/ai/WORKFLOW.md",
+    "docs/ai/ANTIGRAVITY.md",
     "docs/ai/OPENCLAW.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
 )
@@ -37,12 +39,18 @@ FORBIDDEN_DUPLICATE_FILES = (
 REFERENCE_FILES = (
     "AGENTS.md",
     ".agents/README.md",
+    ".agents/rules/levyra-workspace.md",
     "docs/AGENTS.md",
     "docs/ai/README.md",
     "docs/ai/WORKFLOW.md",
+    "docs/ai/ANTIGRAVITY.md",
     "docs/ai/OPENCLAW.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
 )
+
+ANTIGRAVITY_RULE_PATH = ".agents/rules/levyra-workspace.md"
+ANTIGRAVITY_RULE_ROOT_REFERENCE = "@../../AGENTS.md"
+ANTIGRAVITY_SKILLS_PATH = ".agents/skills/"
 
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SKILL_REFERENCE_RE = re.compile(r"`(levyra-[a-z0-9-]+)`")
@@ -95,6 +103,35 @@ def main() -> int:
             errors.append(
                 f"obsolete root planning file must be removed: {relative_path}"
             )
+
+    antigravity_rule_path = ROOT / ANTIGRAVITY_RULE_PATH
+    if antigravity_rule_path.is_file():
+        try:
+            antigravity_rule = antigravity_rule_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{ANTIGRAVITY_RULE_PATH}: cannot read file: {exc}")
+        else:
+            if ANTIGRAVITY_RULE_ROOT_REFERENCE not in antigravity_rule:
+                errors.append(
+                    f"{ANTIGRAVITY_RULE_PATH}: missing canonical root reference "
+                    f"{ANTIGRAVITY_RULE_ROOT_REFERENCE!r}"
+                )
+
+    antigravity_guide_path = ROOT / "docs/ai/ANTIGRAVITY.md"
+    if antigravity_guide_path.is_file():
+        try:
+            antigravity_guide = antigravity_guide_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"docs/ai/ANTIGRAVITY.md: cannot read file: {exc}")
+        else:
+            if ANTIGRAVITY_SKILLS_PATH not in antigravity_guide:
+                errors.append(
+                    "docs/ai/ANTIGRAVITY.md: missing canonical workspace skills path"
+                )
+            if ANTIGRAVITY_RULE_PATH not in antigravity_guide:
+                errors.append(
+                    "docs/ai/ANTIGRAVITY.md: missing workspace rule reference"
+                )
 
     skills_root = ROOT / ".agents" / "skills"
     skill_paths = sorted(skills_root.glob("*/SKILL.md"))
@@ -168,6 +205,7 @@ def main() -> int:
         f"{len(REQUIRED_FILES)} required files, "
         f"{len(actual_skills)} native skills, "
         f"{len(referenced_skills)} documented skill references, "
+        "Antigravity workspace bridge verified, "
         "no duplicate root planning files."
     )
     return 0
