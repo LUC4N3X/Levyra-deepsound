@@ -295,16 +295,13 @@ object TtmlLyricsParser {
     }
 
     private fun LyricLine.shiftedBy(offsetMs: Long): LyricLine {
-        val shiftedStart = (startMs + offsetMs).coerceAtLeast(0L)
+        val earliestMs = minOf(startMs, words.minOfOrNull { it.startMs } ?: startMs)
+        val appliedOffset = offsetMs.coerceAtLeast(-earliestMs)
         return copy(
-            startMs = shiftedStart,
-            endMs = (endMs + offsetMs).coerceAtLeast(shiftedStart + (endMs - startMs).coerceAtLeast(0L)),
+            startMs = startMs + appliedOffset,
+            endMs = endMs + appliedOffset,
             words = words.map {
-                val wordStart = (it.startMs + offsetMs).coerceAtLeast(0L)
-                it.copy(
-                    startMs = wordStart,
-                    endMs = (it.endMs + offsetMs).coerceAtLeast(wordStart + (it.endMs - it.startMs).coerceAtLeast(0L))
-                )
+                it.copy(startMs = it.startMs + appliedOffset, endMs = it.endMs + appliedOffset)
             }
         )
     }
@@ -331,6 +328,7 @@ object TtmlLyricsParser {
         for (index in 0 until children.length) {
             val child = children.item(index) as? Element ?: continue
             if (!child.localNodeName().equals("span", ignoreCase = true)) continue
+            if (child.roleAttribute() in SPECIAL_ROLES) continue
             val begin = child.timeAttribute("begin") ?: continue
             if (earliest == null || begin < earliest) earliest = begin
         }

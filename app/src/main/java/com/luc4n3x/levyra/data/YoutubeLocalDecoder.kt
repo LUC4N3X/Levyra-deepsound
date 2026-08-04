@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -344,7 +346,10 @@ private class YoutubeLocalDecoderEngine(
                 YoutubeDecodedBatch(signatureResults, nResults, runtimeConfigEpoch)
             }
         } catch (error: Throwable) {
-            if (resolvedConfig.origin == YoutubePlayerConfigOrigin.ANALYZED) {
+            if (
+                YoutubeRendererFailureClassifier.provesAnalyzedConfigWrong(error) &&
+                resolvedConfig.origin == YoutubePlayerConfigOrigin.ANALYZED
+            ) {
                 playerSource.rejectAnalyzedConfig(player.hash)
             }
             throw error
@@ -389,7 +394,7 @@ private class YoutubeLocalDecoderEngine(
         val created = try {
             YoutubeCipherWebRuntime.create(context, player, config)
         } catch (error: Throwable) {
-            if (recordRendererFailures && YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(error)) {
+            if (recordRendererFailures && YoutubeRendererFailureClassifier.countsAsRendererFailure(error)) {
                 rendererRecovery.onFailure(recoveryIdentity, SystemClock.elapsedRealtime())
             }
             throw error
@@ -1222,6 +1227,15 @@ internal object YoutubeCipherRuntimeFailurePolicy {
 
 internal class YoutubeRendererBackoffException : ParsingException("Local decoder renderer in recovery backoff")
 
+internal class YoutubeRendererFailureException(message: String) : ParsingException(message)
+
+internal object YoutubeRendererFailureClassifier {
+    fun countsAsRendererFailure(error: Throwable): Boolean = error is YoutubeRendererFailureException
+
+    fun provesAnalyzedConfigWrong(error: Throwable): Boolean =
+        error !is YoutubeRendererBackoffException && error !is YoutubeRendererFailureException
+}
+
 internal class YoutubeRendererRecoveryPolicy(
     private val maxConsecutiveFailures: Int = DEFAULT_MAX_CONSECUTIVE_FAILURES,
     private val backoffMs: Long = DEFAULT_BACKOFF_MS
@@ -1372,7 +1386,7 @@ private class YoutubeCipherWebRuntime private constructor(
 
     private fun rendererGone(message: String) {
         isDead = true
-        val error = ParsingException(message)
+        val error = YoutubeRendererFailureException(message)
         if (!ready.isCompleted) ready.completeExceptionally(error)
         waiters.values.forEach { it.completeExceptionally(error) }
         waiters.clear()
@@ -1469,6 +1483,9 @@ private class YoutubeCipherWebRuntime private constructor(
                 return runtime
             } catch (error: Throwable) {
                 runtime.close()
+                if (error is TimeoutCancellationException && currentCoroutineContext().isActive) {
+                    throw YoutubeRendererFailureException("Local decoder renderer ready timeout")
+                }
                 throw error
             }
         }
