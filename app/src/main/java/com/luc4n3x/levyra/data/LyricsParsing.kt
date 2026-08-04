@@ -248,12 +248,12 @@ object TtmlLyricsParser {
             factory.newDocumentBuilder().parse(InputSource(StringReader(ttml)))
         }.getOrNull() ?: return emptyList()
 
+        val offsetMs = document.documentElement?.lyricOffsetMs() ?: 0L
         val nodes = document.getElementsByTagName("p")
         val agents = buildSet {
             for (index in 0 until nodes.length) {
                 val element = nodes.item(index) as? Element ?: continue
-                element.getAttribute("ttm:agent")
-                    .ifBlank { element.getAttribute("agent") }
+                element.namedAttribute("agent")
                     .trim()
                     .takeIf { it.isNotBlank() }
                     ?.let(::add)
@@ -263,7 +263,7 @@ object TtmlLyricsParser {
         val lines = ArrayList<LyricLine>()
         for (index in 0 until nodes.length) {
             val element = nodes.item(index) as? Element ?: continue
-            val start = element.timeAttribute("begin") ?: continue
+            val start = element.timeAttribute("begin") ?: element.firstChildSpanBeginMs() ?: continue
             val end = element.timeAttribute("end")
                 ?: element.timeAttribute("dur")?.let { start + it }
                 ?: (start + 6_000L)
@@ -290,7 +290,66 @@ object TtmlLyricsParser {
             }
             lines += element.backgroundLines(start, end)
         }
-        return lines.sortedWith(compareBy<LyricLine> { it.startMs }.thenBy { it.role.ordinal })
+        val ordered = lines.sortedWith(compareBy<LyricLine> { it.startMs }.thenBy { it.role.ordinal })
+        return if (offsetMs == 0L) ordered else ordered.map { it.shiftedBy(offsetMs) }
+    }
+
+    private fun LyricLine.shiftedBy(offsetMs: Long): LyricLine {
+        val earliestMs = minOf(startMs, words.minOfOrNull { it.startMs } ?: startMs)
+        val appliedOffset = offsetMs.coerceAtLeast(-earliestMs)
+        return copy(
+            startMs = startMs + appliedOffset,
+            endMs = endMs + appliedOffset,
+            words = words.map {
+                it.copy(startMs = it.startMs + appliedOffset, endMs = it.endMs + appliedOffset)
+            }
+        )
+    }
+
+    private fun Element.lyricOffsetMs(): Long {
+        val audio = childElement("head")?.childElement("metadata")?.childElement("audio") ?: return 0L
+        val raw = audio.namedAttribute("lyricOffset").takeIf(String::isNotBlank) ?: return 0L
+        val seconds = raw.trim().toDoubleOrNull()?.takeIf(Double::isFinite) ?: return 0L
+        return (seconds * 1_000L).toLong().coerceIn(-MAX_LYRIC_OFFSET_MS, MAX_LYRIC_OFFSET_MS)
+    }
+
+    private fun Element.childElement(localName: String): Element? {
+        val children = childNodes
+        for (index in 0 until children.length) {
+            val child = children.item(index) as? Element ?: continue
+            if (child.localNodeName().equals(localName, ignoreCase = true)) return child
+        }
+        return null
+    }
+
+    private fun Element.firstChildSpanBeginMs(): Long? {
+        val children = childNodes
+        var earliest: Long? = null
+        for (index in 0 until children.length) {
+            val child = children.item(index) as? Element ?: continue
+            if (!child.localNodeName().equals("span", ignoreCase = true)) continue
+            if (child.roleAttribute() in SPECIAL_ROLES) continue
+            val begin = child.timeAttribute("begin") ?: continue
+            if (earliest == null || begin < earliest) earliest = begin
+        }
+        return earliest
+    }
+
+    private fun Element.localNodeName(): String = nodeName.orEmpty().substringAfterLast(':')
+
+    private fun Element.namedAttribute(localName: String): String {
+        val direct = getAttribute(localName)
+        if (direct.isNotBlank()) return direct
+        val attributes = attributes ?: return ""
+        for (index in 0 until attributes.length) {
+            val item = attributes.item(index) ?: continue
+            val qualified = item.nodeName.orEmpty()
+            if (qualified == localName) continue
+            if (!qualified.substringAfterLast(':').equals(localName, ignoreCase = true)) continue
+            val value = item.nodeValue.orEmpty()
+            if (value.isNotBlank()) return value
+        }
+        return ""
     }
 
     private fun Element.wordSpans(): List<LyricWord> {
@@ -357,8 +416,8 @@ object TtmlLyricsParser {
     private fun Element.lyricRole(multipleAgents: Boolean): LyricVocalRole {
         val role = roleAttribute()
         if (role == "x-bg") return LyricVocalRole.BACKGROUND
-        val agent = getAttribute("ttm:agent").ifBlank { getAttribute("agent") }.lowercase(Locale.ROOT)
-        val explicit = getAttribute("data-duet").ifBlank { getAttribute("duet") }.lowercase(Locale.ROOT)
+        val agent = namedAttribute("agent").lowercase(Locale.ROOT)
+        val explicit = getAttribute("data-duet").ifBlank { namedAttribute("duet") }.lowercase(Locale.ROOT)
         return when {
             explicit == "right" || agent in setOf("v2", "voice2", "agent2", "singer2") -> LyricVocalRole.DUET_RIGHT
             explicit == "left" || multipleAgents && agent in setOf("v1", "voice1", "agent1", "singer1") -> LyricVocalRole.DUET_LEFT
@@ -366,9 +425,7 @@ object TtmlLyricsParser {
         }
     }
 
-    private fun Element.roleAttribute(): String = getAttribute("ttm:role")
-        .ifBlank { getAttribute("role") }
-        .lowercase(Locale.ROOT)
+    private fun Element.roleAttribute(): String = namedAttribute("role").lowercase(Locale.ROOT)
 
     private fun Element.hasAncestorWithSpecialRole(root: Element): Boolean {
         var current = parentNode
@@ -403,7 +460,7 @@ object TtmlLyricsParser {
         }
     }
 
-    private fun Element.timeAttribute(name: String): Long? = getAttribute(name).takeIf(String::isNotBlank)?.let(::parseTimeMs)
+    private fun Element.timeAttribute(name: String): Long? = namedAttribute(name).takeIf(String::isNotBlank)?.let(::parseTimeMs)
 
     private fun parseTimeMs(raw: String): Long? {
         val value = raw.trim()
@@ -426,6 +483,8 @@ object TtmlLyricsParser {
             else -> value.toDoubleOrNull()?.times(1_000L)?.toLong()
         }
     }
+
+    private const val MAX_LYRIC_OFFSET_MS = 600_000L
 
     private val SPECIAL_ROLES = setOf("x-translation", "x-roman", "x-bg")
 }
