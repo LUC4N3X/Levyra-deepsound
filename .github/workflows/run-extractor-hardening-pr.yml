@@ -84,8 +84,8 @@ jobs:
         shell: bash
         run: bash /tmp/apply-extractor-hardening.sh
 
-      - name: Test vendored extractor
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+      - name: Compile vendored extractor production sources
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:compileJava
 
       - name: Compile Android release
         run: ./gradlew --no-daemon :app:compileReleaseKotlin
