@@ -1,8 +1,9 @@
 package com.luc4n3x.levyra.data
 
+import android.content.Context
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import okhttp3.Headers
 import okhttp3.RequestBody.Companion.toRequestBody
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.downloader.CancellableCall
 import org.schabi.newpipe.extractor.downloader.Downloader
@@ -17,10 +18,28 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object NewPipeRuntime {
     private val initialized = AtomicBoolean(false)
+    private val providerInstalled = AtomicBoolean(false)
 
-    fun ensure() {
+    @Volatile
+    private var applicationContext: Context? = null
+
+    fun ensure(context: Context? = null) {
+        context?.applicationContext?.let { applicationContext = it }
+
         if (initialized.compareAndSet(false, true)) {
             NewPipe.init(OkHttpNewPipeDownloader(), Localization("it", "IT"), ContentCountry("IT"))
+        }
+
+        val appContext = applicationContext ?: return
+        if (providerInstalled.compareAndSet(false, true)) {
+            try {
+                NewPipe.setYoutubeSessionPoTokenProvider(
+                    LevyraYoutubeSessionPoTokenProvider(appContext)
+                )
+            } catch (error: Throwable) {
+                providerInstalled.set(false)
+                throw error
+            }
         }
     }
 }
