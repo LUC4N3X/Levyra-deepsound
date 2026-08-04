@@ -45,7 +45,7 @@ internal class LevyraYoutubeSessionPoTokenProvider(context: Context) : YoutubeSe
                     .takeIf(String::isNotBlank)
                     ?.let { YoutubeSessionPoToken(session.visitorData, it) }
             }
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
             Timber.w(
                 error,
                 "Extractor session PoToken unavailable for %s/%s",
