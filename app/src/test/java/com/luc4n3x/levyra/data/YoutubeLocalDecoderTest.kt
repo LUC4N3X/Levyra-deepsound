@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.schabi.newpipe.extractor.exceptions.ParsingException
 import java.io.File
+import java.io.IOException
 import kotlin.io.path.createTempDirectory
 
 class YoutubeLocalDecoderTest {
@@ -202,6 +203,7 @@ class YoutubeLocalDecoderTest {
         assertNotNull(success.configs["c37d60f8"])
         assertFalse(success.configs.values.any { it.signatureTimestamp <= 0 })
     }
+
     @Test
     fun configParityFixturesMatchUpstreamVerdicts() {
         val accepted = listOf(
@@ -405,11 +407,12 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
-    fun rendererDeathAndReadyTimeoutCountAsRendererFailures() {
+    fun rendererDeathReadyTimeoutAndEvaluationTimeoutCountAsRendererFailures() {
         val classifier = YoutubeRendererFailureClassifier
 
         assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local decoder render process gone")))
         assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local decoder renderer ready timeout")))
+        assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local decoder renderer evaluation timeout")))
         assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local player JS load failed: net::ERR_FAILED")))
 
         val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 3, backoffMs = 60_000L)
@@ -435,13 +438,29 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
-    fun backoffAndRendererFailuresDoNotRejectAnalyzedConfig() {
+    fun onlyExplicitValidationFailuresRejectAnalyzedConfig() {
         val classifier = YoutubeRendererFailureClassifier
+        val outerTimeout = runCatching {
+            runBlocking { withTimeout(1L) { delay(50L) } }
+        }.exceptionOrNull()
 
+        assertNotNull(outerTimeout)
         assertFalse(classifier.provesAnalyzedConfigWrong(YoutubeRendererBackoffException()))
         assertFalse(classifier.provesAnalyzedConfigWrong(YoutubeRendererFailureException("Local decoder render process gone")))
-        assertTrue(classifier.provesAnalyzedConfigWrong(ParsingException("Local decoder exports unavailable sig=false")))
-        assertTrue(classifier.provesAnalyzedConfigWrong(ParsingException("Invalid local n-transform result")))
+        assertFalse(classifier.provesAnalyzedConfigWrong(CancellationException("caller went away")))
+        assertFalse(classifier.provesAnalyzedConfigWrong(outerTimeout!!))
+        assertFalse(classifier.provesAnalyzedConfigWrong(ParsingException("Unrelated decoder failure")))
+        assertFalse(classifier.provesAnalyzedConfigWrong(IOException("player cache unavailable")))
+        assertTrue(
+            classifier.provesAnalyzedConfigWrong(
+                YoutubeAnalyzedConfigFailureException("Local decoder exports unavailable sig=false")
+            )
+        )
+        assertTrue(
+            classifier.provesAnalyzedConfigWrong(
+                YoutubeAnalyzedConfigFailureException("Invalid local n-transform result")
+            )
+        )
     }
 
     private fun parityResource(name: String): String {
@@ -452,5 +471,4 @@ class YoutubeLocalDecoderTest {
     private companion object {
         const val RECOVERY_IDENTITY = "2182a2cc:7"
     }
-
 }
