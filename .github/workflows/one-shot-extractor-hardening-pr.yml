@@ -48,29 +48,31 @@ jobs:
           )
           sabr_start = script.index('# SABR is kept as a true three-way merge')
           sabr_end = script.index('# NewPipe: retain Levyra client support', sabr_start)
-          coherent_sabr_sync = '''# SABR is synchronized as one coherent upstream subsystem. Levyra-specific
-# client aggregation lives outside this package and is therefore preserved.
-sabr_prefixes = (
-    "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/",
-    "extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/",
-)
-for prefix in sabr_prefixes:
-    destination = root / prefix
-    if destination.exists():
-        shutil.rmtree(destination)
-    upstream_paths = subprocess.check_output(
-        ["git", "-C", str(upstream), "ls-tree", "-r", "--name-only", tip, "--", prefix],
-        text=True,
-    ).splitlines()
-    if not upstream_paths:
-        raise SystemExit(f"No upstream SABR files found under {prefix}")
-    for relative in upstream_paths:
-        target = root / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(upstream_text(tip, relative), encoding="utf-8")
-        print(f"SYNCED {relative}")
-
-'''
+          coherent_sabr_sync = '\n'.join((
+              '# SABR is synchronized as one coherent upstream subsystem. Levyra-specific',
+              '# client aggregation lives outside this package and is therefore preserved.',
+              'sabr_prefixes = (',
+              '    "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/",',
+              '    "extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/",',
+              ')',
+              'for prefix in sabr_prefixes:',
+              '    destination = root / prefix',
+              '    if destination.exists():',
+              '        shutil.rmtree(destination)',
+              '    upstream_paths = subprocess.check_output(',
+              '        ["git", "-C", str(upstream), "ls-tree", "-r", "--name-only", tip, "--", prefix],',
+              '        text=True,',
+              '    ).splitlines()',
+              '    if not upstream_paths:',
+              '        raise SystemExit(f"No upstream SABR files found under {prefix}")',
+              '    for relative in upstream_paths:',
+              '        target = root / relative',
+              '        target.parent.mkdir(parents=True, exist_ok=True)',
+              '        target.write_text(upstream_text(tip, relative), encoding="utf-8")',
+              '        print(f"SYNCED {relative}")',
+              '',
+              '',
+          ))
           script = script[:sabr_start] + coherent_sabr_sync + script[sabr_end:]
           Path('/tmp/apply-focused-extractor.sh').write_text(script, encoding='utf-8')
 
