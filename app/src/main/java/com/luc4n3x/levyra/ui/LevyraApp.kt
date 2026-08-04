@@ -10858,118 +10858,6 @@ private fun PlayerModeSwitchTab(
 }
 
 @Composable
-private fun LevyraControlPulseHandle(
-    expanded: Boolean,
-    compact: Boolean,
-    activeColor: Color,
-    secondaryColor: Color,
-    hasActiveState: Boolean,
-    onToggle: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val width = if (compact) 88.dp else 94.dp
-    val height = if (compact) 29.dp else 31.dp
-    val lineWidth = if (compact) 18.dp else 20.dp
-    val iconBoxSize = if (compact) 21.dp else 23.dp
-    val iconSize = if (compact) 17.dp else 18.dp
-    val glow = if (expanded) 0.34f else 0.22f
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
-        label = "player-shelf-chevron"
-    )
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            color = Color.Black.copy(alpha = 0.24f),
-            border = BorderStroke(
-                1.dp,
-                Color.White.copy(alpha = if (expanded) 0.17f else 0.10f)
-            ),
-            shape = RoundedCornerShape(500.dp),
-            modifier = Modifier
-                .width(width)
-                .height(height)
-                .shadow(3.dp, RoundedCornerShape(500.dp))
-                .pressable(pressedScale = 0.98f, onClick = onToggle)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                activeColor.copy(alpha = 0.06f),
-                                activeColor.copy(alpha = glow),
-                                secondaryColor.copy(alpha = glow),
-                                secondaryColor.copy(alpha = 0.06f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(500.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 7.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(lineWidth)
-                            .height(2.dp)
-                            .background(activeColor.copy(alpha = 0.68f), CircleShape)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(iconBoxSize)
-                            .graphicsLayer { rotationZ = rotation }
-                            .background(
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        activeColor.copy(alpha = 0.46f),
-                                        secondaryColor.copy(alpha = 0.46f)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                                RoundedCornerShape(8.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = strings.options,
-                            tint = Color.White,
-                            modifier = Modifier.size(iconSize)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .width(lineWidth)
-                            .height(2.dp)
-                            .background(secondaryColor.copy(alpha = 0.68f), CircleShape)
-                    )
-                }
-                if (hasActiveState && !expanded) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 5.dp, end = 8.dp)
-                            .size(5.dp)
-                            .background(Color.White, CircleShape)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PlayerUtilityDock(
     activeColor: Color,
     secondaryColor: Color,
@@ -11502,7 +11390,8 @@ private fun PlayerScreen(
             play = strings.play,
             pause = strings.pause,
             next = strings.next,
-            repeat = strings.repeat
+            repeat = strings.repeat,
+            options = strings.options
         )
     }
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
@@ -11561,7 +11450,7 @@ private fun PlayerScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        val compactPlayer = maxWidth < 380.dp || maxHeight < 700.dp
+        val compactPlayer = maxWidth < 420.dp || maxHeight < 860.dp
         var advancedControlsExpanded by remember(track?.id) {
             mutableStateOf(false)
         }
@@ -11570,10 +11459,15 @@ private fun PlayerScreen(
             compactPlayer -> LevyraPlayerDesign.GutterCompact
             else -> LevyraPlayerDesign.Gutter
         }
-        val playerItemSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
+        val playerItemSpacing = if (compactPlayer) 6.dp else 9.dp
+        val artworkLimit = if (compactPlayer) 330.dp else 410.dp
+        val reservedPlayerHeight = if (compactPlayer) 500.dp else 540.dp
+        val availableArtworkHeight = (maxHeight - reservedPlayerHeight)
+            .coerceIn(220.dp, artworkLimit)
         val artworkSize = minOf(
             (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
-            520.dp
+            availableArtworkHeight,
+            artworkLimit
         )
 
         PlayerImmersiveBackdrop(
@@ -11594,8 +11488,8 @@ private fun PlayerScreen(
             contentPadding = PaddingValues(
                 start = playerHorizontalPadding,
                 end = playerHorizontalPadding,
-                top = if (compactPlayer) 8.dp else 10.dp,
-                bottom = if (compactPlayer) 28.dp else 34.dp
+                top = if (compactPlayer) 5.dp else 8.dp,
+                bottom = if (compactPlayer) 12.dp else 18.dp
             ),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
@@ -11958,8 +11852,8 @@ private fun PlayerScreen(
                                 Text(
                                     text = track.title,
                                     color = LevyraPlayerDesign.TextPrimary,
-                                    fontSize = if (compactPlayer) 24.sp else 26.sp,
-                                    lineHeight = if (compactPlayer) 26.sp else 28.sp,
+                                    fontSize = if (compactPlayer) 22.sp else 24.sp,
+                                    lineHeight = if (compactPlayer) 24.sp else 26.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = (-0.4).sp,
                                     maxLines = if (state.animationsEnabled) 1 else 2,
@@ -11988,7 +11882,7 @@ private fun PlayerScreen(
                                     Text(
                                         text = track.artist,
                                         color = LevyraPlayerDesign.TextSecondary,
-                                        fontSize = if (compactPlayer) 14.sp else 15.sp,
+                                        fontSize = if (compactPlayer) 13.sp else 14.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
@@ -12069,6 +11963,8 @@ private fun PlayerScreen(
                         shuffleOn = state.shuffleEnabled,
                         repeatOn = state.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off,
                         repeatOne = state.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One,
+                        advancedExpanded = advancedControlsExpanded,
+                        hasAdvancedState = state.playbackSpeed != 1f || state.sleepTimerMinutes > 0 || state.isOfflineExporting,
                         accents = playerAccentColors,
                         compact = compactPlayer,
                         animated = state.animationsEnabled,
@@ -12078,17 +11974,8 @@ private fun PlayerScreen(
                         onToggle = viewModel::togglePlay,
                         onNext = viewModel::next,
                         onRepeat = viewModel::toggleRepeat,
-                        modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceXs)
-                    )
-                }
-                item {
-                    LevyraControlPulseHandle(
-                        expanded = advancedControlsExpanded,
-                        compact = compactPlayer,
-                        activeColor = primary,
-                        secondaryColor = secondary,
-                        hasActiveState = state.playbackSpeed != 1f || state.sleepTimerMinutes > 0 || state.isOfflineExporting,
-                        onToggle = { advancedControlsExpanded = !advancedControlsExpanded }
+                        onAdvancedToggle = { advancedControlsExpanded = !advancedControlsExpanded },
+                        modifier = Modifier
                     )
                 }
                 item(key = "player-advanced-controls") {

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -45,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -75,7 +77,8 @@ data class PlayerControlLabels(
     val play: String,
     val pause: String,
     val next: String,
-    val repeat: String
+    val repeat: String,
+    val options: String
 )
 
 @Immutable
@@ -86,8 +89,7 @@ private data class PlayerTransportMetrics(
     val primaryHeight: Dp,
     val controlGap: Dp,
     val stackSpacing: Dp,
-    val modeRowPadding: Dp,
-    val modeRailPadding: Dp
+    val modeRowPadding: Dp
 )
 
 @Immutable
@@ -113,8 +115,7 @@ private fun playerTransportMetrics(compact: Boolean): PlayerTransportMetrics {
             primaryHeight = LevyraPlayerDesign.PrimaryHeightCompact,
             controlGap = LevyraPlayerDesign.MainControlGapCompact,
             stackSpacing = LevyraPlayerDesign.TransportStackSpacingCompact,
-            modeRowPadding = LevyraPlayerDesign.ModeRowPaddingCompact,
-            modeRailPadding = LevyraPlayerDesign.ModeRailPaddingCompact
+            modeRowPadding = LevyraPlayerDesign.ModeRowPaddingCompact
         )
     } else {
         PlayerTransportMetrics(
@@ -124,8 +125,7 @@ private fun playerTransportMetrics(compact: Boolean): PlayerTransportMetrics {
             primaryHeight = LevyraPlayerDesign.PrimaryHeight,
             controlGap = LevyraPlayerDesign.MainControlGap,
             stackSpacing = LevyraPlayerDesign.TransportStackSpacing,
-            modeRowPadding = LevyraPlayerDesign.ModeRowPadding,
-            modeRailPadding = LevyraPlayerDesign.ModeRailPadding
+            modeRowPadding = LevyraPlayerDesign.ModeRowPadding
         )
     }
 }
@@ -250,6 +250,8 @@ fun PlayerTransportControls(
     shuffleOn: Boolean,
     repeatOn: Boolean,
     repeatOne: Boolean,
+    advancedExpanded: Boolean,
+    hasAdvancedState: Boolean,
     accents: PlayerAccentColors,
     compact: Boolean,
     animated: Boolean,
@@ -259,6 +261,7 @@ fun PlayerTransportControls(
     onToggle: () -> Unit,
     onNext: () -> Unit,
     onRepeat: () -> Unit,
+    onAdvancedToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val metrics = remember(compact) { playerTransportMetrics(compact) }
@@ -317,7 +320,8 @@ fun PlayerTransportControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = metrics.modeRowPadding),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             PlayerModeToggleButton(
                 icon = Icons.Rounded.Shuffle,
@@ -329,14 +333,15 @@ fun PlayerTransportControls(
                 animated = animated,
                 onClick = onShuffle
             )
-            PlayerModeRail(
+            PlayerAdvancedToggleButton(
+                expanded = advancedExpanded,
+                hasActiveState = hasAdvancedState,
                 primary = accents.primary,
                 secondary = accents.secondary,
-                active = shuffleOn || repeatOn,
+                compact = compact,
                 animated = animated,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = metrics.modeRailPadding)
+                contentDescription = labels.options,
+                onClick = onAdvancedToggle
             )
             PlayerModeToggleButton(
                 icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
@@ -353,34 +358,84 @@ fun PlayerTransportControls(
 }
 
 @Composable
-private fun PlayerModeRail(
+private fun PlayerAdvancedToggleButton(
+    expanded: Boolean,
+    hasActiveState: Boolean,
     primary: Color,
     secondary: Color,
-    active: Boolean,
+    compact: Boolean,
     animated: Boolean,
-    modifier: Modifier = Modifier
+    contentDescription: String,
+    onClick: () -> Unit
 ) {
-    val alphaSpec: AnimationSpec<Float> =
-        if (animated) LevyraPlayerDesign.standardTween(220) else snap()
-    val alpha by animateFloatAsState(
-        targetValue = if (active) 0.62f else 0.28f,
-        animationSpec = alphaSpec,
-        label = "player-mode-rail-alpha"
+    val metrics = remember(compact) { playerModeMetrics(compact) }
+    val motionSpec: AnimationSpec<Float> =
+        if (animated) LevyraPlayerDesign.standardTween(180) else snap()
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = motionSpec,
+        label = "player-advanced-toggle-rotation"
     )
-    Box(
-        modifier = modifier
-            .height(1.dp)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        Color.Transparent,
-                        primary.copy(alpha = alpha),
-                        secondary.copy(alpha = alpha),
-                        Color.Transparent
-                    )
-                )
+    val emphasis by animateFloatAsState(
+        targetValue = if (expanded || hasActiveState) 0.34f else 0.18f,
+        animationSpec = motionSpec,
+        label = "player-advanced-toggle-emphasis"
+    )
+
+    SpringIconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
-    )
+            .semantics { toggleableState = ToggleableState(expanded) },
+        pressedScale = 0.92f,
+        contentDescription = contentDescription
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = metrics.width, height = metrics.height)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            primary.copy(alpha = emphasis),
+                            secondary.copy(alpha = emphasis)
+                        )
+                    ),
+                    LevyraPlayerDesign.ShapePill
+                )
+                .border(
+                    BorderStroke(
+                        LevyraPlayerDesign.Hairline,
+                        Color.White.copy(alpha = if (expanded) 0.22f else 0.12f)
+                    ),
+                    LevyraPlayerDesign.ShapePill
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowDown,
+                contentDescription = null,
+                tint = LevyraPlayerDesign.TextPrimary,
+                modifier = Modifier
+                    .size(metrics.iconSize)
+                    .rotate(rotation)
+            )
+            if (hasActiveState && !expanded) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(
+                            top = LevyraPlayerDesign.ModeIndicatorTopInset,
+                            end = LevyraPlayerDesign.ModeIndicatorEndInset
+                        )
+                        .size(LevyraPlayerDesign.ModeIndicator)
+                        .background(Color.White, CircleShape)
+                )
+            }
+        }
+    }
 }
 
 @Composable
