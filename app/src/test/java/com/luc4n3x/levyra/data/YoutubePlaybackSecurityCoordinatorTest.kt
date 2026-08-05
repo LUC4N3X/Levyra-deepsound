@@ -1,11 +1,13 @@
 package com.luc4n3x.levyra.data
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -45,6 +47,25 @@ class YoutubePlaybackSecurityCoordinatorTest {
     @Test
     fun successfulWorkReturnsThroughTheBudgetWrapper() = runBlocking {
         assertEquals("ready", withPoTokenWaitBudget(500L) { "ready" })
+    }
+
+    @Test
+    fun botguardHttpBuildFailureIsLocalizedWithoutLosingItsCause() {
+        val source = YoutubePlayerRequestException(403, "BotGuard HTTP 403")
+        val localized = localizePoTokenBuildFailure(source)
+
+        assertTrue(localized is YoutubePoTokenRuntimeUnavailableException)
+        assertSame(source, localized.cause)
+        assertTrue(YoutubePlaybackSecurity.isLocalRuntimeFailure(localized))
+    }
+
+    @Test
+    fun buildFailureLocalizationPreservesCancellationAndExistingLocalErrors() {
+        val cancellation = CancellationException("cancelled")
+        val local = YoutubePoTokenRuntimeUnavailableException("already local")
+
+        assertSame(cancellation, localizePoTokenBuildFailure(cancellation))
+        assertSame(local, localizePoTokenBuildFailure(local))
     }
 
     @Test
