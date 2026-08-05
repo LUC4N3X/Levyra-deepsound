@@ -26,6 +26,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
+import android.content.ClipData
 import android.media.AudioManager
 import android.content.Intent
 import android.net.Uri
@@ -260,7 +261,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -4054,7 +4056,8 @@ private fun LyricsOverlay(
     val accentEnd = if (track != null) Color(track.accentEnd) else LevyraViolet
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val clipboardScope = rememberCoroutineScope()
     val shareContext = LocalContext.current
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
     var showRomanization by remember(track?.id) { mutableStateOf(true) }
@@ -4387,7 +4390,14 @@ private fun LyricsOverlay(
                                 label = strings.copyVerses,
                                 selected = false,
                                 icon = Icons.Rounded.ContentCopy,
-                                onClick = { clipboard.setText(AnnotatedString(selectedLyricsText())) }
+                                onClick = {
+                                    val text = selectedLyricsText()
+                                    clipboardScope.launch {
+                                        clipboard.setClipEntry(
+                                            ClipEntry(ClipData.newPlainText("lyrics", text))
+                                        )
+                                    }
+                                }
                             )
                             LyricsControlChip(
                                 label = strings.shareVerses,
