@@ -21,6 +21,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           def replace_once(source: str, old: str, new: str, label: str) -> str:
               count = source.count(old)
@@ -28,44 +29,52 @@ jobs:
                   raise SystemExit(f'{label}: expected exactly one match, found {count}')
               return source.replace(old, new, 1)
 
+          def sub_once(source: str, pattern: str, replacement, label: str, flags: int = 0) -> str:
+              updated, count = re.subn(pattern, replacement, source, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return updated
+
           app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           app = app_path.read_text(encoding='utf-8')
 
           app = replace_once(
               app,
               'fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {',
-              '''fun LevyraApp(
-              viewModel: LevyraViewModel,
-              isInPictureInPicture: Boolean = false,
-              suppressLegacyPlayerSurfaces: Boolean = false
-          ) {''',
+              'fun LevyraApp(\n'
+              '    viewModel: LevyraViewModel,\n'
+              '    isInPictureInPicture: Boolean = false,\n'
+              '    suppressLegacyPlayerSurfaces: Boolean = false\n'
+              ') {',
               'LevyraApp signature'
           )
 
-          legacy_player = '''                        LevyraTab.Player -> {
-                              val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
-                              val screenState by playerViewModel.state.collectAsStateWithLifecycle()
-                              PlayerScreen(
-                                  playerViewModel,
-                                  screenState,
-                                  sharedTransitionScope = this@SharedTransitionLayout,
-                                  animatedVisibilityScope = this@AnimatedContent
-                              )
-                          }'''
-          isolated_player = '''                        LevyraTab.Player -> {
-                              if (!suppressLegacyPlayerSurfaces) {
-                                  val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
-                                  val screenState by playerViewModel.state.collectAsStateWithLifecycle()
-                                  PlayerScreen(
-                                      playerViewModel,
-                                      screenState,
-                                      sharedTransitionScope = this@SharedTransitionLayout,
-                                      animatedVisibilityScope = this@AnimatedContent
-                                  )
-                              }
-                          }'''
-          app = replace_once(app, legacy_player, isolated_player, 'legacy full player branch')
+          player_pattern = (
+              r'(?ms)^(?P<indent>[ \t]*)LevyraTab\.Player -> \{\n'
+              r'(?P=indent)[ \t]+val playerViewModel: PlayerViewModel = composeViewModel\(key = "levyra-player", factory = screenViewModelFactory\)\n'
+              r'(?P=indent)[ \t]+val screenState by playerViewModel\.state\.collectAsStateWithLifecycle\(\)\n'
+              r'(?P=indent)[ \t]+PlayerScreen\(\n'
+              r'(?P<arguments>.*?)'
+              r'(?P=indent)[ \t]+\)\n'
+              r'(?P=indent)\}'
+          )
 
+          def isolate_player(match: re.Match) -> str:
+              indent = match.group('indent')
+              arguments = match.group('arguments')
+              return (
+                  f'{indent}LevyraTab.Player -> {{\n'
+                  f'{indent}    if (!suppressLegacyPlayerSurfaces) {{\n'
+                  f'{indent}        val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)\n'
+                  f'{indent}        val screenState by playerViewModel.state.collectAsStateWithLifecycle()\n'
+                  f'{indent}        PlayerScreen(\n'
+                  + ''.join(f'{indent}    {line}\n' if line else '\n' for line in arguments.rstrip('\n').split('\n'))
+                  + f'{indent}        )\n'
+                  f'{indent}    }}\n'
+                  f'{indent}}}'
+              )
+
+          app = sub_once(app, player_pattern, isolate_player, 'legacy full player branch')
           app = replace_once(
               app,
               'visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null,',
@@ -79,120 +88,116 @@ jobs:
 
           host = replace_once(
               host,
-              '''    val state by viewModel.state.collectAsStateWithLifecycle()
-              var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }''',
-              '''    val state by viewModel.state.collectAsStateWithLifecycle()
-              var playerExpanded by rememberSaveable { mutableStateOf(state.selectedTab == LevyraTab.Player) }
-              var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }''',
+              '    val state by viewModel.state.collectAsStateWithLifecycle()\n'
+              '    var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }',
+              '    val state by viewModel.state.collectAsStateWithLifecycle()\n'
+              '    var playerExpanded by rememberSaveable { mutableStateOf(state.selectedTab == LevyraTab.Player) }\n'
+              '    var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }',
               'player expanded state'
           )
 
           host = replace_once(
               host,
-              '''    LaunchedEffect(state.selectedTab) {
-                  if (state.selectedTab != LevyraTab.Player) {
-                      lastContentTabName = state.selectedTab.name
-                  }
-              }''',
-              '''    LaunchedEffect(state.selectedTab) {
-                  if (state.selectedTab == LevyraTab.Player) {
-                      playerExpanded = true
-                  } else {
-                      lastContentTabName = state.selectedTab.name
-                  }
-              }''',
+              '    LaunchedEffect(state.selectedTab) {\n'
+              '        if (state.selectedTab != LevyraTab.Player) {\n'
+              '            lastContentTabName = state.selectedTab.name\n'
+              '        }\n'
+              '    }',
+              '    LaunchedEffect(state.selectedTab) {\n'
+              '        if (state.selectedTab == LevyraTab.Player) {\n'
+              '            playerExpanded = true\n'
+              '        } else {\n'
+              '            lastContentTabName = state.selectedTab.name\n'
+              '        }\n'
+              '    }',
               'selected tab synchronization'
           )
 
           host = replace_once(
               host,
-              '''    val returnTab = remember(lastContentTabName) {
-                  LevyraTab.entries.firstOrNull { it.name == lastContentTabName && it != LevyraTab.Player }
-                      ?: LevyraTab.Home
-              }
-
-              Box(modifier = Modifier.fillMaxSize()) {''',
-              '''    val returnTab = remember(lastContentTabName) {
-                  LevyraTab.entries.firstOrNull { it.name == lastContentTabName && it != LevyraTab.Player }
-                      ?: LevyraTab.Home
-              }
-
-              LaunchedEffect(state.selectedTab, returnTab) {
-                  if (state.selectedTab == LevyraTab.Player) {
-                      viewModel.selectTab(returnTab)
-                  }
-              }
-              LaunchedEffect(state.currentTrack?.id) {
-                  if (state.currentTrack == null) playerExpanded = false
-              }
-
-              Box(modifier = Modifier.fillMaxSize()) {''',
+              '    val returnTab = remember(lastContentTabName) {\n'
+              '        LevyraTab.entries.firstOrNull { it.name == lastContentTabName && it != LevyraTab.Player }\n'
+              '            ?: LevyraTab.Home\n'
+              '    }\n\n'
+              '    Box(modifier = Modifier.fillMaxSize()) {',
+              '    val returnTab = remember(lastContentTabName) {\n'
+              '        LevyraTab.entries.firstOrNull { it.name == lastContentTabName && it != LevyraTab.Player }\n'
+              '            ?: LevyraTab.Home\n'
+              '    }\n\n'
+              '    LaunchedEffect(state.selectedTab, returnTab) {\n'
+              '        if (state.selectedTab == LevyraTab.Player) {\n'
+              '            viewModel.selectTab(returnTab)\n'
+              '        }\n'
+              '    }\n'
+              '    LaunchedEffect(state.currentTrack?.id) {\n'
+              '        if (state.currentTrack == null) playerExpanded = false\n'
+              '    }\n\n'
+              '    Box(modifier = Modifier.fillMaxSize()) {',
               'external player tab bridge'
           )
 
           host = replace_once(
               host,
-              '''        LevyraApp(
-                  viewModel = viewModel,
-                  isInPictureInPicture = isInPictureInPicture
-              )''',
-              '''        LevyraApp(
-                  viewModel = viewModel,
-                  isInPictureInPicture = isInPictureInPicture,
-                  suppressLegacyPlayerSurfaces = true
-              )''',
+              '        LevyraApp(\n'
+              '            viewModel = viewModel,\n'
+              '            isInPictureInPicture = isInPictureInPicture\n'
+              '        )',
+              '        LevyraApp(\n'
+              '            viewModel = viewModel,\n'
+              '            isInPictureInPicture = isInPictureInPicture,\n'
+              '            suppressLegacyPlayerSurfaces = true\n'
+              '        )',
               'legacy surface suppression argument'
           )
 
           host = replace_once(
               host,
-              '''                        LevyraMotionPlayerSheet(
-                              state = state,
-                              track = track,
-                              expanded = state.selectedTab == LevyraTab.Player,
-                              returnTab = returnTab,
-                              viewModel = viewModel
-                          )''',
-              '''                        LevyraMotionPlayerSheet(
-                              state = state,
-                              track = track,
-                              expanded = playerExpanded,
-                              onExpandedChange = { playerExpanded = it },
-                              viewModel = viewModel
-                          )''',
+              '                        LevyraMotionPlayerSheet(\n'
+              '                            state = state,\n'
+              '                            track = track,\n'
+              '                            expanded = state.selectedTab == LevyraTab.Player,\n'
+              '                            returnTab = returnTab,\n'
+              '                            viewModel = viewModel\n'
+              '                        )',
+              '                        LevyraMotionPlayerSheet(\n'
+              '                            state = state,\n'
+              '                            track = track,\n'
+              '                            expanded = playerExpanded,\n'
+              '                            onExpandedChange = { playerExpanded = it },\n'
+              '                            viewModel = viewModel\n'
+              '                        )',
               'motion player call'
           )
 
           host = replace_once(
               host,
-              '''private fun LevyraMotionPlayerSheet(
-              state: LevyraUiState,
-              track: Track,
-              expanded: Boolean,
-              returnTab: LevyraTab,
-              viewModel: LevyraViewModel
-          ) {''',
-              '''private fun LevyraMotionPlayerSheet(
-              state: LevyraUiState,
-              track: Track,
-              expanded: Boolean,
-              onExpandedChange: (Boolean) -> Unit,
-              viewModel: LevyraViewModel
-          ) {''',
+              'private fun LevyraMotionPlayerSheet(\n'
+              '    state: LevyraUiState,\n'
+              '    track: Track,\n'
+              '    expanded: Boolean,\n'
+              '    returnTab: LevyraTab,\n'
+              '    viewModel: LevyraViewModel\n'
+              ') {',
+              'private fun LevyraMotionPlayerSheet(\n'
+              '    state: LevyraUiState,\n'
+              '    track: Track,\n'
+              '    expanded: Boolean,\n'
+              '    onExpandedChange: (Boolean) -> Unit,\n'
+              '    viewModel: LevyraViewModel\n'
+              ') {',
               'motion player signature'
           )
 
           host = replace_once(
               host,
-              '''    BackHandler(enabled = expanded) {
-                  viewModel.selectTab(returnTab)
-              }''',
-              '''    BackHandler(enabled = expanded) {
-                  onExpandedChange(false)
-              }''',
+              '    BackHandler(enabled = expanded) {\n'
+              '        viewModel.selectTab(returnTab)\n'
+              '    }',
+              '    BackHandler(enabled = expanded) {\n'
+              '        onExpandedChange(false)\n'
+              '    }',
               'player back handler'
           )
-
           host = replace_once(
               host,
               'onOpen = { viewModel.selectTab(LevyraTab.Player) },',
@@ -205,39 +210,37 @@ jobs:
               'onCollapse = { onExpandedChange(false) },',
               'expanded player collapse action'
           )
-
           host = replace_once(
               host,
-              '''            }
-              .clickable(onClick = onOpen)
-          ) {''',
-              '''            }
-          ) {''',
+              '            }\n'
+              '            .clickable(onClick = onOpen)\n'
+              '    ) {',
+              '            }\n'
+              '    ) {',
               'parent mini-player click target'
           )
-
           host = replace_once(
               host,
-              '''                primary = primary,
-                  modifier = Modifier.size(70.dp)
-              )
-              Column(
-                  modifier = Modifier.weight(1f),
-                  verticalArrangement = Arrangement.Center
-              ) {
-                  AnimatedContent(''',
-              '''                primary = primary,
-                  modifier = Modifier
-                      .size(70.dp)
-                      .clickable(onClick = onOpen)
-              )
-              Column(
-                  modifier = Modifier
-                      .weight(1f)
-                      .clickable(onClick = onOpen),
-                  verticalArrangement = Arrangement.Center
-              ) {
-                  AnimatedContent(''',
+              '                primary = primary,\n'
+              '                modifier = Modifier.size(70.dp)\n'
+              '            )\n'
+              '            Column(\n'
+              '                modifier = Modifier.weight(1f),\n'
+              '                verticalArrangement = Arrangement.Center\n'
+              '            ) {\n'
+              '                AnimatedContent(',
+              '                primary = primary,\n'
+              '                modifier = Modifier\n'
+              '                    .size(70.dp)\n'
+              '                    .clickable(onClick = onOpen)\n'
+              '            )\n'
+              '            Column(\n'
+              '                modifier = Modifier\n'
+              '                    .weight(1f)\n'
+              '                    .clickable(onClick = onOpen),\n'
+              '                verticalArrangement = Arrangement.Center\n'
+              '            ) {\n'
+              '                AnimatedContent(',
               'independent mini-player click targets'
           )
 
