@@ -239,6 +239,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.blur
@@ -333,7 +334,6 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
-import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -410,10 +410,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
-import com.luc4n3x.levyra.ui.player.PlayerDragAxis
+import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
 import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
 import com.luc4n3x.levyra.ui.player.PlayerMorphSlot
@@ -423,20 +421,17 @@ import com.luc4n3x.levyra.ui.player.morphCornerRadius
 import com.luc4n3x.levyra.ui.player.playerBackgroundScale
 import com.luc4n3x.levyra.ui.player.playerChromeAlpha
 import com.luc4n3x.levyra.ui.player.playerExpansionFromDrag
-import com.luc4n3x.levyra.ui.player.playerGestureZone
+import com.luc4n3x.levyra.ui.player.playerAxisDragGestures
 import com.luc4n3x.levyra.ui.player.playerMorphActive
 import com.luc4n3x.levyra.ui.player.playerMorphAnchor
 import com.luc4n3x.levyra.ui.player.playerMorphFraction
 import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
 import com.luc4n3x.levyra.ui.player.playerSurfaceAlpha
 import com.luc4n3x.levyra.ui.player.playerSwipeContentAlpha
-import com.luc4n3x.levyra.ui.player.playerSwipeContentOffset
 import com.luc4n3x.levyra.ui.player.playerTapSide
 import com.luc4n3x.levyra.ui.player.rememberPlayerMorphAnchors
 import com.luc4n3x.levyra.ui.player.resolveMiniPlayerDismiss
-import com.luc4n3x.levyra.ui.player.resolvePlayerDragAxis
 import com.luc4n3x.levyra.ui.player.resolvePlayerExpansionTarget
-import com.luc4n3x.levyra.ui.player.resolvePlayerSwipe
 import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
@@ -1213,7 +1208,10 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             }
             var expansionDragStart by remember { mutableStateOf(0f) }
             var expansionDragAccum by remember { mutableStateOf(0f) }
-            var backgroundTab by remember { mutableStateOf(LevyraTab.Home) }
+            var expansionDragGeneration by remember { mutableStateOf(0) }
+            var backgroundTab by remember {
+                mutableStateOf(state.selectedTab.takeIf { it != LevyraTab.Player } ?: LevyraTab.Home)
+            }
             LaunchedEffect(state.selectedTab) {
                 if (state.selectedTab != LevyraTab.Player) backgroundTab = state.selectedTab
             }
@@ -1241,16 +1239,21 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             val onExpansionDragStart: () -> Unit = {
                 expansionDragStart = playerExpansion.value
                 expansionDragAccum = 0f
+                expansionDragGeneration += 1
             }
             val onExpansionDrag: (Float) -> Unit = { delta ->
                 expansionDragAccum += delta
+                val generation = expansionDragGeneration
                 expansionScope.launch {
-                    playerExpansion.snapTo(
-                        playerExpansionFromDrag(expansionDragStart, expansionDragAccum, expansionTravelPx)
-                    )
+                    if (generation == expansionDragGeneration) {
+                        playerExpansion.snapTo(
+                            playerExpansionFromDrag(expansionDragStart, expansionDragAccum, expansionTravelPx)
+                        )
+                    }
                 }
             }
             val settleExpansion: (Float, Boolean) -> Unit = { velocity, wasExpanded ->
+                expansionDragGeneration += 1
                 val target = resolvePlayerExpansionTarget(playerExpansion.value, velocity, wasExpanded)
                 expansionScope.launch {
                     if (target >= 1f) {
@@ -11901,7 +11904,6 @@ private fun PlayerScreen(
                                 } else {
                                     playerSwipeContentAlpha(settledSwipeOffset, size.width)
                                 }
-                                shape = RoundedCornerShape(artCorner)
                             }
                     )
                 }
@@ -12302,6 +12304,42 @@ private fun PlayerScreen(
     }
 }
 
+private fun applyBrightnessDrag(
+    activity: Activity?,
+    deltaPx: Float,
+    heightPx: Float,
+    label: String,
+    onFeedback: (String) -> Unit
+) {
+    val window = activity?.window ?: return
+    val attributes = window.attributes
+    val current = attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
+    val updated = (current - deltaPx / heightPx.coerceAtLeast(1f)).coerceIn(0.05f, 1f)
+    attributes.screenBrightness = updated
+    window.attributes = attributes
+    onFeedback("$label ${(updated * 100f).roundToInt()}%")
+}
+
+private fun applyVolumeDrag(
+    audioManager: AudioManager?,
+    deltaPx: Float,
+    heightPx: Float,
+    accumulator: Float,
+    label: String,
+    onFeedback: (String) -> Unit
+): Float {
+    val manager = audioManager ?: return 0f
+    val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+    val pending = accumulator + -deltaPx / heightPx.coerceAtLeast(1f) * maximum
+    val steps = pending.roundToInt()
+    if (steps == 0) return pending
+    val current = manager.getStreamVolume(AudioManager.STREAM_MUSIC)
+    val updated = (current + steps).coerceIn(0, maximum)
+    manager.setStreamVolume(AudioManager.STREAM_MUSIC, updated, 0)
+    onFeedback("$label ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%")
+    return pending - steps.toFloat()
+}
+
 @Composable
 private fun PlayerGestureLayer(
     trackId: String,
@@ -12325,6 +12363,7 @@ private fun PlayerGestureLayer(
     modifier: Modifier = Modifier
 ) {
     val currentPlaybackSpeed by rememberUpdatedState(playbackSpeed)
+    var volumeAccumulator by remember(trackId) { mutableStateOf(0f) }
     Box(
         modifier = modifier
             .pointerInput(trackId, settings.doubleTapSeekSeconds, settings.longPressSpeed, rightToLeft) {
@@ -12355,92 +12394,53 @@ private fun PlayerGestureLayer(
                     }
                 )
             }
-            .pointerInput(trackId, activity, audioManager, rightToLeft) {
-                var axis = PlayerDragAxis.Undecided
-                var zone = PlayerGestureZone.Center
-                var totalX = 0f
-                var totalY = 0f
-                var swipeOffset = 0f
-                var volumeAccumulator = 0f
-                val velocityTracker = VelocityTracker()
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        axis = PlayerDragAxis.Undecided
-                        totalX = 0f
-                        totalY = 0f
-                        swipeOffset = 0f
-                        volumeAccumulator = 0f
-                        velocityTracker.resetTracking()
-                        zone = playerGestureZone(offset.x / size.width.coerceAtLeast(1).toFloat(), rightToLeft)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        velocityTracker.addPosition(change.uptimeMillis, change.position)
-                        totalX += dragAmount.x
-                        totalY += dragAmount.y
-                        if (axis == PlayerDragAxis.Undecided) {
-                            axis = resolvePlayerDragAxis(totalX, totalY)
-                            if (axis == PlayerDragAxis.Vertical && zone == PlayerGestureZone.Center) {
-                                onCollapseDragStart()
-                            }
+            .playerAxisDragGestures(
+                key = trackId,
+                enabled = true,
+                rightToLeft = rightToLeft,
+                edgeZonesEnabled = true
+            ) { event ->
+                when (event) {
+                    is PlayerDragEvent.HorizontalOffset -> onSwipeOffset(event.offsetPx)
+                    is PlayerDragEvent.HorizontalSettled -> {
+                        when (event.result) {
+                            PlayerSwipeResult.Next -> onSwipeNext()
+                            PlayerSwipeResult.Previous -> onSwipePrevious()
+                            PlayerSwipeResult.Settle -> Unit
                         }
-                        when {
-                            axis == PlayerDragAxis.Horizontal -> {
-                                swipeOffset += dragAmount.x
-                                onSwipeOffset(playerSwipeContentOffset(swipeOffset, size.width.coerceAtLeast(1).toFloat()))
-                            }
-                            axis != PlayerDragAxis.Vertical -> Unit
-                            zone == PlayerGestureZone.BrightnessEdge -> {
-                                val window = activity?.window ?: return@detectDragGestures
-                                val attributes = window.attributes
-                                val current = attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
-                                val updated = (current - dragAmount.y / size.height.coerceAtLeast(1)).coerceIn(0.05f, 1f)
-                                attributes.screenBrightness = updated
-                                window.attributes = attributes
-                                onFeedback("$brightnessLabel ${(updated * 100f).roundToInt()}%")
-                            }
-                            zone == PlayerGestureZone.VolumeEdge -> {
-                                val manager = audioManager ?: return@detectDragGestures
-                                val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-                                volumeAccumulator += -dragAmount.y / size.height.coerceAtLeast(1) * maximum
-                                val steps = volumeAccumulator.roundToInt()
-                                if (steps != 0) {
-                                    val current = manager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                                    val updated = (current + steps).coerceIn(0, maximum)
-                                    manager.setStreamVolume(AudioManager.STREAM_MUSIC, updated, 0)
-                                    volumeAccumulator -= steps.toFloat()
-                                    onFeedback("$volumeLabel ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%")
-                                }
-                            }
-                            else -> onCollapseDrag(dragAmount.y)
-                        }
-                    },
-                    onDragEnd = {
-                        val velocity = velocityTracker.calculateVelocity()
-                        when {
-                            axis == PlayerDragAxis.Horizontal -> {
-                                when (resolvePlayerSwipe(swipeOffset, velocity.x, size.width.coerceAtLeast(1).toFloat())) {
-                                    PlayerSwipeResult.Next -> if (rightToLeft) onSwipePrevious() else onSwipeNext()
-                                    PlayerSwipeResult.Previous -> if (rightToLeft) onSwipeNext() else onSwipePrevious()
-                                    PlayerSwipeResult.Settle -> Unit
-                                }
-                                onSwipeOffset(0f)
-                            }
-                            axis == PlayerDragAxis.Vertical && zone == PlayerGestureZone.Center -> {
-                                onCollapseDragEnd(velocity.y)
-                            }
-                            else -> Unit
-                        }
-                        axis = PlayerDragAxis.Undecided
-                    },
-                    onDragCancel = {
-                        if (axis == PlayerDragAxis.Horizontal) onSwipeOffset(0f)
-                        if (axis == PlayerDragAxis.Vertical && zone == PlayerGestureZone.Center) {
-                            onCollapseDragEnd(0f)
-                        }
-                        axis = PlayerDragAxis.Undecided
+                        onSwipeOffset(0f)
                     }
-                )
+                    is PlayerDragEvent.VerticalStart -> {
+                        if (event.zone == PlayerGestureZone.Center) onCollapseDragStart()
+                    }
+                    is PlayerDragEvent.VerticalDrag -> when (event.zone) {
+                        PlayerGestureZone.BrightnessEdge -> applyBrightnessDrag(
+                            activity = activity,
+                            deltaPx = event.deltaPx,
+                            heightPx = event.heightPx,
+                            label = brightnessLabel,
+                            onFeedback = onFeedback
+                        )
+                        PlayerGestureZone.VolumeEdge -> volumeAccumulator = applyVolumeDrag(
+                            audioManager = audioManager,
+                            deltaPx = event.deltaPx,
+                            heightPx = event.heightPx,
+                            accumulator = volumeAccumulator,
+                            label = volumeLabel,
+                            onFeedback = onFeedback
+                        )
+                        PlayerGestureZone.Center -> onCollapseDrag(event.deltaPx)
+                    }
+                    is PlayerDragEvent.VerticalSettled -> {
+                        volumeAccumulator = 0f
+                        if (event.zone == PlayerGestureZone.Center) onCollapseDragEnd(event.velocityPx)
+                    }
+                    PlayerDragEvent.Cancelled -> {
+                        volumeAccumulator = 0f
+                        onSwipeOffset(0f)
+                        onCollapseDragEnd(0f)
+                    }
+                }
             }
     )
 }
@@ -13475,9 +13475,9 @@ private fun OnboardingTopBar(step: OnboardingStep, backLabel: String, onBack: ()
 @Composable
 private fun OnboardingIntroStage(strings: LevyraStrings, onStart: () -> Unit) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val haloScale = if (animationsEnabled) {
+    val pulse = if (animationsEnabled) {
         val transition = rememberInfiniteTransition(label = "intro-pulse")
-        val pulse by transition.animateFloat(
+        transition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
@@ -13486,15 +13486,16 @@ private fun OnboardingIntroStage(strings: LevyraStrings, onStart: () -> Unit) {
             ),
             label = "intro-pulse-value"
         )
-        1f + 0.06f * kotlin.math.sin(pulse * 2f * Math.PI.toFloat())
     } else {
-        1f
+        null
     }
-    val features = listOf(
-        Triple(Icons.Rounded.GraphicEq, strings.introFeatureSound, LevyraCyan),
-        Triple(Icons.Rounded.TextFields, strings.introFeatureLyrics, LevyraViolet),
-        Triple(Icons.Rounded.Download, strings.introFeatureOffline, LevyraCyan)
-    )
+    val features = remember(strings) {
+        listOf(
+            Triple(Icons.Rounded.GraphicEq, strings.introFeatureSound, LevyraCyan),
+            Triple(Icons.Rounded.TextFields, strings.introFeatureLyrics, LevyraViolet),
+            Triple(Icons.Rounded.Download, strings.introFeatureOffline, LevyraCyan)
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -13508,8 +13509,11 @@ private fun OnboardingIntroStage(strings: LevyraStrings, onStart: () -> Unit) {
                 modifier = Modifier
                     .size(190.dp)
                     .graphicsLayer {
-                        scaleX = haloScale
-                        scaleY = haloScale
+                        val halo = pulse?.value?.let { value ->
+                            1f + 0.06f * kotlin.math.sin(value * 2f * Math.PI.toFloat())
+                        } ?: 1f
+                        scaleX = halo
+                        scaleY = halo
                     }
                     .blur(46.dp)
                     .background(
@@ -16703,21 +16707,30 @@ private fun PlayerArtworkMorphLayer(
     expansion: () -> Float
 ) {
     val density = LocalDensity.current
-    val fraction = playerMorphFraction(expansion())
-    val rect = anchors.resolve(fraction) ?: return
-    val cornerPx = morphCornerRadius(
-        with(density) { LevyraPlayerDesign.CornerSm.toPx() },
-        with(density) { LevyraPlayerDesign.CornerLg.toPx() },
-        fraction
-    )
+    val startCornerPx = with(density) { LevyraPlayerDesign.CornerSm.toPx() }
+    val endCornerPx = with(density) { LevyraPlayerDesign.CornerLg.toPx() }
     Box(
         modifier = Modifier
-            .offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
-            .size(
-                width = with(density) { rect.width.toDp() },
-                height = with(density) { rect.height.toDp() }
-            )
-            .clip(RoundedCornerShape(with(density) { cornerPx.toDp() }))
+            .layout { measurable, _ ->
+                val rect = anchors.resolve(playerMorphFraction(expansion()))
+                if (rect == null) {
+                    val placeable = measurable.measure(Constraints.fixed(0, 0))
+                    layout(0, 0) { placeable.place(0, 0) }
+                } else {
+                    val placeable = measurable.measure(
+                        Constraints.fixed(rect.width.roundToInt(), rect.height.roundToInt())
+                    )
+                    layout(placeable.width, placeable.height) {
+                        placeable.place(rect.left.roundToInt(), rect.top.roundToInt())
+                    }
+                }
+            }
+            .graphicsLayer {
+                clip = true
+                shape = RoundedCornerShape(
+                    morphCornerRadius(startCornerPx, endCornerPx, playerMorphFraction(expansion())).toDp()
+                )
+            }
     ) {
         CoverImage(track, Modifier.fillMaxSize(), highRes = true)
     }
@@ -16796,92 +16809,40 @@ private fun MiniPlayer(
                 ambientColor = accentStart.copy(alpha = 0.16f),
                 spotColor = Color.Black.copy(alpha = 0.82f)
             )
-            .pointerInput(track.id, miniRightToLeft, gesturesEnabled) {
-                if (!gesturesEnabled) return@pointerInput
-                var axis = PlayerDragAxis.Undecided
-                var totalX = 0f
-                var totalY = 0f
-                var swipe = 0f
-                var dismiss = 0f
-                var peeked = false
-                val velocityTracker = VelocityTracker()
-                detectDragGestures(
-                    onDragStart = {
-                        axis = PlayerDragAxis.Undecided
-                        totalX = 0f
-                        totalY = 0f
-                        swipe = 0f
-                        dismiss = 0f
-                        peeked = false
-                        velocityTracker.resetTracking()
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        velocityTracker.addPosition(change.uptimeMillis, change.position)
-                        totalX += dragAmount.x
-                        totalY += dragAmount.y
-                        if (axis == PlayerDragAxis.Undecided) {
-                            axis = resolvePlayerDragAxis(totalX, totalY)
-                            if (axis == PlayerDragAxis.Vertical) onExpandDragStart()
+            .playerAxisDragGestures(
+                key = track.id,
+                enabled = gesturesEnabled,
+                rightToLeft = miniRightToLeft,
+                edgeZonesEnabled = false
+            ) { event ->
+                when (event) {
+                    is PlayerDragEvent.HorizontalOffset -> swipeOffsetPx = event.offsetPx
+                    is PlayerDragEvent.HorizontalSettled -> {
+                        when (event.result) {
+                            PlayerSwipeResult.Next -> onNext()
+                            PlayerSwipeResult.Previous -> onPrevious()
+                            PlayerSwipeResult.Settle -> Unit
                         }
-                        when (axis) {
-                            PlayerDragAxis.Horizontal -> {
-                                swipe += dragAmount.x
-                                swipeOffsetPx = playerSwipeContentOffset(
-                                    swipe,
-                                    size.width.coerceAtLeast(1).toFloat()
-                                )
-                            }
-                            PlayerDragAxis.Vertical -> {
-                                if (totalY < 0f) {
-                                    peeked = true
-                                    dismiss = 0f
-                                    onExpandDrag(dragAmount.y)
-                                } else if (peeked) {
-                                    onExpandDrag(dragAmount.y)
-                                } else {
-                                    dismiss = totalY
-                                }
-                            }
-                            PlayerDragAxis.Undecided -> Unit
-                        }
-                    },
-                    onDragEnd = {
-                        val velocity = velocityTracker.calculateVelocity()
-                        when (axis) {
-                            PlayerDragAxis.Horizontal -> {
-                                when (
-                                    resolvePlayerSwipe(
-                                        swipe,
-                                        velocity.x,
-                                        size.width.coerceAtLeast(1).toFloat()
-                                    )
-                                ) {
-                                    PlayerSwipeResult.Next -> if (miniRightToLeft) onPrevious() else onNext()
-                                    PlayerSwipeResult.Previous -> if (miniRightToLeft) onNext() else onPrevious()
-                                    PlayerSwipeResult.Settle -> Unit
-                                }
-                                swipeOffsetPx = 0f
-                            }
-                            PlayerDragAxis.Vertical -> {
-                                val dismissed = resolveMiniPlayerDismiss(
-                                    dismiss,
-                                    velocity.y,
-                                    size.height.coerceAtLeast(1).toFloat()
-                                )
-                                onExpandDragEnd(velocity.y)
-                                if (!peeked && dismissed == PlayerVerticalResult.Collapse) onClose()
-                            }
-                            PlayerDragAxis.Undecided -> Unit
-                        }
-                        axis = PlayerDragAxis.Undecided
-                    },
-                    onDragCancel = {
-                        if (axis == PlayerDragAxis.Horizontal) swipeOffsetPx = 0f
-                        if (axis == PlayerDragAxis.Vertical) onExpandDragEnd(0f)
-                        axis = PlayerDragAxis.Undecided
+                        swipeOffsetPx = 0f
                     }
-                )
+                    is PlayerDragEvent.VerticalStart -> onExpandDragStart()
+                    is PlayerDragEvent.VerticalDrag -> {
+                        if (event.peeked) onExpandDrag(event.deltaPx)
+                    }
+                    is PlayerDragEvent.VerticalSettled -> {
+                        onExpandDragEnd(event.velocityPx)
+                        val dismissed = resolveMiniPlayerDismiss(
+                            event.totalPx,
+                            event.velocityPx,
+                            event.heightPx
+                        )
+                        if (!event.peeked && dismissed == PlayerVerticalResult.Collapse) onClose()
+                    }
+                    PlayerDragEvent.Cancelled -> {
+                        swipeOffsetPx = 0f
+                        onExpandDragEnd(0f)
+                    }
+                }
             }
     ) {
         Column(
