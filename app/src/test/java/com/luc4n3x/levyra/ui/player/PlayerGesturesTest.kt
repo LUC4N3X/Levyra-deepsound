@@ -20,9 +20,10 @@ class PlayerGesturesTest {
     }
 
     @Test
-    fun `out of range positions are clamped instead of throwing`() {
+    fun `out of range and invalid positions are normalized safely`() {
         assertEquals(PlayerGestureZone.BrightnessEdge, playerGestureZone(-4f))
         assertEquals(PlayerGestureZone.VolumeEdge, playerGestureZone(9f))
+        assertEquals(PlayerGestureZone.Center, playerGestureZone(Float.NaN))
     }
 
     @Test
@@ -30,6 +31,7 @@ class PlayerGesturesTest {
         assertEquals(PlayerDragAxis.Undecided, resolvePlayerDragAxis(2f, 3f))
         assertEquals(PlayerDragAxis.Horizontal, resolvePlayerDragAxis(40f, 6f))
         assertEquals(PlayerDragAxis.Vertical, resolvePlayerDragAxis(6f, 40f))
+        assertEquals(PlayerDragAxis.Undecided, resolvePlayerDragAxis(Float.NaN, Float.NaN))
     }
 
     @Test
@@ -51,9 +53,20 @@ class PlayerGesturesTest {
     }
 
     @Test
-    fun `a fling changes track even without distance`() {
+    fun `a committed distance cannot be reversed by a release counter flick`() {
+        assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-300f, 900f, 1000f))
+        assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(300f, -900f, 1000f))
+    }
+
+    @Test
+    fun `a fling changes track when distance has not committed`() {
         assertEquals(PlayerSwipeResult.Next, resolvePlayerSwipe(-10f, -1500f, 1000f))
         assertEquals(PlayerSwipeResult.Previous, resolvePlayerSwipe(10f, 1500f, 1000f))
+    }
+
+    @Test
+    fun `invalid swipe samples settle instead of selecting a track`() {
+        assertEquals(PlayerSwipeResult.Settle, resolvePlayerSwipe(Float.NaN, Float.NaN, Float.NaN))
     }
 
     @Test
@@ -68,6 +81,7 @@ class PlayerGesturesTest {
     fun `a small downward nudge on the mini player is ignored`() {
         assertEquals(PlayerVerticalResult.Settle, resolveMiniPlayerDismiss(60f, 0f, 200f))
         assertEquals(PlayerVerticalResult.Settle, resolveMiniPlayerDismiss(0f, 0f, 200f))
+        assertEquals(PlayerVerticalResult.Settle, resolveMiniPlayerDismiss(Float.NaN, Float.NaN, Float.NaN))
     }
 
     @Test
@@ -95,11 +109,13 @@ class PlayerGesturesTest {
         assertEquals(-120f, playerSwipeContentOffset(-120f, 1000f), 0.0001f)
         assertEquals(340f, playerSwipeContentOffset(900f, 1000f), 0.0001f)
         assertEquals(-340f, playerSwipeContentOffset(-900f, 1000f), 0.0001f)
+        assertEquals(0f, playerSwipeContentOffset(Float.NaN, Float.NaN), 0.0001f)
     }
 
     @Test
     fun `the swiped content never disappears completely`() {
         assertEquals(1f, playerSwipeContentAlpha(0f, 1000f), 0.0001f)
         assertTrue(playerSwipeContentAlpha(340f, 1000f) >= 0.5f)
+        assertEquals(1f, playerSwipeContentAlpha(Float.NaN, Float.NaN), 0.0001f)
     }
 }
