@@ -427,6 +427,8 @@ import com.luc4n3x.levyra.ui.player.playerMorphAnchor
 import com.luc4n3x.levyra.ui.player.playerMorphFraction
 import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
 import com.luc4n3x.levyra.ui.player.playerSurfaceAlpha
+import com.luc4n3x.levyra.ui.player.playerSurfaceLiftFraction
+import com.luc4n3x.levyra.ui.player.playerSurfaceScale
 import com.luc4n3x.levyra.ui.player.playerSwipeContentAlpha
 import com.luc4n3x.levyra.ui.player.playerTapSide
 import com.luc4n3x.levyra.ui.player.rememberPlayerMorphAnchors
@@ -1219,7 +1221,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 val target = if (state.selectedTab == LevyraTab.Player) 1f else 0f
                 if (playerExpansion.value == target) return@LaunchedEffect
                 if (state.animationsEnabled) {
-                    playerExpansion.animateTo(target, spring(dampingRatio = 0.88f, stiffness = 420f))
+                    playerExpansion.animateTo(target, spring(dampingRatio = 0.82f, stiffness = 360f))
                 } else {
                     playerExpansion.snapTo(target)
                 }
@@ -1258,9 +1260,9 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 expansionScope.launch {
                     if (target >= 1f) {
                         if (state.selectedTab != LevyraTab.Player) viewModel.selectTab(LevyraTab.Player)
-                        playerExpansion.animateTo(1f, spring(dampingRatio = 0.88f, stiffness = 420f))
+                        playerExpansion.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 360f))
                     } else {
-                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 460f))
+                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
                         if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                     }
                 }
@@ -1268,7 +1270,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             val collapsePlayer: () -> Unit = {
                 expansionScope.launch {
                     if (state.animationsEnabled) {
-                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 460f))
+                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
                     } else {
                         playerExpansion.snapTo(0f)
                     }
@@ -1404,7 +1406,15 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer { alpha = playerSurfaceAlpha(expansionProvider()) }
+                        .graphicsLayer {
+                            val expansion = expansionProvider()
+                            alpha = playerSurfaceAlpha(expansion)
+                            val surfaceScale = playerSurfaceScale(expansion)
+                            scaleX = surfaceScale
+                            scaleY = surfaceScale
+                            translationY = playerSurfaceLiftFraction(expansion) * expansionTravelPx
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        }
                 ) {
                     PlayerScreen(
                         viewModel = playerViewModel,
@@ -13340,10 +13350,15 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 @Composable
 private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
     val currentLocale = LocalLocale.current.platformLocale
+    val deviceLanguageCode = remember(currentLocale, selectedLanguageCode) {
+        LevyraLanguageCatalog.normalize(
+            currentLocale.language.ifBlank { selectedLanguageCode }
+        )
+    }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
     var step by remember { mutableStateOf(OnboardingStep.Intro) }
-    var languageCode by remember(selectedLanguageCode) { mutableStateOf(LevyraLanguageCatalog.normalize(selectedLanguageCode)) }
+    var languageCode by remember(deviceLanguageCode) { mutableStateOf(deviceLanguageCode) }
     val moodEngine = remember { MoodEngine() }
     val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
     val strings = LevyraStrings.forCode(languageCode)
@@ -13354,7 +13369,6 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFF030304))
-                .consumeOverlayTouches()
         ) {
         Box(
             modifier = Modifier
@@ -13496,122 +13510,135 @@ private fun OnboardingIntroStage(strings: LevyraStrings, onStart: () -> Unit) {
             Triple(Icons.Rounded.Download, strings.introFeatureOffline, LevyraCyan)
         )
     }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 28.dp,
+            end = 28.dp,
+            top = 18.dp,
+            bottom = 32.dp
+        ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(46.dp))
-        Box(contentAlignment = Alignment.Center) {
-            Box(
-                modifier = Modifier
-                    .size(190.dp)
-                    .graphicsLayer {
-                        val halo = pulse?.value?.let { value ->
-                            1f + 0.06f * kotlin.math.sin(value * 2f * Math.PI.toFloat())
-                        } ?: 1f
-                        scaleX = halo
-                        scaleY = halo
-                    }
-                    .blur(46.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.30f),
-                                LevyraViolet.copy(alpha = 0.20f),
-                                Color.Transparent
-                            )
-                        ),
-                        CircleShape
-                    )
-            )
-            LevyraLogoMark(size = 92.dp)
-        }
-        Spacer(modifier = Modifier.height(26.dp))
-        LevyraWordmark(fontSize = 34.sp, dotSize = 6.dp)
-        Spacer(modifier = Modifier.height(18.dp))
-        Text(
-            text = strings.introHeadline,
-            color = LevyraText,
-            fontSize = 38.sp,
-            lineHeight = 42.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-1.3).sp,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = strings.introBody,
-            color = LevyraMuted,
-            fontSize = 16.sp,
-            lineHeight = 23.sp,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(30.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            features.forEach { (icon, label, tint) ->
-                Row(
+        item {
+            Spacer(modifier = Modifier.height(18.dp))
+            Box(contentAlignment = Alignment.Center) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(LevyraAdaptiveCardDeep, RoundedCornerShape(20.dp))
-                        .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 16.dp, vertical = 15.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Box(
+                        .size(190.dp)
+                        .graphicsLayer {
+                            val halo = pulse?.value?.let { value ->
+                                1f + 0.06f * kotlin.math.sin(value * 2f * Math.PI.toFloat())
+                            } ?: 1f
+                            scaleX = halo
+                            scaleY = halo
+                        }
+                        .blur(46.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = 0.30f),
+                                    LevyraViolet.copy(alpha = 0.20f),
+                                    Color.Transparent
+                                )
+                            ),
+                            CircleShape
+                        )
+                )
+                LevyraLogoMark(size = 92.dp)
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(22.dp))
+            LevyraWordmark(fontSize = 34.sp, dotSize = 6.dp)
+            Spacer(modifier = Modifier.height(18.dp))
+            Text(
+                text = strings.introHeadline,
+                color = LevyraText,
+                fontSize = 38.sp,
+                lineHeight = 42.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.3).sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = strings.introBody,
+                color = LevyraMuted,
+                fontSize = 16.sp,
+                lineHeight = 23.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(28.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                features.forEach { (icon, label, tint) ->
+                    Row(
                         modifier = Modifier
-                            .size(38.dp)
-                            .background(tint.copy(alpha = 0.14f), RoundedCornerShape(13.dp)),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .background(LevyraAdaptiveCardDeep, RoundedCornerShape(20.dp))
+                            .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 16.dp, vertical = 15.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(tint.copy(alpha = 0.14f), RoundedCornerShape(13.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                        }
+                        Text(
+                            text = label,
+                            color = LevyraText,
+                            fontSize = 14.5.sp,
+                            lineHeight = 19.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
+                }
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(28.dp))
+            Surface(
+                color = LevyraCyan,
+                shape = CircleShape,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .pressable(onClick = onStart)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     Text(
-                        text = label,
-                        color = LevyraText,
-                        fontSize = 14.5.sp,
-                        lineHeight = 19.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = strings.introStart,
+                        color = LevyraBlack,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = LevyraBlack,
+                        modifier = Modifier.size(21.dp)
                     )
                 }
             }
         }
-        Spacer(modifier = Modifier.height(30.dp))
-        Surface(
-            color = LevyraCyan,
-            shape = CircleShape,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp)
-                .pressable(onClick = onStart)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = strings.introStart,
-                    color = LevyraBlack,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = LevyraBlack,
-                    modifier = Modifier.size(21.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(28.dp))
     }
 }
 
