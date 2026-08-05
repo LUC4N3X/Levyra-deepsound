@@ -1,26 +1,23 @@
 package com.luc4n3x.levyra.ui.i18n
 
-private fun playerExperience(
-    introHeadline: String,
-    introBody: String,
-    introFeatureSound: String,
-    introFeatureLyrics: String,
-    introFeatureOffline: String,
-    introStart: String,
-    expandPlayer: String,
-    collapsePlayer: String,
-    lyricsFocus: String
-): Map<String, String> = mapOf(
-    "introHeadline" to introHeadline,
-    "introBody" to introBody,
-    "introFeatureSound" to introFeatureSound,
-    "introFeatureLyrics" to introFeatureLyrics,
-    "introFeatureOffline" to introFeatureOffline,
-    "introStart" to introStart,
-    "expandPlayer" to expandPlayer,
-    "collapsePlayer" to collapsePlayer,
-    "lyricsFocus" to lyricsFocus
+private val playerExperienceKeys = listOf(
+    "introHeadline",
+    "introBody",
+    "introFeatureSound",
+    "introFeatureLyrics",
+    "introFeatureOffline",
+    "introStart",
+    "expandPlayer",
+    "collapsePlayer",
+    "lyricsFocus"
 )
+
+private fun playerExperience(vararg values: String): Map<String, String> {
+    require(values.size == playerExperienceKeys.size) {
+        "Expected ${playerExperienceKeys.size} player experience strings, received ${values.size}"
+    }
+    return playerExperienceKeys.zip(values.asList()).toMap()
+}
 
 private val playerExperienceBundles: Map<String, Map<String, String>> = mapOf(
     "en" to playerExperience("Your sound, without limits.", "Millions of tracks, synced lyrics and offline listening in one player built to stay out of the way.", "Gapless playback and a full audio engine", "Synced lyrics, word by word", "Offline downloads with covers and tags", "Get started", "Expand player", "Collapse player", "Focus"),
