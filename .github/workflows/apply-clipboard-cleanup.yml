@@ -1,0 +1,77 @@
+name: Apply clipboard API cleanup
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'chore/remove-deprecated-android-apis'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cleanup branch
+        uses: actions/checkout@v5
+        with:
+          ref: chore/remove-deprecated-android-apis
+          fetch-depth: 0
+
+      - name: Apply verified clipboard migration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(text: str, old: str, new: str, expected: int, label: str) -> str:
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{label}: expected {expected} occurrence(s), found {count}")
+              return text.replace(old, new)
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          text = replace_exact(
+              text,
+              "import android.app.Activity\n",
+              "import android.app.Activity\nimport android.content.ClipData\n",
+              1,
+              "ClipData import"
+          )
+          text = replace_exact(
+              text,
+              "import androidx.compose.ui.platform.LocalClipboardManager\n",
+              "import androidx.compose.ui.platform.ClipEntry\nimport androidx.compose.ui.platform.LocalClipboard\n",
+              1,
+              "Compose clipboard imports"
+          )
+          text = replace_exact(
+              text,
+              """    val clipboard = LocalClipboardManager.current\n    val shareContext = LocalContext.current""",
+              """    val clipboard = LocalClipboard.current\n    val clipboardScope = rememberCoroutineScope()\n    val shareContext = LocalContext.current""",
+              1,
+              "Lyrics clipboard state"
+          )
+          text = replace_exact(
+              text,
+              """                                onClick = { clipboard.setText(AnnotatedString(selectedLyricsText())) }""",
+              """                                onClick = {\n                                    val text = selectedLyricsText()\n                                    clipboardScope.launch {\n                                        clipboard.setClipEntry(\n                                            ClipEntry(ClipData.newPlainText(\"lyrics\", text))\n                                        )\n                                    }\n                                }""",
+              1,
+              "Lyrics copy action"
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit cleanup and remove one-shot workflow
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git rm .github/workflows/apply-clipboard-cleanup.yml
+          git commit -m "chore(android): migrate lyrics clipboard API"
+          git push origin HEAD:chore/remove-deprecated-android-apis
