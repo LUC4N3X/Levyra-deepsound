@@ -36,7 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
-import com.luc4n3x.levyra.ui.LevyraExperienceHost
+import com.luc4n3x.levyra.ui.LevyraStableExperienceHost
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
 
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f)) {
-                        LevyraExperienceHost(
+                        LevyraStableExperienceHost(
                             viewModel = viewModel,
                             isInPictureInPicture = pipMode.value
                         )
