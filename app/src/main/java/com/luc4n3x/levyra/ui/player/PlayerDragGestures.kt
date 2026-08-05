@@ -67,6 +67,7 @@ fun Modifier.playerAxisDragGestures(
     )
 }
 
+/** Owns one pointer gesture from press to settle so the Compose modifier stays declarative. */
 private class PlayerDragSession(
     private val rightToLeft: Boolean,
     private val edgeZonesEnabled: Boolean,
