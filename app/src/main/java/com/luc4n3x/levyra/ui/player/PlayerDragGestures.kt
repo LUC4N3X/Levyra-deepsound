@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 
@@ -40,92 +42,151 @@ fun Modifier.playerAxisDragGestures(
     onEvent: (PlayerDragEvent) -> Unit
 ): Modifier = this.pointerInput(key, enabled, rightToLeft, edgeZonesEnabled) {
     if (!enabled) return@pointerInput
-    var axis = PlayerDragAxis.Undecided
-    var zone = PlayerGestureZone.Center
-    var totalX = 0f
-    var totalY = 0f
-    var horizontalOffset = 0f
-    var peeked = false
-    val velocityTracker = VelocityTracker()
+    val session = PlayerDragSession(
+        rightToLeft = rightToLeft,
+        edgeZonesEnabled = edgeZonesEnabled,
+        onEvent = onEvent
+    )
     detectDragGestures(
-        onDragStart = { offset ->
-            axis = PlayerDragAxis.Undecided
-            totalX = 0f
-            totalY = 0f
-            horizontalOffset = 0f
-            peeked = false
-            velocityTracker.resetTracking()
-            zone = if (edgeZonesEnabled) {
-                playerGestureZone(offset.x / size.width.coerceAtLeast(1).toFloat(), rightToLeft)
-            } else {
-                PlayerGestureZone.Center
-            }
-        },
+        onDragStart = { offset -> session.start(offset, size.width.toFloat()) },
         onDrag = { change, dragAmount ->
-            change.consume()
-            velocityTracker.addPosition(change.uptimeMillis, change.position)
-            totalX += dragAmount.x
-            totalY += dragAmount.y
-            if (axis == PlayerDragAxis.Undecided) {
-                axis = resolvePlayerDragAxis(totalX, totalY)
-                if (axis == PlayerDragAxis.Vertical) onEvent(PlayerDragEvent.VerticalStart(zone))
-            }
-            when (axis) {
-                PlayerDragAxis.Horizontal -> {
-                    horizontalOffset += dragAmount.x
-                    onEvent(
-                        PlayerDragEvent.HorizontalOffset(
-                            playerSwipeContentOffset(
-                                horizontalOffset,
-                                size.width.coerceAtLeast(1).toFloat()
-                            )
-                        )
-                    )
-                }
-                PlayerDragAxis.Vertical -> {
-                    if (totalY < 0f) peeked = true
-                    onEvent(
-                        PlayerDragEvent.VerticalDrag(
-                            zone = zone,
-                            deltaPx = dragAmount.y,
-                            totalPx = totalY,
-                            heightPx = size.height.coerceAtLeast(1).toFloat(),
-                            peeked = peeked
-                        )
-                    )
-                }
-                PlayerDragAxis.Undecided -> Unit
-            }
+            session.drag(
+                change = change,
+                dragAmount = dragAmount,
+                widthPx = size.width.toFloat(),
+                heightPx = size.height.toFloat()
+            )
         },
         onDragEnd = {
-            val velocity = velocityTracker.calculateVelocity()
-            when (axis) {
-                PlayerDragAxis.Horizontal -> {
-                    val result = resolvePlayerSwipe(
-                        horizontalOffset,
-                        velocity.x,
-                        size.width.coerceAtLeast(1).toFloat()
-                    )
-                    onEvent(PlayerDragEvent.HorizontalSettled(mirrored(result, rightToLeft)))
-                }
-                PlayerDragAxis.Vertical -> onEvent(
-                    PlayerDragEvent.VerticalSettled(
-                        zone = zone,
-                        totalPx = totalY,
-                        velocityPx = velocity.y,
-                        heightPx = size.height.coerceAtLeast(1).toFloat(),
-                        peeked = peeked
-                    )
-                )
-                PlayerDragAxis.Undecided -> Unit
-            }
-            axis = PlayerDragAxis.Undecided
+            session.end(
+                widthPx = size.width.toFloat(),
+                heightPx = size.height.toFloat()
+            )
         },
-        onDragCancel = {
-            onEvent(PlayerDragEvent.Cancelled)
-            axis = PlayerDragAxis.Undecided
-        }
+        onDragCancel = session::cancel
     )
+}
+
+private class PlayerDragSession(
+    private val rightToLeft: Boolean,
+    private val edgeZonesEnabled: Boolean,
+    private val onEvent: (PlayerDragEvent) -> Unit
+) {
+    private var axis = PlayerDragAxis.Undecided
+    private var zone = PlayerGestureZone.Center
+    private var totalX = 0f
+    private var totalY = 0f
+    private var horizontalOffset = 0f
+    private var peeked = false
+    private val velocityTracker = VelocityTracker()
+
+    fun start(offset: Offset, widthPx: Float) {
+        resetMotion()
+        velocityTracker.resetTracking()
+        zone = resolveZone(offset.x, widthPx)
+    }
+
+    fun drag(
+        change: PointerInputChange,
+        dragAmount: Offset,
+        widthPx: Float,
+        heightPx: Float
+    ) {
+        change.consume()
+        velocityTracker.addPosition(change.uptimeMillis, change.position)
+        totalX += dragAmount.x
+        totalY += dragAmount.y
+        resolveAxisIfNeeded()
+        dispatchDrag(dragAmount, widthPx, heightPx)
+    }
+
+    fun end(widthPx: Float, heightPx: Float) {
+        val velocity = velocityTracker.calculateVelocity()
+        when (axis) {
+            PlayerDragAxis.Horizontal -> settleHorizontal(velocity.x, widthPx)
+            PlayerDragAxis.Vertical -> settleVertical(velocity.y, heightPx)
+            PlayerDragAxis.Undecided -> Unit
+        }
+        resetMotion()
+    }
+
+    fun cancel() {
+        onEvent(PlayerDragEvent.Cancelled)
+        resetMotion()
+    }
+
+    private fun resolveZone(offsetX: Float, widthPx: Float): PlayerGestureZone {
+        if (!edgeZonesEnabled) return PlayerGestureZone.Center
+        return playerGestureZone(offsetX / widthPx.coerceAtLeast(1f), rightToLeft)
+    }
+
+    private fun resolveAxisIfNeeded() {
+        if (axis != PlayerDragAxis.Undecided) return
+        axis = resolvePlayerDragAxis(totalX, totalY)
+        if (axis == PlayerDragAxis.Vertical) {
+            onEvent(PlayerDragEvent.VerticalStart(zone))
+        }
+    }
+
+    private fun dispatchDrag(dragAmount: Offset, widthPx: Float, heightPx: Float) {
+        when (axis) {
+            PlayerDragAxis.Horizontal -> dispatchHorizontalDrag(dragAmount.x, widthPx)
+            PlayerDragAxis.Vertical -> dispatchVerticalDrag(dragAmount.y, heightPx)
+            PlayerDragAxis.Undecided -> Unit
+        }
+    }
+
+    private fun dispatchHorizontalDrag(deltaX: Float, widthPx: Float) {
+        horizontalOffset += deltaX
+        onEvent(
+            PlayerDragEvent.HorizontalOffset(
+                playerSwipeContentOffset(horizontalOffset, widthPx.coerceAtLeast(1f))
+            )
+        )
+    }
+
+    private fun dispatchVerticalDrag(deltaY: Float, heightPx: Float) {
+        if (totalY < 0f) peeked = true
+        onEvent(
+            PlayerDragEvent.VerticalDrag(
+                zone = zone,
+                deltaPx = deltaY,
+                totalPx = totalY,
+                heightPx = heightPx.coerceAtLeast(1f),
+                peeked = peeked
+            )
+        )
+    }
+
+    private fun settleHorizontal(velocityX: Float, widthPx: Float) {
+        val result = resolvePlayerSwipe(
+            horizontalOffset,
+            velocityX,
+            widthPx.coerceAtLeast(1f)
+        )
+        onEvent(PlayerDragEvent.HorizontalSettled(mirrored(result, rightToLeft)))
+    }
+
+    private fun settleVertical(velocityY: Float, heightPx: Float) {
+        onEvent(
+            PlayerDragEvent.VerticalSettled(
+                zone = zone,
+                totalPx = totalY,
+                velocityPx = velocityY,
+                heightPx = heightPx.coerceAtLeast(1f),
+                peeked = peeked
+            )
+        )
+    }
+
+    private fun resetMotion() {
+        axis = PlayerDragAxis.Undecided
+        zone = PlayerGestureZone.Center
+        totalX = 0f
+        totalY = 0f
+        horizontalOffset = 0f
+        peeked = false
+    }
 }
 
 private fun mirrored(result: PlayerSwipeResult, rightToLeft: Boolean): PlayerSwipeResult {
