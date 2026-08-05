@@ -458,13 +458,13 @@ private fun CollapsedLivingPlayer(
                 verticalArrangement = Arrangement.Center
             ) {
                 AnimatedContent(
-                    targetState = track.id,
+                    targetState = track,
                     transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(120)) },
                     label = "mini-track-title"
-                ) {
+                ) { animatedTrack ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = track.title,
+                            text = animatedTrack.title,
                             color = Color.White,
                             fontSize = 14.5.sp,
                             lineHeight = 17.sp,
@@ -484,7 +484,7 @@ private fun CollapsedLivingPlayer(
                                 )
                             }
                             Text(
-                                text = track.artist,
+                                text = animatedTrack.artist,
                                 color = Color.White.copy(alpha = 0.61f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
