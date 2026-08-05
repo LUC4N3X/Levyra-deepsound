@@ -303,7 +303,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
             final JsonArray richGridContents = richGridObject
                     .getObject("richGridRenderer")
                     .getArray("contents");
-            
+
             richGridContents.stream()
                     .filter(JsonObject.class::isInstance)
                     .map(JsonObject.class::cast)
@@ -314,7 +314,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                         collector.commit(new YoutubeShortsInfoItemExtractor(
                                 content.getObject("shortsLockupViewModel")));
                     });
-            
+
             // Get next page from sectionListRenderer level for richGridRenderer
             nextPage = getNextPageFrom(contents);
         }

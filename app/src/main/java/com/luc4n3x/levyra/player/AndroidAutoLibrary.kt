@@ -22,11 +22,19 @@ import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -45,7 +53,18 @@ class AndroidAutoLibrary(context: Context) {
     private val folders = ConcurrentHashMap<String, MediaItem>()
     private val albumFolders = ConcurrentHashMap<String, Pair<String, String>>()
     private val artistFolders = ConcurrentHashMap<String, String>()
-    private val searchCache = ConcurrentHashMap<String, TimedTracks>()
+    private val searchCacheLock = Any()
+    private val searchCache = object : LinkedHashMap<String, TimedTracks>(
+        MAX_SEARCH_CACHE_ENTRIES,
+        0.75f,
+        true
+    ) {
+        override fun removeEldestEntry(
+            eldest: MutableMap.MutableEntry<String, TimedTracks>?
+        ): Boolean = size > MAX_SEARCH_CACHE_ENTRIES
+    }
+    private val searchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val searchInFlight = ConcurrentHashMap<String, Deferred<List<Track>>>()
 
     fun root(): MediaItem = folder(ID_ROOT, "Levyra", "Musica ottimizzata per Android Auto")
 
@@ -98,13 +117,44 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     fun preloadSearch(query: String) {
-        if (query.cleanQuery().isBlank()) return
+        val clean = query.voiceSearchQuery()
+        if (clean.isBlank() || cachedSearch(clean) != null) return
+        startOrJoinSearch(clean).invokeOnCompletion { error ->
+            if (error != null && error !is CancellationException) {
+                Timber.d(error, "Android Auto search preload failed")
+            }
+        }
     }
 
     suspend fun search(query: String): List<MediaItem> = withContext(Dispatchers.IO) {
-        val clean = query.cleanQuery()
+        val clean = query.voiceSearchQuery()
         if (clean.isBlank()) return@withContext flowTracks().map { trackItem(it) }
-        searchTracks(clean).map { trackItem(it) }
+        val tracks = cachedSearch(clean) ?: startOrJoinSearch(clean).await()
+        tracks.map { trackItem(it) }
+    }
+
+    fun close() {
+        searchInFlight.values.forEach { it.cancel() }
+        searchInFlight.clear()
+        searchScope.cancel()
+        synchronized(searchCacheLock) { searchCache.clear() }
+    }
+
+    private fun startOrJoinSearch(query: String): Deferred<List<Track>> {
+        searchInFlight[query]?.let { return it }
+        val deferred = searchScope.async(start = CoroutineStart.LAZY) {
+            searchTracks(query)
+        }
+        deferred.invokeOnCompletion {
+            searchInFlight.remove(query, deferred)
+        }
+        val existing = searchInFlight.putIfAbsent(query, deferred)
+        if (existing != null) {
+            deferred.cancel()
+            return existing
+        }
+        deferred.start()
+        return deferred
     }
 
     suspend fun playableItems(mediaItems: List<MediaItem>): List<MediaItem> = withContext(Dispatchers.IO) {
@@ -322,28 +372,63 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     private suspend fun searchTracks(query: String): List<Track> = withContext(Dispatchers.IO) {
-        val now = System.currentTimeMillis()
-        searchCache[query]?.takeIf { now - it.createdAt < SEARCH_TTL_MS }?.tracks?.let { return@withContext it }
+        cachedSearch(query)?.let { return@withContext it }
         val local = searchLocal(query)
         val languageCode = contentLanguage()
-        val remote = runCatching { musicRepository.search(query, 30, languageCode) }.getOrDefault(emptyList())
+        val remote = try {
+            musicRepository.search(query, 30, languageCode)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Android Auto remote search failed")
+            return@withContext local.distinctTracks().take(MAX_FOLDER_TRACKS)
+        }
         val result = (local + remote).distinctTracks().take(MAX_FOLDER_TRACKS)
-        searchCache[query] = TimedTracks(result, now)
+        cacheSearch(query, result)
         result
+    }
+
+    private fun cachedSearch(query: String): List<Track>? = synchronized(searchCacheLock) {
+        val now = System.currentTimeMillis()
+        val iterator = searchCache.entries.iterator()
+        while (iterator.hasNext()) {
+            if (now - iterator.next().value.createdAt >= SEARCH_TTL_MS) iterator.remove()
+        }
+        searchCache[query]?.tracks
+    }
+
+    private fun cacheSearch(query: String, tracks: List<Track>) {
+        synchronized(searchCacheLock) {
+            searchCache[query] = TimedTracks(tracks, System.currentTimeMillis())
+        }
     }
 
     private suspend fun searchLocal(query: String): List<Track> = withContext(Dispatchers.IO) {
         val needle = query.lowercase(Locale.ROOT)
+        val tokens = query.searchTokens()
         buildList {
             addAll(favorites())
             addAll(recents())
             addAll(downloads())
             playlists().forEach { addAll(it.tracks) }
         }.filter { track ->
-            track.title.lowercase(Locale.ROOT).contains(needle) ||
-                track.artist.lowercase(Locale.ROOT).contains(needle) ||
-                track.album.lowercase(Locale.ROOT).contains(needle)
-        }.distinctTracks().take(20)
+            val searchable = listOf(track.title, track.artist, track.album)
+                .joinToString(" ")
+                .lowercase(Locale.ROOT)
+            searchable.contains(needle) || tokens.isNotEmpty() && tokens.all(searchable::contains)
+        }.sortedByDescending { track ->
+            val title = track.title.lowercase(Locale.ROOT)
+            val artist = track.artist.lowercase(Locale.ROOT)
+            when {
+                title == needle -> 5
+                title.startsWith(needle) -> 4
+                artist == needle -> 3
+                title.contains(needle) -> 2
+                artist.contains(needle) -> 2
+                track.album.lowercase(Locale.ROOT).contains(needle) -> 1
+                else -> 0
+            }
+        }.distinctTracks().take(24)
     }
 
 
@@ -480,6 +565,29 @@ class AndroidAutoLibrary(context: Context) {
         .take(90)
         .trim()
 
+    private fun String.voiceSearchQuery(): String {
+        var value = cleanQuery()
+        while (true) {
+            val prefix = VOICE_COMMAND_PREFIXES.firstOrNull {
+                value.startsWith(it, ignoreCase = true)
+            } ?: break
+            value = value.drop(prefix.length).trim()
+        }
+        while (true) {
+            val lowered = value.lowercase(Locale.ROOT)
+            val suffix = VOICE_APP_SUFFIXES.firstOrNull(lowered::endsWith) ?: break
+            value = value.dropLast(suffix.length).trim()
+        }
+        return value.cleanQuery()
+    }
+
+    private fun String.searchTokens(): List<String> = cleanQuery()
+        .lowercase(Locale.ROOT)
+        .split(' ')
+        .map(String::trim)
+        .filter { it.isNotEmpty() && it !in SEARCH_STOP_WORDS }
+        .distinct()
+
     private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")
         .digest(toByteArray(StandardCharsets.UTF_8))
         .joinToString("") { "%02x".format(it) }
@@ -517,5 +625,18 @@ class AndroidAutoLibrary(context: Context) {
         private const val MAX_FOLDER_TRACKS = 80
         private const val MAX_PLAYLISTS = 60
         private const val SEARCH_TTL_MS = 3L * 60L * 1000L
+        private const val MAX_SEARCH_CACHE_ENTRIES = 64
+        private val VOICE_COMMAND_PREFIXES = listOf(
+            "riproduci ", "suona ", "metti ", "ascolta ", "cerca ",
+            "play ", "reproduce ", "toca ", "escucha ", "écoute ", "joue ",
+            "spiele ", "suche ", "ouvir ", "toque "
+        )
+        private val VOICE_APP_SUFFIXES = listOf(
+            " su levyra", " in levyra", " en levyra", " dans levyra", " mit levyra"
+        )
+        private val SEARCH_STOP_WORDS = setOf(
+            "di", "del", "della", "dei", "degli", "delle", "da", "by", "the",
+            "un", "una", "uno", "il", "lo", "la", "i", "gli", "le"
+        )
     }
 }

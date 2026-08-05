@@ -126,29 +126,29 @@ public abstract class InfoItemsCollector<I extends InfoItem, E extends InfoItemE
             this.blockShorts = blockShorts;
             this.blockPaidContent = blockPaidContent;
         }
-        
+
         public ArrayList<String> getKeywords() {
             return keywords;
         }
-        
+
         public ArrayList<String> getChannels() {
             return channels;
         }
-        
+
         public boolean isBlockShorts() {
             return blockShorts;
         }
-        
+
         public boolean isBlockPaidContent() {
             return blockPaidContent;
         }
     }
-    
+
     public void applyBlocking(FilterConfig filterConfig) {
         if (filterConfig == null) {
             return;
         }
-        
+
         Iterator<I> iterator = itemList.iterator();
         while (iterator.hasNext()) {
             I item = iterator.next();

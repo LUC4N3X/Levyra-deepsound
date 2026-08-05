@@ -37,6 +37,9 @@ public final class YoutubeSabrStreamState {
     private volatile int enabledTrackTypesBitfield = YoutubeSabrRequestBuilder.ENABLED_TRACK_TYPES_VIDEO_AND_AUDIO;
     private volatile boolean selectAudioFormat = true;
     private volatile boolean selectVideoFormat = true;
+    private volatile boolean preferAudioFormat = true;
+    private volatile boolean preferVideoFormat = true;
+    private boolean writeFirstRequestPlaybackState;
     private boolean writeTopLevelPlayerTimeMs = true;
     private int clientViewportWidth = -1;
     private int clientViewportHeight = -1;
@@ -86,15 +89,30 @@ public final class YoutubeSabrStreamState {
     }
 
     public boolean ingest(@Nonnull final SabrDecodedResponse response) {
-        boolean progressed = false;
-        final SabrNextRequestPolicy nextRequestPolicy = response.getNextRequestPolicy();
+        return ingest(SabrResponseStatePatch.builtin(response));
+    }
+
+    public boolean ingest(@Nonnull final SabrResponseStatePatch patch) {
+        final boolean progressed = ingestLocalProgress(patch);
+        final SabrNextRequestPolicy nextRequestPolicy = patch.getNextRequestPolicy();
         if (nextRequestPolicy != null) {
             this.nextRequestPolicy = nextRequestPolicy;
         }
         if (nextRequestPolicy != null && nextRequestPolicy.getRawPlaybackCookie() != null) {
             playbackCookie = nextRequestPolicy.getRawPlaybackCookie().clone();
         }
-        for (final SabrLiveMetadata meta : response.getLiveMetadata()) {
+        for (final SabrContextUpdate contextUpdate : patch.getContextUpdates()) {
+            ingestContextUpdate(contextUpdate);
+        }
+        if (patch.getContextSendingPolicy() != null) {
+            ingestContextSendingPolicy(patch.getContextSendingPolicy());
+        }
+        return progressed;
+    }
+
+    boolean ingestLocalProgress(@Nonnull final SabrResponseStatePatch patch) {
+        boolean progressed = false;
+        for (final SabrLiveMetadata meta : patch.getLiveMetadata()) {
             live = true;
             postLiveDvr = meta.isPostLiveDvr();
             if (meta.getHeadSequenceNumber() >= 0) {
@@ -105,23 +123,17 @@ public final class YoutubeSabrStreamState {
             }
         }
         for (final SabrFormatInitializationMetadata metadata
-                : response.getFormatInitializationMetadata()) {
+                : patch.getFormatMetadata()) {
             final FormatProgress progress = findProgressForItag(metadata.getItag());
             if (progress != null) {
                 progressed |= progress.observeMetadata(metadata);
             }
         }
-        for (final SabrMediaHeader header : response.getMediaHeaders()) {
+        for (final SabrMediaHeader header : patch.getMediaHeaders()) {
             final FormatProgress progress = findProgressForItag(header.getItag());
             if (progress != null) {
                 progressed |= progress.observeHeader(header);
             }
-        }
-        for (final SabrContextUpdate contextUpdate : response.getSabrContextUpdates()) {
-            ingestContextUpdate(contextUpdate);
-        }
-        if (response.getSabrContextSendingPolicy() != null) {
-            ingestContextSendingPolicy(response.getSabrContextSendingPolicy());
         }
         return progressed;
     }
@@ -184,6 +196,9 @@ public final class YoutubeSabrStreamState {
     }
 
     long getRequestPlayerTimeMs() {
+        if (playerTimeMsOverride >= 0) {
+            return playerTimeMsOverride;
+        }
         if ((isAudioEnabled() && !audio.initReceived)
                 || (isVideoEnabled() && !video.initReceived)) {
             return 0;
@@ -214,8 +229,59 @@ public final class YoutubeSabrStreamState {
         playerTimeMsOverride = -1;
     }
 
+    @Nonnull
+    synchronized InitializationRequestSnapshot prepareInitializationRequest(
+            @Nonnull final YoutubeSabrFormat format) {
+        final InitializationRequestSnapshot snapshot = new InitializationRequestSnapshot(
+                enabledTrackTypesBitfield,
+                selectAudioFormat,
+                selectVideoFormat,
+                preferAudioFormat,
+                preferVideoFormat,
+                playerTimeMsOverride,
+                bufferedRangesOverride,
+                writeFirstRequestPlaybackState,
+                writeTopLevelPlayerTimeMs,
+                writeLastManualSelectedResolution);
+        final long playerTimeMs = getPlayerTimeMs();
+        writeFirstRequestPlaybackState = true;
+        writeTopLevelPlayerTimeMs = false;
+        writeLastManualSelectedResolution = format.isVideo();
+        bufferedRangesOverride = new ArrayList<>();
+        enabledTrackTypesBitfield = format.isVideo()
+                ? TRACK_MODE_VIDEO_ONLY : TRACK_MODE_AUDIO_ONLY;
+        selectAudioFormat = false;
+        selectVideoFormat = false;
+        preferAudioFormat = true;
+        preferVideoFormat = true;
+        playerTimeMsOverride = Math.max(0, playerTimeMs);
+        return snapshot;
+    }
+
+    synchronized void restoreInitializationRequest(
+            @Nonnull final InitializationRequestSnapshot snapshot) {
+        enabledTrackTypesBitfield = snapshot.enabledTrackTypesBitfield;
+        selectAudioFormat = snapshot.selectAudioFormat;
+        selectVideoFormat = snapshot.selectVideoFormat;
+        preferAudioFormat = snapshot.preferAudioFormat;
+        preferVideoFormat = snapshot.preferVideoFormat;
+        playerTimeMsOverride = snapshot.playerTimeMsOverride;
+        bufferedRangesOverride = snapshot.bufferedRangesOverride == null
+                ? null : new ArrayList<>(snapshot.bufferedRangesOverride);
+        writeFirstRequestPlaybackState = snapshot.writeFirstRequestPlaybackState;
+        writeTopLevelPlayerTimeMs = snapshot.writeTopLevelPlayerTimeMs;
+        writeLastManualSelectedResolution = snapshot.writeLastManualSelectedResolution;
+    }
+
     void clearPlaybackCookie() {
         playbackCookie = null;
+    }
+
+    void resetServerSessionState() {
+        playbackCookie = null;
+        nextRequestPolicy = null;
+        sabrContexts.clear();
+        activeSabrContextTypes.clear();
     }
 
     boolean isInitialized(@Nonnull final YoutubeSabrFormat format) {
@@ -320,6 +386,11 @@ public final class YoutubeSabrStreamState {
         return progressForItag(format.getItag()).endSegment;
     }
 
+    /** True only after initialization bytes yielded an exact per-segment time index. */
+    public boolean hasSegmentIndex(@Nonnull final YoutubeSabrFormat format) {
+        return progressForItag(format.getItag()).segmentIndex != null;
+    }
+
     public boolean isComplete(@Nonnull final YoutubeSabrFormat format) {
         return progressForItag(format.getItag()).isComplete();
     }
@@ -397,6 +468,14 @@ public final class YoutubeSabrStreamState {
         this.enabledTrackTypesBitfield = enabledTrackTypesBitfield;
         this.selectAudioFormat = selectAudioFormat;
         this.selectVideoFormat = selectVideoFormat;
+        this.preferAudioFormat = selectAudioFormat;
+        this.preferVideoFormat = selectVideoFormat;
+    }
+
+    synchronized void setPreferredTrackTypes(final boolean videoActive,
+                                             final boolean audioActive) {
+        preferAudioFormat = audioActive;
+        preferVideoFormat = videoActive;
     }
 
     public void setActiveTrackTypes(final boolean videoActive, final boolean audioActive) {
@@ -481,6 +560,22 @@ public final class YoutubeSabrStreamState {
 
     boolean shouldSelectVideoFormat() {
         return selectVideoFormat;
+    }
+
+    boolean shouldPreferAudioFormat() {
+        return preferAudioFormat;
+    }
+
+    boolean shouldPreferVideoFormat() {
+        return preferVideoFormat;
+    }
+
+    void setWriteFirstRequestPlaybackState(final boolean writeFirstRequestPlaybackState) {
+        this.writeFirstRequestPlaybackState = writeFirstRequestPlaybackState;
+    }
+
+    boolean shouldWriteFirstRequestPlaybackState() {
+        return writeFirstRequestPlaybackState;
     }
 
     public void setWriteTopLevelPlayerTimeMs(final boolean writeTopLevelPlayerTimeMs) {
@@ -986,6 +1081,44 @@ public final class YoutubeSabrStreamState {
 
         private boolean isComplete() {
             return initReceived && endSegment > 0 && maxSegment >= endSegment;
+        }
+    }
+
+    static final class InitializationRequestSnapshot {
+        private final int enabledTrackTypesBitfield;
+        private final boolean selectAudioFormat;
+        private final boolean selectVideoFormat;
+        private final boolean preferAudioFormat;
+        private final boolean preferVideoFormat;
+        private final long playerTimeMsOverride;
+        @Nullable
+        private final List<SabrBufferedRange> bufferedRangesOverride;
+        private final boolean writeFirstRequestPlaybackState;
+        private final boolean writeTopLevelPlayerTimeMs;
+        private final boolean writeLastManualSelectedResolution;
+
+        private InitializationRequestSnapshot(
+                final int enabledTrackTypesBitfield,
+                final boolean selectAudioFormat,
+                final boolean selectVideoFormat,
+                final boolean preferAudioFormat,
+                final boolean preferVideoFormat,
+                final long playerTimeMsOverride,
+                @Nullable final List<SabrBufferedRange> bufferedRangesOverride,
+                final boolean writeFirstRequestPlaybackState,
+                final boolean writeTopLevelPlayerTimeMs,
+                final boolean writeLastManualSelectedResolution) {
+            this.enabledTrackTypesBitfield = enabledTrackTypesBitfield;
+            this.selectAudioFormat = selectAudioFormat;
+            this.selectVideoFormat = selectVideoFormat;
+            this.preferAudioFormat = preferAudioFormat;
+            this.preferVideoFormat = preferVideoFormat;
+            this.playerTimeMsOverride = playerTimeMsOverride;
+            this.bufferedRangesOverride = bufferedRangesOverride == null
+                    ? null : new ArrayList<>(bufferedRangesOverride);
+            this.writeFirstRequestPlaybackState = writeFirstRequestPlaybackState;
+            this.writeTopLevelPlayerTimeMs = writeTopLevelPlayerTimeMs;
+            this.writeLastManualSelectedResolution = writeLastManualSelectedResolution;
         }
     }
 }

@@ -19,6 +19,11 @@ public final class YoutubeSabrProbeResult {
     private final long mediaPartPayloadBytes;
     private final long controlPayloadBytes;
     private final long totalPayloadBytes;
+    private final long maxPartBytes;
+    private final long maxMediaPartPayloadBytes;
+    private final long maxSegmentBytes;
+    private final long requestElapsedMs;
+    private final long firstSegmentElapsedMs;
 
     YoutubeSabrProbeResult(@Nonnull final YoutubeSabrInfo info,
                            @Nonnull final SabrDecodedResponse decodedResponse,
@@ -30,7 +35,12 @@ public final class YoutubeSabrProbeResult {
                            final long mediaPayloadBytes,
                            final long mediaPartPayloadBytes,
                            final long controlPayloadBytes,
-                           final long totalPayloadBytes) {
+                           final long totalPayloadBytes,
+                           final long maxPartBytes,
+                           final long maxMediaPartPayloadBytes,
+                           final long maxSegmentBytes,
+                           final long requestElapsedMs,
+                           final long firstSegmentElapsedMs) {
         this.info = info;
         this.decodedResponse = decodedResponse;
         this.segments = segments;
@@ -42,6 +52,11 @@ public final class YoutubeSabrProbeResult {
         this.mediaPartPayloadBytes = mediaPartPayloadBytes;
         this.controlPayloadBytes = controlPayloadBytes;
         this.totalPayloadBytes = totalPayloadBytes;
+        this.maxPartBytes = maxPartBytes;
+        this.maxMediaPartPayloadBytes = maxMediaPartPayloadBytes;
+        this.maxSegmentBytes = maxSegmentBytes;
+        this.requestElapsedMs = requestElapsedMs;
+        this.firstSegmentElapsedMs = firstSegmentElapsedMs;
     }
 
     @Nonnull
@@ -97,5 +112,30 @@ public final class YoutubeSabrProbeResult {
     /** Sum of all UMP part payload bytes, excluding UMP integer framing overhead. */
     public long getTotalPayloadBytes() {
         return totalPayloadBytes;
+    }
+
+    /** Largest single UMP part payload in this response. */
+    public long getMaxPartBytes() {
+        return maxPartBytes;
+    }
+
+    /** Largest single UMP MEDIA payload in this response, excluding the header id byte. */
+    public long getMaxMediaPartPayloadBytes() {
+        return maxMediaPartPayloadBytes;
+    }
+
+    /** Largest completed media segment produced while reading this response. */
+    public long getMaxSegmentBytes() {
+        return maxSegmentBytes;
+    }
+
+    /** Wall-clock time to POST and consume the full SABR response body. */
+    public long getRequestElapsedMs() {
+        return requestElapsedMs;
+    }
+
+    /** Wall-clock time until the first completed media segment was available, or -1 if none. */
+    public long getFirstSegmentElapsedMs() {
+        return firstSegmentElapsedMs;
     }
 }

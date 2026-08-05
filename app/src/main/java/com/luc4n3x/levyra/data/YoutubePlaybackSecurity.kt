@@ -92,10 +92,20 @@ internal class YoutubePlaybackSecurity(
         tokenGenerator.invalidate()
     }
 
+    suspend fun poTokensRequired(
+        videoId: String,
+        session: YoutubeGuestSession
+    ): YoutubePoTokens {
+        require(videoId.isNotBlank() && session.visitorData.isNotBlank()) {
+            "PO Token binding and visitor identity are required"
+        }
+        return tokenGenerator.generate(videoId, session.visitorData, session.generation)
+    }
+
     suspend fun poTokens(videoId: String, session: YoutubeGuestSession): YoutubePoTokens? {
         if (videoId.isBlank() || session.visitorData.isBlank()) return null
         return try {
-            tokenGenerator.generate(videoId, session.visitorData, session.generation)
+            poTokensRequired(videoId, session)
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
