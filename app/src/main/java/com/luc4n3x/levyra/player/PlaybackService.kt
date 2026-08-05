@@ -737,6 +737,7 @@ class PlaybackService : MediaLibraryService() {
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
         if (activeService === this) activeService = null
+        if (::autoLibrary.isInitialized) autoLibrary.close()
         serviceScope.cancel()
         mediaSession?.run {
             player.release()

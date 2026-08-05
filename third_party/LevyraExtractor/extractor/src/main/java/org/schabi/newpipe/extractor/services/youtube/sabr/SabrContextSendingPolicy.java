@@ -14,6 +14,28 @@ public final class SabrContextSendingPolicy {
     }
 
     @Nonnull
+    public static SabrContextSendingPolicy normalized(@Nonnull final List<Integer> start,
+                                                       @Nonnull final List<Integer> stop,
+                                                       @Nonnull final List<Integer> discard) {
+        if (start.size() > 128 || stop.size() > 128 || discard.size() > 128
+                || containsNegative(start) || containsNegative(stop) || containsNegative(discard)) {
+            throw new IllegalArgumentException("Invalid normalized SABR context policy");
+        }
+        final SabrContextSendingPolicy policy = new SabrContextSendingPolicy();
+        policy.startPolicy.addAll(start);
+        policy.stopPolicy.addAll(stop);
+        policy.discardPolicy.addAll(discard);
+        return policy;
+    }
+
+    private static boolean containsNegative(@Nonnull final List<Integer> values) {
+        for (final Integer value : values) {
+            if (value == null || value < 0) return true;
+        }
+        return false;
+    }
+
+    @Nonnull
     static SabrContextSendingPolicy decode(@Nonnull final byte[] data)
             throws SabrProtocolException {
         final SabrContextSendingPolicy policy = new SabrContextSendingPolicy();

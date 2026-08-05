@@ -57,6 +57,22 @@ public final class SabrFormatInitializationMetadata {
     }
 
     @Nonnull
+    public static SabrFormatInitializationMetadata normalized(
+            @Nullable final String videoId, final int itag, final long lastModified,
+            @Nullable final String xtags, final long endTimeMs, final long endSegmentNumber,
+            @Nullable final String mimeType, final long initRangeStart, final long initRangeEnd,
+            final long indexRangeStart, final long indexRangeEnd, final long field8,
+            final long durationUnits, final long durationTimescale) {
+        if (itag <= 0 || endSegmentNumber < -1 || durationUnits < -1
+                || durationTimescale < -1) {
+            throw new IllegalArgumentException("Invalid normalized SABR format metadata");
+        }
+        return new SabrFormatInitializationMetadata(videoId, new byte[0], itag, lastModified,
+                xtags, endTimeMs, endSegmentNumber, mimeType, initRangeStart, initRangeEnd,
+                indexRangeStart, indexRangeEnd, field8, durationUnits, durationTimescale);
+    }
+
+    @Nonnull
     static SabrFormatInitializationMetadata decode(@Nonnull final byte[] data)
             throws SabrProtocolException {
         String videoId = null;

@@ -92,6 +92,9 @@ jobs:
       - name: Android Runtime Compatibility Scan
         run: python3 scripts/check_android_regex_compatibility.py
 
+      - name: Extractor Unit Tests
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
