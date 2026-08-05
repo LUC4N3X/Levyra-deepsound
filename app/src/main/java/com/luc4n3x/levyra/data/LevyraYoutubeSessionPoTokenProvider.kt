@@ -68,6 +68,7 @@ internal class LevyraYoutubeSessionPoTokenProvider(context: Context) : YoutubeSe
     }
 
     private companion object {
-        const val PROVIDER_TIMEOUT_MS = 15_000L
+        // Covers the 15s visitor request plus the 20s runtime initialization and 12s mint budget.
+        const val PROVIDER_TIMEOUT_MS = 55_000L
     }
 }
