@@ -153,3 +153,92 @@ jobs:
           name: pr-check-reports-${{ github.run_number }}
           path: artifacts
           if-no-files-found: ignore
+
+  autofix-pr299:
+    name: Apply and Verify PR 299 Review Fixes
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 299 &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.HEAD_REF }}
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+        with:
+          cache-disabled: true
+
+      - name: Apply verified fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path(".github/workflows/pr299-one-shot.yml").read_text(encoding="utf-8")
+          marker = "          python3 - <<'PY'\n"
+          start = workflow.find(marker)
+          if start < 0:
+              raise SystemExit("PR 299 transformation script start marker missing")
+          start += len(marker)
+          end = workflow.find("\n          PY", start)
+          if end < 0:
+              raise SystemExit("PR 299 transformation script end marker missing")
+          script = textwrap.dedent(workflow[start:end])
+          exec(compile(script, "pr299-one-shot", "exec"), {"__name__": "__main__"})
+          PY
+
+      - name: Verify extractor tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+
+      - name: Verify Android compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :app:compileDebugKotlin
+
+      - name: Commit verified fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            third_party/LevyraExtractor/extractor/src/main/java \
+            third_party/LevyraExtractor/extractor/src/test/java
+          git diff --cached --check
+          git commit -m "fix: address PR 299 review findings"
+          git push origin "HEAD:${HEAD_REF}"
