@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-05T14:40:07Z",
+  "generatedAt": "2026-08-05T14:49:13Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -5803,12 +5803,6 @@
           },
           "durationMs": 164307,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "2OL1n5R6ogI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCOBSsvA4X0FyWIZLtAe63Sw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e18339fa86707ccf2cd59eab"
         },
         {
@@ -7058,12 +7052,6 @@
           },
           "durationMs": 243880,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "aUajNfZwkjY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCnCNNA05VZcH8wVJYtC-6ew"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a539563b3d77bd3ba17d016e"
         },
         {
@@ -10432,11 +10420,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 39,
@@ -10730,6 +10718,14 @@
           },
           "durationMs": 130666,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "QFFsfmtP914",
+            "audioConfidence": 100,
+            "videoId": "vA0jEuNeszQ",
+            "videoConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCZRXd_KyHpZ8N2MUoZj2Btw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f36a16db4f3c6f2dad579d97"
         },
         {
@@ -13008,6 +13004,12 @@
           },
           "durationMs": 164837,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "8LVPnVOEnxw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCcXYkqHBSxOx0e4JkFHFUKA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df398182b06448740d321a0c"
         },
         {
@@ -21203,6 +21205,12 @@
           },
           "durationMs": 207200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "u8aBtdeb68Q",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVznsJmPM4qyjLYyORcu0Tg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c175a1d89c39c1cd297cb669"
         },
         {
@@ -24965,6 +24973,14 @@
           },
           "durationMs": 242000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "E7kHvjvU6JY",
+            "audioConfidence": 100,
+            "videoId": "9II3OGZETo4",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UC_DHlXllTSMB8pTC38_leFg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d34a0632f6861e8875d6899b"
         },
         {
@@ -28066,12 +28082,6 @@
           },
           "durationMs": 235161,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "GT0tn6U2JVE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCmu6s82eBTMnYc8xMyhSvDQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c8c45af3062943f1ce7af81"
         },
         {
@@ -28089,7 +28099,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
         },
         {
           "position": 22,
