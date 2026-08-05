@@ -26,6 +26,12 @@
         android:resizeableActivity="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Levyra">
+
+        <provider
+            android:name=".data.SpotifyChartBootstrapProvider"
+            android:authorities="${applicationId}.spotify-chart-bootstrap"
+            android:exported="false"
+            android:initOrder="100" />
         
         <meta-data
             android:name="com.google.android.gms.car.application"
