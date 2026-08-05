@@ -1,0 +1,253 @@
+name: One-shot isolate player surfaces
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'feat/player-experience-motion'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/player-experience-motion
+          fetch-depth: 0
+
+      - name: Isolate the new player experience
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(source: str, old: str, new: str, label: str) -> str:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return source.replace(old, new, 1)
+
+          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          app = app_path.read_text(encoding='utf-8')
+
+          app = replace_once(
+              app,
+              'fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {',
+              '''fun LevyraApp(
+              viewModel: LevyraViewModel,
+              isInPictureInPicture: Boolean = false,
+              suppressLegacyPlayerSurfaces: Boolean = false
+          ) {''',
+              'LevyraApp signature'
+          )
+
+          legacy_player = '''                        LevyraTab.Player -> {
+                              val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
+                              val screenState by playerViewModel.state.collectAsStateWithLifecycle()
+                              PlayerScreen(
+                                  playerViewModel,
+                                  screenState,
+                                  sharedTransitionScope = this@SharedTransitionLayout,
+                                  animatedVisibilityScope = this@AnimatedContent
+                              )
+                          }'''
+          isolated_player = '''                        LevyraTab.Player -> {
+                              if (!suppressLegacyPlayerSurfaces) {
+                                  val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
+                                  val screenState by playerViewModel.state.collectAsStateWithLifecycle()
+                                  PlayerScreen(
+                                      playerViewModel,
+                                      screenState,
+                                      sharedTransitionScope = this@SharedTransitionLayout,
+                                      animatedVisibilityScope = this@AnimatedContent
+                                  )
+                              }
+                          }'''
+          app = replace_once(app, legacy_player, isolated_player, 'legacy full player branch')
+
+          app = replace_once(
+              app,
+              'visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null,',
+              'visible = !suppressLegacyPlayerSurfaces && state.selectedTab != LevyraTab.Player && state.currentTrack != null,',
+              'legacy mini-player visibility'
+          )
+          app_path.write_text(app, encoding='utf-8')
+
+          host_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraExperienceHost.kt')
+          host = host_path.read_text(encoding='utf-8')
+
+          host = replace_once(
+              host,
+              '''    val state by viewModel.state.collectAsStateWithLifecycle()
+              var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }''',
+              '''    val state by viewModel.state.collectAsStateWithLifecycle()
+              var playerExpanded by rememberSaveable { mutableStateOf(state.selectedTab == LevyraTab.Player) }
+              var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }''',
+              'player expanded state'
+          )
+
+          host = replace_once(
+              host,
+              '''    LaunchedEffect(state.selectedTab) {
+                  if (state.selectedTab != LevyraTab.Player) {
+                      lastContentTabName = state.selectedTab.name
+                  }
+              }''',
+              '''    LaunchedEffect(state.selectedTab) {
+                  if (state.selectedTab == LevyraTab.Player) {
+                      playerExpanded = true
+                  } else {
+                      lastContentTabName = state.selectedTab.name
+                  }
+              }''',
+              'selected tab synchronization'
+          )
+
+          host = replace_once(
+              host,
+              '''    val returnTab = remember(lastContentTabName) {
+                  LevyraTab.entries.firstOrNull { it.name == lastContentTabName && it != LevyraTab.Player }
+                      ?: LevyraTab.Home
+              }
+
+              Box(modifier = Modifier.fillMaxSize()) {''',
+              '''    val returnTab = remember(lastContentTabName) {
+                  LevyraTab.entries.firstOrNull { it.name == lastContentTabName && it != LevyraTab.Player }
+                      ?: LevyraTab.Home
+              }
+
+              LaunchedEffect(state.selectedTab, returnTab) {
+                  if (state.selectedTab == LevyraTab.Player) {
+                      viewModel.selectTab(returnTab)
+                  }
+              }
+              LaunchedEffect(state.currentTrack?.id) {
+                  if (state.currentTrack == null) playerExpanded = false
+              }
+
+              Box(modifier = Modifier.fillMaxSize()) {''',
+              'external player tab bridge'
+          )
+
+          host = replace_once(
+              host,
+              '''        LevyraApp(
+                  viewModel = viewModel,
+                  isInPictureInPicture = isInPictureInPicture
+              )''',
+              '''        LevyraApp(
+                  viewModel = viewModel,
+                  isInPictureInPicture = isInPictureInPicture,
+                  suppressLegacyPlayerSurfaces = true
+              )''',
+              'legacy surface suppression argument'
+          )
+
+          host = replace_once(
+              host,
+              '''                        LevyraMotionPlayerSheet(
+                              state = state,
+                              track = track,
+                              expanded = state.selectedTab == LevyraTab.Player,
+                              returnTab = returnTab,
+                              viewModel = viewModel
+                          )''',
+              '''                        LevyraMotionPlayerSheet(
+                              state = state,
+                              track = track,
+                              expanded = playerExpanded,
+                              onExpandedChange = { playerExpanded = it },
+                              viewModel = viewModel
+                          )''',
+              'motion player call'
+          )
+
+          host = replace_once(
+              host,
+              '''private fun LevyraMotionPlayerSheet(
+              state: LevyraUiState,
+              track: Track,
+              expanded: Boolean,
+              returnTab: LevyraTab,
+              viewModel: LevyraViewModel
+          ) {''',
+              '''private fun LevyraMotionPlayerSheet(
+              state: LevyraUiState,
+              track: Track,
+              expanded: Boolean,
+              onExpandedChange: (Boolean) -> Unit,
+              viewModel: LevyraViewModel
+          ) {''',
+              'motion player signature'
+          )
+
+          host = replace_once(
+              host,
+              '''    BackHandler(enabled = expanded) {
+                  viewModel.selectTab(returnTab)
+              }''',
+              '''    BackHandler(enabled = expanded) {
+                  onExpandedChange(false)
+              }''',
+              'player back handler'
+          )
+
+          host = replace_once(
+              host,
+              'onOpen = { viewModel.selectTab(LevyraTab.Player) },',
+              'onOpen = { onExpandedChange(true) },',
+              'mini-player open action'
+          )
+          host = replace_once(
+              host,
+              'onCollapse = { viewModel.selectTab(returnTab) },',
+              'onCollapse = { onExpandedChange(false) },',
+              'expanded player collapse action'
+          )
+
+          host = replace_once(
+              host,
+              '''            }
+              .clickable(onClick = onOpen)
+          ) {''',
+              '''            }
+          ) {''',
+              'parent mini-player click target'
+          )
+
+          host = replace_once(
+              host,
+              '''                primary = primary,
+                  modifier = Modifier.size(70.dp)
+              )
+              Column(
+                  modifier = Modifier.weight(1f),
+                  verticalArrangement = Arrangement.Center
+              ) {
+                  AnimatedContent(''',
+              '''                primary = primary,
+                  modifier = Modifier
+                      .size(70.dp)
+                      .clickable(onClick = onOpen)
+              )
+              Column(
+                  modifier = Modifier
+                      .weight(1f)
+                      .clickable(onClick = onOpen),
+                  verticalArrangement = Arrangement.Center
+              ) {
+                  AnimatedContent(''',
+              'independent mini-player click targets'
+          )
+
+          host_path.write_text(host, encoding='utf-8')
+
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm -f .github/workflows/one-shot-isolate-player-surfaces.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/main/java/com/luc4n3x/levyra/ui/LevyraExperienceHost.kt .github/workflows/one-shot-isolate-player-surfaces.yml
+          git commit -m "fix(ui): isolate motion player from legacy surfaces"
+          git push origin HEAD:feat/player-experience-motion
