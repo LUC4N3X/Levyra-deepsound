@@ -48,6 +48,49 @@ class YoutubePlaybackSecurityCoordinatorTest {
     }
 
     @Test
+    fun playbackDeadlineCarriesOnlyTheRemainingBudget() {
+        val deadline = safeElapsedDeadline(nowElapsedMs = 1_000L, budgetMs = 4_000L)
+
+        assertEquals(5_000L, deadline)
+        assertEquals(
+            2_500L,
+            remainingPoTokenWaitBudget(
+                deadlineElapsedMs = deadline,
+                fallbackBudgetMs = 4_000L,
+                nowElapsedMs = 2_500L
+            )
+        )
+        assertEquals(
+            0L,
+            remainingPoTokenWaitBudget(
+                deadlineElapsedMs = deadline,
+                fallbackBudgetMs = 4_000L,
+                nowElapsedMs = 5_500L
+            )
+        )
+    }
+
+    @Test
+    fun sessionsWithoutAPlaybackDeadlineUseTheFallbackBudget() {
+        assertEquals(
+            35_000L,
+            remainingPoTokenWaitBudget(
+                deadlineElapsedMs = Long.MAX_VALUE,
+                fallbackBudgetMs = 35_000L,
+                nowElapsedMs = 10_000L
+            )
+        )
+    }
+
+    @Test
+    fun elapsedDeadlineSaturatesInsteadOfOverflowing() {
+        assertEquals(
+            Long.MAX_VALUE,
+            safeElapsedDeadline(nowElapsedMs = Long.MAX_VALUE - 5L, budgetMs = 10L)
+        )
+    }
+
+    @Test
     fun invalidationRetiresOnlyOlderSessions() {
         assertTrue(PoTokenInvalidationPolicy.shouldRetire(sessionVersion = 4L, invalidatedVersion = 5L))
         assertFalse(PoTokenInvalidationPolicy.shouldRetire(sessionVersion = 5L, invalidatedVersion = 5L))
