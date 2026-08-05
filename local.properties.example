@@ -1,4 +1,9 @@
+# YouTube Innertube
+
 youtubeInnertubeApiKey=
+
+# Levyra Release Signing
+
 levyraStoreFile=app/levyra-release.jks
 levyraStorePassword=
 levyraKeyAlias=
