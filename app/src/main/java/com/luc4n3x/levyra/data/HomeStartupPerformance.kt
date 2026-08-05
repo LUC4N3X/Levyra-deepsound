@@ -5,12 +5,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicReference
 
+/** Keeps nonessential startup work away from first render and active audio playback. */
 internal data class HomeStartupWorkPlan(
     val idleWindowMs: Long,
     val homeFeedStartDelayMs: Long,
     val secondaryStartDelayMs: Long,
     val albumStartDelayMs: Long,
     val artistStartDelayMs: Long,
+    val chartRefreshStartDelayMs: Long,
+    val chartPrefetchStartDelayMs: Long,
+    val chartMemoryWarmStartDelayMs: Long,
+    val maintenanceStartDelayMs: Long,
+    val activePlaybackProtectionMs: Long,
     val albumSeedCount: Int,
     val albumCandidateCount: Int,
     val albumConcurrency: Int,
@@ -29,13 +35,18 @@ internal object HomeStartupWorkPolicy {
     fun create(lowRam: Boolean, powerConstrained: Boolean): HomeStartupWorkPlan {
         return when {
             lowRam -> HomeStartupWorkPlan(
-                idleWindowMs = 700L,
-                homeFeedStartDelayMs = 80L,
-                secondaryStartDelayMs = 2_200L,
-                albumStartDelayMs = 4_200L,
-                artistStartDelayMs = 6_000L,
+                idleWindowMs = 900L,
+                homeFeedStartDelayMs = 1_400L,
+                secondaryStartDelayMs = 6_000L,
+                albumStartDelayMs = 9_000L,
+                artistStartDelayMs = 12_000L,
+                chartRefreshStartDelayMs = 4_500L,
+                chartPrefetchStartDelayMs = 9_000L,
+                chartMemoryWarmStartDelayMs = 13_000L,
+                maintenanceStartDelayMs = 20_000L,
+                activePlaybackProtectionMs = 14_000L,
                 albumSeedCount = 4,
-                albumCandidateCount = 10,
+                albumCandidateCount = 9,
                 albumConcurrency = 1,
                 priorityArtworkCount = 2,
                 refreshedArtworkCount = 4,
@@ -48,13 +59,18 @@ internal object HomeStartupWorkPolicy {
                 releasesPerArtist = 4
             )
             powerConstrained -> HomeStartupWorkPlan(
-                idleWindowMs = 600L,
-                homeFeedStartDelayMs = 70L,
-                secondaryStartDelayMs = 1_800L,
-                albumStartDelayMs = 3_400L,
-                artistStartDelayMs = 4_800L,
+                idleWindowMs = 800L,
+                homeFeedStartDelayMs = 1_100L,
+                secondaryStartDelayMs = 5_000L,
+                albumStartDelayMs = 7_500L,
+                artistStartDelayMs = 10_000L,
+                chartRefreshStartDelayMs = 3_800L,
+                chartPrefetchStartDelayMs = 7_500L,
+                chartMemoryWarmStartDelayMs = 11_000L,
+                maintenanceStartDelayMs = 18_000L,
+                activePlaybackProtectionMs = 12_000L,
                 albumSeedCount = 5,
-                albumCandidateCount = 12,
+                albumCandidateCount = 11,
                 albumConcurrency = 1,
                 priorityArtworkCount = 3,
                 refreshedArtworkCount = 5,
@@ -67,19 +83,24 @@ internal object HomeStartupWorkPolicy {
                 releasesPerArtist = 5
             )
             else -> HomeStartupWorkPlan(
-                idleWindowMs = 520L,
-                homeFeedStartDelayMs = 60L,
-                secondaryStartDelayMs = 1_400L,
-                albumStartDelayMs = 2_600L,
-                artistStartDelayMs = 3_800L,
+                idleWindowMs = 700L,
+                homeFeedStartDelayMs = 850L,
+                secondaryStartDelayMs = 4_200L,
+                albumStartDelayMs = 6_500L,
+                artistStartDelayMs = 8_500L,
+                chartRefreshStartDelayMs = 3_000L,
+                chartPrefetchStartDelayMs = 6_500L,
+                chartMemoryWarmStartDelayMs = 9_500L,
+                maintenanceStartDelayMs = 15_000L,
+                activePlaybackProtectionMs = 10_000L,
                 albumSeedCount = 6,
-                albumCandidateCount = 14,
+                albumCandidateCount = 12,
                 albumConcurrency = 1,
-                priorityArtworkCount = 4,
-                refreshedArtworkCount = 6,
-                chartArtworkCount = 5,
-                persistentArtworkCount = 2,
-                chartEnrichmentCount = 3,
+                priorityArtworkCount = 3,
+                refreshedArtworkCount = 5,
+                chartArtworkCount = 4,
+                persistentArtworkCount = 1,
+                chartEnrichmentCount = 2,
                 chartEnrichmentConcurrency = 1,
                 chartWarmCount = 1,
                 releaseRadarArtistCount = 4,
@@ -98,10 +119,10 @@ internal data class StartupPlaybackWarmPlan(
 internal object StartupPlaybackWarmPolicy {
     fun create(lowRam: Boolean, powerConstrained: Boolean, preferredConcurrency: Int): StartupPlaybackWarmPlan {
         return when {
-            lowRam -> StartupPlaybackWarmPlan(delayMs = 7_200L, trackCount = 1, concurrency = 1)
-            powerConstrained -> StartupPlaybackWarmPlan(delayMs = 6_000L, trackCount = 1, concurrency = 1)
+            lowRam -> StartupPlaybackWarmPlan(delayMs = 18_000L, trackCount = 1, concurrency = 1)
+            powerConstrained -> StartupPlaybackWarmPlan(delayMs = 15_000L, trackCount = 1, concurrency = 1)
             else -> StartupPlaybackWarmPlan(
-                delayMs = 4_800L,
+                delayMs = 12_000L,
                 trackCount = 1,
                 concurrency = preferredConcurrency.coerceIn(1, 1)
             )

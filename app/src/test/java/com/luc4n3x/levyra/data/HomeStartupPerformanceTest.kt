@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class HomeStartupPerformanceTest {
     @Test
-    fun lowRamPlanKeepsBackgroundWorkSmall() {
+    fun lowRamPlanKeepsBackgroundWorkSmallAndLate() {
         val plan = HomeStartupWorkPolicy.create(lowRam = true, powerConstrained = true)
         assertTrue(plan.priorityArtworkCount <= 2)
         assertTrue(plan.refreshedArtworkCount <= 4)
@@ -19,53 +19,62 @@ class HomeStartupPerformanceTest {
         assertEquals(0, plan.chartWarmCount)
         assertTrue(plan.releaseRadarArtistCount <= 2)
         assertTrue(plan.releasesPerArtist <= 4)
-        assertTrue(plan.idleWindowMs >= 650L)
-        assertTrue(plan.secondaryStartDelayMs >= 1_800L)
+        assertTrue(plan.idleWindowMs >= 850L)
+        assertTrue(plan.homeFeedStartDelayMs >= 1_200L)
+        assertTrue(plan.secondaryStartDelayMs >= 6_000L)
         assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
         assertTrue(plan.artistStartDelayMs > plan.albumStartDelayMs)
+        assertTrue(plan.chartPrefetchStartDelayMs > plan.chartRefreshStartDelayMs)
+        assertTrue(plan.maintenanceStartDelayMs >= 20_000L)
+        assertTrue(plan.activePlaybackProtectionMs >= 14_000L)
         assertEquals(1, plan.albumConcurrency)
         assertTrue(plan.albumSeedCount <= 4)
-        assertTrue(plan.albumCandidateCount <= 10)
+        assertTrue(plan.albumCandidateCount <= 9)
     }
 
     @Test
-    fun normalPlanKeepsStartupWorkBounded() {
+    fun normalPlanKeepsFirstSecondsFreeFromNonessentialWork() {
         val plan = HomeStartupWorkPolicy.create(lowRam = false, powerConstrained = false)
-        assertTrue(plan.priorityArtworkCount in 3..4)
-        assertTrue(plan.refreshedArtworkCount in 5..6)
+        assertTrue(plan.priorityArtworkCount in 2..3)
+        assertTrue(plan.refreshedArtworkCount in 4..5)
         assertEquals(1, plan.chartEnrichmentConcurrency)
         assertTrue(plan.chartWarmCount <= 1)
         assertTrue(plan.releaseRadarArtistCount <= 4)
-        assertTrue(plan.idleWindowMs >= 500L)
-        assertTrue(plan.homeFeedStartDelayMs <= 100L)
-        assertTrue(plan.secondaryStartDelayMs >= 1_200L)
+        assertTrue(plan.idleWindowMs >= 650L)
+        assertTrue(plan.homeFeedStartDelayMs >= 800L)
+        assertTrue(plan.chartRefreshStartDelayMs >= 3_000L)
+        assertTrue(plan.secondaryStartDelayMs >= 4_000L)
+        assertTrue(plan.chartPrefetchStartDelayMs >= 6_000L)
+        assertTrue(plan.chartMemoryWarmStartDelayMs > plan.chartPrefetchStartDelayMs)
         assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
         assertTrue(plan.artistStartDelayMs > plan.albumStartDelayMs)
+        assertTrue(plan.maintenanceStartDelayMs >= 15_000L)
+        assertTrue(plan.activePlaybackProtectionMs >= 10_000L)
         assertEquals(1, plan.albumConcurrency)
         assertTrue(plan.albumSeedCount <= 6)
-        assertTrue(plan.albumCandidateCount <= 14)
+        assertTrue(plan.albumCandidateCount <= 12)
     }
 
     @Test
-    fun playbackWarmupWaitsUntilInitialRenderingSettlesOnOlderDevices() {
+    fun playbackWarmupWaitsUntilColdStartSettlesOnOlderDevices() {
         val plan = StartupPlaybackWarmPolicy.create(
             lowRam = true,
             powerConstrained = true,
             preferredConcurrency = 2
         )
-        assertTrue(plan.delayMs >= 7_000L)
+        assertTrue(plan.delayMs >= 18_000L)
         assertEquals(1, plan.trackCount)
         assertEquals(1, plan.concurrency)
     }
 
     @Test
-    fun playbackWarmupAvoidsParallelStartupContentionOnModernDevices() {
+    fun playbackWarmupAvoidsCompetingWithInitialPlaybackOnModernDevices() {
         val plan = StartupPlaybackWarmPolicy.create(
             lowRam = false,
             powerConstrained = false,
             preferredConcurrency = 2
         )
-        assertTrue(plan.delayMs >= 4_500L)
+        assertTrue(plan.delayMs >= 12_000L)
         assertEquals(1, plan.trackCount)
         assertEquals(1, plan.concurrency)
     }
