@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-05T14:36:35Z",
+  "generatedAt": "2026-08-05T14:40:07Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -7679,6 +7679,12 @@
           },
           "durationMs": 141692,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "Xb6zpm3U1NU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -7987,6 +7993,12 @@
           },
           "durationMs": 161298,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qz1sSar0drU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCozNPjKvWto-Gz9o5JV395Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022352886a6fab375db431d2a7"
         },
         {
@@ -10718,14 +10730,6 @@
           },
           "durationMs": 130666,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "QFFsfmtP914",
-            "audioConfidence": 100,
-            "videoId": "vA0jEuNeszQ",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCZRXd_KyHpZ8N2MUoZj2Btw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f36a16db4f3c6f2dad579d97"
         },
         {
@@ -17138,7 +17142,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17146,12 +17150,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 28,
@@ -21199,12 +21203,6 @@
           },
           "durationMs": 207200,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "u8aBtdeb68Q",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVznsJmPM4qyjLYyORcu0Tg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c175a1d89c39c1cd297cb669"
         },
         {
@@ -24967,14 +24965,6 @@
           },
           "durationMs": 242000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "E7kHvjvU6JY",
-            "audioConfidence": 100,
-            "videoId": "9II3OGZETo4",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UC_DHlXllTSMB8pTC38_leFg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d34a0632f6861e8875d6899b"
         },
         {
@@ -26287,11 +26277,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 40,
@@ -27193,6 +27183,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -28097,7 +28089,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 22,
