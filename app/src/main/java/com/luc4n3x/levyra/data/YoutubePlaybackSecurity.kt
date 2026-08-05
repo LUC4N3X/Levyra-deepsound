@@ -341,8 +341,8 @@ private suspend fun OkHttpClient.awaitVisitorData(request: Request): String =
         val call = newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, error: IOException) {
-                continuation.resumeResultIfActive(Result.failure(error))
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resumeResultIfActive(Result.failure(e))
             }
 
             override fun onResponse(call: Call, response: Response) {
