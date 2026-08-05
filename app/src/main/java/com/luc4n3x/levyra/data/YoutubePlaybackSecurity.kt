@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Base64
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
@@ -27,18 +28,23 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.LinkedHashMap
 import java.util.UUID
@@ -49,7 +55,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 internal data class YoutubeGuestSession(
     val visitorData: String,
-    val generation: Long
+    val generation: Long,
+    val playbackDeadlineElapsedMs: Long = Long.MAX_VALUE
 )
 
 internal data class YoutubePoTokens(
@@ -89,7 +96,7 @@ internal class YoutubePlaybackSecurity private constructor(
         if (!lastWarmAtMs.compareAndSet(previous, now)) return
         warmScope.launch {
             try {
-                val session = currentSession()
+                val session = currentSessionRequired()
                 if (session.visitorData.isNotBlank()) {
                     tokenGenerator.prewarm(session.visitorData, session.generation)
                 }
@@ -109,7 +116,16 @@ internal class YoutubePlaybackSecurity private constructor(
         )
     }
 
-    suspend fun currentSession(): YoutubeGuestSession = sessionMutex.withLock {
+    suspend fun currentSession(): YoutubeGuestSession {
+        val deadline = safeElapsedDeadline(SystemClock.elapsedRealtime(), FAST_WAIT_BUDGET_MS)
+        return withPoTokenWaitBudget(FAST_WAIT_BUDGET_MS) {
+            ensureCurrentSession().copy(playbackDeadlineElapsedMs = deadline)
+        }
+    }
+
+    suspend fun currentSessionRequired(): YoutubeGuestSession = ensureCurrentSession()
+
+    private suspend fun ensureCurrentSession(): YoutubeGuestSession = sessionMutex.withLock {
         val cached = cachedSession()
         if (cached.visitorData.isNotBlank()) return@withLock cached
         val fresh = fetchVisitorData()
@@ -147,7 +163,15 @@ internal class YoutubePlaybackSecurity private constructor(
         if (videoId.isBlank() || session.visitorData.isBlank()) {
             throw YoutubePoTokenRuntimeUnavailableException("Identita ospite assente per $videoId")
         }
-        return tokenGenerator.generate(videoId, session.visitorData, session.generation, FAST_WAIT_BUDGET_MS)
+        val remainingBudgetMs = remainingPoTokenWaitBudget(
+            deadlineElapsedMs = session.playbackDeadlineElapsedMs,
+            fallbackBudgetMs = FAST_WAIT_BUDGET_MS,
+            nowElapsedMs = SystemClock.elapsedRealtime()
+        )
+        if (remainingBudgetMs <= 0L) {
+            throw YoutubePoTokenRuntimeUnavailableException("Playback security wait budget exhausted")
+        }
+        return tokenGenerator.generate(videoId, session.visitorData, session.generation, remainingBudgetMs)
     }
 
     suspend fun rotateIfNeeded(error: Throwable): Boolean {
@@ -188,7 +212,7 @@ internal class YoutubePlaybackSecurity private constructor(
         failureCount.set(0)
     }
 
-    private suspend fun fetchVisitorData(): String = withContext(Dispatchers.IO) {
+    private suspend fun fetchVisitorData(): String {
         val locale = LevyraContentLocales.forLanguage(preferences.languageCode())
         val client = JSONObject()
             .put("clientName", "WEB")
@@ -210,15 +234,7 @@ internal class YoutubePlaybackSecurity private constructor(
             .header("X-Youtube-Client-Name", "1")
             .header("X-Youtube-Client-Version", WEB_CLIENT_VERSION)
             .build()
-        httpClient.newCall(request).execute().use { response ->
-            val text = response.body.string()
-            if (!response.isSuccessful) throw YoutubePlayerRequestException(response.code, "visitor_id HTTP ${response.code}")
-            JSONObject(text)
-                .optJSONObject("responseContext")
-                ?.optString("visitorData")
-                .orEmpty()
-                .ifBlank { throw IllegalStateException("visitorData assente") }
-        }
+        return httpClient.awaitVisitorData(request)
     }
 
     private fun persistSession(visitorData: String, generation: Long): YoutubeGuestSession {
@@ -318,6 +334,38 @@ internal class YoutubePlaybackSecurity private constructor(
         }
     }
 }
+
+private suspend fun OkHttpClient.awaitVisitorData(request: Request): String =
+    suspendCancellableCoroutine { continuation ->
+        val call = newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) {
+                continuation.tryResumeWithException(error)?.let(continuation::completeResume)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val result = runCatching {
+                    response.use {
+                        val text = it.body.string()
+                        if (!it.isSuccessful) {
+                            throw YoutubePlayerRequestException(it.code, "visitor_id HTTP ${it.code}")
+                        }
+                        JSONObject(text)
+                            .optJSONObject("responseContext")
+                            ?.optString("visitorData")
+                            .orEmpty()
+                            .ifBlank { throw IllegalStateException("visitorData assente") }
+                    }
+                }
+                result.onSuccess { visitorData ->
+                    continuation.tryResume(visitorData)?.let(continuation::completeResume)
+                }.onFailure { error ->
+                    continuation.tryResumeWithException(error)?.let(continuation::completeResume)
+                }
+            }
+        })
+    }
 
 private class YoutubeWebPoTokenGenerator(
     private val context: Context,
@@ -670,6 +718,21 @@ internal suspend fun <T> withPoTokenWaitBudget(
         ?: throw YoutubePoTokenRuntimeUnavailableException(
             "Integrity runtime or token not ready within $waitBudgetMs ms"
         )
+}
+
+internal fun safeElapsedDeadline(nowElapsedMs: Long, budgetMs: Long): Long {
+    require(budgetMs > 0L) { "PO Token wait budget must be positive" }
+    return if (nowElapsedMs > Long.MAX_VALUE - budgetMs) Long.MAX_VALUE else nowElapsedMs + budgetMs
+}
+
+internal fun remainingPoTokenWaitBudget(
+    deadlineElapsedMs: Long,
+    fallbackBudgetMs: Long,
+    nowElapsedMs: Long
+): Long {
+    require(fallbackBudgetMs > 0L) { "Fallback PO Token budget must be positive" }
+    if (deadlineElapsedMs == Long.MAX_VALUE) return fallbackBudgetMs
+    return (deadlineElapsedMs - nowElapsedMs).coerceAtLeast(0L)
 }
 
 internal enum class PoTokenSessionAction { REUSE, BACKOFF, BUILD }
