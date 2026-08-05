@@ -1,0 +1,64 @@
+name: One-shot player lint fix
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'feat/player-experience-motion'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/player-experience-motion
+          fetch-depth: 0
+
+      - name: Apply targeted lint fix
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraExperienceHost.kt')
+          source = path.read_text(encoding='utf-8')
+          old = '''                AnimatedContent(
+                    targetState = track.id,
+                    transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(120)) },
+                    label = "mini-track-title"
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = track.title,'''
+          new = '''                AnimatedContent(
+                    targetState = track,
+                    transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(120)) },
+                    label = "mini-track-title"
+                ) { animatedTrack ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = animatedTrack.title,'''
+          if source.count(old) != 1:
+              raise SystemExit(f'Expected exactly one AnimatedContent block, found {source.count(old)}')
+          source = source.replace(old, new, 1)
+          old_artist = '''                            Text(
+                                text = track.artist,
+                                color = Color.White.copy(alpha = 0.61f),'''
+          new_artist = '''                            Text(
+                                text = animatedTrack.artist,
+                                color = Color.White.copy(alpha = 0.61f),'''
+          if source.count(old_artist) != 1:
+              raise SystemExit(f'Expected exactly one mini-player artist block, found {source.count(old_artist)}')
+          source = source.replace(old_artist, new_artist, 1)
+          path.write_text(source, encoding='utf-8')
+
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm -f .github/workflows/one-shot-fix-player-lint.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraExperienceHost.kt .github/workflows/one-shot-fix-player-lint.yml
+          git commit -m "fix(ui): use AnimatedContent target state"
+          git push origin HEAD:feat/player-experience-motion
