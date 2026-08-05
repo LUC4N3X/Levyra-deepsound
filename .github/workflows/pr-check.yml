@@ -202,7 +202,6 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import textwrap
 
           workflow = Path(".github/workflows/pr299-one-shot.yml").read_text(encoding="utf-8")
           marker = "          python3 - <<'PY'\n"
@@ -213,7 +212,24 @@ jobs:
           end = workflow.find("\n          PY", start)
           if end < 0:
               raise SystemExit("PR 299 transformation script end marker missing")
-          script = textwrap.dedent(workflow[start:end])
+          raw_script = workflow[start:end]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in raw_script.splitlines()
+          )
+          buggy = '''    text = text.replace(class_marker, restore_block, 1)
+    text = text.replace("private static Fixture createFixture", "private Fixture createFixture")
+    if "NewPipe.init(downloader);" not in text:
+        raise SystemExit(f"Downloader install call missing: {path}")
+    text = text.replace("NewPipe.init(downloader);", "installDownloader(downloader);")'''
+          fixed = '''    if "NewPipe.init(downloader);" not in text:
+        raise SystemExit(f"Downloader install call missing: {path}")
+    text = text.replace("NewPipe.init(downloader);", "installDownloader(downloader);")
+    text = text.replace(class_marker, restore_block, 1)
+    text = text.replace("private static Fixture createFixture", "private Fixture createFixture")'''
+          if buggy not in script:
+              raise SystemExit("PR 299 downloader teardown patch marker missing")
+          script = script.replace(buggy, fixed, 1)
           exec(compile(script, "pr299-one-shot", "exec"), {"__name__": "__main__"})
           PY
 
