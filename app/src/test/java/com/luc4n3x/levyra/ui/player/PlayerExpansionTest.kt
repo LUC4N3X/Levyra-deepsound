@@ -78,39 +78,49 @@ class PlayerExpansionTest {
     }
 
     @Test
-    fun `the bottom chrome fades smoothly before the expansion completes`() {
+    fun `the mini player remains visible during the handoff`() {
         assertEquals(1f, playerChromeAlpha(0f), 0.0001f)
-        assertEquals(1f, playerChromeAlpha(0.03f), 0.0001f)
-        assertTrue(playerChromeAlpha(0.3f) in 0.45f..0.58f)
-        assertEquals(0f, playerChromeAlpha(0.58f), 0.0001f)
+        assertEquals(1f, playerChromeAlpha(0.05f), 0.0001f)
+        assertTrue(playerChromeAlpha(0.3f) > 0.65f)
+        assertEquals(0f, playerChromeAlpha(0.72f), 0.0001f)
         assertEquals(0f, playerChromeAlpha(1f), 0.0001f)
     }
 
     @Test
-    fun `the player surface enters softly behind the artwork morph`() {
+    fun `the full player emerges early behind the flying artwork`() {
         assertEquals(0f, playerSurfaceAlpha(0f), 0.0001f)
-        assertEquals(0f, playerSurfaceAlpha(0.06f), 0.0001f)
-        assertTrue(playerSurfaceAlpha(0.3f) in 0.25f..0.5f)
-        assertEquals(1f, playerSurfaceAlpha(0.64f), 0.0001f)
+        assertEquals(0f, playerSurfaceAlpha(0.015f), 0.0001f)
+        assertTrue(playerSurfaceAlpha(0.25f) in 0.45f..0.55f)
+        assertEquals(1f, playerSurfaceAlpha(0.5f), 0.0001f)
         assertEquals(1f, playerSurfaceAlpha(1f), 0.0001f)
     }
 
     @Test
-    fun `the artwork morph uses the full gesture instead of freezing early`() {
+    fun `the full player rises and scales into its final surface`() {
+        assertEquals(0.94f, playerSurfaceScale(0f), 0.0001f)
+        assertEquals(0.97f, playerSurfaceScale(0.5f), 0.0001f)
+        assertEquals(1f, playerSurfaceScale(1f), 0.0001f)
+        assertEquals(0.055f, playerSurfaceLiftFraction(0f), 0.0001f)
+        assertTrue(playerSurfaceLiftFraction(0.5f) in 0.013f..0.014f)
+        assertEquals(0f, playerSurfaceLiftFraction(1f), 0.0001f)
+    }
+
+    @Test
+    fun `the artwork morph uses almost the entire gesture`() {
         assertFalse(playerMorphActive(0f))
         assertTrue(playerMorphActive(0.2f))
         assertTrue(playerMorphActive(0.99f))
         assertFalse(playerMorphActive(1f))
-        assertEquals(1f, playerMorphFraction(0.94f), 0.0001f)
+        assertEquals(1f, playerMorphFraction(0.96f), 0.0001f)
         assertEquals(1f, playerMorphFraction(1f), 0.0001f)
-        assertEquals(0.5f, playerMorphFraction(0.47f), 0.0001f)
-        assertTrue(playerMorphFraction(0.86f) < 1f)
+        assertEquals(0.5f, playerMorphFraction(0.48f), 0.0001f)
+        assertTrue(playerMorphFraction(0.9f) < 1f)
     }
 
     @Test
     fun `the background depth stays subtle and readable`() {
         assertEquals(1f, playerBackgroundScale(0f), 0.0001f)
-        assertEquals(0.965f, playerBackgroundScale(1f), 0.0001f)
-        assertTrue(playerBackgroundScale(0.5f) > 0.97f)
+        assertEquals(0.972f, playerBackgroundScale(1f), 0.0001f)
+        assertTrue(playerBackgroundScale(0.5f) > 0.98f)
     }
 }
