@@ -12,7 +12,6 @@ import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.downloader.StreamingResponse
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
-import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
@@ -60,7 +59,6 @@ private class OkHttpNewPipeDownloader : Downloader() {
         }
         .build()
 
-
     override fun supportsStreamingResponses(): Boolean = true
 
     override fun getStreaming(
@@ -82,7 +80,9 @@ private class OkHttpNewPipeDownloader : Downloader() {
         localization: Localization?,
         timeoutMs: Long
     ): StreamingResponse {
-        require(timeoutMs > 0L) { "timeoutMs must be positive" }
+        if (timeoutMs <= 0L) {
+            return getStreaming(url, headers, localization)
+        }
         val timeoutClient = client.newBuilder()
             .callTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .build()
@@ -148,12 +148,6 @@ private class OkHttpNewPipeDownloader : Downloader() {
             throw IOException("YouTube ha limitato temporaneamente le richieste")
         }
         val responseBody = response.body
-        if (responseBody == null) {
-            val headers = response.headers.toMultimap()
-            val code = response.code
-            response.close()
-            return StreamingResponse(code, headers, ByteArrayInputStream(ByteArray(0)))
-        }
         return object : StreamingResponse(
             response.code,
             response.headers.toMultimap(),
@@ -203,8 +197,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
-        val responseBody: okhttp3.ResponseBody? = response.body
-        val responseBytes = responseBody?.bytes() ?: ByteArray(0)
+        val responseBytes = response.body.bytes()
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
         if (response.code == 429) {
             throw IOException("YouTube ha limitato temporaneamente le richieste")
