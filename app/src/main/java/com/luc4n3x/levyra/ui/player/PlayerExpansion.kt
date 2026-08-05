@@ -9,12 +9,14 @@ private const val OpenCommitFraction = 0.32f
 private const val CloseCommitFraction = 0.72f
 private const val CommitVelocity = 900f
 private const val MorphStart = 0.01f
-private const val MorphEnd = 0.94f
-private const val ChromeFadeStart = 0.03f
-private const val ChromeFadeEnd = 0.58f
-private const val SurfaceFadeStart = 0.06f
-private const val SurfaceFadeEnd = 0.64f
-private const val BackgroundDepth = 0.035f
+private const val MorphEnd = 0.96f
+private const val ChromeFadeStart = 0.05f
+private const val ChromeFadeEnd = 0.72f
+private const val SurfaceFadeStart = 0.015f
+private const val SurfaceFadeEnd = 0.50f
+private const val BackgroundDepth = 0.028f
+private const val SurfaceScaleStart = 0.94f
+private const val SurfaceLiftStart = 0.055f
 
 fun playerExpansionFromDrag(start: Float, dragPx: Float, travelPx: Float): Float {
     val safeStart = start.finiteOr(PlayerExpansionCollapsed)
@@ -40,10 +42,10 @@ fun resolvePlayerExpansionTarget(
 }
 
 /**
- * A symmetric smooth-step used by all player transition channels.
+ * A symmetric smooth-step shared by the transition channels.
  *
- * Keeping the same curve for artwork, chrome, surface and background depth makes opening and
- * closing read as one physical movement while preserving a direct, reversible drag response.
+ * The drag remains reversible and tied to the finger, while the rendered layers accelerate and
+ * settle together instead of looking like unrelated fades.
  */
 fun playerMotionProgress(fraction: Float): Float {
     val t = fraction.finiteOr(0f).coerceIn(0f, 1f)
@@ -55,6 +57,16 @@ fun playerChromeAlpha(expansion: Float): Float =
 
 fun playerSurfaceAlpha(expansion: Float): Float =
     playerMotionProgress(normalize(expansion, SurfaceFadeStart, SurfaceFadeEnd))
+
+/** Makes the full player grow out of the mini player rather than simply fading over it. */
+fun playerSurfaceScale(expansion: Float): Float =
+    SurfaceScaleStart + (1f - SurfaceScaleStart) * playerMotionProgress(expansion)
+
+/** Downward offset, expressed as a fraction of the available travel, removed as the player opens. */
+fun playerSurfaceLiftFraction(expansion: Float): Float {
+    val remaining = 1f - playerMotionProgress(expansion)
+    return remaining * remaining * SurfaceLiftStart
+}
 
 fun playerMorphActive(expansion: Float): Boolean {
     val safeExpansion = expansion.finiteOr(PlayerExpansionCollapsed)
