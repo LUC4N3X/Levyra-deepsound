@@ -52,8 +52,9 @@ final class YoutubeSabrRequestBuilder {
                 : streamState.getBufferedRanges();
         final boolean forcedInitialPlaybackState = streamState != null
                 && streamState.shouldWriteFirstRequestPlaybackState();
-        final boolean includeInitialPlaybackState = forcedInitialPlaybackState
-                || playerTimeMs > 0 || !bufferedRanges.isEmpty();
+        final boolean includeInitialPlaybackState = streamState != null
+                && (forcedInitialPlaybackState || playerTimeMs > 0
+                || !bufferedRanges.isEmpty());
         final SabrProto.Writer request = new SabrProto.Writer();
         request.writeMessage(1, buildClientAbrState(audioFormat, videoFormat, playerTimeMs,
                 includeInitialPlaybackState && !forcedInitialPlaybackState,

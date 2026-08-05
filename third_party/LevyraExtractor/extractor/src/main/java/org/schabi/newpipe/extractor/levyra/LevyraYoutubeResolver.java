@@ -66,7 +66,7 @@ public final class LevyraYoutubeResolver {
 
         final String key = request.cacheKey();
         final CacheEntry cached = preflightCache.get(key);
-        
+
         final CompletableFuture<List<LevyraSponsorBlockSegment>> sponsorBlockFuture = CompletableFuture.supplyAsync(() -> fetchSponsorBlock(downloader, request.getVideoId()));
         final CompletableFuture<long[]> rydFuture = CompletableFuture.supplyAsync(() -> fetchRydStats(downloader, request.getVideoId()));
 

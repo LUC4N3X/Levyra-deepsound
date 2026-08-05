@@ -20,8 +20,7 @@ public final class SabrSessionPolicyTranscript {
     synchronized void record(@Nonnull final SabrSessionPolicy.State state,
                              @Nonnull final SabrSessionPolicy.Event event,
                              @Nonnull final SabrSessionPolicy.Result result) {
-        if (entries.size() == capacity) entries.removeFirst();
-        entries.addLast(new Entry(summary(state, event, result)));
+        append(summary(state, event, result));
     }
 
     synchronized void recordDemandRoute(
@@ -51,17 +50,15 @@ public final class SabrSessionPolicyTranscript {
         entries.addLast(new Entry(summary));
     }
 
-    synchronized void commitLast(@Nonnull final SabrSessionPolicy.Result result,
-                                 @Nonnull final SabrSessionPolicy.State appliedState,
+    synchronized void commitLast(@Nonnull final SabrSessionPolicy.State appliedState,
                                  @Nonnull final List<SabrSessionPolicy.Action> actions,
                                  final boolean completed) {
         final List<SabrSessionPolicy.ActionType> types = new ArrayList<>();
         for (final SabrSessionPolicy.Action action : actions) types.add(action.getType());
-        commitLastTypes(result, appliedState, types, completed);
+        commitLastTypes(appliedState, types, completed);
     }
 
-    synchronized void commitLastTypes(@Nonnull final SabrSessionPolicy.Result result,
-                                      @Nonnull final SabrSessionPolicy.State appliedState,
+    synchronized void commitLastTypes(@Nonnull final SabrSessionPolicy.State appliedState,
                                       @Nonnull final List<SabrSessionPolicy.ActionType> actions,
                                       final boolean completed) {
         final Entry entry = entries.peekLast();

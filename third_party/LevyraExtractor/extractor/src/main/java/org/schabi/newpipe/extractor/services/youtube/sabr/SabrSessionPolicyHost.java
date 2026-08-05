@@ -99,14 +99,13 @@ public final class SabrSessionPolicyHost implements AutoCloseable {
 
     public void commitAppliedState(@Nonnull final SabrSessionPolicy.Result result,
                                    @Nonnull final SabrSessionPolicy.State state) {
-        if (transcript != null) transcript.commitLast(result, state, result.getActions(), true);
+        if (transcript != null) transcript.commitLast(state, result.getActions(), true);
     }
 
-    public void commitAppliedState(@Nonnull final SabrSessionPolicy.Result result,
-                                   @Nonnull final SabrSessionPolicy.State state,
+    public void commitAppliedState(@Nonnull final SabrSessionPolicy.State state,
                                    @Nonnull final List<SabrSessionPolicy.ActionType> actions,
                                    final boolean completed) {
-        if (transcript != null) transcript.commitLastTypes(result, state, actions, completed);
+        if (transcript != null) transcript.commitLastTypes(state, actions, completed);
     }
 
     private static void validateState(@Nonnull final SabrSessionPolicy.State state) {
@@ -130,77 +129,103 @@ public final class SabrSessionPolicyHost implements AutoCloseable {
     }
 
     private static void validateResult(@Nonnull final SabrSessionPolicy.State state,
-                                       @Nonnull final SabrSessionPolicy.Event event,
-                                       @Nullable final SabrSessionPolicy.Result result) {
+                             @Nonnull final SabrSessionPolicy.Event event,
+                             @Nullable final SabrSessionPolicy.Result result) {
         if (result == null || result.getActions().isEmpty()) {
-            throw new IllegalStateException("SABR policy returned no result");
+  throw new IllegalStateException("SABR policy returned no result");
         }
         validateState(result.getNextState());
         if (event instanceof SabrSessionPolicy.RequestEvent) {
-            final SabrSessionPolicy.ActionType expected = state.getRequestNumber() == 0
-                    ? SabrSessionPolicy.ActionType.SEND_INITIAL_REQUEST
-                    : SabrSessionPolicy.ActionType.SEND_FOLLOW_UP_REQUEST;
-            if (result.getActions().size() != 1
-                    || result.getActions().get(0).getType() != expected
-                    || result.getRequestBody() == null || result.getRequestBody().length == 0
-                    || result.getRequestBody().length > MAX_REQUEST_BYTES
-                    || result.getControlDecision() != null || !state.equals(result.getNextState())) {
-                throw new IllegalStateException("Invalid SABR request policy result");
-            }
-            return;
+  validateRequestResult(state, result);
+  return;
         }
+        final Set<SabrSessionPolicy.ActionType> seen = validateControlActions(result);
+        validateControlTransition(state, (SabrSessionPolicy.ControlResponseEvent) event,
+      result, seen);
+    }
+
+    private static void validateRequestResult(
+  @Nonnull final SabrSessionPolicy.State state,
+  @Nonnull final SabrSessionPolicy.Result result) {
+        final SabrSessionPolicy.ActionType expected = state.getRequestNumber() == 0
+      ? SabrSessionPolicy.ActionType.SEND_INITIAL_REQUEST
+      : SabrSessionPolicy.ActionType.SEND_FOLLOW_UP_REQUEST;
+        if (result.getActions().size() != 1
+      || result.getActions().get(0).getType() != expected
+      || result.getRequestBody() == null || result.getRequestBody().length == 0
+      || result.getRequestBody().length > MAX_REQUEST_BYTES
+      || result.getControlDecision() != null || !state.equals(result.getNextState())) {
+  throw new IllegalStateException("Invalid SABR request policy result");
+        }
+    }
+
+    @Nonnull
+    private static Set<SabrSessionPolicy.ActionType> validateControlActions(
+  @Nonnull final SabrSessionPolicy.Result result) {
         if (result.getRequestBody() != null || result.getControlDecision() == null) {
-            throw new IllegalStateException("Invalid SABR control policy result");
+  throw new IllegalStateException("Invalid SABR control policy result");
         }
         final List<SabrSessionPolicy.Action> actions = result.getActions();
         final Set<SabrSessionPolicy.ActionType> seen = EnumSet.noneOf(
-                SabrSessionPolicy.ActionType.class);
+      SabrSessionPolicy.ActionType.class);
         for (final SabrSessionPolicy.Action action : actions) {
-            if (action == null || !seen.add(action.getType())) {
-                throw new IllegalStateException("Duplicate SABR control action");
-            }
+  if (action == null || !seen.add(action.getType())) {
+      throw new IllegalStateException("Duplicate SABR control action");
+  }
         }
         int terminalCount = 0;
         for (final SabrSessionPolicy.Action action : actions) {
-            if (TERMINAL.contains(action.getType())) terminalCount++;
+  if (TERMINAL.contains(action.getType())) {
+      terminalCount++;
+  }
         }
         if (terminalCount != 1 || !TERMINAL.contains(actions.get(actions.size() - 1).getType())) {
-            throw new IllegalStateException("SABR control policy has no terminal action");
+  throw new IllegalStateException("SABR control policy has no terminal action");
         }
+        if (seen.contains(SabrSessionPolicy.ActionType.APPLY_RESPONSE_STATE)
+      != (result.getStatePatch() != null)) {
+  throw new IllegalStateException("SABR response state action/patch mismatch");
+        }
+        if (seen.contains(SabrSessionPolicy.ActionType.APPLY_RESPONSE_STATE)
+      && seen.contains(SabrSessionPolicy.ActionType.APPLY_BUILTIN_RESPONSE_STATE)) {
+  throw new IllegalStateException("SABR response state actions are mutually exclusive");
+        }
+        return seen;
+    }
+
+    private static void validateControlTransition(
+  @Nonnull final SabrSessionPolicy.State state,
+  @Nonnull final SabrSessionPolicy.ControlResponseEvent control,
+  @Nonnull final SabrSessionPolicy.Result result,
+  @Nonnull final Set<SabrSessionPolicy.ActionType> seen) {
         final SabrSessionPolicy.ControlDecision decision = result.getControlDecision();
-        if (seen.contains(SabrSessionPolicy.ActionType.APPLY_RESPONSE_STATE)
-                != (result.getStatePatch() != null)) {
-            throw new IllegalStateException("SABR response state action/patch mismatch");
-        }
-        if (seen.contains(SabrSessionPolicy.ActionType.APPLY_RESPONSE_STATE)
-                && seen.contains(SabrSessionPolicy.ActionType.APPLY_BUILTIN_RESPONSE_STATE)) {
-            throw new IllegalStateException("SABR response state actions are mutually exclusive");
-        }
         if (seen.contains(SabrSessionPolicy.ActionType.APPLY_REDIRECT)
-                != (decision.getRedirectUrl() != null && !decision.getRedirectUrl().isEmpty())) {
-            throw new IllegalStateException("SABR redirect action/value mismatch");
+      != (decision.getRedirectUrl() != null && !decision.getRedirectUrl().isEmpty())) {
+  throw new IllegalStateException("SABR redirect action/value mismatch");
         }
-        final SabrSessionPolicy.ControlResponseEvent control =
-                (SabrSessionPolicy.ControlResponseEvent) event;
         final boolean reset = seen.contains(SabrSessionPolicy.ActionType.RESET_RECOVERY_BUDGETS);
         final boolean redirect = seen.contains(SabrSessionPolicy.ActionType.APPLY_REDIRECT);
-        final int expectedRedirects = reset ? 0
-                : state.getRedirectCount() + (redirect ? 1 : 0);
+        int expectedRedirects = state.getRedirectCount();
+        if (reset) {
+  expectedRedirects = 0;
+        } else if (redirect) {
+  expectedRedirects++;
+        }
         final SabrSessionPolicy.State next = result.getNextState();
         if (next.getRequestNumber() != state.getRequestNumber()
-                || next.getReloads() != state.getReloads()
-                || next.getRedirectCount() != expectedRedirects
-                || reset && (control.getMode() != SabrSessionPolicy.ControlMode.PUMP
-                || control.getSegmentCount() <= 0)) {
-            throw new IllegalStateException("Invalid SABR recovery state transition");
+      || next.getReloads() != state.getReloads()
+      || next.getRedirectCount() != expectedRedirects
+      || reset && (control.getMode() != SabrSessionPolicy.ControlMode.PUMP
+      || control.getSegmentCount() <= 0)) {
+  throw new IllegalStateException("Invalid SABR recovery state transition");
         }
         if (seen.contains(SabrSessionPolicy.ActionType.SLEEP_BACKOFF)
-                != (decision.getBackoffTimeMs() > 0 && control.shouldHonorBackoff())
-                || seen.contains(SabrSessionPolicy.ActionType.DEFER_BACKOFF)
-                != (decision.getBackoffTimeMs() > 0 && !control.shouldHonorBackoff())
-                || seen.contains(SabrSessionPolicy.ActionType.CLEAR_DEMAND_BACKOFF)
-                && (decision.getBackoffTimeMs() > 0 || control.shouldHonorBackoff())) {
-            throw new IllegalStateException("SABR Host action/event mismatch");
+      != (decision.getBackoffTimeMs() > 0 && control.shouldHonorBackoff())
+      || seen.contains(SabrSessionPolicy.ActionType.DEFER_BACKOFF)
+      != (decision.getBackoffTimeMs() > 0 && !control.shouldHonorBackoff())
+      || seen.contains(SabrSessionPolicy.ActionType.CLEAR_DEMAND_BACKOFF)
+      && (decision.getBackoffTimeMs() > 0 || control.shouldHonorBackoff())) {
+  throw new IllegalStateException("SABR Host action/event mismatch");
         }
     }
 

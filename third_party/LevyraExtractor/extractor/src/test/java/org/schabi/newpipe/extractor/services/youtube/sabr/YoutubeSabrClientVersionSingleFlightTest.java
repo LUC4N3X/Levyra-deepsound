@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.annotation.Nonnull;
 
@@ -41,12 +42,12 @@ class YoutubeSabrClientVersionSingleFlightTest {
         try {
             final Future<String> first = executor.submit(YoutubeParsingHelper::getClientVersion);
             assertTrue(downloader.requestStarted.await(2, TimeUnit.SECONDS));
-            final CountDownLatch secondStarted = new CountDownLatch(1);
+            final AtomicReference<Thread> secondThread = new AtomicReference<>();
             final Future<String> second = executor.submit(() -> {
-                secondStarted.countDown();
+                secondThread.set(Thread.currentThread());
                 return YoutubeParsingHelper.getClientVersion();
             });
-            assertTrue(secondStarted.await(2, TimeUnit.SECONDS));
+            assertTrue(waitUntilBlocked(secondThread, 2_000));
 
             assertEquals(1, downloader.requestCount.get());
             assertFalse(second.isDone());
@@ -63,6 +64,24 @@ class YoutubeSabrClientVersionSingleFlightTest {
             YoutubeParsingHelper.resetClientVersion();
             NewPipe.init(previousDownloader, previousLocalization, previousCountry);
         }
+    }
+
+    private static boolean waitUntilBlocked(
+            @Nonnull final AtomicReference<Thread> threadReference,
+            final long timeoutMs) throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        while (System.nanoTime() < deadline) {
+            final Thread thread = threadReference.get();
+            if (thread != null) {
+                final Thread.State state = thread.getState();
+                if (state == Thread.State.BLOCKED || state == Thread.State.WAITING
+                        || state == Thread.State.TIMED_WAITING) {
+                    return true;
+                }
+            }
+            Thread.sleep(10);
+        }
+        return false;
     }
 
     private static final class BlockingDownloader extends Downloader {

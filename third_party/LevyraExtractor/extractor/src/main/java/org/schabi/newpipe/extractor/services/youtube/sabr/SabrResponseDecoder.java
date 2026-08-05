@@ -121,19 +121,6 @@ public final class SabrResponseDecoder {
                     decoded.addFormatInitializationMetadata(metadata);
                     decoded.addGenericPartDescription(part.getType(), metadata.summarize());
                     break;
-                case MEDIA_HEADER:
-                    decoded.addMediaHeader(SabrMediaHeader.decode(partData));
-                    break;
-                case MEDIA:
-                    if (partData.length > 0) {
-                        decoded.addMediaBytes(partData[0] & 0xff, partData.length - 1L);
-                    }
-                    break;
-                case MEDIA_END:
-                    if (partData.length > 0) {
-                        decoded.addMediaEndHeaderId(partData[0] & 0xff);
-                    }
-                    break;
                 case LIVE_METADATA:
                     final SabrLiveMetadata liveMetadata = SabrLiveMetadata.decode(partData);
                     decoded.addLiveMetadata(liveMetadata);

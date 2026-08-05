@@ -209,14 +209,15 @@ public final class SabrStreamingResponseReader {
 
     @Nonnull
     private static byte[] readPayloadBytes(@Nonnull final InputStream input, final int size)
-            throws IOException {
+            throws IOException, SabrProtocolException {
         final ByteArrayOutputStream output = new ByteArrayOutputStream(size);
         final byte[] buffer = new byte[8192];
         int remaining = size;
         while (remaining > 0) {
             final int read = input.read(buffer, 0, Math.min(buffer.length, remaining));
             if (read < 0) {
-                throw new IOException("Unexpected EOF while reading UMP part data");
+                throw new SabrRecoverableException(
+                        "Unexpected EOF while reading UMP part data");
             }
             output.write(buffer, 0, read);
             remaining -= read;

@@ -55,6 +55,7 @@ public final class SabrLiveMetadata {
                                                final long maxSeekableTimeTicks,
                                                final int maxSeekableTimescale) {
         if (headSequenceNumber < -1 || headTimeMs < -1 || wallTimeMs < -1
+                || headm < -1
                 || minSeekableTimeTicks < -1 || minSeekableTimescale < -1
                 || maxSeekableTimeTicks < -1 || maxSeekableTimescale < -1) {
             throw new IllegalArgumentException("Invalid normalized SABR live metadata");

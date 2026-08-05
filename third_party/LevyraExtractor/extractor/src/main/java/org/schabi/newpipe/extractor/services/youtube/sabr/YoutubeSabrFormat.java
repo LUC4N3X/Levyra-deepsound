@@ -22,9 +22,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class YoutubeSabrFormat implements Serializable {
     private static final long serialVersionUID = 1L;
+    private static final Pattern N_QUERY_PATTERN = Pattern.compile("([?&])n=([^&]+)");
+    private static final Pattern N_PATH_PATTERN = Pattern.compile("/n/([^/?#]+)");
 
     private final int itag;
     private final long lastModified;
@@ -245,14 +249,12 @@ public final class YoutubeSabrFormat implements Serializable {
         if (decryptedN == null) {
             return url;
         }
-        final java.util.regex.Matcher queryMatcher = java.util.regex.Pattern
-                .compile("([?&])n=([^&]+)").matcher(url);
+        final Matcher queryMatcher = N_QUERY_PATTERN.matcher(url);
         if (queryMatcher.find()) {
             return url.substring(0, queryMatcher.start(2)) + urlEncode(decryptedN)
                     + url.substring(queryMatcher.end(2));
         }
-        final java.util.regex.Matcher pathMatcher = java.util.regex.Pattern
-                .compile("/n/([^/?#]+)").matcher(url);
+        final Matcher pathMatcher = N_PATH_PATTERN.matcher(url);
         if (!pathMatcher.find()) {
             return url;
         }
@@ -265,13 +267,11 @@ public final class YoutubeSabrFormat implements Serializable {
         if (url == null || url.isEmpty()) {
             return null;
         }
-        final java.util.regex.Matcher queryMatcher = java.util.regex.Pattern
-                .compile("([?&])n=([^&]+)").matcher(url);
+        final Matcher queryMatcher = N_QUERY_PATTERN.matcher(url);
         if (queryMatcher.find()) {
             return urlDecode(queryMatcher.group(2));
         }
-        final java.util.regex.Matcher pathMatcher = java.util.regex.Pattern
-                .compile("/n/([^/?#]+)").matcher(url);
+        final Matcher pathMatcher = N_PATH_PATTERN.matcher(url);
         return pathMatcher.find() ? pathMatcher.group(1) : null;
     }
 

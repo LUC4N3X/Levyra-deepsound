@@ -2,6 +2,7 @@ package org.schabi.newpipe.extractor.services.youtube.sabr;
 
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonParser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.downloader.CancellableCall;
@@ -30,6 +31,22 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class YoutubeSabrSessionStreamProtectionTest {
+    private Downloader previousDownloader;
+
+    @AfterEach
+    void restoreDownloader() {
+        if (previousDownloader != null) {
+            NewPipe.init(previousDownloader);
+            previousDownloader = null;
+        }
+    }
+
+    private void installDownloader(final Downloader downloader) {
+        if (previousDownloader == null) {
+            previousDownloader = NewPipe.getDownloader();
+        }
+        NewPipe.init(downloader);
+    }
     private static final Localization LOCALIZATION = new Localization("en", "US");
 
     @Test
@@ -301,19 +318,19 @@ class YoutubeSabrSessionStreamProtectionTest {
     }
 
     @Nonnull
-    private static Fixture createFixture(@Nonnull final Downloader downloader,
+    private Fixture createFixture(@Nonnull final Downloader downloader,
                                          @Nullable final SabrPoTokenProvider tokenProvider)
             throws Exception {
         return createFixture(downloader, tokenProvider, null);
     }
 
     @Nonnull
-    private static Fixture createFixture(
+    private Fixture createFixture(
             @Nonnull final Downloader downloader,
             @Nullable final SabrPoTokenProvider tokenProvider,
             @Nullable final YoutubeSabrSession.PlayerInfoReloader playerInfoReloader)
             throws Exception {
-        NewPipe.init(downloader);
+        installDownloader(downloader);
         final JsonArray formats = JsonParser.array().from("["
                 + "{\"itag\":140,\"lastModified\":\"1\",\"mimeType\":\"audio/mp4\","
                 + "\"bitrate\":128000,\"contentLength\":\"1000\","

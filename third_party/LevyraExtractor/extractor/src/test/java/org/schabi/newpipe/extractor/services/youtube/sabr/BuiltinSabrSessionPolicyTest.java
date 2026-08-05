@@ -17,7 +17,7 @@ class BuiltinSabrSessionPolicyTest {
 
     @Test
     void pendingAttestationDoesNotTriggerRecoveryOrRetry() throws Exception {
-        final SabrDecodedResponse response = protectionResponse(2, 20, 59_000);
+        final SabrDecodedResponse response = protectionResponse(SabrStreamProtectionStatus.ATTESTATION_PENDING, 20, 59_000);
 
         assertEquals(List.of(
                         SabrSessionPolicy.ActionType.APPLY_RESPONSE_STATE,
@@ -34,7 +34,7 @@ class BuiltinSabrSessionPolicyTest {
     @Test
     void rejectedAttestationFailsWithoutBackoffOrRecovery() throws Exception {
         final SabrSessionPolicy.Result result = evaluate(
-                protectionResponse(3, 20, 59_000),
+                protectionResponse(SabrStreamProtectionStatus.ATTESTATION_REQUIRED, 20, 59_000),
                 SabrSessionPolicy.ControlMode.PUMP,
                 true);
 
@@ -49,16 +49,16 @@ class BuiltinSabrSessionPolicyTest {
     @Test
     void maxRetriesDoesNotChangePendingAttestationControlFlow() throws Exception {
         assertEquals(
-                actions(evaluate(protectionResponse(2, 0, 2_000),
+                actions(evaluate(protectionResponse(SabrStreamProtectionStatus.ATTESTATION_PENDING, 0, 2_000),
                         SabrSessionPolicy.ControlMode.PUMP, false)),
-                actions(evaluate(protectionResponse(2, 20, 2_000),
+                actions(evaluate(protectionResponse(SabrStreamProtectionStatus.ATTESTATION_PENDING, 20, 2_000),
                         SabrSessionPolicy.ControlMode.PUMP, false)));
     }
 
     @Test
     void onlyExplicitReloadResponseRequestsReload() throws Exception {
-        final SabrDecodedResponse ordinary = protectionResponse(2, 20, 2_000);
-        final SabrDecodedResponse explicitReload = protectionResponse(2, 20, 2_000);
+        final SabrDecodedResponse ordinary = protectionResponse(SabrStreamProtectionStatus.ATTESTATION_PENDING, 20, 2_000);
+        final SabrDecodedResponse explicitReload = protectionResponse(SabrStreamProtectionStatus.ATTESTATION_PENDING, 20, 2_000);
         explicitReload.setReloadRequested(true);
 
         assertFalse(actions(evaluate(ordinary, SabrSessionPolicy.ControlMode.PUMP, false))

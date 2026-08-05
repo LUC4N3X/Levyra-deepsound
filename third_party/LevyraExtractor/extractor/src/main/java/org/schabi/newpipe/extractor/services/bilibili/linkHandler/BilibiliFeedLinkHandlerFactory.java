@@ -44,5 +44,5 @@ public class BilibiliFeedLinkHandlerFactory extends ListLinkHandlerFactory{
                 || url.contains(FETCH_RECOMMENDED_LIVES_URL)
                 || url.equals("https://api.bilibili.com/x/web-interface/ranking/v2");
     }
-    
+
 }

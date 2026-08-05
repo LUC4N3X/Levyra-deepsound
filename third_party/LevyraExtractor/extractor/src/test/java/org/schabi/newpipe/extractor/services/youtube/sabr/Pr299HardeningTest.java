@@ -11,6 +11,8 @@ import org.schabi.newpipe.extractor.localization.Localization;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -103,4 +105,15 @@ class Pr299HardeningTest {
         }
         assertThrows(IllegalArgumentException.class, builder::build);
     }
+    @Test
+    void truncatedControlPayloadUsesRecoverableFailure() throws Exception {
+        final Method method = SabrStreamingResponseReader.class.getDeclaredMethod(
+      "readPayloadBytes", java.io.InputStream.class, int.class);
+        method.setAccessible(true);
+        final InvocationTargetException thrown = assertThrows(
+      InvocationTargetException.class,
+      () -> method.invoke(null, new ByteArrayInputStream(new byte[]{1}), 2));
+        assertTrue(thrown.getCause() instanceof SabrRecoverableException);
+    }
+
 }
