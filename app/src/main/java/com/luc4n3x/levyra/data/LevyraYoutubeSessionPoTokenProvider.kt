@@ -13,11 +13,6 @@ import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvid
 import timber.log.Timber
 import java.io.IOException
 
-/**
- * Supplies the vendored extractor with the same visitor-bound player PoToken flow used by Levyra's
- * direct InnerTube resolver. The provider deliberately returns null on the main thread so extractor
- * compatibility fallback remains non-blocking.
- */
 internal class LevyraYoutubeSessionPoTokenProvider(context: Context) : YoutubeSessionPoTokenProvider {
     private val security = YoutubePlaybackSecurity.getInstance(context)
 
@@ -60,7 +55,6 @@ internal class LevyraYoutubeSessionPoTokenProvider(context: Context) : YoutubeSe
     }
 
     private companion object {
-        // Covers the 15s visitor request plus the 20s runtime initialization and 12s mint budget.
         const val PROVIDER_TIMEOUT_MS = 55_000L
     }
 }
