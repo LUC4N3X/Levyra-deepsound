@@ -855,6 +855,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(playbackWarmPlan.delayMs)
             awaitHomeUiIdle(startupPlan)
             resolver.warmNetwork()
+            if (!playbackPlan.lowRam && !playbackPlan.powerConstrained) {
+                resolver.warmPlaybackSecurity()
+            }
             val hot = (orbitSeed.take(1) + initialTracks.take(playbackWarmPlan.trackCount))
                 .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
                 .distinctBy { playbackIdentity(it) }

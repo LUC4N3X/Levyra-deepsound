@@ -88,6 +88,7 @@ object LevyraHttpClientFactory {
                 .readTimeout(12, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
                 .callTimeout(15, TimeUnit.SECONDS)
+                .addInterceptor(YoutubeClientIdentityInterceptor)
                 .addInterceptor(BrotliInterceptor)
                 .retryOnConnectionFailure(true)
                 .let { applyNetworkIntelligence(it, context) }
