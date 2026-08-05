@@ -24,34 +24,30 @@ jobs:
 
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraExperienceHost.kt')
           source = path.read_text(encoding='utf-8')
-          old = '''                AnimatedContent(
-                    targetState = track.id,
-                    transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(120)) },
-                    label = "mini-track-title"
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = track.title,'''
-          new = '''                AnimatedContent(
-                    targetState = track,
-                    transitionSpec = { fadeIn(tween(170)) togetherWith fadeOut(tween(120)) },
-                    label = "mini-track-title"
-                ) { animatedTrack ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = animatedTrack.title,'''
-          if source.count(old) != 1:
-              raise SystemExit(f'Expected exactly one AnimatedContent block, found {source.count(old)}')
-          source = source.replace(old, new, 1)
-          old_artist = '''                            Text(
-                                text = track.artist,
-                                color = Color.White.copy(alpha = 0.61f),'''
-          new_artist = '''                            Text(
-                                text = animatedTrack.artist,
-                                color = Color.White.copy(alpha = 0.61f),'''
-          if source.count(old_artist) != 1:
-              raise SystemExit(f'Expected exactly one mini-player artist block, found {source.count(old_artist)}')
-          source = source.replace(old_artist, new_artist, 1)
+          marker = 'label = "mini-track-title"'
+          if source.count(marker) != 1:
+              raise SystemExit(f'Expected one mini-player AnimatedContent marker, found {source.count(marker)}')
+
+          marker_index = source.index(marker)
+          block_start = source.rfind('AnimatedContent(', 0, marker_index)
+          block_end_marker = '\n            MiniControlButton('
+          block_end = source.find(block_end_marker, marker_index)
+          if block_start < 0 or block_end < 0:
+              raise SystemExit('Unable to isolate mini-player AnimatedContent block')
+
+          block = source[block_start:block_end]
+          replacements = {
+              'targetState = track.id,': 'targetState = track,',
+              ') {\n                    Column': ') { animatedTrack ->\n                    Column',
+              'text = track.title,': 'text = animatedTrack.title,',
+              'text = track.artist,': 'text = animatedTrack.artist,',
+          }
+          for old, new in replacements.items():
+              if block.count(old) != 1:
+                  raise SystemExit(f'Expected one occurrence of {old!r} in mini-player block, found {block.count(old)}')
+              block = block.replace(old, new, 1)
+
+          source = source[:block_start] + block + source[block_end:]
           path.write_text(source, encoding='utf-8')
 
       - name: Remove one-shot workflow and commit
