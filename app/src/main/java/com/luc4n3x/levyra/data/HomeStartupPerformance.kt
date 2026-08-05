@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicReference
 
+/** Keeps nonessential startup work away from first render and active audio playback. */
 internal data class HomeStartupWorkPlan(
     val idleWindowMs: Long,
     val homeFeedStartDelayMs: Long,
