@@ -20,6 +20,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -66,6 +67,7 @@ object LevyraArtworkCache {
     private const val LARGE_SIZE = 512
     private const val MAX_FILE_BYTES = 6L * 1024L * 1024L
     private const val MAX_PERSISTENT_FILES = 220
+    private const val INDEX_PRIME_DELAY_MS = 1_200L
     private val youtubeWidthHeight = Regex("=w\\d+-h\\d+[^?&]*")
     private val youtubeSquare = Regex("=s\\d+[^?&]*")
     private val appleArtwork = Regex("\\d+x\\d+bb")
@@ -148,27 +150,20 @@ object LevyraArtworkCache {
     }
 
     fun localFile(context: Context, track: Track, highRes: Boolean = false): File? {
-        if (artworkUrlCandidates(track, highRes).isEmpty()) return null
+        if (!localIndexPrimed || artworkUrlCandidates(track, highRes).isEmpty()) return null
         val file = persistentFile(context.applicationContext, track, if (highRes) LARGE_SIZE else SMALL_SIZE)
-        if (localIndexPrimed) {
-            return if (localIndex.contains(file.name)) file else null
-        }
-        if (!file.isFile || file.length() <= 512L) return null
-        if (!isLikelyArtworkFile(file)) {
-            runCatching { file.delete() }
-            localIndex.remove(file.name)
-            return null
-        }
-        localIndex.add(file.name)
-        return file
+        return if (localIndex.contains(file.name)) file else null
     }
 
     private fun primeLocalIndex(context: Context) {
         primeJob = indexScope.launch {
+            delay(INDEX_PRIME_DELAY_MS)
             runCatching {
                 persistentDirectory(context)
                     .listFiles()
+                    ?.asSequence()
                     ?.filter { it.isFile && it.length() > 512L && isLikelyArtworkFile(it) }
+                    ?.take(MAX_PERSISTENT_FILES)
                     ?.forEach { localIndex.add(it.name) }
             }.onFailure { Timber.d(it, "Artwork index priming failed") }
             localIndexPrimed = true
@@ -192,7 +187,6 @@ object LevyraArtworkCache {
         val loader = SingletonImageLoader.get(appContext)
         artworkUrls(tracks, limit).forEach { url ->
             loader.enqueue(preloadRequest(appContext, url))
-            loader.enqueue(preloadRequest(appContext, large(url)))
         }
     }
 
@@ -208,8 +202,8 @@ object LevyraArtworkCache {
                 .mapNotNull { track -> target(appContext, track, true) }
                 .distinctBy { it.file.name }
             if (smallTargets.isEmpty() && largeTargets.isEmpty()) return@withContext
-            cacheTargets(smallTargets, 3)
-            cacheTargets(largeTargets, 2)
+            cacheTargets(smallTargets, 2)
+            cacheTargets(largeTargets, 1)
             primeJob?.join()
             trimPersistentDirectory(appContext)
         }
