@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 
 public final class YoutubeSabrFormat implements Serializable {
     private static final long serialVersionUID = 1L;
-    private static final Pattern N_QUERY_PATTERN = Pattern.compile("([?&])n=([^&]+)");
+    private static final Pattern N_QUERY_PATTERN = Pattern.compile("(^|&)n=([^&]+)");
     private static final Pattern N_PATH_PATTERN = Pattern.compile("/n/([^/?#]+)");
 
     private final int itag;
@@ -63,6 +63,7 @@ public final class YoutubeSabrFormat implements Serializable {
     private final String obfuscatedNParameter;
     private final long initRangeStart;
     private final long initRangeEnd;
+
     private YoutubeSabrFormat(final int itag,
                               final long lastModified,
                               @Nullable final String xtags,
@@ -241,7 +242,8 @@ public final class YoutubeSabrFormat implements Serializable {
         if (url == null || url.isEmpty()) {
             return url;
         }
-        final String encryptedN = extractNParameter(url);
+        final UrlComponents components = UrlComponents.parse(url);
+        final String encryptedN = extractNParameter(components);
         if (encryptedN == null) {
             return url;
         }
@@ -249,17 +251,20 @@ public final class YoutubeSabrFormat implements Serializable {
         if (decryptedN == null) {
             return url;
         }
-        final Matcher queryMatcher = N_QUERY_PATTERN.matcher(url);
+        final Matcher queryMatcher = N_QUERY_PATTERN.matcher(components.queryOrEmpty());
         if (queryMatcher.find()) {
-            return url.substring(0, queryMatcher.start(2)) + urlEncode(decryptedN)
-                    + url.substring(queryMatcher.end(2));
+            final String resolvedQuery = components.queryOrEmpty().substring(0,
+                    queryMatcher.start(2)) + urlEncode(decryptedN)
+                    + components.queryOrEmpty().substring(queryMatcher.end(2));
+            return components.withQuery(resolvedQuery);
         }
-        final Matcher pathMatcher = N_PATH_PATTERN.matcher(url);
+        final Matcher pathMatcher = N_PATH_PATTERN.matcher(components.path);
         if (!pathMatcher.find()) {
             return url;
         }
-        return url.substring(0, pathMatcher.start(1)) + decryptedN
-                + url.substring(pathMatcher.end(1));
+        final String resolvedPath = components.path.substring(0, pathMatcher.start(1))
+                + decryptedN + components.path.substring(pathMatcher.end(1));
+        return components.withPath(resolvedPath);
     }
 
     @Nullable
@@ -267,11 +272,17 @@ public final class YoutubeSabrFormat implements Serializable {
         if (url == null || url.isEmpty()) {
             return null;
         }
-        final Matcher queryMatcher = N_QUERY_PATTERN.matcher(url);
+        return extractNParameter(UrlComponents.parse(url));
+    }
+
+    @Nullable
+    private static String extractNParameter(@Nonnull final UrlComponents components)
+            throws ParsingException {
+        final Matcher queryMatcher = N_QUERY_PATTERN.matcher(components.queryOrEmpty());
         if (queryMatcher.find()) {
             return urlDecode(queryMatcher.group(2));
         }
-        final Matcher pathMatcher = N_PATH_PATTERN.matcher(url);
+        final Matcher pathMatcher = N_PATH_PATTERN.matcher(components.path);
         return pathMatcher.find() ? pathMatcher.group(1) : null;
     }
 
@@ -288,11 +299,22 @@ public final class YoutubeSabrFormat implements Serializable {
                 initializationUrl = null;
                 return;
             }
-            final String separator = url.contains("?") ? "&" : "?";
-            url = url + separator + urlEncode(signatureParameter == null
-                    ? "signature" : signatureParameter) + '=' + urlEncode(signature);
+            url = appendQueryParameter(url, signatureParameter == null
+                    ? "signature" : signatureParameter, signature);
         }
         initializationUrl = resolveNParameter(url, decoded);
+    }
+
+    @Nonnull
+    private static String appendQueryParameter(@Nonnull final String url,
+                                               @Nonnull final String name,
+                                               @Nonnull final String value)
+            throws ParsingException {
+        final UrlComponents components = UrlComponents.parse(url);
+        final String encodedParameter = urlEncode(name) + '=' + urlEncode(value);
+        final String query = components.queryOrEmpty();
+        return components.withQuery(query.isEmpty()
+                ? encodedParameter : query + '&' + encodedParameter);
     }
 
     private static final class StreamingUrlParts {
@@ -331,6 +353,46 @@ public final class YoutubeSabrFormat implements Serializable {
 
         boolean isResolved() {
             return signature == null && nParameter == null;
+        }
+    }
+
+    private static final class UrlComponents {
+        @Nonnull
+        private final String path;
+        @Nullable
+        private final String query;
+
+        private UrlComponents(@Nonnull final String path, @Nullable final String query) {
+            this.path = path;
+            this.query = query;
+        }
+
+        @Nonnull
+        static UrlComponents parse(@Nonnull final String url) throws ParsingException {
+            if (url.indexOf('#') >= 0) {
+                throw new ParsingException("SABR URL fragments are not supported");
+            }
+            final int queryStart = url.indexOf('?');
+            if (queryStart < 0) {
+                return new UrlComponents(url, null);
+            }
+            return new UrlComponents(url.substring(0, queryStart),
+                    url.substring(queryStart + 1));
+        }
+
+        @Nonnull
+        String queryOrEmpty() {
+            return query == null ? "" : query;
+        }
+
+        @Nonnull
+        String withPath(@Nonnull final String resolvedPath) {
+            return query == null ? resolvedPath : resolvedPath + '?' + query;
+        }
+
+        @Nonnull
+        String withQuery(@Nonnull final String resolvedQuery) {
+            return path + '?' + resolvedQuery;
         }
     }
 
@@ -481,5 +543,4 @@ public final class YoutubeSabrFormat implements Serializable {
     public long getInitRangeEnd() {
         return initRangeEnd;
     }
-
 }
