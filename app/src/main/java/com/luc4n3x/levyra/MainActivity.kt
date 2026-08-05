@@ -15,6 +15,7 @@ import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,7 +34,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.player.LevyraPipBridge
@@ -71,6 +71,7 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
 
 class MainActivity : ComponentActivity() {
     private val pipMode = mutableStateOf(false)
+    private val viewModel: LevyraViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,15 +97,15 @@ class MainActivity : ComponentActivity() {
             enter = ::enterPictureInPicture,
             update = ::updatePictureInPictureParams
         )
+        val initialActivityUiState = viewModel.state.value.toMainActivityUiSlice()
         setContent {
-            val viewModel: LevyraViewModel = viewModel()
             val activityStateFlow = remember(viewModel) {
                 viewModel.state
                     .map(LevyraUiState::toMainActivityUiSlice)
                     .distinctUntilChanged()
             }
             val activityUiState by activityStateFlow.collectAsStateWithLifecycle(
-                initialValue = viewModel.state.value.toMainActivityUiSlice()
+                initialValue = initialActivityUiState
             )
 
             LevyraTheme(fontPreset = activityUiState.fontPreset) {
