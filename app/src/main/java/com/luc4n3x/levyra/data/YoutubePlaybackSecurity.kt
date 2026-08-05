@@ -489,12 +489,13 @@ private class YoutubeWebPoTokenGenerator(
                 }
                 val ready = ReadyPoTokenRuntime(runtime, playerToken)
                 session.ready = ready
-                resetBuildBackoff()
+                if (version == invalidationVersion.get()) resetBuildBackoff()
                 ready
             } catch (error: CancellationException) {
                 session.failed = true
                 if (
                     armBackoffOnFailure &&
+                    version == invalidationVersion.get() &&
                     PoTokenBuildFailurePolicy.shouldArmBackoff(
                         cancellation = true,
                         ownerActive = currentCoroutineContext().isActive
@@ -505,7 +506,7 @@ private class YoutubeWebPoTokenGenerator(
                 throw error
             } catch (error: Throwable) {
                 session.failed = true
-                if (armBackoffOnFailure) armBuildBackoff()
+                if (armBackoffOnFailure && version == invalidationVersion.get()) armBuildBackoff()
                 throw error
             }
         }
@@ -559,7 +560,9 @@ private class YoutubeWebPoTokenGenerator(
             }
 
             if (built == null) {
-                nextRefreshAttemptAtMs.set(System.currentTimeMillis() + REFRESH_RETRY_COOLDOWN_MS)
+                if (version == invalidationVersion.get()) {
+                    nextRefreshAttemptAtMs.set(System.currentTimeMillis() + REFRESH_RETRY_COOLDOWN_MS)
+                }
                 lock.withLock {
                     if (replacement === candidate) replacement = null
                 }
@@ -582,7 +585,7 @@ private class YoutubeWebPoTokenGenerator(
                     candidate
                 }
             }
-            nextRefreshAttemptAtMs.set(0L)
+            if (version == invalidationVersion.get()) nextRefreshAttemptAtMs.set(0L)
             session.refreshing.set(false)
             closeWhenSettled(retired, graceMs = RETIRE_GRACE_MS)
         }
