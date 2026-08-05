@@ -42,7 +42,7 @@ fun resolvePlayerExpansionTarget(
 }
 
 /**
- * A symmetric smooth-step shared by the transition channels.
+ * A symmetric smooth-step shared by every visible player transition layer.
  *
  * The drag remains reversible and tied to the finger, while the rendered layers accelerate and
  * settle together instead of looking like unrelated fades.
