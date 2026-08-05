@@ -132,6 +132,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          find third_party/LevyraExtractor/extractor/src \
+            -type f -name '*.java' -print0 \
+            | xargs -0 sed -i 's/[[:space:]]\+$//'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
