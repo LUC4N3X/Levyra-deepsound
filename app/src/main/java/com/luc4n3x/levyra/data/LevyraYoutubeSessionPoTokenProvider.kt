@@ -2,8 +2,6 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import android.os.Looper
-import com.luc4n3x.levyra.BuildConfig
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
@@ -21,13 +19,7 @@ import java.io.IOException
  * compatibility fallback remains non-blocking.
  */
 internal class LevyraYoutubeSessionPoTokenProvider(context: Context) : YoutubeSessionPoTokenProvider {
-    private val appContext = context.applicationContext
-    private val security = YoutubePlaybackSecurity(
-        appContext,
-        LevyraHttpClientFactory.youtubePlayer(),
-        BuildConfig.YOUTUBE_INNERTUBE_API_KEY,
-        LevyraPreferences(appContext)
-    )
+    private val security = YoutubePlaybackSecurity.getInstance(context)
 
     override fun getSessionPoToken(
         clientName: String,

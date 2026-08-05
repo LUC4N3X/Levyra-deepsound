@@ -369,6 +369,23 @@ Levyra distinguishes:
 - Streaming or GVS PO Token bound to the guest session.
  
 The isolated WebView runtime performs BotGuard initialization and token generation only for profiles that need it.
+
+One runtime is shared process-wide by the direct resolver and the vendored extractor. Its build runs
+in a scope owned by the generator rather than in the first caller, so a losing race branch or an
+abandoned prefetch never destroys a runtime another track is waiting on. Consequences:
+
+- the runtime is warmed once from the startup idle path, gated by the low-RAM and power-constrained
+  plan, so a cold BotGuard start is normally paid before the first tap rather than during it; the
+  warm-up never runs from the tap path, because building the WebView happens on the main thread;
+- a profile that declares `requiresPoToken` fails its branch rather than sending a token-less
+  request, so a bot gate cannot rotate the guest session and discard the build it was waiting for;
+- concurrent client profiles join the same build and the same per-video mint instead of serializing;
+- an approaching integrity-token expiry is replaced in the background while the current runtime keeps
+  serving, so expiry never lands as a cold rebuild on playback;
+- repeated build failures back off exponentially (2s to 60s), so a resolve fails over to the clients
+  that need no PO Token instead of re-paying an initialization timeout each attempt;
+- best-effort callers wait only briefly for a cold build and degrade rather than hold a race slot,
+  while the build continues for whoever asks next.
  
 ```text
 Player token

@@ -100,7 +100,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val videoSelector = LevyraVideoStreamSelector(context)
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-    private val playbackSecurity = YoutubePlaybackSecurity(context, youtubeHttpClient, apiKey, userPreferences)
+    private val playbackSecurity = YoutubePlaybackSecurity.getInstance(context)
     private val resilienceEngine = PlaybackResilienceEngine(context)
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -183,6 +183,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
             })
         }
+    }
+
+    fun warmPlaybackSecurity() {
+        if (!hasInternetCapableNetwork()) return
+        playbackSecurity.warmUp()
     }
 
     suspend fun enrichYoutubeEngagement(track: Track): Track {
@@ -1382,6 +1387,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             playbackSecurity.cachedSession()
         }
         val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokens(track.id, session) else null
+        if (profile.requiresPoToken && poTokens == null) {
+            throw YoutubePlayerRequestException(null, "Integrity token non disponibile per ${profile.label}")
+        }
         val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
             runCatching { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(track.id) }.getOrNull()
         } else {
