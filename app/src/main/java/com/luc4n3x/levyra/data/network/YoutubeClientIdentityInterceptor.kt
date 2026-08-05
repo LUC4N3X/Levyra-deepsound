@@ -5,13 +5,6 @@ import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
 
-/**
- * Keeps the transport identity coherent with the declared InnerTube client.
- *
- * The BotGuard WebView currently mints PO tokens as Chrome 131, so WEB-family requests that may
- * present those tokens must use the same browser identity. Native clients must not carry browser
- * navigation headers, and Android Music must use the package-style user agent emitted by the app.
- */
 internal object YoutubeClientIdentityInterceptor : Interceptor {
     internal const val PO_TOKEN_WEB_USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
