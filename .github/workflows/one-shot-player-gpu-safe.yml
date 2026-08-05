@@ -1,15 +1,14 @@
 name: One-shot GPU-safe player patch
 
 on:
-  pull_request:
-    types: [synchronize]
+  push:
+    branches: [feat/player-experience-motion]
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.pull_request.head.ref == 'feat/player-experience-motion'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
