@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-05T17:42:37Z",
+  "generatedAt": "2026-08-05T18:15:06Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -796,7 +796,7 @@
             "audioVideoId": "Ngg0sM-i4sc",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCWzLntTTpu5aUhvoXoLOIbQ"
+            "artistBrowseId": "UC4MtajQrTsHUln-4DhX1Eow"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027265c7cbbc7f89bba30614ff"
         },
@@ -1626,7 +1626,7 @@
         },
         {
           "position": 18,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1634,8 +1634,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1645,7 +1645,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 19,
@@ -1718,7 +1718,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-62f091057573870630ff",
+          "id": "levyra-5d7a8244a6022b4ddba4",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1726,12 +1726,12 @@
             }
           ],
           "album": {
-            "name": "Rumours (Super Deluxe)",
+            "name": "Rumours",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
         },
         {
           "position": 23,
@@ -2036,7 +2036,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2044,12 +2044,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 37,
@@ -4539,12 +4539,6 @@
           },
           "durationMs": 212908,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "vWLgRmLN2HI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC7PL9aor5qNRhvhWWVXyOqA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b84b5d956376cb8e55425f5"
         },
         {
@@ -7030,14 +7024,6 @@
           },
           "durationMs": 284866,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "WivOyYEdjEE",
-            "audioConfidence": 100,
-            "videoId": "t4H_Zoh7G5A",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -9983,6 +9969,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -15084,7 +15076,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15092,8 +15084,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15103,7 +15095,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 33,
@@ -17423,14 +17415,6 @@
           },
           "durationMs": 284866,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "WivOyYEdjEE",
-            "audioConfidence": 100,
-            "videoId": "t4H_Zoh7G5A",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -19893,12 +19877,6 @@
           },
           "durationMs": 225959,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "u7X4fPZ_jsc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCxujwWdnXrQuTYtN8W1ChEA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0239b5585cb4fc5f6b6e5d55e3"
         },
         {
@@ -20978,6 +20956,12 @@
           },
           "durationMs": 222293,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "oFzP7YKS5gM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UChbU0n7P86fWdZtlzCNCeGg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0244c48f55cbea9422c30f0f64"
         },
         {
@@ -23175,6 +23159,12 @@
           },
           "durationMs": 190098,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "tNc2coVC2aw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC4pXWqeKDSIWEvlLLTYWmXQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020a47bbe7141fdfe0eb2cdba7"
         },
         {
@@ -24080,7 +24070,7 @@
         },
         {
           "position": 47,
-          "id": "levyra-e58c98ea589fa449e1d7",
+          "id": "levyra-0212b4c8036ae7ca6989",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24097,12 +24087,12 @@
             }
           ],
           "album": {
-            "name": "Guru (Original Motion Picture Soundtrack)",
-            "releaseDate": "2006-09-11"
+            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
+            "releaseDate": "2009-02-19"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
         },
         {
           "position": 48,
@@ -26285,11 +26275,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 40,
@@ -27185,8 +27175,6 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
