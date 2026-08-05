@@ -186,7 +186,7 @@ public final class SabrOnesieHeader {
 
     @Nonnull
     String getTypeSummary() {
-        return type + '/' + getTypeName();
+        return type + "/" + getTypeName();
     }
 
     @Nonnull

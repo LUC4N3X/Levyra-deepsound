@@ -125,6 +125,21 @@ public abstract class Downloader {
     }
 
     /**
+     * Streaming GET with a caller-supplied deadline. Implementations that support per-call
+     * timeouts should override this; the compatibility default preserves the regular behavior.
+     */
+    public StreamingResponse getStreaming(final String url,
+                                          @Nullable final Map<String, List<String>> headers,
+                                          @Nullable final Localization localization,
+                                          final long timeoutMs)
+            throws IOException, ReCaptchaException {
+        if (timeoutMs > 0) {
+            throw new IOException("Downloader does not implement timeout-aware streaming GET");
+        }
+        return getStreaming(url, headers, localization);
+    }
+
+    /**
      * Do a HEAD request.
      *
      * @param url the URL that is pointing to the wanted resource

@@ -42,6 +42,23 @@ public final class SabrNextRequestPolicy {
     }
 
     @Nonnull
+    public static SabrNextRequestPolicy normalized(final int targetAudioReadaheadMs,
+                                                    final int targetVideoReadaheadMs,
+                                                    final int maxTimeSinceLastRequestMs,
+                                                    final int backoffTimeMs,
+                                                    final int minAudioReadaheadMs,
+                                                    final int minVideoReadaheadMs,
+                                                    @Nullable final byte[] playbackCookie,
+                                                    @Nullable final String videoId) {
+        if (playbackCookie != null && playbackCookie.length > 64 * 1024) {
+            throw new IllegalArgumentException("SABR playback cookie exceeded Host limit");
+        }
+        return new SabrNextRequestPolicy(targetAudioReadaheadMs, targetVideoReadaheadMs,
+                maxTimeSinceLastRequestMs, backoffTimeMs, minAudioReadaheadMs,
+                minVideoReadaheadMs, playbackCookie, null, videoId, "policy");
+    }
+
+    @Nonnull
     static SabrNextRequestPolicy decode(@Nonnull final byte[] data) throws SabrProtocolException {
         int targetAudioReadaheadMs = -1;
         int targetVideoReadaheadMs = -1;

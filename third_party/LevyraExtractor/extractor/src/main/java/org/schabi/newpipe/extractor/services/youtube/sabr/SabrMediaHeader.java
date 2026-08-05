@@ -27,20 +27,20 @@ public final class SabrMediaHeader {
     private SabrMediaHeader(final int headerId,
                             @Nullable final String videoId,
                             final int itag,
-                             final long lastModified,
-                             @Nullable final String xtags,
-                             final long startRange,
-                             final int compressionAlgorithm,
-                             final boolean initSegment,
-                             final int sequenceNumber,
-                             final long bitrateBps,
-                             final long startMs,
-                             final long durationMs,
-                             final long contentLength,
-                             final long timeRangeStartTicks,
-                             final long timeRangeDurationTicks,
-                             final int timeRangeTimescale,
-                             final long sequenceLastModified) {
+                            final long lastModified,
+                            @Nullable final String xtags,
+                            final long startRange,
+                            final int compressionAlgorithm,
+                            final boolean initSegment,
+                            final int sequenceNumber,
+                            final long bitrateBps,
+                            final long startMs,
+                            final long durationMs,
+                            final long contentLength,
+                            final long timeRangeStartTicks,
+                            final long timeRangeDurationTicks,
+                            final int timeRangeTimescale,
+                            final long sequenceLastModified) {
         this.headerId = headerId;
         this.videoId = videoId;
         this.itag = itag;
@@ -58,6 +58,58 @@ public final class SabrMediaHeader {
         this.timeRangeDurationTicks = timeRangeDurationTicks;
         this.timeRangeTimescale = timeRangeTimescale;
         this.sequenceLastModified = sequenceLastModified;
+    }
+
+    @Nonnull
+    public static SabrMediaHeader normalized(final int headerId,
+                                             @Nullable final String videoId,
+                                             final int itag, final long lastModified,
+                                             @Nullable final String xtags,
+                                             final long startRange, final int compressionAlgorithm,
+                                             final boolean initSegment, final int sequenceNumber,
+                                             final long bitrateBps, final long startMs,
+                                             final long durationMs, final long contentLength,
+                                             final long timeRangeStartTicks,
+                                             final long timeRangeDurationTicks,
+                                             final int timeRangeTimescale,
+                                             final long sequenceLastModified) {
+        long normalizedStartMs = startMs;
+        long normalizedDurationMs = durationMs;
+        final boolean hasTimeRange = timeRangeStartTicks >= 0 || timeRangeDurationTicks >= 0;
+        if (hasTimeRange && timeRangeTimescale <= 0) {
+            throw new IllegalArgumentException("SABR media time range requires a positive timescale");
+        }
+        if (timeRangeTimescale > 0) {
+            if (normalizedStartMs < 0 && timeRangeStartTicks >= 0) {
+                normalizedStartMs = timeRangeToMilliseconds(
+                        timeRangeStartTicks, timeRangeTimescale);
+            }
+            if (normalizedDurationMs < 0 && timeRangeDurationTicks >= 0) {
+                normalizedDurationMs = timeRangeToMilliseconds(
+                        timeRangeDurationTicks, timeRangeTimescale);
+            }
+        }
+        if (normalizedStartMs < -1 || normalizedDurationMs < -1 || contentLength < -1) {
+            throw new IllegalArgumentException("Invalid SABR media header range");
+        }
+        return new SabrMediaHeader(headerId, videoId, itag, lastModified, xtags, startRange,
+                compressionAlgorithm, initSegment, sequenceNumber, bitrateBps,
+                normalizedStartMs, normalizedDurationMs, contentLength, timeRangeStartTicks,
+                timeRangeDurationTicks, timeRangeTimescale, sequenceLastModified);
+    }
+
+    private static long timeRangeToMilliseconds(final long ticks, final int timescale) {
+        final long whole = ticks / timescale;
+        final long remainder = ticks % timescale;
+        if (whole > Long.MAX_VALUE / 1000L) {
+            throw new IllegalArgumentException("SABR media time range overflows milliseconds");
+        }
+        final long wholeMilliseconds = whole * 1000L;
+        final long fractionalMilliseconds = remainder * 1000L / timescale;
+        if (wholeMilliseconds > Long.MAX_VALUE - fractionalMilliseconds) {
+            throw new IllegalArgumentException("SABR media time range overflows milliseconds");
+        }
+        return wholeMilliseconds + fractionalMilliseconds;
     }
 
     @Nonnull
@@ -147,19 +199,15 @@ public final class SabrMediaHeader {
             }
         }
 
-        if (timeRangeTimescale > 0) {
-            if (startMs < 0 && timeRangeStartTicks >= 0) {
-                startMs = timeRangeStartTicks * 1000L / timeRangeTimescale;
-            }
-            if (durationMs < 0 && timeRangeDurationTicks >= 0) {
-                durationMs = timeRangeDurationTicks * 1000L / timeRangeTimescale;
-            }
+        try {
+            return normalized(headerId, videoId, itag, lastModified, xtags, startRange,
+                    compressionAlgorithm, initSegment, sequenceNumber, bitrateBps, startMs,
+                    durationMs, contentLength, timeRangeStartTicks, timeRangeDurationTicks,
+                    timeRangeTimescale, sequenceLastModified);
+        } catch (final IllegalArgumentException error) {
+            throw new SabrProtocolException("Invalid SABR media header: " + error.getMessage(),
+                    error);
         }
-
-        return new SabrMediaHeader(headerId, videoId, itag, lastModified, xtags, startRange,
-                compressionAlgorithm, initSegment, sequenceNumber, bitrateBps, startMs, durationMs,
-                contentLength, timeRangeStartTicks, timeRangeDurationTicks, timeRangeTimescale,
-                sequenceLastModified);
     }
 
     @Nonnull

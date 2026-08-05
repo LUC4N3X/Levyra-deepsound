@@ -778,10 +778,10 @@ public class BillibiliStreamExtractor extends StreamExtractor {
 
         try {
             String videoshotUrl = VIDEOSHOT_API_URL + bvid;
-            
+
             String response = getDownloader().get(videoshotUrl, getHeaders(getOriginalUrl())).responseBody();
             JsonObject responseJson = JsonParser.object().from(response);
-            
+
             if (responseJson.getInt("code") != 0) {
                 return Collections.emptyList();
             }
@@ -793,7 +793,7 @@ public class BillibiliStreamExtractor extends StreamExtractor {
 
             JsonArray imageUrls = data.getArray("image");
             JsonArray timeIndex = data.getArray("index");
-            
+
             if (imageUrls.isEmpty() || timeIndex.isEmpty()) {
                 return Collections.emptyList();
             }

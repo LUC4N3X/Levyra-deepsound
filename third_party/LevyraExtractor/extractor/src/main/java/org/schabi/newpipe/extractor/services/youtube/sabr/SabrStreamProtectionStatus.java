@@ -3,6 +3,9 @@ package org.schabi.newpipe.extractor.services.youtube.sabr;
 import javax.annotation.Nonnull;
 
 public final class SabrStreamProtectionStatus {
+    public static final int ATTESTATION_PENDING = 2;
+    public static final int ATTESTATION_REQUIRED = 3;
+
     private final int status;
     private final int maxRetries;
     @Nonnull
