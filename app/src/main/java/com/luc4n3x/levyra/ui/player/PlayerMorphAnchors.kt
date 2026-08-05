@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import kotlin.math.PI
+import kotlin.math.sin
 
 enum class PlayerMorphSlot {
     Mini,
@@ -32,11 +34,21 @@ class PlayerMorphAnchors {
         }
     }
 
-    /** Interpolates the measured mini and full artwork rectangles for the current motion fraction. */
+    /**
+     * Resolves a reversible flight path between the mini and full artwork.
+     *
+     * A small lift and bloom around the middle give the cover a physical hand-off between the two
+     * surfaces. Both effects are zero at the endpoints, so dragging back down is exactly symmetric.
+     */
     fun resolve(fraction: Float): Rect? {
         val start = miniBounds ?: return null
         val end = fullBounds ?: return null
-        return lerpRect(start, end, fraction.finiteOr(0f).coerceIn(0f, 1f))
+        val t = fraction.finiteOr(0f).coerceIn(0f, 1f)
+        val base = lerpRect(start, end, t)
+        val pulse = sin(PI.toFloat() * t).coerceAtLeast(0f)
+        val bloom = 1f + 0.035f * pulse
+        val liftPx = -end.height.coerceAtMost(720f) * 0.035f * pulse
+        return base.scaledAroundCenter(bloom, liftPx)
     }
 }
 
@@ -65,8 +77,23 @@ fun lerpRect(start: Rect, end: Rect, fraction: Float): Rect {
 fun morphCornerRadius(startRadius: Float, endRadius: Float, fraction: Float): Float {
     val safeStart = startRadius.finiteOr(0f).coerceAtLeast(0f)
     val safeEnd = endRadius.finiteOr(safeStart).coerceAtLeast(0f)
-    val t = fraction.finiteOr(0f).coerceIn(0f, 1f)
+    val t = playerMotionProgress(fraction)
     return safeStart + (safeEnd - safeStart) * t
+}
+
+private fun Rect.scaledAroundCenter(scale: Float, offsetY: Float): Rect {
+    val safeScale = scale.finiteOr(1f).coerceAtLeast(0f)
+    val safeOffset = offsetY.finiteOr(0f)
+    val halfWidth = width * safeScale / 2f
+    val halfHeight = height * safeScale / 2f
+    val centerX = (left + right) / 2f
+    val centerY = (top + bottom) / 2f + safeOffset
+    return Rect(
+        left = centerX - halfWidth,
+        top = centerY - halfHeight,
+        right = centerX + halfWidth,
+        bottom = centerY + halfHeight
+    )
 }
 
 private fun Rect.isUsableMorphRect(): Boolean =
