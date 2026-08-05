@@ -21,7 +21,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -42,10 +41,6 @@ import com.luc4n3x.levyra.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -57,10 +52,14 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -123,6 +122,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -221,6 +221,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
@@ -238,6 +239,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.blur
@@ -273,6 +275,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -331,7 +334,6 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
-import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -408,6 +410,30 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.ui.player.PlayerDragEvent
+import com.luc4n3x.levyra.ui.player.PlayerGestureZone
+import com.luc4n3x.levyra.ui.player.PlayerMorphAnchors
+import com.luc4n3x.levyra.ui.player.PlayerMorphSlot
+import com.luc4n3x.levyra.ui.player.PlayerSwipeResult
+import com.luc4n3x.levyra.ui.player.PlayerVerticalResult
+import com.luc4n3x.levyra.ui.player.morphCornerRadius
+import com.luc4n3x.levyra.ui.player.playerBackgroundScale
+import com.luc4n3x.levyra.ui.player.playerChromeAlpha
+import com.luc4n3x.levyra.ui.player.playerExpansionFromDrag
+import com.luc4n3x.levyra.ui.player.playerAxisDragGestures
+import com.luc4n3x.levyra.ui.player.playerMorphActive
+import com.luc4n3x.levyra.ui.player.playerMorphAnchor
+import com.luc4n3x.levyra.ui.player.playerMorphFraction
+import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
+import com.luc4n3x.levyra.ui.player.playerSurfaceAlpha
+import com.luc4n3x.levyra.ui.player.playerSurfaceLiftFraction
+import com.luc4n3x.levyra.ui.player.playerSurfaceScale
+import com.luc4n3x.levyra.ui.player.playerSwipeContentAlpha
+import com.luc4n3x.levyra.ui.player.playerTapSide
+import com.luc4n3x.levyra.ui.player.rememberPlayerMorphAnchors
+import com.luc4n3x.levyra.ui.player.resolveMiniPlayerDismiss
+import com.luc4n3x.levyra.ui.player.resolvePlayerExpansionTarget
 import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
@@ -1036,7 +1062,6 @@ private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
 }
 
 @Composable
-@OptIn(ExperimentalSharedTransitionApi::class)
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -1165,8 +1190,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         LocalLevyraStrings provides currentStrings,
         LocalLayoutDirection provides layoutDirection
     ) {
-        SharedTransitionLayout {
-            Box(
+        Box(modifier = Modifier.fillMaxSize()) {
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(LevyraBlack)
@@ -1175,9 +1200,93 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
             val homeListState = rememberLazyListState()
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
+            val rootDensity = LocalDensity.current
+            val rootLayoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
+            val expansionTravelPx = with(rootDensity) { maxHeight.toPx() }.coerceAtLeast(1f)
+            val expansionScope = rememberCoroutineScope()
+            val morphAnchors = rememberPlayerMorphAnchors()
+            val playerExpansion = remember {
+                Animatable(if (state.selectedTab == LevyraTab.Player) 1f else 0f)
+            }
+            var expansionDragStart by remember { mutableStateOf(0f) }
+            var expansionDragAccum by remember { mutableStateOf(0f) }
+            var expansionDragGeneration by remember { mutableStateOf(0) }
+            var backgroundTab by remember {
+                mutableStateOf(state.selectedTab.takeIf { it != LevyraTab.Player } ?: LevyraTab.Home)
+            }
+            LaunchedEffect(state.selectedTab) {
+                if (state.selectedTab != LevyraTab.Player) backgroundTab = state.selectedTab
+            }
+            LaunchedEffect(state.selectedTab, state.animationsEnabled) {
+                val target = if (state.selectedTab == LevyraTab.Player) 1f else 0f
+                if (playerExpansion.value == target) return@LaunchedEffect
+                if (state.animationsEnabled) {
+                    playerExpansion.animateTo(target, spring(dampingRatio = 0.82f, stiffness = 360f))
+                } else {
+                    playerExpansion.snapTo(target)
+                }
+            }
+            val expansionProvider: () -> Float = { playerExpansion.value }
+            val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
+            val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
+            val morphAllowed = state.animationsEnabled && !state.isVideoMode
+            val artworkMorphActive by remember(morphAllowed) {
+                derivedStateOf {
+                    morphAllowed &&
+                        morphAnchors.miniBounds != null &&
+                        morphAnchors.fullBounds != null &&
+                        playerMorphActive(playerExpansion.value)
+                }
+            }
+            val onExpansionDragStart: () -> Unit = {
+                expansionDragStart = playerExpansion.value
+                expansionDragAccum = 0f
+                expansionDragGeneration += 1
+            }
+            val onExpansionDrag: (Float) -> Unit = { delta ->
+                expansionDragAccum += delta
+                val generation = expansionDragGeneration
+                expansionScope.launch {
+                    if (generation == expansionDragGeneration) {
+                        playerExpansion.snapTo(
+                            playerExpansionFromDrag(expansionDragStart, expansionDragAccum, expansionTravelPx)
+                        )
+                    }
+                }
+            }
+            val settleExpansion: (Float, Boolean) -> Unit = { velocity, wasExpanded ->
+                expansionDragGeneration += 1
+                val target = resolvePlayerExpansionTarget(playerExpansion.value, velocity, wasExpanded)
+                expansionScope.launch {
+                    if (target >= 1f) {
+                        if (state.selectedTab != LevyraTab.Player) viewModel.selectTab(LevyraTab.Player)
+                        playerExpansion.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 360f))
+                    } else {
+                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
+                        if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
+                    }
+                }
+            }
+            val collapsePlayer: () -> Unit = {
+                expansionScope.launch {
+                    if (state.animationsEnabled) {
+                        playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
+                    } else {
+                        playerExpansion.snapTo(0f)
+                    }
+                    if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
+                }
+            }
 
             AnimatedContent(
-                targetState = state.selectedTab,
+                targetState = backgroundTab,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val depth = playerBackgroundScale(expansionProvider())
+                        scaleX = depth
+                        scaleY = depth
+                    },
                 transitionSpec = {
                     if (!state.animationsEnabled) {
                         EnterTransition.None togetherWith ExitTransition.None
@@ -1224,66 +1333,117 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
                             LevyraLibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
                         }
-                        LevyraTab.Player -> {
-                            val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
-                            val screenState by playerViewModel.state.collectAsStateWithLifecycle()
-                            PlayerScreen(
-                                playerViewModel,
-                                screenState,
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this@AnimatedContent
-                            )
-                        }
+                        LevyraTab.Player -> Unit
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                AnimatedVisibility(
-                    visible = state.selectedTab != LevyraTab.Player,
-                    enter = miniEnter,
-                    exit = miniExit
+            if (chromeVisible) {
+                val miniMaxWidth = levyraMiniPlayerMaxWidthDp(rootLayoutMode)
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     BottomTabsScrim()
-                }
-                AnimatedVisibility(
-                    visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null,
-                    enter = miniEnter,
-                    exit = miniExit
-                ) {
-                    state.currentTrack?.let { track ->
-                        MiniPlayer(
-                            track = track,
+                    AnimatedVisibility(
+                        visible = state.currentTrack != null,
+                        enter = miniEnter,
+                        exit = miniExit
+                    ) {
+                        state.currentTrack?.let { track ->
+                            Box(
+                                modifier = if (miniMaxWidth.isFinite()) {
+                                    Modifier.widthIn(max = miniMaxWidth.dp)
+                                } else {
+                                    Modifier
+                                }
+                            ) {
+                                MiniPlayer(
+                                    model = MiniPlayerModel(
+                                        track = track,
+                                        isPlaying = state.isPlaying,
+                                        isResolving = state.isResolving,
+                                        progress = progressOf(state.positionMs, state.durationMs),
+                                        bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
+                                        animated = state.animationsEnabled,
+                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled
+                                    ),
+                                    morphAnchors = morphAnchors,
+                                    playbackActions = MiniPlayerPlaybackActions(
+                                        open = { viewModel.selectTab(LevyraTab.Player) },
+                                        toggle = viewModel::togglePlay,
+                                        next = viewModel::next,
+                                        previous = viewModel::previous,
+                                        close = viewModel::closePlayer
+                                    ),
+                                    expansionActions = MiniPlayerExpansionActions(
+                                        start = onExpansionDragStart,
+                                        drag = onExpansionDrag,
+                                        end = { velocity -> settleExpansion(velocity, false) }
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    Box(
+                        modifier = if (miniMaxWidth.isFinite()) {
+                            Modifier.widthIn(max = miniMaxWidth.dp)
+                        } else {
+                            Modifier
+                        }
+                    ) {
+                        BottomTabs(
+                            selected = state.selectedTab,
+                            hasActiveTrack = state.currentTrack != null,
                             isPlaying = state.isPlaying,
-                            isResolving = state.isResolving,
-                            progress = progressOf(state.positionMs, state.durationMs),
-                            animated = state.animationsEnabled,
-                            sharedTransitionScope = this@SharedTransitionLayout,
-                            animatedVisibilityScope = this@AnimatedVisibility,
-                            onOpen = { viewModel.selectTab(LevyraTab.Player) },
-                            onToggle = viewModel::togglePlay,
-                            onNext = viewModel::next,
-                            onClose = viewModel::closePlayer
+                            onSelect = viewModel::selectTab
                         )
                     }
                 }
-                AnimatedVisibility(
-                    visible = state.selectedTab != LevyraTab.Player,
-                    enter = miniEnter,
-                    exit = miniExit
+            }
+
+            if (playerVisible) {
+                val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
+                val playerScreenState by playerViewModel.state.collectAsStateWithLifecycle()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val expansion = expansionProvider()
+                            alpha = playerSurfaceAlpha(expansion)
+                            val surfaceScale = playerSurfaceScale(expansion)
+                            scaleX = surfaceScale
+                            scaleY = surfaceScale
+                            translationY = playerSurfaceLiftFraction(expansion) * expansionTravelPx
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        }
                 ) {
-                    BottomTabs(
-                        selected = state.selectedTab,
-                        hasActiveTrack = state.currentTrack != null,
-                        isPlaying = state.isPlaying,
-                        onSelect = viewModel::selectTab
+                    PlayerScreen(
+                        viewModel = playerViewModel,
+                        state = playerScreenState,
+                        morphAnchors = morphAnchors,
+                        morphActive = artworkMorphActive,
+                        collapseActions = PlayerCollapseActions(
+                            collapse = collapsePlayer,
+                            dragStart = onExpansionDragStart,
+                            drag = onExpansionDrag,
+                            dragEnd = { velocity -> settleExpansion(velocity, true) }
+                        )
                     )
                 }
+            }
+
+            val morphTrack = state.currentTrack
+            if (artworkMorphActive && morphTrack != null) {
+                PlayerArtworkMorphLayer(
+                    track = morphTrack,
+                    anchors = morphAnchors,
+                    expansion = expansionProvider
+                )
             }
 
             AnimatedVisibility(
@@ -4064,6 +4224,8 @@ private fun LyricsOverlay(
     var showSecondaryVoices by remember(track?.id) { mutableStateOf(true) }
     var lyricsOffsetMs by remember(track?.id) { mutableStateOf(0L) }
     var autoScrollEnabled by remember(track?.id) { mutableStateOf(true) }
+    val lyricsAnimationsEnabled = LocalAnimationsEnabled.current
+    var lyricsFocusMode by remember(track?.id) { mutableStateOf(lyricsAnimationsEnabled) }
     var autoScrolling by remember { mutableStateOf(false) }
     var initialLyricsPositioned by remember(track?.id) { mutableStateOf(false) }
     var selectionMode by remember(track?.id) { mutableStateOf(false) }
@@ -4192,6 +4354,35 @@ private fun LyricsOverlay(
                 )
         )
         if (viewMode == LyricsViewMode.CINEMA) {
+            val backdropAlpha = lyricsBackdropAlpha(lyricsFocusMode, cinema = true)
+            if (track != null && backdropAlpha > 0f) {
+                AsyncImage(
+                    model = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(58.dp)
+                        .graphicsLayer {
+                            alpha = backdropAlpha
+                            scaleX = 1.22f
+                            scaleY = 1.22f
+                        }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.62f),
+                                    Color.Black.copy(alpha = 0.40f),
+                                    Color.Black.copy(alpha = 0.78f)
+                                )
+                            )
+                        )
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -4362,6 +4553,12 @@ private fun LyricsOverlay(
                             }
                         )
                         LyricsControlChip(
+                            label = strings.lyricsFocus,
+                            selected = lyricsFocusMode,
+                            icon = Icons.Rounded.Visibility,
+                            onClick = { lyricsFocusMode = !lyricsFocusMode }
+                        )
+                        LyricsControlChip(
                             label = strings.automaticTranslation,
                             selected = state.lyricsTranslationEnabled,
                             icon = Icons.Rounded.Translate,
@@ -4525,6 +4722,8 @@ private fun LyricsOverlay(
                         synced = state.lyricsSynced,
                         viewMode = viewMode,
                         distanceFromActive = if (activeIndex >= 0) kotlin.math.abs(index - activeIndex) else 0,
+                        focusMode = lyricsFocusMode,
+                        blurEnabled = lyricsAnimationsEnabled,
                         sectionLabel = sectionStarts[index]?.let { lyricSectionLabel(strings, it) },
                         showRomanization = showRomanization,
                         accentEnd = accentEnd,
@@ -4825,6 +5024,8 @@ private fun KaraokeLyricLine(
     synced: Boolean,
     viewMode: LyricsViewMode,
     distanceFromActive: Int,
+    focusMode: Boolean,
+    blurEnabled: Boolean,
     sectionLabel: String?,
     showRomanization: Boolean,
     accentEnd: Color,
@@ -4857,17 +5058,21 @@ private fun KaraokeLyricLine(
         animationSpec = tween(durationMillis = 120, easing = LinearOutSlowInEasing),
         label = "lyrics-line-scale"
     )
-    val targetAlpha = when {
-        !compact || !synced -> 1f
-        distanceFromActive == 0 -> 1f
-        distanceFromActive == 1 -> 0.58f
-        distanceFromActive == 2 -> 0.25f
-        else -> 0.10f
-    }
+    val targetAlpha = lyricsFocusAlpha(
+        distance = distanceFromActive,
+        focusMode = focusMode,
+        compact = compact,
+        synced = synced
+    )
     val lineAlpha by animateFloatAsState(
         targetValue = targetAlpha,
         animationSpec = tween(durationMillis = 110),
         label = "lyrics-line-alpha"
+    )
+    val lineBlur by animateDpAsState(
+        targetValue = lyricsFocusBlurDp(distanceFromActive, focusMode, synced, blurEnabled).dp,
+        animationSpec = tween(durationMillis = 160),
+        label = "lyrics-line-blur"
     )
     val mainFontSize = when {
         compact && isPrimaryActive -> 22.sp
@@ -4913,6 +5118,7 @@ private fun KaraokeLyricLine(
             )
             .padding(horizontal = horizontalPadding, vertical = if (compact) 2.dp else 0.dp)
             .padding(horizontal = if (selectionMode) 10.dp else 0.dp, vertical = if (selectionMode) 7.dp else 0.dp)
+            .then(if (lineBlur > 0.dp) Modifier.blur(lineBlur) else Modifier)
             .graphicsLayer {
                 scaleX = activeScale
                 scaleY = activeScale
@@ -11425,13 +11631,73 @@ private fun PlayerInlineLyricsSection(
     }
 }
 
+private data class PlayerCollapseActions(
+    val collapse: () -> Unit,
+    val dragStart: () -> Unit,
+    val drag: (Float) -> Unit,
+    val dragEnd: (Float) -> Unit
+)
+
+private data class PlayerGestureEnvironment(
+    val activity: Activity?,
+    val audioManager: AudioManager?,
+    val brightnessLabel: String,
+    val volumeLabel: String,
+    val rightToLeft: Boolean
+)
+
+private data class PlayerGestureConfig(
+    val trackId: String,
+    val settings: LevyraInterfaceSettings,
+    val playbackSpeed: Float,
+    val environment: PlayerGestureEnvironment
+)
+
+private data class PlayerGestureMediaActions(
+    val seekBy: (Long) -> Unit,
+    val next: () -> Unit,
+    val previous: () -> Unit,
+    val swipeOffset: (Float) -> Unit,
+    val temporarySpeed: (Float) -> Unit
+)
+
+private data class PlayerGestureUiActions(
+    val feedback: (String) -> Unit,
+    val haptic: () -> Unit,
+    val collapse: PlayerCollapseActions
+)
+
+private data class MiniPlayerModel(
+    val track: Track,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val progress: Float,
+    val bufferedProgress: Float,
+    val animated: Boolean,
+    val gesturesEnabled: Boolean
+)
+
+private data class MiniPlayerPlaybackActions(
+    val open: () -> Unit,
+    val toggle: () -> Unit,
+    val next: () -> Unit,
+    val previous: () -> Unit,
+    val close: () -> Unit
+)
+
+private data class MiniPlayerExpansionActions(
+    val start: () -> Unit,
+    val drag: (Float) -> Unit,
+    val end: (Float) -> Unit
+)
+
 @Composable
-@OptIn(ExperimentalSharedTransitionApi::class)
 private fun PlayerScreen(
     viewModel: PlayerViewModel,
     state: LevyraUiState,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    morphAnchors: PlayerMorphAnchors,
+    morphActive: Boolean,
+    collapseActions: PlayerCollapseActions
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
@@ -11439,7 +11705,7 @@ private fun PlayerScreen(
     val playerActivity = playerContext as? Activity
     val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
     val hapticFeedback = LocalHapticFeedback.current
-    val seekStepMs = state.interfaceSettings.doubleTapSeekSeconds.toLong() * 1_000L
+    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val rawPrimaryTarget = track?.let { Color(it.accentStart) } ?: LevyraCyan
     val rawSecondaryTarget = track?.let { Color(it.accentEnd) } ?: LevyraViolet
     val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
@@ -11480,17 +11746,17 @@ private fun PlayerScreen(
         )
     }
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
-    val sharedArtworkModifier = sharedPlayerArtworkModifier(
-        trackId = track?.id.orEmpty(),
-        enabled = state.animationsEnabled && !state.isVideoMode && track != null,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope
-    )
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
     var gestureFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var playlistTarget by remember(track?.id) { mutableStateOf<Track?>(null) }
+    var swipeOffsetPx by remember(track?.id) { mutableStateOf(0f) }
+    val settledSwipeOffset by animateFloatAsState(
+        targetValue = swipeOffsetPx,
+        animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.smoothSpring() else snap(),
+        label = "player-swipe-offset"
+    )
 
     BackHandler(enabled = state.youtubeEngagement.comments.visible) {
         viewModel.closeYoutubeComments()
@@ -11535,20 +11801,29 @@ private fun PlayerScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        val compactPlayer = maxWidth < 380.dp || maxHeight < 700.dp
+        val layoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
+        val playerPane = if (state.isVideoMode) {
+            LevyraPlayerPane.Stacked
+        } else {
+            resolvePlayerPane(maxWidth.value, maxHeight.value)
+        }
+        val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 700.dp)
         var advancedControlsExpanded by remember(track?.id) {
             mutableStateOf(false)
         }
-        val playerHorizontalPadding = when {
-            state.isVideoMode -> LevyraPlayerDesign.SpaceSm
-            compactPlayer -> LevyraPlayerDesign.GutterCompact
-            else -> LevyraPlayerDesign.Gutter
+        val playerHorizontalPadding = if (state.isVideoMode) {
+            LevyraPlayerDesign.SpaceSm
+        } else {
+            levyraFoldAwareGutterDp(layoutMode, compactPlayer).dp
         }
         val playerItemSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
+        val paneCount = if (playerPane == LevyraPlayerPane.SideBySide) 2f else 1f
         val artworkSize = minOf(
-            (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
-            520.dp
+            ((maxWidth - playerHorizontalPadding * 2f) / paneCount).coerceAtLeast(180.dp),
+            levyraPlayerArtworkMaxWidthDp(playerPane, layoutMode).dp,
+            (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
+        val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
 
         PlayerImmersiveBackdrop(
             primaryTarget = primaryTarget,
@@ -11557,530 +11832,523 @@ private fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxHeight()
-                .widthIn(max = 560.dp)
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-            contentPadding = PaddingValues(
-                start = playerHorizontalPadding,
-                end = playerHorizontalPadding,
-                top = if (compactPlayer) 8.dp else 10.dp,
-                bottom = if (compactPlayer) 28.dp else 34.dp
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
-        ) {
-            item {
-                val headerButtonSize = if (compactPlayer) {
-                    LevyraPlayerDesign.HeaderButtonCompact
-                } else {
-                    LevyraPlayerDesign.HeaderButton
+        val headerBlock: @Composable () -> Unit = {
+            val headerButtonSize = if (compactPlayer) {
+                LevyraPlayerDesign.HeaderButtonCompact
+            } else {
+                LevyraPlayerDesign.HeaderButton
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(LevyraPlayerDesign.MinimumTouchTarget),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+            ) {
+                PlayerGlassIconButton(
+                    icon = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = strings.collapsePlayer,
+                    size = headerButtonSize,
+                    iconSize = if (compactPlayer) 25.dp else 26.dp,
+                    onClick = collapseActions.collapse
+                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
+                        PlayerModeSwitch(
+                            isVideoMode = state.isVideoMode,
+                            activeColor = primary,
+                            activeColorTarget = primaryTarget,
+                            onSong = viewModel::toggleVideoMode,
+                            onVideo = viewModel::toggleVideoMode
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .playerGlass(
+                                    shape = LevyraPlayerDesign.ShapePill,
+                                    fill = LevyraPlayerDesign.GlassFillSunken
+                                )
+                                .padding(horizontal = 14.dp, vertical = 7.dp)
+                        ) {
+                            Text(
+                                text = strings.formatPlayingFrom(track?.source ?: "LEVYRA"),
+                                color = LevyraPlayerDesign.TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.1.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
+                if (state.isVideoMode) {
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.PictureInPictureAlt,
+                        contentDescription = strings.pictureInPicture,
+                        size = headerButtonSize,
+                        iconSize = 20.dp,
+                        borderTop = primary.copy(alpha = 0.48f),
+                        borderBottom = primary.copy(alpha = 0.14f),
+                        onClick = { LevyraPipBridge.enter() }
+                    )
+                }
+                PlayerGlassIconButton(
+                    icon = Icons.Rounded.MoreVert,
+                    contentDescription = strings.options,
+                    size = headerButtonSize,
+                    iconSize = if (compactPlayer) 21.dp else 22.dp,
+                    onClick = { viewModel.openAudioQualityPanel() }
+                )
+            }
+        }
+
+        val mediaBlock: @Composable (Track) -> Unit = { activeTrack ->
+            Box(
+                modifier = Modifier
+                    .size(width = artworkSize, height = artworkSize)
+                    .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
+            ) {
+                if (state.isVideoMode && activeTrack.videoUrl.isNotBlank()) {
+                    LevyraVideoSurface(
+                        state = state,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .graphicsLayer {
+                                scaleX = artScale
+                                scaleY = artScale
+                                translationY = artOffset.toPx()
+                                shadowElevation = artShadow
+                                shape = RoundedCornerShape(artCorner)
+                                clip = true
+                            }
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = 0.18f),
+                                shape = RoundedCornerShape(artCorner)
+                            )
+                    )
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.72f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(18.dp)
+                            .zIndex(40f)
+                            .pressable(onClick = viewModel::toggleVideoMode)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MusicNote,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Text(
+                                text = strings.song,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    PlayerArtworkCanvas(
+                        track = activeTrack,
+                        artworkUrl = artworkUrl,
+                        motionArtwork = state.motionArtwork,
+                        animationsEnabled = state.animationsEnabled && !state.isVideoMode,
+                        isPlaying = state.isPlaying,
+                        cornerRadius = artCorner,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
+                            .graphicsLayer {
+                                scaleX = artScale
+                                scaleY = artScale
+                                translationX = settledSwipeOffset
+                                translationY = artOffset.toPx()
+                                alpha = if (morphActive) {
+                                    0f
+                                } else {
+                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                                }
+                            }
+                    )
+                }
+
+                if (state.interfaceSettings.playerGesturesEnabled) {
+                    PlayerGestureLayer(
+                        config = PlayerGestureConfig(
+                            trackId = activeTrack.id,
+                            settings = state.interfaceSettings,
+                            playbackSpeed = state.playbackSpeed,
+                            environment = PlayerGestureEnvironment(
+                                activity = playerActivity,
+                                audioManager = audioManager,
+                                brightnessLabel = strings.brightness,
+                                volumeLabel = strings.volume,
+                                rightToLeft = rightToLeft
+                            )
+                        ),
+                        mediaActions = PlayerGestureMediaActions(
+                            seekBy = { delta ->
+                                viewModel.seekBy(delta)
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                mediaSeekFeedbackMs = delta
+                                mediaSeekFeedbackEvent += 1
+                            },
+                            next = viewModel::next,
+                            previous = viewModel::previous,
+                            swipeOffset = { swipeOffsetPx = it },
+                            temporarySpeed = viewModel::setTemporaryPlaybackSpeed
+                        ),
+                        uiActions = PlayerGestureUiActions(
+                            feedback = { message ->
+                                gestureFeedback = message
+                                gestureFeedbackEvent += 1
+                            },
+                            haptic = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            },
+                            collapse = collapseActions
+                        ),
+                        modifier = Modifier
+                            .matchParentSize()
+                            .zIndex(20f)
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = gestureFeedback.isNotBlank(),
+                    modifier = Modifier.align(Alignment.Center).zIndex(22f),
+                    enter = fadeIn(animationSpec = tween(110)),
+                    exit = fadeOut(animationSpec = tween(180))
+                ) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.74f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                        shape = CircleShape
+                    ) {
+                        Text(
+                            text = gestureFeedback,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(if (mediaSeekFeedbackMs < 0L) Alignment.CenterStart else Alignment.CenterEnd)
+                        .padding(horizontal = 30.dp)
+                        .zIndex(22f)
+                ) {
+                    AnimatedVisibility(
+                        visible = mediaSeekFeedbackMs != 0L,
+                        enter = fadeIn(animationSpec = tween(110)),
+                        exit = fadeOut(animationSpec = tween(180))
+                    ) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.72f),
+                            border = BorderStroke(1.dp, primary.copy(alpha = 0.34f)),
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                text = "${if (mediaSeekFeedbackMs < 0L) "−" else "+"}${kotlin.math.abs(mediaSeekFeedbackMs) / 1_000L} s",
+                                color = Color.White,
+                                fontSize = if (compactPlayer) 14.sp else 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        val metaBlock: @Composable (Track) -> Unit = { activeTrack ->
+            val isFavorite = activeTrack.id in state.favoriteIds
+            val favoriteFill = primary.copy(alpha = 0.42f)
+            val favoriteTint = remember(primaryTarget) {
+                Color.White.playerContentColor(
+                    listOf(primaryTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
+                )
+            }
+            val favoriteScale by animateFloatAsState(
+                targetValue = if (isFavorite) 1.08f else 1f,
+                animationSpec = if (state.animationsEnabled) {
+                    LevyraPlayerDesign.expressiveSpring()
+                } else {
+                    snap()
+                },
+                label = "player-favorite-scale"
+            )
+            val actionSize = if (compactPlayer) {
+                LevyraPlayerDesign.UtilityButtonCompact
+            } else {
+                LevyraPlayerDesign.UtilityButton
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = LevyraPlayerDesign.SpaceXs)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        AnimatedContent(
+                            targetState = activeTrack,
+                            transitionSpec = {
+                                if (state.animationsEnabled) {
+                                    (fadeIn(tween(240)) + slideInVertically(tween(240)) { it / 4 }) togetherWith
+                                        (fadeOut(tween(140)) + slideOutVertically(tween(140)) { -it / 4 })
+                                } else {
+                                    EnterTransition.None togetherWith ExitTransition.None
+                                }
+                            },
+                            contentKey = { it.id },
+                            label = "player-title"
+                        ) { titleTrack ->
+                            Text(
+                                text = titleTrack.title,
+                                color = LevyraPlayerDesign.TextPrimary,
+                                fontSize = if (compactPlayer) 24.sp else 26.sp,
+                                lineHeight = if (compactPlayer) 26.sp else 28.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.4).sp,
+                                maxLines = if (state.animationsEnabled) 1 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = if (state.animationsEnabled) {
+                                    Modifier.basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 2_600
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .heightIn(min = 34.dp)
+                                .clip(LevyraPlayerDesign.ShapePill)
+                                .clickable(
+                                    onClickLabel = strings.openArtist,
+                                    onClick = { viewModel.openArtist(activeTrack) }
+                                )
+                                .padding(end = LevyraPlayerDesign.SpaceXs),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXxs)
+                        ) {
+                            Text(
+                                text = activeTrack.artist,
+                                color = LevyraPlayerDesign.TextSecondary,
+                                fontSize = if (compactPlayer) 14.sp else 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronRight,
+                                contentDescription = null,
+                                tint = LevyraPlayerDesign.TextTertiary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
+                    Row(horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)) {
+                        PlayerGlassIconButton(
+                            icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                            contentDescription = strings.addToPlaylist,
+                            size = actionSize,
+                            iconSize = if (compactPlayer) 22.dp else 23.dp,
+                            tint = LevyraPlayerDesign.TextSecondary,
+                            onClick = { playlistTarget = activeTrack }
+                        )
+                        PlayerGlassIconButton(
+                            icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = strings.favoritesPlain,
+                            size = actionSize,
+                            iconSize = if (compactPlayer) 23.dp else 24.dp,
+                            tint = if (isFavorite) favoriteTint else LevyraPlayerDesign.TextSecondary,
+                            fill = if (isFavorite) favoriteFill else LevyraPlayerDesign.GlassFill,
+                            borderTop = if (isFavorite) {
+                                primary.playerMix(Color.White, 0.3f).copy(alpha = 0.7f)
+                            } else {
+                                LevyraPlayerDesign.GlassBorderTop
+                            },
+                            borderBottom = if (isFavorite) {
+                                primary.copy(alpha = 0.2f)
+                            } else {
+                                LevyraPlayerDesign.GlassBorderBottom
+                            },
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = favoriteScale
+                                    scaleY = favoriteScale
+                                }
+                                .semantics { toggleableState = ToggleableState(isFavorite) },
+                            onClick = { viewModel.toggleFavorite(activeTrack) }
+                        )
+                    }
+                }
+                PlayerYoutubeEngagementRow(
+                    track = activeTrack,
+                    engagement = state.youtubeEngagement,
+                    primary = primary,
+                    secondary = secondary,
+                    compact = compactPlayer,
+                    onComments = viewModel::openYoutubeComments
+                )
+            }
+        }
+
+        val timelineBlock: @Composable () -> Unit = {
+            PlayerTimeline(
+                positionMs = state.positionMs,
+                bufferedPositionMs = state.bufferedPositionMs,
+                durationMs = state.durationMs,
+                activeColor = primary,
+                secondaryColor = secondary,
+                isPlaying = state.isPlaying,
+                animationsEnabled = state.animationsEnabled,
+                compact = compactPlayer,
+                onSeek = viewModel::seekTo
+            )
+        }
+
+        val transportBlock: @Composable () -> Unit = {
+            PlayerTransportControls(
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatOn = state.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off,
+                repeatOne = state.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One,
+                accents = playerAccentColors,
+                compact = compactPlayer,
+                animated = state.animationsEnabled,
+                labels = playerControlLabels,
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onToggle = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceXs)
+            )
+        }
+
+        val pulseBlock: @Composable () -> Unit = {
+            LevyraControlPulseHandle(
+                expanded = advancedControlsExpanded,
+                compact = compactPlayer,
+                activeColor = primary,
+                secondaryColor = secondary,
+                hasActiveState = state.playbackSpeed != 1f || state.sleepTimerMinutes > 0 || state.isOfflineExporting,
+                onToggle = { advancedControlsExpanded = !advancedControlsExpanded }
+            )
+        }
+
+        val advancedBlock: @Composable (Track) -> Unit = { activeTrack ->
+            PlayerAdvancedControlsPanel(
+                expanded = advancedControlsExpanded,
+                track = activeTrack,
+                state = state,
+                primary = primary,
+                secondary = secondary,
+                primaryContent = primaryContent,
+                secondaryContent = secondaryContent,
+                compact = compactPlayer,
+                strings = strings,
+                viewModel = viewModel,
+                onAddToPlaylist = { playlistTarget = activeTrack }
+            )
+        }
+
+        if (playerPane == LevyraPlayerPane.SideBySide && track != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = detailMaxWidth)
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = playerHorizontalPadding, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
+            ) {
+                headerBlock()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(LevyraPlayerDesign.MinimumTouchTarget),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                        .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXl),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    PlayerGlassIconButton(
-                        icon = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = strings.back,
-                        size = headerButtonSize,
-                        iconSize = if (compactPlayer) 25.dp else 26.dp,
-                        onClick = { viewModel.selectTab(LevyraTab.Home) }
-                    )
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
-                            PlayerModeSwitch(
-                                isVideoMode = state.isVideoMode,
-                                activeColor = primary,
-                                activeColorTarget = primaryTarget,
-                                onSong = viewModel::toggleVideoMode,
-                                onVideo = viewModel::toggleVideoMode
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .playerGlass(
-                                        shape = LevyraPlayerDesign.ShapePill,
-                                        fill = LevyraPlayerDesign.GlassFillSunken
-                                    )
-                                    .padding(horizontal = 14.dp, vertical = 7.dp)
-                            ) {
-                                Text(
-                                    text = strings.formatPlayingFrom(track?.source ?: "LEVYRA"),
-                                    color = LevyraPlayerDesign.TextSecondary,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 1.1.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                    if (state.isVideoMode) {
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.PictureInPictureAlt,
-                            contentDescription = strings.pictureInPicture,
-                            size = headerButtonSize,
-                            iconSize = 20.dp,
-                            borderTop = primary.copy(alpha = 0.48f),
-                            borderBottom = primary.copy(alpha = 0.14f),
-                            onClick = { LevyraPipBridge.enter() }
-                        )
-                    }
-                    PlayerGlassIconButton(
-                        icon = Icons.Rounded.MoreVert,
-                        contentDescription = strings.options,
-                        size = headerButtonSize,
-                        iconSize = if (compactPlayer) 21.dp else 22.dp,
-                        onClick = { viewModel.openAudioQualityPanel() }
-                    )
-                }
-            }
-            if (track == null) {
-                item { EmptyState(strings.emptyPlayer) }
-            } else {
-                item {
-                    val mediaHeight = artworkSize
                     Box(
-                        modifier = Modifier
-                            .size(width = artworkSize, height = mediaHeight)
-                            .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
-                        if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                            LevyraVideoSurface(
-                                state = state,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 8.dp, vertical = 8.dp)
-                                    .graphicsLayer {
-                                        scaleX = artScale
-                                        scaleY = artScale
-                                        translationY = artOffset.toPx()
-                                        shadowElevation = artShadow
-                                        shape = RoundedCornerShape(artCorner)
-                                        clip = true
-                                    }
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.18f),
-                                        shape = RoundedCornerShape(artCorner)
-                                    )
-                            )
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.72f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                                shape = CircleShape,
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(18.dp)
-                                    .zIndex(40f)
-                                    .pressable(onClick = viewModel::toggleVideoMode)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.MusicNote,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(17.dp)
-                                    )
-                                    Text(
-                                        text = strings.song,
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        } else {
-                            PlayerArtworkCanvas(
-                                track = track,
-                                artworkUrl = artworkUrl,
-                                motionArtwork = state.motionArtwork,
-                                animationsEnabled = state.animationsEnabled && !state.isVideoMode,
-                                isPlaying = state.isPlaying,
-                                cornerRadius = artCorner,
-                                modifier = sharedArtworkModifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        scaleX = artScale
-                                        scaleY = artScale
-                                        translationY = artOffset.toPx()
-                                        shape = RoundedCornerShape(artCorner)
-                                    }
-                            )
-                        }
-
-                        if (state.interfaceSettings.playerGesturesEnabled) {
-                            Row(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .zIndex(20f)
-                            ) {
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .pointerInput(track.id, state.interfaceSettings.doubleTapSeekSeconds, state.interfaceSettings.longPressSpeed) {
-                                                detectTapGestures(
-                                                    onPress = {
-                                                        val originalSpeed = state.playbackSpeed
-                                                        coroutineScope {
-                                                            var boosted = false
-                                                            val speedJob = launch {
-                                                                delay(320L)
-                                                                boosted = true
-                                                                viewModel.setTemporaryPlaybackSpeed(state.interfaceSettings.longPressSpeed)
-                                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                gestureFeedback = "${String.format(Locale.US, "%.1f", state.interfaceSettings.longPressSpeed)}×"
-                                                                gestureFeedbackEvent += 1
-                                                            }
-                                                            try {
-                                                                tryAwaitRelease()
-                                                            } finally {
-                                                                speedJob.cancel()
-                                                                if (boosted) viewModel.setTemporaryPlaybackSpeed(originalSpeed)
-                                                            }
-                                                        }
-                                                    },
-                                                    onDoubleTap = {
-                                                        viewModel.seekBy(-seekStepMs)
-                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        mediaSeekFeedbackMs = -seekStepMs
-                                                        mediaSeekFeedbackEvent += 1
-                                                    }
-                                                )
-                                            }
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.CenterStart)
-                                            .width(54.dp)
-                                            .fillMaxHeight()
-                                            .pointerInput(track.id, playerActivity) {
-                                                detectVerticalDragGestures { change, dragAmount ->
-                                                    change.consume()
-                                                    val activity = playerActivity ?: return@detectVerticalDragGestures
-                                                    val attributes = activity.window.attributes
-                                                    val current = attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
-                                                    val updated = (current - dragAmount / size.height.coerceAtLeast(1)).coerceIn(0.05f, 1f)
-                                                    attributes.screenBrightness = updated
-                                                    activity.window.attributes = attributes
-                                                    gestureFeedback = "${strings.brightness} ${(updated * 100f).roundToInt()}%"
-                                                    gestureFeedbackEvent += 1
-                                                }
-                                            }
-                                    )
-                                }
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .matchParentSize()
-                                            .pointerInput(track.id, state.interfaceSettings.doubleTapSeekSeconds, state.interfaceSettings.longPressSpeed) {
-                                                detectTapGestures(
-                                                    onPress = {
-                                                        val originalSpeed = state.playbackSpeed
-                                                        coroutineScope {
-                                                            var boosted = false
-                                                            val speedJob = launch {
-                                                                delay(320L)
-                                                                boosted = true
-                                                                viewModel.setTemporaryPlaybackSpeed(state.interfaceSettings.longPressSpeed)
-                                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                                gestureFeedback = "${String.format(Locale.US, "%.1f", state.interfaceSettings.longPressSpeed)}×"
-                                                                gestureFeedbackEvent += 1
-                                                            }
-                                                            try {
-                                                                tryAwaitRelease()
-                                                            } finally {
-                                                                speedJob.cancel()
-                                                                if (boosted) viewModel.setTemporaryPlaybackSpeed(originalSpeed)
-                                                            }
-                                                        }
-                                                    },
-                                                    onDoubleTap = {
-                                                        viewModel.seekBy(seekStepMs)
-                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        mediaSeekFeedbackMs = seekStepMs
-                                                        mediaSeekFeedbackEvent += 1
-                                                    }
-                                                )
-                                            }
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.CenterEnd)
-                                            .width(54.dp)
-                                            .fillMaxHeight()
-                                            .pointerInput(track.id, audioManager) {
-                                                var accumulated = 0f
-                                                detectVerticalDragGestures(
-                                                    onDragStart = { accumulated = 0f },
-                                                    onVerticalDrag = { change, dragAmount ->
-                                                        change.consume()
-                                                        val manager = audioManager ?: return@detectVerticalDragGestures
-                                                        val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-                                                        accumulated += -dragAmount / size.height.coerceAtLeast(1) * maximum
-                                                        val steps = accumulated.roundToInt()
-                                                        if (steps != 0) {
-                                                            val current = manager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                                                            val updated = (current + steps).coerceIn(0, maximum)
-                                                            manager.setStreamVolume(AudioManager.STREAM_MUSIC, updated, 0)
-                                                            accumulated -= steps.toFloat()
-                                                            gestureFeedback = "${strings.volume} ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%"
-                                                            gestureFeedbackEvent += 1
-                                                        }
-                                                    }
-                                                )
-                                            }
-                                    )
-                                }
-                            }
-                        }
-
-                        AnimatedVisibility(
-                            visible = gestureFeedback.isNotBlank(),
-                            modifier = Modifier.align(Alignment.Center).zIndex(22f),
-                            enter = fadeIn(animationSpec = tween(110)),
-                            exit = fadeOut(animationSpec = tween(180))
-                        ) {
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.74f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
-                                shape = CircleShape
-                            ) {
-                                Text(
-                                    text = gestureFeedback,
-                                    color = Color.White,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
-                                )
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .align(if (mediaSeekFeedbackMs < 0L) Alignment.CenterStart else Alignment.CenterEnd)
-                                .padding(horizontal = 30.dp)
-                        ) {
-                            AnimatedVisibility(
-                                visible = mediaSeekFeedbackMs != 0L,
-                                enter = fadeIn(animationSpec = tween(110)),
-                                exit = fadeOut(animationSpec = tween(180))
-                            ) {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.72f),
-                                    border = BorderStroke(1.dp, primary.copy(alpha = 0.34f)),
-                                    shape = CircleShape
-                                ) {
-                                    Text(
-                                        text = "${if (mediaSeekFeedbackMs < 0L) "−" else "+"}${kotlin.math.abs(mediaSeekFeedbackMs) / 1_000L} s",
-                                        color = Color.White,
-                                        fontSize = if (compactPlayer) 14.sp else 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
-                    val isFavorite = track.id in state.favoriteIds
-                    val favoriteFill = primary.copy(alpha = 0.42f)
-                    val favoriteTint = remember(primaryTarget) {
-                        Color.White.playerContentColor(
-                            listOf(primaryTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
-                        )
-                    }
-                    val favoriteScale by animateFloatAsState(
-                        targetValue = if (isFavorite) 1.08f else 1f,
-                        animationSpec = if (state.animationsEnabled) {
-                            LevyraPlayerDesign.expressiveSpring()
-                        } else {
-                            snap()
-                        },
-                        label = "player-favorite-scale"
-                    )
-                    val actionSize = if (compactPlayer) {
-                        LevyraPlayerDesign.UtilityButtonCompact
-                    } else {
-                        LevyraPlayerDesign.UtilityButton
+                        mediaBlock(track)
                     }
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = LevyraPlayerDesign.SpaceXs)
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(playerItemSpacing, Alignment.CenterVertically)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = track.title,
-                                    color = LevyraPlayerDesign.TextPrimary,
-                                    fontSize = if (compactPlayer) 24.sp else 26.sp,
-                                    lineHeight = if (compactPlayer) 26.sp else 28.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = (-0.4).sp,
-                                    maxLines = if (state.animationsEnabled) 1 else 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = if (state.animationsEnabled) {
-                                        Modifier.basicMarquee(
-                                            iterations = Int.MAX_VALUE,
-                                            repeatDelayMillis = 2_600
-                                        )
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .heightIn(min = 34.dp)
-                                        .clip(LevyraPlayerDesign.ShapePill)
-                                        .clickable(
-                                            onClickLabel = strings.openArtist,
-                                            onClick = { viewModel.openArtist(track) }
-                                        )
-                                        .padding(end = LevyraPlayerDesign.SpaceXs),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXxs)
-                                ) {
-                                    Text(
-                                        text = track.artist,
-                                        color = LevyraPlayerDesign.TextSecondary,
-                                        fontSize = if (compactPlayer) 14.sp else 15.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Rounded.ChevronRight,
-                                        contentDescription = null,
-                                        tint = LevyraPlayerDesign.TextTertiary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
-                            Row(horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)) {
-                                PlayerGlassIconButton(
-                                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                                    contentDescription = strings.addToPlaylist,
-                                    size = actionSize,
-                                    iconSize = if (compactPlayer) 22.dp else 23.dp,
-                                    tint = LevyraPlayerDesign.TextSecondary,
-                                    onClick = { playlistTarget = track }
-                                )
-                                PlayerGlassIconButton(
-                                    icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                    contentDescription = strings.favoritesPlain,
-                                    size = actionSize,
-                                    iconSize = if (compactPlayer) 23.dp else 24.dp,
-                                    tint = if (isFavorite) favoriteTint else LevyraPlayerDesign.TextSecondary,
-                                    fill = if (isFavorite) favoriteFill else LevyraPlayerDesign.GlassFill,
-                                    borderTop = if (isFavorite) {
-                                        primary.playerMix(Color.White, 0.3f).copy(alpha = 0.7f)
-                                    } else {
-                                        LevyraPlayerDesign.GlassBorderTop
-                                    },
-                                    borderBottom = if (isFavorite) {
-                                        primary.copy(alpha = 0.2f)
-                                    } else {
-                                        LevyraPlayerDesign.GlassBorderBottom
-                                    },
-                                    modifier = Modifier
-                                        .graphicsLayer {
-                                            scaleX = favoriteScale
-                                            scaleY = favoriteScale
-                                        }
-                                        .semantics { toggleableState = ToggleableState(isFavorite) },
-                                    onClick = { viewModel.toggleFavorite(track) }
-                                )
-                            }
-                        }
-                        PlayerYoutubeEngagementRow(
-                            track = track,
-                            engagement = state.youtubeEngagement,
-                            primary = primary,
-                            secondary = secondary,
-                            compact = compactPlayer,
-                            onComments = viewModel::openYoutubeComments
-                        )
+                        metaBlock(track)
+                        timelineBlock()
+                        transportBlock()
+                        pulseBlock()
+                        advancedBlock(track)
+                        PlayerError(state.playerError)
                     }
                 }
-                item {
-                    PlayerTimeline(
-                        positionMs = state.positionMs,
-                        bufferedPositionMs = state.bufferedPositionMs,
-                        durationMs = state.durationMs,
-                        activeColor = primary,
-                        secondaryColor = secondary,
-                        isPlaying = state.isPlaying,
-                        animationsEnabled = state.animationsEnabled,
-                        compact = compactPlayer,
-                        onSeek = viewModel::seekTo
-                    )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .widthIn(max = detailMaxWidth)
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                contentPadding = PaddingValues(
+                    start = playerHorizontalPadding,
+                    end = playerHorizontalPadding,
+                    top = if (compactPlayer) 8.dp else 10.dp,
+                    bottom = if (compactPlayer) 28.dp else 34.dp
+                ),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
+            ) {
+                item { headerBlock() }
+                if (track == null) {
+                    item { EmptyState(strings.emptyPlayer) }
+                } else {
+                    item { mediaBlock(track) }
+                    item { metaBlock(track) }
+                    item { timelineBlock() }
+                    item { transportBlock() }
+                    item { pulseBlock() }
+                    item(key = "player-advanced-controls") { advancedBlock(track) }
+                    item { PlayerError(state.playerError) }
                 }
-                item {
-                    PlayerTransportControls(
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        shuffleOn = state.shuffleEnabled,
-                        repeatOn = state.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off,
-                        repeatOne = state.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One,
-                        accents = playerAccentColors,
-                        compact = compactPlayer,
-                        animated = state.animationsEnabled,
-                        labels = playerControlLabels,
-                        onShuffle = viewModel::toggleShuffle,
-                        onPrevious = viewModel::previous,
-                        onToggle = viewModel::togglePlay,
-                        onNext = viewModel::next,
-                        onRepeat = viewModel::toggleRepeat,
-                        modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceXs)
-                    )
-                }
-                item {
-                    LevyraControlPulseHandle(
-                        expanded = advancedControlsExpanded,
-                        compact = compactPlayer,
-                        activeColor = primary,
-                        secondaryColor = secondary,
-                        hasActiveState = state.playbackSpeed != 1f || state.sleepTimerMinutes > 0 || state.isOfflineExporting,
-                        onToggle = { advancedControlsExpanded = !advancedControlsExpanded }
-                    )
-                }
-                item(key = "player-advanced-controls") {
-                    PlayerAdvancedControlsPanel(
-                        expanded = advancedControlsExpanded,
-                        track = track,
-                        state = state,
-                        primary = primary,
-                        secondary = secondary,
-                        primaryContent = primaryContent,
-                        secondaryContent = secondaryContent,
-                        compact = compactPlayer,
-                        strings = strings,
-                        viewModel = viewModel,
-                        onAddToPlaylist = { playlistTarget = track }
-                    )
-                }
-                item { PlayerError(state.playerError) }
             }
         }
 
@@ -12115,6 +12383,208 @@ private fun PlayerScreen(
             )
         }
     }
+}
+
+private fun applyBrightnessDrag(
+    activity: Activity?,
+    deltaPx: Float,
+    heightPx: Float,
+    label: String,
+    onFeedback: (String) -> Unit
+) {
+    val window = activity?.window ?: return
+    val attributes = window.attributes
+    val current = attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
+    val updated = (current - deltaPx / heightPx.coerceAtLeast(1f)).coerceIn(0.05f, 1f)
+    attributes.screenBrightness = updated
+    window.attributes = attributes
+    onFeedback("$label ${(updated * 100f).roundToInt()}%")
+}
+
+private fun applyVolumeDrag(
+    audioManager: AudioManager?,
+    deltaPx: Float,
+    heightPx: Float,
+    accumulator: Float,
+    label: String,
+    onFeedback: (String) -> Unit
+): Float {
+    val manager = audioManager ?: return 0f
+    val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+    val pending = accumulator + -deltaPx / heightPx.coerceAtLeast(1f) * maximum
+    val steps = pending.roundToInt()
+    if (steps == 0) return pending
+    val current = manager.getStreamVolume(AudioManager.STREAM_MUSIC)
+    val updated = (current + steps).coerceIn(0, maximum)
+    manager.setStreamVolume(AudioManager.STREAM_MUSIC, updated, 0)
+    onFeedback("$label ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%")
+    return pending - steps.toFloat()
+}
+
+@Composable
+private fun PlayerGestureLayer(
+    config: PlayerGestureConfig,
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions,
+    modifier: Modifier = Modifier
+) {
+    val currentPlaybackSpeed by rememberUpdatedState(config.playbackSpeed)
+    val volumeAccumulator = remember(config.trackId) { mutableFloatStateOf(0f) }
+    val environment = config.environment
+    Box(
+        modifier = modifier
+            .pointerInput(
+                config.trackId,
+                config.settings.doubleTapSeekSeconds,
+                config.settings.longPressSpeed,
+                environment.rightToLeft
+            ) {
+                detectTapGestures(
+                    onPress = {
+                        val originalSpeed = currentPlaybackSpeed
+                        coroutineScope {
+                            var boosted = false
+                            val speedJob = launch {
+                                delay(320L)
+                                boosted = true
+                                mediaActions.temporarySpeed(config.settings.longPressSpeed)
+                                uiActions.haptic()
+                                uiActions.feedback(
+                                    "${String.format(Locale.US, "%.1f", config.settings.longPressSpeed)}×"
+                                )
+                            }
+                            try {
+                                tryAwaitRelease()
+                            } finally {
+                                speedJob.cancel()
+                                if (boosted) mediaActions.temporarySpeed(originalSpeed)
+                            }
+                        }
+                    },
+                    onDoubleTap = { offset ->
+                        val width = size.width.coerceAtLeast(1).toFloat()
+                        val side = playerTapSide(offset.x / width)
+                        mediaActions.seekBy(
+                            playerSeekDeltaMs(
+                                side,
+                                config.settings.doubleTapSeekSeconds,
+                                environment.rightToLeft
+                            )
+                        )
+                    }
+                )
+            }
+            .playerAxisDragGestures(
+                key = config.trackId,
+                enabled = true,
+                rightToLeft = environment.rightToLeft,
+                edgeZonesEnabled = true
+            ) { event ->
+                handlePlayerGestureEvent(
+                    event = event,
+                    environment = environment,
+                    mediaActions = mediaActions,
+                    uiActions = uiActions,
+                    volumeAccumulator = volumeAccumulator
+                )
+            }
+    )
+}
+
+private fun handlePlayerGestureEvent(
+    event: PlayerDragEvent,
+    environment: PlayerGestureEnvironment,
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    when (event) {
+        is PlayerDragEvent.HorizontalOffset -> mediaActions.swipeOffset(event.offsetPx)
+        is PlayerDragEvent.HorizontalSettled -> settlePlayerHorizontalGesture(event, mediaActions)
+        is PlayerDragEvent.VerticalStart -> startPlayerVerticalGesture(event, uiActions)
+        is PlayerDragEvent.VerticalDrag -> handlePlayerVerticalDrag(
+            event,
+            environment,
+            uiActions,
+            volumeAccumulator
+        )
+        is PlayerDragEvent.VerticalSettled -> settlePlayerVerticalGesture(
+            event,
+            uiActions,
+            volumeAccumulator
+        )
+        PlayerDragEvent.Cancelled -> cancelPlayerGesture(
+            mediaActions,
+            uiActions,
+            volumeAccumulator
+        )
+    }
+}
+
+private fun settlePlayerHorizontalGesture(
+    event: PlayerDragEvent.HorizontalSettled,
+    mediaActions: PlayerGestureMediaActions
+) {
+    when (event.result) {
+        PlayerSwipeResult.Next -> mediaActions.next()
+        PlayerSwipeResult.Previous -> mediaActions.previous()
+        PlayerSwipeResult.Settle -> Unit
+    }
+    mediaActions.swipeOffset(0f)
+}
+
+private fun startPlayerVerticalGesture(
+    event: PlayerDragEvent.VerticalStart,
+    uiActions: PlayerGestureUiActions
+) {
+    if (event.zone == PlayerGestureZone.Center) uiActions.collapse.dragStart()
+}
+
+private fun handlePlayerVerticalDrag(
+    event: PlayerDragEvent.VerticalDrag,
+    environment: PlayerGestureEnvironment,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    when (event.zone) {
+        PlayerGestureZone.BrightnessEdge -> applyBrightnessDrag(
+            activity = environment.activity,
+            deltaPx = event.deltaPx,
+            heightPx = event.heightPx,
+            label = environment.brightnessLabel,
+            onFeedback = uiActions.feedback
+        )
+        PlayerGestureZone.VolumeEdge -> volumeAccumulator.value = applyVolumeDrag(
+            audioManager = environment.audioManager,
+            deltaPx = event.deltaPx,
+            heightPx = event.heightPx,
+            accumulator = volumeAccumulator.value,
+            label = environment.volumeLabel,
+            onFeedback = uiActions.feedback
+        )
+        PlayerGestureZone.Center -> uiActions.collapse.drag(event.deltaPx)
+    }
+}
+
+private fun settlePlayerVerticalGesture(
+    event: PlayerDragEvent.VerticalSettled,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    volumeAccumulator.value = 0f
+    if (event.zone == PlayerGestureZone.Center) {
+        uiActions.collapse.dragEnd(event.velocityPx)
+    }
+}
+
+private fun cancelPlayerGesture(
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    volumeAccumulator.value = 0f
+    mediaActions.swipeOffset(0f)
+    uiActions.collapse.dragEnd(0f)
 }
 
 @Composable
@@ -13012,10 +13482,15 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 @Composable
 private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
     val currentLocale = LocalLocale.current.platformLocale
+    val deviceLanguageCode = remember(currentLocale, selectedLanguageCode) {
+        LevyraLanguageCatalog.normalize(
+            currentLocale.language.ifBlank { selectedLanguageCode }
+        )
+    }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
-    var step by remember { mutableStateOf(OnboardingStep.Language) }
-    var languageCode by remember(selectedLanguageCode) { mutableStateOf(LevyraLanguageCatalog.normalize(selectedLanguageCode)) }
+    var step by remember { mutableStateOf(OnboardingStep.Intro) }
+    var languageCode by remember(deviceLanguageCode) { mutableStateOf(deviceLanguageCode) }
     val moodEngine = remember { MoodEngine() }
     val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
     val strings = LevyraStrings.forCode(languageCode)
@@ -13026,7 +13501,6 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFF030304))
-                .consumeOverlayTouches()
         ) {
         Box(
             modifier = Modifier
@@ -13056,7 +13530,9 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            OnboardingTopBar(step = step, backLabel = strings.back, onBack = { step = step.previous() })
+            if (onboardingShowsChrome(step)) {
+                OnboardingTopBar(step = step, backLabel = strings.back, onBack = { step = step.previous() })
+            }
             AnimatedContent(
                 targetState = step,
                 transitionSpec = {
@@ -13068,6 +13544,10 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
                 label = "onboarding-step"
             ) { activeStep ->
                 when (activeStep) {
+                    OnboardingStep.Intro -> OnboardingIntroStage(
+                        strings = strings,
+                        onStart = { step = OnboardingStep.Language }
+                    )
                     OnboardingStep.Language -> OnboardingLanguageStage(
                         strings = strings,
                         languageCode = languageCode,
@@ -13089,17 +13569,19 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
                     )
                 }
             }
-            OnboardingFooter(
-                strings = strings,
-                step = step,
-                enabled = primaryEnabled,
-                selectedTasteCount = selected.size,
-                onPrimary = {
-                    if (step == OnboardingStep.Taste) onDone(name, selected, languageCode)
-                    else step = step.next()
-                },
-                onSkip = { onDone(name, selected, languageCode) }
-            )
+            if (onboardingShowsChrome(step)) {
+                OnboardingFooter(
+                    strings = strings,
+                    step = step,
+                    enabled = primaryEnabled,
+                    selectedTasteCount = selected.size,
+                    onPrimary = {
+                        if (step == OnboardingStep.Taste) onDone(name, selected, languageCode)
+                        else step = step.next()
+                    },
+                    onSkip = { onDone(name, selected, languageCode) }
+                )
+            }
         }
     }
 }
@@ -13112,28 +13594,181 @@ private fun OnboardingTopBar(step: OnboardingStep, backLabel: String, onBack: ()
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        if (step == OnboardingStep.Language) {
-            LevyraLogoMark(size = 42.dp)
-        } else {
-            CircleIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                tint = LevyraText,
-                background = Color.White.copy(alpha = 0.07f),
-                contentDescription = backLabel,
-                onClick = onBack
-            )
-        }
+        CircleIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.07f),
+            contentDescription = backLabel,
+            onClick = onBack
+        )
         LevyraWordmark(fontSize = 22.sp, dotSize = 4.dp)
         Spacer(modifier = Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            OnboardingStep.entries.forEach { item ->
-                val active = item.ordinal <= step.ordinal
+            val progressIndex = onboardingProgressIndex(step)
+            onboardingProgressSteps().forEachIndexed { index, item ->
+                val active = index <= progressIndex
                 Box(
                     modifier = Modifier
                         .width(if (item == step) 24.dp else 7.dp)
                         .height(7.dp)
                         .background(if (active) LevyraCyan else Color.White.copy(alpha = 0.14f), CircleShape)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingIntroStage(strings: LevyraStrings, onStart: () -> Unit) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val pulse = if (animationsEnabled) {
+        val transition = rememberInfiniteTransition(label = "intro-pulse")
+        transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(3_600, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "intro-pulse-value"
+        )
+    } else {
+        null
+    }
+    val features = remember(strings) {
+        listOf(
+            Triple(Icons.Rounded.GraphicEq, strings.introFeatureSound, LevyraCyan),
+            Triple(Icons.Rounded.TextFields, strings.introFeatureLyrics, LevyraViolet),
+            Triple(Icons.Rounded.Download, strings.introFeatureOffline, LevyraCyan)
+        )
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 28.dp,
+            end = 28.dp,
+            top = 18.dp,
+            bottom = 32.dp
+        ),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(18.dp))
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(190.dp)
+                        .graphicsLayer {
+                            val halo = pulse?.value?.let { value ->
+                                1f + 0.06f * kotlin.math.sin(value * 2f * Math.PI.toFloat())
+                            } ?: 1f
+                            scaleX = halo
+                            scaleY = halo
+                        }
+                        .blur(46.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = 0.30f),
+                                    LevyraViolet.copy(alpha = 0.20f),
+                                    Color.Transparent
+                                )
+                            ),
+                            CircleShape
+                        )
+                )
+                LevyraLogoMark(size = 92.dp)
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(22.dp))
+            LevyraWordmark(fontSize = 34.sp, dotSize = 6.dp)
+            Spacer(modifier = Modifier.height(18.dp))
+            Text(
+                text = strings.introHeadline,
+                color = LevyraText,
+                fontSize = 38.sp,
+                lineHeight = 42.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.3).sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = strings.introBody,
+                color = LevyraMuted,
+                fontSize = 16.sp,
+                lineHeight = 23.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(28.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                features.forEach { (icon, label, tint) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(LevyraAdaptiveCardDeep, RoundedCornerShape(20.dp))
+                            .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 16.dp, vertical = 15.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(tint.copy(alpha = 0.14f), RoundedCornerShape(13.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                        }
+                        Text(
+                            text = label,
+                            color = LevyraText,
+                            fontSize = 14.5.sp,
+                            lineHeight = 19.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(28.dp))
+            Surface(
+                color = LevyraCyan,
+                shape = CircleShape,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .pressable(onClick = onStart)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = strings.introStart,
+                        color = LevyraBlack,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = LevyraBlack,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
             }
         }
     }
@@ -16225,37 +16860,115 @@ private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, progre
 }
 
 @Composable
-@OptIn(ExperimentalSharedTransitionApi::class)
-private fun sharedPlayerArtworkModifier(
-    trackId: String,
-    enabled: Boolean,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
-): Modifier {
-    if (!enabled || trackId.isBlank()) return Modifier
-    return with(sharedTransitionScope) {
-        Modifier.sharedElement(
-            sharedContentState = rememberSharedContentState(key = "player-artwork-$trackId"),
-            animatedVisibilityScope = animatedVisibilityScope
-        )
+private fun PlayerArtworkMorphLayer(
+    track: Track,
+    anchors: PlayerMorphAnchors,
+    expansion: () -> Float
+) {
+    val density = LocalDensity.current
+    val startCornerPx = with(density) { LevyraPlayerDesign.CornerSm.toPx() }
+    val endCornerPx = with(density) { LevyraPlayerDesign.CornerLg.toPx() }
+    Box(
+        modifier = Modifier
+            .layout { measurable, _ ->
+                val rect = anchors.resolve(playerMorphFraction(expansion()))
+                if (rect == null) {
+                    val placeable = measurable.measure(Constraints.fixed(0, 0))
+                    layout(0, 0) { placeable.place(0, 0) }
+                } else {
+                    val placeable = measurable.measure(
+                        Constraints.fixed(rect.width.roundToInt(), rect.height.roundToInt())
+                    )
+                    layout(placeable.width, placeable.height) {
+                        placeable.place(rect.left.roundToInt(), rect.top.roundToInt())
+                    }
+                }
+            }
+            .graphicsLayer {
+                clip = true
+                shape = RoundedCornerShape(
+                    morphCornerRadius(startCornerPx, endCornerPx, playerMorphFraction(expansion())).toDp()
+                )
+            }
+    ) {
+        CoverImage(track, Modifier.fillMaxSize(), highRes = true)
     }
 }
 
-@Composable
-@OptIn(ExperimentalSharedTransitionApi::class)
-private fun MiniPlayer(
-    track: Track,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    progress: Float,
-    animated: Boolean,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope,
-    onOpen: () -> Unit,
-    onToggle: () -> Unit,
-    onNext: () -> Unit,
-    onClose: () -> Unit
+private fun handleMiniPlayerDragEvent(
+    event: PlayerDragEvent,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions,
+    updateSwipeOffset: (Float) -> Unit
 ) {
+    when (event) {
+        is PlayerDragEvent.HorizontalOffset -> updateSwipeOffset(event.offsetPx)
+        is PlayerDragEvent.HorizontalSettled -> {
+            handleMiniPlayerSwipeResult(event.result, playbackActions)
+            updateSwipeOffset(0f)
+        }
+        is PlayerDragEvent.VerticalStart -> expansionActions.start()
+        is PlayerDragEvent.VerticalDrag -> handleMiniPlayerVerticalDrag(event, expansionActions)
+        is PlayerDragEvent.VerticalSettled -> settleMiniPlayerVerticalDrag(
+            event,
+            playbackActions,
+            expansionActions
+        )
+        PlayerDragEvent.Cancelled -> {
+            updateSwipeOffset(0f)
+            expansionActions.end(0f)
+        }
+    }
+}
+
+private fun handleMiniPlayerSwipeResult(
+    result: PlayerSwipeResult,
+    playbackActions: MiniPlayerPlaybackActions
+) {
+    when (result) {
+        PlayerSwipeResult.Next -> playbackActions.next()
+        PlayerSwipeResult.Previous -> playbackActions.previous()
+        PlayerSwipeResult.Settle -> Unit
+    }
+}
+
+private fun handleMiniPlayerVerticalDrag(
+    event: PlayerDragEvent.VerticalDrag,
+    expansionActions: MiniPlayerExpansionActions
+) {
+    if (event.peeked) expansionActions.drag(event.deltaPx)
+}
+
+private fun settleMiniPlayerVerticalDrag(
+    event: PlayerDragEvent.VerticalSettled,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions
+) {
+    expansionActions.end(event.velocityPx)
+    val result = resolveMiniPlayerDismiss(
+        event.totalPx,
+        event.velocityPx,
+        event.heightPx
+    )
+    if (!event.peeked && result == PlayerVerticalResult.Collapse) playbackActions.close()
+}
+
+@Composable
+private fun MiniPlayer(
+    model: MiniPlayerModel,
+    morphAnchors: PlayerMorphAnchors,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions
+) {
+    val track = model.track
+    val isPlaying = model.isPlaying
+    val isResolving = model.isResolving
+    val progress = model.progress
+    val bufferedProgress = model.bufferedProgress
+    val animated = model.animated
+    val gesturesEnabled = model.gesturesEnabled
+    val strings = LocalLevyraStrings.current
+    val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     val accentCenter = accentStart.playerMix(accentEnd, 0.48f)
@@ -16280,11 +16993,16 @@ private fun MiniPlayer(
         animationSpec = tween(420, easing = LinearOutSlowInEasing),
         label = "mini-progress"
     )
-    val sharedArtworkModifier = sharedPlayerArtworkModifier(
-        trackId = track.id,
-        enabled = animated,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope
+    val animatedBuffered by animateFloatAsState(
+        targetValue = bufferedProgress.coerceIn(0f, 1f),
+        animationSpec = tween(520, easing = LinearOutSlowInEasing),
+        label = "mini-buffered"
+    )
+    var swipeOffsetPx by remember(track.id) { mutableStateOf(0f) }
+    val settledSwipeOffset by animateFloatAsState(
+        targetValue = swipeOffsetPx,
+        animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap(),
+        label = "mini-swipe-offset"
     )
     val containerShape = RoundedCornerShape(
         topStart = LevyraPlayerDesign.CornerLg,
@@ -16303,6 +17021,19 @@ private fun MiniPlayer(
                 ambientColor = accentStart.copy(alpha = 0.16f),
                 spotColor = Color.Black.copy(alpha = 0.82f)
             )
+            .playerAxisDragGestures(
+                key = track.id,
+                enabled = gesturesEnabled,
+                rightToLeft = miniRightToLeft,
+                edgeZonesEnabled = false
+            ) { event ->
+                handleMiniPlayerDragEvent(
+                    event = event,
+                    playbackActions = playbackActions,
+                    expansionActions = expansionActions,
+                    updateSwipeOffset = { swipeOffsetPx = it }
+                )
+            }
     ) {
         Column(
             modifier = Modifier.background(
@@ -16325,11 +17056,13 @@ private fun MiniPlayer(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
-                    modifier = sharedArtworkModifier
+                    modifier = Modifier
+                        .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini)
                         .size(48.dp)
+                        .graphicsLayer { translationX = settledSwipeOffset * 0.4f }
                         .shadow(8.dp, LevyraPlayerDesign.ShapeSm, clip = false)
                         .clip(LevyraPlayerDesign.ShapeSm)
-                        .pressable(onClick = onOpen)
+                        .pressable(onClick = playbackActions.open)
                 ) {
                     CoverImage(track, Modifier.fillMaxSize())
                     Box(
@@ -16344,54 +17077,91 @@ private fun MiniPlayer(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .pressable(pressedScale = 0.985f, onClick = onOpen),
+                        .graphicsLayer {
+                            translationX = settledSwipeOffset
+                            alpha = playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                        }
+                        .semantics { onClick(label = strings.expandPlayer, action = null) }
+                        .pressable(pressedScale = 0.985f, onClick = playbackActions.open),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = track.title,
-                        color = miniPrimaryContent,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.1).sp,
-                        maxLines = 1,
-                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 2400)
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = track.artist,
-                        color = miniSecondaryContent,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    AnimatedContent(
+                        targetState = track,
+                        transitionSpec = {
+                            if (animated) {
+                                (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 3 }) togetherWith
+                                    (fadeOut(tween(120)) + slideOutVertically(tween(120)) { -it / 3 })
+                            } else {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            }
+                        },
+                        contentKey = { it.id },
+                        label = "mini-track"
+                    ) { animatedTrack ->
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                if (isPlaying) {
+                                    ActiveTrackEqualizer(
+                                        color = accentCenter.playerMix(Color.White, 0.35f),
+                                        isPlaying = true,
+                                        width = 14.dp,
+                                        height = 11.dp
+                                    )
+                                }
+                                Text(
+                                    text = animatedTrack.title,
+                                    color = miniPrimaryContent,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-0.1).sp,
+                                    maxLines = 1,
+                                    modifier = Modifier.basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 2400
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = animatedTrack.artist,
+                                color = miniSecondaryContent,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
                 MiniPlayerToggleButton(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
                     buttonColor = miniPrimaryContent,
                     animated = animated,
-                    onToggle = onToggle
+                    onToggle = playbackActions.toggle
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipNext,
-                    contentDescription = LocalLevyraStrings.current.next,
+                    contentDescription = strings.next,
                     size = 38.dp,
                     iconSize = 21.dp,
                     tint = miniPrimaryContent,
                     background = miniPrimaryContent.copy(alpha = 0.08f),
                     borderColor = miniPrimaryContent.copy(alpha = 0.16f),
-                    onClick = onNext
+                    onClick = playbackActions.next
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.Close,
-                    contentDescription = LocalLevyraStrings.current.closePlayer,
+                    contentDescription = strings.closePlayer,
                     size = 38.dp,
                     iconSize = 19.dp,
                     tint = miniSecondaryContent,
                     background = miniPrimaryContent.copy(alpha = 0.06f),
                     borderColor = miniPrimaryContent.copy(alpha = 0.13f),
-                    onClick = onClose
+                    onClick = playbackActions.close
                 )
             }
             Box(
@@ -16402,6 +17172,13 @@ private fun MiniPlayer(
                     .clip(RoundedCornerShape(99.dp))
                     .background(miniPrimaryContent.copy(alpha = 0.12f))
             ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animatedBuffered)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(miniPrimaryContent.copy(alpha = 0.22f))
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(animatedProgress)
