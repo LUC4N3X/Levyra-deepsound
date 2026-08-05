@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Base64
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
@@ -9,27 +10,42 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.Keep
+import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.LinkedHashMap
 import java.util.UUID
@@ -40,7 +56,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 internal data class YoutubeGuestSession(
     val visitorData: String,
-    val generation: Long
+    val generation: Long,
+    val playbackDeadlineElapsedMs: Long = Long.MAX_VALUE
 )
 
 internal data class YoutubePoTokens(
@@ -53,7 +70,12 @@ internal class YoutubePlayerRequestException(
     message: String
 ) : IllegalStateException(message)
 
-internal class YoutubePlaybackSecurity(
+internal class YoutubePoTokenRuntimeUnavailableException(
+    message: String,
+    cause: Throwable? = null
+) : IllegalStateException(message, cause)
+
+internal class YoutubePlaybackSecurity private constructor(
     context: Context,
     private val httpClient: OkHttpClient,
     private val apiKey: String,
@@ -65,6 +87,29 @@ internal class YoutubePlaybackSecurity(
     private val failureCount = AtomicInteger(0)
     private val tokenGenerator = YoutubeWebPoTokenGenerator(appContext, httpClient)
 
+    private val warmScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val lastWarmAtMs = AtomicLong(0L)
+
+    fun warmUp() {
+        val now = System.currentTimeMillis()
+        val previous = lastWarmAtMs.get()
+        if (now - previous < WARM_COOLDOWN_MS) return
+        if (!lastWarmAtMs.compareAndSet(previous, now)) return
+        warmScope.launch {
+            try {
+                val session = currentSessionRequired()
+                if (session.visitorData.isNotBlank()) {
+                    tokenGenerator.prewarm(session.visitorData, session.generation)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastWarmAtMs.set(0L)
+                Timber.d(error, "PO Token warm-up skipped")
+            }
+        }
+    }
+
     fun cachedSession(): YoutubeGuestSession {
         return YoutubeGuestSession(
             visitorData = prefs.getString(KEY_VISITOR_DATA, "").orEmpty(),
@@ -72,7 +117,16 @@ internal class YoutubePlaybackSecurity(
         )
     }
 
-    suspend fun currentSession(): YoutubeGuestSession = sessionMutex.withLock {
+    suspend fun currentSession(): YoutubeGuestSession {
+        val deadline = safeElapsedDeadline(SystemClock.elapsedRealtime(), FAST_WAIT_BUDGET_MS)
+        return withPoTokenWaitBudget(FAST_WAIT_BUDGET_MS) {
+            ensureCurrentSession().copy(playbackDeadlineElapsedMs = deadline)
+        }
+    }
+
+    suspend fun currentSessionRequired(): YoutubeGuestSession = ensureCurrentSession()
+
+    private suspend fun ensureCurrentSession(): YoutubeGuestSession = sessionMutex.withLock {
         val cached = cachedSession()
         if (cached.visitorData.isNotBlank()) return@withLock cached
         val fresh = fetchVisitorData()
@@ -89,6 +143,7 @@ internal class YoutubePlaybackSecurity(
             .putLong(KEY_GENERATION, generation)
             .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
             .apply()
+        lastWarmAtMs.set(0L)
         tokenGenerator.invalidate()
     }
 
@@ -99,19 +154,25 @@ internal class YoutubePlaybackSecurity(
         require(videoId.isNotBlank() && session.visitorData.isNotBlank()) {
             "PO Token binding and visitor identity are required"
         }
-        return tokenGenerator.generate(videoId, session.visitorData, session.generation)
+        return tokenGenerator.generate(videoId, session.visitorData, session.generation, FULL_WAIT_BUDGET_MS)
     }
 
-    suspend fun poTokens(videoId: String, session: YoutubeGuestSession): YoutubePoTokens? {
-        if (videoId.isBlank() || session.visitorData.isBlank()) return null
-        return try {
-            poTokensRequired(videoId, session)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "PO Token generation failed")
-            null
+    suspend fun poTokensForPlayback(
+        videoId: String,
+        session: YoutubeGuestSession
+    ): YoutubePoTokens {
+        if (videoId.isBlank() || session.visitorData.isBlank()) {
+            throw YoutubePoTokenRuntimeUnavailableException("Identita ospite assente per $videoId")
         }
+        val remainingBudgetMs = remainingPoTokenWaitBudget(
+            deadlineElapsedMs = session.playbackDeadlineElapsedMs,
+            fallbackBudgetMs = FAST_WAIT_BUDGET_MS,
+            nowElapsedMs = SystemClock.elapsedRealtime()
+        )
+        if (remainingBudgetMs <= 0L) {
+            throw YoutubePoTokenRuntimeUnavailableException("Playback security wait budget exhausted")
+        }
+        return tokenGenerator.generate(videoId, session.visitorData, session.generation, remainingBudgetMs)
     }
 
     suspend fun rotateIfNeeded(error: Throwable): Boolean {
@@ -132,6 +193,7 @@ internal class YoutubePlaybackSecurity(
                 .putLong(KEY_GENERATION, generation)
                 .putLong(KEY_LAST_ROTATION, now)
                 .apply()
+            lastWarmAtMs.set(0L)
             tokenGenerator.invalidate()
             val fresh = try {
                 fetchVisitorData()
@@ -151,7 +213,7 @@ internal class YoutubePlaybackSecurity(
         failureCount.set(0)
     }
 
-    private suspend fun fetchVisitorData(): String = withContext(Dispatchers.IO) {
+    private suspend fun fetchVisitorData(): String {
         val locale = LevyraContentLocales.forLanguage(preferences.languageCode())
         val client = JSONObject()
             .put("clientName", "WEB")
@@ -173,15 +235,7 @@ internal class YoutubePlaybackSecurity(
             .header("X-Youtube-Client-Name", "1")
             .header("X-Youtube-Client-Version", WEB_CLIENT_VERSION)
             .build()
-        httpClient.newCall(request).execute().use { response ->
-            val text = response.body.string()
-            if (!response.isSuccessful) throw YoutubePlayerRequestException(response.code, "visitor_id HTTP ${response.code}")
-            JSONObject(text)
-                .optJSONObject("responseContext")
-                ?.optString("visitorData")
-                .orEmpty()
-                .ifBlank { throw IllegalStateException("visitorData assente") }
-        }
+        return httpClient.awaitVisitorData(request)
     }
 
     private fun persistSession(visitorData: String, generation: Long): YoutubeGuestSession {
@@ -195,6 +249,9 @@ internal class YoutubePlaybackSecurity(
 
     private fun classifyFailure(error: Throwable): RotationDecision {
         val chain = generateSequence(error) { it.cause }.toList()
+        if (isLocalRuntimeFailure(error)) {
+            return RotationDecision(rotate = false, immediate = false, resetCounter = false)
+        }
         val requestError = chain.filterIsInstance<YoutubePlayerRequestException>().firstOrNull()
         val blob = chain.joinToString(" ") { it.message.orEmpty() }.lowercase()
         return evaluateFailure(blob, requestError?.httpCode)
@@ -212,6 +269,26 @@ internal class YoutubePlaybackSecurity(
         private const val KEY_UPDATED_AT = "updated_at"
         private const val KEY_LAST_ROTATION = "last_rotation"
         private const val ROTATION_COOLDOWN_MS = 30_000L
+        private const val WARM_COOLDOWN_MS = 60_000L
+
+        private const val FULL_WAIT_BUDGET_MS = 35_000L
+        private const val FAST_WAIT_BUDGET_MS = 4_000L
+
+        @Volatile
+        private var instance: YoutubePlaybackSecurity? = null
+
+        fun getInstance(context: Context): YoutubePlaybackSecurity {
+            val appContext = context.applicationContext
+            return instance ?: synchronized(this) {
+                instance ?: YoutubePlaybackSecurity(
+                    appContext,
+                    LevyraHttpClientFactory.youtubePlayer(),
+                    BuildConfig.YOUTUBE_INNERTUBE_API_KEY,
+                    LevyraPreferences(appContext)
+                ).also { instance = it }
+            }
+        }
+
         private const val WEB_CLIENT_VERSION = "2.20260630.01.00"
         private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
@@ -251,83 +328,480 @@ internal class YoutubePlaybackSecurity(
         internal fun shouldRotateGuestSession(message: String, httpCode: Int?): Boolean {
             return evaluateFailure(message.lowercase(), httpCode).rotate
         }
+
+        internal fun isLocalRuntimeFailure(error: Throwable): Boolean {
+            return generateSequence(error) { it.cause }
+                .any { it is YoutubePoTokenRuntimeUnavailableException }
+        }
     }
+}
+
+private suspend fun OkHttpClient.awaitVisitorData(request: Request): String =
+    suspendCancellableCoroutine { continuation ->
+        val call = newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) {
+                continuation.resumeResultIfActive(Result.failure(error))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val result = runCatching {
+                    response.use {
+                        val text = it.body.string()
+                        if (!it.isSuccessful) {
+                            throw YoutubePlayerRequestException(it.code, "visitor_id HTTP ${it.code}")
+                        }
+                        JSONObject(text)
+                            .optJSONObject("responseContext")
+                            ?.optString("visitorData")
+                            .orEmpty()
+                            .ifBlank { throw IllegalStateException("visitorData assente") }
+                    }
+                }
+                continuation.resumeResultIfActive(result)
+            }
+        })
+    }
+
+private fun <T> CancellableContinuation<T>.resumeResultIfActive(result: Result<T>) {
+    if (!isActive) return
+    runCatching { resumeWith(result) }
 }
 
 private class YoutubeWebPoTokenGenerator(
     private val context: Context,
     private val httpClient: OkHttpClient
 ) {
-    private val mutex = Mutex()
-    private val closeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val lock = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val invalidationVersion = AtomicLong(0L)
-    private var runtime: YoutubePoTokenRuntime? = null
-    private var runtimeVersion = -1L
-    private var sessionId = ""
-    private var sessionGeneration = -1L
-    private var playerRequestToken = ""
+    private val consecutiveBuildFailures = AtomicInteger(0)
+    private val nextBuildAttemptAtMs = AtomicLong(0L)
+    private val nextRefreshAttemptAtMs = AtomicLong(0L)
 
-    suspend fun generate(videoId: String, visitorData: String, generation: Long): YoutubePoTokens {
-        return mutex.withLock {
-            val version = invalidationVersion.get()
-            val recreate = runtime == null ||
-                runtime?.isExpired == true ||
-                runtimeVersion != version ||
-                sessionId != visitorData ||
-                sessionGeneration != generation
-            if (recreate) recreate(visitorData, generation, version)
-            var active = runtime ?: throw IllegalStateException("Runtime PO Token assente")
-            val streamingToken = try {
-                active.generate(videoId)
-            } catch (error: TimeoutCancellationException) {
-                recreate(visitorData, generation, invalidationVersion.get())
-                active = runtime ?: throw error
-                active.generate(videoId)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                recreate(visitorData, generation, invalidationVersion.get())
-                active = runtime ?: throw error
-                active.generate(videoId)
-            }
-            YoutubePoTokens(
-                playerToken = playerRequestToken,
-                streamingToken = streamingToken
-            )
+    @Volatile
+    private var active: PoTokenSession? = null
+
+    @Volatile
+    private var replacement: PoTokenSession? = null
+
+    suspend fun generate(
+        videoId: String,
+        visitorData: String,
+        generation: Long,
+        waitBudgetMs: Long
+    ): YoutubePoTokens {
+        cachedTokens(videoId, visitorData, generation)?.let { cached ->
+            refreshAheadIfStale(cached.session, visitorData, generation)
+            return cached.tokens
         }
+        return withPoTokenWaitBudget(waitBudgetMs) {
+            generateWithinBudget(videoId, visitorData, generation)
+        }
+    }
+
+    private suspend fun generateWithinBudget(
+        videoId: String,
+        visitorData: String,
+        generation: Long
+    ): YoutubePoTokens {
+        var session = session(visitorData, generation, discard = null)
+        var ready = awaitBuild(session)
+        var streamingToken: String? = null
+        try {
+            streamingToken = ready.runtime.generate(videoId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.d(error, "PO Token mint failed on the active runtime, rebuilding")
+        }
+        if (streamingToken == null) {
+            session = session(visitorData, generation, discard = session)
+            ready = awaitBuild(session)
+            streamingToken = ready.runtime.generate(videoId)
+        }
+        refreshAheadIfStale(session, visitorData, generation)
+        return YoutubePoTokens(playerToken = ready.playerToken, streamingToken = streamingToken)
+    }
+
+    private suspend fun awaitBuild(session: PoTokenSession): ReadyPoTokenRuntime {
+        return try {
+            session.deferred.await()
+        } catch (error: Throwable) {
+            throw localizePoTokenBuildFailure(error)
+        }
+    }
+
+    suspend fun prewarm(visitorData: String, generation: Long) {
+        val session = session(visitorData, generation, discard = null)
+        session.deferred.await()
     }
 
     fun invalidate() {
-        invalidationVersion.incrementAndGet()
-        closeScope.launch {
-            mutex.withLock { clearRuntime() }
+        val invalidatedVersion = invalidationVersion.incrementAndGet()
+        resetBuildAndRefreshBackoff()
+        scope.launch {
+            val retired = lock.withLock {
+                val retiredActive = active
+                    ?.takeIf { PoTokenInvalidationPolicy.shouldRetire(it.version, invalidatedVersion) }
+                if (retiredActive != null) active = null
+                val retiredReplacement = replacement
+                    ?.takeIf { PoTokenInvalidationPolicy.shouldRetire(it.version, invalidatedVersion) }
+                if (retiredReplacement != null) replacement = null
+                retiredActive to retiredReplacement
+            }
+            closeWhenSettled(retired.first, graceMs = RETIRE_GRACE_MS)
+            if (retired.second !== retired.first) {
+                closeWhenSettled(retired.second, graceMs = RETIRE_GRACE_MS)
+            }
         }
     }
 
-    private suspend fun recreate(visitorData: String, generation: Long, version: Long) {
-        clearRuntime()
-        val fresh = YoutubePoTokenRuntime.create(context, httpClient)
-        val sessionToken = try {
-            fresh.generate(visitorData)
-        } catch (error: Throwable) {
-            fresh.close()
-            throw error
-        }
-        runtime = fresh
-        runtimeVersion = version
-        sessionId = visitorData
-        sessionGeneration = generation
-        playerRequestToken = sessionToken
+    private fun cachedTokens(
+        videoId: String,
+        visitorData: String,
+        generation: Long
+    ): CachedPoTokens? {
+        val current = active ?: return null
+        if (!current.matches(visitorData, generation, invalidationVersion.get())) return null
+        val ready = current.ready ?: return null
+        if (ready.runtime.isExpired) return null
+        val cached = ready.runtime.cachedToken(videoId) ?: return null
+        return CachedPoTokens(
+            session = current,
+            tokens = YoutubePoTokens(playerToken = ready.playerToken, streamingToken = cached)
+        )
     }
 
-    private suspend fun clearRuntime() {
-        val old = runtime
-        runtime = null
-        runtimeVersion = -1L
-        sessionId = ""
-        sessionGeneration = -1L
-        playerRequestToken = ""
-        old?.close()
+    private suspend fun session(
+        visitorData: String,
+        generation: Long,
+        discard: PoTokenSession?
+    ): PoTokenSession = lock.withLock {
+        val version = invalidationVersion.get()
+        val current = active
+        val pendingReplacement = replacement
+        val replacementMatches = pendingReplacement?.matches(visitorData, generation, version) == true
+        if (
+            PoTokenReplacementPolicy.shouldJoin(
+                hasReplacement = pendingReplacement != null,
+                replacementMatches = replacementMatches,
+                replacementUsable = pendingReplacement?.isUsable == true,
+                hasActive = current != null,
+                activeDiscarded = current != null && current === discard,
+                activeMatches = current?.matches(visitorData, generation, version) == true,
+                activeUsable = current?.isUsable == true
+            )
+        ) {
+            return@withLock pendingReplacement!!
+        }
+
+        val now = System.currentTimeMillis()
+        val cooldownUntil = nextBuildAttemptAtMs.get()
+        when (
+            PoTokenSessionPolicy.decide(
+                hasSession = current != null,
+                discarded = current != null && current === discard,
+                matches = current?.matches(visitorData, generation, version) == true,
+                usable = current?.isUsable == true,
+                nowMs = now,
+                nextBuildAttemptAtMs = cooldownUntil
+            )
+        ) {
+            PoTokenSessionAction.REUSE -> return@withLock current!!
+            PoTokenSessionAction.BACKOFF ->
+                throw YoutubePoTokenRuntimeUnavailableException("Integrity runtime in backoff for ${cooldownUntil - now} ms")
+            PoTokenSessionAction.BUILD -> Unit
+        }
+
+        active = null
+        closeWhenSettled(current, graceMs = RETIRE_GRACE_MS)
+
+        val obsoleteReplacement = replacement
+        replacement = null
+        if (obsoleteReplacement !== current) {
+            closeWhenSettled(obsoleteReplacement, graceMs = RETIRE_GRACE_MS)
+        }
+
+        val fresh = startSession(visitorData, generation, version, armBackoffOnFailure = true)
+        active = fresh
+        fresh
+    }
+
+    private fun startSession(
+        visitorData: String,
+        generation: Long,
+        version: Long,
+        armBackoffOnFailure: Boolean
+    ): PoTokenSession {
+        val session = PoTokenSession(visitorData, generation, version)
+        session.deferred = scope.async(start = CoroutineStart.LAZY) {
+            try {
+                val runtime = YoutubePoTokenRuntime.create(context, httpClient)
+                val playerToken = try {
+                    runtime.generate(visitorData)
+                } catch (error: Throwable) {
+                    runtime.close()
+                    throw error
+                }
+                val ready = ReadyPoTokenRuntime(runtime, playerToken)
+                session.ready = ready
+                if (version == invalidationVersion.get()) resetBuildBackoff()
+                ready
+            } catch (error: CancellationException) {
+                session.failed = true
+                if (
+                    armBackoffOnFailure &&
+                    version == invalidationVersion.get() &&
+                    PoTokenBuildFailurePolicy.shouldArmBackoff(
+                        cancellation = true,
+                        ownerActive = currentCoroutineContext().isActive
+                    )
+                ) {
+                    armBuildBackoff()
+                }
+                throw error
+            } catch (error: Throwable) {
+                session.failed = true
+                if (armBackoffOnFailure && version == invalidationVersion.get()) armBuildBackoff()
+                throw error
+            }
+        }
+        session.deferred.start()
+        return session
+    }
+
+    private fun refreshAheadIfStale(
+        session: PoTokenSession,
+        visitorData: String,
+        generation: Long
+    ) {
+        val ready = session.ready ?: return
+        if (!ready.runtime.isStale) return
+        val now = System.currentTimeMillis()
+        if (now < nextRefreshAttemptAtMs.get()) return
+        if (!session.refreshing.compareAndSet(false, true)) return
+
+        scope.launch {
+            val version = invalidationVersion.get()
+            val candidate = lock.withLock {
+                if (
+                    active !== session ||
+                    !session.matches(visitorData, generation, version)
+                ) {
+                    return@withLock null
+                }
+                replacement
+                    ?.takeIf { it.matches(visitorData, generation, version) && it.isUsable }
+                    ?: startSession(
+                        visitorData = visitorData,
+                        generation = generation,
+                        version = version,
+                        armBackoffOnFailure = false
+                    ).also { replacement = it }
+            }
+
+            if (candidate == null) {
+                session.refreshing.set(false)
+                return@launch
+            }
+
+            val built = try {
+                candidate.deferred.await()
+            } catch (error: CancellationException) {
+                if (!currentCoroutineContext().isActive) throw error
+                null
+            } catch (error: Throwable) {
+                Timber.d(error, "PO Token refresh-ahead build failed")
+                null
+            }
+
+            if (built == null) {
+                if (version == invalidationVersion.get()) {
+                    nextRefreshAttemptAtMs.set(System.currentTimeMillis() + REFRESH_RETRY_COOLDOWN_MS)
+                }
+                lock.withLock {
+                    if (replacement === candidate) replacement = null
+                }
+                closeWhenSettled(candidate, graceMs = 0L)
+                session.refreshing.set(false)
+                return@launch
+            }
+
+            val retired = lock.withLock {
+                if (
+                    active === session &&
+                    invalidationVersion.get() == version &&
+                    candidate.matches(visitorData, generation, version)
+                ) {
+                    active = candidate
+                    if (replacement === candidate) replacement = null
+                    session
+                } else {
+                    if (replacement === candidate) replacement = null
+                    candidate
+                }
+            }
+            if (version == invalidationVersion.get()) nextRefreshAttemptAtMs.set(0L)
+            session.refreshing.set(false)
+            closeWhenSettled(retired, graceMs = RETIRE_GRACE_MS)
+        }
+    }
+
+    private fun armBuildBackoff() {
+        val failures = consecutiveBuildFailures.incrementAndGet()
+        nextBuildAttemptAtMs.set(System.currentTimeMillis() + PoTokenBackoff.delayMs(failures))
+    }
+
+    private fun resetBuildBackoff() {
+        consecutiveBuildFailures.set(0)
+        nextBuildAttemptAtMs.set(0L)
+    }
+
+    private fun resetBuildAndRefreshBackoff() {
+        resetBuildBackoff()
+        nextRefreshAttemptAtMs.set(0L)
+    }
+
+    private fun closeWhenSettled(session: PoTokenSession?, graceMs: Long) {
+        if (session == null) return
+        scope.launch {
+            val ready = runCatching { session.deferred.await() }.getOrNull() ?: return@launch
+            if (graceMs > 0L) delay(graceMs)
+            ready.runtime.close()
+        }
+    }
+
+    private data class CachedPoTokens(
+        val session: PoTokenSession,
+        val tokens: YoutubePoTokens
+    )
+
+    private class PoTokenSession(
+        val visitorData: String,
+        val generation: Long,
+        val version: Long
+    ) {
+        lateinit var deferred: Deferred<ReadyPoTokenRuntime>
+        val refreshing = AtomicBoolean(false)
+
+        @Volatile
+        var ready: ReadyPoTokenRuntime? = null
+
+        @Volatile
+        var failed = false
+
+        fun matches(visitorData: String, generation: Long, version: Long): Boolean =
+            this.visitorData == visitorData && this.generation == generation && this.version == version
+
+        val isUsable: Boolean
+            get() {
+                if (failed) return false
+                val current = ready ?: return true
+                return !current.runtime.isExpired
+            }
+    }
+
+    private class ReadyPoTokenRuntime(
+        val runtime: YoutubePoTokenRuntime,
+        val playerToken: String
+    )
+
+    private companion object {
+        const val RETIRE_GRACE_MS = 15_000L
+        const val REFRESH_RETRY_COOLDOWN_MS = 15_000L
+    }
+}
+
+internal fun localizePoTokenBuildFailure(error: Throwable): Throwable = when (error) {
+    is CancellationException -> error
+    is YoutubePoTokenRuntimeUnavailableException -> error
+    else -> YoutubePoTokenRuntimeUnavailableException("Integrity runtime build failed", error)
+}
+
+private data class PoTokenBudgetResult<T>(val value: T)
+
+internal suspend fun <T> withPoTokenWaitBudget(
+    waitBudgetMs: Long,
+    block: suspend () -> T
+): T {
+    require(waitBudgetMs > 0L) { "PO Token wait budget must be positive" }
+    val result = withTimeoutOrNull(waitBudgetMs) {
+        PoTokenBudgetResult(block())
+    }
+    return result?.value
+        ?: throw YoutubePoTokenRuntimeUnavailableException(
+            "Integrity runtime or token not ready within $waitBudgetMs ms"
+        )
+}
+
+internal fun safeElapsedDeadline(nowElapsedMs: Long, budgetMs: Long): Long {
+    require(budgetMs > 0L) { "PO Token wait budget must be positive" }
+    return if (nowElapsedMs > Long.MAX_VALUE - budgetMs) Long.MAX_VALUE else nowElapsedMs + budgetMs
+}
+
+internal fun remainingPoTokenWaitBudget(
+    deadlineElapsedMs: Long,
+    fallbackBudgetMs: Long,
+    nowElapsedMs: Long
+): Long {
+    require(fallbackBudgetMs > 0L) { "Fallback PO Token budget must be positive" }
+    if (deadlineElapsedMs == Long.MAX_VALUE) return fallbackBudgetMs
+    return (deadlineElapsedMs - nowElapsedMs).coerceAtLeast(0L)
+}
+
+internal enum class PoTokenSessionAction { REUSE, BACKOFF, BUILD }
+
+internal object PoTokenSessionPolicy {
+    fun decide(
+        hasSession: Boolean,
+        discarded: Boolean,
+        matches: Boolean,
+        usable: Boolean,
+        nowMs: Long,
+        nextBuildAttemptAtMs: Long
+    ): PoTokenSessionAction {
+        if (hasSession && !discarded && matches && usable) return PoTokenSessionAction.REUSE
+        if (nowMs < nextBuildAttemptAtMs) return PoTokenSessionAction.BACKOFF
+        return PoTokenSessionAction.BUILD
+    }
+}
+
+internal object PoTokenReplacementPolicy {
+    fun shouldJoin(
+        hasReplacement: Boolean,
+        replacementMatches: Boolean,
+        replacementUsable: Boolean,
+        hasActive: Boolean,
+        activeDiscarded: Boolean,
+        activeMatches: Boolean,
+        activeUsable: Boolean
+    ): Boolean {
+        if (!hasReplacement || !replacementMatches || !replacementUsable) return false
+        return !hasActive || activeDiscarded || !activeMatches || !activeUsable
+    }
+}
+
+internal object PoTokenInvalidationPolicy {
+    fun shouldRetire(sessionVersion: Long, invalidatedVersion: Long): Boolean =
+        sessionVersion < invalidatedVersion
+}
+
+internal object PoTokenBuildFailurePolicy {
+    fun shouldArmBackoff(cancellation: Boolean, ownerActive: Boolean): Boolean =
+        !cancellation || ownerActive
+}
+
+internal object PoTokenBackoff {
+    private const val BASE_MS = 2_000L
+    private const val MAX_MS = 60_000L
+    private const val MAX_SHIFT = 5
+
+    fun delayMs(consecutiveFailures: Int): Long {
+        if (consecutiveFailures <= 0) return 0L
+        val shift = (consecutiveFailures - 1).coerceAtMost(MAX_SHIFT)
+        return (BASE_MS shl shift).coerceAtMost(MAX_MS)
     }
 }
 
@@ -341,12 +815,16 @@ internal class YoutubePoTokenRuntime private constructor(
     private val ready = CompletableDeferred<Unit>()
     private val tokenWaiters = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val tokenCache = BoundedPoTokenCache(MAX_TOKEN_CACHE_ENTRIES)
+    private val inFlightTokens = ConcurrentHashMap<String, Deferred<String>>()
     private val closed = AtomicBoolean(false)
     private val dead = AtomicBoolean(false)
     private val initializationStarted = AtomicBoolean(false)
 
     @Volatile
     private var expiresAtMs = 0L
+
+    @Volatile
+    private var refreshAtMs = 0L
 
     init {
         webView.settings.javaScriptEnabled = true
@@ -382,10 +860,43 @@ internal class YoutubePoTokenRuntime private constructor(
     val isExpired: Boolean
         get() = closed.get() || dead.get() || expiresAtMs <= System.currentTimeMillis()
 
+    val isStale: Boolean
+        get() = isExpired || refreshAtMs <= System.currentTimeMillis()
+
+    fun cachedToken(identifier: String): String? {
+        if (isUnavailable()) return null
+        val binding = identifier.trim()
+        if (binding.isEmpty() || binding.length > MAX_BINDING_LENGTH) return null
+        return tokenCache.get(binding)
+    }
+
     suspend fun generate(identifier: String): String {
         val binding = identifier.trim()
         require(binding.isNotEmpty() && binding.length <= MAX_BINDING_LENGTH) { "Invalid PO Token binding" }
         tokenCache.get(binding)?.let { return it }
+        ensureActive()
+        return try {
+            mintJob(binding).await()
+        } catch (error: CancellationException) {
+            if (currentCoroutineContext().isActive) {
+                throw YoutubePoTokenRuntimeUnavailableException("Integrity runtime closed while minting", error)
+            }
+            throw error
+        }
+    }
+
+    private fun mintJob(binding: String): Deferred<String> {
+        inFlightTokens[binding]?.takeIf { !it.isCompleted }?.let { return it }
+        synchronized(inFlightTokens) {
+            inFlightTokens[binding]?.takeIf { !it.isCompleted }?.let { return it }
+            val job = scope.async { mintToken(binding) }
+            inFlightTokens[binding] = job
+            job.invokeOnCompletion { inFlightTokens.remove(binding, job) }
+            return job
+        }
+    }
+
+    private suspend fun mintToken(binding: String): String {
         ensureActive()
         try {
             withTimeout(INIT_TIMEOUT_MS) { ready.await() }
@@ -457,7 +968,9 @@ internal class YoutubePoTokenRuntime private constructor(
                 val body = JSONArray().put(REQUEST_KEY).put(response).toString()
                 val integrityResponse = requestBotguard(GENERATE_URL, body)
                 val parsed = parseIntegrityTokenData(integrityResponse)
-                expiresAtMs = safeExpiryAt(System.currentTimeMillis(), parsed.second)
+                val issuedAt = System.currentTimeMillis()
+                expiresAtMs = safeExpiryAt(issuedAt, parsed.second)
+                refreshAtMs = refreshDeadline(issuedAt, expiresAtMs)
                 webView.evaluateJavascript(
                     "try{createPoTokenMinter(window.__levyraWebPoSignalOutput,${parsed.first}).then(function(){$JS_INTERFACE.onMinterReady();}).catch(function(e){$JS_INTERFACE.onInitError(String(e));});}catch(e){$JS_INTERFACE.onInitError(String(e));}",
                     null
@@ -670,6 +1183,11 @@ internal class YoutubePoTokenRuntime private constructor(
                 throw IllegalStateException("Integrity token TTL non valido")
             }
             return jsUint8Array(bytes) to ttl
+        }
+
+        internal fun refreshDeadline(issuedAtMs: Long, expiresAtMs: Long): Long {
+            if (expiresAtMs <= issuedAtMs) return expiresAtMs
+            return issuedAtMs + (expiresAtMs - issuedAtMs) * 3L / 4L
         }
 
         internal fun safeExpiryAt(nowMs: Long, ttlSeconds: Long): Long {
