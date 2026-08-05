@@ -31,6 +31,17 @@ public final class SabrContextUpdate {
     }
 
     @Nonnull
+    public static SabrContextUpdate normalized(final int type, final int scope,
+                                                @Nonnull final byte[] value,
+                                                final boolean sendByDefault,
+                                                final int writePolicy) {
+        if (type < 0 || value.length == 0 || value.length > 64 * 1024) {
+            throw new IllegalArgumentException("Invalid normalized SABR context update");
+        }
+        return new SabrContextUpdate(type, scope, value, sendByDefault, writePolicy, null);
+    }
+
+    @Nonnull
     static SabrContextUpdate decode(@Nonnull final byte[] data) throws SabrProtocolException {
         int type = -1;
         int scope = -1;

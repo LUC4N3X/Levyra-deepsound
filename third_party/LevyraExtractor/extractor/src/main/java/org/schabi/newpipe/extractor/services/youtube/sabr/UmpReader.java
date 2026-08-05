@@ -11,6 +11,8 @@ import java.util.List;
  * Reader for YouTube's UMP envelope. UMP uses its own compact integer format, not protobuf varints.
  */
 public final class UmpReader {
+    static final int MAX_UMP_PART_BYTES = 64 * 1024 * 1024;
+
     private UmpReader() {
     }
 
@@ -24,6 +26,13 @@ public final class UmpReader {
     @FunctionalInterface
     public interface StoppablePartConsumer {
         boolean accept(int type, @Nonnull byte[] payload) throws SabrProtocolException;
+    }
+
+    /** Receives one UMP part payload as a bounded stream. The consumer may stop at part boundary. */
+    @FunctionalInterface
+    public interface StoppablePayloadConsumer {
+        boolean accept(int type, int size, @Nonnull InputStream payload)
+                throws SabrProtocolException, IOException;
     }
 
     /**
@@ -48,6 +57,17 @@ public final class UmpReader {
     public static void readStreamingUntil(@Nonnull final InputStream in,
                                           @Nonnull final StoppablePartConsumer consumer)
             throws SabrProtocolException, IOException {
+        readPayloadsUntil(in, (type, size, payload) -> consumer.accept(type,
+                readExactly(payload, size)));
+    }
+
+    /**
+     * Stream the UMP envelope while exposing each payload as a bounded stream. This lets callers
+     * consume large MEDIA parts without allocating one byte[] for the whole part.
+     */
+    public static void readPayloadsUntil(@Nonnull final InputStream in,
+                                         @Nonnull final StoppablePayloadConsumer consumer)
+            throws SabrProtocolException, IOException {
         while (true) {
             throwIfInterrupted();
             final int first = in.read();
@@ -59,7 +79,14 @@ public final class UmpReader {
             if (type < 0 || size < 0) {
                 throw new SabrProtocolException("Invalid UMP part header");
             }
-            if (!consumer.accept(type, readExactly(in, size))) {
+            if (size > MAX_UMP_PART_BYTES) {
+                throw new SabrProtocolException("UMP part exceeded Host limit: type="
+                        + type + ", size=" + size + ", limit=" + MAX_UMP_PART_BYTES);
+            }
+            final BoundedInputStream payload = new BoundedInputStream(in, size);
+            final boolean keepGoing = consumer.accept(type, size, payload);
+            payload.drain();
+            if (!keepGoing) {
                 return;
             }
         }
@@ -124,6 +151,53 @@ public final class UmpReader {
         }
     }
 
+    private static final class BoundedInputStream extends InputStream {
+        @Nonnull
+        private final InputStream source;
+        private int remaining;
+
+        private BoundedInputStream(@Nonnull final InputStream source, final int size) {
+            this.source = source;
+            this.remaining = size;
+        }
+
+        @Override
+        public int read() throws IOException {
+            throwIfInterrupted();
+            if (remaining <= 0) {
+                return -1;
+            }
+            final int value = source.read();
+            if (value < 0) {
+                throw new EOFException("Unexpected EOF while reading UMP part data");
+            }
+            remaining--;
+            return value;
+        }
+
+        @Override
+        public int read(@Nonnull final byte[] buffer, final int offset, final int length)
+                throws IOException {
+            throwIfInterrupted();
+            if (remaining <= 0) {
+                return -1;
+            }
+            final int read = source.read(buffer, offset, Math.min(length, remaining));
+            if (read < 0) {
+                throw new EOFException("Unexpected EOF while reading UMP part data");
+            }
+            remaining -= read;
+            return read;
+        }
+
+        private void drain() throws IOException {
+            final byte[] buffer = new byte[8192];
+            while (remaining > 0) {
+                read(buffer, 0, Math.min(buffer.length, remaining));
+            }
+        }
+    }
+
     @Nonnull
     public static List<UmpPart> readAll(@Nonnull final byte[] data) throws SabrProtocolException {
         final Cursor cursor = new Cursor(data);
@@ -133,6 +207,10 @@ public final class UmpReader {
             final int size = cursor.readUmpInt();
             if (type < 0 || size < 0) {
                 throw new SabrProtocolException("Invalid UMP part header");
+            }
+            if (size > MAX_UMP_PART_BYTES) {
+                throw new SabrProtocolException("UMP part exceeded Host limit: type="
+                        + type + ", size=" + size + ", limit=" + MAX_UMP_PART_BYTES);
             }
             parts.add(new UmpPart(type, size, cursor.readBytes(size)));
         }

@@ -1846,7 +1846,7 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     public void onFetchPage(@Nonnull final Downloader downloader)
             throws IOException, ExtractionException {
         final String videoId = getId();
-        final Localization localization = new Localization("en");
+        final Localization localization = YoutubeParsingHelper.getPlayerRequestLocalization();
         final ContentCountry contentCountry = getExtractorContentCountry();
 
         resetFetchState();

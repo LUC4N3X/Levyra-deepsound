@@ -228,6 +228,13 @@ final class SabrProto {
             writeFixed32(Float.floatToIntBits(value));
         }
 
+        void writeFixed64(final int fieldNumber, final long value) {
+            writeTag(fieldNumber, WIRE_FIXED64);
+            for (int shift = 0; shift < Long.SIZE; shift += Byte.SIZE) {
+                output.write((int) (value >> shift) & 0xff);
+            }
+        }
+
         void writeBytes(final int fieldNumber, @Nonnull final byte[] bytes) {
             writeTag(fieldNumber, WIRE_LENGTH_DELIMITED);
             writeVarint(bytes.length);
@@ -247,6 +254,10 @@ final class SabrProto {
         @Nonnull
         byte[] toByteArray() {
             return output.toByteArray();
+        }
+
+        int size() {
+            return output.size();
         }
 
         private void writeTag(final int fieldNumber, final int wireType) {
