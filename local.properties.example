@@ -1,5 +1,58 @@
+# =============================================================================
+# Levyra — Local Configuration & GitHub Actions Secrets Reference
+# =============================================================================
+# This file documents the configuration required to build and maintain Levyra.
+#
+# Local development:
+#   Copy this file to "local.properties" and complete the LOCAL CONFIGURATION
+#   section.
+#
+# GitHub Actions:
+#   Add the values listed under GITHUB ACTIONS REPOSITORY SECRETS in:
+#   Repository Settings → Secrets and variables → Actions
+#
+# Never commit real API keys, cookies, passwords, keystores, or credentials.
+# =============================================================================
+
+
+# =============================================================================
+# LOCAL CONFIGURATION
+# =============================================================================
+
+# YouTube Innertube
+# -----------------------------------------------------------------------------
 youtubeInnertubeApiKey=
+
+
+# Android Release Signing
+# -----------------------------------------------------------------------------
 levyraStoreFile=app/levyra-release.jks
 levyraStorePassword=
 levyraKeyAlias=
 levyraKeyPassword=
+
+
+# =============================================================================
+# GITHUB ACTIONS REPOSITORY SECRETS
+# =============================================================================
+# Reference only: these entries are read from GitHub repository secrets,
+# not directly from local.properties.
+
+
+# YouTube
+# -----------------------------------------------------------------------------
+# YOUTUBE_INNERTUBE_API_KEY=
+
+
+# Editorial Catalog
+# -----------------------------------------------------------------------------
+# LEVYRA_EDITORIAL_SP_DC=
+# LEVYRA_EDITORIAL_YTM_COOKIE=
+
+
+# Android Release Signing
+# -----------------------------------------------------------------------------
+# LEVYRA_KEYSTORE_BASE64=
+# LEVYRA_KEYSTORE_PASSWORD=
+# LEVYRA_KEY_ALIAS=
+# LEVYRA_KEY_PASSWORD=
