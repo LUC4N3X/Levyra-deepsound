@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-05T19:58:12Z",
+  "generatedAt": "2026-08-05T20:00:59Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2036,7 +2036,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2044,12 +2044,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 37,
@@ -2243,6 +2243,14 @@
           },
           "durationMs": 199032,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "c-8abSPAPOU",
+            "audioConfidence": 100,
+            "videoId": "c8zq4kAn_O0",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCyI0V6RmULLsRxegMTCmkWQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024229702de91cb3d3a4383302"
         },
         {
@@ -2390,7 +2398,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -2398,8 +2406,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2409,7 +2417,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 3,
@@ -3267,7 +3275,7 @@
         },
         {
           "position": 41,
-          "id": "levyra-4c886bf7b578fe1d1532",
+          "id": "levyra-07bfa81c9a33aafde0f1",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3275,8 +3283,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Nice To Each Other",
+            "releaseDate": "2025-05-30"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3286,7 +3294,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
         },
         {
           "position": 42,
@@ -3397,6 +3405,14 @@
           },
           "durationMs": 199032,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "c-8abSPAPOU",
+            "audioConfidence": 100,
+            "videoId": "c8zq4kAn_O0",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCyI0V6RmULLsRxegMTCmkWQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024229702de91cb3d3a4383302"
         },
         {
@@ -6834,6 +6850,14 @@
           },
           "durationMs": 199032,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "c-8abSPAPOU",
+            "audioConfidence": 100,
+            "videoId": "c8zq4kAn_O0",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCyI0V6RmULLsRxegMTCmkWQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024229702de91cb3d3a4383302"
         },
         {
@@ -15080,7 +15104,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15088,8 +15112,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15099,7 +15123,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 33,
@@ -17146,7 +17170,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17154,12 +17178,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 28,
@@ -17600,20 +17624,20 @@
         },
         {
           "position": 48,
-          "id": "levyra-9d3af210c1d9093eda1e",
-          "title": "Zakázané uvolnění",
+          "id": "levyra-a5a017fba38add2b0e35",
+          "title": "Zakazane uvolneni",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Hity & příběhy (Best Of 2001-2021)",
-            "releaseDate": "2021-11-26"
+            "name": "Den",
+            "releaseDate": "2014-05-12"
           },
-          "durationMs": 217013,
+          "durationMs": 217426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
         },
         {
           "position": 49,
@@ -20344,6 +20368,14 @@
           },
           "durationMs": 199032,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "c-8abSPAPOU",
+            "audioConfidence": 100,
+            "videoId": "c8zq4kAn_O0",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCyI0V6RmULLsRxegMTCmkWQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024229702de91cb3d3a4383302"
         },
         {
@@ -24590,11 +24622,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "releaseDate": "2010-08-24"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
         },
         {
           "position": 19,
@@ -27311,6 +27343,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28291,6 +28325,14 @@
           },
           "durationMs": 199032,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "c-8abSPAPOU",
+            "audioConfidence": 100,
+            "videoId": "c8zq4kAn_O0",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCyI0V6RmULLsRxegMTCmkWQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024229702de91cb3d3a4383302"
         },
         {
