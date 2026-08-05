@@ -333,7 +333,7 @@ class PlaybackService : MediaLibraryService() {
         val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
             .setDisplayName("Casuale")
             .setSessionCommand(queueShuffleCommand)
-            .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
+            .setCustomIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
             .build()
         val queuePreviousButton = CommandButton.Builder(CommandButton.ICON_PREVIOUS)
             .setDisplayName("Precedente")
@@ -346,7 +346,7 @@ class PlaybackService : MediaLibraryService() {
         val queueLikeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
             .setDisplayName("Mi piace")
             .setSessionCommand(queueLikeCommand)
-            .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_like)
+            .setCustomIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_like)
             .build()
 
         val callback = object : MediaLibrarySession.Callback {
