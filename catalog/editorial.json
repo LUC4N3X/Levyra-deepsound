@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-05T18:15:06Z",
+  "generatedAt": "2026-08-05T18:35:14Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1718,7 +1718,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1726,12 +1726,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 23,
@@ -3169,11 +3169,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 37,
@@ -4539,6 +4539,12 @@
           },
           "durationMs": 212908,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "vWLgRmLN2HI",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC7PL9aor5qNRhvhWWVXyOqA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b84b5d956376cb8e55425f5"
         },
         {
@@ -15076,7 +15082,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -15084,8 +15090,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15095,7 +15101,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 33,
@@ -19877,6 +19883,12 @@
           },
           "durationMs": 225959,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "u7X4fPZ_jsc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCxujwWdnXrQuTYtN8W1ChEA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0239b5585cb4fc5f6b6e5d55e3"
         },
         {
@@ -22545,12 +22557,6 @@
           },
           "durationMs": 177052,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "eqKhhG4FVoQ",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCC3Hg75KxQk4VTrBSphEbGw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027c887828b1a67202f0219857"
         },
         {
@@ -26717,12 +26723,6 @@
           },
           "durationMs": 258823,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "b5lQpq0iInc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_FFKwisPiEXk5EH_ipTHcA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa0eba8392217e6b1d061791"
         },
         {
@@ -27175,6 +27175,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
