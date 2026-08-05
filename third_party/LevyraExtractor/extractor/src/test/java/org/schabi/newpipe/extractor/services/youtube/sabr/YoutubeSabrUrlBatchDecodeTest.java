@@ -6,6 +6,7 @@ import com.grack.nanojson.JsonObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeApiDecoder;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptDecoder;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerManager;
@@ -20,6 +21,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class YoutubeSabrUrlBatchDecodeTest {
@@ -71,6 +74,38 @@ class YoutubeSabrUrlBatchDecodeTest {
                 .contains("/n/decoded-path-n"));
         assertTrue(info.findFormatByItag(136).getInitializationUrl()
                 .contains("sig=decoded-path-s"));
+    }
+
+    @Test
+    void nParameterParsingKeepsPathAndQuerySeparate() throws Exception {
+        final String url = "https://sabr.test/videoplayback?next=/n/fake&n=real";
+        assertEquals("real", YoutubeSabrFormat.extractNParameter(url));
+        assertNull(YoutubeSabrFormat.extractNParameter(
+                "https://sabr.test/videoplayback?next=/n/fake"));
+
+        final Map<String, String> decodedN = new HashMap<>();
+        decodedN.put("real", "decoded-real");
+        final String resolved = YoutubeSabrFormat.resolveNParameter(url,
+                new YoutubeApiDecoder.BatchDecodeResult(new HashMap<>(), decodedN));
+        assertEquals("https://sabr.test/videoplayback?next=/n/fake&n=decoded-real",
+                resolved);
+    }
+
+    @Test
+    void sabrUrlsRejectFragmentsBeforeDecodeOrSignatureAppend() {
+        assertThrows(ParsingException.class, () -> YoutubeSabrFormat.extractNParameter(
+                "https://sabr.test/videoplayback?n=encrypted#fragment"));
+        assertThrows(ParsingException.class, () -> YoutubeSabrFormat.extractNParameter(
+                "https://sabr.test/videoplayback?next=value#/n/fake"));
+
+        final JsonObject format = baseFormat(140, "audio/mp4");
+        final String url = "https://adaptive.test/140?n=audio-n#fragment";
+        format.put("signatureCipher", "url=" + URLEncoder.encode(url, StandardCharsets.UTF_8)
+                + "&s=audio-s&sp=sig");
+        final JsonArray formats = new JsonArray();
+        formats.add(format);
+        assertThrows(ParsingException.class,
+                () -> YoutubeSabrFormat.fromAdaptiveFormats("video", formats));
     }
 
     @Nonnull
