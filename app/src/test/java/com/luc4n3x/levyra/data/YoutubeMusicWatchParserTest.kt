@@ -672,6 +672,25 @@ class YoutubeMusicWatchParserTest {
     }
 
     @Test
+    fun localRuntimeFailuresDoNotDisturbGuestSessionRotationState() {
+        assertTrue(
+            YoutubePlaybackSecurity.isLocalRuntimeFailure(
+                YoutubePoTokenRuntimeUnavailableException("Integrity runtime in backoff for 4000 ms")
+            )
+        )
+        assertTrue(
+            YoutubePlaybackSecurity.isLocalRuntimeFailure(
+                IllegalStateException(
+                    "wrapped",
+                    YoutubePoTokenRuntimeUnavailableException("Integrity runtime not ready within 4000 ms")
+                )
+            )
+        )
+        assertFalse(YoutubePlaybackSecurity.isLocalRuntimeFailure(YoutubePlayerRequestException(403, "Forbidden")))
+        assertFalse(YoutubePlaybackSecurity.isLocalRuntimeFailure(IllegalStateException("PO token rejected")))
+    }
+
+    @Test
     fun poTokenSessionIsReusedEvenWhileBuildBackoffIsArmed() {
         val action = PoTokenSessionPolicy.decide(
             hasSession = true,

@@ -381,7 +381,8 @@ abandoned prefetch never destroys a runtime another track is waiting on. Consequ
   request, so a bot gate cannot rotate the guest session and discard the build it was waiting for;
 - concurrent client profiles join the same build and the same per-video mint instead of serializing;
 - an approaching integrity-token expiry is replaced in the background while the current runtime keeps
-  serving, so expiry never lands as a cold rebuild on playback;
+  serving, so expiry normally does not land as a cold rebuild on playback. The replacement is
+  best-effort: if it fails, or if the runtime fails afterwards, a cold rebuild still happens;
 - repeated build failures back off exponentially (2s to 60s), so a resolve fails over to the clients
   that need no PO Token instead of re-paying an initialization timeout each attempt;
 - best-effort callers wait only briefly for a cold build and degrade rather than hold a race slot,

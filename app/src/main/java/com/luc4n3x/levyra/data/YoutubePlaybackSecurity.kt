@@ -61,6 +61,11 @@ internal class YoutubePlayerRequestException(
     message: String
 ) : IllegalStateException(message)
 
+internal class YoutubePoTokenRuntimeUnavailableException(
+    message: String,
+    cause: Throwable? = null
+) : IllegalStateException(message, cause)
+
 internal class YoutubePlaybackSecurity private constructor(
     context: Context,
     private val httpClient: OkHttpClient,
@@ -134,16 +139,14 @@ internal class YoutubePlaybackSecurity private constructor(
         return tokenGenerator.generate(videoId, session.visitorData, session.generation, FULL_WAIT_BUDGET_MS)
     }
 
-    suspend fun poTokens(videoId: String, session: YoutubeGuestSession): YoutubePoTokens? {
-        if (videoId.isBlank() || session.visitorData.isBlank()) return null
-        return try {
-            tokenGenerator.generate(videoId, session.visitorData, session.generation, FAST_WAIT_BUDGET_MS)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "PO Token generation failed")
-            null
+    suspend fun poTokensForPlayback(
+        videoId: String,
+        session: YoutubeGuestSession
+    ): YoutubePoTokens {
+        if (videoId.isBlank() || session.visitorData.isBlank()) {
+            throw YoutubePoTokenRuntimeUnavailableException("Identita ospite assente per $videoId")
         }
+        return tokenGenerator.generate(videoId, session.visitorData, session.generation, FAST_WAIT_BUDGET_MS)
     }
 
     suspend fun rotateIfNeeded(error: Throwable): Boolean {
@@ -228,6 +231,9 @@ internal class YoutubePlaybackSecurity private constructor(
 
     private fun classifyFailure(error: Throwable): RotationDecision {
         val chain = generateSequence(error) { it.cause }.toList()
+        if (isLocalRuntimeFailure(error)) {
+            return RotationDecision(rotate = false, immediate = false, resetCounter = false)
+        }
         val requestError = chain.filterIsInstance<YoutubePlayerRequestException>().firstOrNull()
         val blob = chain.joinToString(" ") { it.message.orEmpty() }.lowercase()
         return evaluateFailure(blob, requestError?.httpCode)
@@ -303,6 +309,11 @@ internal class YoutubePlaybackSecurity private constructor(
         internal fun shouldRotateGuestSession(message: String, httpCode: Int?): Boolean {
             return evaluateFailure(message.lowercase(), httpCode).rotate
         }
+
+        internal fun isLocalRuntimeFailure(error: Throwable): Boolean {
+            return generateSequence(error) { it.cause }
+                .any { it is YoutubePoTokenRuntimeUnavailableException }
+        }
     }
 }
 
@@ -334,7 +345,8 @@ private class YoutubeWebPoTokenGenerator(
             streamingToken = ready.runtime.generate(videoId)
         } catch (error: CancellationException) {
             if (error !is TimeoutCancellationException) throw error
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            Timber.d(error, "PO Token mint failed on the active runtime, rebuilding")
         }
         if (streamingToken == null) {
             session = session(visitorData, generation, discard = session)
@@ -349,7 +361,7 @@ private class YoutubeWebPoTokenGenerator(
         return try {
             withTimeout(waitBudgetMs) { session.deferred.await() }
         } catch (error: TimeoutCancellationException) {
-            throw IllegalStateException("Integrity runtime not ready within $waitBudgetMs ms", error)
+            throw YoutubePoTokenRuntimeUnavailableException("Integrity runtime not ready within $waitBudgetMs ms", error)
         }
     }
 
@@ -398,7 +410,7 @@ private class YoutubeWebPoTokenGenerator(
         ) {
             PoTokenSessionAction.REUSE -> return@withLock current!!
             PoTokenSessionAction.BACKOFF ->
-                throw IllegalStateException("Integrity runtime in backoff for ${cooldownUntil - now} ms")
+                throw YoutubePoTokenRuntimeUnavailableException("Integrity runtime in backoff for ${cooldownUntil - now} ms")
             PoTokenSessionAction.BUILD -> Unit
         }
         active = null
@@ -616,16 +628,16 @@ internal class YoutubePoTokenRuntime private constructor(
             mintJob(binding).await()
         } catch (error: CancellationException) {
             if (currentCoroutineContext().isActive) {
-                throw IllegalStateException("Integrity runtime closed while minting", error)
+                throw YoutubePoTokenRuntimeUnavailableException("Integrity runtime closed while minting", error)
             }
             throw error
         }
     }
 
     private fun mintJob(binding: String): Deferred<String> {
-        inFlightTokens[binding]?.let { return it }
+        inFlightTokens[binding]?.takeIf { !it.isCompleted }?.let { return it }
         synchronized(inFlightTokens) {
-            inFlightTokens[binding]?.let { return it }
+            inFlightTokens[binding]?.takeIf { !it.isCompleted }?.let { return it }
             val job = scope.async { mintToken(binding) }
             inFlightTokens[binding] = job
             job.invokeOnCompletion { inFlightTokens.remove(binding, job) }

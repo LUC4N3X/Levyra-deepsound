@@ -1386,10 +1386,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         } else {
             playbackSecurity.cachedSession()
         }
-        val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokens(track.id, session) else null
-        if (profile.requiresPoToken && poTokens == null) {
-            throw YoutubePlayerRequestException(null, "Integrity token non disponibile per ${profile.label}")
-        }
+        val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(track.id, session) else null
         val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
             runCatching { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(track.id) }.getOrNull()
         } else {
