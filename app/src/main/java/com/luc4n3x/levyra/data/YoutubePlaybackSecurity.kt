@@ -13,6 +13,7 @@ import androidx.annotation.Keep
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -341,7 +342,7 @@ private suspend fun OkHttpClient.awaitVisitorData(request: Request): String =
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
-                continuation.tryResumeWithException(error)?.let(continuation::completeResume)
+                continuation.resumeResultIfActive(Result.failure(error))
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -358,14 +359,15 @@ private suspend fun OkHttpClient.awaitVisitorData(request: Request): String =
                             .ifBlank { throw IllegalStateException("visitorData assente") }
                     }
                 }
-                result.onSuccess { visitorData ->
-                    continuation.tryResume(visitorData)?.let(continuation::completeResume)
-                }.onFailure { error ->
-                    continuation.tryResumeWithException(error)?.let(continuation::completeResume)
-                }
+                continuation.resumeResultIfActive(result)
             }
         })
     }
+
+private fun <T> CancellableContinuation<T>.resumeResultIfActive(result: Result<T>) {
+    if (!isActive) return
+    runCatching { resumeWith(result) }
+}
 
 private class YoutubeWebPoTokenGenerator(
     private val context: Context,
