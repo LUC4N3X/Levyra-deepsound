@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -31,10 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.doOnAttach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
@@ -43,9 +44,30 @@ import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+
+private data class MainActivityUiSlice(
+    val fontPreset: LevyraFontPreset,
+    val isPlaying: Boolean,
+    val showSettings: Boolean,
+    val showOnboarding: Boolean,
+    val languageCode: String,
+    val recentListenCount: Int
+)
+
+private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
+    fontPreset = interfaceSettings.fontPreset,
+    isPlaying = isPlaying,
+    showSettings = showSettings,
+    showOnboarding = showOnboarding,
+    languageCode = languageCode,
+    recentListenCount = recentListens.size
+)
 
 class MainActivity : ComponentActivity() {
     private val pipMode = mutableStateOf(false)
@@ -70,20 +92,26 @@ class MainActivity : ComponentActivity() {
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             window.attributes = params
         }
-        requestHighRefreshRate()
         LevyraPipBridge.bind(
             enter = ::enterPictureInPicture,
             update = ::updatePictureInPictureParams
         )
         setContent {
             val viewModel: LevyraViewModel = viewModel()
-            val uiState by viewModel.state.collectAsStateWithLifecycle()
+            val activityStateFlow = remember(viewModel) {
+                viewModel.state
+                    .map(LevyraUiState::toMainActivityUiSlice)
+                    .distinctUntilChanged()
+            }
+            val activityUiState by activityStateFlow.collectAsStateWithLifecycle(
+                initialValue = viewModel.state.value.toMainActivityUiSlice()
+            )
 
-            LevyraTheme(fontPreset = uiState.interfaceSettings.fontPreset) {
+            LevyraTheme(fontPreset = activityUiState.fontPreset) {
                 var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
 
-                LaunchedEffect(uiState.isPlaying) {
-                    if (!uiState.isPlaying) return@LaunchedEffect
+                LaunchedEffect(activityUiState.isPlaying) {
+                    if (!activityUiState.isPlaying) return@LaunchedEffect
                     var lastTickMs = SystemClock.elapsedRealtime()
                     while (true) {
                         delay(1_000L)
@@ -100,9 +128,9 @@ class MainActivity : ComponentActivity() {
                             isInPictureInPicture = pipMode.value
                         )
                     }
-                    if (uiState.showSettings && !pipMode.value) {
+                    if (activityUiState.showSettings && !pipMode.value) {
                         SupportLevyraSettingsCard(
-                            languageCode = uiState.languageCode,
+                            languageCode = activityUiState.languageCode,
                             modifier = Modifier
                                 .navigationBarsPadding()
                                 .padding(horizontal = 18.dp, vertical = 14.dp)
@@ -110,10 +138,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 RemoteAnnouncementGate(
-                    enabled = !uiState.showOnboarding && !pipMode.value && !uiState.showSettings,
-                    languageCode = uiState.languageCode,
+                    enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
+                    languageCode = activityUiState.languageCode,
                     hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
-                        recentListenCount = uiState.recentListens.size,
+                        recentListenCount = activityUiState.recentListenCount,
                         listenedPlaybackMs = listenedPlaybackMs
                     )
                 )
@@ -212,14 +240,5 @@ class MainActivity : ComponentActivity() {
 
     private fun configureFastImageLoader() {
         LevyraArtworkCache.configure(this)
-    }
-
-    private fun requestHighRefreshRate() {
-        window.decorView.doOnAttach { decorView ->
-            val mode = decorView.display?.supportedModes?.maxByOrNull { it.refreshRate } ?: return@doOnAttach
-            val params = window.attributes
-            params.preferredDisplayModeId = mode.modeId
-            window.attributes = params
-        }
     }
 }
