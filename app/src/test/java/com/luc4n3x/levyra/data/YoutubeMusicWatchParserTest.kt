@@ -655,4 +655,98 @@ class YoutubeMusicWatchParserTest {
         assertFalse(YoutubePoTokenRuntime.isValidPoToken("invalid token with spaces"))
     }
 
+    @Test
+    fun poTokenRefreshDeadlineLandsBeforeExpiry() {
+        val issuedAt = 1_000L
+        val expiresAt = YoutubePoTokenRuntime.safeExpiryAt(issuedAt, 3_600L)
+        val refreshAt = YoutubePoTokenRuntime.refreshDeadline(issuedAt, expiresAt)
+
+        assertTrue(refreshAt > issuedAt)
+        assertTrue(refreshAt < expiresAt)
+    }
+
+    @Test
+    fun poTokenRefreshDeadlineNeverExceedsAnAlreadyElapsedExpiry() {
+        assertEquals(500L, YoutubePoTokenRuntime.refreshDeadline(500L, 500L))
+        assertEquals(400L, YoutubePoTokenRuntime.refreshDeadline(500L, 400L))
+    }
+
+    @Test
+    fun localRuntimeFailuresDoNotDisturbGuestSessionRotationState() {
+        assertTrue(
+            YoutubePlaybackSecurity.isLocalRuntimeFailure(
+                YoutubePoTokenRuntimeUnavailableException("Integrity runtime in backoff for 4000 ms")
+            )
+        )
+        assertTrue(
+            YoutubePlaybackSecurity.isLocalRuntimeFailure(
+                IllegalStateException(
+                    "wrapped",
+                    YoutubePoTokenRuntimeUnavailableException("Integrity runtime not ready within 4000 ms")
+                )
+            )
+        )
+        assertFalse(YoutubePlaybackSecurity.isLocalRuntimeFailure(YoutubePlayerRequestException(403, "Forbidden")))
+        assertFalse(YoutubePlaybackSecurity.isLocalRuntimeFailure(IllegalStateException("PO token rejected")))
+    }
+
+    @Test
+    fun poTokenSessionIsReusedEvenWhileBuildBackoffIsArmed() {
+        val action = PoTokenSessionPolicy.decide(
+            hasSession = true,
+            discarded = false,
+            matches = true,
+            usable = true,
+            nowMs = 1_000L,
+            nextBuildAttemptAtMs = 60_000L
+        )
+
+        assertEquals(PoTokenSessionAction.REUSE, action)
+    }
+
+    @Test
+    fun poTokenSessionRebuildsOnMismatchDiscardOrUnusableRuntime() {
+        assertEquals(
+            PoTokenSessionAction.BUILD,
+            PoTokenSessionPolicy.decide(false, discarded = false, matches = false, usable = false, nowMs = 0L, nextBuildAttemptAtMs = 0L)
+        )
+        assertEquals(
+            PoTokenSessionAction.BUILD,
+            PoTokenSessionPolicy.decide(true, discarded = true, matches = true, usable = true, nowMs = 0L, nextBuildAttemptAtMs = 0L)
+        )
+        assertEquals(
+            PoTokenSessionAction.BUILD,
+            PoTokenSessionPolicy.decide(true, discarded = false, matches = false, usable = true, nowMs = 0L, nextBuildAttemptAtMs = 0L)
+        )
+        assertEquals(
+            PoTokenSessionAction.BUILD,
+            PoTokenSessionPolicy.decide(true, discarded = false, matches = true, usable = false, nowMs = 0L, nextBuildAttemptAtMs = 0L)
+        )
+    }
+
+    @Test
+    fun poTokenBuildBackoffBlocksARebuildUntilItElapses() {
+        assertEquals(
+            PoTokenSessionAction.BACKOFF,
+            PoTokenSessionPolicy.decide(true, discarded = true, matches = true, usable = true, nowMs = 5_000L, nextBuildAttemptAtMs = 9_000L)
+        )
+        assertEquals(
+            PoTokenSessionAction.BUILD,
+            PoTokenSessionPolicy.decide(true, discarded = true, matches = true, usable = true, nowMs = 9_000L, nextBuildAttemptAtMs = 9_000L)
+        )
+    }
+
+    @Test
+    fun poTokenBuildBackoffGrowsAndStaysBounded() {
+        assertEquals(0L, PoTokenBackoff.delayMs(0))
+        assertEquals(0L, PoTokenBackoff.delayMs(-3))
+        assertEquals(2_000L, PoTokenBackoff.delayMs(1))
+        assertEquals(4_000L, PoTokenBackoff.delayMs(2))
+        assertEquals(32_000L, PoTokenBackoff.delayMs(5))
+
+        for (failures in 6..64) {
+            assertEquals(60_000L, PoTokenBackoff.delayMs(failures))
+        }
+    }
+
 }
