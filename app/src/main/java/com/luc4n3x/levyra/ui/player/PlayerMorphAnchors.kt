@@ -23,18 +23,20 @@ class PlayerMorphAnchors {
     var fullBounds by mutableStateOf<Rect?>(null)
         private set
 
+    /** Stores only finite, measurable bounds so a transient invalid layout cannot poison the morph. */
     fun update(slot: PlayerMorphSlot, bounds: Rect) {
-        val sanitized = bounds.takeIf { it.width > 0f && it.height > 0f } ?: return
+        if (!bounds.isUsableMorphRect()) return
         when (slot) {
-            PlayerMorphSlot.Mini -> if (miniBounds != sanitized) miniBounds = sanitized
-            PlayerMorphSlot.Full -> if (fullBounds != sanitized) fullBounds = sanitized
+            PlayerMorphSlot.Mini -> if (miniBounds != bounds) miniBounds = bounds
+            PlayerMorphSlot.Full -> if (fullBounds != bounds) fullBounds = bounds
         }
     }
 
+    /** Interpolates the measured mini and full artwork rectangles for the current motion fraction. */
     fun resolve(fraction: Float): Rect? {
         val start = miniBounds ?: return null
         val end = fullBounds ?: return null
-        return lerpRect(start, end, fraction.coerceIn(0f, 1f))
+        return lerpRect(start, end, fraction.finiteOr(0f).coerceIn(0f, 1f))
     }
 }
 
@@ -51,7 +53,7 @@ fun Modifier.playerMorphAnchor(
 }
 
 fun lerpRect(start: Rect, end: Rect, fraction: Float): Rect {
-    val t = fraction.coerceIn(0f, 1f)
+    val t = fraction.finiteOr(0f).coerceIn(0f, 1f)
     return Rect(
         left = start.left + (end.left - start.left) * t,
         top = start.top + (end.top - start.top) * t,
@@ -61,6 +63,14 @@ fun lerpRect(start: Rect, end: Rect, fraction: Float): Rect {
 }
 
 fun morphCornerRadius(startRadius: Float, endRadius: Float, fraction: Float): Float {
-    val t = fraction.coerceIn(0f, 1f)
-    return startRadius + (endRadius - startRadius) * t
+    val safeStart = startRadius.finiteOr(0f).coerceAtLeast(0f)
+    val safeEnd = endRadius.finiteOr(safeStart).coerceAtLeast(0f)
+    val t = fraction.finiteOr(0f).coerceIn(0f, 1f)
+    return safeStart + (safeEnd - safeStart) * t
 }
+
+private fun Rect.isUsableMorphRect(): Boolean =
+    left.isFinite() && top.isFinite() && right.isFinite() && bottom.isFinite() &&
+        width > 0f && height > 0f
+
+private fun Float.finiteOr(fallback: Float): Float = if (isFinite()) this else fallback
