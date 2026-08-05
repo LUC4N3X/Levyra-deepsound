@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - master
+  push:
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 permissions:
@@ -15,26 +19,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  autofix-pr299:
-    name: Apply and Verify PR 299 Review Fixes
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 299 &&
-      github.event.pull_request.head.repo.full_name == github.repository
+  android:
+    name: Lint and Release Compile
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    permissions:
-      contents: write
+    timeout-minutes: 60
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
 
     steps:
-      - name: Checkout PR head
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ env.HEAD_REF }}
-          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -57,89 +55,101 @@ jobs:
         with:
           cache-disabled: true
 
-      - name: Apply verified fixes
+      - name: Validate Build Inputs
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/libs.versions.toml
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
 
-          workflow = Path(".github/workflows/pr299-one-shot.yml").read_text(encoding="utf-8")
-          marker = "          python3 - <<'PY'\n"
-          start = workflow.find(marker)
-          if start < 0:
-              raise SystemExit("PR 299 transformation script start marker missing")
-          start += len(marker)
-          end = workflow.find("\n          PY", start)
-          if end < 0:
-              raise SystemExit("PR 299 transformation script end marker missing")
-          raw_script = workflow[start:end]
-          script = "\n".join(
-              line[10:] if line.startswith("          ") else line
-              for line in raw_script.splitlines()
-          )
-          buggy = "\n".join([
-              "    text = text.replace(class_marker, restore_block, 1)",
-              "    text = text.replace(\"private static Fixture createFixture\", \"private Fixture createFixture\")",
-              "    if \"NewPipe.init(downloader);\" not in text:",
-              "        raise SystemExit(f\"Downloader install call missing: {path}\")",
-              "    text = text.replace(\"NewPipe.init(downloader);\", \"installDownloader(downloader);\")",
-          ])
-          fixed = "\n".join([
-              "    if \"NewPipe.init(downloader);\" not in text:",
-              "        raise SystemExit(f\"Downloader install call missing: {path}\")",
-              "    text = text.replace(\"NewPipe.init(downloader);\", \"installDownloader(downloader);\")",
-              "    text = text.replace(class_marker, restore_block, 1)",
-              "    text = text.replace(\"private static Fixture createFixture\", \"private Fixture createFixture\")",
-          ])
-          if buggy not in script:
-              raise SystemExit("PR 299 downloader teardown patch marker missing")
-          script = script.replace(buggy, fixed, 1)
-          exec(compile(script, "pr299-one-shot", "exec"), {"__name__": "__main__"})
+      - name: Validate Agent Configuration
+        run: python3 scripts/validate_agent_config.py
 
-          reader_path = Path(
-              "third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/"
-              "extractor/services/youtube/sabr/SabrStreamingResponseReader.java"
-          )
-          reader = reader_path.read_text(encoding="utf-8")
-          old_signature = (
-              "    private static byte[] readPayloadBytes(@Nonnull final InputStream input, final int size)\n"
-              "            throws IOException {"
-          )
-          new_signature = (
-              "    private static byte[] readPayloadBytes(@Nonnull final InputStream input, final int size)\n"
-              "            throws IOException, SabrProtocolException {"
-          )
-          if old_signature not in reader:
-              raise SystemExit("SABR readPayloadBytes signature marker missing")
-          reader_path.write_text(reader.replace(old_signature, new_signature, 1), encoding="utf-8")
-          PY
-
-      - name: Verify extractor tests
+      - name: Prepare CI Release Signing
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x gradlew
-          ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
 
-      - name: Verify Android compilation
+      - name: Gradle Version
+        run: ./gradlew --no-daemon --version
+
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
+      - name: Android Lint
+        run: ./gradlew --no-daemon :app:lintRelease
+
+      - name: Home, Motion, Canvas, Artwork, Lyrics, and DSP Unit Tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.*' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest'
+
+      - name: Release Compile
+        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+
+      - name: Setup Java 21 for F-Droid
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: F-Droid Release Compile
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ""
+          LEVYRA_KEYSTORE_FILE: ""
+          LEVYRA_KEYSTORE_PASSWORD: ""
+          LEVYRA_KEY_ALIAS: ""
+          LEVYRA_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
+            -PlevyraFdroidBuild=true
+          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "${FDROID_APK}"
+          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
+            echo "F-Droid source build must remain unsigned."
+            exit 1
+          fi
+
+      - name: Collect Reports
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew --no-daemon :app:compileDebugKotlin
+          mkdir -p artifacts/reports
+          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
+          if [ -d app/build/reports ]; then
+            cp -R app/build/reports artifacts/reports/app-build-reports
+          fi
 
-      - name: Commit verified fixes
-        shell: bash
-        run: |
-          set -euo pipefail
-          find third_party/LevyraExtractor/extractor/src \
-            -type f -name '*.java' -print0 \
-            | xargs -0 sed -i 's/[[:space:]]\+$//'
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            third_party/LevyraExtractor/extractor/src/main/java \
-            third_party/LevyraExtractor/extractor/src/test/java
-          git diff --cached --check
-          git commit -m "fix: address PR 299 review findings"
-          git push origin "HEAD:${HEAD_REF}"
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-reports-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: ignore
