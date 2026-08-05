@@ -9,7 +9,6 @@ import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.localization.Localization;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -65,6 +64,25 @@ class Pr299HardeningTest {
     }
 
     @Test
+    void decodedHeaderUsesNormalizedOverflowChecks() throws Exception {
+        final SabrProto.Writer safeRange = new SabrProto.Writer();
+        safeRange.writeUInt64(1, Long.MAX_VALUE);
+        safeRange.writeInt32(3, 1_000);
+        final SabrProto.Writer safeHeader = new SabrProto.Writer();
+        safeHeader.writeMessage(15, safeRange.toByteArray());
+        assertEquals(Long.MAX_VALUE,
+                SabrMediaHeader.decode(safeHeader.toByteArray()).getStartMs());
+
+        final SabrProto.Writer overflowingRange = new SabrProto.Writer();
+        overflowingRange.writeUInt64(1, Long.MAX_VALUE);
+        overflowingRange.writeInt32(3, 1);
+        final SabrProto.Writer overflowingHeader = new SabrProto.Writer();
+        overflowingHeader.writeMessage(15, overflowingRange.toByteArray());
+        assertThrows(SabrProtocolException.class,
+                () -> SabrMediaHeader.decode(overflowingHeader.toByteArray()));
+    }
+
+    @Test
     void lowestVideoIgnoresUnknownHeightButRetainsFallback() throws Exception {
         final List<YoutubeSabrFormat> formats = YoutubeSabrFormat.fromAdaptiveFormats("video",
                 JsonParser.array().from("["
@@ -105,15 +123,15 @@ class Pr299HardeningTest {
         }
         assertThrows(IllegalArgumentException.class, builder::build);
     }
+
     @Test
     void truncatedControlPayloadUsesRecoverableFailure() throws Exception {
         final Method method = SabrStreamingResponseReader.class.getDeclaredMethod(
-      "readPayloadBytes", java.io.InputStream.class, int.class);
+                "readPayloadBytes", java.io.InputStream.class, int.class);
         method.setAccessible(true);
         final InvocationTargetException thrown = assertThrows(
-      InvocationTargetException.class,
-      () -> method.invoke(null, new ByteArrayInputStream(new byte[]{1}), 2));
+                InvocationTargetException.class,
+                () -> method.invoke(null, new ByteArrayInputStream(new byte[]{1}), 2));
         assertTrue(thrown.getCause() instanceof SabrRecoverableException);
     }
-
 }
