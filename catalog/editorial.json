@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-05T17:24:21Z",
+  "generatedAt": "2026-08-05T17:42:37Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1626,7 +1626,7 @@
         },
         {
           "position": 18,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1634,8 +1634,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1645,7 +1645,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 19,
@@ -2036,7 +2036,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2044,12 +2044,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 37,
@@ -6494,7 +6494,7 @@
         },
         {
           "position": 25,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -6502,12 +6502,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 26,
@@ -10432,11 +10432,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 39,
@@ -13016,12 +13016,6 @@
           },
           "durationMs": 164837,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "8LVPnVOEnxw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCcXYkqHBSxOx0e4JkFHFUKA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df398182b06448740d321a0c"
         },
         {
@@ -14589,12 +14583,6 @@
           },
           "durationMs": 114124,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "hyCJ41gSUTw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2941cc5b200a0b17f9c6de"
         },
         {
@@ -22403,7 +22391,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-09-30"
+            "releaseDate": "2019-08-31"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22413,7 +22401,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
         },
         {
           "position": 27,
@@ -23187,12 +23175,6 @@
           },
           "durationMs": 190098,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "tNc2coVC2aw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC4pXWqeKDSIWEvlLLTYWmXQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020a47bbe7141fdfe0eb2cdba7"
         },
         {
@@ -24098,7 +24080,7 @@
         },
         {
           "position": 47,
-          "id": "levyra-0212b4c8036ae7ca6989",
+          "id": "levyra-e58c98ea589fa449e1d7",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24115,12 +24097,12 @@
             }
           ],
           "album": {
-            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
-            "releaseDate": "2009-02-19"
+            "name": "Guru (Original Motion Picture Soundtrack)",
+            "releaseDate": "2006-09-11"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
         },
         {
           "position": 48,
@@ -27054,12 +27036,6 @@
           },
           "durationMs": 206416,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "44DrBGXCm9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCdCskNuCMMAU7FqK9pW7wiQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02afbae55931618ecd661b6db0"
         },
         {
@@ -27209,6 +27185,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -27335,6 +27313,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
