@@ -407,7 +407,7 @@ private class YoutubeWebPoTokenGenerator(
         generation: Long
     ): YoutubePoTokens {
         var session = session(visitorData, generation, discard = null)
-        var ready = session.deferred.await()
+        var ready = awaitBuild(session)
         var streamingToken: String? = null
         try {
             streamingToken = ready.runtime.generate(videoId)
@@ -418,11 +418,19 @@ private class YoutubeWebPoTokenGenerator(
         }
         if (streamingToken == null) {
             session = session(visitorData, generation, discard = session)
-            ready = session.deferred.await()
+            ready = awaitBuild(session)
             streamingToken = ready.runtime.generate(videoId)
         }
         refreshAheadIfStale(session, visitorData, generation)
         return YoutubePoTokens(playerToken = ready.playerToken, streamingToken = streamingToken)
+    }
+
+    private suspend fun awaitBuild(session: PoTokenSession): ReadyPoTokenRuntime {
+        return try {
+            session.deferred.await()
+        } catch (error: Throwable) {
+            throw localizePoTokenBuildFailure(error)
+        }
     }
 
     suspend fun prewarm(visitorData: String, generation: Long) {
@@ -704,6 +712,12 @@ private class YoutubeWebPoTokenGenerator(
         const val RETIRE_GRACE_MS = 15_000L
         const val REFRESH_RETRY_COOLDOWN_MS = 15_000L
     }
+}
+
+internal fun localizePoTokenBuildFailure(error: Throwable): Throwable = when (error) {
+    is CancellationException -> error
+    is YoutubePoTokenRuntimeUnavailableException -> error
+    else -> YoutubePoTokenRuntimeUnavailableException("Integrity runtime build failed", error)
 }
 
 private data class PoTokenBudgetResult<T>(val value: T)
