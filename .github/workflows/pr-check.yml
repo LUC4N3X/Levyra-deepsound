@@ -12,61 +12,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  sonar-cleanup:
-    name: Apply PR 308 Sonar cleanup
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 308 &&
-      github.head_ref == 'claude/player-ui-improvements-vsa4r3' &&
-      github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout PR head
-        uses: actions/checkout@v7
-        with:
-          ref: claude/player-ui-improvements-vsa4r3
-          fetch-depth: 0
-
-      - name: Apply source refactor
-        run: python3 scripts/refactor_pr308_sonar.py
-
-      - name: Validate source patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git diff --check
-          grep -q 'collapseActions: PlayerCollapseActions' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -q 'handlePlayerGestureEvent' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -q 'handleMiniPlayerDragEvent' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-
-      - name: Commit cleanup and restore CI
-        shell: bash
-        run: |
-          set -euo pipefail
-          git show HEAD^:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          rm -f scripts/refactor_pr308_sonar.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
-            .github/workflows/pr-check.yml \
-            scripts/refactor_pr308_sonar.py
-          git commit -m "refactor(ui): resolve PR 308 player maintainability issues"
-          git push origin HEAD:claude/player-ui-improvements-vsa4r3
-
   android:
     name: Lint and Release Compile
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.number != 308 ||
-      github.head_ref != 'claude/player-ui-improvements-vsa4r3' ||
-      github.actor == 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

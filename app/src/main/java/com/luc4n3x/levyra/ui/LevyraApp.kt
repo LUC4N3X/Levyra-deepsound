@@ -1363,22 +1363,28 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                                 }
                             ) {
                                 MiniPlayer(
-                                    track = track,
-                                    isPlaying = state.isPlaying,
-                                    isResolving = state.isResolving,
-                                    progress = progressOf(state.positionMs, state.durationMs),
-                                    bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
-                                    animated = state.animationsEnabled,
-                                    gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
+                                    model = MiniPlayerModel(
+                                        track = track,
+                                        isPlaying = state.isPlaying,
+                                        isResolving = state.isResolving,
+                                        progress = progressOf(state.positionMs, state.durationMs),
+                                        bufferedProgress = progressOf(state.bufferedPositionMs, state.durationMs),
+                                        animated = state.animationsEnabled,
+                                        gesturesEnabled = state.interfaceSettings.playerGesturesEnabled
+                                    ),
                                     morphAnchors = morphAnchors,
-                                    onOpen = { viewModel.selectTab(LevyraTab.Player) },
-                                    onToggle = viewModel::togglePlay,
-                                    onNext = viewModel::next,
-                                    onPrevious = viewModel::previous,
-                                    onClose = viewModel::closePlayer,
-                                    onExpandDragStart = onExpansionDragStart,
-                                    onExpandDrag = onExpansionDrag,
-                                    onExpandDragEnd = { velocity -> settleExpansion(velocity, false) }
+                                    playbackActions = MiniPlayerPlaybackActions(
+                                        open = { viewModel.selectTab(LevyraTab.Player) },
+                                        toggle = viewModel::togglePlay,
+                                        next = viewModel::next,
+                                        previous = viewModel::previous,
+                                        close = viewModel::closePlayer
+                                    ),
+                                    expansionActions = MiniPlayerExpansionActions(
+                                        start = onExpansionDragStart,
+                                        drag = onExpansionDrag,
+                                        end = { velocity -> settleExpansion(velocity, false) }
+                                    )
                                 )
                             }
                         }
@@ -1421,10 +1427,12 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         state = playerScreenState,
                         morphAnchors = morphAnchors,
                         morphActive = artworkMorphActive,
-                        onCollapse = collapsePlayer,
-                        onCollapseDragStart = onExpansionDragStart,
-                        onCollapseDrag = onExpansionDrag,
-                        onCollapseDragEnd = { velocity -> settleExpansion(velocity, true) }
+                        collapseActions = PlayerCollapseActions(
+                            collapse = collapsePlayer,
+                            dragStart = onExpansionDragStart,
+                            drag = onExpansionDrag,
+                            dragEnd = { velocity -> settleExpansion(velocity, true) }
+                        )
                     )
                 }
             }
@@ -11623,16 +11631,73 @@ private fun PlayerInlineLyricsSection(
     }
 }
 
+private data class PlayerCollapseActions(
+    val collapse: () -> Unit,
+    val dragStart: () -> Unit,
+    val drag: (Float) -> Unit,
+    val dragEnd: (Float) -> Unit
+)
+
+private data class PlayerGestureEnvironment(
+    val activity: Activity?,
+    val audioManager: AudioManager?,
+    val brightnessLabel: String,
+    val volumeLabel: String,
+    val rightToLeft: Boolean
+)
+
+private data class PlayerGestureConfig(
+    val trackId: String,
+    val settings: LevyraInterfaceSettings,
+    val playbackSpeed: Float,
+    val environment: PlayerGestureEnvironment
+)
+
+private data class PlayerGestureMediaActions(
+    val seekBy: (Long) -> Unit,
+    val next: () -> Unit,
+    val previous: () -> Unit,
+    val swipeOffset: (Float) -> Unit,
+    val temporarySpeed: (Float) -> Unit
+)
+
+private data class PlayerGestureUiActions(
+    val feedback: (String) -> Unit,
+    val haptic: () -> Unit,
+    val collapse: PlayerCollapseActions
+)
+
+private data class MiniPlayerModel(
+    val track: Track,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val progress: Float,
+    val bufferedProgress: Float,
+    val animated: Boolean,
+    val gesturesEnabled: Boolean
+)
+
+private data class MiniPlayerPlaybackActions(
+    val open: () -> Unit,
+    val toggle: () -> Unit,
+    val next: () -> Unit,
+    val previous: () -> Unit,
+    val close: () -> Unit
+)
+
+private data class MiniPlayerExpansionActions(
+    val start: () -> Unit,
+    val drag: (Float) -> Unit,
+    val end: (Float) -> Unit
+)
+
 @Composable
 private fun PlayerScreen(
     viewModel: PlayerViewModel,
     state: LevyraUiState,
     morphAnchors: PlayerMorphAnchors,
     morphActive: Boolean,
-    onCollapse: () -> Unit,
-    onCollapseDragStart: () -> Unit,
-    onCollapseDrag: (Float) -> Unit,
-    onCollapseDragEnd: (Float) -> Unit
+    collapseActions: PlayerCollapseActions
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
@@ -11785,7 +11850,7 @@ private fun PlayerScreen(
                     contentDescription = strings.collapsePlayer,
                     size = headerButtonSize,
                     iconSize = if (compactPlayer) 25.dp else 26.dp,
-                    onClick = onCollapse
+                    onClick = collapseActions.collapse
                 )
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
@@ -11920,34 +11985,40 @@ private fun PlayerScreen(
 
                 if (state.interfaceSettings.playerGesturesEnabled) {
                     PlayerGestureLayer(
-                        trackId = activeTrack.id,
-                        settings = state.interfaceSettings,
-                        playbackSpeed = state.playbackSpeed,
-                        activity = playerActivity,
-                        audioManager = audioManager,
-                        brightnessLabel = strings.brightness,
-                        volumeLabel = strings.volume,
-                        rightToLeft = rightToLeft,
-                        onSeekBy = { delta ->
-                            viewModel.seekBy(delta)
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            mediaSeekFeedbackMs = delta
-                            mediaSeekFeedbackEvent += 1
-                        },
-                        onSwipeNext = viewModel::next,
-                        onSwipePrevious = viewModel::previous,
-                        onSwipeOffset = { swipeOffsetPx = it },
-                        onTemporarySpeed = viewModel::setTemporaryPlaybackSpeed,
-                        onFeedback = { message ->
-                            gestureFeedback = message
-                            gestureFeedbackEvent += 1
-                        },
-                        onHaptic = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        },
-                        onCollapseDragStart = onCollapseDragStart,
-                        onCollapseDrag = onCollapseDrag,
-                        onCollapseDragEnd = onCollapseDragEnd,
+                        config = PlayerGestureConfig(
+                            trackId = activeTrack.id,
+                            settings = state.interfaceSettings,
+                            playbackSpeed = state.playbackSpeed,
+                            environment = PlayerGestureEnvironment(
+                                activity = playerActivity,
+                                audioManager = audioManager,
+                                brightnessLabel = strings.brightness,
+                                volumeLabel = strings.volume,
+                                rightToLeft = rightToLeft
+                            )
+                        ),
+                        mediaActions = PlayerGestureMediaActions(
+                            seekBy = { delta ->
+                                viewModel.seekBy(delta)
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                mediaSeekFeedbackMs = delta
+                                mediaSeekFeedbackEvent += 1
+                            },
+                            next = viewModel::next,
+                            previous = viewModel::previous,
+                            swipeOffset = { swipeOffsetPx = it },
+                            temporarySpeed = viewModel::setTemporaryPlaybackSpeed
+                        ),
+                        uiActions = PlayerGestureUiActions(
+                            feedback = { message ->
+                                gestureFeedback = message
+                                gestureFeedbackEvent += 1
+                            },
+                            haptic = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            },
+                            collapse = collapseActions
+                        ),
                         modifier = Modifier
                             .matchParentSize()
                             .zIndex(20f)
@@ -12352,31 +12423,22 @@ private fun applyVolumeDrag(
 
 @Composable
 private fun PlayerGestureLayer(
-    trackId: String,
-    settings: LevyraInterfaceSettings,
-    playbackSpeed: Float,
-    activity: Activity?,
-    audioManager: AudioManager?,
-    brightnessLabel: String,
-    volumeLabel: String,
-    rightToLeft: Boolean,
-    onSeekBy: (Long) -> Unit,
-    onSwipeNext: () -> Unit,
-    onSwipePrevious: () -> Unit,
-    onSwipeOffset: (Float) -> Unit,
-    onTemporarySpeed: (Float) -> Unit,
-    onFeedback: (String) -> Unit,
-    onHaptic: () -> Unit,
-    onCollapseDragStart: () -> Unit,
-    onCollapseDrag: (Float) -> Unit,
-    onCollapseDragEnd: (Float) -> Unit,
+    config: PlayerGestureConfig,
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions,
     modifier: Modifier = Modifier
 ) {
-    val currentPlaybackSpeed by rememberUpdatedState(playbackSpeed)
-    var volumeAccumulator by remember(trackId) { mutableStateOf(0f) }
+    val currentPlaybackSpeed by rememberUpdatedState(config.playbackSpeed)
+    val volumeAccumulator = remember(config.trackId) { mutableFloatStateOf(0f) }
+    val environment = config.environment
     Box(
         modifier = modifier
-            .pointerInput(trackId, settings.doubleTapSeekSeconds, settings.longPressSpeed, rightToLeft) {
+            .pointerInput(
+                config.trackId,
+                config.settings.doubleTapSeekSeconds,
+                config.settings.longPressSpeed,
+                environment.rightToLeft
+            ) {
                 detectTapGestures(
                     onPress = {
                         val originalSpeed = currentPlaybackSpeed
@@ -12385,74 +12447,144 @@ private fun PlayerGestureLayer(
                             val speedJob = launch {
                                 delay(320L)
                                 boosted = true
-                                onTemporarySpeed(settings.longPressSpeed)
-                                onHaptic()
-                                onFeedback("${String.format(Locale.US, "%.1f", settings.longPressSpeed)}×")
+                                mediaActions.temporarySpeed(config.settings.longPressSpeed)
+                                uiActions.haptic()
+                                uiActions.feedback(
+                                    "${String.format(Locale.US, "%.1f", config.settings.longPressSpeed)}×"
+                                )
                             }
                             try {
                                 tryAwaitRelease()
                             } finally {
                                 speedJob.cancel()
-                                if (boosted) onTemporarySpeed(originalSpeed)
+                                if (boosted) mediaActions.temporarySpeed(originalSpeed)
                             }
                         }
                     },
                     onDoubleTap = { offset ->
                         val width = size.width.coerceAtLeast(1).toFloat()
                         val side = playerTapSide(offset.x / width)
-                        onSeekBy(playerSeekDeltaMs(side, settings.doubleTapSeekSeconds, rightToLeft))
+                        mediaActions.seekBy(
+                            playerSeekDeltaMs(
+                                side,
+                                config.settings.doubleTapSeekSeconds,
+                                environment.rightToLeft
+                            )
+                        )
                     }
                 )
             }
             .playerAxisDragGestures(
-                key = trackId,
+                key = config.trackId,
                 enabled = true,
-                rightToLeft = rightToLeft,
+                rightToLeft = environment.rightToLeft,
                 edgeZonesEnabled = true
             ) { event ->
-                when (event) {
-                    is PlayerDragEvent.HorizontalOffset -> onSwipeOffset(event.offsetPx)
-                    is PlayerDragEvent.HorizontalSettled -> {
-                        when (event.result) {
-                            PlayerSwipeResult.Next -> onSwipeNext()
-                            PlayerSwipeResult.Previous -> onSwipePrevious()
-                            PlayerSwipeResult.Settle -> Unit
-                        }
-                        onSwipeOffset(0f)
-                    }
-                    is PlayerDragEvent.VerticalStart -> {
-                        if (event.zone == PlayerGestureZone.Center) onCollapseDragStart()
-                    }
-                    is PlayerDragEvent.VerticalDrag -> when (event.zone) {
-                        PlayerGestureZone.BrightnessEdge -> applyBrightnessDrag(
-                            activity = activity,
-                            deltaPx = event.deltaPx,
-                            heightPx = event.heightPx,
-                            label = brightnessLabel,
-                            onFeedback = onFeedback
-                        )
-                        PlayerGestureZone.VolumeEdge -> volumeAccumulator = applyVolumeDrag(
-                            audioManager = audioManager,
-                            deltaPx = event.deltaPx,
-                            heightPx = event.heightPx,
-                            accumulator = volumeAccumulator,
-                            label = volumeLabel,
-                            onFeedback = onFeedback
-                        )
-                        PlayerGestureZone.Center -> onCollapseDrag(event.deltaPx)
-                    }
-                    is PlayerDragEvent.VerticalSettled -> {
-                        volumeAccumulator = 0f
-                        if (event.zone == PlayerGestureZone.Center) onCollapseDragEnd(event.velocityPx)
-                    }
-                    PlayerDragEvent.Cancelled -> {
-                        volumeAccumulator = 0f
-                        onSwipeOffset(0f)
-                        onCollapseDragEnd(0f)
-                    }
-                }
+                handlePlayerGestureEvent(
+                    event = event,
+                    environment = environment,
+                    mediaActions = mediaActions,
+                    uiActions = uiActions,
+                    volumeAccumulator = volumeAccumulator
+                )
             }
     )
+}
+
+private fun handlePlayerGestureEvent(
+    event: PlayerDragEvent,
+    environment: PlayerGestureEnvironment,
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    when (event) {
+        is PlayerDragEvent.HorizontalOffset -> mediaActions.swipeOffset(event.offsetPx)
+        is PlayerDragEvent.HorizontalSettled -> settlePlayerHorizontalGesture(event, mediaActions)
+        is PlayerDragEvent.VerticalStart -> startPlayerVerticalGesture(event, uiActions)
+        is PlayerDragEvent.VerticalDrag -> handlePlayerVerticalDrag(
+            event,
+            environment,
+            uiActions,
+            volumeAccumulator
+        )
+        is PlayerDragEvent.VerticalSettled -> settlePlayerVerticalGesture(
+            event,
+            uiActions,
+            volumeAccumulator
+        )
+        PlayerDragEvent.Cancelled -> cancelPlayerGesture(
+            mediaActions,
+            uiActions,
+            volumeAccumulator
+        )
+    }
+}
+
+private fun settlePlayerHorizontalGesture(
+    event: PlayerDragEvent.HorizontalSettled,
+    mediaActions: PlayerGestureMediaActions
+) {
+    when (event.result) {
+        PlayerSwipeResult.Next -> mediaActions.next()
+        PlayerSwipeResult.Previous -> mediaActions.previous()
+        PlayerSwipeResult.Settle -> Unit
+    }
+    mediaActions.swipeOffset(0f)
+}
+
+private fun startPlayerVerticalGesture(
+    event: PlayerDragEvent.VerticalStart,
+    uiActions: PlayerGestureUiActions
+) {
+    if (event.zone == PlayerGestureZone.Center) uiActions.collapse.dragStart()
+}
+
+private fun handlePlayerVerticalDrag(
+    event: PlayerDragEvent.VerticalDrag,
+    environment: PlayerGestureEnvironment,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    when (event.zone) {
+        PlayerGestureZone.BrightnessEdge -> applyBrightnessDrag(
+            activity = environment.activity,
+            deltaPx = event.deltaPx,
+            heightPx = event.heightPx,
+            label = environment.brightnessLabel,
+            onFeedback = uiActions.feedback
+        )
+        PlayerGestureZone.VolumeEdge -> volumeAccumulator.value = applyVolumeDrag(
+            audioManager = environment.audioManager,
+            deltaPx = event.deltaPx,
+            heightPx = event.heightPx,
+            accumulator = volumeAccumulator.value,
+            label = environment.volumeLabel,
+            onFeedback = uiActions.feedback
+        )
+        PlayerGestureZone.Center -> uiActions.collapse.drag(event.deltaPx)
+    }
+}
+
+private fun settlePlayerVerticalGesture(
+    event: PlayerDragEvent.VerticalSettled,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    volumeAccumulator.value = 0f
+    if (event.zone == PlayerGestureZone.Center) {
+        uiActions.collapse.dragEnd(event.velocityPx)
+    }
+}
+
+private fun cancelPlayerGesture(
+    mediaActions: PlayerGestureMediaActions,
+    uiActions: PlayerGestureUiActions,
+    volumeAccumulator: MutableState<Float>
+) {
+    volumeAccumulator.value = 0f
+    mediaActions.swipeOffset(0f)
+    uiActions.collapse.dragEnd(0f)
 }
 
 @Composable
@@ -16763,25 +16895,78 @@ private fun PlayerArtworkMorphLayer(
     }
 }
 
+private fun handleMiniPlayerDragEvent(
+    event: PlayerDragEvent,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions,
+    updateSwipeOffset: (Float) -> Unit
+) {
+    when (event) {
+        is PlayerDragEvent.HorizontalOffset -> updateSwipeOffset(event.offsetPx)
+        is PlayerDragEvent.HorizontalSettled -> {
+            handleMiniPlayerSwipeResult(event.result, playbackActions)
+            updateSwipeOffset(0f)
+        }
+        is PlayerDragEvent.VerticalStart -> expansionActions.start()
+        is PlayerDragEvent.VerticalDrag -> handleMiniPlayerVerticalDrag(event, expansionActions)
+        is PlayerDragEvent.VerticalSettled -> settleMiniPlayerVerticalDrag(
+            event,
+            playbackActions,
+            expansionActions
+        )
+        PlayerDragEvent.Cancelled -> {
+            updateSwipeOffset(0f)
+            expansionActions.end(0f)
+        }
+    }
+}
+
+private fun handleMiniPlayerSwipeResult(
+    result: PlayerSwipeResult,
+    playbackActions: MiniPlayerPlaybackActions
+) {
+    when (result) {
+        PlayerSwipeResult.Next -> playbackActions.next()
+        PlayerSwipeResult.Previous -> playbackActions.previous()
+        PlayerSwipeResult.Settle -> Unit
+    }
+}
+
+private fun handleMiniPlayerVerticalDrag(
+    event: PlayerDragEvent.VerticalDrag,
+    expansionActions: MiniPlayerExpansionActions
+) {
+    if (event.peeked) expansionActions.drag(event.deltaPx)
+}
+
+private fun settleMiniPlayerVerticalDrag(
+    event: PlayerDragEvent.VerticalSettled,
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions
+) {
+    expansionActions.end(event.velocityPx)
+    val result = resolveMiniPlayerDismiss(
+        event.totalPx,
+        event.velocityPx,
+        event.heightPx
+    )
+    if (!event.peeked && result == PlayerVerticalResult.Collapse) playbackActions.close()
+}
+
 @Composable
 private fun MiniPlayer(
-    track: Track,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    progress: Float,
-    bufferedProgress: Float,
-    animated: Boolean,
-    gesturesEnabled: Boolean,
+    model: MiniPlayerModel,
     morphAnchors: PlayerMorphAnchors,
-    onOpen: () -> Unit,
-    onToggle: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onClose: () -> Unit,
-    onExpandDragStart: () -> Unit,
-    onExpandDrag: (Float) -> Unit,
-    onExpandDragEnd: (Float) -> Unit
+    playbackActions: MiniPlayerPlaybackActions,
+    expansionActions: MiniPlayerExpansionActions
 ) {
+    val track = model.track
+    val isPlaying = model.isPlaying
+    val isResolving = model.isResolving
+    val progress = model.progress
+    val bufferedProgress = model.bufferedProgress
+    val animated = model.animated
+    val gesturesEnabled = model.gesturesEnabled
     val strings = LocalLevyraStrings.current
     val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val accentStart = Color(track.accentStart)
@@ -16842,34 +17027,12 @@ private fun MiniPlayer(
                 rightToLeft = miniRightToLeft,
                 edgeZonesEnabled = false
             ) { event ->
-                when (event) {
-                    is PlayerDragEvent.HorizontalOffset -> swipeOffsetPx = event.offsetPx
-                    is PlayerDragEvent.HorizontalSettled -> {
-                        when (event.result) {
-                            PlayerSwipeResult.Next -> onNext()
-                            PlayerSwipeResult.Previous -> onPrevious()
-                            PlayerSwipeResult.Settle -> Unit
-                        }
-                        swipeOffsetPx = 0f
-                    }
-                    is PlayerDragEvent.VerticalStart -> onExpandDragStart()
-                    is PlayerDragEvent.VerticalDrag -> {
-                        if (event.peeked) onExpandDrag(event.deltaPx)
-                    }
-                    is PlayerDragEvent.VerticalSettled -> {
-                        onExpandDragEnd(event.velocityPx)
-                        val dismissed = resolveMiniPlayerDismiss(
-                            event.totalPx,
-                            event.velocityPx,
-                            event.heightPx
-                        )
-                        if (!event.peeked && dismissed == PlayerVerticalResult.Collapse) onClose()
-                    }
-                    PlayerDragEvent.Cancelled -> {
-                        swipeOffsetPx = 0f
-                        onExpandDragEnd(0f)
-                    }
-                }
+                handleMiniPlayerDragEvent(
+                    event = event,
+                    playbackActions = playbackActions,
+                    expansionActions = expansionActions,
+                    updateSwipeOffset = { swipeOffsetPx = it }
+                )
             }
     ) {
         Column(
@@ -16899,7 +17062,7 @@ private fun MiniPlayer(
                         .graphicsLayer { translationX = settledSwipeOffset * 0.4f }
                         .shadow(8.dp, LevyraPlayerDesign.ShapeSm, clip = false)
                         .clip(LevyraPlayerDesign.ShapeSm)
-                        .pressable(onClick = onOpen)
+                        .pressable(onClick = playbackActions.open)
                 ) {
                     CoverImage(track, Modifier.fillMaxSize())
                     Box(
@@ -16919,7 +17082,7 @@ private fun MiniPlayer(
                             alpha = playerSwipeContentAlpha(settledSwipeOffset, size.width)
                         }
                         .semantics { onClick(label = strings.expandPlayer, action = null) }
-                        .pressable(pressedScale = 0.985f, onClick = onOpen),
+                        .pressable(pressedScale = 0.985f, onClick = playbackActions.open),
                     verticalArrangement = Arrangement.Center
                 ) {
                     AnimatedContent(
@@ -16978,7 +17141,7 @@ private fun MiniPlayer(
                     isResolving = isResolving,
                     buttonColor = miniPrimaryContent,
                     animated = animated,
-                    onToggle = onToggle
+                    onToggle = playbackActions.toggle
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipNext,
@@ -16988,7 +17151,7 @@ private fun MiniPlayer(
                     tint = miniPrimaryContent,
                     background = miniPrimaryContent.copy(alpha = 0.08f),
                     borderColor = miniPrimaryContent.copy(alpha = 0.16f),
-                    onClick = onNext
+                    onClick = playbackActions.next
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.Close,
@@ -16998,7 +17161,7 @@ private fun MiniPlayer(
                     tint = miniSecondaryContent,
                     background = miniPrimaryContent.copy(alpha = 0.06f),
                     borderColor = miniPrimaryContent.copy(alpha = 0.13f),
-                    onClick = onClose
+                    onClick = playbackActions.close
                 )
             }
             Box(
