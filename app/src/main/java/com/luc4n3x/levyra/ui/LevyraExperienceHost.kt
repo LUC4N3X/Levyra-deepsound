@@ -159,13 +159,16 @@ fun LevyraExperienceHost(
     isInPictureInPicture: Boolean = false
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var playerExpanded by rememberSaveable { mutableStateOf(state.selectedTab == LevyraTab.Player) }
     var lastContentTabName by rememberSaveable { mutableStateOf(LevyraTab.Home.name) }
     var introVisible by rememberSaveable(state.showOnboarding) {
         mutableStateOf(state.showOnboarding)
     }
 
     LaunchedEffect(state.selectedTab) {
-        if (state.selectedTab != LevyraTab.Player) {
+        if (state.selectedTab == LevyraTab.Player) {
+            playerExpanded = true
+        } else {
             lastContentTabName = state.selectedTab.name
         }
     }
@@ -175,10 +178,20 @@ fun LevyraExperienceHost(
             ?: LevyraTab.Home
     }
 
+    LaunchedEffect(state.selectedTab, returnTab) {
+        if (state.selectedTab == LevyraTab.Player) {
+            viewModel.selectTab(returnTab)
+        }
+    }
+    LaunchedEffect(state.currentTrack?.id) {
+        if (state.currentTrack == null) playerExpanded = false
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LevyraApp(
             viewModel = viewModel,
-            isInPictureInPicture = isInPictureInPicture
+            isInPictureInPicture = isInPictureInPicture,
+            suppressLegacyPlayerSurfaces = true
         )
 
         if (!isInPictureInPicture) {
@@ -200,8 +213,8 @@ fun LevyraExperienceHost(
                         LevyraMotionPlayerSheet(
                             state = state,
                             track = track,
-                            expanded = state.selectedTab == LevyraTab.Player,
-                            returnTab = returnTab,
+                            expanded = playerExpanded,
+                            onExpandedChange = { playerExpanded = it },
                             viewModel = viewModel
                         )
                     }
@@ -229,7 +242,7 @@ private fun LevyraMotionPlayerSheet(
     state: LevyraUiState,
     track: Track,
     expanded: Boolean,
-    returnTab: LevyraTab,
+    onExpandedChange: (Boolean) -> Unit,
     viewModel: LevyraViewModel
 ) {
     val progress = remember { Animatable(if (expanded) 1f else 0f) }
@@ -250,7 +263,7 @@ private fun LevyraMotionPlayerSheet(
     }
 
     BackHandler(enabled = expanded) {
-        viewModel.selectTab(returnTab)
+        onExpandedChange(false)
     }
 
     BoxWithConstraints(
@@ -318,7 +331,7 @@ private fun LevyraMotionPlayerSheet(
                     primary = primary,
                     secondary = secondary,
                     alpha = (1f - progress.value * 1.65f).coerceIn(0f, 1f),
-                    onOpen = { viewModel.selectTab(LevyraTab.Player) },
+                    onOpen = { onExpandedChange(true) },
                     onToggle = viewModel::togglePlay,
                     onPrevious = viewModel::previous,
                     onNext = viewModel::next,
@@ -332,7 +345,7 @@ private fun LevyraMotionPlayerSheet(
                     primary = primary,
                     secondary = secondary,
                     alpha = ((progress.value - 0.18f) / 0.82f).coerceIn(0f, 1f),
-                    onCollapse = { viewModel.selectTab(returnTab) },
+                    onCollapse = { onExpandedChange(false) },
                     viewModel = viewModel
                 )
             }
@@ -438,7 +451,6 @@ private fun CollapsedLivingPlayer(
                     }
                 )
             }
-            .clickable(onClick = onOpen)
     ) {
         Row(
             modifier = Modifier
@@ -451,10 +463,14 @@ private fun CollapsedLivingPlayer(
                 track = track,
                 isPlaying = state.isPlaying,
                 primary = primary,
-                modifier = Modifier.size(70.dp)
+                modifier = Modifier
+                    .size(70.dp)
+                    .clickable(onClick = onOpen)
             )
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onOpen),
                 verticalArrangement = Arrangement.Center
             ) {
                 AnimatedContent(

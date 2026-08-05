@@ -1037,7 +1037,11 @@ private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
 
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
-fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
+fun LevyraApp(
+    viewModel: LevyraViewModel,
+    isInPictureInPicture: Boolean = false,
+    suppressLegacyPlayerSurfaces: Boolean = false
+) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
@@ -1225,14 +1229,16 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                             LevyraLibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
                         }
                         LevyraTab.Player -> {
-                            val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
-                            val screenState by playerViewModel.state.collectAsStateWithLifecycle()
-                            PlayerScreen(
-                                playerViewModel,
-                                screenState,
-                                sharedTransitionScope = this@SharedTransitionLayout,
-                                animatedVisibilityScope = this@AnimatedContent
-                            )
+                            if (!suppressLegacyPlayerSurfaces) {
+                                val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
+                                val screenState by playerViewModel.state.collectAsStateWithLifecycle()
+                                PlayerScreen(
+                                                            playerViewModel,
+                                                            screenState,
+                                                            sharedTransitionScope = this@SharedTransitionLayout,
+                                                            animatedVisibilityScope = this@AnimatedContent
+                                )
+                            }
                         }
                     }
                 }
@@ -1252,7 +1258,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     BottomTabsScrim()
                 }
                 AnimatedVisibility(
-                    visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null,
+                    visible = !suppressLegacyPlayerSurfaces && state.selectedTab != LevyraTab.Player && state.currentTrack != null,
                     enter = miniEnter,
                     exit = miniExit
                 ) {
