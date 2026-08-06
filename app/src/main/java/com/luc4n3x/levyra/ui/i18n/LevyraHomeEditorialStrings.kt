@@ -57,7 +57,7 @@ Disponibile da oggi
 Uscito questa settimana
 Tra i brani in classifica
 Levyra Collections
-Playlist curate per ogni momento, costruite intorno alla musica che ami
+Playlist curate intorno alla musica che ami
 Novità del momento
 Essenziali locali
 Energia per allenarti
