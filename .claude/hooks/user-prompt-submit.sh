@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
 # Levyra UserPromptSubmit hook.
-#
-# Skill descriptions are only a hint: the model may or may not act on them. This
-# hook removes the guesswork by matching the request against the topics the
-# Levyra skills cover and stating, as an instruction, which skill to invoke
-# before editing. Rules under .claude/rules/ already load on their own from
-# 'paths:' frontmatter, so this hook deliberately covers skills only.
-#
-# Patterns include Italian terms because the repository owner writes requests in
-# both languages.
-#
-# The hook must never break a session: it always exits 0, and it prints either
-# valid JSON or nothing at all.
+# Routes real user requests to matching project skills before broad reading or
+# editing. The hook must never break a session: it always exits 0 and prints
+# valid JSON or nothing.
 
 set -uo pipefail
 
 payload="$(cat 2>/dev/null || true)"
-
-# No python3 means no reliable way to read the prompt out of the JSON payload.
-# Staying silent is correct: the session continues with skill descriptions alone.
 command -v python3 >/dev/null 2>&1 || exit 0
 
 printf '%s' "$payload" | python3 -c '
@@ -35,10 +23,6 @@ prompt = str(data.get("prompt", "")).lower()
 if not prompt.strip():
     sys.exit(0)
 
-# Automated payloads (GitHub webhook activity, wrapped external data) arrive as
-# user turns and are mostly bot prose. Routing on them is always noise: a
-# CodeRabbit rate-limit notice matches "review", "release", "security", and "ui"
-# at once while asking for no work at all. Route real requests only.
 AUTOMATED_MARKERS = (
     "<github-webhook-activity",
     "<untrusted_external_data",
@@ -47,7 +31,6 @@ AUTOMATED_MARKERS = (
 if any(marker in prompt for marker in AUTOMATED_MARKERS):
     sys.exit(0)
 
-# (skill, topic shown back to the model, trigger pattern)
 ROUTES = [
     (
         "levyra-player",
@@ -76,8 +59,8 @@ ROUTES = [
     ),
     (
         "levyra-security-review",
-        "security or privacy exposure",
-        r"security|sicurezz|secret|segret|credential|ssrf|redirect|permission|permess|privacy|\bmime\b|keystore|vulnerab",
+        "security, privacy, trust-boundary, or supply-chain review",
+        r"security|sicurezz|secret|segret|credential|cookie|auth|ssrf|redirect|permission|permess|privacy|\bmime\b|keystore|vulnerab|exploit|threat model|trust boundary|attack surface|dependency|dipendenz|supply.?chain|workflow permission|action pin|signature|checksum|integrity|update security|deep.?link|path traversal|injection|cve|token leak|data leak",
     ),
     (
         "levyra-pr-review",
@@ -101,8 +84,10 @@ for skill, topic in matched:
 lines += [
     "",
     "Invoke each matching skill with the Skill tool BEFORE reading widely or editing, "
-    "and follow its procedure. Do not wait to be asked. If a skill turns out not to "
-    "apply once you have read it, say so in one line and continue.",
+    "and follow its procedure. Do not wait to be asked. For security work, preserve "
+    "exact evidence and follow threat model, identification, safe validation, minimal "
+    "remediation, human review, and revalidation. If a skill turns out not to apply "
+    "once read, say so in one line and continue.",
 ]
 
 print(json.dumps({

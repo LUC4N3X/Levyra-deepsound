@@ -1,59 +1,51 @@
 # AI Assistant Setup for Levyra
 
-This guide explains how Levyra uses ChatGPT, Codex, Claude Code, and OpenClaw
-without conflicting instruction trees or publication permissions.
+Levyra uses one repository-native engineering contract across ChatGPT Projects,
+Codex, Claude Code, Google Antigravity, OpenCode, OpenClaw, RTK, and optional
+security tooling. Runtime-specific files route into the same root instructions,
+planning documents, skills, evidence standards, and publication boundaries.
 
 ## Architecture at a glance
 
 ```text
-AGENTS.md                         shared repository contract
-docs/README.md                    documentation index
-docs/project/SPEC.md              approved requirements and non-goals
-docs/project/ROADMAP.md           ordered outcomes, risks and exit criteria
-docs/project/TASKS.md             active reviewable phase and validation state
+AGENTS.md                         canonical repository contract
 app/AGENTS.md                     Android rules
 desktop/AGENTS.md                 Windows Desktop rules
 .github/AGENTS.md                 CI/workflow rules
 docs/AGENTS.md                    documentation rules
-.agents/skills/*/SKILL.md         native Codex/OpenAI/OpenClaw skills
+docs/project/                     specification, roadmap, and active tasks
+docs/ARCHITECTURE.md              current implementation ownership and flow
+.agents/skills/*/SKILL.md         canonical repository-native skills
+.agents/rules/levyra-workspace.md shared workspace-routing bridge
+.claude/                          Claude Code rules, skills, agents, and hooks
+.rtk/filters.toml                 Levyra-specific RTK filters
+codex-plugins.txt                 verified opt-in plugin manifest
+scripts/setup-ai.ps1              Windows setup and validation
+scripts/setup-ai.sh               Linux/macOS setup and validation
+docs/ai/RTK.md                    RTK routing, measurement, and raw fallback
+docs/ai/CODEX_SECURITY.md         shared cross-runtime security workflow
+docs/ai/ANTIGRAVITY.md            Antigravity discovery and routing
 docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md
                                   ChatGPT Project instructions source
-docs/ai/WORKFLOW.md               complete AI-assisted engineering lifecycle
-docs/ai/OPENCLAW.md               OpenClaw workspace and delegation guide
-.claude/                          Claude Code configuration and detailed playbooks
+docs/ai/OPENCLAW.md               OpenClaw workspace and delegation
+docs/ai/WORKFLOW.md               implementation-to-release lifecycle
 ```
 
-`AGENTS.md` belongs in the Git root because Codex discovers project instructions
-from the project root toward the current working directory. Files under
-`.agents/skills/` are task skills, not replacements for root project guidance.
+Planning files remain distinct:
 
-The planning files have distinct responsibilities:
-
-- `docs/project/SPEC.md` states durable approved behavior.
-- `docs/project/ROADMAP.md` orders outcomes and risks but does not authorize
-  implementation or release.
-- `docs/project/TASKS.md` tracks one active reviewable phase and direct
+- `docs/project/SPEC.md` defines durable owner-approved requirements;
+- `docs/project/ROADMAP.md` orders outcomes, risks, and exit criteria;
+- `docs/project/TASKS.md` records one active reviewable phase and direct
   validation evidence.
 
-See [`../README.md`](../README.md) for the complete documentation map and
-[`../project/README.md`](../project/README.md) for the planning-document model.
+## Shared skill routing
 
-## Codex setup
-
-1. Open or clone the repository.
-2. Start Codex from the repository root or a directory inside it.
-3. Codex loads root `AGENTS.md` and any nearer path-specific `AGENTS.md`.
-4. Read `docs/project/SPEC.md`, the relevant roadmap track, and active task
-   phase.
-5. Use the most specific native skill or skills for the task.
-6. Inspect current code, tests and detailed playbooks before editing.
-7. Make the smallest coherent change and report validation truthfully.
-8. Publish only when the current owner request explicitly authorizes it.
-
-Native skills:
+Every runtime loads the most specific matching `levyra-*` skills. Several may
+apply to one task.
 
 - `levyra-project-manager`
 - `levyra-openclaw-orchestrator`
+- `levyra-context-efficiency`
 - `levyra-player`
 - `levyra-extractor`
 - `levyra-database`
@@ -64,80 +56,166 @@ Native skills:
 - `levyra-ci-workflows`
 - `levyra-pr-review`
 - `levyra-release-check`
-- `levyra-engineering` for genuine cross-domain coordination
+- `levyra-engineering`
 
-Recommended orientation prompt:
+Automatically load `levyra-context-efficiency` for verbose builds, tests, lint,
+logs, searches, dependencies, Git/GitHub, CI, CodeRabbit, adb, and setup work.
+
+Automatically load `levyra-security-review` for vulnerability scans,
+attacker-controlled input, trust-boundary changes, authentication, secrets,
+permissions, privacy, dependency/supply-chain risk, update integrity, or
+security-related pull requests.
+
+## Shared security method
+
+Codex, Claude Code, ChatGPT Projects, and Antigravity use the same closed-loop
+workflow:
 
 ```text
-Read the applicable AGENTS.md files, docs/project/SPEC.md,
-docs/project/ROADMAP.md and docs/project/TASKS.md. Use the most specific Levyra
-native skills. Inspect current code and tests before making assumptions.
-Describe the verified behavior, root cause or rationale, intended files,
-preserved behavior, risks and validation plan before editing.
+threat model
+→ identification
+→ safe validation
+→ minimal remediation
+→ human review
+→ revalidation
 ```
 
-## ChatGPT setup
+A suspected issue is not a confirmed vulnerability until evidence supports a
+concrete attack path or security failure. Keep security scans, exploit evidence,
+hashes, signatures, secret scans, signing evidence, and exact reproductions raw.
+See [`CODEX_SECURITY.md`](CODEX_SECURITY.md); despite the file name, the method
+is runtime-independent.
 
-Repository files do not automatically become persistent ChatGPT Project
-instructions.
+## Codex
+
+1. Start Codex from the repository root or a nested project directory.
+2. Read the root and nearest path-specific `AGENTS.md` files.
+3. Read relevant planning and architecture material.
+4. Load every matching native skill before broad investigation or editing.
+5. Inspect current code and tests.
+6. Make the smallest coherent change.
+7. Report exact validation and publication state.
+
+RTK uses an **instruction-based Codex setup**. `rtk init -g --codex` installs
+instructions that teach Codex when to invoke RTK; it is not a transparent native
+shell-rewrite hook.
+
+Codex Security may be enabled through its official setup and used alongside the
+shared `levyra-security-review` skill. Levyra does not invent an unverified CLI
+manifest identifier for it.
+
+## Claude Code
+
+Claude uses:
+
+- `.claude/CLAUDE.md`;
+- `.claude/rules/`;
+- `.claude/skills/`;
+- `.claude/agents/`;
+- `.claude/hooks/`;
+- `.claude/settings.json`.
+
+The `UserPromptSubmit` hook routes security, vulnerability, CVE, trust-boundary,
+dependency, supply-chain, leak, integrity, signature, and workflow-security work
+to `levyra-security-review`. Path-specific security rules enforce the same
+threat-model and revalidation method.
+
+The setup scripts initialize RTK's Claude hook when `claude` is installed.
+
+## ChatGPT Project
+
+Repository files do not automatically become persistent Project instructions.
 
 1. Create a ChatGPT Project named `Levyra`.
-2. Connect or select `LUC4N3X/Levyra-deepsound` through the available GitHub
-   integration.
-3. Copy the full contents of `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` into the
-   Project instructions.
-4. Keep Levyra requirements, planning, investigation, architecture, PR review
-   and release preparation inside that Project.
-5. Use Codex for implementation, tests and repository publication when
-   authorized.
+2. Connect `LUC4N3X/Levyra-deepsound` through the available GitHub integration.
+3. Copy `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` into Project instructions.
+4. Start a new Project conversation after changing those instructions.
 
-The Project instructions direct ChatGPT to read the planning files, root and
-path-specific `AGENTS.md`, native skills, current code/tests, and to distinguish
-verified repository state from assumptions.
+The Project instructions require ChatGPT to read matching native skills,
+including `levyra-security-review`, inspect current repository evidence, and
+distinguish assumptions, suspected findings, validated findings, proposed
+patches, applied patches, CI, review, merge, and release state.
 
-## Claude Code setup
+## Google Antigravity
 
-Claude Code continues to use `.claude/README.md` and the complete `.claude/`
-configuration:
+Open the Git repository root as the workspace. Antigravity reads
+`.agents/rules/levyra-workspace.md` and exposes skills under `.agents/skills/`.
+Keep the workspace rule **Always On** when activation controls are available.
 
-- `.claude/CLAUDE.md`
-- `.claude/rules/`
-- `.claude/skills/`
-- `.claude/agents/`
-- `.claude/hooks/`
-- `.claude/settings.json`
+The rule automatically loads both context-efficiency and security-review skills,
+keeps exact security evidence raw, and applies the shared revalidation cycle.
+See [`ANTIGRAVITY.md`](ANTIGRAVITY.md).
 
-The OpenAI configuration references detailed Levyra playbooks under `.claude/`
-instead of duplicating them.
+## OpenCode and OpenClaw
 
-## OpenClaw setup
+OpenCode uses the same root/path instructions and shared skill tree; the setup
+scripts initialize its RTK integration when detected.
 
-Use OpenClaw as the coordinator and status layer around a dedicated `levyra`
-agent. Its workspace should be the real Levyra checkout so project instructions,
-planning files, Git state, and `.agents/skills/` are available together.
+OpenClaw should use a dedicated Levyra workspace and explicit delegation. A
+coding runtime handles substantial implementation, while a fresh reviewer
+checks the latest diff. Merge, tag, release, store upload, credential rotation,
+and repository settings remain separate owner actions. See [`OPENCLAW.md`](OPENCLAW.md).
 
-Use explicit agent targets and narrow tool access. For substantial
-implementation, delegate to a configured coding runtime such as Codex, Claude
-Code, or OpenCode. Use a fresh reviewer for the latest diff. OpenClaw may
-coordinate a branch and draft PR only when the owner explicitly authorizes
-publication; merge, tag, release, store upload, and repository settings remain
-separate owner actions.
+## RTK setup
 
-See `docs/ai/OPENCLAW.md`.
+Windows:
+
+```powershell
+.\scripts\setup-ai.ps1 -DryRun
+.\scripts\setup-ai.ps1
+.\scripts\setup-ai.ps1 -InstallRtk -Plugins
+```
+
+Linux/macOS:
+
+```bash
+./scripts/setup-ai.sh --dry-run
+./scripts/setup-ai.sh
+./scripts/setup-ai.sh --install-rtk --plugins
+```
+
+The scripts:
+
+- optionally install RTK from `rtk-ai/rtk`;
+- configure detected supported runtimes;
+- install verified `codex-plugins.txt` entries only when requested;
+- run both repository validators;
+- fail closed when required Python validation cannot run;
+- do not install Ollama or local-model profiles;
+- do not enable unrestricted sandboxing or silent approval bypasses.
+
+Measure command-output reduction with:
+
+```text
+rtk gain
+rtk discover --all --since 7
+rtk session
+```
+
+RTK savings are not equal to total token billing. See [`RTK.md`](RTK.md).
+
+## Dependency security
+
+`.github/workflows/dependency-review.yml` performs a Dependency Graph preflight.
+When Dependency Graph is unavailable, the actual Dependency Review job is
+**skipped** and the workflow summary records **blocked, not passed**. Once the
+Graph is available, newly introduced known vulnerabilities at high or critical
+severity remain blocking.
 
 ## Responsibility split
 
-| Assistant | Primary role | Main configuration |
+| Runtime | Primary role | Main configuration |
 | --- | --- | --- |
-| ChatGPT Project | Requirements, investigation, architecture, planning, PR interpretation and coding-task preparation | Project instructions plus connected repository |
-| Codex | Focused implementation, tests, validation, commits, branches and pull requests when authorized | root/path `AGENTS.md`, `docs/project/` and `.agents/skills/` |
-| Claude Code | Implementation and independent review using Claude-specific hooks, agents, permissions and plugins | `.claude/` plus repository planning files |
-| OpenClaw | Explicit delegation, status collection, recurring read-only checks and handoff between configured agents | dedicated Levyra workspace, project skills and narrow tool policy |
-| Owner | Scope, publication authorization, merge, release and repository settings | Direct human decision |
+| ChatGPT Project | Requirements, investigation, architecture, planning, PR interpretation, and task preparation | Project instructions plus connected repository |
+| Codex | Focused implementation, tests, validation, and authorized repository delivery | root/path `AGENTS.md`, planning files, shared skills, instruction-based RTK, optional tools |
+| Claude Code | Implementation and independent review with automatic skill routing | `.claude/` plus shared planning and skills |
+| Antigravity/OpenCode | Workspace implementation and review using shared rules and skills | `.agents/`, root/path instructions, optional RTK integration |
+| OpenClaw | Explicit delegation, status collection, and handoff | dedicated workspace, shared skills, narrow tool policy |
+| RTK | Compact non-sensitive terminal output and measure reductions | executable, supported runtime integration, `.rtk/filters.toml` |
+| Security engine | Additional threat modeling, scanning, validation, and patch proposals | official setup plus `levyra-security-review` |
+| Owner | Scope, publication, merge, release, credentials, and settings | direct human decision |
 
 ## Complete workflow
-
-The complete lifecycle is documented in `docs/ai/WORKFLOW.md`:
 
 ```text
 requirements
@@ -147,42 +225,33 @@ requirements
 → focused validation
 → repository gate
 → complete diff inspection
-→ independent review
-→ draft PR when authorized
+→ independent/security review
+→ pull request when authorized
 → CI and manual checks
 → owner-controlled merge and release
 ```
 
-Implementation, review, CI, manual testing, merge, and release are separate
-states. An agent must not collapse them into "done".
+Do not collapse implementation, validation, review, CI, merge, and release into
+one "done" state.
 
 ## Validation
 
-After changing planning files, agent instructions, native skills, AI
-documentation, or validation:
-
 ```bash
 python3 scripts/validate_agent_config.py
+python3 scripts/validate_ai_efficiency.py
 ```
 
-The existing PR workflow runs the same command before the Android gate.
+Run both after changing instructions, skills, hooks, AI docs, RTK filters, setup
+scripts, plugins, security routing, or dependency-review configuration.
 
-## Keeping instructions consistent
+## Maintenance rules
 
-- Update root `AGENTS.md` for shared repository-wide invariants.
-- Update the nearest nested `AGENTS.md` for platform/path constraints.
-- Update `docs/project/SPEC.md` when approved durable requirements change.
-- Update `docs/project/ROADMAP.md` when ordered outcomes, risks, or exit criteria
-  change.
-- Replace the active phase in `docs/project/TASKS.md` when new work begins.
-- Update one native skill for a repeatable task workflow.
-- Update `docs/ARCHITECTURE.md` for architecture or ownership changes.
-- Update the narrowest detailed `.claude/rules/` or `.claude/skills/` playbook
-  for recurring domain-specific failures.
-- Update `CHATGPT_PROJECT_INSTRUCTIONS.md` only when ChatGPT collaboration
-  behavior changes.
-- Update `OPENCLAW.md` only when OpenClaw workspace, delegation, or tool
-  boundaries change.
-- Prefer routing and references over duplicated prose.
-- Verify paths, commands, task names, version locations, workflow names,
-  artifact paths, skill names, and publication state after structural changes.
+- Update root/path `AGENTS.md` for operating invariants.
+- Update one focused native skill for a repeatable workflow.
+- Keep runtime-specific files as thin routing bridges.
+- Update `RTK.md`, `.rtk/filters.toml`, and setup scripts together.
+- Update `CODEX_SECURITY.md`, `levyra-security-review`, Claude routing, ChatGPT
+  instructions, and Antigravity routing together when security behavior changes.
+- Keep executable/plugin installation opt-in and permissions least-privileged.
+- Verify paths, commands, skill names, hooks, workflows, artifacts, and
+  publication state after structural changes.

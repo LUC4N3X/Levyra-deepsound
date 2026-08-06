@@ -1,0 +1,81 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-graph:
+    name: Dependency Graph preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      available: ${{ steps.dependency-graph.outputs.available }}
+
+    steps:
+      - name: Check Dependency Graph availability
+        id: dependency-graph
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          response="$(gh api "/repos/${GITHUB_REPOSITORY}/dependency-graph/sbom" 2>&1)"
+          status=$?
+          set -e
+
+          if [[ "$status" -eq 0 ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Dependency Graph is available."
+            {
+              echo "## Dependency Graph preflight"
+              echo
+              echo "Status: **available**."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Dependency Review blocked because GitHub Dependency Graph is not enabled or accessible for this repository."
+            {
+              echo "## Dependency Review"
+              echo
+              echo "Status: **blocked**, not passed."
+              echo
+              echo "The separate Dependency Review job is intentionally skipped."
+              echo "Enable GitHub Dependency Graph before relying on the vulnerability gate."
+              echo
+              echo '<details><summary>GitHub API response</summary>'
+              echo
+              echo '```text'
+              printf '%s\n' "$response"
+              echo '```'
+              echo '</details>'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  dependency-review:
+    name: Dependency review
+    needs: dependency-graph
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.dependency-graph.outputs.available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
