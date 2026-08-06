@@ -7,41 +7,41 @@ import org.junit.Test
 
 class YoutubeShortsRepositoryTest {
     @Test
-    fun shortsUrlsAreAcceptedWithoutDependingOnTheTitle() {
+    fun extractorShortFlagIsAccepted() {
         assertTrue(
             isYoutubeShortCandidate(
-                url = "https://www.youtube.com/shorts/abcdefghijk",
-                title = "A vertical music clip",
+                isShortFormContent = true,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
                 durationSeconds = 42L
             )
         )
     }
 
     @Test
-    fun taggedShortsRequireAShortFormDuration() {
+    fun canonicalShortsUrlsAreAcceptedAsFallback() {
         assertTrue(
             isYoutubeShortCandidate(
-                url = "https://www.youtube.com/watch?v=abcdefghijk",
-                title = "Official clip #Shorts",
+                isShortFormContent = false,
+                url = "https://www.youtube.com/shorts/abcdefghijk",
                 durationSeconds = 58L
-            )
-        )
-        assertFalse(
-            isYoutubeShortCandidate(
-                url = "https://www.youtube.com/watch?v=abcdefghijk",
-                title = "Official clip #Shorts",
-                durationSeconds = 480L
             )
         )
     }
 
     @Test
-    fun ordinaryMusicVideosAreRejected() {
+    fun longOrOrdinaryVideosAreRejected() {
         assertFalse(
             isYoutubeShortCandidate(
+                isShortFormContent = true,
                 url = "https://www.youtube.com/watch?v=abcdefghijk",
-                title = "Official Music Video",
-                durationSeconds = 210L
+                durationSeconds = 480L
+            )
+        )
+        assertFalse(
+            isYoutubeShortCandidate(
+                isShortFormContent = false,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
+                durationSeconds = 90L
             )
         )
     }
