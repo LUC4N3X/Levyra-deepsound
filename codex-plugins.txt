@@ -1,4 +1,7 @@
-# One plugin identifier per line. Installation is always opt-in through the
-# Levyra setup scripts; this manifest does not grant repository permissions.
+# One verified plugin identifier per line. Installation is always opt-in through
+# Levyra's setup scripts; this manifest does not grant repository permissions.
 superpowers@openai-curated
-codex-security@openai-curated
+
+# Codex Security is enabled from the official Codex Plugin Directory / Codex
+# Security setup flow because no stable CLI manifest identifier is documented.
+# See docs/ai/CODEX_SECURITY.md.
