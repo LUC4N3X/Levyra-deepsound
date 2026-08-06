@@ -12,13 +12,74 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  apply-pr-313-samples:
+    name: Apply immersive Samples
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: claude/menu-esplora-redesign-t3j2l4
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Apply implementation
+        run: python3 scripts/apply_pr_313_samples.py
+
+      - name: Compile and run focused tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          ./gradlew --no-daemon :app:compileDebugKotlin
+          ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest'
+
+      - name: Commit implementation and restore CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout origin/main -- .github/workflows/pr-check.yml
+          git rm .github/workflows/pr-313-samples.yml scripts/apply_pr_313_samples.py
+          git add \
+            .github/workflows/pr-check.yml \
+            app/src/main/java/com/luc4n3x/levyra/ui/ExploreLayout.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+            app/src/test/java/com/luc4n3x/levyra/ui/ExploreLayoutTest.kt
+          git diff --cached --check
+          git commit -m "feat(explore): add immersive video Samples"
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
+
   android:
     name: Lint and Release Compile
     runs-on: ubuntu-latest
