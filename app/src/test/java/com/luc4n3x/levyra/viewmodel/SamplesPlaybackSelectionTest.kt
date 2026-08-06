@@ -2,8 +2,8 @@ package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.data.YOUTUBE_SHORTS_SOURCE
 import com.luc4n3x.levyra.domain.Track
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SamplesPlaybackSelectionTest {
@@ -21,19 +21,19 @@ class SamplesPlaybackSelectionTest {
             videoUrl = "https://www.youtube.com/shorts/shortvideo1",
             videoType = "SHORTS"
         )
-        var sessionCaptured = false
+        var capturedSelection: Track? = null
 
         fun attemptPlayback(items: List<Track>, requested: Track) {
-            val selected = selectYoutubeShortSample(items, requested) ?: return
-            if (!sessionCaptured) sessionCaptured = true
-            check(selected.id == requested.id)
+            if (capturedSelection == null) {
+                capturedSelection = selectYoutubeShortSample(items, requested)
+            }
         }
 
         attemptPlayback(listOf(ordinaryVideo), ordinaryVideo)
-        assertFalse(sessionCaptured)
+        assertNull(capturedSelection)
 
         attemptPlayback(listOf(validShort), validShort)
-        assertTrue(sessionCaptured)
+        assertEquals(validShort, capturedSelection)
     }
 
     private fun track(
