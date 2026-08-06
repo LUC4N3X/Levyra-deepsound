@@ -334,14 +334,12 @@ private fun ExploreSampleVideoSurface(
                 null,
                 false
             ) as PlayerView).apply {
-                keepScreenOn = true
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 this.player = player
             }
         },
         update = { view ->
-            val active = PlaybackService.activePlayer
-            if (view.player !== active) view.player = active
+            if (view.player !== player) view.player = player
             view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             view.keepScreenOn = isPlaying
         },

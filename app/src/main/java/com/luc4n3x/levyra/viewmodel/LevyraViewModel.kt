@@ -4361,7 +4361,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 videoMode = currentState.isVideoMode,
                 loopOnCompletion = loopCurrentQueueOnCompletion,
                 wasPlaying = currentState.isPlaying,
-                positionMs = currentState.positionMs
+                positionMs = player.positionMs.coerceAtLeast(0L).takeIf { it > 0L }
+                    ?: currentState.positionMs
             )
         }
 
@@ -4415,7 +4416,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
 
-        val durationMs = effectiveDuration(restoredTrack)
+        val durationMs = restoredTrack.durationMs
         val resumeMs = session.positionMs.coerceAtLeast(0L).let { position ->
             if (durationMs > 0L) position.coerceAtMost(durationMs) else position
         }
@@ -4441,7 +4442,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isResolving = false,
                 positionMs = resumeMs,
                 bufferedPositionMs = resumeMs,
-                durationMs = durationMs,
+                durationMs = effectiveDuration(restoredTrack),
                 playerError = null
             )
         }
@@ -4550,6 +4551,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         autoRetryWhenOffline: Boolean
     ) {
         val retryWhenOnline = autoRetryWhenOffline && !hasInternetCapableNetwork()
+        pauseAfterNextPlaybackStart = false
         player.stop()
         _state.update {
             it.copy(
