@@ -14,7 +14,7 @@ Options:
   --dry-run       Print planned actions without changing the machine
   --install-rtk   Install RTK through Cargo when it is missing
   --plugins       Install plugins listed in codex-plugins.txt
-  --skip-hooks    Do not initialize RTK hooks/integrations
+  --skip-hooks    Do not initialize RTK instructions/hooks/integrations
   -h, --help      Show this help
 EOF
 }
@@ -71,7 +71,7 @@ if has_command rtk; then
 
   if [[ "$SKIP_HOOKS" -ne 1 ]]; then
     if has_command codex; then
-      run_step "Configure the global RTK hook for Codex" rtk init -g --codex
+      run_step "Install global RTK instructions for Codex" rtk init -g --codex
     else
       echo "[skip] Codex command not detected"
     fi
@@ -124,23 +124,24 @@ elif has_command python; then
   PYTHON_COMMAND="python"
 fi
 
-if [[ -n "$PYTHON_COMMAND" ]]; then
-  for validation_script in \
-    scripts/validate_agent_config.py \
-    scripts/validate_ai_efficiency.py
-  do
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-      echo "[dry-run] Validate with $validation_script: (cd '$REPO_ROOT' && $PYTHON_COMMAND $validation_script)"
-    else
-      echo "[run] Validate with $validation_script"
-      (cd "$REPO_ROOT" && "$PYTHON_COMMAND" "$validation_script")
-    fi
-  done
-else
-  echo "[warn] Python was not detected; agent configuration validation was skipped." >&2
+if [[ -z "$PYTHON_COMMAND" ]]; then
+  echo "[blocked] Python is required to verify Levyra agent and AI-efficiency configuration." >&2
+  exit 1
 fi
+
+for validation_script in \
+  scripts/validate_agent_config.py \
+  scripts/validate_ai_efficiency.py
+do
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] Validate with $validation_script: (cd '$REPO_ROOT' && $PYTHON_COMMAND $validation_script)"
+  else
+    echo "[run] Validate with $validation_script"
+    (cd "$REPO_ROOT" && "$PYTHON_COMMAND" "$validation_script")
+  fi
+done
 
 echo
 echo "Setup complete."
-echo "Restart each detected coding agent or start a new conversation so hooks, rules, plugins, and Levyra skills are reloaded."
+echo "Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded."
 echo 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'
