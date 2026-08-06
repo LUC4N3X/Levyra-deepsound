@@ -54,6 +54,7 @@ jobs:
           python .github/scripts/pr-313-final-localization.py
           python .github/scripts/pr-313-final-guarantees.py
           python .github/scripts/pr-313-preserve-source-errors.py
+          python .github/scripts/pr-313-fix-kotlin-regex.py
           git rm \
             .github/scripts/pr-313-personalized-discovery.py \
             .github/scripts/pr-313-spotify-releases.py \
@@ -61,6 +62,7 @@ jobs:
             .github/scripts/pr-313-final-localization.py \
             .github/scripts/pr-313-final-guarantees.py \
             .github/scripts/pr-313-preserve-source-errors.py \
+            .github/scripts/pr-313-fix-kotlin-regex.py \
             .github/workflows/pr-313-personalized-discovery.yml
           git diff --check
 
