@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-06T07:42:14Z",
+  "generatedAt": "2026-08-06T07:48:03Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1941,7 +1941,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -1949,12 +1949,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 33,
@@ -6208,11 +6208,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "releaseDate": "2010-08-24"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
         },
         {
           "position": 12,
@@ -6402,6 +6402,12 @@
           },
           "durationMs": 149677,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "luxCEnkpTmI",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC9IBdRWHeNkg7QRsi2B_dFA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023843258b0c6a95bf3c12c915"
         },
         {
@@ -24212,7 +24218,7 @@
         },
         {
           "position": 50,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24226,12 +24232,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         }
       ]
     },
@@ -26436,11 +26442,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 44,
@@ -27328,12 +27334,6 @@
           },
           "durationMs": 293500,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "vZh6nx_H-ZE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
