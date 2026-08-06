@@ -17336,11 +17336,8 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
         if (shortcut == ExploreShortcut.Samples) {
             samplesStartIndex = 0
-            if (samples.isNotEmpty()) {
-                viewModel.beginSamplesPlayback()
-            } else {
-                viewModel.refreshSamples()
-            }
+            viewModel.beginSamplesPlayback()
+            if (samples.isEmpty()) viewModel.refreshSamples()
         } else {
             shortcut.zoneId
                 ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
@@ -17483,9 +17480,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
             )
         }
 
-        samplesStartIndex
-            ?.takeIf { samples.isNotEmpty() }
-            ?.let { initialPage ->
+        samplesStartIndex?.let { initialPage ->
                 ExploreSamplesScreen(
                     samples = samples,
                     initialPage = initialPage,
@@ -17498,6 +17493,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                     onPlaySample = viewModel::playSample,
                     onTogglePlay = viewModel::togglePlay,
                     onToggleFavorite = viewModel::toggleFavorite,
+                    onRequestFeed = viewModel::refreshSamples,
                     onDismiss = {
                         viewModel.endSamplesPlayback()
                         samplesStartIndex = null

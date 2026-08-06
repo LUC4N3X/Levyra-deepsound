@@ -38,6 +38,7 @@ import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.YoutubeShortsRepository
+import com.luc4n3x.levyra.data.YoutubeShortsCache
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
 import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
@@ -265,6 +266,7 @@ private fun playbackArtistTokens(value: String): List<String> {
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
+    private val shortsCache = YoutubeShortsCache(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository(application.applicationContext)
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
@@ -607,6 +609,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         val favorites = favoritesStore.load()
         val settings = startupSettings
+        val startupShortsSnapshot = shortsCache.load(settings.languageCode)
+        val startupShorts = startupShortsSnapshot.tracks
         val repairedRecentSearches = settings.recentSearches
             .map(LevyraPersonalOrbit::withoutVideoArtwork)
             .distinctBy(LevyraPersonalOrbit::identityKey)
@@ -706,6 +710,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 queue = initialQueue,
                 searchResults = initialTracks.take(12),
                 charts = startupCharts,
+                exploreVideos = startupShorts,
                 selectedChartId = defaultChartRegion.id,
                 isSearching = false,
                 isLoadingCharts = startupCharts.isEmpty(),
@@ -798,6 +803,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
         refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
+        viewModelScope.launch {
+            delay(if (startupShortsSnapshot.isFresh()) 1_200L else 80L)
+            ensureMusicVideosLoaded()
+        }
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
@@ -4724,11 +4733,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             musicVideosRetryLanguage = ""
             musicVideosRetryAfterMs = 0L
             musicVideosFailureCount = 0
-            _state.update { current ->
-                if (current.languageCode == languageCode) {
-                    current.copy(exploreVideos = feedResult.tracks)
-                } else {
-                    current
+            if (feedResult.tracks.isNotEmpty()) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode) {
+                        current.copy(exploreVideos = feedResult.tracks)
+                    } else {
+                        current
+                    }
+                }
+                withContext(Dispatchers.IO) {
+                    shortsCache.save(languageCode, feedResult.tracks)
                 }
             }
         }

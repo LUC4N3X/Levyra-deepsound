@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -75,13 +76,23 @@ internal fun ExploreSamplesScreen(
     onPlaySample: (List<Track>, Track) -> Unit,
     onTogglePlay: () -> Unit,
     onToggleFavorite: (Track) -> Unit,
+    onRequestFeed: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    if (samples.isEmpty()) return
     BackHandler(onBack = onDismiss)
     val latestOnDismiss = rememberUpdatedState(onDismiss)
     DisposableEffect(Unit) {
         onDispose { latestOnDismiss.value() }
+    }
+
+    if (samples.isEmpty()) {
+        LaunchedEffect(Unit) { onRequestFeed() }
+        ExploreSamplesLoadingSurface(
+            strings = strings,
+            onRetry = onRequestFeed,
+            onDismiss = onDismiss
+        )
+        return
     }
 
     val safeInitialPage = initialPage.coerceIn(0, samples.lastIndex)
@@ -90,7 +101,8 @@ internal fun ExploreSamplesScreen(
         pageCount = { samples.size }
     )
 
-    LaunchedEffect(pagerState, samples) {
+    val sampleIdentity = samples.joinToString(separator = "|") { track -> track.id }
+    LaunchedEffect(pagerState, sampleIdentity) {
         snapshotFlow { pagerState.settledPage }
             .distinctUntilChanged()
             .collectLatest { page ->
@@ -163,6 +175,99 @@ internal fun ExploreSamplesScreen(
                     .background(Color.Black.copy(alpha = 0.42f), CircleShape)
                     .padding(horizontal = 10.dp, vertical = 7.dp)
             )
+        }
+    }
+}
+
+
+@Composable
+private fun ExploreSamplesLoadingSurface(
+    strings: LevyraStrings,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .zIndex(30f)
+    ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(Color.Black.copy(alpha = 0.48f), CircleShape)
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = strings.close,
+                    tint = Color.White,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
+            Text(
+                text = strings.exploreSamples,
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Column(
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            CircularProgressIndicator(
+                color = Color.White,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(44.dp)
+            )
+            Text(
+                text = strings.exploreSamplesSubtitle,
+                color = Color.White.copy(alpha = 0.78f),
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .background(Color.White.copy(alpha = 0.12f), CircleShape)
+                    .clickable(onClick = onRetry)
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = strings.exploreSamples,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
