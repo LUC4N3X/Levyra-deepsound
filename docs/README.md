@@ -1,8 +1,8 @@
 # Levyra Documentation
 
 This directory is the canonical documentation hub for Levyra. Keep documents
-grouped by purpose so product requirements, current architecture, AI workflows,
-and visual assets remain easy to find and maintain.
+grouped by purpose so requirements, architecture, AI workflows, security, and
+visual assets remain easy to find and maintain.
 
 ## Documentation map
 
@@ -20,7 +20,9 @@ docs/
 │   ├── README.md
 │   ├── ANTIGRAVITY.md
 │   ├── CHATGPT_PROJECT_INSTRUCTIONS.md
+│   ├── CODEX_SECURITY.md
 │   ├── OPENCLAW.md
+│   ├── RTK.md
 │   └── WORKFLOW.md
 └── assets/                   README badges, previews, and documentation media
 ```
@@ -46,10 +48,15 @@ docs/
 ## AI-assisted engineering
 
 - [`ai/README.md`](ai/README.md) is the entry point for repository AI tooling.
-- [`ai/WORKFLOW.md`](ai/WORKFLOW.md) defines the implementation, review, CI,
-  manual verification, merge, and release lifecycle.
-- [`ai/ANTIGRAVITY.md`](ai/ANTIGRAVITY.md) defines Google Antigravity workspace
-  discovery, skill loading, verification, and troubleshooting.
+- [`ai/WORKFLOW.md`](ai/WORKFLOW.md) defines implementation, review, CI, manual
+  verification, merge, and release states.
+- [`ai/RTK.md`](ai/RTK.md) defines RTK routing, context efficiency, runtime
+  setup, raw-output fallback, and measurement.
+- [`ai/CODEX_SECURITY.md`](ai/CODEX_SECURITY.md) defines the shared threat-model,
+  validation, remediation, human-review, and revalidation workflow used by
+  Codex, Claude Code, ChatGPT Projects, and Antigravity.
+- [`ai/ANTIGRAVITY.md`](ai/ANTIGRAVITY.md) defines Antigravity workspace
+  discovery, skill loading, security routing, verification, and troubleshooting.
 - [`ai/OPENCLAW.md`](ai/OPENCLAW.md) defines OpenClaw workspace and delegation
   guidance.
 - [`ai/CHATGPT_PROJECT_INSTRUCTIONS.md`](ai/CHATGPT_PROJECT_INSTRUCTIONS.md)
@@ -66,7 +73,10 @@ docs/
   unrelated historical work.
 - Update `ARCHITECTURE.md` when ownership, data flow, module boundaries,
   persistence, playback, networking, or release architecture changes.
-- Store documentation images and generated badges under `assets/`; do not
-  scatter them through planning or AI folders.
+- Update `ai/RTK.md`, `.rtk/filters.toml`, and setup scripts together when
+  context-efficiency setup or fallback changes.
+- Update `ai/CODEX_SECURITY.md`, `levyra-security-review`, and runtime routing
+  bridges together when the security workflow changes.
+- Store documentation images and generated badges under `assets/`.
 - Apply the scoped rules in [`AGENTS.md`](AGENTS.md) to every documentation
   change.
