@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-06T14:10:21Z",
+  "generatedAt": "2026-08-06T14:36:03Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -863,6 +863,14 @@
           },
           "durationMs": 216098,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "1QDWa1Zbabw",
+            "audioConfidence": 100,
+            "videoId": "Qa4rIEg8Bhk",
+            "videoConfidence": 97,
+            "confidence": 100,
+            "artistBrowseId": "UCNVNAaNubS4A-Myfkm0EpZA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e026752cb3279906514dd04c8aa"
         },
         {
@@ -1466,7 +1474,7 @@
         },
         {
           "position": 12,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1474,8 +1482,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1485,7 +1493,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 13,
@@ -3044,11 +3052,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 33,
@@ -6364,6 +6372,12 @@
           },
           "durationMs": 149677,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "luxCEnkpTmI",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC9IBdRWHeNkg7QRsi2B_dFA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023843258b0c6a95bf3c12c915"
         },
         {
@@ -10345,11 +10359,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 36,
@@ -10515,7 +10529,7 @@
         },
         {
           "position": 44,
-          "id": "levyra-62f091057573870630ff",
+          "id": "levyra-5d7a8244a6022b4ddba4",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -10523,12 +10537,12 @@
             }
           ],
           "album": {
-            "name": "Rumours (Super Deluxe)",
+            "name": "Rumours",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
         },
         {
           "position": 45,
@@ -16873,6 +16887,12 @@
           },
           "durationMs": 126614,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "79xPj-NSuvw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCwiGKkQcOlzMpXOc1xHFoeg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257c283d6ab94a1f048b0fff4"
         },
         {
@@ -17009,6 +17029,12 @@
           },
           "durationMs": 174117,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "y9fwZvB84r8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCwiGKkQcOlzMpXOc1xHFoeg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0234decaa12d2f70bd4ba21cf7"
         },
         {
@@ -17043,6 +17069,12 @@
           },
           "durationMs": 100377,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "DrWgYK2rPrA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCiCzfnkK0faixAEzTMKphDQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02419ba9b3ce79a0d64722ad90"
         },
         {
@@ -17096,7 +17128,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17104,12 +17136,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 28,
@@ -24134,7 +24166,7 @@
         },
         {
           "position": 50,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24148,12 +24180,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         }
       ]
     },
@@ -26360,11 +26392,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 44,
@@ -26604,6 +26636,8 @@
           "youtubeMusic": {
             "audioVideoId": "WmlGzY1iWAc",
             "audioConfidence": 100,
+            "videoId": "HTjkVCSsKv8",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCz8kusd-P42WEfu71ObB-aw"
           },
@@ -27168,8 +27202,6 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -28069,7 +28101,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 23,
@@ -28455,6 +28487,12 @@
           },
           "durationMs": 247960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ksTPa_XEyXM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCC8LBoXd2qCw1UOk5SF_A4g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a49fe0d9eda4d458fab598c1"
         },
         {
