@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-06T09:46:04Z",
+  "generatedAt": "2026-08-06T09:53:54Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1941,7 +1941,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1949,12 +1949,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 33,
@@ -6402,12 +6402,6 @@
           },
           "durationMs": 149677,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "luxCEnkpTmI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC9IBdRWHeNkg7QRsi2B_dFA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023843258b0c6a95bf3c12c915"
         },
         {
@@ -10393,11 +10387,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 36,
@@ -14732,11 +14726,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 16,
@@ -15811,12 +15805,6 @@
           },
           "durationMs": 147121,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "usKeaOAb-fo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC50HGGCnQFTtXTBawFvcsSg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025e412e8846638b9e75b24410"
         },
         {
@@ -16356,7 +16344,7 @@
         },
         {
           "position": 41,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16364,8 +16352,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16375,7 +16363,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 42,
@@ -24196,7 +24184,7 @@
         },
         {
           "position": 50,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24210,12 +24198,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         }
       ]
     },
@@ -26420,11 +26408,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 44,
@@ -27234,6 +27222,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -27348,6 +27338,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28125,7 +28117,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
         },
         {
           "position": 23,
