@@ -214,6 +214,9 @@
     "bc79a29c": { "sig": "N3(18,3262,INPUT)", "nClass": "gV", "sts": 20669, "aliases": ["7e8234b1"] },
     "4d8c79a5": { "sig": "IQ(18,3262,INPUT)", "nClass": "Dp", "sts": 20669, "aliases": ["ad948f90"] },
     "9a134ead": { "sig": "Ii(25,558,INPUT)", "nClass": "as", "sts": 20670, "aliases": ["3b014dc3"] },
-    "6b32b3d1": { "sig": "Ii(25,558,INPUT)", "nClass": "as", "sts": 20670, "aliases": ["e4b41675"] }
+    "6b32b3d1": { "sig": "Ii(25,558,INPUT)", "nClass": "as", "sts": 20670, "aliases": ["e4b41675"] },
+    "4c6b06b8": { "sig": "Ii(25,558,INPUT)", "nClass": "as", "sts": 20670, "aliases": ["c08d2707"] },
+    "341562bc": { "sig": "Ii(25,558,INPUT)", "nClass": "as", "sts": 20670, "aliases": ["a3fe4c92"] },
+    "17554f56": { "sig": "$S(25,558,INPUT)", "nClass": "b6", "sts": 20670, "aliases": ["deddecbb"] }
   }
 }
