@@ -24,6 +24,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import android.app.Activity
 import android.content.ClipData
 import android.media.AudioManager
@@ -126,12 +127,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Explicit
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -142,7 +142,9 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.SlowMotionVideo
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
@@ -544,8 +546,7 @@ private fun rememberLevyraTabEntries(): List<LevyraTabEntry> {
             LevyraTabEntry(LevyraTab.Home, Icons.Rounded.Home, Icons.Outlined.Home, strings.home),
             LevyraTabEntry(LevyraTab.Search, Icons.Rounded.Search, Icons.Outlined.Search, strings.search),
             LevyraTabEntry(LevyraTab.Explore, Icons.Rounded.Explore, Icons.Outlined.Explore, strings.explore),
-            LevyraTabEntry(LevyraTab.Library, Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library),
-            LevyraTabEntry(LevyraTab.Player, Icons.Rounded.Album, Icons.Outlined.Album, strings.player)
+            LevyraTabEntry(LevyraTab.Library, Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library)
         )
     }
 }
@@ -555,12 +556,9 @@ private fun RowScope.TabButton(
     entry: LevyraTabEntry,
     isSelected: Boolean,
     accent: Color,
-    showEqualizer: Boolean,
-    isPlaying: Boolean,
     onClick: () -> Unit
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val strings = LocalLevyraStrings.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val idleTint = LevyraMuted
@@ -618,32 +616,18 @@ private fun RowScope.TabButton(
                 modifier = Modifier.height(LevyraTabIndicatorHeight),
                 contentAlignment = Alignment.Center
             ) {
-                if (showEqualizer) {
-                    ActiveTrackEqualizer(
-                        modifier = if (isPlaying) {
-                            Modifier.semantics { contentDescription = strings.playing }
-                        } else {
-                            Modifier
-                        },
-                        color = if (isSelected) selectedTint else accent,
-                        isPlaying = isPlaying,
-                        width = 19.dp,
-                        height = 15.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isSelected) entry.selectedIcon else entry.unselectedIcon,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .graphicsLayer {
-                                scaleX = iconScale
-                                scaleY = iconScale
-                                translationY = -1.5.dp.toPx() * selectedProgress
-                            }
-                    )
-                }
+                Icon(
+                    imageVector = if (isSelected) entry.selectedIcon else entry.unselectedIcon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                            translationY = -1.5.dp.toPx() * selectedProgress
+                        }
+                )
             }
             Text(
                 text = entry.label,
@@ -1397,9 +1381,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         }
                     ) {
                         BottomTabs(
-                            selected = state.selectedTab,
+                            selected = backgroundTab,
                             hasActiveTrack = state.currentTrack != null,
-                            isPlaying = state.isPlaying,
                             onSelect = viewModel::selectTab
                         )
                     }
@@ -17325,7 +17308,44 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val listState = rememberLazyListState()
+    val scrollScope = rememberCoroutineScope()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
+
+    val zones = remember(strings) { ExploreCatalog.getZones(strings) }
+    val selectedZone = remember(zones, state.exploreZoneId) {
+        zones.firstOrNull { zone -> zone.id == state.exploreZoneId }
+    }
+    val freshTracks = state.exploreTracks
+    val samples = remember(state.exploreVideos) { exploreSampleTracks(state.exploreVideos) }
+    val rows = remember(zones, state.isExploreLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
+        buildExploreRows(
+            zones = zones,
+            isFreshLoading = state.isExploreLoading,
+            hasFreshTracks = freshTracks.isNotEmpty(),
+            hasSamples = samples.isNotEmpty()
+        )
+    }
+
+    val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
+        shortcut.zoneId
+            ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
+            ?.takeIf { zone -> zone.id != state.exploreZoneId }
+            ?.let(viewModel::selectExploreZone)
+        val target = exploreAnchorIndex(rows, shortcut.anchor)
+        if (target >= 0) {
+            scrollScope.launch {
+                if (animationsEnabled) listState.animateScrollToItem(target) else listState.scrollToItem(target)
+            }
+        }
+    }
+    val onPlayFresh: (() -> Unit)? = freshTracks.firstOrNull()?.let { first ->
+        { viewModel.playFrom(freshTracks, first) }
+    }
+    val onPlaySamples: (() -> Unit)? = samples.firstOrNull()?.let { first ->
+        { viewModel.playFrom(samples, first) }
+    }
 
     Box(
         modifier = Modifier
@@ -17333,38 +17353,51 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
             .background(Color.Transparent)
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = 42.dp, bottom = 190.dp),
-            verticalArrangement = Arrangement.spacedBy(28.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item {
-                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    SectionTitle(strings.exploreFresh)
-                }
-            }
-            when {
-                state.isExploreLoading -> item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
+            items(
+                items = rows,
+                key = { row -> row.key },
+                contentType = { row -> row::class }
+            ) { row ->
+                when (row) {
+                    ExploreRow.Shortcuts -> ExploreShortcutRow(onSelect = onShortcut)
+                    is ExploreRow.Header -> when (row.anchor) {
+                        ExploreAnchor.Fresh -> ExploreSectionHeader(
+                            title = strings.exploreFresh,
+                            subtitle = selectedZone?.label,
+                            onPlayAll = onPlayFresh
+                        )
+                        ExploreAnchor.Samples -> ExploreSectionHeader(
+                            title = strings.exploreSamples,
+                            subtitle = strings.exploreSamplesSubtitle,
+                            onPlayAll = onPlaySamples
+                        )
+                        ExploreAnchor.Moods -> ExploreSectionHeader(title = strings.exploreMoods)
+                    }
+                    ExploreRow.FreshLoading -> Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
                     }
-                }
-                state.exploreTracks.isEmpty() -> item {
-                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = 24.dp)) {
                         EmptyState(strings.exploreEmpty)
                     }
-                }
-                else -> item {
-                    LazyRow(
+                    ExploreRow.FreshCarousel -> LazyRow(
                         contentPadding = PaddingValues(horizontal = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(state.exploreTracks, key = { "ex-track-${it.id}" }) { track ->
+                        items(freshTracks, key = { track -> "ex-track-${track.id}" }) { track ->
                             TrackGlassCard(
                                 track = track,
                                 isCurrent = track.id == state.currentTrack?.id,
                                 isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
                                 isFavorite = track.id in state.favoriteIds,
-                                onClick = { viewModel.playFrom(state.exploreTracks, track) },
+                                onClick = { viewModel.playFrom(freshTracks, track) },
                                 onFavorite = { viewModel.toggleFavorite(track) },
                                 onShare = {
                                     val intent = Intent(Intent.ACTION_SEND).apply {
@@ -17378,47 +17411,29 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                             )
                         }
                     }
-                }
-            }
-
-            item {
-                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    SectionTitle(strings.exploreZones)
-                }
-            }
-            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    row.forEach { zone ->
-                        ZoneCard(
-                            zone = zone,
-                            selected = zone.id == state.exploreZoneId,
-                            onClick = { viewModel.selectExploreZone(zone) }
-                        )
-                    }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
-            if (state.exploreVideos.isNotEmpty()) {
-                item {
-                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                        SectionTitle(strings.exploreNewVideos)
-                    }
-                }
-                item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ExploreRow.Samples -> ExploreSamplesRow(
+                        samples = samples,
+                        currentTrackId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        onPlay = { track -> viewModel.playFrom(samples, track) }
+                    )
+                    is ExploreRow.MoodPair -> Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(state.exploreVideos, key = { "ex-video-${it.id}" }) { track ->
-                            VideoGlassCard(
-                                track = track,
-                                isCurrent = track.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                onClick = { viewModel.playFrom(state.exploreVideos, track) }
+                        ExploreMoodCard(
+                            zone = row.leading,
+                            isSelected = row.leading.id == state.exploreZoneId,
+                            onClick = { viewModel.selectExploreZone(row.leading) }
+                        )
+                        val trailing = row.trailing
+                        if (trailing == null) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else {
+                            ExploreMoodCard(
+                                zone = trailing,
+                                isSelected = trailing.id == state.exploreZoneId,
+                                onClick = { viewModel.selectExploreZone(trailing) }
                             )
                         }
                     }
@@ -17445,37 +17460,284 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
 }
 
 @Composable
-private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
-    val start = Color(zone.accentStart)
+private fun ExploreSectionHeader(
+    title: String,
+    subtitle: String? = null,
+    onPlayAll: (() -> Unit)? = null
+) {
+    HomeSectionHeader(
+        title = title,
+        subtitle = subtitle,
+        onPlayAll = onPlayAll,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+    )
+}
+
+@Composable
+private fun ExploreShortcutRow(onSelect: (ExploreShortcut) -> Unit) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        ExploreShortcutCard(
+            icon = Icons.Rounded.AutoAwesome,
+            label = strings.exploreNewReleases,
+            onClick = { onSelect(ExploreShortcut.NewReleases) }
+        )
+        ExploreShortcutCard(
+            icon = Icons.Rounded.SlowMotionVideo,
+            label = strings.exploreSamples,
+            onClick = { onSelect(ExploreShortcut.Samples) }
+        )
+        ExploreShortcutCard(
+            icon = Icons.Rounded.Mood,
+            label = strings.exploreMoods,
+            onClick = { onSelect(ExploreShortcut.Moods) }
+        )
+    }
+}
+
+@Composable
+private fun RowScope.ExploreShortcutCard(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .height(96.dp)
+            .clip(shape)
+            .background(LevyraAdaptiveCardDeep)
+            .border(Dp.Hairline, LevyraAdaptiveHairline, shape)
+            .semantics(mergeDescendants = true) { role = Role.Button }
+            .pressable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = LevyraText.copy(alpha = 0.82f),
+            modifier = Modifier.size(19.dp)
+        )
+        Text(
+            text = label,
+            color = LevyraText,
+            fontSize = 13.5.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onClick: () -> Unit) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val accentStart = Color(zone.accentStart)
+    val accentEnd = Color(zone.accentEnd)
+    val shape = RoundedCornerShape(10.dp)
+    val background by animateColorAsState(
+        targetValue = if (isSelected) {
+            accentStart.copy(alpha = if (LevyraIsLight) 0.14f else 0.18f)
+        } else {
+            LevyraAdaptiveCardDeep
+        },
+        animationSpec = if (animationsEnabled) tween(220) else snap(),
+        label = "explore-mood-background"
+    )
+    val edgeBrush = remember(accentStart, accentEnd) {
+        Brush.verticalGradient(listOf(accentStart, accentEnd))
+    }
     Row(
         modifier = Modifier
             .weight(1f)
-            .height(50.dp)
-            .clip(CircleShape)
-            .background(if (selected) Color(0xFF1F1F24) else Color(0xFF0F0F12))
+            .height(58.dp)
+            .clip(shape)
+            .background(background)
             .border(
-                BorderStroke(Dp.Hairline, if (selected) start.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.15f)),
-                CircleShape
+                width = if (isSelected) 1.dp else Dp.Hairline,
+                color = if (isSelected) accentStart.copy(alpha = 0.72f) else LevyraAdaptiveHairline,
+                shape = shape
             )
-            .clickable(onClick = onClick),
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                selected = isSelected
+            }
+            .pressable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .padding(start = 16.dp)
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(start)
+                .fillMaxHeight()
+                .width(6.dp)
+                .background(edgeBrush)
         )
         Text(
-            zone.label,
-            modifier = Modifier.padding(start = 10.dp, end = 16.dp),
-            color = Color.White,
-            fontSize = 14.sp,
+            text = zone.label,
+            modifier = Modifier.padding(horizontal = 12.dp),
+            color = LevyraText,
+            fontSize = 13.5.sp,
+            lineHeight = 16.sp,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun ExploreSamplesRow(
+    samples: List<Track>,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    onPlay: (Track) -> Unit
+) {
+    val rowState = rememberLazyListState()
+    LazyRow(
+        state = rowState,
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        flingBehavior = rememberSnapFlingBehavior(rowState)
+    ) {
+        items(samples, key = { track -> "ex-sample-${track.id}" }) { track ->
+            val isCurrent = track.id == currentTrackId
+            ExploreSampleCard(
+                track = track,
+                isCurrent = isCurrent,
+                isPlaying = isPlaying && isCurrent,
+                onClick = { onPlay(track) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreSampleCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val accentStart = Color(track.accentStart)
+    val accentEnd = Color(track.accentEnd)
+    val shape = RoundedCornerShape(18.dp)
+    val scrim = remember {
+        Brush.verticalGradient(
+            listOf(
+                Color.Black.copy(alpha = 0.34f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.52f),
+                Color.Black.copy(alpha = 0.86f)
+            )
+        )
+    }
+    Box(
+        modifier = Modifier
+            .width(156.dp)
+            .aspectRatio(9f / 16f)
+            .shadow(
+                elevation = if (isCurrent) 22.dp else 14.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = accentStart.copy(alpha = if (isCurrent) 0.28f else 0.12f),
+                spotColor = accentEnd.copy(alpha = if (isCurrent) 0.30f else 0.14f)
+            )
+            .clip(shape)
+            .border(
+                width = if (isCurrent) 1.25.dp else Dp.Hairline,
+                color = if (isCurrent) accentStart.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.12f),
+                shape = shape
+            )
+            .pressable(onClick = onClick)
+    ) {
+        CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
+        Box(modifier = Modifier.matchParentSize().background(scrim))
+        Surface(
+            color = Color.Black.copy(alpha = 0.34f),
+            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
+            shape = CircleShape,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                if (isCurrent) {
+                    ActiveTrackEqualizer(
+                        modifier = if (isPlaying) {
+                            Modifier.semantics { contentDescription = strings.playing }
+                        } else {
+                            Modifier
+                        },
+                        color = Color.White,
+                        isPlaying = isPlaying,
+                        width = 13.dp,
+                        height = 10.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.SlowMotionVideo,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.90f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+                Text(
+                    text = strings.exploreSamples.uppercase(Locale.ROOT),
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontSize = 9.5.sp,
+                    lineHeight = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.9.sp,
+                    maxLines = 1
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(46.dp)
+                .background(Color.Black.copy(alpha = 0.30f), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(23.dp)
+            )
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = track.title,
+                color = Color.White,
+                fontSize = 13.5.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                color = Color.White.copy(alpha = 0.74f),
+                fontSize = 11.5.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -17762,7 +18024,6 @@ private fun BottomTabsScrim() {
 private fun BottomTabs(
     selected: LevyraTab,
     hasActiveTrack: Boolean,
-    isPlaying: Boolean,
     onSelect: (LevyraTab) -> Unit
 ) {
     val entries = rememberLevyraTabEntries()
@@ -17870,8 +18131,6 @@ private fun BottomTabs(
                             entry = entry,
                             isSelected = isSelected,
                             accent = accentStart,
-                            showEqualizer = entry.tab == LevyraTab.Player && hasActiveTrack,
-                            isPlaying = isPlaying,
                             onClick = {
                                 if (!isSelected) {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
