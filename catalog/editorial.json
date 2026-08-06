@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-06T10:58:13Z",
+  "generatedAt": "2026-08-06T11:32:34Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1474,7 +1474,7 @@
         },
         {
           "position": 12,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1482,8 +1482,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1493,7 +1493,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 13,
@@ -1682,7 +1682,7 @@
         },
         {
           "position": 21,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1690,12 +1690,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 22,
@@ -2383,7 +2383,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -2391,8 +2391,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2402,7 +2402,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 3,
@@ -3085,7 +3085,7 @@
         },
         {
           "position": 34,
-          "id": "levyra-07bfa81c9a33aafde0f1",
+          "id": "levyra-4c886bf7b578fe1d1532",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3093,8 +3093,8 @@
             }
           ],
           "album": {
-            "name": "Nice To Each Other",
-            "releaseDate": "2025-05-30"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3104,7 +3104,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 35,
@@ -9967,6 +9967,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -10353,11 +10359,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 36,
@@ -10374,14 +10380,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -10523,7 +10521,7 @@
         },
         {
           "position": 44,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -10531,12 +10529,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 45,
@@ -12821,12 +12819,6 @@
           },
           "durationMs": 164837,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "8LVPnVOEnxw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCcXYkqHBSxOx0e4JkFHFUKA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df398182b06448740d321a0c"
         },
         {
@@ -14816,6 +14808,12 @@
           },
           "durationMs": 120545,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "9YU5lFqpgV4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02463fce4562806107cddf6aea"
         },
         {
@@ -15779,6 +15777,12 @@
           },
           "durationMs": 147121,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "usKeaOAb-fo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC50HGGCnQFTtXTBawFvcsSg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025e412e8846638b9e75b24410"
         },
         {
@@ -16297,12 +16301,6 @@
           },
           "durationMs": 202615,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Coi9KMSM0pE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC05zdPdE4PtjBwGlN6w4aIg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b4eeaf7b47b95c6dd7aaee08"
         },
         {
@@ -16324,7 +16322,7 @@
         },
         {
           "position": 41,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -16332,8 +16330,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16343,7 +16341,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 42,
@@ -16363,12 +16361,6 @@
           },
           "durationMs": 150617,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "KPTjeMKyKWs",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC50HGGCnQFTtXTBawFvcsSg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a332964d22bffd9bee11a674"
         },
         {
@@ -18617,7 +18609,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 186475,
           "explicit": false,
@@ -18641,7 +18634,8 @@
             }
           ],
           "album": {
-            "name": "CRUSH!"
+            "name": "CRUSH!",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 148363,
           "explicit": false,
@@ -18665,7 +18659,8 @@
             }
           ],
           "album": {
-            "name": "Toz Pembe"
+            "name": "Toz Pembe",
+            "releaseDate": "2026-07-03"
           },
           "durationMs": 160998,
           "explicit": false,
@@ -18695,18 +18690,11 @@
             }
           ],
           "album": {
-            "name": "pVg (Manifest Live Remix)"
+            "name": "pVg (Manifest Live Remix)",
+            "releaseDate": "2026-07-24"
           },
           "durationMs": 245669,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qRKUM9k0ntY",
-            "audioConfidence": 100,
-            "videoId": "EQQNb4iJVIk",
-            "videoConfidence": 97,
-            "confidence": 100,
-            "artistBrowseId": "UCavTTSUSD6aYPeF-F3ND9Yg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0265529d64da7ebede606463ae"
         },
         {
@@ -18719,16 +18707,11 @@
             }
           ],
           "album": {
-            "name": "Bana Ne Bu Sevdalardan"
+            "name": "Bana Ne Bu Sevdalardan",
+            "releaseDate": "2026-07-10"
           },
           "durationMs": 137512,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9gZuXeLLttg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCKyS9imZeKupw7aVr6GCI5w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0206da62a59d59d82344a7d5ee"
         },
         {
@@ -18744,7 +18727,8 @@
             }
           ],
           "album": {
-            "name": "Hileli"
+            "name": "Hileli",
+            "releaseDate": "2026-05-08"
           },
           "durationMs": 202431,
           "explicit": false,
@@ -18768,7 +18752,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 153230,
           "explicit": false,
@@ -18790,7 +18775,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 160639,
           "explicit": false,
@@ -18815,7 +18801,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 240782,
           "explicit": false,
@@ -18839,7 +18826,8 @@
             }
           ],
           "album": {
-            "name": "H."
+            "name": "H.",
+            "releaseDate": "2026-05-08"
           },
           "durationMs": 144374,
           "explicit": false,
@@ -18861,7 +18849,8 @@
             }
           ],
           "album": {
-            "name": "TAMPONTAMPONA"
+            "name": "TAMPONTAMPONA",
+            "releaseDate": "2026-07-24"
           },
           "durationMs": 196800,
           "explicit": true,
@@ -18883,7 +18872,8 @@
             }
           ],
           "album": {
-            "name": "Başımda Belalar"
+            "name": "Başımda Belalar",
+            "releaseDate": "2026-07-10"
           },
           "durationMs": 170641,
           "explicit": false,
@@ -18905,7 +18895,8 @@
             }
           ],
           "album": {
-            "name": "Daha İyi"
+            "name": "Daha İyi",
+            "releaseDate": "2026-04-03"
           },
           "durationMs": 198595,
           "explicit": false,
@@ -18929,7 +18920,8 @@
             }
           ],
           "album": {
-            "name": "Serotonin"
+            "name": "Serotonin",
+            "releaseDate": "2026-06-26"
           },
           "durationMs": 146470,
           "explicit": false,
@@ -18945,7 +18937,8 @@
             }
           ],
           "album": {
-            "name": "PASAJ"
+            "name": "PASAJ",
+            "releaseDate": "2026-06-19"
           },
           "durationMs": 180923,
           "explicit": false,
@@ -18969,7 +18962,8 @@
             }
           ],
           "album": {
-            "name": "Yangın Yeri"
+            "name": "Yangın Yeri",
+            "releaseDate": "2026-05-08"
           },
           "durationMs": 151318,
           "explicit": false,
@@ -18993,7 +18987,8 @@
             }
           ],
           "album": {
-            "name": "Başa Bela"
+            "name": "Başa Bela",
+            "releaseDate": "2026-06-12"
           },
           "durationMs": 154081,
           "explicit": false,
@@ -19018,7 +19013,8 @@
             }
           ],
           "album": {
-            "name": "İki Tas Çorba (Mustafa Sandal Saygı 1)"
+            "name": "İki Tas Çorba (Mustafa Sandal Saygı 1)",
+            "releaseDate": "2026-05-18"
           },
           "durationMs": 191079,
           "explicit": false,
@@ -19034,7 +19030,8 @@
             }
           ],
           "album": {
-            "name": "pVg"
+            "name": "pVg",
+            "releaseDate": "2024-01-19"
           },
           "durationMs": 243779,
           "explicit": false,
@@ -19059,7 +19056,8 @@
             }
           ],
           "album": {
-            "name": "KIYAMAM"
+            "name": "KIYAMAM",
+            "releaseDate": "2026-07-10"
           },
           "durationMs": 146262,
           "explicit": false,
@@ -19083,7 +19081,8 @@
             }
           ],
           "album": {
-            "name": "Unutacağım"
+            "name": "Unutacağım",
+            "releaseDate": "2026-06-19"
           },
           "durationMs": 198910,
           "explicit": false,
@@ -19107,7 +19106,8 @@
             }
           ],
           "album": {
-            "name": "Gidişat"
+            "name": "Gidişat",
+            "releaseDate": "2026-06-12"
           },
           "durationMs": 225570,
           "explicit": false,
@@ -19129,7 +19129,8 @@
             }
           ],
           "album": {
-            "name": "manifestival"
+            "name": "manifestival",
+            "releaseDate": "2025-06-13"
           },
           "durationMs": 149711,
           "explicit": false,
@@ -19153,7 +19154,8 @@
             }
           ],
           "album": {
-            "name": "Diva"
+            "name": "Diva",
+            "releaseDate": "2026-07-03"
           },
           "durationMs": 127000,
           "explicit": false,
@@ -19178,7 +19180,8 @@
             }
           ],
           "album": {
-            "name": "VAKKO"
+            "name": "VAKKO",
+            "releaseDate": "2026-06-12"
           },
           "durationMs": 118736,
           "explicit": false,
@@ -19202,7 +19205,8 @@
             }
           ],
           "album": {
-            "name": "PARDON MUTLULUKLAR"
+            "name": "PARDON MUTLULUKLAR",
+            "releaseDate": "2026-04-17"
           },
           "durationMs": 158779,
           "explicit": false,
@@ -19226,7 +19230,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 106105,
           "explicit": false,
@@ -19242,7 +19247,8 @@
             }
           ],
           "album": {
-            "name": "Akşamüstü"
+            "name": "Akşamüstü",
+            "releaseDate": "2026-06-12"
           },
           "durationMs": 172000,
           "explicit": false,
@@ -19264,7 +19270,8 @@
             }
           ],
           "album": {
-            "name": "manifestival"
+            "name": "manifestival",
+            "releaseDate": "2025-06-13"
           },
           "durationMs": 146517,
           "explicit": false,
@@ -19288,7 +19295,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 157800,
           "explicit": false,
@@ -19312,7 +19320,8 @@
             }
           ],
           "album": {
-            "name": "Amatör"
+            "name": "Amatör",
+            "releaseDate": "2025-12-05"
           },
           "durationMs": 163809,
           "explicit": false,
@@ -19339,7 +19348,8 @@
             }
           ],
           "album": {
-            "name": "valiz"
+            "name": "valiz",
+            "releaseDate": "2026-04-24"
           },
           "durationMs": 125538,
           "explicit": false,
@@ -19355,7 +19365,8 @@
             }
           ],
           "album": {
-            "name": "manifestival"
+            "name": "manifestival",
+            "releaseDate": "2025-06-13"
           },
           "durationMs": 166425,
           "explicit": false,
@@ -19379,7 +19390,8 @@
             }
           ],
           "album": {
-            "name": "Ateşten Bi Rüzgar"
+            "name": "Ateşten Bi Rüzgar",
+            "releaseDate": "2012-04-06"
           },
           "durationMs": 205191,
           "explicit": false,
@@ -19395,7 +19407,8 @@
             }
           ],
           "album": {
-            "name": "Maraton"
+            "name": "Maraton",
+            "releaseDate": "2025-12-26"
           },
           "durationMs": 213906,
           "explicit": false,
@@ -19419,7 +19432,8 @@
             }
           ],
           "album": {
-            "name": "Neden"
+            "name": "Neden",
+            "releaseDate": "2002-04-17"
           },
           "durationMs": 231800,
           "explicit": false,
@@ -19441,7 +19455,8 @@
             }
           ],
           "album": {
-            "name": "Ömrüm"
+            "name": "Ömrüm",
+            "releaseDate": "2026-03-20"
           },
           "durationMs": 174545,
           "explicit": false,
@@ -19469,7 +19484,8 @@
             }
           ],
           "album": {
-            "name": "Kan II"
+            "name": "Kan II",
+            "releaseDate": "2026-07-10"
           },
           "durationMs": 195917,
           "explicit": false,
@@ -19491,7 +19507,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 155024,
           "explicit": false,
@@ -19513,7 +19530,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 185216,
           "explicit": false,
@@ -19538,7 +19556,8 @@
             }
           ],
           "album": {
-            "name": "GEL GEL GEL"
+            "name": "GEL GEL GEL",
+            "releaseDate": "2026-05-21"
           },
           "durationMs": 160087,
           "explicit": true,
@@ -19560,7 +19579,8 @@
             }
           ],
           "album": {
-            "name": "Maya"
+            "name": "Maya",
+            "releaseDate": "2018-06-20"
           },
           "durationMs": 263799,
           "explicit": false,
@@ -19582,7 +19602,8 @@
             }
           ],
           "album": {
-            "name": "CURCUNA"
+            "name": "CURCUNA",
+            "releaseDate": "2026-02-20"
           },
           "durationMs": 169411,
           "explicit": false,
@@ -19606,7 +19627,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 158774,
           "explicit": false,
@@ -19628,7 +19650,8 @@
             }
           ],
           "album": {
-            "name": "manifestival"
+            "name": "manifestival",
+            "releaseDate": "2025-06-13"
           },
           "durationMs": 169822,
           "explicit": false,
@@ -19650,7 +19673,8 @@
             }
           ],
           "album": {
-            "name": "manifestival"
+            "name": "manifestival",
+            "releaseDate": "2025-06-13"
           },
           "durationMs": 133090,
           "explicit": false,
@@ -19680,7 +19704,8 @@
             }
           ],
           "album": {
-            "name": "manifestival (deluxe)"
+            "name": "manifestival (deluxe)",
+            "releaseDate": "2025-09-05"
           },
           "durationMs": 232215,
           "explicit": false,
@@ -19696,7 +19721,8 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA"
+            "name": "KAYIP PERSONA",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 158158,
           "explicit": false,
@@ -19723,7 +19749,8 @@
             }
           ],
           "album": {
-            "name": "Sakla (Erhan Boraer Remix)"
+            "name": "Sakla (Erhan Boraer Remix)",
+            "releaseDate": "2025-03-31"
           },
           "durationMs": 147692,
           "explicit": false,
@@ -19739,7 +19766,8 @@
             }
           ],
           "album": {
-            "name": "Ayaza Serdim"
+            "name": "Ayaza Serdim",
+            "releaseDate": "2025-01-24"
           },
           "durationMs": 218250,
           "explicit": false,
@@ -19950,12 +19978,6 @@
           },
           "durationMs": 301055,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "s-HPSmHiK2U",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNrsYqYuF7LkqjoeN0JfDlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b057b18fd01c8eee341bd127"
         },
         {
@@ -22009,12 +22031,6 @@
           },
           "durationMs": 156034,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3F9jlnANW08",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCmWwbZ-8SngcUzRAD8rCVvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027e77585ffef632e51313b3e0"
         },
         {
@@ -26350,11 +26366,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 44,
@@ -27166,8 +27182,6 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -27282,8 +27296,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -27961,14 +27973,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -29460,6 +29464,12 @@
           },
           "durationMs": 188591,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "jJ8fPgsiwvg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCNsMksDl9za5N9R7hyYa97g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02759a0f224bec949bf7218a2d"
         },
         {
