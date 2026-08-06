@@ -4667,18 +4667,44 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         musicVideosJob = viewModelScope.launch {
             val seedSnapshot = _state.value
             val seeds = buildList {
+                seedSnapshot.currentTrack?.let { track -> add(track) }
+                addAll(seedSnapshot.recentListens)
+                addAll(seedSnapshot.favorites)
+                addAll(seedSnapshot.personalOrbitTracks)
+                addAll(seedSnapshot.homeResonanceTracks)
                 addAll(seedSnapshot.exploreTracks)
                 addAll(seedSnapshot.charts)
                 seedSnapshot.homeSections.forEach { section -> addAll(section.tracks) }
                 addAll(seedSnapshot.tracks)
             }
                 .distinctBy { track -> track.id }
-                .take(32)
+                .take(48)
+            val preferredArtists = buildList {
+                addAll(seedSnapshot.followedArtists.map { artist -> artist.name })
+                addAll(seedSnapshot.recentListens.map { track -> track.artist })
+                addAll(seedSnapshot.favorites.map { track -> track.artist })
+                addAll(seedSnapshot.personalOrbitTracks.map { track -> track.artist })
+                addAll(seeds.map { track -> track.artist })
+            }
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinctBy { artist -> artist.lowercase(java.util.Locale.ROOT) }
+                .take(16)
+            val preferredChannelIds = buildList {
+                addAll(seedSnapshot.followedArtists.map { artist -> artist.browseId })
+                seeds.forEach { track -> addAll(track.artistBrowseIds) }
+            }
+                .map(String::trim)
+                .filter(String::isNotBlank)
+                .distinct()
+                .take(20)
 
             val feedResult = try {
                 shortsRepository.feed(
                     seeds = seeds,
                     languageCode = languageCode,
+                    preferredArtists = preferredArtists,
+                    preferredChannelIds = preferredChannelIds,
                     limit = EXPLORE_SHORTS_FEED_LIMIT
                 )
             } catch (error: CancellationException) {
