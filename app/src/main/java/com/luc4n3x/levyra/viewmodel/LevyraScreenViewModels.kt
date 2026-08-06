@@ -276,7 +276,6 @@ class LevyraScreenViewModelFactory(
     }
 }
 
-
 private const val HOME_RENDER_SETTLE_MS = 360L
 
 internal fun shouldFreezeHomeStructure(scrollInProgress: Boolean, atTop: Boolean): Boolean {
@@ -628,9 +627,6 @@ private fun buildHomeContentFingerprint(
     availability: HomeContentAvailability
 ): String {
     return buildString {
-        // Charts and playback presence are deliberately excluded: this fingerprint identifies the home
-        // content structure. Starting or closing playback must never read as new home content, or the
-        // home list is rebuilt underneath a user who is scrolled down to the charts.
         append(availability.copy(chartCount = 0, hasCurrentTrack = false).fingerprint())
         append('|')
         append(input.tracks.take(12).joinToString(",") { it.id })
@@ -848,7 +844,7 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
     searchSuggestions = state.searchSuggestions
 )
 
-private data class ExploreProjection(
+internal data class ExploreProjection(
     val currentTrack: Track?,
     val exploreTracks: List<Track>,
     val exploreNewReleases: List<AlbumHit>,
@@ -859,10 +855,15 @@ private data class ExploreProjection(
     val isNewReleasesLoading: Boolean,
     val newReleasesLoadFailed: Boolean,
     val isPlaying: Boolean,
-    val isSamplesOpen: Boolean
+    val isResolving: Boolean,
+    val isVideoMode: Boolean,
+    val isSamplesLoading: Boolean,
+    val samplesLoadFailed: Boolean,
+    val isSamplesOpen: Boolean,
+    val playlists: List<Playlist>
 )
 
-private fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
+internal fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
     currentTrack = state.currentTrack,
     exploreTracks = state.exploreTracks,
     exploreNewReleases = state.exploreNewReleases,
@@ -873,7 +874,12 @@ private fun exploreProjection(state: LevyraUiState): ExploreProjection = Explore
     isNewReleasesLoading = state.isNewReleasesLoading,
     newReleasesLoadFailed = state.newReleasesLoadFailed,
     isPlaying = state.isPlaying,
-    isSamplesOpen = state.isSamplesOpen
+    isResolving = state.isResolving,
+    isVideoMode = state.isVideoMode,
+    isSamplesLoading = state.isSamplesLoading,
+    samplesLoadFailed = state.samplesLoadFailed,
+    isSamplesOpen = state.isSamplesOpen,
+    playlists = state.playlists
 )
 
 private data class LibraryProjection(
