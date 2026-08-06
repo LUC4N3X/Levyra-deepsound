@@ -713,7 +713,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         preferredArtists: List<String> = emptyList()
     ): List<AlbumHit> = withContext(Dispatchers.IO) {
         val boundedLimit = limit.coerceIn(1, 80)
-        val nativeExplore = runCatching { explore(languageCode) }.getOrDefault(YoutubeMusicExplore())
+        val nativeExplore = try {
+            explore(languageCode)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            YoutubeMusicExplore()
+        }
         val popularArtists = (nativeExplore.topSongs + nativeExplore.trending + nativeExplore.newVideos)
             .map { it.artist.trim() }
             .filter(String::isNotBlank)
