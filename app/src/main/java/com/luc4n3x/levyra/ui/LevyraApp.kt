@@ -1335,7 +1335,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 ) {
                     BottomTabsScrim()
                     AnimatedVisibility(
-                        visible = state.currentTrack != null,
+                        visible = state.currentTrack != null && !state.isSamplesOpen,
                         enter = miniEnter,
                         exit = miniExit
                     ) {
@@ -17335,6 +17335,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
 
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
         if (shortcut == ExploreShortcut.Samples) {
+            viewModel.beginSamplesPlayback()
             samplesStartIndex = 0
         } else {
             shortcut.zoneId
@@ -17353,7 +17354,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
         { viewModel.playFrom(freshTracks, first) }
     }
     val onPlaySamples: (() -> Unit)? = if (samples.isNotEmpty()) {
-        { samplesStartIndex = 0 }
+        {
+            viewModel.beginSamplesPlayback()
+            samplesStartIndex = 0
+        }
     } else {
         null
     }
@@ -17430,6 +17434,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                         currentTrackId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         onOpen = { track ->
+                            viewModel.beginSamplesPlayback()
                             samplesStartIndex = samples.indexOfFirst { candidate -> candidate.id == track.id }
                                 .coerceAtLeast(0)
                         }
@@ -17600,7 +17605,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     Row(
         modifier = Modifier
             .weight(1f)
-            .heightIn(min = 50.dp)
+            .height(58.dp)
             .clip(shape)
             .background(background)
             .border(
@@ -17618,7 +17623,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(7.dp)
+                .width(6.dp)
                 .background(edgeBrush)
         )
         Text(

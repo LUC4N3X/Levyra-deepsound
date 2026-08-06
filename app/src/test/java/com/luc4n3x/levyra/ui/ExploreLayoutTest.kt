@@ -124,6 +124,17 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun samplesRejectOrdinaryMusicVideos() {
+        val ordinary = track("ordinary").copy(
+            source = "YouTube Music",
+            videoUrl = "https://www.youtube.com/watch?v=abcdefghijk",
+            videoType = ""
+        )
+
+        assertTrue(exploreSampleTracks(listOf(ordinary)).isEmpty())
+    }
+
+    @Test
     fun samplesDefaultToPreviewBoundAndKeepTheImmersiveFeedBounded() {
         val videos = List(ExploreImmersiveSampleLimit + 4) { index -> track("id-$index") }
 
@@ -159,16 +170,17 @@ class ExploreLayoutTest {
         album = "Album $id",
         durationMs = 190_000L,
         streamUrl = "",
-        videoUrl = "",
+        videoUrl = "https://www.youtube.com/shorts/$id",
         thumbnailUrl = thumbnailUrl,
         largeThumbnailUrl = largeThumbnailUrl,
-        source = "YouTube Music",
+        source = "YouTube Shorts",
         moodTags = emptySet(),
         energy = 50,
         vocal = 50,
         replayScore = 70,
         cacheScore = 70,
         accentStart = 0xFF00E5FF.toInt(),
-        accentEnd = 0xFF2979FF.toInt()
+        accentEnd = 0xFF2979FF.toInt(),
+        videoType = "SHORTS"
     )
 }

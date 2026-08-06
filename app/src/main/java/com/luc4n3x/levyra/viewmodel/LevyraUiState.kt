@@ -47,6 +47,7 @@ data class LevyraUiState(
     val tastes: List<Taste> = emptyList(),
     val showOnboarding: Boolean = false,
     val isVideoMode: Boolean = false,
+    val isSamplesOpen: Boolean = false,
     val showSettings: Boolean = false,
     val animationsEnabled: Boolean = true,
     val dynamicColor: Boolean = true,

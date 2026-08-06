@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.data.isYoutubeShortTrack
 
 internal const val ExploreSampleLimit = 10
 internal const val ExploreImmersiveSampleLimit = 24
@@ -91,6 +92,7 @@ internal fun exploreAvailableAnchors(rows: List<ExploreRow>): Set<ExploreAnchor>
 internal fun exploreSampleTracks(videos: List<Track>, limit: Int = ExploreSampleLimit): List<Track> {
     if (limit <= 0) return emptyList()
     return videos.asSequence()
+        .filter(::isYoutubeShortTrack)
         .filter { track -> track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank() }
         .distinctBy { track -> track.id }
         .take(limit)

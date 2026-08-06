@@ -172,6 +172,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
+    fun beginSamplesPlayback() = root.beginSamplesPlayback()
     fun endSamplesPlayback() = root.endSamplesPlayback()
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
@@ -852,7 +853,8 @@ private data class ExploreProjection(
     val exploreZoneId: String?,
     val favoriteIds: Set<String>,
     val isExploreLoading: Boolean,
-    val isPlaying: Boolean
+    val isPlaying: Boolean,
+    val isSamplesOpen: Boolean
 )
 
 private fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
@@ -862,7 +864,8 @@ private fun exploreProjection(state: LevyraUiState): ExploreProjection = Explore
     exploreZoneId = state.exploreZoneId,
     favoriteIds = state.favoriteIds,
     isExploreLoading = state.isExploreLoading,
-    isPlaying = state.isPlaying
+    isPlaying = state.isPlaying,
+    isSamplesOpen = state.isSamplesOpen
 )
 
 private data class LibraryProjection(

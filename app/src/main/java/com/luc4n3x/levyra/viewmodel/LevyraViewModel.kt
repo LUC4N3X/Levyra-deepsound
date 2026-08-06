@@ -37,6 +37,8 @@ import com.luc4n3x.levyra.data.YoutubeCommentsResult
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.YoutubeShortsRepository
+import com.luc4n3x.levyra.data.isYoutubeShortTrack
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
@@ -148,6 +150,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
+private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 
 private data class HomeArtistCandidate(
     val name: String,
@@ -252,6 +255,7 @@ private fun playbackArtistTokens(value: String): List<String> {
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
+    private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository(application.applicationContext)
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
@@ -4351,6 +4355,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(list.getOrElse(index) { track })
     }
 
+    fun beginSamplesPlayback() {
+        _state.update { current ->
+            if (current.isSamplesOpen) current else current.copy(isSamplesOpen = true)
+        }
+    }
+
     fun playSample(list: List<Track>, track: Track) {
         if (list.isEmpty()) return
         val currentState = _state.value
@@ -4367,13 +4377,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         val selected = list.firstOrNull { candidate -> samePlayableTrack(candidate, track) } ?: track
+        if (!isYoutubeShortTrack(selected)) return
+        beginSamplesPlayback()
         val alreadyActive = currentState.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
             currentState.isVideoMode
 
         loopCurrentQueueOnCompletion = false
         queueEngine.replace(listOf(selected), 0, keepPlaybackModes = true, radioEnabled = false)
         queueIndex = 0
-        _state.update { current -> if (current.isVideoMode) current else current.copy(isVideoMode = true) }
+        _state.update { current ->
+            current.copy(isVideoMode = true, isSamplesOpen = true)
+        }
 
         if (alreadyActive) {
             if (!currentState.isPlaying) togglePlay()
@@ -4383,7 +4397,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun endSamplesPlayback() {
-        val session = samplesPlaybackSession ?: return
+        val session = samplesPlaybackSession
+        _state.update { current ->
+            if (current.isSamplesOpen) current.copy(isSamplesOpen = false) else current
+        }
+        if (session == null) return
         samplesPlaybackSession = null
         playRequestId++
         streamTransitionId++
@@ -4620,27 +4638,39 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
         if (musicVideosJob?.isActive == true) return
-        if (musicVideosLoadedLanguage == languageCode && snapshot.exploreVideos.isNotEmpty()) return
+
+        val hasVerifiedShorts = snapshot.exploreVideos.isNotEmpty() &&
+            snapshot.exploreVideos.all(::isYoutubeShortTrack)
+        if (musicVideosLoadedLanguage == languageCode && hasVerifiedShorts) return
+        if (!hasVerifiedShorts && snapshot.exploreVideos.isNotEmpty()) {
+            _state.update { current -> current.copy(exploreVideos = emptyList()) }
+        }
+
         musicVideosJob = viewModelScope.launch {
-            val remoteVideos = withContext(Dispatchers.IO) {
-                runCatching { repository.newMusicVideos(languageCode, 12) }.getOrDefault(emptyList())
+            val seedSnapshot = _state.value
+            val seeds = buildList {
+                addAll(seedSnapshot.exploreTracks)
+                addAll(seedSnapshot.charts)
+                seedSnapshot.homeSections.forEach { section -> addAll(section.tracks) }
+                addAll(seedSnapshot.tracks)
+            }
+                .distinctBy { track -> track.id }
+                .take(32)
+
+            val shorts = withContext(Dispatchers.IO) {
+                runCatching {
+                    shortsRepository.feed(
+                        seeds = seeds,
+                        languageCode = languageCode,
+                        limit = EXPLORE_SHORTS_FEED_LIMIT
+                    )
+                }.getOrDefault(emptyList())
             }
             if (_state.value.languageCode != languageCode) return@launch
-            val current = _state.value
-            val chartFallback = current.charts.filter { track ->
-                track.counterpartVideoId.isNotBlank() || track.videoType.contains("video", ignoreCase = true)
-            }
-            val videos = LevyraPersonalOrbit.distinctRecordings(remoteVideos + chartFallback)
-                .take(12)
-                .ifEmpty { current.exploreVideos }
-            if (videos.isNotEmpty()) {
-                musicVideosLoadedLanguage = languageCode
-                _state.update { state ->
-                    if (state.languageCode == languageCode) state.copy(exploreVideos = videos) else state
-                }
-                refreshOfficialMetadataBatch(videos, 6)
-            } else {
-                musicVideosLoadedLanguage = ""
+
+            musicVideosLoadedLanguage = languageCode.takeIf { shorts.isNotEmpty() }.orEmpty()
+            _state.update { current ->
+                if (current.languageCode == languageCode) current.copy(exploreVideos = shorts) else current
             }
         }
     }
