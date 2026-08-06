@@ -1,0 +1,147 @@
+name: Apply final PR 313 fixes
+
+on:
+  push:
+    branches:
+      - claude/menu-esplora-redesign-t3j2l4
+    paths:
+      - .github/workflows/pr313-final-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/menu-esplora-redesign-t3j2l4
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Apply focused source fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          vm_path = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
+          vm = vm_path.read_text()
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          vm = replace_once(
+              vm,
+              'private data class SamplesPlaybackSession(\n',
+              '''internal fun shouldStartPausedForResolve(\n    requestId: Long,\n    activeRequestId: Long,\n    requestedStartPaused: Boolean\n): Boolean = requestedStartPaused && requestId == activeRequestId\n\nprivate data class SamplesPlaybackSession(\n''',
+              'insert request-scoped pause policy'
+          )
+          vm = replace_once(
+              vm,
+              '    private var pauseAfterNextPlaybackStart: Boolean = false\n',
+              '',
+              'remove global pause flag'
+          )
+          vm = replace_once(
+              vm,
+              '    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {',
+              '    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {',
+              'extend startResolve signature'
+          )
+          vm = replace_once(
+              vm,
+              '            startPlayback(preserveEditorialArtwork(track, instant))',
+              '''            startPlayback(\n                preserveEditorialArtwork(track, instant),\n                startPaused = shouldStartPausedForResolve(requestId, playRequestId, startPaused)\n            )''',
+              'instant playback pause propagation'
+          )
+          vm = replace_once(
+              vm,
+              '            startPlayback(playable)\n            prefetchAround(playable)',
+              '''            startPlayback(\n                playable,\n                startPaused = shouldStartPausedForResolve(requestId, playRequestId, startPaused)\n            )\n            prefetchAround(playable)''',
+              'resolved playback pause propagation'
+          )
+          vm = replace_once(
+              vm,
+              '''        if (restoredTrack.streamUrl.isBlank()) {\n            pendingSeekMs = resumeMs\n            pauseAfterNextPlaybackStart = !session.wasPlaying\n            startResolve(restoredTrack)\n            return\n        }''',
+              '''        if (restoredTrack.streamUrl.isBlank()) {\n            pendingSeekMs = resumeMs\n            startResolve(restoredTrack, startPaused = !session.wasPlaying)\n            return\n        }''',
+              'scope paused restore to resolve request'
+          )
+          vm = replace_once(
+              vm,
+              '        pauseAfterNextPlaybackStart = false\n        player.stop()\n',
+              '        player.stop()\n',
+              'remove failure cleanup for deleted global flag'
+          )
+          vm = replace_once(
+              vm,
+              '''    private fun startPlayback(playable: Track) {\n        val selectedIndex = queueEngine.state.value.currentIndex\n        if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)\n        repository.replace(playable)\n        val startPaused = pauseAfterNextPlaybackStart\n        pauseAfterNextPlaybackStart = false\n        player.play(playable, _state.value.isVideoMode)''',
+              '''    private fun startPlayback(playable: Track, startPaused: Boolean = false) {\n        val selectedIndex = queueEngine.state.value.currentIndex\n        if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)\n        repository.replace(playable)\n        player.play(playable, _state.value.isVideoMode)''',
+              'make startPlayback pause intent explicit'
+          )
+          if 'pauseAfterNextPlaybackStart' in vm:
+              raise SystemExit('global pause flag still present')
+          vm_path.write_text(vm)
+
+          ui_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          ui = ui_path.read_text()
+          match = re.search(
+              r'(private fun ExploreMoodCard\b.*?)(?=\n@Composable|\nprivate fun |\Z)',
+              ui,
+              flags=re.S,
+          )
+          if not match:
+              raise SystemExit('ExploreMoodCard block not found')
+          block = match.group(1)
+          if block.count('.height(58.dp)') != 1:
+              raise SystemExit(f'ExploreMoodCard height match count: {block.count(".height(58.dp)")}')
+          if block.count('maxLines = 1') != 1:
+              raise SystemExit(f'ExploreMoodCard maxLines match count: {block.count("maxLines = 1")}')
+          updated_block = block.replace('.height(58.dp)', '.heightIn(min = 58.dp)', 1)
+          updated_block = updated_block.replace('maxLines = 1', 'maxLines = 2', 1)
+          ui = ui[:match.start(1)] + updated_block + ui[match.end(1):]
+          ui_path.write_text(ui)
+
+          test_path = Path('app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesPlaybackSelectionTest.kt')
+          test = test_path.read_text()
+          test = replace_once(
+              test,
+              'import org.junit.Assert.assertEquals\nimport org.junit.Assert.assertNull\n',
+              'import org.junit.Assert.assertEquals\nimport org.junit.Assert.assertFalse\nimport org.junit.Assert.assertNull\nimport org.junit.Assert.assertTrue\n',
+              'add boolean test assertions'
+          )
+          marker = 'class SamplesPlaybackSelectionTest {\n'
+          tests = '''class SamplesPlaybackSelectionTest {\n    @Test\n    fun pausedRestoreAppliesOnlyToItsCurrentResolveRequest() {\n        assertTrue(shouldStartPausedForResolve(7L, 7L, requestedStartPaused = true))\n    }\n\n    @Test\n    fun replacementSelectionDoesNotInheritPausedRestore() {\n        assertFalse(shouldStartPausedForResolve(7L, 8L, requestedStartPaused = true))\n    }\n\n    @Test\n    fun ordinaryResolveNeverStartsPaused() {\n        assertFalse(shouldStartPausedForResolve(9L, 9L, requestedStartPaused = false))\n    }\n\n'''
+          test = replace_once(test, marker, tests, 'add request-scoped playback tests')
+          test_path.write_text(test)
+          PY
+
+      - name: Run focused tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.viewmodel.ExploreProjectionTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackSelectionTest' \
+            --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest'
+
+      - name: Compile debug Kotlin
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
+
+      - name: Commit verified fixes and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/pr313-final-fixes.yml
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(explore): finish playback and adaptive card review fixes'
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
