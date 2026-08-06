@@ -56,6 +56,7 @@ FORBIDDEN_GRADLE_MARKERS = ("BUILD SUCCESSFUL", "BUILD FAILED")
 
 
 def fail(errors: list[str], message: str) -> None:
+    """Append one validation error without interrupting the remaining checks."""
     errors.append(message)
 
 
@@ -65,6 +66,7 @@ def require_terms(
     label: str,
     terms: tuple[str, ...],
 ) -> None:
+    """Require literal contract terms in a repository file when it exists."""
     path = ROOT / relative_path
     if not path.is_file():
         return
@@ -75,6 +77,7 @@ def require_terms(
 
 
 def iter_strings(value: Any) -> list[str]:
+    """Flatten nested TOML values and keys into strings for policy inspection."""
     if isinstance(value, str):
         return [value]
     if isinstance(value, dict):
@@ -92,6 +95,7 @@ def iter_strings(value: Any) -> list[str]:
 
 
 def validate_filters(errors: list[str]) -> None:
+    """Parse and validate Levyra's project-local RTK filter configuration."""
     filters_path = ROOT / ".rtk/filters.toml"
     if not filters_path.is_file():
         return
@@ -169,6 +173,7 @@ def validate_filters(errors: list[str]) -> None:
 
 
 def main() -> int:
+    """Run every repository-level AI efficiency and security contract check."""
     errors: list[str] = []
 
     for relative_path in REQUIRED_FILES:
