@@ -161,7 +161,7 @@ internal fun ExploreNewReleasesDestinationScreen(
     BackHandler(onBack = onBack)
     ExploreDestinationSurface(
         title = strings.exploreNewReleases,
-        subtitle = "YouTube Music",
+        subtitle = null,
         strings = strings,
         onBack = onBack
     ) { contentPadding ->

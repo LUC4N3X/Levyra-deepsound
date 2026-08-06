@@ -22,8 +22,34 @@ class YoutubeMusicSamplesPolicyTest {
 
         assertEquals("Artista seguito official music video", queries.first())
         assertTrue(queries.any { it.contains("Brano music video") })
-        assertTrue(queries.contains("nuovi video musicali"))
+        assertTrue(queries.contains("nuovi video musicali italiani"))
         assertFalse(queries.any { it.contains("podcast", ignoreCase = true) })
+    }
+
+    @Test
+    fun languageQueriesKeepReservedSlotsEvenWithManyUserSignals() {
+        val seeds = List(12) { index -> track(title = "Brano $index", artist = "Artista $index") }
+        val artists = List(12) { index -> "Seguito $index" }
+
+        val queries = youtubeMusicSampleQueries(seeds, artists, "it")
+
+        assertEquals(8, queries.size)
+        assertTrue(queries.count { it.contains("italian", ignoreCase = true) || it.contains("Italia", ignoreCase = true) } >= 3)
+        assertTrue(queries.first().contains("Seguito 0"))
+    }
+
+    @Test
+    fun queryGroupsAreRoundRobinInsteadOfOneSourceDominating() {
+        val groups = listOf(
+            listOf(track(id = "a1"), track(id = "a2")),
+            listOf(track(id = "l1"), track(id = "l2")),
+            listOf(track(id = "b1"), track(id = "b2"))
+        )
+
+        assertEquals(
+            listOf("a1", "l1", "b1", "a2", "l2", "b2"),
+            interleaveYoutubeMusicSampleResults(groups, 6).map { it.id }
+        )
     }
 
     @Test
@@ -49,13 +75,14 @@ class YoutubeMusicSamplesPolicyTest {
     }
 
     private fun track(
+        id: String = "abcdefghijk",
         title: String = "Title",
         artist: String = "Artist",
         durationMs: Long = 180_000L,
         source: String = "YouTube Music",
         videoType: String = "MUSIC_VIDEO_TYPE_OMV"
     ): Track = Track(
-        id = "abcdefghijk",
+        id = id,
         title = title,
         artist = artist,
         album = "Album",

@@ -25,6 +25,14 @@ class EditorialClient(Protocol):
     def iter_playlist_items(self, playlist_id: str) -> list[dict[str, Any]]:
         """Return all ordered playlist items."""
 
+    def resolve_playlist_id(
+        self,
+        query: str,
+        market: str,
+        title_hints: list[str],
+    ) -> str:
+        """Resolve an official editorial playlist from a localized query."""
+
 
 def utc_now_iso() -> str:
     """Return a stable UTC timestamp suitable for the public catalog."""
@@ -52,6 +60,8 @@ def load_config(path: Path) -> dict[str, Any]:
             raise ValueError(f"Collection #{index + 1} must be an object.")
         collection_id = str(item.get("id", "")).strip()
         playlist_id = str(item.get("playlistId", "")).strip()
+        playlist_query = str(item.get("playlistQuery", "")).strip()
+        fallback_playlist_id = str(item.get("fallbackPlaylistId", "")).strip()
         market = str(item.get("market", "")).strip().upper()
         kind = str(item.get("kind", "")).strip().lower()
         if not COLLECTION_ID_PATTERN.fullmatch(collection_id):
@@ -59,8 +69,18 @@ def load_config(path: Path) -> dict[str, Any]:
         if collection_id in seen_ids:
             raise ValueError(f"Collection id '{collection_id}' is duplicated.")
         seen_ids.add(collection_id)
-        if len(playlist_id) not in range(10, 80) or not playlist_id.isalnum():
-            raise ValueError(f"Collection '{collection_id}' has an invalid playlistId.")
+        if bool(playlist_id) == bool(playlist_query):
+            raise ValueError(
+                f"Collection '{collection_id}' must define exactly one of playlistId or playlistQuery."
+            )
+        for field_name, candidate in (
+            ("playlistId", playlist_id),
+            ("fallbackPlaylistId", fallback_playlist_id),
+        ):
+            if candidate and (len(candidate) not in range(10, 80) or not candidate.isalnum()):
+                raise ValueError(f"Collection '{collection_id}' has an invalid {field_name}.")
+        if playlist_query and len(playlist_query) not in range(3, 160):
+            raise ValueError(f"Collection '{collection_id}' has an invalid playlistQuery.")
         if market not in {"GLOBAL", "WORLD"} and not re.fullmatch(r"[A-Z]{2}", market):
             raise ValueError(f"Collection '{collection_id}' has an invalid market.")
         if kind not in {"chart", "editorial", "release"}:
@@ -68,6 +88,17 @@ def load_config(path: Path) -> dict[str, Any]:
         title = item.get("title")
         if title is not None and (not isinstance(title, str) or not title.strip()):
             raise ValueError(f"Collection '{collection_id}' has an invalid title.")
+        title_hints = item.get("titleHints")
+        if title_hints is not None and (
+            not isinstance(title_hints, list)
+            or any(not isinstance(value, str) or not value.strip() for value in title_hints)
+        ):
+            raise ValueError(f"Collection '{collection_id}' has invalid titleHints.")
+        item_limit = item.get("limit")
+        if item_limit is not None and (
+            not isinstance(item_limit, int) or isinstance(item_limit, bool) or item_limit not in range(1, 101)
+        ):
+            raise ValueError(f"Collection '{collection_id}' has an invalid limit.")
         optional = item.get("optional")
         if optional is not None and not isinstance(optional, bool):
             raise ValueError(f"Collection '{collection_id}' has an invalid optional flag.")
@@ -90,24 +121,88 @@ def build_catalog(
         if not isinstance(item, dict):
             continue
         collection_id = str(item["id"])
-        playlist_id = str(item["playlistId"])
         market = str(item["market"]).upper()
         LOGGER.info("Collecting %s (%s)", collection_id, market)
+        try:
+            output.append(_collect_configured_collection(item, client))
+        except Exception as error:
+            if item.get("optional") is True:
+                LOGGER.warning(
+                    "Optional collection %s skipped after %s.",
+                    collection_id,
+                    type(error).__name__,
+                )
+                continue
+            raise
 
-        metadata = client.get_playlist_metadata(playlist_id)
-        raw_items = client.iter_playlist_items(playlist_id)
-        enricher = getattr(client, "enrich_track_metadata", None)
-        if callable(enricher):
+    return Catalog(
+        schema_version=CATALOG_SCHEMA_VERSION,
+        generated_at=generated_at or utc_now_iso(),
+        collections=output,
+    )
+
+
+def _collect_configured_collection(
+    item: Mapping[str, Any],
+    client: EditorialClient,
+) -> Collection:
+    collection_id = str(item["id"])
+    market = str(item["market"]).upper()
+    configured_id = str(item.get("playlistId") or "").strip()
+    fallback_id = str(item.get("fallbackPlaylistId") or "").strip()
+    title_hints = [
+        str(value).strip()
+        for value in item.get("titleHints", [])
+        if isinstance(value, str) and value.strip()
+    ]
+
+    candidates: list[str] = []
+    if configured_id:
+        candidates.append(configured_id)
+    else:
+        resolver = getattr(client, "resolve_playlist_id", None)
+        if callable(resolver):
             try:
-                raw_items = enricher(raw_items)
+                resolved = str(
+                    resolver(
+                        str(item.get("playlistQuery") or "").strip(),
+                        market,
+                        title_hints,
+                    )
+                    or ""
+                ).strip()
+                if resolved:
+                    candidates.append(resolved)
             except Exception as error:
-                LOGGER.warning("Optional track metadata enrichment skipped: %s", type(error).__name__)
-        tracks = normalize_playlist_items(raw_items)
-        if not tracks:
-            raise ValueError(f"Collection '{collection_id}' produced no usable tracks.")
+                LOGGER.warning(
+                    "Localized playlist resolution failed for %s: %s.",
+                    collection_id,
+                    type(error).__name__,
+                )
+    if fallback_id and fallback_id not in candidates:
+        candidates.append(fallback_id)
+    if not candidates:
+        raise ValueError(f"Collection '{collection_id}' has no resolvable playlist.")
 
-        output.append(
-            Collection(
+    last_error: Exception | None = None
+    item_limit = int(item.get("limit") or 100)
+    for playlist_id in candidates:
+        try:
+            metadata = client.get_playlist_metadata(playlist_id)
+            raw_items = client.iter_playlist_items(playlist_id)[:item_limit]
+            enricher = getattr(client, "enrich_track_metadata", None)
+            if callable(enricher):
+                try:
+                    raw_items = enricher(raw_items)
+                except Exception as error:
+                    LOGGER.warning(
+                        "Optional track metadata enrichment skipped: %s",
+                        type(error).__name__,
+                    )
+            tracks = normalize_playlist_items(raw_items)[:item_limit]
+            if not tracks:
+                raise ValueError(f"Collection '{collection_id}' produced no usable tracks.")
+            return Collection(
                 id=collection_id,
                 kind=str(item["kind"]).lower(),
                 market=market,
@@ -117,16 +212,24 @@ def build_catalog(
                 source_url=_nested_string(metadata, "external_urls", "spotify"),
                 artwork_url=_first_image_url(metadata.get("images")),
                 snapshot_id=_optional_string(metadata.get("snapshot_id")),
-                total_source_items=_nested_int(metadata, "tracks", "total", default=len(raw_items)),
+                total_source_items=_nested_int(
+                    metadata,
+                    "tracks",
+                    "total",
+                    default=len(raw_items),
+                ),
                 tracks=tracks,
             )
-        )
-
-    return Catalog(
-        schema_version=CATALOG_SCHEMA_VERSION,
-        generated_at=generated_at or utc_now_iso(),
-        collections=output,
-    )
+        except Exception as error:
+            last_error = error
+            LOGGER.warning(
+                "Playlist candidate for %s failed: %s.",
+                collection_id,
+                type(error).__name__,
+            )
+    if last_error is not None:
+        raise last_error
+    raise ValueError(f"Collection '{collection_id}' could not be collected.")
 
 
 def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:

@@ -163,6 +163,70 @@ def build_session() -> requests.Session:
     return session
 
 
+def _normalize_playlist_title(value: str) -> str:
+    return " ".join(str(value or "").casefold().split())
+
+
+def select_official_spotify_playlist_id(
+    items: Sequence[Mapping[str, Any]],
+    query: str,
+    title_hints: Sequence[str] = (),
+) -> str | None:
+    """Pick the best Spotify-owned editorial playlist from search results."""
+    query_key = _normalize_playlist_title(query)
+    hints = [
+        normalized
+        for value in title_hints
+        for normalized in [_normalize_playlist_title(value)]
+        if normalized
+    ]
+    if query_key and query_key not in hints:
+        hints.append(query_key)
+
+    best_id: str | None = None
+    best_score = -1
+    for position, item in enumerate(items):
+        if not isinstance(item, Mapping):
+            continue
+        owner = item.get("owner")
+        owner_id = ""
+        owner_name = ""
+        if isinstance(owner, Mapping):
+            owner_id = str(owner.get("id") or "").strip().casefold()
+            owner_name = str(owner.get("display_name") or "").strip().casefold()
+        if owner_id != "spotify" and owner_name != "spotify":
+            continue
+
+        playlist_id = str(item.get("id") or "").strip()
+        name_key = _normalize_playlist_title(str(item.get("name") or ""))
+        if not playlist_id.isalnum() or len(playlist_id) not in range(10, 80) or not name_key:
+            continue
+
+        score = 0
+        if name_key in hints:
+            score += 20_000
+        for hint_index, hint in enumerate(hints):
+            if not hint:
+                continue
+            if name_key.startswith(hint):
+                score += 12_000 - hint_index * 80
+            elif hint in name_key:
+                score += 8_000 - hint_index * 80
+            hint_tokens = {token for token in hint.split() if len(token) >= 3}
+            name_tokens = set(name_key.split())
+            score += len(hint_tokens & name_tokens) * 350
+        if "new music friday" in name_key:
+            score += 4_000
+        if "novedades viernes" in name_key or "lancamentos da semana" in name_key:
+            score += 3_800
+        score -= position
+        if score > best_score:
+            best_score = score
+            best_id = playlist_id
+
+    return best_id if best_score > 0 else None
+
+
 class SpotifyWebClient:
     """Read public editorial metadata through a dedicated web-player session.
 
@@ -314,6 +378,75 @@ class SpotifyWebClient:
                 break
 
         return output
+
+    def resolve_playlist_id(
+        self,
+        query: str,
+        market: str,
+        title_hints: Sequence[str] = (),
+    ) -> str:
+        """Resolve one Spotify-owned editorial playlist through web-player search."""
+        normalized_query = str(query or "").strip()
+        normalized_market = str(market or "").strip().upper()
+        if len(normalized_query) < 3:
+            raise SourceApiError("The editorial playlist search query is too short.")
+        if normalized_market not in {"GLOBAL", "WORLD"} and not re.fullmatch(
+            r"[A-Z]{2}", normalized_market
+        ):
+            raise SourceApiError("The editorial playlist market is invalid.")
+        if self._access_token is None:
+            self.authenticate()
+
+        params = {
+            "q": normalized_query,
+            "type": "playlist",
+            "limit": 20,
+        }
+        if normalized_market not in {"GLOBAL", "WORLD"}:
+            params["market"] = normalized_market
+
+        def request_search() -> requests.Response:
+            return self._session.get(
+                f"{API_BASE_URL}/search",
+                params=params,
+                headers=self._api_headers(),
+                timeout=self._timeout,
+            )
+
+        response = request_search()
+        if response.status_code == 401:
+            self.authenticate()
+            response = request_search()
+        if response.status_code == 429:
+            delay = _bounded_retry_after(response.headers.get("Retry-After"))
+            if delay > 0:
+                time.sleep(delay)
+            response = request_search()
+            if response.status_code == 401:
+                self.authenticate()
+                response = request_search()
+        if response.status_code >= 400:
+            raise SourceApiError(
+                f"Spotify editorial playlist search failed with HTTP {response.status_code}."
+            )
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise SourceApiError("Spotify playlist search returned invalid JSON.") from error
+        playlists = payload.get("playlists") if isinstance(payload, Mapping) else None
+        items = playlists.get("items") if isinstance(playlists, Mapping) else None
+        if not isinstance(items, list):
+            raise SourceApiError("Spotify playlist search returned no usable result list.")
+        selected = select_official_spotify_playlist_id(
+            [item for item in items if isinstance(item, Mapping)],
+            normalized_query,
+            title_hints,
+        )
+        if selected is None:
+            raise SourceApiError(
+                f"No Spotify-owned editorial playlist matched '{normalized_query}'."
+            )
+        return selected
 
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Best-effort ISRC and release metadata without weakening Pathfinder reads."""

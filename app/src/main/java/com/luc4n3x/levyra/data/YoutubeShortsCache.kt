@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.Track
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.util.Locale
 
 private const val SHORTS_CACHE_NAME = "levyra_shorts_cache"
 private const val SHORTS_CACHE_LIMIT = 24
@@ -26,8 +27,8 @@ internal class YoutubeShortsCache(context: Context) {
         Context.MODE_PRIVATE
     )
 
-    fun load(languageCode: String): YoutubeShortsCacheSnapshot {
-        val key = cacheKey(languageCode)
+    fun load(languageCode: String, profileSignature: String = ""): YoutubeShortsCacheSnapshot {
+        val key = cacheKey(languageCode, profileSignature)
         val raw = preferences.getString(key, null).orEmpty()
         if (raw.isBlank()) return YoutubeShortsCacheSnapshot(emptyList(), 0L)
         return runCatching {
@@ -53,7 +54,12 @@ internal class YoutubeShortsCache(context: Context) {
         }
     }
 
-    fun save(languageCode: String, tracks: List<Track>, savedAtMs: Long = System.currentTimeMillis()) {
+    fun save(
+        languageCode: String,
+        tracks: List<Track>,
+        savedAtMs: Long = System.currentTimeMillis(),
+        profileSignature: String = ""
+    ) {
         val verified = tracks
             .asSequence()
             .filter(::isYoutubeShortTrack)
@@ -67,9 +73,17 @@ internal class YoutubeShortsCache(context: Context) {
         val root = JSONObject()
             .put("savedAtMs", savedAtMs.coerceAtLeast(0L))
             .put("tracks", array)
-        preferences.edit().putString(cacheKey(languageCode), root.toString()).apply()
+        preferences.edit().putString(cacheKey(languageCode, profileSignature), root.toString()).apply()
     }
 
-    private fun cacheKey(languageCode: String): String =
-        "shorts_${LevyraLanguageCatalog.normalize(languageCode)}"
+    private fun cacheKey(languageCode: String, profileSignature: String): String {
+        val language = LevyraLanguageCatalog.normalize(languageCode)
+        val normalizedProfile = profileSignature.trim().lowercase(Locale.ROOT)
+        val suffix = if (normalizedProfile.isBlank()) {
+            "default"
+        } else {
+            normalizedProfile.hashCode().toUInt().toString(16)
+        }
+        return "shorts_${language}_$suffix"
+    }
 }

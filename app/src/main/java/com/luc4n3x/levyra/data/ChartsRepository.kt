@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -75,6 +77,46 @@ class ChartsRepository(context: Context) {
     suspend fun cachedCountryCharts(limit: Int = 50): Map<String, List<Track>> = withContext(Dispatchers.IO) {
         editorialCharts.cachedAllMarkets(limit)
             .mapKeys { (market, _) -> market.lowercase() }
+    }
+
+    suspend fun newReleaseAlbums(country: String, limit: Int = 40): List<AlbumHit> = withContext(Dispatchers.IO) {
+        val safeLimit = limit.coerceIn(1, 80)
+        val tracks = editorialCharts.cachedNewReleaseTracks(country, safeLimit * 3)
+        tracks.asSequence()
+            .filter { track ->
+                track.title.isNotBlank() &&
+                    track.artist.isNotBlank() &&
+                    track.album.isNotBlank() &&
+                    (track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank())
+            }
+            .map { track ->
+                val albumTitle = track.album.ifBlank { track.title }
+                AlbumHit(
+                    title = albumTitle,
+                    artist = track.artist,
+                    year = track.year,
+                    thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    query = "${track.artist} $albumTitle".trim(),
+                    browseId = track.albumBrowseId,
+                    artistBrowseId = track.artistBrowseIds.firstOrNull().orEmpty(),
+                    explicit = track.explicit,
+                    releaseDate = track.releaseDate,
+                    metadataProvider = track.metadataProvider,
+                    metadataConfidence = track.metadataConfidence,
+                    releaseType = if (albumTitle.equals(track.title, ignoreCase = true)) {
+                        ReleaseType.Single
+                    } else {
+                        ReleaseType.Unknown
+                    }
+                )
+            }
+            .distinctBy { release ->
+                release.browseId.ifBlank {
+                    "${release.artist.trim().lowercase()}|${release.title.trim().lowercase()}"
+                }
+            }
+            .take(safeLimit)
+            .toList()
     }
 
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {

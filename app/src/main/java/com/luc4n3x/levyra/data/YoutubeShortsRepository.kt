@@ -333,11 +333,23 @@ internal fun youtubeShortQueries(
         .map { track -> "${track.artist} ${track.title} #shorts" }
         .toList()
 
-    return (followedArtistQueries + seedArtistQueries + songQueries + localizedShortQueries(languageCode))
+    val personalized = (followedArtistQueries + seedArtistQueries + songQueries)
         .map(String::trim)
         .filter(String::isNotBlank)
         .distinctBy { query -> query.lowercase(Locale.ROOT) }
-        .take(MAX_SHORT_QUERIES)
+        .take(2)
+    val localizedLimit = if (personalized.isEmpty()) MAX_SHORT_QUERIES else 2
+    val localized = localizedShortQueries(languageCode)
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinctBy { query -> query.lowercase(Locale.ROOT) }
+        .take(localizedLimit)
+    return buildList {
+        repeat(maxOf(personalized.size, localized.size)) { index ->
+            personalized.getOrNull(index)?.let(::add)
+            localized.getOrNull(index)?.let(::add)
+        }
+    }.take(MAX_SHORT_QUERIES)
 }
 
 internal fun youtubeShortChannelUrls(
@@ -374,44 +386,33 @@ internal fun canonicalYoutubeChannelUrl(value: String): String? {
 
 private fun localizedShortQueries(languageCode: String): List<String> {
     return when (languageCode.lowercase(Locale.ROOT).substringBefore('-')) {
-        "it" -> listOf(
-            "shorts musica italiana",
-            "canzoni del momento #shorts",
-            "nuove hit italiane #shorts",
-            "musica virale #shorts"
-        )
-        "es" -> listOf(
-            "shorts música española",
-            "canciones del momento #shorts",
-            "éxitos latinos #shorts",
-            "música viral #shorts"
-        )
-        "fr" -> listOf(
-            "shorts musique française",
-            "chansons du moment #shorts",
-            "nouveaux tubes #shorts",
-            "musique virale #shorts"
-        )
-        "de" -> listOf(
-            "shorts deutsche musik",
-            "songs des moments #shorts",
-            "neue hits #shorts",
-            "virale musik #shorts"
-        )
-        "pt" -> listOf(
-            "shorts música brasileira",
-            "músicas do momento #shorts",
-            "novos sucessos #shorts",
-            "música viral #shorts"
-        )
+        "en" -> listOf("music shorts USA", "new songs USA #shorts", "viral English music #shorts", "popular music USA #shorts")
+        "it" -> listOf("shorts musica italiana", "canzoni del momento #shorts", "nuove hit italiane #shorts", "musica virale #shorts")
+        "es" -> listOf("shorts música española", "canciones del momento #shorts", "éxitos latinos #shorts", "música viral #shorts")
+        "fr" -> listOf("shorts musique française", "chansons du moment #shorts", "nouveaux tubes #shorts", "musique virale #shorts")
+        "de" -> listOf("shorts deutsche musik", "songs des moments #shorts", "neue hits #shorts", "virale musik #shorts")
+        "pt" -> listOf("shorts música brasileira", "músicas do momento #shorts", "novos sucessos #shorts", "música viral #shorts")
+        "nl" -> listOf("shorts Nederlandse muziek", "Nederlandse hits #shorts", "nieuwe muziek Nederland #shorts", "virale muziek #shorts")
+        "pl" -> listOf("shorts polska muzyka", "polskie hity #shorts", "nowa polska muzyka #shorts", "viral muzyka #shorts")
+        "ro" -> listOf("shorts muzică românească", "hituri românești #shorts", "muzică nouă România #shorts", "muzică virală #shorts")
+        "el" -> listOf("ελληνική μουσική #shorts", "ελληνικές επιτυχίες #shorts", "νέα ελληνικά τραγούδια #shorts", "viral μουσική #shorts")
+        "sv" -> listOf("shorts svensk musik", "svenska hits #shorts", "ny svensk musik #shorts", "viral musik #shorts")
+        "da" -> listOf("shorts dansk musik", "danske hits #shorts", "ny dansk musik #shorts", "viral musik #shorts")
+        "cs" -> listOf("shorts česká hudba", "české hity #shorts", "nová česká hudba #shorts", "virální hudba #shorts")
+        "uk" -> listOf("українська музика #shorts", "українські хіти #shorts", "нові українські пісні #shorts", "вірусна музика #shorts")
+        "ru" -> listOf("русская музыка #shorts", "русские хиты #shorts", "новые русские песни #shorts", "вирусная музыка #shorts")
+        "tr" -> listOf("Türkçe müzik #shorts", "Türkçe hitler #shorts", "yeni Türkçe şarkılar #shorts", "viral müzik #shorts")
+        "ar" -> listOf("موسيقى عربية #shorts", "أغاني عربية رائجة #shorts", "أغاني عربية جديدة #shorts", "موسيقى viral #shorts")
+        "zh" -> listOf("华语音乐 #shorts", "华语热门歌曲 #shorts", "华语新歌 #shorts", "热门音乐 #shorts")
         "ja" -> listOf("音楽 #shorts", "新曲 #shorts", "人気曲 #shorts", "j-pop #shorts")
         "ko" -> listOf("음악 #shorts", "신곡 #shorts", "인기곡 #shorts", "k-pop #shorts")
-        else -> listOf(
-            "music #shorts",
-            "songs right now #shorts",
-            "new music #shorts",
-            "viral music #shorts"
-        )
+        "hi" -> listOf("हिंदी संगीत #shorts", "नए हिंदी गाने #shorts", "बॉलीवुड हिट्स #shorts", "वायरल संगीत #shorts")
+        "id" -> listOf("musik Indonesia #shorts", "lagu Indonesia terbaru #shorts", "hit Indonesia #shorts", "musik viral #shorts")
+        "vi" -> listOf("nhạc Việt #shorts", "bài hát Việt mới #shorts", "hit Việt Nam #shorts", "nhạc viral #shorts")
+        "th" -> listOf("เพลงไทย #shorts", "เพลงไทยใหม่ #shorts", "เพลงฮิตไทย #shorts", "เพลงไวรัล #shorts")
+        "fil" -> listOf("OPM #shorts", "bagong kantang Pilipino #shorts", "Pinoy hits #shorts", "viral music Pilipinas #shorts")
+        "he" -> listOf("מוזיקה ישראלית #shorts", "להיטים ישראליים #shorts", "שירים ישראליים חדשים #shorts", "מוזיקה ויראלית #shorts")
+        else -> listOf("music #shorts", "songs right now #shorts", "new music #shorts", "viral music #shorts")
     }
 }
 

@@ -169,6 +169,32 @@ private data class SamplesPlaybackSession(
     val positionMs: Long
 )
 
+internal fun prioritizeNewReleasesForUser(
+    releases: List<AlbumHit>,
+    preferredArtists: List<String>,
+    limit: Int
+): List<AlbumHit> {
+    if (limit <= 0) return emptyList()
+    val preferences = preferredArtists
+        .map { artist -> artist.trim().lowercase(java.util.Locale.ROOT) }
+        .filter(String::isNotBlank)
+        .distinct()
+    if (preferences.isEmpty()) return releases.take(limit)
+    val (matched, remaining) = releases.partition { release ->
+        val artist = release.artist.trim().lowercase(java.util.Locale.ROOT)
+        preferences.any { preferred ->
+            artist == preferred || artist.contains(preferred) || preferred.contains(artist)
+        }
+    }
+    return (matched + remaining)
+        .distinctBy { release ->
+            release.browseId.ifBlank {
+                "${release.artist.lowercase(java.util.Locale.ROOT)}|${release.title.lowercase(java.util.Locale.ROOT)}"
+            }
+        }
+        .take(limit)
+}
+
 internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Track? {
     if (list.isEmpty()) return null
     val requestedIdentity = playbackIdentity(requested)
@@ -4649,20 +4675,53 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val exploreCache = ConcurrentHashMap<String, List<Track>>()
     private var musicVideosLoadedLanguage = ""
+    private var musicVideosLoadedProfileSignature = ""
     private var musicVideosRetryLanguage = ""
     private var musicVideosRetryAfterMs = 0L
     private var musicVideosFailureCount = 0
     private var musicVideosJob: Job? = null
     private var newReleasesLoadedLanguage = ""
+    private var newReleasesLoadedProfileSignature = ""
     private var newReleasesJob: Job? = null
     private var exploreJob: Job? = null
+
+    private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
+        snapshot.currentTrack?.artist?.let(::add)
+        addAll(snapshot.followedArtists.map { artist -> artist.name })
+        addAll(snapshot.recentListens.map { track -> track.artist })
+        addAll(snapshot.favorites.map { track -> track.artist })
+        addAll(snapshot.personalOrbitTracks.map { track -> track.artist })
+        addAll(snapshot.homeResonanceTracks.map { track -> track.artist })
+        addAll(snapshot.charts.map { track -> track.artist })
+        snapshot.homeSections.forEach { section -> addAll(section.tracks.map { track -> track.artist }) }
+    }
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinctBy { artist -> artist.lowercase(java.util.Locale.ROOT) }
+        .take(limit)
+
+    private fun samplesDiscoveryProfileSignature(snapshot: LevyraUiState): String {
+        val artists = discoveryPreferredArtists(snapshot, 16)
+        val trackIds = buildList {
+            snapshot.currentTrack?.id?.let(::add)
+            addAll(snapshot.recentListens.take(8).map { track -> track.id })
+            addAll(snapshot.favorites.take(8).map { track -> track.id })
+            addAll(snapshot.personalOrbitTracks.take(8).map { track -> track.id })
+        }.filter(String::isNotBlank).distinct()
+        return buildString {
+            append(LevyraLanguageCatalog.normalize(snapshot.languageCode))
+            append('|').append(artists.joinToString("|"))
+            append('|').append(trackIds.joinToString("|"))
+        }
+    }
 
     private fun ensureMusicVideosLoaded() {
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
+        val profileSignature = samplesDiscoveryProfileSignature(snapshot)
         if (musicVideosJob?.isActive == true) return
         if (snapshot.exploreVideos.isEmpty()) {
-            val cached = shortsCache.load(languageCode)
+            val cached = shortsCache.load(languageCode, profileSignature)
             if (cached.tracks.isNotEmpty()) {
                 _state.update { current ->
                     if (current.languageCode == languageCode) {
@@ -4677,11 +4736,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 if (cached.isFresh()) {
                     musicVideosLoadedLanguage = languageCode
+                    musicVideosLoadedProfileSignature = profileSignature
                     return
                 }
             }
         }
-        if (musicVideosLoadedLanguage == languageCode) return
+        if (
+            musicVideosLoadedLanguage == languageCode &&
+            musicVideosLoadedProfileSignature == profileSignature
+        ) return
 
         val now = System.currentTimeMillis()
         if (musicVideosRetryLanguage != languageCode) {
@@ -4719,17 +4782,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
                 .distinctBy { track -> track.id }
                 .take(48)
-            val preferredArtists = buildList {
-                addAll(seedSnapshot.followedArtists.map { artist -> artist.name })
-                addAll(seedSnapshot.recentListens.map { track -> track.artist })
-                addAll(seedSnapshot.favorites.map { track -> track.artist })
-                addAll(seedSnapshot.personalOrbitTracks.map { track -> track.artist })
-                addAll(seeds.map { track -> track.artist })
-            }
-                .map(String::trim)
-                .filter(String::isNotBlank)
-                .distinctBy { artist -> artist.lowercase(java.util.Locale.ROOT) }
-                .take(16)
+            val preferredArtists = discoveryPreferredArtists(seedSnapshot, 16)
             val preferredChannelIds = buildList {
                 addAll(seedSnapshot.followedArtists.map { artist -> artist.browseId })
                 seeds.forEach { track -> addAll(track.artistBrowseIds) }
@@ -4787,6 +4840,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             musicVideosLoadedLanguage = languageCode
+            musicVideosLoadedProfileSignature = profileSignature
             musicVideosRetryLanguage = ""
             musicVideosRetryAfterMs = 0L
             musicVideosFailureCount = 0
@@ -4802,7 +4856,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             withContext(Dispatchers.IO) {
-                shortsCache.save(languageCode, resolvedFeedTracks)
+                shortsCache.save(
+                    languageCode = languageCode,
+                    tracks = resolvedFeedTracks,
+                    profileSignature = profileSignature
+                )
             }
         }
     }
@@ -4818,26 +4876,62 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
-        val languageCode = _state.value.languageCode
+        val snapshot = _state.value
+        val languageCode = snapshot.languageCode
+        val preferredArtists = discoveryPreferredArtists(snapshot, 24)
+        val profileSignature = buildString {
+            append(LevyraLanguageCatalog.normalize(languageCode))
+            append('|').append(preferredArtists.joinToString("|"))
+        }
         if (newReleasesJob?.isActive == true) return
-        if (!force && newReleasesLoadedLanguage == languageCode && _state.value.exploreNewReleases.isNotEmpty()) return
-        if (newReleasesLoadedLanguage != languageCode) {
+        if (
+            !force &&
+            newReleasesLoadedLanguage == languageCode &&
+            newReleasesLoadedProfileSignature == profileSignature &&
+            snapshot.exploreNewReleases.isNotEmpty()
+        ) return
+        if (
+            newReleasesLoadedLanguage != languageCode ||
+            newReleasesLoadedProfileSignature != profileSignature
+        ) {
             _state.update { current ->
                 current.copy(exploreNewReleases = emptyList(), newReleasesLoadFailed = false)
             }
         }
         _state.update { current -> current.copy(isNewReleasesLoading = true, newReleasesLoadFailed = false) }
         newReleasesJob = viewModelScope.launch {
-            val releases = try {
-                repository.newReleases(languageCode = languageCode, limit = 48)
+            val market = ChartsCatalog.defaultRegionForLanguage(languageCode).country
+            val editorialReleases = try {
+                chartsRepository.newReleaseAlbums(country = market, limit = 48)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Timber.w(error, "Official YouTube Music releases failed for %s", languageCode)
+                Timber.w(error, "Localized editorial releases failed for %s", market)
                 emptyList()
             }
+            val releases = prioritizeNewReleasesForUser(
+                releases = editorialReleases,
+                preferredArtists = preferredArtists,
+                limit = 48
+            ).ifEmpty {
+                try {
+                    repository.newReleases(
+                        languageCode = languageCode,
+                        limit = 48,
+                        preferredArtists = preferredArtists
+                    )
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "Personalized new releases fallback failed for %s", languageCode)
+                    emptyList()
+                }
+            }
             if (_state.value.languageCode != languageCode) return@launch
-            if (releases.isNotEmpty()) newReleasesLoadedLanguage = languageCode
+            if (releases.isNotEmpty()) {
+                newReleasesLoadedLanguage = languageCode
+                newReleasesLoadedProfileSignature = profileSignature
+            }
             _state.update { current ->
                 current.copy(
                     exploreNewReleases = releases,
@@ -4859,6 +4953,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun refreshExploreSamples() {
         if (musicVideosJob?.isActive == true) return
         musicVideosLoadedLanguage = ""
+        musicVideosLoadedProfileSignature = ""
         musicVideosRetryLanguage = ""
         musicVideosRetryAfterMs = 0L
         musicVideosFailureCount = 0

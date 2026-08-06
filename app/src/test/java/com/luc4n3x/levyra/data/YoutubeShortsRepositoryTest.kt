@@ -10,6 +10,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YoutubeShortsRepositoryTest {
+    private companion object {
+        const val MAX_TEST_QUERY_BOUND = 4
+    }
+
     @Test
     fun extractorShortFlagIsAccepted() {
         assertTrue(
@@ -138,6 +142,7 @@ class YoutubeShortsRepositoryTest {
         assertEquals("Artista seguito #shorts", queries.first())
         assertTrue(queries.contains("Artista ascoltato #shorts"))
         assertTrue(queries.contains("shorts musica italiana"))
+        assertTrue(queries.indexOf("shorts musica italiana") < MAX_TEST_QUERY_BOUND)
         assertFalse(queries.contains("music shorts"))
     }
 

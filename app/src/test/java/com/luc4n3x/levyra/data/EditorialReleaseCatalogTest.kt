@@ -1,7 +1,4 @@
-from pathlib import Path
-
-Path("app/src/test/java/com/luc4n3x/levyra/data/EditorialReleaseCatalogTest.kt").write_text(
-    '''package com.luc4n3x.levyra.data
+package com.luc4n3x.levyra.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -61,6 +58,3 @@ class EditorialReleaseCatalogTest {
         assertEquals("MPRErelease", snapshot.newReleases("it", 10).single().albumBrowseId)
     }
 }
-''',
-    encoding="utf-8",
-)
