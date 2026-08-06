@@ -27,12 +27,13 @@ internal class YoutubeShortsCache(context: Context) {
     )
 
     fun load(languageCode: String, profileSignature: String = ""): YoutubeShortsCacheSnapshot {
+        val wantedProfile = profileSignature.trim()
+        if (wantedProfile.isBlank()) return YoutubeShortsCacheSnapshot(emptyList(), 0L)
         val raw = preferences.getString(cacheKey(languageCode), null).orEmpty()
         if (raw.isBlank()) return YoutubeShortsCacheSnapshot(emptyList(), 0L)
         return runCatching {
             val root = JSONObject(raw)
-            val wantedProfile = profileSignature.trim()
-            if (wantedProfile.isNotBlank() && root.optString("profile") != profileFingerprint(wantedProfile)) {
+            if (root.optString("profile") != profileFingerprint(wantedProfile)) {
                 YoutubeShortsCacheSnapshot(emptyList(), 0L)
             } else {
                 val items = root.optJSONArray("tracks") ?: JSONArray()
