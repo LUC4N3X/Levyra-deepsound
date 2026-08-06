@@ -60,7 +60,7 @@ on_empty = "adb logcat produced no matching lines"
 
 [filters.levyra-agent-tests]
 description = "Compact Levyra AI setup-script dry-run output"
-match_command = "^(pwsh|powershell|bash|sh)\\s+.*scripts[/\\\\]setup-ai\\.(ps1|sh)\\b"
+match_command = "^(?:(?:pwsh|powershell|bash|sh)\\s+.*|(?:\\.?[./\\\\])?)scripts[/\\\\]setup-ai\\.(ps1|sh)\\b"
 strip_ansi = true
 strip_lines_matching = [
   "^\\s*$",
