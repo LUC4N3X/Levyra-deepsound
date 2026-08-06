@@ -98,14 +98,62 @@ class YoutubeShortsRepositoryTest {
         assertFalse(isYoutubeShortTrack(track()))
     }
 
+    @Test
+    fun followedArtistsAndLanguageDriveQueriesBeforeGenericFallbacks() {
+        val queries = youtubeShortQueries(
+            seeds = listOf(track(title = "Brano", artist = "Artista ascoltato")),
+            preferredArtists = listOf("Artista seguito"),
+            languageCode = "it-IT"
+        )
+
+        assertEquals("Artista seguito shorts", queries.first())
+        assertTrue(queries.contains("Artista ascoltato shorts"))
+        assertTrue(queries.contains("shorts musica italiana"))
+        assertFalse(queries.contains("music shorts"))
+    }
+
+    @Test
+    fun artistBrowseIdsAndFollowedChannelIdsBecomeDirectChannelUrls() {
+        val track = track(artistBrowseIds = listOf("UC1234567890123456789012"))
+
+        val urls = youtubeShortChannelUrls(
+            seeds = listOf(track),
+            preferredChannelIds = listOf("UCabcdefghijklmnopqrstuv")
+        )
+
+        assertEquals(
+            listOf(
+                "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+                "https://www.youtube.com/channel/UC1234567890123456789012"
+            ),
+            urls
+        )
+    }
+
+    @Test
+    fun channelUrlsAreNormalizedWithoutAcceptingUnrelatedBrowseIds() {
+        assertEquals(
+            "https://www.youtube.com/@artist",
+            canonicalYoutubeChannelUrl("/ @artist".replace(" ", ""))
+        )
+        assertEquals(
+            "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+            canonicalYoutubeChannelUrl("UCabcdefghijklmnopqrstuv")
+        )
+        assertEquals(null, canonicalYoutubeChannelUrl("MPLA-not-a-channel"))
+    }
+
     private fun track(
         source: String = "YouTube Music",
         videoUrl: String = "https://www.youtube.com/watch?v=abcdefghijk",
-        videoType: String = ""
+        videoType: String = "",
+        title: String = "Title",
+        artist: String = "Artist",
+        artistBrowseIds: List<String> = emptyList()
     ): Track = Track(
         id = "abcdefghijk",
-        title = "Title",
-        artist = "Artist",
+        title = title,
+        artist = artist,
         album = "Album",
         durationMs = 60_000L,
         streamUrl = "",
@@ -120,6 +168,7 @@ class YoutubeShortsRepositoryTest {
         cacheScore = 70,
         accentStart = 0xFF00E5FF.toInt(),
         accentEnd = 0xFF2979FF.toInt(),
+        artistBrowseIds = artistBrowseIds,
         videoType = videoType
     )
 }
