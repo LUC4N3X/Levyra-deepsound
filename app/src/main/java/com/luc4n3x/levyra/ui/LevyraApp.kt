@@ -17537,6 +17537,8 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
                     isVideoMode = state.isVideoMode,
+                    isLoading = state.isSamplesLoading,
+                    loadFailed = state.samplesLoadFailed,
                     favoriteIds = state.favoriteIds,
                     strings = strings,
                     onPlaySample = viewModel::playSample,

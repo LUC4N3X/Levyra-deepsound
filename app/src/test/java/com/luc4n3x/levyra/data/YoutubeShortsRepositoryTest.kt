@@ -22,6 +22,35 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
+    fun verifiedShortWithUnknownDurationIsAccepted() {
+        assertTrue(
+            isYoutubeShortCandidate(
+                isShortFormContent = true,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
+                durationSeconds = 0L
+            )
+        )
+    }
+
+    @Test
+    fun shortSearchFallbackAcceptsBoundedVideoResults() {
+        assertTrue(
+            isYoutubeShortSearchFallbackCandidate(
+                isShortFormContent = false,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
+                durationSeconds = 90L
+            )
+        )
+        assertFalse(
+            isYoutubeShortSearchFallbackCandidate(
+                isShortFormContent = false,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
+                durationSeconds = 181L
+            )
+        )
+    }
+
+    @Test
     fun canonicalShortsUrlsAreAcceptedAsFallback() {
         assertTrue(
             isYoutubeShortCandidate(
@@ -106,8 +135,8 @@ class YoutubeShortsRepositoryTest {
             languageCode = "it-IT"
         )
 
-        assertEquals("Artista seguito shorts", queries.first())
-        assertTrue(queries.contains("Artista ascoltato shorts"))
+        assertEquals("Artista seguito #shorts", queries.first())
+        assertTrue(queries.contains("Artista ascoltato #shorts"))
         assertTrue(queries.contains("shorts musica italiana"))
         assertFalse(queries.contains("music shorts"))
     }
@@ -122,7 +151,7 @@ class YoutubeShortsRepositoryTest {
 
         assertTrue(queries.isNotEmpty())
         assertEquals("shorts musica italiana", queries.first())
-        assertTrue(queries.contains("musica virale shorts"))
+        assertTrue(queries.contains("musica virale #shorts"))
     }
 
     @Test

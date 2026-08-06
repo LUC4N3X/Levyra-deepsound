@@ -70,6 +70,9 @@ jobs:
       - name: Validate Agent Configuration
         run: python3 scripts/validate_agent_config.py
 
+      - name: Validate AI Efficiency Layer
+        run: python3 scripts/validate_ai_efficiency.py
+
       - name: Prepare CI Release Signing
         shell: bash
         run: |
@@ -156,74 +159,3 @@ jobs:
           name: pr-check-reports-${{ github.run_number }}
           path: artifacts
           if-no-files-found: ignore
-
-  apply-guaranteed-samples:
-    name: Apply guaranteed Samples feed
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'claude/menu-esplora-redesign-t3j2l4' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v7
-        with:
-          ref: claude/menu-esplora-redesign-t3j2l4
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Apply Samples fix
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 .github/scripts/pr-313-guarantee-samples.py
-          python3 .github/scripts/pr-313-fix-samples-tests.py
-
-      - name: Compile and run focused tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./gradlew --no-daemon :app:compileDebugKotlin
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.data.YoutubeShortsRepositoryTest' \
-            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackSelectionTest' \
-            --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest'
-
-      - name: Commit fix and restore workflow
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          git show origin/main:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          git rm \
-            .github/scripts/pr-313-guarantee-samples.py \
-            .github/scripts/pr-313-fix-samples-tests.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .github/workflows/pr-check.yml \
-            app/src/main/java/com/luc4n3x/levyra/data/YoutubeShortsRepository.kt \
-            app/src/main/java/com/luc4n3x/levyra/ui/ExploreSamplesScreen.kt \
-            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
-            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraUiState.kt \
-            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
-            app/src/test/java/com/luc4n3x/levyra/data/YoutubeShortsRepositoryTest.kt
-          git diff --cached --check
-          git commit -m "fix(samples): guarantee a finite short-form feed"
-          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4

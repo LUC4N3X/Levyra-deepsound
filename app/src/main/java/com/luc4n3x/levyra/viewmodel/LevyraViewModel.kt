@@ -4657,6 +4657,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
         if (musicVideosJob?.isActive == true) return
+        if (snapshot.exploreVideos.isEmpty()) {
+            val cached = shortsCache.load(languageCode)
+            if (cached.tracks.isNotEmpty()) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode) {
+                        current.copy(
+                            exploreVideos = cached.tracks,
+                            isSamplesLoading = false,
+                            samplesLoadFailed = false
+                        )
+                    } else {
+                        current
+                    }
+                }
+                if (cached.isFresh()) {
+                    musicVideosLoadedLanguage = languageCode
+                    return
+                }
+            }
+        }
         if (musicVideosLoadedLanguage == languageCode) return
 
         val now = System.currentTimeMillis()
@@ -4673,6 +4693,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { current -> current.copy(exploreVideos = emptyList()) }
         }
 
+        _state.update { current ->
+            if (current.languageCode == languageCode) {
+                current.copy(isSamplesLoading = true, samplesLoadFailed = false)
+            } else {
+                current
+            }
+        }
         musicVideosJob = viewModelScope.launch {
             val seedSnapshot = _state.value
             val seeds = buildList {
@@ -4725,6 +4752,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (_state.value.languageCode != languageCode) return@launch
 
             if (feedResult == null || !feedResult.isConclusive) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode) {
+                        current.copy(isSamplesLoading = false, samplesLoadFailed = true)
+                    } else {
+                        current
+                    }
+                }
                 registerShortsFeedFailure(languageCode)
                 return@launch
             }
@@ -4733,14 +4767,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             musicVideosRetryLanguage = ""
             musicVideosRetryAfterMs = 0L
             musicVideosFailureCount = 0
-            if (feedResult.tracks.isNotEmpty()) {
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(exploreVideos = feedResult.tracks)
-                    } else {
-                        current
-                    }
+            _state.update { current ->
+                if (current.languageCode == languageCode) {
+                    val resolvedTracks = feedResult.tracks.ifEmpty { current.exploreVideos }
+                    current.copy(
+                        exploreVideos = resolvedTracks,
+                        isSamplesLoading = false,
+                        samplesLoadFailed = resolvedTracks.isEmpty()
+                    )
+                } else {
+                    current
                 }
+            }
+            if (feedResult.tracks.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
                     shortsCache.save(languageCode, feedResult.tracks)
                 }

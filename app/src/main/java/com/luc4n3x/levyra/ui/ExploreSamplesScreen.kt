@@ -71,6 +71,8 @@ internal fun ExploreSamplesScreen(
     isPlaying: Boolean,
     isResolving: Boolean,
     isVideoMode: Boolean,
+    isLoading: Boolean,
+    loadFailed: Boolean,
     favoriteIds: Set<String>,
     strings: LevyraStrings,
     onPlaySample: (List<Track>, Track) -> Unit,
@@ -89,6 +91,8 @@ internal fun ExploreSamplesScreen(
         LaunchedEffect(Unit) { onRequestFeed() }
         ExploreSamplesLoadingSurface(
             strings = strings,
+            isLoading = isLoading,
+            loadFailed = loadFailed,
             onRetry = onRequestFeed,
             onDismiss = onDismiss
         )
@@ -183,6 +187,8 @@ internal fun ExploreSamplesScreen(
 @Composable
 private fun ExploreSamplesLoadingSurface(
     strings: LevyraStrings,
+    isLoading: Boolean,
+    loadFailed: Boolean,
     onRetry: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -229,13 +235,22 @@ private fun ExploreSamplesLoadingSurface(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            CircularProgressIndicator(
-                color = Color.White,
-                strokeWidth = 3.dp,
-                modifier = Modifier.size(44.dp)
-            )
+            if (isLoading || !loadFailed) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(44.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(44.dp)
+                )
+            }
             Text(
-                text = strings.exploreSamplesSubtitle,
+                text = if (loadFailed) strings.exploreEmpty else strings.exploreSamplesSubtitle,
                 color = Color.White.copy(alpha = 0.78f),
                 fontSize = 15.sp,
                 lineHeight = 20.sp,

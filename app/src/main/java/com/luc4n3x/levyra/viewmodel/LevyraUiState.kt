@@ -138,6 +138,8 @@ data class LevyraUiState(
     val exploreZoneId: String? = null,
     val exploreTracks: List<Track> = emptyList(),
     val exploreVideos: List<Track> = emptyList(),
+    val isSamplesLoading: Boolean = false,
+    val samplesLoadFailed: Boolean = false,
     val isExploreLoading: Boolean = false,
     val downloadingTrackIds: Set<String> = emptySet(),
     val downloadedTrackIds: Set<String> = emptySet(),

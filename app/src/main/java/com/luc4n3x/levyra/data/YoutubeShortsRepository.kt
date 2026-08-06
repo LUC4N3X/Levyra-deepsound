@@ -21,17 +21,15 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
 internal const val YOUTUBE_SHORTS_SOURCE = "YouTube Shorts"
-private const val MAX_SHORT_QUERIES = 8
-private const val MAX_SHORT_CHANNELS = 8
-private const val INITIAL_SHORT_CHANNELS = 4
-private const val FAST_SHORT_TARGET = 6
+private const val MAX_SHORT_QUERIES = 4
+private const val MAX_SHORT_CHANNELS = 4
 private const val SHORTS_SEARCH_CONCURRENCY = 4
 private const val SHORTS_CHANNEL_CONCURRENCY = 4
-private const val SHORTS_PER_QUERY = 4
-private const val SHORTS_PER_CHANNEL = 6
+private const val SHORTS_PER_QUERY = 8
+private const val SHORTS_PER_CHANNEL = 8
 private const val MAX_SHORT_DURATION_SECONDS = 180L
-private const val SHORTS_SEARCH_TIMEOUT_MS = 6_500L
-private const val SHORTS_CHANNEL_TIMEOUT_MS = 8_000L
+private const val SHORTS_SEARCH_TIMEOUT_MS = 5_500L
+private const val SHORTS_CHANNEL_TIMEOUT_MS = 6_500L
 private const val YOUTUBE_FRONTEND = "https://www.youtube.com"
 
 internal data class YoutubeShortsFeedResult(
@@ -68,60 +66,44 @@ internal class YoutubeShortsRepository(private val context: Context) {
     ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
         if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
 
-        val queries = youtubeShortQueries(seeds, preferredArtists, languageCode).take(MAX_SHORT_QUERIES)
-        val directChannelUrls = youtubeShortChannelUrls(seeds, preferredChannelIds)
-            .take(MAX_SHORT_CHANNELS)
-        val (searchResults, initialChannelResults) = coroutineScope {
-            val searchDeferred = async { runSearchDiscovery(queries) }
-            val channelDeferred = async {
-                runChannelDiscovery(directChannelUrls.take(INITIAL_SHORT_CHANNELS))
-            }
-            searchDeferred.await() to channelDeferred.await()
-        }
+        val queries = youtubeShortQueries(seeds, preferredArtists, languageCode)
+            .take(MAX_SHORT_QUERIES)
+        val searchResults = runSearchDiscovery(queries)
         val successfulSearches = searchResults.filterIsInstance<ShortsSourceResult.Success>()
-        val successfulInitialChannels = initialChannelResults.filterIsInstance<ShortsSourceResult.Success>()
-        val initialTracks = mergeShortTracks(
-            channelResults = successfulInitialChannels,
+        val searchTracks = mergeShortTracks(
+            channelResults = emptyList(),
             searchResults = successfulSearches,
             limit = limit
         )
-        val target = minOf(limit, FAST_SHORT_TARGET)
-        if (initialTracks.size >= target) {
+        if (searchTracks.isNotEmpty()) {
             return@withContext YoutubeShortsFeedResult(
-                tracks = initialTracks,
-                completedQueries = successfulSearches.size + successfulInitialChannels.size,
-                failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
-                    initialChannelResults.count { it is ShortsSourceResult.Failure }
+                tracks = searchTracks,
+                completedQueries = successfulSearches.size,
+                failedQueries = searchResults.count { it is ShortsSourceResult.Failure }
             )
         }
 
+        val directChannelUrls = youtubeShortChannelUrls(seeds, preferredChannelIds)
         val discoveredChannelUrls = successfulSearches
             .asSequence()
             .flatMap { result -> result.discovery.channelUrls.asSequence() }
-        val enrichmentUrls = (
-            directChannelUrls.drop(INITIAL_SHORT_CHANNELS).asSequence() + discoveredChannelUrls
-        )
+        val channelUrls = (directChannelUrls.asSequence() + discoveredChannelUrls)
             .distinct()
-            .take(MAX_SHORT_CHANNELS - INITIAL_SHORT_CHANNELS)
+            .take(MAX_SHORT_CHANNELS)
             .toList()
-        val enrichmentResults = runChannelDiscovery(enrichmentUrls)
-        val successfulEnrichment = enrichmentResults.filterIsInstance<ShortsSourceResult.Success>()
-        val tracks = (
-            initialTracks.asSequence() + successfulEnrichment.asSequence()
-                .flatMap { result -> result.discovery.tracks.asSequence() }
+        val channelResults = runChannelDiscovery(channelUrls)
+        val successfulChannels = channelResults.filterIsInstance<ShortsSourceResult.Success>()
+        val tracks = mergeShortTracks(
+            channelResults = successfulChannels,
+            searchResults = successfulSearches,
+            limit = limit
         )
-            .filter(::isYoutubeShortTrack)
-            .distinctBy { track -> track.id }
-            .take(limit)
-            .toList()
 
         YoutubeShortsFeedResult(
             tracks = tracks,
-            completedQueries = successfulSearches.size + successfulInitialChannels.size +
-                successfulEnrichment.size,
+            completedQueries = successfulSearches.size + successfulChannels.size,
             failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
-                initialChannelResults.count { it is ShortsSourceResult.Failure } +
-                enrichmentResults.count { it is ShortsSourceResult.Failure }
+                channelResults.count { it is ShortsSourceResult.Failure }
         )
     }
 
@@ -189,13 +171,33 @@ internal class YoutubeShortsRepository(private val context: Context) {
                 val handler = service.searchQHFactory.fromQuery(query)
                 val info = SearchInfo.getInfo(service, handler)
                 val streamItems = info.relatedItems.filterIsInstance<StreamInfoItem>()
-                val tracks = streamItems
+                val verifiedTracks = streamItems
                     .asSequence()
                     .filter(::isShortCandidate)
                     .mapNotNull(::shortTrack)
                     .distinctBy { track -> track.id }
                     .take(limit)
                     .toList()
+                val fallbackTracks = if (verifiedTracks.isEmpty()) {
+                    streamItems
+                        .asSequence()
+                        .filter { item ->
+                            isYoutubeShortSearchFallbackCandidate(
+                                isShortFormContent = item.isShortFormContent,
+                                url = item.url,
+                                durationSeconds = item.duration
+                            )
+                        }
+                        .mapNotNull(::shortTrack)
+                        .distinctBy { track -> track.id }
+                        .take(limit)
+                        .toList()
+                } else {
+                    emptyList()
+                }
+                val tracks = (verifiedTracks + fallbackTracks)
+                    .distinctBy { track -> track.id }
+                    .take(limit)
                 val channelUrls = buildList {
                     info.relatedItems.filterIsInstance<ChannelInfoItem>().forEach { item ->
                         canonicalYoutubeChannelUrl(item.url)?.let(::add)
@@ -286,8 +288,19 @@ internal fun isYoutubeShortCandidate(
     url: String,
     durationSeconds: Long
 ): Boolean {
-    if (durationSeconds !in 1L..MAX_SHORT_DURATION_SECONDS) return false
-    return isShortFormContent || url.contains("/shorts/", ignoreCase = true)
+    val verifiedShort = isShortFormContent || url.contains("/shorts/", ignoreCase = true)
+    if (!verifiedShort) return false
+    return durationSeconds <= 0L || durationSeconds <= MAX_SHORT_DURATION_SECONDS
+}
+
+internal fun isYoutubeShortSearchFallbackCandidate(
+    isShortFormContent: Boolean,
+    url: String,
+    durationSeconds: Long
+): Boolean {
+    if (isYoutubeShortCandidate(isShortFormContent, url, durationSeconds)) return true
+    return durationSeconds in 1L..MAX_SHORT_DURATION_SECONDS &&
+        YOUTUBE_VIDEO_ID_REGEX.containsMatchIn(url)
 }
 
 internal fun youtubeShortQueries(
@@ -301,7 +314,7 @@ internal fun youtubeShortQueries(
         .filter(String::isNotBlank)
         .distinctBy { artist -> artist.lowercase(Locale.ROOT) }
         .take(6)
-        .map { artist -> "$artist shorts" }
+        .map { artist -> "$artist #shorts" }
         .toList()
     val seedArtistQueries = seeds
         .asSequence()
@@ -309,14 +322,14 @@ internal fun youtubeShortQueries(
         .filter(String::isNotBlank)
         .distinctBy { artist -> artist.lowercase(Locale.ROOT) }
         .take(6)
-        .map { artist -> "$artist shorts" }
+        .map { artist -> "$artist #shorts" }
         .toList()
     val songQueries = seeds
         .asSequence()
         .filter { track -> track.title.isNotBlank() && track.artist.isNotBlank() }
         .distinctBy { track -> "${track.artist.lowercase(Locale.ROOT)}|${track.title.lowercase(Locale.ROOT)}" }
         .take(4)
-        .map { track -> "${track.artist} ${track.title} shorts" }
+        .map { track -> "${track.artist} ${track.title} #shorts" }
         .toList()
 
     return (followedArtistQueries + seedArtistQueries + songQueries + localizedShortQueries(languageCode))
@@ -362,41 +375,41 @@ private fun localizedShortQueries(languageCode: String): List<String> {
     return when (languageCode.lowercase(Locale.ROOT).substringBefore('-')) {
         "it" -> listOf(
             "shorts musica italiana",
-            "canzoni del momento shorts",
-            "nuove hit italiane shorts",
-            "musica virale shorts"
+            "canzoni del momento #shorts",
+            "nuove hit italiane #shorts",
+            "musica virale #shorts"
         )
         "es" -> listOf(
             "shorts música española",
-            "canciones del momento shorts",
-            "éxitos latinos shorts",
-            "música viral shorts"
+            "canciones del momento #shorts",
+            "éxitos latinos #shorts",
+            "música viral #shorts"
         )
         "fr" -> listOf(
             "shorts musique française",
-            "chansons du moment shorts",
-            "nouveaux tubes shorts",
-            "musique virale shorts"
+            "chansons du moment #shorts",
+            "nouveaux tubes #shorts",
+            "musique virale #shorts"
         )
         "de" -> listOf(
             "shorts deutsche musik",
-            "songs des moments shorts",
-            "neue hits shorts",
-            "virale musik shorts"
+            "songs des moments #shorts",
+            "neue hits #shorts",
+            "virale musik #shorts"
         )
         "pt" -> listOf(
             "shorts música brasileira",
-            "músicas do momento shorts",
-            "novos sucessos shorts",
-            "música viral shorts"
+            "músicas do momento #shorts",
+            "novos sucessos #shorts",
+            "música viral #shorts"
         )
-        "ja" -> listOf("音楽 shorts", "新曲 shorts", "人気曲 shorts", "j-pop shorts")
-        "ko" -> listOf("음악 shorts", "신곡 shorts", "인기곡 shorts", "k-pop shorts")
+        "ja" -> listOf("音楽 #shorts", "新曲 #shorts", "人気曲 #shorts", "j-pop #shorts")
+        "ko" -> listOf("음악 #shorts", "신곡 #shorts", "인기곡 #shorts", "k-pop #shorts")
         else -> listOf(
-            "music shorts",
-            "songs right now shorts",
-            "new music shorts",
-            "viral music shorts"
+            "music #shorts",
+            "songs right now #shorts",
+            "new music #shorts",
+            "viral music #shorts"
         )
     }
 }
