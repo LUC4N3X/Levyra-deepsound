@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
 
 internal const val ExploreSampleLimit = 10
+internal const val ExploreImmersiveSampleLimit = 24
 
 internal enum class ExploreAnchor {
     Fresh,
@@ -87,7 +88,7 @@ internal fun exploreAvailableAnchors(rows: List<ExploreRow>): Set<ExploreAnchor>
         .map { row -> row.anchor }
         .toSet()
 
-internal fun exploreSampleTracks(videos: List<Track>, limit: Int = Int.MAX_VALUE): List<Track> {
+internal fun exploreSampleTracks(videos: List<Track>, limit: Int = ExploreSampleLimit): List<Track> {
     if (limit <= 0) return emptyList()
     return videos.asSequence()
         .filter { track -> track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank() }

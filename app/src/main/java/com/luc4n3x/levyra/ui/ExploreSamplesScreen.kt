@@ -32,7 +32,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.zIndex
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -56,7 +59,6 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
-import com.luc4n3x.levyra.ui.theme.LevyraText
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -77,6 +79,10 @@ internal fun ExploreSamplesScreen(
 ) {
     if (samples.isEmpty()) return
     BackHandler(onBack = onDismiss)
+    val latestOnDismiss = rememberUpdatedState(onDismiss)
+    DisposableEffect(Unit) {
+        onDispose { latestOnDismiss.value() }
+    }
 
     val safeInitialPage = initialPage.coerceIn(0, samples.lastIndex)
     val pagerState = rememberPagerState(
@@ -319,7 +325,7 @@ private fun ExploreSampleVideoSurface(
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val player = PlaybackService.activePlayer ?: return
+    val player = PlaybackService.activePlayerFlow.collectAsStateWithLifecycle().value
 
     AndroidView(
         factory = { context ->
@@ -369,7 +375,7 @@ private fun SampleActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (selected) LevyraCyan else LevyraText,
+                tint = if (selected) LevyraCyan else Color.White,
                 modifier = Modifier.size(26.dp)
             )
         }

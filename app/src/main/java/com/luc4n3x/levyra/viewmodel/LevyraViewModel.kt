@@ -109,6 +109,7 @@ import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
@@ -151,6 +152,15 @@ private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
 private data class HomeArtistCandidate(
     val name: String,
     val browseId: String
+)
+
+private data class SamplesPlaybackSession(
+    val queue: PlaybackQueueSnapshot,
+    val currentTrack: Track?,
+    val videoMode: Boolean,
+    val loopOnCompletion: Boolean,
+    val wasPlaying: Boolean,
+    val positionMs: Long
 )
 
 
@@ -419,6 +429,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
+    private var samplesPlaybackSession: SamplesPlaybackSession? = null
+    private var pauseAfterNextPlaybackStart: Boolean = false
     private var listenSessionTrack: Track? = null
     private var listenSessionStartedAt = 0L
     private var listenSessionAccumulatedMs = 0L
@@ -4341,21 +4353,100 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playSample(list: List<Track>, track: Track) {
         if (list.isEmpty()) return
-        val selected = list.firstOrNull { candidate -> samePlayableTrack(candidate, track) } ?: track
-        val snapshot = _state.value
-        val alreadyActive = snapshot.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
-            snapshot.isVideoMode
+        val currentState = _state.value
+        if (samplesPlaybackSession == null) {
+            samplesPlaybackSession = SamplesPlaybackSession(
+                queue = queueEngine.state.value,
+                currentTrack = currentState.currentTrack,
+                videoMode = currentState.isVideoMode,
+                loopOnCompletion = loopCurrentQueueOnCompletion,
+                wasPlaying = currentState.isPlaying,
+                positionMs = currentState.positionMs
+            )
+        }
 
-        loopCurrentQueueOnCompletion = true
+        val selected = list.firstOrNull { candidate -> samePlayableTrack(candidate, track) } ?: track
+        val alreadyActive = currentState.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
+            currentState.isVideoMode
+
+        loopCurrentQueueOnCompletion = false
         queueEngine.replace(listOf(selected), 0, keepPlaybackModes = true, radioEnabled = false)
         queueIndex = 0
         _state.update { current -> if (current.isVideoMode) current else current.copy(isVideoMode = true) }
 
         if (alreadyActive) {
-            if (!snapshot.isPlaying) togglePlay()
+            if (!currentState.isPlaying) togglePlay()
             return
         }
         startResolve(selected)
+    }
+
+    fun endSamplesPlayback() {
+        val session = samplesPlaybackSession ?: return
+        samplesPlaybackSession = null
+        playRequestId++
+        streamTransitionId++
+        playJob?.cancel()
+        cancelResolutionSideJobs()
+        cancelBackgroundWarmups(cancelList = true)
+        crossfadeJob?.cancel()
+        crossfadeInProgress = false
+        player.setVolume(1f)
+        loopCurrentQueueOnCompletion = session.loopOnCompletion
+
+        val restoredQueue = queueEngine.restoreSnapshot(session.queue)
+        queueIndex = restoredQueue.currentIndex
+        val restoredTrack = session.currentTrack
+        if (restoredTrack == null) {
+            player.stop()
+            _state.update {
+                it.copy(
+                    isVideoMode = session.videoMode,
+                    currentTrack = null,
+                    isPlaying = false,
+                    isResolving = false,
+                    positionMs = 0L,
+                    bufferedPositionMs = 0L,
+                    durationMs = 0L,
+                    playerError = null
+                )
+            }
+            updateWidget()
+            return
+        }
+
+        val durationMs = effectiveDuration(restoredTrack)
+        val resumeMs = session.positionMs.coerceAtLeast(0L).let { position ->
+            if (durationMs > 0L) position.coerceAtMost(durationMs) else position
+        }
+        _state.update { it.copy(isVideoMode = session.videoMode, playerError = null) }
+
+        if (restoredTrack.streamUrl.isBlank()) {
+            pendingSeekMs = resumeMs
+            pauseAfterNextPlaybackStart = !session.wasPlaying
+            startResolve(restoredTrack)
+            return
+        }
+
+        repository.replace(restoredTrack)
+        player.play(restoredTrack, session.videoMode)
+        if (resumeMs > 0L) player.seekTo(resumeMs)
+        if (!session.wasPlaying) player.pause()
+        queueEngine.updatePosition(resumeMs)
+        _state.update {
+            it.copy(
+                currentTrack = restoredTrack,
+                isVideoMode = session.videoMode,
+                isPlaying = session.wasPlaying,
+                isResolving = false,
+                positionMs = resumeMs,
+                bufferedPositionMs = resumeMs,
+                durationMs = durationMs,
+                playerError = null
+            )
+        }
+        refreshQueuePrefetch()
+        updateWidget()
     }
 
     private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
@@ -4614,10 +4705,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
+        val startPaused = pauseAfterNextPlaybackStart
+        pauseAfterNextPlaybackStart = false
         player.play(playable, _state.value.isVideoMode)
         // Resume from the saved position when continuing the last session's track.
         val resumeMs = pendingSeekMs.takeIf { it > 1500L && it < playable.durationMs } ?: 0L
         if (resumeMs > 0L) player.seekTo(resumeMs)
+        if (startPaused) player.pause()
         queueEngine.updatePosition(resumeMs)
         pendingSeekMs = 0L
         _state.update {
@@ -4626,7 +4720,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 tracks = mergeTracks(it.tracks, listOf(playable)),
                 searchResults = mergeTracks(it.searchResults, listOf(playable)),
                 activeLyric = lyricsEngine.currentLine(resumeMs, it.lyrics),
-                isPlaying = true,
+                isPlaying = !startPaused,
                 isResolving = false,
                 durationMs = effectiveDuration(playable),
                 positionMs = resumeMs,

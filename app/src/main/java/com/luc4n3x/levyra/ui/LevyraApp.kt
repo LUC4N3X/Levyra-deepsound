@@ -17320,7 +17320,9 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
         zones.firstOrNull { zone -> zone.id == state.exploreZoneId }
     }
     val freshTracks = state.exploreTracks
-    val samples = remember(state.exploreVideos) { exploreSampleTracks(state.exploreVideos) }
+    val samples = remember(state.exploreVideos) {
+        exploreSampleTracks(state.exploreVideos, ExploreImmersiveSampleLimit)
+    }
     val rows = remember(zones, state.isExploreLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
         buildExploreRows(
             zones = zones,
@@ -17487,7 +17489,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                     onPlaySample = viewModel::playSample,
                     onTogglePlay = viewModel::togglePlay,
                     onToggleFavorite = viewModel::toggleFavorite,
-                    onDismiss = { samplesStartIndex = null }
+                    onDismiss = {
+                        viewModel.endSamplesPlayback()
+                        samplesStartIndex = null
+                    }
                 )
             }
     }
@@ -17680,21 +17685,7 @@ private fun ExploreSampleCard(
     }
     Box(
         modifier = Modifier
-            .width(156.dp)
-            .aspectRatio(9f / 16f)
-            .shadow(
-                elevation = if (isCurrent) 22.dp else 14.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = accentStart.copy(alpha = if (isCurrent) 0.28f else 0.12f),
-                spotColor = accentEnd.copy(alpha = if (isCurrent) 0.30f else 0.14f)
-            )
-            .clip(shape)
-            .border(
-                width = if (isCurrent) 1.25.dp else Dp.Hairline,
-                color = if (isCurrent) accentStart.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.12f),
-                shape = shape
-            )
+            .exploreSampleCardStyle(isCurrent, accentStart, accentEnd, shape)
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 selected = isCurrent
@@ -17703,90 +17694,146 @@ private fun ExploreSampleCard(
     ) {
         CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)
         Box(modifier = Modifier.matchParentSize().background(scrim))
-        Surface(
-            color = Color.Black.copy(alpha = 0.34f),
-            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
-            shape = CircleShape,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(10.dp)
+        ExploreSampleBadge(
+            isCurrent = isCurrent,
+            isPlaying = isPlaying,
+            label = strings.exploreSamples,
+            playingLabel = strings.playing,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+        ExploreSamplePlaybackIndicator(
+            isPlaying = isPlaying,
+            modifier = Modifier.align(Alignment.Center)
+        )
+        ExploreSampleMetadata(
+            track = track,
+            modifier = Modifier.align(Alignment.BottomStart)
+        )
+    }
+}
+
+private fun Modifier.exploreSampleCardStyle(
+    isCurrent: Boolean,
+    accentStart: Color,
+    accentEnd: Color,
+    shape: RoundedCornerShape
+): Modifier = this
+    .width(156.dp)
+    .aspectRatio(9f / 16f)
+    .shadow(
+        elevation = if (isCurrent) 22.dp else 14.dp,
+        shape = shape,
+        clip = false,
+        ambientColor = accentStart.copy(alpha = if (isCurrent) 0.28f else 0.12f),
+        spotColor = accentEnd.copy(alpha = if (isCurrent) 0.30f else 0.14f)
+    )
+    .clip(shape)
+    .border(
+        width = if (isCurrent) 1.25.dp else Dp.Hairline,
+        color = if (isCurrent) accentStart.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.12f),
+        shape = shape
+    )
+
+@Composable
+private fun ExploreSampleBadge(
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    label: String,
+    playingLabel: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.34f),
+        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
+        shape = CircleShape,
+        modifier = modifier.padding(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                if (isCurrent) {
-                    ActiveTrackEqualizer(
-                        modifier = if (isPlaying) {
-                            Modifier.semantics { contentDescription = strings.playing }
-                        } else {
-                            Modifier
-                        },
-                        color = Color.White,
-                        isPlaying = isPlaying,
-                        width = 13.dp,
-                        height = 10.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.SlowMotionVideo,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.90f),
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-                Text(
-                    text = strings.exploreSamples.uppercase(Locale.ROOT),
-                    color = Color.White.copy(alpha = 0.90f),
-                    fontSize = 9.5.sp,
-                    lineHeight = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.9.sp,
-                    maxLines = 1
+            if (isCurrent) {
+                ActiveTrackEqualizer(
+                    modifier = if (isPlaying) {
+                        Modifier.semantics { contentDescription = playingLabel }
+                    } else {
+                        Modifier
+                    },
+                    color = Color.White,
+                    isPlaying = isPlaying,
+                    width = 13.dp,
+                    height = 10.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.SlowMotionVideo,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.90f),
+                    modifier = Modifier.size(12.dp)
                 )
             }
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(46.dp)
-                .background(Color.Black.copy(alpha = 0.30f), CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(23.dp)
-            )
-        }
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
             Text(
-                text = track.title,
-                color = Color.White,
-                fontSize = 13.5.sp,
-                lineHeight = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = Color.White.copy(alpha = 0.74f),
-                fontSize = 11.5.sp,
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = label.uppercase(Locale.ROOT),
+                color = Color.White.copy(alpha = 0.90f),
+                fontSize = 9.5.sp,
+                lineHeight = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.9.sp,
+                maxLines = 1
             )
         }
+    }
+}
+
+@Composable
+private fun ExploreSamplePlaybackIndicator(
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(46.dp)
+            .background(Color.Black.copy(alpha = 0.30f), CircleShape)
+            .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(23.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExploreSampleMetadata(
+    track: Track,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        Text(
+            text = track.title,
+            color = Color.White,
+            fontSize = 13.5.sp,
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            color = Color.White.copy(alpha = 0.74f),
+            fontSize = 11.5.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

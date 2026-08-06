@@ -99,6 +99,39 @@ class PersistentQueueEngine private constructor(context: Context) {
         )
     }
 
+    fun restoreSnapshot(snapshot: PlaybackQueueSnapshot): PlaybackQueueSnapshot =
+        mutate(structural = true, immediatePersist = true) { current ->
+            undoRemoval = null
+            val tracks = snapshot.tracks.map { it.queueStoredCopy() }
+            val currentIndex = if (tracks.isEmpty()) -1 else snapshot.currentIndex.coerceIn(0, tracks.lastIndex)
+            val validShuffleOrder = snapshot.shuffleOrder
+                .filter { it in tracks.indices }
+                .distinct()
+            val shuffleOrder = when {
+                !snapshot.shuffleEnabled -> emptyList()
+                validShuffleOrder.size == tracks.size -> validShuffleOrder
+                else -> stableShuffleOrder(tracks, currentIndex, current.generation + 1L)
+            }
+            PlaybackQueueSnapshot(
+                tracks = tracks,
+                currentIndex = currentIndex,
+                positionMs = snapshot.positionMs.coerceAtLeast(0L),
+                shuffleEnabled = snapshot.shuffleEnabled,
+                shuffleOrder = shuffleOrder,
+                shuffleCursor = if (snapshot.shuffleEnabled) {
+                    shuffleOrder.indexOf(currentIndex).coerceAtLeast(0)
+                } else {
+                    -1
+                },
+                history = snapshot.history.filter { it in tracks.indices }.takeLast(200),
+                repeatMode = snapshot.repeatMode,
+                radioEnabled = snapshot.radioEnabled,
+                generation = current.generation + 1L,
+                updatedAt = System.currentTimeMillis(),
+                undoAvailable = false
+            )
+        }
+
     fun select(index: Int, positionMs: Long = 0L, rememberCurrent: Boolean = true): Track? {
         var selected: Track? = null
         mutate(immediatePersist = true) { current ->

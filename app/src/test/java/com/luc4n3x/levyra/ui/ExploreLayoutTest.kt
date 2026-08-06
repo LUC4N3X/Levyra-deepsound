@@ -124,11 +124,14 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun samplesExposeTheFullFeedAndRespectPreviewBounds() {
-        val videos = List(ExploreSampleLimit + 4) { index -> track("id-$index") }
+    fun samplesDefaultToPreviewBoundAndKeepTheImmersiveFeedBounded() {
+        val videos = List(ExploreImmersiveSampleLimit + 4) { index -> track("id-$index") }
 
-        assertEquals(videos.size, exploreSampleTracks(videos).size)
-        assertEquals(ExploreSampleLimit, exploreSampleTracks(videos, limit = ExploreSampleLimit).size)
+        assertEquals(ExploreSampleLimit, exploreSampleTracks(videos).size)
+        assertEquals(
+            ExploreImmersiveSampleLimit,
+            exploreSampleTracks(videos, limit = ExploreImmersiveSampleLimit).size
+        )
         assertEquals(3, exploreSampleTracks(videos, limit = 3).size)
         assertTrue(exploreSampleTracks(videos, limit = 0).isEmpty())
         assertTrue(exploreSampleTracks(videos, limit = -1).isEmpty())
