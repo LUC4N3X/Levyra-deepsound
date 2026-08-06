@@ -8,6 +8,11 @@ import org.junit.Test
 
 class YoutubeMusicSamplesPolicyTest {
     @Test
+    fun videoDiscoveryUsesYoutubeMusicVideoFilter() {
+        assertEquals("EgWKAQIQAWoMEA4QChADEAQQCRAF", YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS)
+    }
+
+    @Test
     fun queriesPreferListeningSignalsAndStayMusicVideoSpecific() {
         val queries = youtubeMusicSampleQueries(
             seeds = listOf(track(title = "Brano", artist = "Artista ascoltato")),
