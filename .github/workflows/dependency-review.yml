@@ -24,7 +24,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Check Dependency Graph availability
+        id: dependency-graph
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          response="$(gh api "/repos/${GITHUB_REPOSITORY}/dependency-graph/sbom" 2>&1)"
+          status=$?
+          set -e
+
+          if [[ "$status" -eq 0 ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Dependency Graph is available."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Dependency Review blocked because GitHub Dependency Graph is not enabled or accessible for this repository."
+            {
+              echo "## Dependency Review"
+              echo
+              echo "Status: **blocked**, not passed."
+              echo
+              echo "GitHub Dependency Graph must be enabled before the vulnerability gate can run."
+              echo
+              echo '<details><summary>GitHub API response</summary>'
+              echo
+              echo '```text'
+              printf '%s\n' "$response"
+              echo '```'
+              echo '</details>'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Review dependency changes
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.dependency-graph.outputs.available == 'true'
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
+
+      - name: Report manual dispatch limitation
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Dependency Review compares pull-request dependency snapshots and does not run on workflow_dispatch."
+          {
+            echo "## Dependency Review"
+            echo
+            echo "Status: **not applicable** for manual dispatch."
+          } >> "$GITHUB_STEP_SUMMARY"
