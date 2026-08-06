@@ -21,8 +21,8 @@ object LevyraHomeDesign {
     val HeaderBorderLight: Color = Color(0x1811131F)
 
     val HorizontalInset: Dp = 18.dp
-    val SectionGap: Dp = 28.dp
-    val SectionGapCompact: Dp = 18.dp
+    val SectionGap: Dp = 18.dp
+    val SectionGapCompact: Dp = 14.dp
     val HeaderCorner: Dp = 20.dp
     val HeaderPadding: Dp = 14.dp
     val SettingsControlHeight: Dp = 48.dp
