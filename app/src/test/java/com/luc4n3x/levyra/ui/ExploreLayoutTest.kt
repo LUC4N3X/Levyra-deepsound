@@ -67,6 +67,18 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun availableAnchorsMatchOnlyRenderedSections() {
+        val rows = buildExploreRows(
+            zones = emptyList(),
+            isFreshLoading = false,
+            hasFreshTracks = true,
+            hasSamples = false
+        )
+
+        assertEquals(setOf(ExploreAnchor.Fresh), exploreAvailableAnchors(rows))
+    }
+
+    @Test
     fun moodRowsPairZonesAndKeepTheLastOddZone() {
         val rows = buildExploreRows(zones(5), isFreshLoading = false, hasFreshTracks = true, hasSamples = true)
         val pairs = rows.filterIsInstance<ExploreRow.MoodPair>()

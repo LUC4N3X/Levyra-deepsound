@@ -17328,6 +17328,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
             hasSamples = samples.isNotEmpty()
         )
     }
+    val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
 
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
         shortcut.zoneId
@@ -17365,7 +17366,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                 contentType = { row -> row::class }
             ) { row ->
                 when (row) {
-                    ExploreRow.Shortcuts -> ExploreShortcutRow(onSelect = onShortcut)
+                    ExploreRow.Shortcuts -> ExploreShortcutRow(
+                        availableAnchors = availableAnchors,
+                        onSelect = onShortcut
+                    )
                     is ExploreRow.Header -> when (row.anchor) {
                         ExploreAnchor.Fresh -> ExploreSectionHeader(
                             title = strings.exploreFresh,
@@ -17475,27 +17479,36 @@ private fun ExploreSectionHeader(
 }
 
 @Composable
-private fun ExploreShortcutRow(onSelect: (ExploreShortcut) -> Unit) {
+private fun ExploreShortcutRow(
+    availableAnchors: Set<ExploreAnchor>,
+    onSelect: (ExploreShortcut) -> Unit
+) {
     val strings = LocalLevyraStrings.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        ExploreShortcutCard(
-            icon = Icons.Rounded.AutoAwesome,
-            label = strings.exploreNewReleases,
-            onClick = { onSelect(ExploreShortcut.NewReleases) }
-        )
-        ExploreShortcutCard(
-            icon = Icons.Rounded.SlowMotionVideo,
-            label = strings.exploreSamples,
-            onClick = { onSelect(ExploreShortcut.Samples) }
-        )
-        ExploreShortcutCard(
-            icon = Icons.Rounded.Mood,
-            label = strings.exploreMoods,
-            onClick = { onSelect(ExploreShortcut.Moods) }
-        )
+        if (ExploreAnchor.Fresh in availableAnchors) {
+            ExploreShortcutCard(
+                icon = Icons.Rounded.AutoAwesome,
+                label = strings.exploreNewReleases,
+                onClick = { onSelect(ExploreShortcut.NewReleases) }
+            )
+        }
+        if (ExploreAnchor.Samples in availableAnchors) {
+            ExploreShortcutCard(
+                icon = Icons.Rounded.SlowMotionVideo,
+                label = strings.exploreSamples,
+                onClick = { onSelect(ExploreShortcut.Samples) }
+            )
+        }
+        if (ExploreAnchor.Moods in availableAnchors) {
+            ExploreShortcutCard(
+                icon = Icons.Rounded.Mood,
+                label = strings.exploreMoods,
+                onClick = { onSelect(ExploreShortcut.Moods) }
+            )
+        }
     }
 }
 
@@ -17505,7 +17518,7 @@ private fun RowScope.ExploreShortcutCard(icon: ImageVector, label: String, onCli
     Column(
         modifier = Modifier
             .weight(1f)
-            .height(96.dp)
+            .heightIn(min = 96.dp)
             .clip(shape)
             .background(LevyraAdaptiveCardDeep)
             .border(Dp.Hairline, LevyraAdaptiveHairline, shape)
@@ -17553,7 +17566,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     Row(
         modifier = Modifier
             .weight(1f)
-            .height(58.dp)
+            .heightIn(min = 58.dp)
             .clip(shape)
             .background(background)
             .border(
@@ -17651,6 +17664,10 @@ private fun ExploreSampleCard(
                 color = if (isCurrent) accentStart.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.12f),
                 shape = shape
             )
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                selected = isCurrent
+            }
             .pressable(onClick = onClick)
     ) {
         CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true)

@@ -81,6 +81,12 @@ internal fun buildExploreRows(
 internal fun exploreAnchorIndex(rows: List<ExploreRow>, anchor: ExploreAnchor): Int =
     rows.indexOfFirst { row -> row is ExploreRow.Header && row.anchor == anchor }
 
+internal fun exploreAvailableAnchors(rows: List<ExploreRow>): Set<ExploreAnchor> =
+    rows.asSequence()
+        .filterIsInstance<ExploreRow.Header>()
+        .map { row -> row.anchor }
+        .toSet()
+
 internal fun exploreSampleTracks(videos: List<Track>, limit: Int = ExploreSampleLimit): List<Track> {
     if (limit <= 0) return emptyList()
     return videos.asSequence()
