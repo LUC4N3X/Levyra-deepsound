@@ -792,7 +792,7 @@ private fun HomeSectionHeader(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (displaySubtitle.isBlank()) Alignment.CenterVertically else Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(
@@ -815,9 +815,7 @@ private fun HomeSectionHeader(
                     color = LevyraMuted,
                     fontSize = 12.5.sp,
                     lineHeight = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
