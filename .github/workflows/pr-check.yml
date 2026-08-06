@@ -189,7 +189,11 @@ jobs:
             "build-tools;36.0.0"
 
       - name: Apply Samples fix
-        run: python3 .github/scripts/pr-313-guarantee-samples.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pr-313-guarantee-samples.py
+          python3 .github/scripts/pr-313-fix-samples-tests.py
 
       - name: Compile and run focused tests
         shell: bash
@@ -205,8 +209,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git show HEAD^:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          git rm .github/scripts/pr-313-guarantee-samples.py
+          git fetch origin main
+          git show origin/main:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
+          git rm \
+            .github/scripts/pr-313-guarantee-samples.py \
+            .github/scripts/pr-313-fix-samples-tests.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
