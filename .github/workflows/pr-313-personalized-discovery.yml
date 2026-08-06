@@ -1,9 +1,13 @@
 name: Apply PR 313 Localized Discovery
 
 on:
-  push:
+  pull_request:
     branches:
-      - claude/menu-esplora-redesign-t3j2l4
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
@@ -14,6 +18,7 @@ concurrency:
 
 jobs:
   apply-and-validate:
+    if: github.event.pull_request.number == 313
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
