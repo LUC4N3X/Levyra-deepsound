@@ -111,11 +111,12 @@ scripts/setup-ai.sh
 ```
 
 The setup scripts install or configure only explicitly selected components,
-initialize RTK hooks for detected supported agents, and optionally install the
-plugins listed in `codex-plugins.txt`.
+initialize RTK instructions, hooks, or integrations for detected supported
+agents, and optionally install the plugins listed in `codex-plugins.txt`.
 
-After pulling instruction, skill, rule, or hook changes, restart the coding
-agent or begin a new conversation so its skill inventory and hooks are rebuilt.
+After pulling instruction, skill, rule, or integration changes, restart the
+coding agent or begin a new conversation so its skill inventory and runtime
+integration are rebuilt.
 
 ## Safety boundaries
 
