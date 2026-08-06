@@ -14,16 +14,26 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.channel.ChannelInfo
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem
+import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo
+import org.schabi.newpipe.extractor.channel.tabs.ChannelTabs
 import org.schabi.newpipe.extractor.search.SearchInfo
+import org.schabi.newpipe.extractor.stream.ContentAvailability
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
 internal const val YOUTUBE_SHORTS_SOURCE = "YouTube Shorts"
-private const val MAX_SHORT_QUERIES = 10
+private const val MAX_SHORT_QUERIES = 16
+private const val MAX_SHORT_CHANNELS = 16
 private const val SHORTS_SEARCH_CONCURRENCY = 3
-private const val SHORTS_PER_QUERY = 4
+private const val SHORTS_CHANNEL_CONCURRENCY = 3
+private const val SHORTS_PER_QUERY = 5
+private const val SHORTS_PER_CHANNEL = 8
 private const val MAX_SHORT_DURATION_SECONDS = 180L
 private const val SHORTS_SEARCH_TIMEOUT_MS = 20_000L
+private const val SHORTS_CHANNEL_TIMEOUT_MS = 25_000L
+private const val YOUTUBE_FRONTEND = "https://www.youtube.com"
 
 internal data class YoutubeShortsFeedResult(
     val tracks: List<Track>,
@@ -34,86 +44,166 @@ internal data class YoutubeShortsFeedResult(
         get() = completedQueries > 0
 }
 
-private sealed interface ShortsQueryResult {
-    data class Success(val tracks: List<Track>) : ShortsQueryResult
-    data class Failure(val error: Throwable) : ShortsQueryResult
+private data class ShortsDiscovery(
+    val tracks: List<Track> = emptyList(),
+    val channelUrls: List<String> = emptyList()
+)
+
+private sealed interface ShortsSourceResult {
+    data class Success(val discovery: ShortsDiscovery) : ShortsSourceResult
+    data class Failure(val error: Throwable) : ShortsSourceResult
 }
 
 /**
- * Dedicated short-form feed. Like LibreTube, this trusts NewPipe's
- * StreamInfoItem.isShortFormContent flag instead of guessing from titles.
+ * Personalized short-form feed built with the same channel-first principle used by LibreTube.
+ * Search discovers relevant creators from the user's listening profile, then the repository reads
+ * each creator's real Shorts tab and trusts NewPipe's isShortFormContent metadata.
  */
 internal class YoutubeShortsRepository(private val context: Context) {
     suspend fun feed(
         seeds: List<Track>,
         languageCode: String,
+        preferredArtists: List<String> = emptyList(),
+        preferredChannelIds: List<String> = emptyList(),
         limit: Int = 24
     ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
         if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
-        val queries = shortQueries(seeds, languageCode)
-        if (queries.isEmpty()) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
 
-        val queryResults = coroutineScope {
-            val semaphore = Semaphore(SHORTS_SEARCH_CONCURRENCY)
-            queries.map { query ->
-                async {
-                    semaphore.withPermit {
-                        searchShortsSafely(query, SHORTS_PER_QUERY)
-                    }
-                }
-            }.awaitAll()
-        }
-        val successful = queryResults.filterIsInstance<ShortsQueryResult.Success>()
-        val failed = queryResults.count { result -> result is ShortsQueryResult.Failure }
-        val tracks = successful
+        val queries = youtubeShortQueries(seeds, preferredArtists, languageCode)
+        val searchResults = runSearchDiscovery(queries)
+        val successfulSearches = searchResults.filterIsInstance<ShortsSourceResult.Success>()
+
+        val directChannelUrls = youtubeShortChannelUrls(seeds, preferredChannelIds)
+        val discoveredChannelUrls = successfulSearches
             .asSequence()
-            .flatMap { result -> result.tracks.asSequence() }
+            .flatMap { result -> result.discovery.channelUrls.asSequence() }
+        val channelUrls = (directChannelUrls.asSequence() + discoveredChannelUrls)
+            .distinct()
+            .take(MAX_SHORT_CHANNELS)
+            .toList()
+
+        val channelResults = runChannelDiscovery(channelUrls)
+        val successfulChannels = channelResults.filterIsInstance<ShortsSourceResult.Success>()
+
+        val channelTracks = successfulChannels
+            .asSequence()
+            .flatMap { result -> result.discovery.tracks.asSequence() }
+        val searchTracks = successfulSearches
+            .asSequence()
+            .flatMap { result -> result.discovery.tracks.asSequence() }
+        val tracks = (channelTracks + searchTracks)
             .filter(::isYoutubeShortTrack)
             .distinctBy { track -> track.id }
             .take(limit)
             .toList()
+
         YoutubeShortsFeedResult(
             tracks = tracks,
-            completedQueries = successful.size,
-            failedQueries = failed
+            completedQueries = successfulSearches.size + successfulChannels.size,
+            failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
+                channelResults.count { it is ShortsSourceResult.Failure }
         )
     }
 
-    private suspend fun searchShortsSafely(query: String, limit: Int): ShortsQueryResult {
-        return try {
-            ShortsQueryResult.Success(searchShorts(query, limit))
-        } catch (error: TimeoutCancellationException) {
-            ShortsQueryResult.Failure(error)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            ShortsQueryResult.Failure(error)
+    private suspend fun runSearchDiscovery(queries: List<String>): List<ShortsSourceResult> {
+        if (queries.isEmpty()) return emptyList()
+        return coroutineScope {
+            val semaphore = Semaphore(SHORTS_SEARCH_CONCURRENCY)
+            queries.map { query ->
+                async {
+                    semaphore.withPermit {
+                        safely { searchShortsAndChannels(query, SHORTS_PER_QUERY) }
+                    }
+                }
+            }.awaitAll()
         }
     }
 
-    private suspend fun searchShorts(query: String, limit: Int): List<Track> {
+    private suspend fun runChannelDiscovery(channelUrls: List<String>): List<ShortsSourceResult> {
+        if (channelUrls.isEmpty()) return emptyList()
+        return coroutineScope {
+            val semaphore = Semaphore(SHORTS_CHANNEL_CONCURRENCY)
+            channelUrls.map { channelUrl ->
+                async {
+                    semaphore.withPermit {
+                        safely { channelShorts(channelUrl, SHORTS_PER_CHANNEL) }
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+
+    private suspend fun safely(block: suspend () -> ShortsDiscovery): ShortsSourceResult {
+        return try {
+            ShortsSourceResult.Success(block())
+        } catch (error: TimeoutCancellationException) {
+            ShortsSourceResult.Failure(error)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            ShortsSourceResult.Failure(error)
+        }
+    }
+
+    private suspend fun searchShortsAndChannels(query: String, limit: Int): ShortsDiscovery {
         return withShortsSearchTimeout {
             runInterruptible(Dispatchers.IO) {
                 NewPipeRuntime.ensure(context)
                 val service = ServiceList.YouTube
                 val handler = service.searchQHFactory.fromQuery(query)
                 val info = SearchInfo.getInfo(service, handler)
-                info.relatedItems
+                val streamItems = info.relatedItems.filterIsInstance<StreamInfoItem>()
+                val tracks = streamItems
                     .asSequence()
-                    .filterIsInstance<StreamInfoItem>()
-                    .filter { item ->
-                        isYoutubeShortCandidate(
-                            isShortFormContent = item.isShortFormContent,
-                            url = item.url,
-                            durationSeconds = item.duration
-                        )
-                    }
+                    .filter(::isAvailableShortCandidate)
                     .mapNotNull(::shortTrack)
                     .distinctBy { track -> track.id }
                     .take(limit)
                     .toList()
+                val channelUrls = buildList {
+                    info.relatedItems.filterIsInstance<ChannelInfoItem>().forEach { item ->
+                        canonicalYoutubeChannelUrl(item.url)?.let(::add)
+                    }
+                    streamItems.forEach { item ->
+                        canonicalYoutubeChannelUrl(item.uploaderUrl)?.let(::add)
+                    }
+                }.distinct()
+                ShortsDiscovery(tracks = tracks, channelUrls = channelUrls)
             }
         }
+    }
+
+    private suspend fun channelShorts(channelUrl: String, limit: Int): ShortsDiscovery {
+        return withTimeout(SHORTS_CHANNEL_TIMEOUT_MS) {
+            runInterruptible(Dispatchers.IO) {
+                NewPipeRuntime.ensure(context)
+                val service = ServiceList.YouTube
+                val channelInfo = ChannelInfo.getInfo(channelUrl)
+                val shortsTabs = channelInfo.tabs.filter { tab ->
+                    tab.contentFilters.contains(ChannelTabs.SHORTS)
+                }
+                val items = shortsTabs
+                    .asSequence()
+                    .flatMap { tab -> ChannelTabInfo.getInfo(service, tab).relatedItems.asSequence() }
+                    .filterIsInstance<StreamInfoItem>()
+                    .filter(::isAvailableShortCandidate)
+                    .mapNotNull(::shortTrack)
+                    .distinctBy { track -> track.id }
+                    .take(limit)
+                    .toList()
+                ShortsDiscovery(tracks = items)
+            }
+        }
+    }
+
+    private fun isAvailableShortCandidate(item: StreamInfoItem): Boolean {
+        val availabilityAccepted = item.contentAvailability == ContentAvailability.AVAILABLE ||
+            item.contentAvailability == ContentAvailability.UNKNOWN
+        return availabilityAccepted && isYoutubeShortCandidate(
+            isShortFormContent = item.isShortFormContent,
+            url = item.url,
+            durationSeconds = item.duration
+        )
     }
 
     private fun shortTrack(item: StreamInfoItem): Track? {
@@ -128,7 +218,7 @@ internal class YoutubeShortsRepository(private val context: Context) {
             album = "YouTube Shorts",
             durationMs = item.duration.coerceAtLeast(0L) * 1_000L,
             streamUrl = "",
-            videoUrl = "https://www.youtube.com/shorts/$id",
+            videoUrl = "$YOUTUBE_FRONTEND/shorts/$id",
             thumbnailUrl = thumbnail,
             largeThumbnailUrl = thumbnail,
             source = YOUTUBE_SHORTS_SOURCE,
@@ -170,24 +260,115 @@ internal fun isYoutubeShortCandidate(
     return isShortFormContent || url.contains("/shorts/", ignoreCase = true)
 }
 
-private fun shortQueries(seeds: List<Track>, languageCode: String): List<String> {
-    val seedQueries = seeds.asSequence()
-        .filter { track -> track.title.isNotBlank() && track.artist.isNotBlank() }
-        .take(7)
-        .map { track -> "${track.artist} ${track.title} #shorts" }
-        .toList()
-    val localizedFallbacks = when (languageCode.lowercase(Locale.ROOT).substringBefore('-')) {
-        "it" -> listOf("musica #shorts", "nuove canzoni #shorts", "hit italiane #shorts")
-        "es" -> listOf("música #shorts", "nuevas canciones #shorts", "éxitos #shorts")
-        "fr" -> listOf("musique #shorts", "nouvelles chansons #shorts", "tubes #shorts")
-        "de" -> listOf("musik #shorts", "neue songs #shorts", "hits #shorts")
-        else -> listOf("music #shorts", "new songs #shorts", "viral music #shorts")
-    }
-    return (seedQueries + localizedFallbacks)
+internal fun youtubeShortQueries(
+    seeds: List<Track>,
+    preferredArtists: List<String>,
+    languageCode: String
+): List<String> {
+    val followedArtistQueries = preferredArtists
+        .asSequence()
         .map(String::trim)
         .filter(String::isNotBlank)
-        .distinct()
+        .distinctBy { artist -> artist.lowercase(Locale.ROOT) }
+        .take(6)
+        .map { artist -> "$artist shorts" }
+        .toList()
+    val seedArtistQueries = seeds
+        .asSequence()
+        .map { track -> track.artist.trim() }
+        .filter(String::isNotBlank)
+        .distinctBy { artist -> artist.lowercase(Locale.ROOT) }
+        .take(6)
+        .map { artist -> "$artist shorts" }
+        .toList()
+    val songQueries = seeds
+        .asSequence()
+        .filter { track -> track.title.isNotBlank() && track.artist.isNotBlank() }
+        .distinctBy { track -> "${track.artist.lowercase(Locale.ROOT)}|${track.title.lowercase(Locale.ROOT)}" }
+        .take(4)
+        .map { track -> "${track.artist} ${track.title} shorts" }
+        .toList()
+
+    return (followedArtistQueries + seedArtistQueries + songQueries + localizedShortQueries(languageCode))
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinctBy { query -> query.lowercase(Locale.ROOT) }
         .take(MAX_SHORT_QUERIES)
+}
+
+internal fun youtubeShortChannelUrls(
+    seeds: List<Track>,
+    preferredChannelIds: List<String>
+): List<String> {
+    return (preferredChannelIds.asSequence() + seeds.asSequence().flatMap { track -> track.artistBrowseIds.asSequence() })
+        .mapNotNull(::canonicalYoutubeChannelUrl)
+        .distinct()
+        .take(MAX_SHORT_CHANNELS)
+        .toList()
+}
+
+internal fun canonicalYoutubeChannelUrl(value: String): String? {
+    val candidate = value.trim()
+    if (candidate.isBlank()) return null
+    if (candidate.startsWith("UC") && candidate.length >= 20 && '/' !in candidate) {
+        return "$YOUTUBE_FRONTEND/channel/$candidate"
+    }
+    val absolute = when {
+        candidate.startsWith("https://", ignoreCase = true) ||
+            candidate.startsWith("http://", ignoreCase = true) -> candidate
+        candidate.startsWith("/") -> "$YOUTUBE_FRONTEND$candidate"
+        else -> return null
+    }
+    val normalized = absolute.substringBefore('?').substringBefore('#').trimEnd('/')
+    return normalized.takeIf { url ->
+        url.contains("youtube.com/channel/", ignoreCase = true) ||
+            url.contains("youtube.com/@", ignoreCase = true) ||
+            url.contains("youtube.com/c/", ignoreCase = true) ||
+            url.contains("youtube.com/user/", ignoreCase = true)
+    }
+}
+
+private fun localizedShortQueries(languageCode: String): List<String> {
+    return when (languageCode.lowercase(Locale.ROOT).substringBefore('-')) {
+        "it" -> listOf(
+            "shorts musica italiana",
+            "canzoni del momento shorts",
+            "nuove hit italiane shorts",
+            "musica virale shorts"
+        )
+        "es" -> listOf(
+            "shorts música española",
+            "canciones del momento shorts",
+            "éxitos latinos shorts",
+            "música viral shorts"
+        )
+        "fr" -> listOf(
+            "shorts musique française",
+            "chansons du moment shorts",
+            "nouveaux tubes shorts",
+            "musique virale shorts"
+        )
+        "de" -> listOf(
+            "shorts deutsche musik",
+            "songs des moments shorts",
+            "neue hits shorts",
+            "virale musik shorts"
+        )
+        "pt" -> listOf(
+            "shorts música brasileira",
+            "músicas do momento shorts",
+            "novos sucessos shorts",
+            "música viral shorts"
+        )
+        "ja" -> listOf("音楽 shorts", "新曲 shorts", "人気曲 shorts", "j-pop shorts")
+        "ko" -> listOf("음악 shorts", "신곡 shorts", "인기곡 shorts", "k-pop shorts")
+        else -> listOf(
+            "music shorts",
+            "songs right now shorts",
+            "new music shorts",
+            "viral music shorts"
+        )
+    }
 }
 
 private fun youtubeVideoId(url: String): String {
