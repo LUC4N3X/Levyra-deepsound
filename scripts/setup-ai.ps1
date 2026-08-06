@@ -58,7 +58,7 @@ if (Test-Command 'rtk') {
 
     if (-not $SkipHooks) {
         if (Test-Command 'codex') {
-            Invoke-SetupCommand 'Configure the global RTK hook for Codex' {
+            Invoke-SetupCommand 'Install global RTK instructions for Codex' {
                 rtk init -g --codex
             }
         }
@@ -130,27 +130,26 @@ else {
     $null
 }
 
-if ($pythonCommand) {
-    foreach ($validationScript in @(
-        'scripts/validate_agent_config.py',
-        'scripts/validate_ai_efficiency.py'
-    )) {
-        Invoke-SetupCommand "Validate with $validationScript" {
-            Push-Location $repoRoot
-            try {
-                & $pythonCommand $validationScript
-            }
-            finally {
-                Pop-Location
-            }
+if (-not $pythonCommand) {
+    throw 'Validation blocked: Python is required to verify Levyra agent and AI-efficiency configuration.'
+}
+
+foreach ($validationScript in @(
+    'scripts/validate_agent_config.py',
+    'scripts/validate_ai_efficiency.py'
+)) {
+    Invoke-SetupCommand "Validate with $validationScript" {
+        Push-Location $repoRoot
+        try {
+            & $pythonCommand $validationScript
+        }
+        finally {
+            Pop-Location
         }
     }
-}
-else {
-    Write-Warning 'Python was not detected; agent configuration validation was skipped.'
 }
 
 Write-Output ''
 Write-Output 'Setup complete.'
-Write-Output 'Restart each detected coding agent or start a new conversation so hooks, rules, plugins, and Levyra skills are reloaded.'
+Write-Output 'Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded.'
 Write-Output 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'
