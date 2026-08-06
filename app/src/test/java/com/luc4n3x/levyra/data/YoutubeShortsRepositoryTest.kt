@@ -1,6 +1,10 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -62,6 +66,28 @@ class YoutubeShortsRepositoryTest {
                 durationSeconds = 90L
             )
         )
+    }
+
+    @Test
+    fun localTimeoutFenceCancelsAStalledSearch() = runBlocking {
+        var timedOut = false
+        try {
+            withShortsSearchTimeout(timeoutMs = 20L) {
+                delay(250L)
+            }
+        } catch (_: TimeoutCancellationException) {
+            timedOut = true
+        }
+
+        assertTrue(timedOut)
+    }
+
+    @Test
+    fun retryBackoffIsBounded() {
+        assertEquals(30_000L, youtubeShortsRetryDelayMs(1))
+        assertEquals(60_000L, youtubeShortsRetryDelayMs(2))
+        assertEquals(600_000L, youtubeShortsRetryDelayMs(5))
+        assertEquals(600_000L, youtubeShortsRetryDelayMs(100))
     }
 
     @Test
