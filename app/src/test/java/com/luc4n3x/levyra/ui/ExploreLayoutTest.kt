@@ -20,6 +20,7 @@ class ExploreLayoutTest {
             hasSamples = true
         )
 
+        assertEquals(ExploreShortcut.entries.map { it.anchor }.toSet(), exploreAvailableAnchors(rows))
         ExploreShortcut.entries.forEach { shortcut ->
             val index = exploreAnchorIndex(rows, shortcut.anchor)
             assertTrue("Missing header for ${shortcut.name}", index >= 0)
