@@ -53,12 +53,14 @@ jobs:
           python .github/scripts/pr-313-editorial-release-test.py
           python .github/scripts/pr-313-final-localization.py
           python .github/scripts/pr-313-final-guarantees.py
+          python .github/scripts/pr-313-preserve-source-errors.py
           git rm \
             .github/scripts/pr-313-personalized-discovery.py \
             .github/scripts/pr-313-spotify-releases.py \
             .github/scripts/pr-313-editorial-release-test.py \
             .github/scripts/pr-313-final-localization.py \
             .github/scripts/pr-313-final-guarantees.py \
+            .github/scripts/pr-313-preserve-source-errors.py \
             .github/workflows/pr-313-personalized-discovery.yml
           git diff --check
 
