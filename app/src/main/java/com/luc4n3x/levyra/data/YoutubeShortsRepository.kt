@@ -16,10 +16,7 @@ import kotlinx.coroutines.withTimeout
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.channel.ChannelInfo
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
-import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo
-import org.schabi.newpipe.extractor.channel.tabs.ChannelTabs
 import org.schabi.newpipe.extractor.search.SearchInfo
-import org.schabi.newpipe.extractor.stream.ContentAvailability
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
@@ -56,8 +53,8 @@ private sealed interface ShortsSourceResult {
 
 /**
  * Personalized short-form feed built with the same channel-first principle used by LibreTube.
- * Search discovers relevant creators from the user's listening profile, then the repository reads
- * each creator's real Shorts tab and trusts NewPipe's isShortFormContent metadata.
+ * Search discovers relevant creators from the user's listening profile, then the repository asks
+ * each creator's /shorts route and trusts NewPipe's isShortFormContent metadata.
  */
 internal class YoutubeShortsRepository(private val context: Context) {
     suspend fun feed(
@@ -155,7 +152,7 @@ internal class YoutubeShortsRepository(private val context: Context) {
                 val streamItems = info.relatedItems.filterIsInstance<StreamInfoItem>()
                 val tracks = streamItems
                     .asSequence()
-                    .filter(::isAvailableShortCandidate)
+                    .filter(::isShortCandidate)
                     .mapNotNull(::shortTrack)
                     .distinctBy { track -> track.id }
                     .take(limit)
@@ -177,29 +174,23 @@ internal class YoutubeShortsRepository(private val context: Context) {
         return withTimeout(SHORTS_CHANNEL_TIMEOUT_MS) {
             runInterruptible(Dispatchers.IO) {
                 NewPipeRuntime.ensure(context)
-                val service = ServiceList.YouTube
-                val channelInfo = ChannelInfo.getInfo(channelUrl)
-                val shortsTabs = channelInfo.tabs.filter { tab ->
-                    tab.contentFilters.contains(ChannelTabs.SHORTS)
-                }
-                val items = shortsTabs
+                val shortsUrl = channelUrl.trimEnd('/') + "/shorts"
+                val channelInfo = ChannelInfo.getInfo(shortsUrl)
+                val tracks = channelInfo.relatedItems
                     .asSequence()
-                    .flatMap { tab -> ChannelTabInfo.getInfo(service, tab).relatedItems.asSequence() }
                     .filterIsInstance<StreamInfoItem>()
-                    .filter(::isAvailableShortCandidate)
+                    .filter(::isShortCandidate)
                     .mapNotNull(::shortTrack)
                     .distinctBy { track -> track.id }
                     .take(limit)
                     .toList()
-                ShortsDiscovery(tracks = items)
+                ShortsDiscovery(tracks = tracks)
             }
         }
     }
 
-    private fun isAvailableShortCandidate(item: StreamInfoItem): Boolean {
-        val availabilityAccepted = item.contentAvailability == ContentAvailability.AVAILABLE ||
-            item.contentAvailability == ContentAvailability.UNKNOWN
-        return availabilityAccepted && isYoutubeShortCandidate(
+    private fun isShortCandidate(item: StreamInfoItem): Boolean {
+        return isYoutubeShortCandidate(
             isShortFormContent = item.isShortFormContent,
             url = item.url,
             durationSeconds = item.duration
