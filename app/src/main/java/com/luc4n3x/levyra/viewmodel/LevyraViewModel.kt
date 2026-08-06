@@ -4725,6 +4725,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ensureMusicVideosLoaded()
     }
 
+    fun refreshExploreSamples() {
+        if (musicVideosJob?.isActive == true) return
+        musicVideosLoadedLanguage = ""
+        musicVideosRetryLanguage = ""
+        musicVideosRetryAfterMs = 0L
+        musicVideosFailureCount = 0
+        ensureMusicVideosLoaded()
+    }
+
     fun selectExploreZone(zone: ExploreZone) {
         _state.update { it.copy(exploreZoneId = zone.id) }
         exploreCache[zone.id]?.let { cached ->

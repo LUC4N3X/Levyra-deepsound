@@ -17335,8 +17335,12 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
 
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
         if (shortcut == ExploreShortcut.Samples) {
-            viewModel.beginSamplesPlayback()
             samplesStartIndex = 0
+            if (samples.isNotEmpty()) {
+                viewModel.beginSamplesPlayback()
+            } else {
+                viewModel.refreshSamples()
+            }
         } else {
             shortcut.zoneId
                 ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
@@ -17534,13 +17538,11 @@ private fun ExploreShortcutRow(
                 onClick = { onSelect(ExploreShortcut.NewReleases) }
             )
         }
-        if (ExploreAnchor.Samples in availableAnchors) {
-            ExploreShortcutCard(
-                icon = Icons.Rounded.SlowMotionVideo,
-                label = strings.exploreSamples,
-                onClick = { onSelect(ExploreShortcut.Samples) }
-            )
-        }
+        ExploreShortcutCard(
+            icon = Icons.Rounded.SlowMotionVideo,
+            label = strings.exploreSamples,
+            onClick = { onSelect(ExploreShortcut.Samples) }
+        )
         if (ExploreAnchor.Moods in availableAnchors) {
             ExploreShortcutCard(
                 icon = Icons.Rounded.Mood,
