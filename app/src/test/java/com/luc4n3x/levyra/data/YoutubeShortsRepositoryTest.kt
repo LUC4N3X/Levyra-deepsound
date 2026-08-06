@@ -29,6 +29,24 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
+    fun threeMinuteShortsAreAcceptedButLongerVideosAreRejected() {
+        assertTrue(
+            isYoutubeShortCandidate(
+                isShortFormContent = true,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
+                durationSeconds = 180L
+            )
+        )
+        assertFalse(
+            isYoutubeShortCandidate(
+                isShortFormContent = true,
+                url = "https://www.youtube.com/watch?v=abcdefghijk",
+                durationSeconds = 181L
+            )
+        )
+    }
+
+    @Test
     fun longOrOrdinaryVideosAreRejected() {
         assertFalse(
             isYoutubeShortCandidate(
