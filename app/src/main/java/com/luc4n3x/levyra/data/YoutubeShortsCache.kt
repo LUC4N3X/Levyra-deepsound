@@ -20,7 +20,6 @@ internal data class YoutubeShortsCacheSnapshot(
         tracks.isNotEmpty() && savedAtMs > 0L && nowMs - savedAtMs <= SHORTS_CACHE_MAX_AGE_MS
 }
 
-/** Keeps the last verified Shorts feed available synchronously while the network refreshes. */
 internal class YoutubeShortsCache(context: Context) {
     private val preferences = context.applicationContext.getSharedPreferences(
         SHORTS_CACHE_NAME,
