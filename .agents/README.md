@@ -1,9 +1,9 @@
 # Levyra Agent Configuration
 
-This directory contains Levyra's repository-local agent configuration for
-Codex, Google Antigravity, OpenClaw, and other compatible coding-agent
-workflows. The goal is one canonical instruction tree, focused reusable skills,
-and explicit publication boundaries across runtimes.
+Levyra keeps one repository-native instruction and skill tree for Codex, Claude
+Code, ChatGPT Projects, Google Antigravity, OpenCode, OpenClaw, and compatible
+coding agents. The same project rules, domain skills, context-efficiency policy,
+and evidence-based security workflow apply across runtimes.
 
 ## Configuration hierarchy
 
@@ -13,46 +13,71 @@ app/AGENTS.md                     Android rules
 desktop/AGENTS.md                 Windows Desktop rules
 .github/AGENTS.md                 CI and workflow rules
 docs/AGENTS.md                    documentation rules
-docs/README.md                    documentation index
-docs/project/SPEC.md              durable requirements and non-goals
-docs/project/ROADMAP.md           ordered outcomes, risks, exit criteria
-docs/project/TASKS.md             active phase and validation state
-docs/ARCHITECTURE.md              current implementation ownership and flow
-docs/ai/                          AI workflow and runtime guidance
-.agents/rules/                    workspace rules and canonical-contract bridges
-.agents/skills/*/SKILL.md         repository-local task skills
-.claude/                          Claude Code configuration and playbooks
+docs/project/                     specification, roadmap, and active tasks
+docs/ARCHITECTURE.md              current architecture and ownership
+docs/ai/                          runtime, RTK, and security guidance
+.agents/rules/                    shared workspace-routing bridges
+.agents/skills/*/SKILL.md         canonical repository-native skills
+.claude/                          Claude Code rules, skills, agents, and hooks
+.rtk/filters.toml                 Levyra-specific RTK output filters
+codex-plugins.txt                 verified opt-in Codex plugin identifiers
+scripts/setup-ai.ps1              Windows setup and validation
+scripts/setup-ai.sh               Linux/macOS setup and validation
 ```
 
-Keep `AGENTS.md` in the repository root so supported coding agents discover the
-repository-wide contract from the Git root. Project planning belongs under
-`docs/project/`; rules and skills do not replace either layer.
+Planning files, skills, plugins, and scans do not replace current code, direct
+validation, human review, or owner decisions.
 
-## Runtime discovery
+## Cross-runtime discovery
 
 ### Codex
 
-Codex reads root and path-specific `AGENTS.md` files and uses the matching
-repository-local skills under `.agents/skills/`.
+Codex reads root and path-specific `AGENTS.md` files and discovers matching
+skills under `.agents/skills/`. High-output work matches
+`levyra-context-efficiency`; security-sensitive work matches
+`levyra-security-review`.
+
+RTK uses an **instruction-based Codex setup**. `rtk init -g --codex` installs
+instructions that teach Codex when to invoke RTK commands; it is not a native
+transparent shell-rewrite hook. Codex must rerun the original command raw when
+compact output is insufficient.
+
+Codex Security is an optional security engine enabled through the official
+Codex Security setup. It complements the shared Levyra security skill with a
+repository-specific threat model, safe validation, minimal remediation
+proposals, human review, and revalidation. See
+`docs/ai/CODEX_SECURITY.md`.
+
+### Claude Code
+
+Claude Code uses `.claude/CLAUDE.md`, path rules, skills, and the
+`UserPromptSubmit` hook. The hook routes security, vulnerability, secrets,
+trust-boundary, dependency, update-integrity, and privacy work to
+`levyra-security-review` before editing. Claude follows the same closed-loop
+security method documented in `docs/ai/CODEX_SECURITY.md`.
+
+### ChatGPT Project
+
+Copy `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` into the Levyra Project
+instructions and connect the repository. Those instructions require ChatGPT to
+load `levyra-security-review` for security-sensitive analysis and to distinguish
+suspected findings, validated findings, proposed patches, applied patches, CI,
+and publication state.
 
 ### Google Antigravity
 
-Antigravity automatically reads workspace context from the repository root and
-exposes workspace skills from `.agents/skills/<skill-folder>/SKILL.md` when a
-conversation starts. The file `.agents/rules/levyra-workspace.md` provides a
-lightweight workspace-rule bridge to `AGENTS.md` without duplicating the
-contract.
+Antigravity reads `.agents/rules/levyra-workspace.md` and exposes skills under
+`.agents/skills/`. The workspace rule routes security work to
+`levyra-security-review`, keeps exact security evidence raw, and applies the
+same threat-model and revalidation workflow. No parallel `.gemini/skills/` tree
+is required.
 
-Open the repository root, start a new conversation after pulling configuration
-changes, and verify the `levyra-*` inventory through the Antigravity skills
-panel or `/skills`. See `docs/ai/ANTIGRAVITY.md` for the complete setup and
-troubleshooting guide.
+### OpenCode and OpenClaw
 
-### OpenClaw and compatible runtimes
-
-Use a dedicated `levyra` agent whose workspace is the real repository checkout.
-The runtime should read the same root contract, planning files, and matching
-skills rather than maintaining a separate project instruction tree.
+OpenCode uses the same root/path instructions and workspace skills. OpenClaw
+should use a dedicated Levyra workspace and delegate substantial implementation
+to a coding runtime while preserving the same skills, evidence, and publication
+boundaries.
 
 ## Native skills
 
@@ -60,62 +85,96 @@ skills rather than maintaining a separate project instruction tree.
 | --- | --- |
 | `levyra-project-manager` | Specification, roadmap, active phase, acceptance criteria, and handoff |
 | `levyra-openclaw-orchestrator` | OpenClaw delegation, coding-runtime coordination, review, and evidence |
+| `levyra-context-efficiency` | RTK routing, focused context selection, measured savings, and raw-output fallback |
 | `levyra-player` | Android playback, queue, Media3, MediaSession, notification, and audio/video modes |
 | `levyra-extractor` | InnerTube, extraction, stream resolution, fallback, retry, and cache |
 | `levyra-database` | Room, migrations, stores, backup, and persistent user data |
 | `levyra-compose` | Compose UI, state, navigation, accessibility, RTL, and localization |
 | `levyra-motion-artwork` | Decorative motion artwork and muted playback boundaries |
 | `levyra-desktop` | Windows Desktop, libvlc, downloads, mini player, updates, and packaging |
-| `levyra-security-review` | URLs, redirects, permissions, privacy, and update integrity |
+| `levyra-security-review` | Cross-runtime threat modeling, vulnerability validation, minimal remediation, privacy, supply chain, and revalidation |
 | `levyra-ci-workflows` | GitHub Actions, CI, F-Droid, artifacts, and automation |
 | `levyra-pr-review` | Evidence-based branch, commit, patch, and pull-request review |
 | `levyra-release-check` | Pre-merge and pre-release validation |
 | `levyra-engineering` | Genuine cross-domain coordination |
 
-Load every matching focused skill. Planning and orchestration skills coordinate
-other skills; they do not replace domain procedures.
+Load every matching focused skill. Coordinator, context-efficiency, and security
+skills do not replace the applicable product-domain skill.
 
-## Expected workflow
+## Automatic routing
 
-1. Load the root and nearest path-specific `AGENTS.md` files.
-2. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
-   `docs/project/TASKS.md` phase when applicable.
-3. Load every matching native skill.
-4. Inspect current code, tests, architecture, build files, and workflows.
-5. Make the smallest coherent change and report validation truthfully.
-6. Treat publication, merge, tag, and release as separately authorized actions.
+Load `levyra-context-efficiency` for verbose builds, tests, lint, logs, searches,
+dependencies, Git/GitHub, CI, CodeRabbit, and setup work.
 
-For Antigravity, see `docs/ai/ANTIGRAVITY.md`.
+Load `levyra-security-review` for vulnerability scans, attacker-controlled
+input, trust-boundary changes, authentication, tokens, cookies, signing,
+secrets, URLs, redirects, SSRF, MIME, paths, permissions, privacy, dependency
+risk, workflow security, artifacts, updates, and security-related pull requests.
 
-For OpenClaw, see `docs/ai/OPENCLAW.md`.
+All runtimes use this security cycle:
 
-For a ChatGPT Project, use `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` as the
-source instructions.
+```text
+threat model
+→ identification
+→ safe validation
+→ minimal remediation
+→ human review
+→ revalidation
+```
 
-Claude Code continues to use `.claude/CLAUDE.md`, `.claude/rules/`,
-`.claude/skills/`, `.claude/agents/`, `.claude/settings.json`, and
-`.claude/hooks/`.
+A suspicion is not a confirmed vulnerability until evidence supports the attack
+path or concrete security failure.
+
+## RTK safety
+
+Use RTK selectively for noisy supported commands. Keep exact output, exploit
+evidence, security validation, hashes, signatures, secret scans, signing,
+release evidence, and incomplete failure diagnostics raw. Verify exit status and
+success/failure markers, and rerun the exact original command raw whenever
+compact output hides required evidence.
+
+## Setup
+
+Windows:
+
+```powershell
+.\scripts\setup-ai.ps1 -DryRun
+.\scripts\setup-ai.ps1
+.\scripts\setup-ai.ps1 -InstallRtk -Plugins
+```
+
+Linux/macOS:
+
+```bash
+./scripts/setup-ai.sh --dry-run
+./scripts/setup-ai.sh
+./scripts/setup-ai.sh --install-rtk --plugins
+```
+
+The scripts do not configure Ollama/local-model profiles, unrestricted
+sandboxing, or silent approval bypasses. Executable and plugin installation
+remain opt-in.
 
 ## Validation
 
-Run from the repository root after changing planning files, instructions,
-rules, skills, AI documentation, or agent validation:
-
 ```bash
 python3 scripts/validate_agent_config.py
+python3 scripts/validate_ai_efficiency.py
 ```
 
-The validator checks required files, the Antigravity bridge, skill metadata,
-documented skill references, and this inventory.
+The validators check shared discovery, skill inventory, RTK TOML, setup
+behavior, cross-runtime security routing, dependency review, plugin scope, and
+absence of unapproved local-model profiles.
 
 ## Maintenance rules
 
-- Keep durable requirements in `docs/project/SPEC.md`.
-- Keep ordered outcomes and risks in `docs/project/ROADMAP.md`.
-- Keep one active reviewable phase in `docs/project/TASKS.md`.
-- Keep architecture in `docs/ARCHITECTURE.md`.
-- Keep each native skill focused on one repeatable job.
 - Keep `AGENTS.md` as the canonical repository contract.
-- Use `.agents/rules/` as a thin bridge, not a duplicate instruction tree.
-- Link to canonical sources instead of duplicating complete instructions.
-- Verify all paths and commands after structural changes.
+- Keep one skill tree under `.agents/skills/`; use runtime-specific files only
+  as routing bridges.
+- Keep RTK as an output layer, never validation authority.
+- Keep security findings evidence-based and revalidate every remediation.
+- Keep plugin/executable installation opt-in.
+- Keep commit, push, PR, merge, tag, release, upload, and repository settings
+  under explicit owner authorization.
+- Verify paths, commands, skills, workflows, and documentation after structural
+  changes.

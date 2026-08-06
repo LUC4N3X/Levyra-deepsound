@@ -70,6 +70,9 @@ jobs:
       - name: Validate Agent Configuration
         run: python3 scripts/validate_agent_config.py
 
+      - name: Validate AI Efficiency Layer
+        run: python3 scripts/validate_ai_efficiency.py
+
       - name: Prepare CI Release Signing
         shell: bash
         run: |
