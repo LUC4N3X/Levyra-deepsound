@@ -21,6 +21,7 @@ docs/
 │   ├── ANTIGRAVITY.md
 │   ├── CHATGPT_PROJECT_INSTRUCTIONS.md
 │   ├── OPENCLAW.md
+│   ├── RTK.md
 │   └── WORKFLOW.md
 └── assets/                   README badges, previews, and documentation media
 ```
@@ -48,6 +49,8 @@ docs/
 - [`ai/README.md`](ai/README.md) is the entry point for repository AI tooling.
 - [`ai/WORKFLOW.md`](ai/WORKFLOW.md) defines the implementation, review, CI,
   manual verification, merge, and release lifecycle.
+- [`ai/RTK.md`](ai/RTK.md) defines automatic RTK routing, context/token
+  efficiency, runtime setup, plugins, raw-output fallback, and measurement.
 - [`ai/ANTIGRAVITY.md`](ai/ANTIGRAVITY.md) defines Google Antigravity workspace
   discovery, skill loading, verification, and troubleshooting.
 - [`ai/OPENCLAW.md`](ai/OPENCLAW.md) defines OpenClaw workspace and delegation
@@ -66,6 +69,8 @@ docs/
   unrelated historical work.
 - Update `ARCHITECTURE.md` when ownership, data flow, module boundaries,
   persistence, playback, networking, or release architecture changes.
+- Update `ai/RTK.md`, `.rtk/filters.toml`, and the setup scripts together when
+  context-efficiency setup or fallback behavior changes.
 - Store documentation images and generated badges under `assets/`; do not
   scatter them through planning or AI folders.
 - Apply the scoped rules in [`AGENTS.md`](AGENTS.md) to every documentation

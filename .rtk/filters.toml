@@ -1,0 +1,70 @@
+# Levyra project-local RTK filters.
+#
+# RTK already provides dedicated compact handlers for Gradle/gradlew, Git,
+# GitHub CLI, common test runners, linters, Docker, logs, grep, find, and many
+# other commands. These project filters cover Levyra-specific commands that do
+# not have a dedicated built-in handler.
+#
+# Project-local filters override built-in or user-global filters only when their
+# match_command expression matches. Keep failure markers and final summaries.
+
+schema_version = 1
+
+[filters.levyra-agent-config]
+description = "Compact Levyra agent configuration validation"
+match_command = "^(python3?|py)\\s+scripts[/\\\\]validate_agent_config\\.py\\b"
+strip_ansi = true
+strip_lines_matching = [
+  "^\\s*$",
+]
+truncate_lines_at = 240
+max_lines = 80
+on_empty = "Levyra agent configuration validation produced no output"
+
+[[tests.levyra-agent-config]]
+name = "keeps successful validation summary"
+input = "Agent configuration validation passed: 20 required files, 14 native skills.\n"
+expected = "Agent configuration validation passed: 20 required files, 14 native skills."
+
+[[tests.levyra-agent-config]]
+name = "keeps validation failures"
+input = "Agent configuration validation failed:\n- missing required file: docs/ai/RTK.md\n"
+expected = "Agent configuration validation failed:\n- missing required file: docs/ai/RTK.md"
+
+[filters.levyra-coderabbit]
+description = "Compact local CodeRabbit agent review output while preserving findings"
+match_command = "^coderabbit\\s+review\\b"
+strip_ansi = true
+strip_lines_matching = [
+  "^\\s*$",
+  "^Scanning repository",
+  "^Indexing files",
+  "^Analyzing changes",
+  "^Generating review",
+  "^Progress:",
+]
+truncate_lines_at = 320
+max_lines = 180
+on_empty = "CodeRabbit review completed without textual findings"
+
+[filters.levyra-adb-logcat]
+description = "Bound Android logcat output while retaining recent diagnostics"
+match_command = "^adb\\s+logcat\\b"
+strip_ansi = true
+strip_lines_matching = [
+  "^--------- beginning of (main|system|crash)$",
+]
+truncate_lines_at = 400
+max_lines = 240
+on_empty = "adb logcat produced no matching lines"
+
+[filters.levyra-agent-tests]
+description = "Compact Levyra AI setup-script dry-run output"
+match_command = "^(pwsh|powershell|bash|sh)\\s+.*scripts[/\\\\]setup-ai\\.(ps1|sh)\\b"
+strip_ansi = true
+strip_lines_matching = [
+  "^\\s*$",
+]
+truncate_lines_at = 300
+max_lines = 140
+on_empty = "Levyra AI setup completed without textual output"
