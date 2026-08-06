@@ -158,8 +158,8 @@ def main() -> int:
         (
             "levyra-context-efficiency",
             ".rtk/filters.toml",
-            "scripts/setup-ai.ps1",
-            "scripts/setup-ai.sh",
+            "setup-ai.ps1",
+            "setup-ai.sh",
             "codex-plugins.txt",
             "rtk gain",
             "ChrisTitusTech/titus-ai",
