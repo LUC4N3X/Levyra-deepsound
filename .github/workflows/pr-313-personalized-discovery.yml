@@ -46,10 +46,12 @@ jobs:
           python .github/scripts/pr-313-personalized-discovery.py
           python .github/scripts/pr-313-spotify-releases.py
           python .github/scripts/pr-313-editorial-release-test.py
+          python .github/scripts/pr-313-final-localization.py
           git rm \
             .github/scripts/pr-313-personalized-discovery.py \
             .github/scripts/pr-313-spotify-releases.py \
             .github/scripts/pr-313-editorial-release-test.py \
+            .github/scripts/pr-313-final-localization.py \
             .github/workflows/pr-313-personalized-discovery.yml
           git diff --check
 
@@ -71,6 +73,7 @@ jobs:
             --tests 'com.luc4n3x.levyra.data.YoutubeMusicSamplesPolicyTest' \
             --tests 'com.luc4n3x.levyra.data.YoutubeMusicNewReleasesPolicyTest' \
             --tests 'com.luc4n3x.levyra.data.EditorialReleaseCatalogTest' \
+            --tests 'com.luc4n3x.levyra.data.SamplesAllLanguagesPolicyTest' \
             --tests 'com.luc4n3x.levyra.viewmodel.NewReleasesPersonalizationTest' \
             --tests 'com.luc4n3x.levyra.data.YoutubeShortsRepositoryTest' \
             --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest'
