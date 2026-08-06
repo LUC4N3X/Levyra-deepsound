@@ -54,11 +54,6 @@ private sealed interface ShortsSourceResult {
     data class Failure(val error: Throwable) : ShortsSourceResult
 }
 
-/**
- * Personalized short-form feed built with the same channel-first principle used by LibreTube.
- * Search discovers relevant creators from the user's listening profile, then the repository asks
- * each creator's /shorts route and trusts NewPipe's isShortFormContent metadata.
- */
 internal class YoutubeShortsRepository(private val context: Context) {
     suspend fun feed(
         seeds: List<Track>,
@@ -301,11 +296,7 @@ internal fun isYoutubeShortSearchFallbackCandidate(
     isShortFormContent: Boolean,
     url: String,
     durationSeconds: Long
-): Boolean {
-    if (isYoutubeShortCandidate(isShortFormContent, url, durationSeconds)) return true
-    return durationSeconds in 1L..MAX_SHORT_DURATION_SECONDS &&
-        YOUTUBE_VIDEO_ID_REGEX.containsMatchIn(url)
-}
+): Boolean = isYoutubeShortCandidate(isShortFormContent, url, durationSeconds)
 
 internal fun youtubeShortQueries(
     seeds: List<Track>,
