@@ -4339,6 +4339,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(list.getOrElse(index) { track })
     }
 
+    fun playSample(list: List<Track>, track: Track) {
+        if (list.isEmpty()) return
+        val selected = list.firstOrNull { candidate -> samePlayableTrack(candidate, track) } ?: track
+        val snapshot = _state.value
+        val alreadyActive = snapshot.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
+            snapshot.isVideoMode
+
+        loopCurrentQueueOnCompletion = true
+        queueEngine.replace(listOf(selected), 0, keepPlaybackModes = true, radioEnabled = false)
+        queueIndex = 0
+        _state.update { current -> if (current.isVideoMode) current else current.copy(isVideoMode = true) }
+
+        if (alreadyActive) {
+            if (!snapshot.isPlaying) togglePlay()
+            return
+        }
+        startResolve(selected)
+    }
+
     private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
         streamTransitionId++
         cancelResolutionSideJobs()

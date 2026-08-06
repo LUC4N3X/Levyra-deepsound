@@ -173,8 +173,10 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
+    fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun togglePlay() = root.togglePlay()
 }
 
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {

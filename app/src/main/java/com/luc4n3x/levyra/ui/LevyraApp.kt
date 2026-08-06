@@ -17313,6 +17313,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val listState = rememberLazyListState()
     val scrollScope = rememberCoroutineScope()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
+    var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
@@ -17331,22 +17332,28 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
 
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
-        shortcut.zoneId
-            ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
-            ?.takeIf { zone -> zone.id != state.exploreZoneId }
-            ?.let(viewModel::selectExploreZone)
-        val target = exploreAnchorIndex(rows, shortcut.anchor)
-        if (target >= 0) {
-            scrollScope.launch {
-                if (animationsEnabled) listState.animateScrollToItem(target) else listState.scrollToItem(target)
+        if (shortcut == ExploreShortcut.Samples) {
+            samplesStartIndex = 0
+        } else {
+            shortcut.zoneId
+                ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
+                ?.takeIf { zone -> zone.id != state.exploreZoneId }
+                ?.let(viewModel::selectExploreZone)
+            val target = exploreAnchorIndex(rows, shortcut.anchor)
+            if (target >= 0) {
+                scrollScope.launch {
+                    if (animationsEnabled) listState.animateScrollToItem(target) else listState.scrollToItem(target)
+                }
             }
         }
     }
     val onPlayFresh: (() -> Unit)? = freshTracks.firstOrNull()?.let { first ->
         { viewModel.playFrom(freshTracks, first) }
     }
-    val onPlaySamples: (() -> Unit)? = samples.firstOrNull()?.let { first ->
-        { viewModel.playFrom(samples, first) }
+    val onPlaySamples: (() -> Unit)? = if (samples.isNotEmpty()) {
+        { samplesStartIndex = 0 }
+    } else {
+        null
     }
 
     Box(
@@ -17417,10 +17424,13 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                         }
                     }
                     ExploreRow.Samples -> ExploreSamplesRow(
-                        samples = samples,
+                        samples = samples.take(ExploreSampleLimit),
                         currentTrackId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
-                        onPlay = { track -> viewModel.playFrom(samples, track) }
+                        onOpen = { track ->
+                            samplesStartIndex = samples.indexOfFirst { candidate -> candidate.id == track.id }
+                                .coerceAtLeast(0)
+                        }
                     )
                     is ExploreRow.MoodPair -> Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
@@ -17461,6 +17471,25 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                 }
             )
         }
+
+        samplesStartIndex
+            ?.takeIf { samples.isNotEmpty() }
+            ?.let { initialPage ->
+                ExploreSamplesScreen(
+                    samples = samples,
+                    initialPage = initialPage,
+                    currentTrack = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    isVideoMode = state.isVideoMode,
+                    favoriteIds = state.favoriteIds,
+                    strings = strings,
+                    onPlaySample = viewModel::playSample,
+                    onTogglePlay = viewModel::togglePlay,
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onDismiss = { samplesStartIndex = null }
+                )
+            }
     }
 }
 
@@ -17550,14 +17579,14 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     val animationsEnabled = LocalAnimationsEnabled.current
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(8.dp)
     val background by animateColorAsState(
         targetValue = if (isSelected) {
-            accentStart.copy(alpha = if (LevyraIsLight) 0.14f else 0.18f)
+            accentStart.copy(alpha = if (LevyraIsLight) 0.12f else 0.18f)
         } else {
-            LevyraAdaptiveCardDeep
+            if (LevyraIsLight) LevyraAdaptiveCardDeep else Color(0xFF18181D)
         },
-        animationSpec = if (animationsEnabled) tween(220) else snap(),
+        animationSpec = if (animationsEnabled) tween(180) else snap(),
         label = "explore-mood-background"
     )
     val edgeBrush = remember(accentStart, accentEnd) {
@@ -17566,12 +17595,12 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     Row(
         modifier = Modifier
             .weight(1f)
-            .heightIn(min = 58.dp)
+            .heightIn(min = 50.dp)
             .clip(shape)
             .background(background)
             .border(
                 width = if (isSelected) 1.dp else Dp.Hairline,
-                color = if (isSelected) accentStart.copy(alpha = 0.72f) else LevyraAdaptiveHairline,
+                color = if (isSelected) accentStart.copy(alpha = 0.56f) else LevyraAdaptiveHairline,
                 shape = shape
             )
             .semantics(mergeDescendants = true) {
@@ -17584,17 +17613,19 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(6.dp)
+                .width(7.dp)
                 .background(edgeBrush)
         )
         Text(
             text = zone.label,
-            modifier = Modifier.padding(horizontal = 12.dp),
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp),
             color = LevyraText,
-            fontSize = 13.5.sp,
-            lineHeight = 16.sp,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
     }
@@ -17605,7 +17636,7 @@ private fun ExploreSamplesRow(
     samples: List<Track>,
     currentTrackId: String?,
     isPlaying: Boolean,
-    onPlay: (Track) -> Unit
+    onOpen: (Track) -> Unit
 ) {
     val rowState = rememberLazyListState()
     LazyRow(
@@ -17620,7 +17651,7 @@ private fun ExploreSamplesRow(
                 track = track,
                 isCurrent = isCurrent,
                 isPlaying = isPlaying && isCurrent,
-                onClick = { onPlay(track) }
+                onClick = { onOpen(track) }
             )
         }
     }

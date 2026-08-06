@@ -124,10 +124,11 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun samplesRespectTheRequestedBound() {
+    fun samplesExposeTheFullFeedAndRespectPreviewBounds() {
         val videos = List(ExploreSampleLimit + 4) { index -> track("id-$index") }
 
-        assertEquals(ExploreSampleLimit, exploreSampleTracks(videos).size)
+        assertEquals(videos.size, exploreSampleTracks(videos).size)
+        assertEquals(ExploreSampleLimit, exploreSampleTracks(videos, limit = ExploreSampleLimit).size)
         assertEquals(3, exploreSampleTracks(videos, limit = 3).size)
         assertTrue(exploreSampleTracks(videos, limit = 0).isEmpty())
         assertTrue(exploreSampleTracks(videos, limit = -1).isEmpty())
