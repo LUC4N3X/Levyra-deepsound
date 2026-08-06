@@ -2,41 +2,87 @@
 
 ## Goal
 
-Levyra uses RTK as an optional command-output compression layer for coding
-agents. RTK filters repetitive shell output before it reaches the model context,
-while Levyra's repository-local instructions and skills decide what must be
-read, validated, reviewed, and preserved.
+Levyra uses RTK as an optional command-output compression layer. Repository
+instructions and skills decide what to inspect, validate, preserve, and review;
+RTK only reduces repetitive terminal output before it reaches agent context.
 
-This integration is intentionally repository-specific:
+The integration:
 
-- it keeps root and path-specific `AGENTS.md` as the source of truth;
-- it automatically exposes `levyra-context-efficiency` with the other native
-  skills under `.agents/skills/`;
-- it adds project-local filters in `.rtk/filters.toml`;
-- it detects installed supported coding agents through setup scripts;
-- it keeps plugin installation opt-in through `codex-plugins.txt`;
-- it does not install or configure Ollama or any local model profile;
-- it does not enable unrestricted sandboxing or bypass owner approvals.
+- keeps root/path `AGENTS.md` files as the source of truth;
+- exposes `levyra-context-efficiency` and `levyra-security-review` to supported
+  runtimes;
+- adds project filters in `.rtk/filters.toml`;
+- detects installed Codex, Claude Code, OpenCode, and Antigravity integrations;
+- keeps executable/plugin installation opt-in;
+- excludes Ollama and other local-model profiles;
+- keeps exact security, signing, checksum, and release evidence raw.
 
 ## What RTK changes
 
-RTK wraps supported terminal commands and sends a compact representation to the
-coding agent. Typical examples include:
+RTK can compact Gradle, tests, lint, Git/GitHub, broad searches, repeated logs,
+CI diagnostics, adb output, dependency reports, and setup output. It measures
+command-output reduction, not total billing reduction.
 
-- collapsing successful Gradle tasks while preserving failures and summaries;
-- showing failed tests instead of every passing test;
-- compacting Git status, logs, diffs, and GitHub CLI output;
-- grouping broad search results by file;
-- deduplicating repeated log lines;
-- bounding dependency, Docker, CI, adb, and server output.
+RTK is not test authority. Always verify exit status and final success/failure
+markers. Rerun the exact original command raw whenever compact output is
+incomplete or ambiguous.
 
-RTK measures reductions in command output. Those numbers are not an equal
-reduction in the total model bill because prompts, system instructions,
-conversation history, tool metadata, and generated output remain separate.
+## Runtime behavior
+
+### Codex
+
+Codex uses an **instruction-based Codex setup**. Running:
+
+```text
+rtk init -g --codex
+```
+
+installs guidance that teaches Codex when to invoke RTK. It does not install a
+transparent native shell-rewrite hook. Codex follows those instructions and
+selects RTK commands explicitly.
+
+### Claude Code
+
+Claude Code supports an RTK hook initialized by the setup scripts when the
+`claude` command is present. Claude also receives repository-specific routing
+through `.claude/rules/context-efficiency.md` and its prompt-submission hook.
+
+### Google Antigravity
+
+The setup scripts initialize RTK's repository-local Antigravity integration.
+Antigravity reads `.agents/rules/levyra-workspace.md` and the shared skills under
+`.agents/skills/`.
+
+### OpenCode and compatible runtimes
+
+When `opencode` is detected, the setup scripts initialize its supported RTK
+integration. Every runtime must still follow Levyra's root/path instructions,
+domain skills, validation, review, and publication boundaries.
+
+## Security routing across runtimes
+
+RTK must never compact exact exploit evidence, vulnerability validation output,
+secret scans, hashes, signatures, signing evidence, or security reproductions.
+Those commands remain raw.
+
+Security-sensitive work automatically loads `levyra-security-review` in Codex,
+Claude Code, ChatGPT Project instructions, and Antigravity. The shared method is:
+
+```text
+threat model
+→ identification
+→ safe validation
+→ minimal remediation
+→ human review
+→ revalidation
+```
+
+Codex Security may be enabled through its official setup and used alongside the
+same repository-native skill. It is intentionally documented separately in
+`docs/ai/CODEX_SECURITY.md`; the setup scripts do not invent or install an
+unverified plugin identifier.
 
 ## Automatic repository discovery
-
-Supported agents discover Levyra through the existing repository structure:
 
 ```text
 AGENTS.md
@@ -46,103 +92,56 @@ desktop/AGENTS.md
 docs/AGENTS.md
 .agents/rules/levyra-workspace.md
 .agents/skills/levyra-context-efficiency/SKILL.md
+.agents/skills/levyra-security-review/SKILL.md
 .claude/rules/context-efficiency.md
+.claude/rules/security.md
 .rtk/filters.toml
 ```
 
-The context-efficiency skill description is deliberately broad enough to be
-automatically selected for builds, tests, lint, logs, searches, CI, Git/GitHub,
-agent setup, and other high-output work. It must be combined with the relevant
-product-domain skill, such as `levyra-player`, `levyra-extractor`,
-`levyra-compose`, `levyra-desktop`, or `levyra-ci-workflows`.
-
-Claude Code receives an additional lightweight rule under `.claude/rules/` that
-links back to the canonical Levyra skill instead of maintaining a second
-workflow. Antigravity receives the same routing through
-`.agents/rules/levyra-workspace.md`.
-
-After pulling changes to instructions, skills, rules, plugins, or hooks, restart
-the coding agent or begin a new conversation so its inventory is rebuilt.
+Restart the coding agent or begin a new conversation after pulling changes to
+instructions, rules, skills, hooks, or plugins.
 
 ## Windows setup
-
-From the repository root in PowerShell:
 
 ```powershell
 .\scripts\setup-ai.ps1 -DryRun
 .\scripts\setup-ai.ps1
-```
-
-When RTK is missing and Cargo is installed:
-
-```powershell
 .\scripts\setup-ai.ps1 -InstallRtk
-```
-
-To also install the explicitly listed Codex plugins:
-
-```powershell
 .\scripts\setup-ai.ps1 -InstallRtk -Plugins
 ```
 
-The script:
+The script detects RTK, optionally installs it from `rtk-ai/rtk`, configures
+supported runtimes, installs verified `codex-plugins.txt` entries when requested,
+and runs both repository validators.
 
-1. detects RTK;
-2. optionally installs RTK from `rtk-ai/rtk` through Cargo;
-3. initializes the Codex hook when `codex` is detected;
-4. initializes Claude Code when `claude` is detected;
-5. initializes OpenCode when `opencode` is detected;
-6. initializes the repository-local Antigravity integration;
-7. optionally installs `codex-plugins.txt` entries;
-8. runs the general agent-configuration validator;
-9. runs the RTK/AI-efficiency validator;
-10. prints the restart and measurement commands.
-
-Use `-SkipHooks` when only validation or plugin installation is required.
-
-RTK also publishes official pre-built Windows binaries. A manually installed
-`rtk.exe` must be placed on `PATH` before running the setup script.
+Missing Python blocks validation and returns a nonzero exit status. Setup is not
+reported complete when required validation cannot run.
 
 ## Linux and macOS setup
-
-From the repository root:
 
 ```bash
 chmod +x scripts/setup-ai.sh
 ./scripts/setup-ai.sh --dry-run
 ./scripts/setup-ai.sh
-```
-
-When RTK is missing and Cargo is installed:
-
-```bash
 ./scripts/setup-ai.sh --install-rtk
-```
-
-To install the listed Codex plugins as well:
-
-```bash
 ./scripts/setup-ai.sh --install-rtk --plugins
 ```
 
-Use `--skip-hooks` when hook initialization is not wanted.
+Use `--skip-hooks` or `-SkipHooks` when only validation/plugin setup is needed.
 
-## Plugin manifest
+## Verified plugin manifest
 
-`codex-plugins.txt` contains the repository's recommended opt-in Codex plugins.
-The initial selection is:
+`codex-plugins.txt` contains only verified CLI-installable identifiers. The
+current opt-in entry is:
 
 ```text
 superpowers@openai-curated
 ```
 
-The plugin is intended to complement Levyra's project-specific planning,
-debugging, testing, and delivery skills. It does not replace repository
-requirements, domain skills, current code/tests, independent review, or owner
-approval. Plugin availability and permissions still depend on the active Codex
-or workspace configuration.
+Codex Security remains a separate official setup because no stable CLI manifest
+identifier is assumed by this repository. See `docs/ai/CODEX_SECURITY.md`.
 
-## Recommended command routing
+## Recommended routing
 
 Use RTK for noisy commands:
 
@@ -162,10 +161,7 @@ rtk test <command>
 rtk err <command>
 ```
 
-On Windows, RTK's Gradle integration uses `gradlew.bat` when the wrapper is
-present.
-
-Keep commands raw when exact or complete evidence matters:
+Keep commands raw when exact evidence matters:
 
 ```text
 gradlew.bat --stacktrace <task>
@@ -175,24 +171,21 @@ sha256sum <artifact>
 certutil -hashfile <artifact> SHA256
 ```
 
-Also rerun raw whenever compact output is insufficient to identify a failure.
+Security scans and reproductions also remain raw.
 
 ## Project-local filters
 
-`.rtk/filters.toml` adds Levyra-specific handling for:
+`.rtk/filters.toml` adds handling for:
 
 - `scripts/validate_agent_config.py`;
 - local CodeRabbit review output;
 - bounded `adb logcat` output;
-- setup-script dry runs.
+- direct and interpreter-prefixed setup-script runs.
 
-Gradle, Git, GitHub CLI, tests, lint, Docker, broad searches, and common logs use
-RTK's dedicated built-in handlers. Project-local filters should not replace
-those handlers unless a verified Levyra-specific need exists.
+Gradle, Git, GitHub CLI, common tests, lint, Docker, searches, and standard logs
+continue to use RTK's built-in handlers.
 
 ## Measuring real savings
-
-After several coding sessions:
 
 ```text
 rtk gain
@@ -203,61 +196,31 @@ rtk discover --all --since 7
 rtk session
 ```
 
-Use the results to find commands still producing avoidable output. Do not add a
-filter merely to improve a percentage: retain enough evidence to diagnose
-failures correctly.
+Do not add filters merely to inflate a percentage. Preserve enough information
+to diagnose failures correctly.
 
 ## Failure recovery
 
 1. Rerun the exact command without RTK when output is incomplete.
-2. Add `--stacktrace`, `--full-stacktrace`, `--info`, or `--debug` only when
-   needed.
-3. Check the original exit status and success/failure marker.
+2. Add stacktrace or debug detail only when needed.
+3. Verify the original exit status and success/failure marker.
 4. Do not treat empty filtered output as a passing check.
-5. Keep the raw command and relevant evidence in the final report when a failure
-   was diagnosed outside RTK.
-
-## Security and permission boundaries
-
-The Levyra integration deliberately does not copy a global
-`danger-full-access` configuration or broad automatic command allowlist.
-
-RTK and Superpowers must not:
-
-- expose tokens, cookies, keystores, passwords, signing material, private URLs,
-  `.env`, or `local.properties`;
-- weaken URL, redirect, MIME, checksum, signature, permission, or release
-  validation;
-- infer permission to commit, push, open a PR, merge, tag, release, upload, or
-  change repository settings;
-- replace CI, independent review, device testing, Android Auto checks, release
-  checks, or owner decisions.
+5. Keep raw security and release evidence in the final report.
 
 ## Validation
-
-After changing RTK configuration, setup scripts, plugins, native skills, or AI
-documentation:
 
 ```bash
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
 ```
 
-On Windows:
-
-```powershell
-py scripts\validate_agent_config.py
-py scripts\validate_ai_efficiency.py
-```
-
-The first validator checks Levyra's shared instruction and skill inventory. The
-second checks RTK documentation, filters, setup scripts, plugin scope,
-cross-runtime discovery, CI integration, and the absence of unapproved local-
-model profiles. The PR workflow runs both validators.
+The second validator parses `.rtk/filters.toml` as TOML, tests documented setup
+command matching, verifies fail-closed setup behavior, cross-runtime security
+routing, dependency-review configuration, plugin scope, and the absence of
+unapproved local-model profiles.
 
 ## Attribution
 
-The workflow is inspired by the portable configuration and context-efficiency
-approach used by `ChrisTitusTech/titus-ai`. RTK is developed separately by
-`rtk-ai/rtk` and distributed under the Apache-2.0 license. Levyra keeps its own
-project-specific wording, safety boundaries, domain skills, and validation.
+The workflow is inspired by `ChrisTitusTech/titus-ai`. RTK is developed by
+`rtk-ai/rtk` and distributed under Apache-2.0. Levyra keeps its own project-
+specific instructions, security boundaries, domain skills, and validation.
