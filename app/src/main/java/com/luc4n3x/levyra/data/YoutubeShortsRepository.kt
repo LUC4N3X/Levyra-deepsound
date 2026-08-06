@@ -2,13 +2,17 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
@@ -19,6 +23,21 @@ private const val MAX_SHORT_QUERIES = 10
 private const val SHORTS_SEARCH_CONCURRENCY = 3
 private const val SHORTS_PER_QUERY = 4
 private const val MAX_SHORT_DURATION_SECONDS = 180L
+private const val SHORTS_SEARCH_TIMEOUT_MS = 20_000L
+
+internal data class YoutubeShortsFeedResult(
+    val tracks: List<Track>,
+    val completedQueries: Int,
+    val failedQueries: Int
+) {
+    val isConclusive: Boolean
+        get() = completedQueries > 0
+}
+
+private sealed interface ShortsQueryResult {
+    data class Success(val tracks: List<Track>) : ShortsQueryResult
+    data class Failure(val error: Throwable) : ShortsQueryResult
+}
 
 /**
  * Dedicated short-form feed. Like LibreTube, this trusts NewPipe's
@@ -29,49 +48,72 @@ internal class YoutubeShortsRepository(private val context: Context) {
         seeds: List<Track>,
         languageCode: String,
         limit: Int = 24
-    ): List<Track> = withContext(Dispatchers.IO) {
-        if (limit <= 0) return@withContext emptyList()
+    ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
+        if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
         val queries = shortQueries(seeds, languageCode)
-        if (queries.isEmpty()) return@withContext emptyList()
+        if (queries.isEmpty()) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
 
-        coroutineScope {
+        val queryResults = coroutineScope {
             val semaphore = Semaphore(SHORTS_SEARCH_CONCURRENCY)
             queries.map { query ->
                 async {
                     semaphore.withPermit {
-                        runCatching { searchShorts(query, SHORTS_PER_QUERY) }
-                            .getOrDefault(emptyList())
+                        searchShortsSafely(query, SHORTS_PER_QUERY)
                     }
                 }
             }.awaitAll()
         }
+        val successful = queryResults.filterIsInstance<ShortsQueryResult.Success>()
+        val failed = queryResults.count { result -> result is ShortsQueryResult.Failure }
+        val tracks = successful
             .asSequence()
-            .flatten()
+            .flatMap { result -> result.tracks.asSequence() }
             .filter(::isYoutubeShortTrack)
             .distinctBy { track -> track.id }
             .take(limit)
             .toList()
+        YoutubeShortsFeedResult(
+            tracks = tracks,
+            completedQueries = successful.size,
+            failedQueries = failed
+        )
     }
 
-    private fun searchShorts(query: String, limit: Int): List<Track> {
-        NewPipeRuntime.ensure(context)
-        val service = ServiceList.YouTube
-        val handler = service.searchQHFactory.fromQuery(query)
-        val info = SearchInfo.getInfo(service, handler)
-        return info.relatedItems
-            .asSequence()
-            .filterIsInstance<StreamInfoItem>()
-            .filter { item ->
-                isYoutubeShortCandidate(
-                    isShortFormContent = item.isShortFormContent,
-                    url = item.url,
-                    durationSeconds = item.duration
-                )
+    private suspend fun searchShortsSafely(query: String, limit: Int): ShortsQueryResult {
+        return try {
+            ShortsQueryResult.Success(searchShorts(query, limit))
+        } catch (error: TimeoutCancellationException) {
+            ShortsQueryResult.Failure(error)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            ShortsQueryResult.Failure(error)
+        }
+    }
+
+    private suspend fun searchShorts(query: String, limit: Int): List<Track> {
+        return withShortsSearchTimeout {
+            runInterruptible(Dispatchers.IO) {
+                NewPipeRuntime.ensure(context)
+                val service = ServiceList.YouTube
+                val handler = service.searchQHFactory.fromQuery(query)
+                val info = SearchInfo.getInfo(service, handler)
+                info.relatedItems
+                    .asSequence()
+                    .filterIsInstance<StreamInfoItem>()
+                    .filter { item ->
+                        isYoutubeShortCandidate(
+                            isShortFormContent = item.isShortFormContent,
+                            url = item.url,
+                            durationSeconds = item.duration
+                        )
+                    }
+                    .mapNotNull(::shortTrack)
+                    .distinctBy { track -> track.id }
+                    .take(limit)
+                    .toList()
             }
-            .mapNotNull(::shortTrack)
-            .distinctBy { track -> track.id }
-            .take(limit)
-            .toList()
+        }
     }
 
     private fun shortTrack(item: StreamInfoItem): Track? {
@@ -101,6 +143,16 @@ internal class YoutubeShortsRepository(private val context: Context) {
             videoType = "SHORTS"
         )
     }
+}
+
+internal suspend fun <T> withShortsSearchTimeout(
+    timeoutMs: Long = SHORTS_SEARCH_TIMEOUT_MS,
+    block: suspend () -> T
+): T = withTimeout(timeoutMs) { block() }
+
+internal fun youtubeShortsRetryDelayMs(failureCount: Int): Long {
+    val delays = longArrayOf(30_000L, 60_000L, 120_000L, 300_000L, 600_000L)
+    return delays[(failureCount.coerceAtLeast(1) - 1).coerceAtMost(delays.lastIndex)]
 }
 
 internal fun isYoutubeShortTrack(track: Track): Boolean {
