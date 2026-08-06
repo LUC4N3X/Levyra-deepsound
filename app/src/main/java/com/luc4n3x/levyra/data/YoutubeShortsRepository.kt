@@ -18,7 +18,12 @@ internal const val YOUTUBE_SHORTS_SOURCE = "YouTube Shorts"
 private const val MAX_SHORT_QUERIES = 10
 private const val SHORTS_SEARCH_CONCURRENCY = 3
 private const val SHORTS_PER_QUERY = 4
+private const val MAX_SHORT_DURATION_SECONDS = 180L
 
+/**
+ * Dedicated short-form feed. Like LibreTube, this trusts NewPipe's
+ * StreamInfoItem.isShortFormContent flag instead of guessing from titles.
+ */
 internal class YoutubeShortsRepository(private val context: Context) {
     suspend fun feed(
         seeds: List<Track>,
@@ -58,8 +63,8 @@ internal class YoutubeShortsRepository(private val context: Context) {
             .filterIsInstance<StreamInfoItem>()
             .filter { item ->
                 isYoutubeShortCandidate(
+                    isShortFormContent = item.isShortFormContent,
                     url = item.url,
-                    title = item.name,
                     durationSeconds = item.duration
                 )
             }
@@ -105,17 +110,12 @@ internal fun isYoutubeShortTrack(track: Track): Boolean {
 }
 
 internal fun isYoutubeShortCandidate(
+    isShortFormContent: Boolean,
     url: String,
-    title: String,
     durationSeconds: Long
 ): Boolean {
-    val normalizedUrl = url.lowercase(Locale.ROOT)
-    val normalizedTitle = title.lowercase(Locale.ROOT)
-    val taggedAsShort = "#shorts" in normalizedTitle ||
-        "#short" in normalizedTitle ||
-        "youtube shorts" in normalizedTitle
-    val shortDuration = durationSeconds in 1L..180L
-    return "/shorts/" in normalizedUrl || (taggedAsShort && shortDuration)
+    if (durationSeconds !in 1L..MAX_SHORT_DURATION_SECONDS) return false
+    return isShortFormContent || url.contains("/shorts/", ignoreCase = true)
 }
 
 private fun shortQueries(seeds: List<Track>, languageCode: String): List<String> {
