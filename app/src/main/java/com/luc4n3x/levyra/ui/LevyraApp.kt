@@ -17342,10 +17342,6 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
             }
             ExploreShortcut.NewReleases -> {
                 samplesStartIndex = null
-                shortcut.zoneId
-                    ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
-                    ?.takeIf { zone -> zone.id != state.exploreZoneId }
-                    ?.let(viewModel::selectExploreZone)
                 exploreDestination = ExploreNewReleasesDestination
             }
             ExploreShortcut.Moods -> {
@@ -17490,17 +17486,12 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
         }
 
         when (exploreDestination) {
-            ExploreNewReleasesDestination -> ExploreCollectionDestinationScreen(
-                title = strings.exploreNewReleases,
-                subtitle = selectedZone?.label,
-                tracks = freshTracks,
-                isLoading = state.isExploreLoading,
-                currentTrackId = state.currentTrack?.id,
-                isPlaying = state.isPlaying,
+            ExploreNewReleasesDestination -> ExploreNewReleasesDestinationScreen(
+                releases = state.exploreNewReleases,
+                isLoading = state.isNewReleasesLoading,
                 strings = strings,
                 onBack = { exploreDestination = null },
-                onPlayAll = { freshTracks.firstOrNull()?.let { viewModel.playFrom(freshTracks, it) } },
-                onPlayTrack = { track -> viewModel.playFrom(freshTracks, track) }
+                onOpenRelease = viewModel::openAlbum
             )
             ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
                 zones = zones,

@@ -279,6 +279,7 @@ internal fun youtubeShortsRetryDelayMs(failureCount: Int): Long {
 
 internal fun isYoutubeShortTrack(track: Track): Boolean {
     return track.source.equals(YOUTUBE_SHORTS_SOURCE, ignoreCase = true) ||
+        track.source.equals(YOUTUBE_MUSIC_SAMPLES_SOURCE, ignoreCase = true) ||
         track.videoType.equals("SHORTS", ignoreCase = true) ||
         track.videoUrl.contains("/shorts/", ignoreCase = true)
 }

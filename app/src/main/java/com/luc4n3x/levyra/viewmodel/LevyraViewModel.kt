@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.data.YoutubeShortsRepository
 import com.luc4n3x.levyra.data.YoutubeShortsCache
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
 import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
+import com.luc4n3x.levyra.data.youtubeMusicSamplePreviewStartMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
@@ -4409,6 +4410,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!currentState.isPlaying) togglePlay()
             return
         }
+        pendingSeekMs = youtubeMusicSamplePreviewStartMs(selected)
         startResolve(selected)
     }
 
@@ -4651,6 +4653,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var musicVideosRetryAfterMs = 0L
     private var musicVideosFailureCount = 0
     private var musicVideosJob: Job? = null
+    private var newReleasesLoadedLanguage = ""
+    private var newReleasesJob: Job? = null
     private var exploreJob: Job? = null
 
     private fun ensureMusicVideosLoaded() {
@@ -4735,23 +4739,42 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .distinct()
                 .take(20)
 
-            val feedResult = try {
-                shortsRepository.feed(
+            val youtubeMusicSamples = try {
+                repository.musicSamples(
                     seeds = seeds,
-                    languageCode = languageCode,
                     preferredArtists = preferredArtists,
-                    preferredChannelIds = preferredChannelIds,
+                    languageCode = languageCode,
                     limit = EXPLORE_SHORTS_FEED_LIMIT
                 )
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                Timber.w(error, "Shorts feed failed for %s", languageCode)
+                Timber.w(error, "YouTube Music Samples feed failed for %s", languageCode)
+                emptyList()
+            }
+            val fallbackFeed = if (youtubeMusicSamples.isEmpty()) {
+                try {
+                    shortsRepository.feed(
+                        seeds = seeds,
+                        languageCode = languageCode,
+                        preferredArtists = preferredArtists,
+                        preferredChannelIds = preferredChannelIds,
+                        limit = EXPLORE_SHORTS_FEED_LIMIT
+                    )
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "NewPipe Shorts fallback failed for %s", languageCode)
+                    null
+                }
+            } else {
                 null
             }
             if (_state.value.languageCode != languageCode) return@launch
 
-            if (feedResult == null || !feedResult.isConclusive) {
+            val resolvedFeedTracks = youtubeMusicSamples.ifEmpty { fallbackFeed?.tracks.orEmpty() }
+            val feedIsConclusive = youtubeMusicSamples.isNotEmpty() || fallbackFeed?.isConclusive == true
+            if (!feedIsConclusive || resolvedFeedTracks.isEmpty()) {
                 _state.update { current ->
                     if (current.languageCode == languageCode) {
                         current.copy(isSamplesLoading = false, samplesLoadFailed = true)
@@ -4769,20 +4792,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             musicVideosFailureCount = 0
             _state.update { current ->
                 if (current.languageCode == languageCode) {
-                    val resolvedTracks = feedResult.tracks.ifEmpty { current.exploreVideos }
                     current.copy(
-                        exploreVideos = resolvedTracks,
+                        exploreVideos = resolvedFeedTracks,
                         isSamplesLoading = false,
-                        samplesLoadFailed = resolvedTracks.isEmpty()
+                        samplesLoadFailed = false
                     )
                 } else {
                     current
                 }
             }
-            if (feedResult.tracks.isNotEmpty()) {
-                withContext(Dispatchers.IO) {
-                    shortsCache.save(languageCode, feedResult.tracks)
-                }
+            withContext(Dispatchers.IO) {
+                shortsCache.save(languageCode, resolvedFeedTracks)
             }
         }
     }
@@ -4797,10 +4817,42 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             youtubeShortsRetryDelayMs(musicVideosFailureCount)
     }
 
+    private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
+        val languageCode = _state.value.languageCode
+        if (newReleasesJob?.isActive == true) return
+        if (!force && newReleasesLoadedLanguage == languageCode && _state.value.exploreNewReleases.isNotEmpty()) return
+        if (newReleasesLoadedLanguage != languageCode) {
+            _state.update { current ->
+                current.copy(exploreNewReleases = emptyList(), newReleasesLoadFailed = false)
+            }
+        }
+        _state.update { current -> current.copy(isNewReleasesLoading = true, newReleasesLoadFailed = false) }
+        newReleasesJob = viewModelScope.launch {
+            val releases = try {
+                repository.newReleases(languageCode = languageCode, limit = 48)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Official YouTube Music releases failed for %s", languageCode)
+                emptyList()
+            }
+            if (_state.value.languageCode != languageCode) return@launch
+            if (releases.isNotEmpty()) newReleasesLoadedLanguage = languageCode
+            _state.update { current ->
+                current.copy(
+                    exploreNewReleases = releases,
+                    isNewReleasesLoading = false,
+                    newReleasesLoadFailed = releases.isEmpty()
+                )
+            }
+        }
+    }
+
     fun ensureExplore(strings: LevyraStrings) {
         if (_state.value.exploreZoneId == null) {
             selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
+        ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
     }
 

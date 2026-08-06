@@ -172,6 +172,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun refreshSamples() = root.refreshExploreSamples()
     fun beginSamplesPlayback() = root.beginSamplesPlayback()
     fun endSamplesPlayback() = root.endSamplesPlayback()
@@ -850,10 +851,13 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
 private data class ExploreProjection(
     val currentTrack: Track?,
     val exploreTracks: List<Track>,
+    val exploreNewReleases: List<AlbumHit>,
     val exploreVideos: List<Track>,
     val exploreZoneId: String?,
     val favoriteIds: Set<String>,
     val isExploreLoading: Boolean,
+    val isNewReleasesLoading: Boolean,
+    val newReleasesLoadFailed: Boolean,
     val isPlaying: Boolean,
     val isSamplesOpen: Boolean
 )
@@ -861,10 +865,13 @@ private data class ExploreProjection(
 private fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
     currentTrack = state.currentTrack,
     exploreTracks = state.exploreTracks,
+    exploreNewReleases = state.exploreNewReleases,
     exploreVideos = state.exploreVideos,
     exploreZoneId = state.exploreZoneId,
     favoriteIds = state.favoriteIds,
     isExploreLoading = state.isExploreLoading,
+    isNewReleasesLoading = state.isNewReleasesLoading,
+    newReleasesLoadFailed = state.newReleasesLoadFailed,
     isPlaying = state.isPlaying,
     isSamplesOpen = state.isSamplesOpen
 )

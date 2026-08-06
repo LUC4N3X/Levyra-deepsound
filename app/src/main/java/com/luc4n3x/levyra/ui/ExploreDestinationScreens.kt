@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -145,6 +147,119 @@ internal fun ExploreCollectionDestinationScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun ExploreNewReleasesDestinationScreen(
+    releases: List<AlbumHit>,
+    isLoading: Boolean,
+    strings: LevyraStrings,
+    onBack: () -> Unit,
+    onOpenRelease: (AlbumHit) -> Unit
+) {
+    BackHandler(onBack = onBack)
+    ExploreDestinationSurface(
+        title = strings.exploreNewReleases,
+        subtitle = "YouTube Music",
+        strings = strings,
+        onBack = onBack
+    ) { contentPadding ->
+        when {
+            isLoading && releases.isEmpty() -> Box(
+                modifier = Modifier.fillMaxSize().padding(contentPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+            }
+            releases.isEmpty() -> Box(
+                modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = strings.exploreEmpty,
+                    color = LevyraMuted,
+                    fontSize = 15.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = contentPadding.calculateTopPadding() + 10.dp,
+                    bottom = 130.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    items = releases,
+                    key = { release -> "ytm-release-${release.browseId.ifBlank { release.title + release.artist }}" }
+                ) { release ->
+                    ExploreDestinationReleaseRow(
+                        release = release,
+                        onClick = { onOpenRelease(release) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreDestinationReleaseRow(
+    release: AlbumHit,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 78.dp)
+            .clip(shape)
+            .background(LevyraPanel.copy(alpha = 0.72f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), shape)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AsyncImage(
+            model = release.thumbnailUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(62.dp).clip(RoundedCornerShape(9.dp))
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = release.title,
+                color = LevyraText,
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = listOf(release.artist, release.year)
+                    .filter(String::isNotBlank)
+                    .joinToString(" • "),
+                color = LevyraMuted,
+                fontSize = 12.5.sp,
+                lineHeight = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = null,
+            tint = LevyraText,
+            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = 180f }
+        )
     }
 }
 
