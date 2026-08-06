@@ -189,7 +189,12 @@ jobs:
             "build-tools;36.0.0"
 
       - name: Apply focused implementation
-        run: python3 .github/scripts/pr-313-destinations-and-fast-feed.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/pr-313-destinations-and-fast-feed.py
+          sed -i '/import androidx.compose.foundation.layout.weight/d' \
+            app/src/main/java/com/luc4n3x/levyra/ui/ExploreDestinationScreens.kt
 
       - name: Compile and run focused tests
         shell: bash
