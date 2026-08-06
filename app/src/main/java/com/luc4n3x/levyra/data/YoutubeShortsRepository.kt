@@ -21,15 +21,17 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
 internal const val YOUTUBE_SHORTS_SOURCE = "YouTube Shorts"
-private const val MAX_SHORT_QUERIES = 16
-private const val MAX_SHORT_CHANNELS = 16
-private const val SHORTS_SEARCH_CONCURRENCY = 3
-private const val SHORTS_CHANNEL_CONCURRENCY = 3
-private const val SHORTS_PER_QUERY = 5
-private const val SHORTS_PER_CHANNEL = 8
+private const val MAX_SHORT_QUERIES = 8
+private const val MAX_SHORT_CHANNELS = 8
+private const val INITIAL_SHORT_CHANNELS = 4
+private const val FAST_SHORT_TARGET = 6
+private const val SHORTS_SEARCH_CONCURRENCY = 4
+private const val SHORTS_CHANNEL_CONCURRENCY = 4
+private const val SHORTS_PER_QUERY = 4
+private const val SHORTS_PER_CHANNEL = 6
 private const val MAX_SHORT_DURATION_SECONDS = 180L
-private const val SHORTS_SEARCH_TIMEOUT_MS = 20_000L
-private const val SHORTS_CHANNEL_TIMEOUT_MS = 25_000L
+private const val SHORTS_SEARCH_TIMEOUT_MS = 6_500L
+private const val SHORTS_CHANNEL_TIMEOUT_MS = 8_000L
 private const val YOUTUBE_FRONTEND = "https://www.youtube.com"
 
 internal data class YoutubeShortsFeedResult(
@@ -66,29 +68,48 @@ internal class YoutubeShortsRepository(private val context: Context) {
     ): YoutubeShortsFeedResult = withContext(Dispatchers.IO) {
         if (limit <= 0) return@withContext YoutubeShortsFeedResult(emptyList(), 0, 0)
 
-        val queries = youtubeShortQueries(seeds, preferredArtists, languageCode)
-        val searchResults = runSearchDiscovery(queries)
-        val successfulSearches = searchResults.filterIsInstance<ShortsSourceResult.Success>()
-
+        val queries = youtubeShortQueries(seeds, preferredArtists, languageCode).take(MAX_SHORT_QUERIES)
         val directChannelUrls = youtubeShortChannelUrls(seeds, preferredChannelIds)
+            .take(MAX_SHORT_CHANNELS)
+        val (searchResults, initialChannelResults) = coroutineScope {
+            val searchDeferred = async { runSearchDiscovery(queries) }
+            val channelDeferred = async {
+                runChannelDiscovery(directChannelUrls.take(INITIAL_SHORT_CHANNELS))
+            }
+            searchDeferred.await() to channelDeferred.await()
+        }
+        val successfulSearches = searchResults.filterIsInstance<ShortsSourceResult.Success>()
+        val successfulInitialChannels = initialChannelResults.filterIsInstance<ShortsSourceResult.Success>()
+        val initialTracks = mergeShortTracks(
+            channelResults = successfulInitialChannels,
+            searchResults = successfulSearches,
+            limit = limit
+        )
+        val target = minOf(limit, FAST_SHORT_TARGET)
+        if (initialTracks.size >= target) {
+            return@withContext YoutubeShortsFeedResult(
+                tracks = initialTracks,
+                completedQueries = successfulSearches.size + successfulInitialChannels.size,
+                failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
+                    initialChannelResults.count { it is ShortsSourceResult.Failure }
+            )
+        }
+
         val discoveredChannelUrls = successfulSearches
             .asSequence()
             .flatMap { result -> result.discovery.channelUrls.asSequence() }
-        val channelUrls = (directChannelUrls.asSequence() + discoveredChannelUrls)
+        val enrichmentUrls = (
+            directChannelUrls.drop(INITIAL_SHORT_CHANNELS).asSequence() + discoveredChannelUrls
+        )
             .distinct()
-            .take(MAX_SHORT_CHANNELS)
+            .take(MAX_SHORT_CHANNELS - INITIAL_SHORT_CHANNELS)
             .toList()
-
-        val channelResults = runChannelDiscovery(channelUrls)
-        val successfulChannels = channelResults.filterIsInstance<ShortsSourceResult.Success>()
-
-        val channelTracks = successfulChannels
-            .asSequence()
-            .flatMap { result -> result.discovery.tracks.asSequence() }
-        val searchTracks = successfulSearches
-            .asSequence()
-            .flatMap { result -> result.discovery.tracks.asSequence() }
-        val tracks = (channelTracks + searchTracks)
+        val enrichmentResults = runChannelDiscovery(enrichmentUrls)
+        val successfulEnrichment = enrichmentResults.filterIsInstance<ShortsSourceResult.Success>()
+        val tracks = (
+            initialTracks.asSequence() + successfulEnrichment.asSequence()
+                .flatMap { result -> result.discovery.tracks.asSequence() }
+        )
             .filter(::isYoutubeShortTrack)
             .distinctBy { track -> track.id }
             .take(limit)
@@ -96,10 +117,28 @@ internal class YoutubeShortsRepository(private val context: Context) {
 
         YoutubeShortsFeedResult(
             tracks = tracks,
-            completedQueries = successfulSearches.size + successfulChannels.size,
+            completedQueries = successfulSearches.size + successfulInitialChannels.size +
+                successfulEnrichment.size,
             failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
-                channelResults.count { it is ShortsSourceResult.Failure }
+                initialChannelResults.count { it is ShortsSourceResult.Failure } +
+                enrichmentResults.count { it is ShortsSourceResult.Failure }
         )
+    }
+
+    private fun mergeShortTracks(
+        channelResults: List<ShortsSourceResult.Success>,
+        searchResults: List<ShortsSourceResult.Success>,
+        limit: Int
+    ): List<Track> {
+        val channelTracks = channelResults.asSequence()
+            .flatMap { result -> result.discovery.tracks.asSequence() }
+        val searchTracks = searchResults.asSequence()
+            .flatMap { result -> result.discovery.tracks.asSequence() }
+        return (channelTracks + searchTracks)
+            .filter(::isYoutubeShortTrack)
+            .distinctBy { track -> track.id }
+            .take(limit)
+            .toList()
     }
 
     private suspend fun runSearchDiscovery(queries: List<String>): List<ShortsSourceResult> {

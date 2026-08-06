@@ -17309,11 +17309,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
-    val animationsEnabled = LocalAnimationsEnabled.current
     val listState = rememberLazyListState()
-    val scrollScope = rememberCoroutineScope()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+    var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
@@ -17334,20 +17333,24 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
 
     val onShortcut: (ExploreShortcut) -> Unit = { shortcut ->
-        if (shortcut == ExploreShortcut.Samples) {
-            samplesStartIndex = 0
-            viewModel.beginSamplesPlayback()
-            if (samples.isEmpty()) viewModel.refreshSamples()
-        } else {
-            shortcut.zoneId
-                ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
-                ?.takeIf { zone -> zone.id != state.exploreZoneId }
-                ?.let(viewModel::selectExploreZone)
-            val target = exploreAnchorIndex(rows, shortcut.anchor)
-            if (target >= 0) {
-                scrollScope.launch {
-                    if (animationsEnabled) listState.animateScrollToItem(target) else listState.scrollToItem(target)
-                }
+        when (shortcut) {
+            ExploreShortcut.Samples -> {
+                exploreDestination = null
+                samplesStartIndex = 0
+                viewModel.beginSamplesPlayback()
+                if (samples.isEmpty()) viewModel.refreshSamples()
+            }
+            ExploreShortcut.NewReleases -> {
+                samplesStartIndex = null
+                shortcut.zoneId
+                    ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
+                    ?.takeIf { zone -> zone.id != state.exploreZoneId }
+                    ?.let(viewModel::selectExploreZone)
+                exploreDestination = ExploreNewReleasesDestination
+            }
+            ExploreShortcut.Moods -> {
+                samplesStartIndex = null
+                exploreDestination = ExploreMoodsDestination
             }
         }
     }
@@ -17447,7 +17450,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                         ExploreMoodCard(
                             zone = row.leading,
                             isSelected = row.leading.id == state.exploreZoneId,
-                            onClick = { viewModel.selectExploreZone(row.leading) }
+                            onClick = {
+                                viewModel.selectExploreZone(row.leading)
+                                exploreDestination = exploreMoodDestination(row.leading.id)
+                            }
                         )
                         val trailing = row.trailing
                         if (trailing == null) {
@@ -17456,7 +17462,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                             ExploreMoodCard(
                                 zone = trailing,
                                 isSelected = trailing.id == state.exploreZoneId,
-                                onClick = { viewModel.selectExploreZone(trailing) }
+                                onClick = {
+                                    viewModel.selectExploreZone(trailing)
+                                    exploreDestination = exploreMoodDestination(trailing.id)
+                                }
                             )
                         }
                     }
@@ -17478,6 +17487,46 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                     addToPlaylistTarget = null
                 }
             )
+        }
+
+        when (exploreDestination) {
+            ExploreNewReleasesDestination -> ExploreCollectionDestinationScreen(
+                title = strings.exploreNewReleases,
+                subtitle = selectedZone?.label,
+                tracks = freshTracks,
+                isLoading = state.isExploreLoading,
+                currentTrackId = state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                strings = strings,
+                onBack = { exploreDestination = null },
+                onPlayAll = { freshTracks.firstOrNull()?.let { viewModel.playFrom(freshTracks, it) } },
+                onPlayTrack = { track -> viewModel.playFrom(freshTracks, track) }
+            )
+            ExploreMoodsDestination -> ExploreMoodsDestinationScreen(
+                zones = zones,
+                strings = strings,
+                onBack = { exploreDestination = null },
+                onOpenZone = { zone ->
+                    viewModel.selectExploreZone(zone)
+                    exploreDestination = exploreMoodDestination(zone.id)
+                }
+            )
+            else -> exploreMoodDestinationId(exploreDestination)
+                ?.let { zoneId -> zones.firstOrNull { zone -> zone.id == zoneId } }
+                ?.let { zone ->
+                    ExploreCollectionDestinationScreen(
+                        title = zone.label,
+                        subtitle = strings.exploreMoods,
+                        tracks = freshTracks,
+                        isLoading = state.isExploreLoading,
+                        currentTrackId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        strings = strings,
+                        onBack = { exploreDestination = ExploreMoodsDestination },
+                        onPlayAll = { freshTracks.firstOrNull()?.let { viewModel.playFrom(freshTracks, it) } },
+                        onPlayTrack = { track -> viewModel.playFrom(freshTracks, track) }
+                    )
+                }
         }
 
         samplesStartIndex?.let { initialPage ->
