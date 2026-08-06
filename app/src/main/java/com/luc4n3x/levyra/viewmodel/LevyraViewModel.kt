@@ -167,6 +167,14 @@ private data class SamplesPlaybackSession(
     val positionMs: Long
 )
 
+internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Track? {
+    if (list.isEmpty()) return null
+    val requestedIdentity = playbackIdentity(requested)
+    val selected = list.firstOrNull { candidate -> playbackIdentity(candidate) == requestedIdentity }
+        ?: requested
+    return selected.takeIf(::isYoutubeShortTrack)
+}
+
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
@@ -4363,7 +4371,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun playSample(list: List<Track>, track: Track) {
-        if (list.isEmpty()) return
+        val selected = selectYoutubeShortSample(list, track) ?: return
         val currentState = _state.value
         if (samplesPlaybackSession == null) {
             samplesPlaybackSession = SamplesPlaybackSession(
@@ -4377,8 +4385,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
 
-        val selected = list.firstOrNull { candidate -> samePlayableTrack(candidate, track) } ?: track
-        if (!isYoutubeShortTrack(selected)) return
         beginSamplesPlayback()
         val alreadyActive = currentState.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
             currentState.isVideoMode
