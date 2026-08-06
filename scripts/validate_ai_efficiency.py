@@ -21,13 +21,17 @@ REQUIRED_FILES = (
     ".agents/rules/levyra-workspace.md",
     ".agents/skills/levyra-context-efficiency/SKILL.md",
     ".agents/skills/levyra-security-review/SKILL.md",
+    ".claude/hooks/user-prompt-submit.sh",
     ".claude/rules/context-efficiency.md",
+    ".claude/rules/security.md",
     ".github/workflows/dependency-review.yml",
     ".github/workflows/pr-check.yml",
     "codex-plugins.txt",
     "docs/README.md",
-    "docs/ai/README.md",
+    "docs/ai/ANTIGRAVITY.md",
+    "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
     "docs/ai/CODEX_SECURITY.md",
+    "docs/ai/README.md",
     "docs/ai/RTK.md",
     "scripts/setup-ai.ps1",
     "scripts/setup-ai.sh",
@@ -41,10 +45,7 @@ FORBIDDEN_PATHS = (
 )
 
 EXPECTED_SKILL_NAME = "levyra-context-efficiency"
-EXPECTED_PLUGINS = (
-    "superpowers@openai-curated",
-    "codex-security@openai-curated",
-)
+EXPECTED_PLUGINS = ("superpowers@openai-curated",)
 EXPECTED_FILTERS = (
     "levyra-agent-config",
     "levyra-coderabbit",
@@ -131,9 +132,7 @@ def validate_filters(errors: list[str]) -> None:
                 f"RTK filter {filter_name!r} must not replace RTK's Gradle handler",
             )
         filtered_values = {
-            key: value
-            for key, value in config.items()
-            if key not in {"description"}
+            key: value for key, value in config.items() if key != "description"
         }
         parsed_strings = iter_strings(filtered_values)
         for marker in FORBIDDEN_GRADLE_MARKERS:
@@ -144,26 +143,29 @@ def validate_filters(errors: list[str]) -> None:
                 )
 
     setup_filter = filters.get("levyra-agent-tests")
-    if isinstance(setup_filter, dict):
-        pattern = setup_filter.get("match_command")
-        if isinstance(pattern, str):
-            try:
-                matcher = re.compile(pattern)
-            except re.error as exc:
-                fail(errors, f"levyra-agent-tests match_command is invalid regex: {exc}")
-            else:
-                for command in (
-                    r".\scripts\setup-ai.ps1 -DryRun",
-                    "./scripts/setup-ai.sh --dry-run",
-                    r"pwsh .\scripts\setup-ai.ps1 -DryRun",
-                    "bash ./scripts/setup-ai.sh --dry-run",
-                ):
-                    if matcher.search(command) is None:
-                        fail(
-                            errors,
-                            "levyra-agent-tests does not match documented command: "
-                            f"{command}",
-                        )
+    if not isinstance(setup_filter, dict):
+        return
+    pattern = setup_filter.get("match_command")
+    if not isinstance(pattern, str):
+        fail(errors, "levyra-agent-tests is missing a string match_command")
+        return
+    try:
+        matcher = re.compile(pattern)
+    except re.error as exc:
+        fail(errors, f"levyra-agent-tests match_command is invalid regex: {exc}")
+        return
+
+    for command in (
+        r".\scripts\setup-ai.ps1 -DryRun",
+        "./scripts/setup-ai.sh --dry-run",
+        r"pwsh .\scripts\setup-ai.ps1 -DryRun",
+        "bash ./scripts/setup-ai.sh --dry-run",
+    ):
+        if matcher.search(command) is None:
+            fail(
+                errors,
+                f"levyra-agent-tests does not match documented command: {command}",
+            )
 
 
 def main() -> int:
@@ -208,7 +210,7 @@ def main() -> int:
         if plugins != EXPECTED_PLUGINS:
             fail(
                 errors,
-                "codex-plugins.txt must contain exactly the approved plugins in "
+                "codex-plugins.txt must contain exactly the verified plugins in "
                 f"order: {EXPECTED_PLUGINS!r}",
             )
 
@@ -256,11 +258,10 @@ def main() -> int:
         (
             "instruction-based Codex setup",
             "levyra-context-efficiency",
+            "levyra-security-review",
             ".rtk/filters.toml",
-            "setup-ai.ps1",
-            "setup-ai.sh",
-            "codex-plugins.txt",
-            "codex-security@openai-curated",
+            "docs/ai/CODEX_SECURITY.md",
+            "Codex Security",
             "rtk gain",
             "ChrisTitusTech/titus-ai",
             "rtk-ai/rtk",
@@ -269,14 +270,14 @@ def main() -> int:
     require_terms(
         errors,
         "docs/ai/CODEX_SECURITY.md",
-        "Codex Security documentation",
+        "security workflow documentation",
         (
             "threat model",
             "identification",
             "validation",
             "remediation",
             "human review",
-            "codex-security@openai-curated",
+            "revalidation",
             "dependency-review-action",
         ),
     )
@@ -300,11 +301,12 @@ def main() -> int:
         (
             "instruction-based Codex setup",
             "levyra-context-efficiency",
+            "levyra-security-review",
             "Codex Security",
+            "Claude Code",
+            "ChatGPT Project",
+            "Google Antigravity",
             "docs/ai/CODEX_SECURITY.md",
-            ".rtk/filters.toml",
-            "scripts/setup-ai.ps1",
-            "scripts/setup-ai.sh",
         ),
     )
     require_terms(
@@ -314,8 +316,53 @@ def main() -> int:
         (
             "levyra-context-efficiency",
             "levyra-security-review",
-            "RTK",
+            "threat model",
+            "revalidation",
             "rerun the exact command",
+        ),
+    )
+    require_terms(
+        errors,
+        ".claude/rules/security.md",
+        "Claude security rule",
+        (
+            "levyra-security-review",
+            "Threat model",
+            "Validation",
+            "Revalidation",
+            "docs/ai/CODEX_SECURITY.md",
+        ),
+    )
+    require_terms(
+        errors,
+        ".claude/hooks/user-prompt-submit.sh",
+        "Claude security hook",
+        (
+            "levyra-security-review",
+            "threat model",
+            "trust boundary",
+            "supply.?chain",
+        ),
+    )
+    require_terms(
+        errors,
+        "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
+        "ChatGPT Project instructions",
+        (
+            "levyra-security-review",
+            "Require security review",
+            "Preparing work for Codex or Claude Code",
+        ),
+    )
+    require_terms(
+        errors,
+        "docs/ai/ANTIGRAVITY.md",
+        "Antigravity documentation",
+        (
+            "levyra-security-review",
+            "threat model",
+            "revalidation",
+            ".agents/rules/levyra-workspace.md",
         ),
     )
     require_terms(
@@ -333,9 +380,10 @@ def main() -> int:
         ".github/workflows/dependency-review.yml",
         "dependency review workflow",
         (
+            "Check Dependency Graph availability",
             "actions/dependency-review-action@",
             "fail-on-severity: high",
-            "permissions:",
+            "Status: **blocked**, not passed.",
             "contents: read",
         ),
     )
@@ -360,9 +408,9 @@ def main() -> int:
         "AI efficiency validation passed: "
         f"{len(REQUIRED_FILES)} required files, "
         f"{len(EXPECTED_FILTERS)} project filters, "
-        f"{len(EXPECTED_PLUGINS)} approved plugins, "
-        "automatic cross-runtime discovery, security workflow, dependency review, "
-        "and no local-model profiles."
+        f"{len(EXPECTED_PLUGINS)} verified plugin, "
+        "Codex/Claude/ChatGPT/Antigravity security routing, "
+        "dependency-review preflight, and no local-model profiles."
     )
     return 0
 
