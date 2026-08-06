@@ -113,6 +113,19 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
+    fun localizedFallbacksExistWithoutListeningHistory() {
+        val queries = youtubeShortQueries(
+            seeds = emptyList(),
+            preferredArtists = emptyList(),
+            languageCode = "it"
+        )
+
+        assertTrue(queries.isNotEmpty())
+        assertEquals("shorts musica italiana", queries.first())
+        assertTrue(queries.contains("musica virale shorts"))
+    }
+
+    @Test
     fun artistBrowseIdsAndFollowedChannelIdsBecomeDirectChannelUrls() {
         val track = track(artistBrowseIds = listOf("UC1234567890123456789012"))
 
@@ -134,7 +147,7 @@ class YoutubeShortsRepositoryTest {
     fun channelUrlsAreNormalizedWithoutAcceptingUnrelatedBrowseIds() {
         assertEquals(
             "https://www.youtube.com/@artist",
-            canonicalYoutubeChannelUrl("/ @artist".replace(" ", ""))
+            canonicalYoutubeChannelUrl("/@artist")
         )
         assertEquals(
             "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
