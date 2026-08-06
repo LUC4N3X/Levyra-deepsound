@@ -210,7 +210,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git show HEAD^:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
+          git show db5245e551d44139381c16e76a93cdb7b4edd353:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
           git rm .github/scripts/pr-313-destinations-and-fast-feed.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
