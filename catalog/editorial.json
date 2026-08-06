@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-06T07:04:21Z",
+  "generatedAt": "2026-08-06T07:42:14Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1116,6 +1116,12 @@
           },
           "durationMs": 181384,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ko1x5v-zaNU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3t2VUrtQbfgr_s8sd0qSqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02158cbe80b9b9573b46d2b50f"
         },
         {
@@ -1935,7 +1941,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1943,12 +1949,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 33,
@@ -2015,7 +2021,7 @@
           "durationMs": 208024,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "w5eysjwoDKU",
+            "audioVideoId": "xtKJAAJqrfA",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
@@ -6883,6 +6889,12 @@
           },
           "durationMs": 181384,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ko1x5v-zaNU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3t2VUrtQbfgr_s8sd0qSqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02158cbe80b9b9573b46d2b50f"
         },
         {
@@ -9723,6 +9735,12 @@
           },
           "durationMs": 181384,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ko1x5v-zaNU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3t2VUrtQbfgr_s8sd0qSqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02158cbe80b9b9573b46d2b50f"
         },
         {
@@ -16340,7 +16358,7 @@
         },
         {
           "position": 41,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16348,8 +16366,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16359,7 +16377,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 42,
@@ -17458,20 +17476,20 @@
         },
         {
           "position": 41,
-          "id": "levyra-9d3af210c1d9093eda1e",
-          "title": "Zakázané uvolnění",
+          "id": "levyra-a5a017fba38add2b0e35",
+          "title": "Zakazane uvolneni",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Hity & příběhy (Best Of 2001-2021)",
-            "releaseDate": "2021-11-26"
+            "name": "Den",
+            "releaseDate": "2014-05-12"
           },
-          "durationMs": 217013,
+          "durationMs": 217426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
         },
         {
           "position": 42,
@@ -18106,12 +18124,6 @@
           },
           "durationMs": 152184,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "fPYUIaI4lsg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC3b9OZ16ZaKEXbJ2xq7J4DQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a0cbc5f07d3a807b85fafe55"
         },
         {
@@ -18725,14 +18737,6 @@
           },
           "durationMs": 245669,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qRKUM9k0ntY",
-            "audioConfidence": 100,
-            "videoId": "EQQNb4iJVIk",
-            "videoConfidence": 97,
-            "confidence": 100,
-            "artistBrowseId": "UCavTTSUSD6aYPeF-F3ND9Yg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0265529d64da7ebede606463ae"
         },
         {
@@ -24208,7 +24212,7 @@
         },
         {
           "position": 50,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24222,12 +24226,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         }
       ]
     },
@@ -26432,11 +26436,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 44,
@@ -28149,7 +28153,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 23,
