@@ -39,6 +39,7 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.YoutubeShortsRepository
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
+import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
@@ -4631,6 +4632,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val exploreCache = ConcurrentHashMap<String, List<Track>>()
     private var musicVideosLoadedLanguage = ""
+    private var musicVideosRetryLanguage = ""
+    private var musicVideosRetryAfterMs = 0L
+    private var musicVideosFailureCount = 0
     private var musicVideosJob: Job? = null
     private var exploreJob: Job? = null
 
@@ -4638,10 +4642,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
         if (musicVideosJob?.isActive == true) return
+        if (musicVideosLoadedLanguage == languageCode) return
+
+        val now = System.currentTimeMillis()
+        if (musicVideosRetryLanguage != languageCode) {
+            musicVideosRetryLanguage = languageCode
+            musicVideosRetryAfterMs = 0L
+            musicVideosFailureCount = 0
+        }
+        if (now < musicVideosRetryAfterMs) return
 
         val hasVerifiedShorts = snapshot.exploreVideos.isNotEmpty() &&
             snapshot.exploreVideos.all(::isYoutubeShortTrack)
-        if (musicVideosLoadedLanguage == languageCode && hasVerifiedShorts) return
         if (!hasVerifiedShorts && snapshot.exploreVideos.isNotEmpty()) {
             _state.update { current -> current.copy(exploreVideos = emptyList()) }
         }
@@ -4657,22 +4669,47 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .distinctBy { track -> track.id }
                 .take(32)
 
-            val shorts = withContext(Dispatchers.IO) {
-                runCatching {
-                    shortsRepository.feed(
-                        seeds = seeds,
-                        languageCode = languageCode,
-                        limit = EXPLORE_SHORTS_FEED_LIMIT
-                    )
-                }.getOrDefault(emptyList())
+            val feedResult = try {
+                shortsRepository.feed(
+                    seeds = seeds,
+                    languageCode = languageCode,
+                    limit = EXPLORE_SHORTS_FEED_LIMIT
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Shorts feed failed for %s", languageCode)
+                null
             }
             if (_state.value.languageCode != languageCode) return@launch
 
-            musicVideosLoadedLanguage = languageCode.takeIf { shorts.isNotEmpty() }.orEmpty()
+            if (feedResult == null || !feedResult.isConclusive) {
+                registerShortsFeedFailure(languageCode)
+                return@launch
+            }
+
+            musicVideosLoadedLanguage = languageCode
+            musicVideosRetryLanguage = ""
+            musicVideosRetryAfterMs = 0L
+            musicVideosFailureCount = 0
             _state.update { current ->
-                if (current.languageCode == languageCode) current.copy(exploreVideos = shorts) else current
+                if (current.languageCode == languageCode) {
+                    current.copy(exploreVideos = feedResult.tracks)
+                } else {
+                    current
+                }
             }
         }
+    }
+
+    private fun registerShortsFeedFailure(languageCode: String) {
+        if (musicVideosRetryLanguage != languageCode) {
+            musicVideosRetryLanguage = languageCode
+            musicVideosFailureCount = 0
+        }
+        musicVideosFailureCount = (musicVideosFailureCount + 1).coerceAtMost(5)
+        musicVideosRetryAfterMs = System.currentTimeMillis() +
+            youtubeShortsRetryDelayMs(musicVideosFailureCount)
     }
 
     fun ensureExplore(strings: LevyraStrings) {
