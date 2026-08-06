@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.primaryArtistSegment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -263,6 +264,7 @@ private const val YOUTUBE_MUSIC_SAMPLE_LOCALIZED_QUERY_LIMIT = 3
 private const val YOUTUBE_MUSIC_SAMPLE_QUERY_CONCURRENCY = 4
 private const val YOUTUBE_MUSIC_SAMPLE_RESULTS_PER_QUERY = 8
 private const val YOUTUBE_MUSIC_NEW_RELEASE_FALLBACK_LIMIT = 4
+private const val YOUTUBE_MUSIC_ARTIST_CONTAINS_MIN_LENGTH = 4
 
 private val GENERIC_NEW_RELEASE_TITLE = Regex(
     """\b(?:best\s+of|greatest\s+hits?|hits?\s+vol(?:ume)?|vol(?:ume)?\.?\s*\d+|collection|compilation|karaoke|type\s+beat|tribute|instrumental\s+versions?)\b""",
@@ -434,7 +436,13 @@ private fun normalizedReleaseArtist(value: String): String = Normalizer.normaliz
 private fun matchingArtistSignalIndex(artist: String, signals: List<String>): Int {
     if (artist.length < 2) return -1
     return signals.indexOfFirst { signal ->
-        signal.length >= 2 && (artist == signal || artist.contains(signal) || signal.contains(artist))
+        when {
+            signal.length < 2 -> false
+            artist == signal -> true
+            artist.length < YOUTUBE_MUSIC_ARTIST_CONTAINS_MIN_LENGTH -> false
+            signal.length < YOUTUBE_MUSIC_ARTIST_CONTAINS_MIN_LENGTH -> false
+            else -> artist.contains(signal) || signal.contains(artist)
+        }
     }
 }
 
@@ -760,21 +768,30 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             queries.map { query ->
                 async {
                     limiter.withPermit {
-                        runCatching {
+                        try {
                             searchMusicVideoSamples(
                                 query = query,
                                 languageCode = languageCode,
                                 limit = YOUTUBE_MUSIC_SAMPLE_RESULTS_PER_QUERY
                             )
-                        }.getOrDefault(emptyList())
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                            emptyList()
+                        }
                     }
                 }
             }.awaitAll()
         }
         val personalizedAndLocal = interleaveYoutubeMusicSampleResults(queryGroups, boundedLimit)
-        val nativeVideos = runCatching { explore(languageCode).newVideos }
-            .getOrDefault(emptyList())
-            .mapNotNull(::asYoutubeMusicSample)
+        val exploreVideos = try {
+            explore(languageCode).newVideos
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        val nativeVideos = exploreVideos.mapNotNull(::asYoutubeMusicSample)
         (personalizedAndLocal + nativeVideos)
             .distinctBy { it.id }
             .take(boundedLimit)
@@ -1257,8 +1274,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 albumBrowseId = albumReference.second,
                 artistBrowseIds = artistReferences.map { it.browseId },
                 trackNumber = trackNumber,
-                explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
-                videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty()
+                explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT")
             )
         }.distinctBy { it.id }
     }
@@ -2215,7 +2231,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = query,
             source = "YouTube Music",
-            artistBrowseIds = artistReferences.map { it.browseId }
+            artistBrowseIds = artistReferences.map { it.browseId },
+            videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty()
         )
     }
 

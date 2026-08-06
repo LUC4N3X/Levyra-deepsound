@@ -28,26 +28,30 @@ internal class YoutubeShortsCache(context: Context) {
     )
 
     fun load(languageCode: String, profileSignature: String = ""): YoutubeShortsCacheSnapshot {
-        val key = cacheKey(languageCode, profileSignature)
-        val raw = preferences.getString(key, null).orEmpty()
+        val raw = preferences.getString(cacheKey(languageCode), null).orEmpty()
         if (raw.isBlank()) return YoutubeShortsCacheSnapshot(emptyList(), 0L)
         return runCatching {
             val root = JSONObject(raw)
-            val items = root.optJSONArray("tracks") ?: JSONArray()
-            val tracks = buildList {
-                for (index in 0 until items.length()) {
-                    items.optJSONObject(index)
-                        ?.let(TrackJson::fromJson)
-                        ?.takeIf(::isYoutubeShortTrack)
-                        ?.let(::add)
+            val wantedProfile = profileSignature.trim()
+            if (wantedProfile.isNotBlank() && root.optString("profile") != profileFingerprint(wantedProfile)) {
+                YoutubeShortsCacheSnapshot(emptyList(), 0L)
+            } else {
+                val items = root.optJSONArray("tracks") ?: JSONArray()
+                val tracks = buildList {
+                    for (index in 0 until items.length()) {
+                        items.optJSONObject(index)
+                            ?.let(TrackJson::fromJson)
+                            ?.takeIf(::isYoutubeShortTrack)
+                            ?.let(::add)
+                    }
                 }
+                    .distinctBy { track -> track.id }
+                    .take(SHORTS_CACHE_LIMIT)
+                YoutubeShortsCacheSnapshot(
+                    tracks = tracks,
+                    savedAtMs = root.optLong("savedAtMs", 0L)
+                )
             }
-                .distinctBy { track -> track.id }
-                .take(SHORTS_CACHE_LIMIT)
-            YoutubeShortsCacheSnapshot(
-                tracks = tracks,
-                savedAtMs = root.optLong("savedAtMs", 0L)
-            )
         }.getOrElse { error ->
             Timber.w(error, "Unable to read Shorts cache for %s", languageCode)
             YoutubeShortsCacheSnapshot(emptyList(), 0L)
@@ -72,18 +76,17 @@ internal class YoutubeShortsCache(context: Context) {
         }
         val root = JSONObject()
             .put("savedAtMs", savedAtMs.coerceAtLeast(0L))
+            .put("profile", profileFingerprint(profileSignature))
             .put("tracks", array)
-        preferences.edit().putString(cacheKey(languageCode, profileSignature), root.toString()).apply()
+        preferences.edit().putString(cacheKey(languageCode), root.toString()).apply()
     }
 
-    private fun cacheKey(languageCode: String, profileSignature: String): String {
-        val language = LevyraLanguageCatalog.normalize(languageCode)
-        val normalizedProfile = profileSignature.trim().lowercase(Locale.ROOT)
-        val suffix = if (normalizedProfile.isBlank()) {
-            "default"
-        } else {
-            normalizedProfile.hashCode().toUInt().toString(16)
-        }
-        return "shorts_${language}_$suffix"
+    private fun cacheKey(languageCode: String): String =
+        "shorts_${LevyraLanguageCatalog.normalize(languageCode)}"
+
+    private fun profileFingerprint(profileSignature: String): String {
+        val normalized = profileSignature.trim().lowercase(Locale.ROOT)
+        if (normalized.isBlank()) return "default"
+        return normalized.hashCode().toUInt().toString(16)
     }
 }

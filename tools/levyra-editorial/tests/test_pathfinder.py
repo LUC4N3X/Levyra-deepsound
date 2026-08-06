@@ -213,3 +213,16 @@ def test_track_metadata_enrichment_retries_one_rate_limited_batch(monkeypatch: p
     ]
     assert enriched[0]["track"]["external_ids"]["isrc"] == "ITB002000001"
     assert enriched[0]["track"]["album"]["album_type"] == "album"
+
+
+def test_playlist_limit_stops_paging_after_the_first_page() -> None:
+    session = PathfinderSession(FakeResponse(playlist_payload()))
+    client = authenticated_client(session)
+
+    assert client.iter_playlist_items("playlist12345", limit=0) == []
+    assert session.calls == []
+
+    items = client.iter_playlist_items("playlist12345", limit=1)
+
+    assert len(items) == 1
+    assert len(session.calls) == 1

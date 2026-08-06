@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -35,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -59,6 +62,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 internal const val ExploreNewReleasesDestination = "explore-destination-new-releases"
 internal const val ExploreMoodsDestination = "explore-destination-moods"
 private const val ExploreMoodDestinationPrefix = "explore-destination-mood:"
+private val ExploreDestinationHeaderHeight = 66.dp
 
 internal fun exploreMoodDestination(zoneId: String): String = "$ExploreMoodDestinationPrefix$zoneId"
 internal fun exploreMoodDestinationId(destination: String?): String? =
@@ -255,10 +259,10 @@ private fun ExploreDestinationReleaseRow(
             )
         }
         Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
             contentDescription = null,
             tint = LevyraText,
-            modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = 180f }
+            modifier = Modifier.size(20.dp)
         )
     }
 }
@@ -322,13 +326,14 @@ private fun ExploreDestinationSurface(
     trailing: (@Composable () -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
             .zIndex(24f)
     ) {
-        content(PaddingValues(top = 94.dp))
+        content(PaddingValues(top = statusBarTop + ExploreDestinationHeaderHeight))
         Row(
             modifier = Modifier
                 .align(Alignment.TopCenter)

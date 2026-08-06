@@ -377,7 +377,7 @@
       "market": "RU",
       "title": "New releases",
       "limit": 20,
-      "optional": false,
+      "optional": true,
       "playlistQuery": "New Music Friday Russia",
       "titleHints": [
         "New Music Friday Russia"
@@ -418,7 +418,7 @@
       "market": "CN",
       "title": "New releases",
       "limit": 20,
-      "optional": false,
+      "optional": true,
       "playlistId": "37i9dQZF1DX4JAvHpjipBk"
     },
     {

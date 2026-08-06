@@ -160,6 +160,12 @@ private data class HomeArtistCandidate(
     val browseId: String
 )
 
+private data class SamplesDiscoveryInput(
+    val seeds: List<Track>,
+    val preferredArtists: List<String>,
+    val preferredChannelIds: List<String>
+)
+
 private data class SamplesPlaybackSession(
     val queue: PlaybackQueueSnapshot,
     val currentTrack: Track?,
@@ -4716,153 +4722,159 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun ensureMusicVideosLoaded() {
+        if (musicVideosJob?.isActive == true) return
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
         val profileSignature = samplesDiscoveryProfileSignature(snapshot)
-        if (musicVideosJob?.isActive == true) return
-        if (snapshot.exploreVideos.isEmpty()) {
-            val cached = shortsCache.load(languageCode, profileSignature)
-            if (cached.tracks.isNotEmpty()) {
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(
-                            exploreVideos = cached.tracks,
-                            isSamplesLoading = false,
-                            samplesLoadFailed = false
-                        )
-                    } else {
-                        current
-                    }
-                }
-                if (cached.isFresh()) {
-                    musicVideosLoadedLanguage = languageCode
-                    musicVideosLoadedProfileSignature = profileSignature
-                    return
-                }
-            }
-        }
         if (
             musicVideosLoadedLanguage == languageCode &&
-            musicVideosLoadedProfileSignature == profileSignature
+            musicVideosLoadedProfileSignature == profileSignature &&
+            snapshot.exploreVideos.isNotEmpty()
         ) return
-
-        val now = System.currentTimeMillis()
         if (musicVideosRetryLanguage != languageCode) {
             musicVideosRetryLanguage = languageCode
             musicVideosRetryAfterMs = 0L
             musicVideosFailureCount = 0
         }
-        if (now < musicVideosRetryAfterMs) return
+        if (System.currentTimeMillis() < musicVideosRetryAfterMs) return
 
-        val hasVerifiedShorts = snapshot.exploreVideos.isNotEmpty() &&
-            snapshot.exploreVideos.all(::isYoutubeShortTrack)
-        if (!hasVerifiedShorts && snapshot.exploreVideos.isNotEmpty()) {
-            _state.update { current -> current.copy(exploreVideos = emptyList()) }
-        }
-
-        _state.update { current ->
-            if (current.languageCode == languageCode) {
-                current.copy(isSamplesLoading = true, samplesLoadFailed = false)
-            } else {
-                current
-            }
+        updateSamplesState(languageCode) { current ->
+            current.copy(isSamplesLoading = true, samplesLoadFailed = false)
         }
         musicVideosJob = viewModelScope.launch {
-            val seedSnapshot = _state.value
-            val seeds = buildList {
-                seedSnapshot.currentTrack?.let { track -> add(track) }
-                addAll(seedSnapshot.recentListens)
-                addAll(seedSnapshot.favorites)
-                addAll(seedSnapshot.personalOrbitTracks)
-                addAll(seedSnapshot.homeResonanceTracks)
-                addAll(seedSnapshot.exploreTracks)
-                addAll(seedSnapshot.charts)
-                seedSnapshot.homeSections.forEach { section -> addAll(section.tracks) }
-                addAll(seedSnapshot.tracks)
-            }
-                .distinctBy { track -> track.id }
-                .take(48)
-            val preferredArtists = discoveryPreferredArtists(seedSnapshot, 16)
-            val preferredChannelIds = buildList {
-                addAll(seedSnapshot.followedArtists.map { artist -> artist.browseId })
-                seeds.forEach { track -> addAll(track.artistBrowseIds) }
-            }
-                .map(String::trim)
-                .filter(String::isNotBlank)
-                .distinct()
-                .take(20)
-
-            val youtubeMusicSamples = try {
-                repository.musicSamples(
-                    seeds = seeds,
-                    preferredArtists = preferredArtists,
-                    languageCode = languageCode,
-                    limit = EXPLORE_SHORTS_FEED_LIMIT
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.w(error, "YouTube Music Samples feed failed for %s", languageCode)
-                emptyList()
-            }
-            val fallbackFeed = if (youtubeMusicSamples.isEmpty()) {
-                try {
-                    shortsRepository.feed(
-                        seeds = seeds,
-                        languageCode = languageCode,
-                        preferredArtists = preferredArtists,
-                        preferredChannelIds = preferredChannelIds,
-                        limit = EXPLORE_SHORTS_FEED_LIMIT
-                    )
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    Timber.w(error, "NewPipe Shorts fallback failed for %s", languageCode)
-                    null
-                }
-            } else {
-                null
-            }
-            if (_state.value.languageCode != languageCode) return@launch
-
-            val resolvedFeedTracks = youtubeMusicSamples.ifEmpty { fallbackFeed?.tracks.orEmpty() }
-            val feedIsConclusive = youtubeMusicSamples.isNotEmpty() || fallbackFeed?.isConclusive == true
-            if (!feedIsConclusive || resolvedFeedTracks.isEmpty()) {
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(isSamplesLoading = false, samplesLoadFailed = true)
-                    } else {
-                        current
-                    }
-                }
-                registerShortsFeedFailure(languageCode)
-                return@launch
-            }
-
-            musicVideosLoadedLanguage = languageCode
-            musicVideosLoadedProfileSignature = profileSignature
-            musicVideosRetryLanguage = ""
-            musicVideosRetryAfterMs = 0L
-            musicVideosFailureCount = 0
-            _state.update { current ->
-                if (current.languageCode == languageCode) {
-                    current.copy(
-                        exploreVideos = resolvedFeedTracks,
-                        isSamplesLoading = false,
-                        samplesLoadFailed = false
-                    )
-                } else {
-                    current
-                }
-            }
-            withContext(Dispatchers.IO) {
-                shortsCache.save(
-                    languageCode = languageCode,
-                    tracks = resolvedFeedTracks,
-                    profileSignature = profileSignature
-                )
-            }
+            if (publishCachedSamples(languageCode, profileSignature)) return@launch
+            refreshSamplesFeed(languageCode, profileSignature)
         }
+    }
+
+    private fun updateSamplesState(languageCode: String, transform: (LevyraUiState) -> LevyraUiState) {
+        _state.update { current ->
+            if (current.languageCode == languageCode) transform(current) else current
+        }
+    }
+
+    private suspend fun publishCachedSamples(languageCode: String, profileSignature: String): Boolean {
+        if (_state.value.exploreVideos.isNotEmpty()) return false
+        val cached = withContext(Dispatchers.IO) { shortsCache.load(languageCode, profileSignature) }
+        if (cached.tracks.isEmpty()) return false
+        updateSamplesState(languageCode) { current ->
+            current.copy(
+                exploreVideos = cached.tracks,
+                isSamplesLoading = false,
+                samplesLoadFailed = false
+            )
+        }
+        if (!cached.isFresh()) return false
+        musicVideosLoadedLanguage = languageCode
+        musicVideosLoadedProfileSignature = profileSignature
+        return true
+    }
+
+    private suspend fun refreshSamplesFeed(languageCode: String, profileSignature: String) {
+        val snapshot = _state.value
+        if (snapshot.exploreVideos.isNotEmpty() && !snapshot.exploreVideos.all(::isYoutubeShortTrack)) {
+            _state.update { current -> current.copy(exploreVideos = emptyList()) }
+        }
+        updateSamplesState(languageCode) { current ->
+            current.copy(isSamplesLoading = true, samplesLoadFailed = false)
+        }
+        val resolvedFeedTracks = resolveSamplesFeed(samplesDiscoveryInput(_state.value), languageCode)
+        if (_state.value.languageCode != languageCode) return
+        if (resolvedFeedTracks == null) {
+            updateSamplesState(languageCode) { current ->
+                current.copy(isSamplesLoading = false, samplesLoadFailed = true)
+            }
+            registerShortsFeedFailure(languageCode)
+            return
+        }
+
+        musicVideosLoadedLanguage = languageCode
+        musicVideosLoadedProfileSignature = profileSignature
+        musicVideosRetryLanguage = ""
+        musicVideosRetryAfterMs = 0L
+        musicVideosFailureCount = 0
+        updateSamplesState(languageCode) { current ->
+            current.copy(
+                exploreVideos = resolvedFeedTracks,
+                isSamplesLoading = false,
+                samplesLoadFailed = false
+            )
+        }
+        withContext(Dispatchers.IO) {
+            shortsCache.save(
+                languageCode = languageCode,
+                tracks = resolvedFeedTracks,
+                profileSignature = profileSignature
+            )
+        }
+    }
+
+    private fun samplesDiscoveryInput(snapshot: LevyraUiState): SamplesDiscoveryInput {
+        val seeds = buildList {
+            snapshot.currentTrack?.let { track -> add(track) }
+            addAll(snapshot.recentListens)
+            addAll(snapshot.favorites)
+            addAll(snapshot.personalOrbitTracks)
+            addAll(snapshot.homeResonanceTracks)
+            addAll(snapshot.exploreTracks)
+            addAll(snapshot.charts)
+            snapshot.homeSections.forEach { section -> addAll(section.tracks) }
+            addAll(snapshot.tracks)
+        }
+            .distinctBy { track -> track.id }
+            .take(48)
+        val preferredChannelIds = buildList {
+            addAll(snapshot.followedArtists.map { artist -> artist.browseId })
+            seeds.forEach { track -> addAll(track.artistBrowseIds) }
+        }
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .take(20)
+        return SamplesDiscoveryInput(
+            seeds = seeds,
+            preferredArtists = discoveryPreferredArtists(snapshot, 16),
+            preferredChannelIds = preferredChannelIds
+        )
+    }
+
+    private suspend fun resolveSamplesFeed(
+        input: SamplesDiscoveryInput,
+        languageCode: String
+    ): List<Track>? {
+        val youtubeMusicSamples = try {
+            repository.musicSamples(
+                seeds = input.seeds,
+                preferredArtists = input.preferredArtists,
+                languageCode = languageCode,
+                limit = EXPLORE_SHORTS_FEED_LIMIT
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "YouTube Music Samples feed failed for %s", languageCode)
+            emptyList()
+        }
+        if (youtubeMusicSamples.isNotEmpty()) return youtubeMusicSamples
+
+        val fallbackFeed = try {
+            shortsRepository.feed(
+                seeds = input.seeds,
+                languageCode = languageCode,
+                preferredArtists = input.preferredArtists,
+                preferredChannelIds = input.preferredChannelIds,
+                limit = EXPLORE_SHORTS_FEED_LIMIT
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "NewPipe Shorts fallback failed for %s", languageCode)
+            null
+        }
+        if (fallbackFeed == null || !fallbackFeed.isConclusive || fallbackFeed.tracks.isEmpty()) {
+            return null
+        }
+        return fallbackFeed.tracks
     }
 
     private fun registerShortsFeedFailure(languageCode: String) {

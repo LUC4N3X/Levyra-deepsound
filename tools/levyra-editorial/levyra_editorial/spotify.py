@@ -337,9 +337,13 @@ class SpotifyWebClient:
     def iter_playlist_items(
         self,
         playlist_id: str,
+        limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        """Fetch every track item from one configured playlist, preserving order."""
+        """Fetch ordered track items, stopping once the requested limit is reached."""
         normalized_id = self._validate_playlist_id(playlist_id)
+        wanted = limit if limit is None or limit > 0 else 0
+        if wanted == 0:
+            return []
         offset = 0
         output: list[dict[str, Any]] = []
         total: int | None = None
@@ -374,10 +378,12 @@ class SpotifyWebClient:
             if consumed == 0:
                 break
             offset += consumed
+            if wanted is not None and len(output) >= wanted:
+                break
             if total is None or total <= offset:
                 break
 
-        return output
+        return output[:wanted] if wanted is not None else output
 
     def resolve_playlist_id(
         self,

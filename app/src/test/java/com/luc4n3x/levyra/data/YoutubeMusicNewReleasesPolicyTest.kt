@@ -48,6 +48,22 @@ class YoutubeMusicNewReleasesPolicyTest {
         assertFalse(ranked.any { it.title.contains("Hits Vol", ignoreCase = true) })
     }
 
+    @Test
+    fun shortArtistNamesOnlyMatchPreferencesExactly() {
+        val substringNoise = release("Adele", "Album", "noise", ReleaseType.Album)
+        val exactMatch = release("Ade", "Album", "exact", ReleaseType.Album)
+
+        val ranked = rankYoutubeMusicNewReleases(
+            releases = listOf(substringNoise, exactMatch),
+            preferredArtists = listOf("Ade"),
+            popularArtists = emptyList(),
+            currentYear = 2026,
+            limit = 10
+        )
+
+        assertEquals(listOf("MPREexact", "MPREnoise"), ranked.map { it.browseId })
+    }
+
     private fun release(
         artist: String,
         title: String,

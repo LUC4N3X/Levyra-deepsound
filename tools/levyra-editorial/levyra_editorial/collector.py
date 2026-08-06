@@ -22,8 +22,12 @@ class EditorialClient(Protocol):
     def get_playlist_metadata(self, playlist_id: str) -> dict[str, Any]:
         """Return public metadata for a playlist."""
 
-    def iter_playlist_items(self, playlist_id: str) -> list[dict[str, Any]]:
-        """Return all ordered playlist items."""
+    def iter_playlist_items(
+        self,
+        playlist_id: str,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return ordered playlist items, bounded by limit when it is provided."""
 
     def resolve_playlist_id(
         self,
@@ -152,7 +156,7 @@ def _collect_configured_collection(
     fallback_id = str(item.get("fallbackPlaylistId") or "").strip()
     title_hints = [
         str(value).strip()
-        for value in item.get("titleHints", [])
+        for value in (item.get("titleHints") or [])
         if isinstance(value, str) and value.strip()
     ]
 
@@ -189,7 +193,7 @@ def _collect_configured_collection(
     for playlist_id in candidates:
         try:
             metadata = client.get_playlist_metadata(playlist_id)
-            raw_items = client.iter_playlist_items(playlist_id)[:item_limit]
+            raw_items = client.iter_playlist_items(playlist_id, limit=item_limit)[:item_limit]
             enricher = getattr(client, "enrich_track_metadata", None)
             if callable(enricher):
                 try:

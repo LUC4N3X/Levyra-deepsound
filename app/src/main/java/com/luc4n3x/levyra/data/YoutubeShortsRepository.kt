@@ -13,6 +13,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.channel.ChannelInfo
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
@@ -31,6 +32,8 @@ private const val MAX_SHORT_DURATION_SECONDS = 180L
 private const val SHORTS_SEARCH_TIMEOUT_MS = 5_500L
 private const val SHORTS_CHANNEL_TIMEOUT_MS = 6_500L
 private const val YOUTUBE_FRONTEND = "https://www.youtube.com"
+private val YOUTUBE_CHANNEL_HOSTS = setOf("youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com")
+private val YOUTUBE_CHANNEL_PATH_PREFIXES = setOf("channel", "c", "user")
 
 internal data class YoutubeShortsFeedResult(
     val tracks: List<Track>,
@@ -370,18 +373,22 @@ internal fun canonicalYoutubeChannelUrl(value: String): String? {
         return "$YOUTUBE_FRONTEND/channel/$candidate"
     }
     val absolute = when {
-        candidate.startsWith("https://", ignoreCase = true) ||
-            candidate.startsWith("http://", ignoreCase = true) -> candidate
+        candidate.startsWith("https://", ignoreCase = true) -> candidate
         candidate.startsWith("/") -> "$YOUTUBE_FRONTEND$candidate"
         else -> return null
     }
-    val normalized = absolute.substringBefore('?').substringBefore('#').trimEnd('/')
-    return normalized.takeIf { url ->
-        url.contains("youtube.com/channel/", ignoreCase = true) ||
-            url.contains("youtube.com/@", ignoreCase = true) ||
-            url.contains("youtube.com/c/", ignoreCase = true) ||
-            url.contains("youtube.com/user/", ignoreCase = true)
+    val parsed = absolute.toHttpUrlOrNull() ?: return null
+    if (!parsed.isHttps || parsed.port != 443) return null
+    if (parsed.username.isNotEmpty() || parsed.password.isNotEmpty()) return null
+    if (parsed.host.lowercase(Locale.ROOT) !in YOUTUBE_CHANNEL_HOSTS) return null
+    val segments = parsed.pathSegments.filter(String::isNotBlank)
+    val head = segments.firstOrNull() ?: return null
+    if (head.startsWith("@")) {
+        return if (head.length > 1) "$YOUTUBE_FRONTEND/$head" else null
     }
+    val prefix = head.lowercase(Locale.ROOT).takeIf { it in YOUTUBE_CHANNEL_PATH_PREFIXES } ?: return null
+    val identifier = segments.getOrNull(1)?.takeIf(String::isNotBlank) ?: return null
+    return "$YOUTUBE_FRONTEND/$prefix/$identifier"
 }
 
 private fun localizedShortQueries(languageCode: String): List<String> {

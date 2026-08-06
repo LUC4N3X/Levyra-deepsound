@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -188,6 +189,38 @@ class YoutubeShortsRepositoryTest {
             canonicalYoutubeChannelUrl("UCabcdefghijklmnopqrstuv")
         )
         assertEquals(null, canonicalYoutubeChannelUrl("MPLA-not-a-channel"))
+    }
+
+    @Test
+    fun lookalikeChannelHostsAreRejected() {
+        listOf(
+            "https://youtube.com.attacker.example/channel/UCabcdefghijklmnopqrstuv",
+            "https://notyoutube.com/channel/UCabcdefghijklmnopqrstuv",
+            "https://attacker.example/?next=https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+            "https://www.youtube.com:8443/channel/UCabcdefghijklmnopqrstuv",
+            "https://user:token@www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+            "http://www.youtube.com/channel/UCabcdefghijklmnopqrstuv"
+        ).forEach { candidate ->
+            assertNull(candidate, canonicalYoutubeChannelUrl(candidate))
+        }
+    }
+
+    @Test
+    fun officialChannelHostsAreCanonicalizedAndStripped() {
+        assertEquals(
+            "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+            canonicalYoutubeChannelUrl("https://m.youtube.com/channel/UCabcdefghijklmnopqrstuv?si=track#top")
+        )
+        assertEquals(
+            "https://www.youtube.com/@artist",
+            canonicalYoutubeChannelUrl("https://music.youtube.com/@artist/videos")
+        )
+        assertEquals(
+            "https://www.youtube.com/user/legacy",
+            canonicalYoutubeChannelUrl("https://youtube.com/user/legacy/")
+        )
+        assertNull(canonicalYoutubeChannelUrl("https://www.youtube.com/channel"))
+        assertNull(canonicalYoutubeChannelUrl("https://www.youtube.com/watch?v=abcdefghijk"))
     }
 
     private fun track(
