@@ -38,19 +38,19 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
-    fun shortSearchFallbackAcceptsBoundedVideoResults() {
-        assertTrue(
+    fun shortSearchFallbackRejectsUnverifiedBoundedVideos() {
+        assertFalse(
             isYoutubeShortSearchFallbackCandidate(
                 isShortFormContent = false,
                 url = "https://www.youtube.com/watch?v=abcdefghijk",
                 durationSeconds = 90L
             )
         )
-        assertFalse(
+        assertTrue(
             isYoutubeShortSearchFallbackCandidate(
                 isShortFormContent = false,
-                url = "https://www.youtube.com/watch?v=abcdefghijk",
-                durationSeconds = 181L
+                url = "https://www.youtube.com/shorts/abcdefghijk",
+                durationSeconds = 90L
             )
         )
     }
