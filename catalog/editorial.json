@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07T06:08:19Z",
+  "generatedAt": "2026-08-07T07:03:02Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1452,7 +1452,7 @@
           "durationMs": 217240,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "A0ttKAXj1xU",
+            "audioVideoId": "2xklUpzCXcQ",
             "audioConfidence": 100,
             "videoId": "Dg47eNL_Usw",
             "videoConfidence": 100,
@@ -1503,7 +1503,7 @@
         },
         {
           "position": 13,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1511,8 +1511,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1522,7 +1522,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 14,
@@ -10411,11 +10411,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 39,
@@ -10801,6 +10801,12 @@
           },
           "durationMs": 213559,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "vtlRXh2C9_Y",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC8Yuo0-S4BMCXWzYajCbMug"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bb76d47861576a1f2a62911c"
         },
         {
@@ -15033,7 +15039,7 @@
         },
         {
           "position": 31,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15041,8 +15047,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15052,7 +15058,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 32,
@@ -22334,12 +22340,6 @@
           },
           "durationMs": 180000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "hGqYdubpcCM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_Cx288SDUD9liYn7CiJLAA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d179b01c0b9baac10170d1ad"
         },
         {
@@ -24097,7 +24097,7 @@
         },
         {
           "position": 49,
-          "id": "levyra-0212b4c8036ae7ca6989",
+          "id": "levyra-e58c98ea589fa449e1d7",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24114,12 +24114,12 @@
             }
           ],
           "album": {
-            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
-            "releaseDate": "2009-02-19"
+            "name": "Guru (Original Motion Picture Soundtrack)",
+            "releaseDate": "2006-09-11"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
         },
         {
           "position": 50,
@@ -30146,6 +30146,12 @@
           },
           "durationMs": 185000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "wkr1JO1Q5FE",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCIMmuidNJdncfMEelOU08Fg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0237f636fa384b48481241cbd3"
         },
         {
