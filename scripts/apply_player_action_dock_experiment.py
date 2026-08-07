@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """Apply the PR #317 Pixel-inspired no-scroll player experiment.
 
-The experiment is presentation-only: playback commands and state ownership stay in
-Levyra's existing ViewModel/player stack. Gradle runs this patch before Android
-compilation so the draft APK can be evaluated on-device before source integration.
+Presentation-only experiment for the draft APK. Playback commands, queue state,
+Media3 ownership, song/video mode and persistence remain untouched.
 
-The generated player keeps playlist/favorite beside metadata, keeps the compact
-YouTube engagement capsule for comments, and replaces the expandable lower area
-with one Material You action shelf: download, timer, queue, lyrics, speed and
-normalization. Artwork sizing and spacing become height-aware so common phone
-sizes can expose the complete primary player without requiring a scroll.
+The generated layout deliberately keeps only the essential visual hierarchy on
+the primary screen: artwork, metadata, timeline, transport and one tonal action
+shelf. YouTube engagement leaves the vertical flow; comments stay reachable from
+a small metadata action. Secondary playback options are folded into the shelf.
 """
 
 from pathlib import Path
@@ -17,7 +15,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAYER = ROOT / "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"
-MARKER = "PIXEL_PLAYER_ACTION_SHELF_PR317"
+MARKER = "PIXEL_PLAYER_MINIMAL_PR317_V2"
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -32,6 +30,7 @@ def main() -> None:
     if MARKER in text:
         return
 
+    # Always expose the compact secondary actions; the old reveal chevron is gone.
     text, count = re.subn(
         r"        var advancedControlsExpanded by remember\(track\?\.id\) \{\n            mutableStateOf\(false\)\n        \}",
         "        val advancedControlsExpanded = true",
@@ -41,10 +40,11 @@ def main() -> None:
     if count != 1:
         raise RuntimeError(f"advancedControlsExpanded replacement failed: {count}")
 
+    # Height-first layout: reduce artwork before allowing the core player to fall below the fold.
     text = replace_once(
         text,
         "        val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 700.dp)",
-        "        val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 400.dp || maxHeight < 860.dp)",
+        "        val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 410.dp || maxHeight < 900.dp)",
         "compact player breakpoint",
     )
     text = replace_once(
@@ -56,16 +56,175 @@ def main() -> None:
     text = replace_once(
         text,
         "            (maxHeight - 220.dp).coerceAtLeast(180.dp)",
-        "            (maxHeight - if (compactPlayer) 480.dp else 300.dp).coerceAtLeast(180.dp)",
+        "            (maxHeight - if (compactPlayer) 560.dp else 330.dp).coerceAtLeast(176.dp)",
         "artwork height budget",
     )
     text = replace_once(
         text,
         "                    bottom = if (compactPlayer) 28.dp else 34.dp",
-        "                    bottom = if (compactPlayer) 16.dp else 28.dp",
+        "                    bottom = if (compactPlayer) 10.dp else 24.dp",
         "stacked player bottom padding",
     )
 
+    # Flatten the header controls: Pixel-like touch targets, without decorative circles.
+    collapse_old = '''                PlayerGlassIconButton(
+                    icon = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = strings.collapsePlayer,
+                    size = headerButtonSize,
+                    iconSize = if (compactPlayer) 25.dp else 26.dp,
+                    onClick = collapseActions.collapse
+                )'''
+    collapse_new = '''                PlayerGlassIconButton(
+                    icon = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = strings.collapsePlayer,
+                    size = if (compactPlayer) 38.dp else 40.dp,
+                    iconSize = if (compactPlayer) 24.dp else 25.dp,
+                    fill = Color.Transparent,
+                    borderTop = Color.Transparent,
+                    borderBottom = Color.Transparent,
+                    onClick = collapseActions.collapse
+                )'''
+    text = replace_once(text, collapse_old, collapse_new, "collapse button")
+
+    more_old = '''                PlayerGlassIconButton(
+                    icon = Icons.Rounded.MoreVert,
+                    contentDescription = strings.options,
+                    size = headerButtonSize,
+                    iconSize = if (compactPlayer) 21.dp else 22.dp,
+                    onClick = { viewModel.openAudioQualityPanel() }
+                )'''
+    more_new = '''                PlayerGlassIconButton(
+                    icon = Icons.Rounded.MoreVert,
+                    contentDescription = strings.options,
+                    size = if (compactPlayer) 38.dp else 40.dp,
+                    iconSize = if (compactPlayer) 20.dp else 21.dp,
+                    fill = Color.Transparent,
+                    borderTop = Color.Transparent,
+                    borderBottom = Color.Transparent,
+                    onClick = { viewModel.openAudioQualityPanel() }
+                )'''
+    text = replace_once(text, more_old, more_new, "options button")
+
+    mode_old = '''            .playerGlass(
+                shape = LevyraPlayerDesign.ShapePill,
+                fill = LevyraPlayerDesign.GlassFillSunken
+            )
+            .padding(3.dp)'''
+    mode_new = '''            .playerGlass(
+                shape = LevyraPlayerDesign.ShapePill,
+                fill = Color.Black.copy(alpha = 0.16f),
+                borderTop = Color.White.copy(alpha = 0.055f),
+                borderBottom = Color.Transparent
+            )
+            .padding(2.dp)'''
+    text = replace_once(text, mode_old, mode_new, "mode switch surface")
+    text = replace_once(
+        text,
+        "targetValue = if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent",
+        "targetValue = if (selected) Color.White.copy(alpha = 0.105f) else Color.Transparent",
+        "mode selected fill",
+    )
+
+    # Metadata is intentionally calmer and slightly denser.
+    text = replace_once(
+        text,
+        "                                fontSize = if (compactPlayer) 24.sp else 26.sp,\n                                lineHeight = if (compactPlayer) 26.sp else 28.sp,",
+        "                                fontSize = if (compactPlayer) 22.sp else 25.sp,\n                                lineHeight = if (compactPlayer) 24.sp else 27.sp,",
+        "title typography",
+    )
+    text = replace_once(
+        text,
+        "                                fontSize = if (compactPlayer) 14.sp else 15.sp,",
+        "                                fontSize = if (compactPlayer) 13.sp else 14.5.sp,",
+        "artist typography",
+    )
+    text = replace_once(
+        text,
+        '''            val actionSize = if (compactPlayer) {
+                LevyraPlayerDesign.UtilityButtonCompact
+            } else {
+                LevyraPlayerDesign.UtilityButton
+            }''',
+        '''            val actionSize = if (compactPlayer) 38.dp else 40.dp''',
+        "metadata action size",
+    )
+
+    # Keep comments reachable without dedicating a whole vertical engagement row.
+    action_row_old = '''                    Row(horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)) {
+                        PlayerGlassIconButton(
+                            icon = Icons.AutoMirrored.Rounded.PlaylistAdd,'''
+    action_row_new = '''                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        if (state.youtubeEngagement.videoId.isNotBlank()) {
+                            PlayerGlassIconButton(
+                                icon = Icons.Rounded.ChatBubbleOutline,
+                                contentDescription = strings.comments,
+                                size = actionSize,
+                                iconSize = if (compactPlayer) 19.dp else 20.dp,
+                                tint = LevyraPlayerDesign.TextTertiary,
+                                fill = Color.Transparent,
+                                borderTop = Color.Transparent,
+                                borderBottom = Color.Transparent,
+                                onClick = viewModel::openYoutubeComments
+                            )
+                        }
+                        PlayerGlassIconButton(
+                            icon = Icons.AutoMirrored.Rounded.PlaylistAdd,'''
+    text = replace_once(text, action_row_old, action_row_new, "metadata action row")
+
+    playlist_tail_old = '''                            tint = LevyraPlayerDesign.TextSecondary,
+                            onClick = { playlistTarget = activeTrack }
+                        )'''
+    playlist_tail_new = '''                            tint = LevyraPlayerDesign.TextSecondary,
+                            fill = Color.Transparent,
+                            borderTop = Color.Transparent,
+                            borderBottom = Color.Transparent,
+                            onClick = { playlistTarget = activeTrack }
+                        )'''
+    text = replace_once(text, playlist_tail_old, playlist_tail_new, "playlist action styling")
+
+    text = replace_once(
+        text,
+        "                            fill = if (isFavorite) favoriteFill else LevyraPlayerDesign.GlassFill,",
+        "                            fill = if (isFavorite) favoriteFill.copy(alpha = 0.26f) else Color.Transparent,",
+        "favorite fill",
+    )
+    text = replace_once(
+        text,
+        '''                            borderTop = if (isFavorite) {
+                                primary.playerMix(Color.White, 0.3f).copy(alpha = 0.7f)
+                            } else {
+                                LevyraPlayerDesign.GlassBorderTop
+                            },''',
+        '''                            borderTop = if (isFavorite) {
+                                primary.playerMix(Color.White, 0.3f).copy(alpha = 0.32f)
+                            } else {
+                                Color.Transparent
+                            },''',
+        "favorite top border",
+    )
+    text = replace_once(
+        text,
+        '''                            borderBottom = if (isFavorite) {
+                                primary.copy(alpha = 0.2f)
+                            } else {
+                                LevyraPlayerDesign.GlassBorderBottom
+                            },''',
+        '''                            borderBottom = Color.Transparent,''',
+        "favorite bottom border",
+    )
+
+    engagement_call = '''                PlayerYoutubeEngagementRow(
+                    track = activeTrack,
+                    engagement = state.youtubeEngagement,
+                    primary = primary,
+                    secondary = secondary,
+                    compact = compactPlayer,
+                    onComments = viewModel::openYoutubeComments
+                )
+'''
+    text = replace_once(text, engagement_call, "", "engagement row removal")
+
+    # Remove the old expandable reveal handle from PlayerScreen.
     text, count = re.subn(
         r"\n        val pulseBlock: @Composable \(\) -> Unit = \{.*?\n        \}\n\n        val advancedBlock:",
         "\n        val advancedBlock:",
@@ -78,6 +237,7 @@ def main() -> None:
     text = text.replace("                        pulseBlock()\n", "", 1)
     text = text.replace("                    item { pulseBlock() }\n", "", 1)
 
+    # One low-profile Material You shelf. No labels are rendered, but semantics keep them accessible.
     replacement = f'''@Composable
 private fun PlayerUtilityDock(
     activeColor: Color,
@@ -103,11 +263,11 @@ private fun PlayerUtilityDock(
             .fillMaxWidth()
             .playerGlass(
                 shape = LevyraPlayerDesign.ShapeXl,
-                fill = Color.Black.copy(alpha = 0.24f),
-                borderTop = Color.White.copy(alpha = 0.13f),
-                borderBottom = Color.White.copy(alpha = 0.055f)
+                fill = Color.White.copy(alpha = 0.035f),
+                borderTop = Color.White.copy(alpha = 0.065f),
+                borderBottom = Color.Transparent
             )
-            .padding(horizontal = if (compact) 5.dp else 7.dp, vertical = if (compact) 4.dp else 5.dp)
+            .padding(horizontal = if (compact) 3.dp else 5.dp, vertical = 2.dp)
     ) {{
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -121,7 +281,7 @@ private fun PlayerUtilityDock(
                     isDownloaded -> strings.downloaded
                     else -> strings.download
                 }},
-                tint = if (isExporting || isDownloaded) secondaryColor else LevyraPlayerDesign.TextSecondary,
+                tint = if (isExporting || isDownloaded) secondaryColor else LevyraPlayerDesign.IconIdle,
                 active = isDownloaded,
                 isBusy = isExporting,
                 enabled = !isExporting,
@@ -131,7 +291,7 @@ private fun PlayerUtilityDock(
             PlayerDockAction(
                 icon = Icons.Rounded.Bedtime,
                 label = if (sleepMinutes > 0) "${{sleepMinutes}}m" else strings.timer,
-                tint = if (sleepMinutes > 0) secondaryColor else LevyraPlayerDesign.TextSecondary,
+                tint = if (sleepMinutes > 0) secondaryColor else LevyraPlayerDesign.IconIdle,
                 active = sleepMinutes > 0,
                 compact = compact,
                 onClick = onSleep
@@ -139,14 +299,14 @@ private fun PlayerUtilityDock(
             PlayerDockAction(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
                 label = strings.queue,
-                tint = LevyraPlayerDesign.TextSecondary,
+                tint = LevyraPlayerDesign.IconIdle,
                 compact = compact,
                 onClick = onQueue
             )
             PlayerDockAction(
                 icon = Icons.AutoMirrored.Rounded.Subject,
                 label = strings.lyrics,
-                tint = if (lyricsAvailable) activeColor else LevyraPlayerDesign.TextSecondary,
+                tint = if (lyricsAvailable) activeColor else LevyraPlayerDesign.IconIdle,
                 active = lyricsAvailable,
                 compact = compact,
                 onClick = onLyrics
@@ -154,7 +314,7 @@ private fun PlayerUtilityDock(
             PlayerDockAction(
                 icon = Icons.Rounded.Speed,
                 label = "${{speed}}×",
-                tint = if (speed != 1f) activeColor else LevyraPlayerDesign.TextSecondary,
+                tint = if (speed != 1f) activeColor else LevyraPlayerDesign.IconIdle,
                 active = speed != 1f,
                 compact = compact,
                 onClick = onSpeed
@@ -162,7 +322,7 @@ private fun PlayerUtilityDock(
             PlayerDockAction(
                 icon = Icons.Rounded.GraphicEq,
                 label = strings.options,
-                tint = if (audioNormalization) secondaryColor else LevyraPlayerDesign.TextSecondary,
+                tint = if (audioNormalization) secondaryColor else LevyraPlayerDesign.IconIdle,
                 active = audioNormalization,
                 compact = compact,
                 onClick = onNormalization
@@ -185,30 +345,23 @@ private fun RowScope.PlayerDockAction(
     Box(
         modifier = Modifier
             .weight(1f)
-            .height(if (compact) 48.dp else 52.dp)
+            .height(if (compact) 42.dp else 46.dp)
             .pressable(enabled = enabled, pressedScale = 0.90f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {{
         Box(
             modifier = Modifier
-                .size(if (compact) 39.dp else 43.dp)
+                .size(if (compact) 33.dp else 36.dp)
                 .background(
-                    if (active) tint.copy(alpha = 0.16f) else Color.Transparent,
-                    RoundedCornerShape(if (compact) 14.dp else 16.dp)
-                )
-                .border(
-                    BorderStroke(
-                        LevyraPlayerDesign.Hairline,
-                        if (active) tint.copy(alpha = 0.28f) else Color.Transparent
-                    ),
-                    RoundedCornerShape(if (compact) 14.dp else 16.dp)
+                    if (active) tint.copy(alpha = 0.12f) else Color.Transparent,
+                    RoundedCornerShape(if (compact) 12.dp else 13.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {{
             if (isBusy) {{
                 CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 18.dp else 20.dp),
-                    strokeWidth = 2.2.dp,
+                    modifier = Modifier.size(if (compact) 17.dp else 18.dp),
+                    strokeWidth = 2.dp,
                     color = tint
                 )
             }} else {{
@@ -216,7 +369,7 @@ private fun RowScope.PlayerDockAction(
                     imageVector = icon,
                     contentDescription = label,
                     tint = tint,
-                    modifier = Modifier.size(if (compact) 20.dp else 22.dp)
+                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
                 )
             }}
         }}
@@ -248,8 +401,8 @@ private fun compactYoutubeCount'''
                 onDownload = viewModel::exportCurrentTrack
             )'''
     new_call = '''            PlayerUtilityDock(
-                activeColor = primaryContent,
-                secondaryColor = secondaryContent,
+                activeColor = primary.playerMix(Color.White, 0.28f),
+                secondaryColor = secondary.playerMix(Color.White, 0.28f),
                 lyricsAvailable = state.lyrics.isNotEmpty(),
                 isExporting = state.isOfflineExporting,
                 isDownloaded = track.id in state.downloadedTrackIds,
@@ -266,6 +419,7 @@ private fun compactYoutubeCount'''
             )'''
     text = replace_once(text, old_call, new_call, "PlayerUtilityDock wiring")
 
+    # The shelf replaces both the duplicated utility row and the inline lyrics card.
     extra_controls = '''            PlayerOptionsRow(
                 speed = state.playbackSpeed,
                 sleepMinutes = state.sleepTimerMinutes,
@@ -293,15 +447,9 @@ private fun compactYoutubeCount'''
 
     text = replace_once(
         text,
-        ".padding(top = if (compact) 7.dp else 9.dp)",
-        ".padding(top = if (compact) 2.dp else 5.dp)",
-        "engagement top spacing",
-    )
-    text = replace_once(
-        text,
-        "modifier = Modifier.height(48.dp)",
-        "modifier = Modifier.height(if (compact) 40.dp else 44.dp)",
-        "engagement capsule height",
+        "                modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceXs)",
+        "                modifier = Modifier.padding(vertical = if (compactPlayer) 0.dp else 2.dp)",
+        "transport vertical padding",
     )
 
     PLAYER.write_text(text, encoding="utf-8")
