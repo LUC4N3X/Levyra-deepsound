@@ -56,6 +56,20 @@ jobs:
         with:
           cache-disabled: true
 
+      - name: Baseline full app unit tests
+        id: baseline
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon :app:testDebugUnitTest > /tmp/pr313-baseline-fulltests.log 2>&1
+          gradle_status=$?
+          grep -E '^[^[:space:]].*Test > .* FAILED$' /tmp/pr313-baseline-fulltests.log \
+            | sed 's/[[:space:]]\+$//' | sort -u > /tmp/pr313-baseline-failures.txt || true
+          echo "gradle_status=$gradle_status" >> "$GITHUB_OUTPUT"
+          echo "Baseline failures:"
+          cat /tmp/pr313-baseline-failures.txt || true
+          exit 0
+
       - name: Apply deterministic review fixes
         id: patch
         shell: bash
@@ -108,16 +122,34 @@ jobs:
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Full app unit tests
+      - name: Full app unit regression comparison
         id: fulltests
         if: steps.patch.outputs.status == '0' && steps.compile.outputs.status == '0' && steps.targeted.outputs.status == '0'
         shell: bash
         run: |
           set +e
           ./gradlew --no-daemon :app:testDebugUnitTest > /tmp/pr313-review-fulltests.log 2>&1
-          status=$?
-          cat /tmp/pr313-review-fulltests.log
+          gradle_status=$?
+          grep -E '^[^[:space:]].*Test > .* FAILED$' /tmp/pr313-review-fulltests.log \
+            | sed 's/[[:space:]]\+$//' | sort -u > /tmp/pr313-review-failures.txt || true
+          echo "Post-patch failures:"
+          cat /tmp/pr313-review-failures.txt || true
+
+          status=0
+          baseline_match=false
+          if [ "$gradle_status" -ne 0 ]; then
+            if [ -s /tmp/pr313-baseline-failures.txt ] && cmp -s /tmp/pr313-baseline-failures.txt /tmp/pr313-review-failures.txt; then
+              baseline_match=true
+              echo "Full-suite failures are identical to the clean pre-patch baseline."
+            else
+              status=1
+              echo "Post-patch full-suite failures differ from baseline."
+              diff -u /tmp/pr313-baseline-failures.txt /tmp/pr313-review-failures.txt || true
+            fi
+          fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "baseline_match=$baseline_match" >> "$GITHUB_OUTPUT"
+          cat /tmp/pr313-review-fulltests.log
           exit 0
 
       - name: Commit validated fixes
@@ -154,10 +186,18 @@ jobs:
         run: |
           set -euo pipefail
           {
+            echo "baseline_gradle_status=${{ steps.baseline.outputs.gradle_status }}"
             echo "patch_status=${{ steps.patch.outputs.status }}"
             echo "compile_status=${{ steps.compile.outputs.status }}"
             echo "targeted_status=${{ steps.targeted.outputs.status }}"
             echo "fulltests_status=${{ steps.fulltests.outputs.status }}"
+            echo "fulltests_baseline_match=${{ steps.fulltests.outputs.baseline_match }}"
+            echo
+            echo "--- BASELINE FAILURES ---"
+            cat /tmp/pr313-baseline-failures.txt 2>/dev/null || true
+            echo
+            echo "--- POST-PATCH FAILURES ---"
+            cat /tmp/pr313-review-failures.txt 2>/dev/null || true
             echo
             echo "--- PATCH ---"
             cat /tmp/pr313-review-patch.log 2>/dev/null || true
