@@ -6,6 +6,7 @@ on:
       - claude/menu-esplora-redesign-t3j2l4
     paths:
       - .github/workflows/pr313-targeted-fixes.yml
+      - .github/scripts/pr313_targeted_fix.py
 
 permissions:
   contents: write
