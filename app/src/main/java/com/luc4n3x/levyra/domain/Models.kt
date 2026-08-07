@@ -216,6 +216,8 @@ data class ExploreZone(
 )
 
 object ExploreCatalog {
+    const val NEW_RELEASES_ZONE_ID = "nuove-uscite"
+
     fun getZones(strings: LevyraStrings): List<ExploreZone> {
         val locale = LevyraContentLocales.forLanguage(strings.code)
         val localQuery = strings.localWaveQuery.ifBlank { locale.homeQueries.firstOrNull().orEmpty() }
@@ -233,7 +235,7 @@ object ExploreCatalog {
             else -> "latin music new hits 2026"
         }
         return listOf(
-            ExploreZone("nuove-uscite", strings.exploreNewReleases, "🌊", newReleaseQuery, 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
+            ExploreZone(NEW_RELEASES_ZONE_ID, strings.exploreNewReleases, "🌊", newReleaseQuery, 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
             ExploreZone("local-wave", strings.localWaveName, strings.localWaveEmoji, localQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
             ExploreZone("rap-drill", strings.exploreRapDrill, "🐙", rapQuery, 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
             ExploreZone("elettronica", strings.exploreElectronic, "⚡", electroQuery, 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),

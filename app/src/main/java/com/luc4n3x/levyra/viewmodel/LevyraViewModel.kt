@@ -37,6 +37,11 @@ import com.luc4n3x.levyra.data.YoutubeCommentsResult
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.YoutubeShortsRepository
+import com.luc4n3x.levyra.data.YoutubeShortsCache
+import com.luc4n3x.levyra.data.isYoutubeShortTrack
+import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
+import com.luc4n3x.levyra.data.youtubeMusicSamplePreviewStartMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
@@ -109,6 +114,7 @@ import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
@@ -147,11 +153,90 @@ import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
+private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 
 private data class HomeArtistCandidate(
     val name: String,
     val browseId: String
 )
+
+private data class SamplesDiscoveryInput(
+    val seeds: List<Track>,
+    val preferredArtists: List<String>,
+    val preferredChannelIds: List<String>
+)
+
+private data class SamplesPlaybackSession(
+    val queue: PlaybackQueueSnapshot,
+    val currentTrack: Track?,
+    val videoMode: Boolean,
+    val loopOnCompletion: Boolean,
+    val wasPlaying: Boolean,
+    val positionMs: Long
+)
+
+internal data class PlaybackResolveRequest(
+    val id: Long,
+    val startPaused: Boolean = false
+)
+
+internal fun shouldStartPlaybackPaused(
+    request: PlaybackResolveRequest,
+    activeRequestId: Long
+): Boolean = request.id == activeRequestId && request.startPaused
+
+internal fun prioritizeNewReleasesForUser(
+    releases: List<AlbumHit>,
+    preferredArtists: List<String>,
+    limit: Int
+): List<AlbumHit> {
+    if (limit <= 0) return emptyList()
+    val preferences = preferredArtists
+        .map { artist -> artist.trim().lowercase(java.util.Locale.ROOT) }
+        .filter(String::isNotBlank)
+        .distinct()
+    if (preferences.isEmpty()) return releases.take(limit)
+    val (matched, remaining) = releases.partition { release ->
+        val artist = release.artist.trim().lowercase(java.util.Locale.ROOT)
+        preferences.any { preferred ->
+            artist == preferred || artist.contains(preferred) || preferred.contains(artist)
+        }
+    }
+    return (matched + remaining)
+        .distinctBy { release ->
+            release.browseId.ifBlank {
+                "${release.artist.lowercase(java.util.Locale.ROOT)}|${release.title.lowercase(java.util.Locale.ROOT)}"
+            }
+        }
+        .take(limit)
+}
+
+internal fun LevyraUiState.withPublishedSamples(
+    tracks: List<Track>,
+    loading: Boolean = false,
+    failed: Boolean = false
+): LevyraUiState = copy(
+    exploreSamples = tracks,
+    isSamplesLoading = loading,
+    samplesLoadFailed = failed
+)
+
+internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
+
+internal fun shouldReuseFreshCurrentsRequest(
+    activeRequestLanguage: String,
+    requestedLanguage: String,
+    force: Boolean
+): Boolean = !force && activeRequestLanguage == requestedLanguage
+
+
+internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Track? {
+    if (list.isEmpty()) return null
+    val requestedIdentity = playbackIdentity(requested)
+    val selected = list.firstOrNull { candidate -> playbackIdentity(candidate) == requestedIdentity }
+        ?: requested
+    return selected.takeIf(::isYoutubeShortTrack)
+}
 
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
@@ -242,6 +327,8 @@ private fun playbackArtistTokens(value: String): List<String> {
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
+    private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
+    private val shortsCache = YoutubeShortsCache(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository(application.applicationContext)
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
@@ -419,6 +506,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
+    private var samplesPlaybackSession: SamplesPlaybackSession? = null
+    private var deferredPlaybackStartSideEffectsKey: String? = null
     private var listenSessionTrack: Track? = null
     private var listenSessionStartedAt = 0L
     private var listenSessionAccumulatedMs = 0L
@@ -4214,7 +4303,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 section.copy(tracks = section.tracks.map(::withArtwork))
             }
             val exploreTracks = current.exploreTracks.map(::withArtwork)
+            val exploreFreshTracks = current.exploreFreshTracks.map(::withArtwork)
             val exploreVideos = current.exploreVideos.map(::withArtwork)
+            val exploreSamples = current.exploreSamples.map(::withArtwork)
             val recentListens = current.recentListens.map(::withArtwork)
             val playlists = current.playlists.map { playlist ->
                 playlist.copy(tracks = playlist.tracks.map(::withArtwork))
@@ -4275,7 +4366,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeAlbums = homeAlbums,
                 homeSections = homeSections,
                 exploreTracks = exploreTracks,
+                exploreFreshTracks = exploreFreshTracks,
                 exploreVideos = exploreVideos,
+                exploreSamples = exploreSamples,
                 recentListens = recentListens,
                 playlists = playlists,
                 openPlaylist = openPlaylist,
@@ -4339,7 +4432,125 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(list.getOrElse(index) { track })
     }
 
-    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
+    fun beginSamplesPlayback() {
+        _state.update { current ->
+            if (current.isSamplesOpen) current else current.copy(isSamplesOpen = true)
+        }
+    }
+
+    fun playSample(list: List<Track>, track: Track) {
+        val selected = selectYoutubeShortSample(list, track) ?: return
+        val currentState = _state.value
+        val actualPositionMs = player.positionMs.coerceAtLeast(0L).takeIf { it > 0L }
+            ?: currentState.positionMs
+        val startingTransientSession = samplesPlaybackSession == null
+        if (startingTransientSession) {
+            samplesPlaybackSession = SamplesPlaybackSession(
+                queue = queueEngine.state.value.copy(positionMs = actualPositionMs),
+                currentTrack = currentState.currentTrack,
+                videoMode = currentState.isVideoMode,
+                loopOnCompletion = loopCurrentQueueOnCompletion,
+                wasPlaying = currentState.isPlaying,
+                positionMs = actualPositionMs
+            )
+        }
+
+        beginSamplesPlayback()
+        val alreadyActive = currentState.currentTrack?.let { current -> samePlayableTrack(current, selected) } == true &&
+            currentState.isVideoMode
+
+        loopCurrentQueueOnCompletion = false
+        val session = samplesPlaybackSession ?: return
+        if (startingTransientSession) {
+            queueEngine.beginTransientPlayback(session.queue, listOf(selected), 0)
+        } else {
+            queueEngine.replaceTransient(listOf(selected), 0)
+        }
+        queueIndex = 0
+        _state.update { current ->
+            current.copy(isVideoMode = true, isSamplesOpen = true)
+        }
+
+        if (alreadyActive) {
+            if (!currentState.isPlaying) togglePlay()
+            return
+        }
+        pendingSeekMs = youtubeMusicSamplePreviewStartMs(selected)
+        startResolve(selected)
+    }
+
+    fun endSamplesPlayback() {
+        val session = samplesPlaybackSession
+        _state.update { current ->
+            if (current.isSamplesOpen) current.copy(isSamplesOpen = false) else current
+        }
+        if (session == null) return
+        samplesPlaybackSession = null
+        playRequestId++
+        streamTransitionId++
+        playJob?.cancel()
+        cancelResolutionSideJobs()
+        cancelBackgroundWarmups(cancelList = true)
+        crossfadeJob?.cancel()
+        crossfadeInProgress = false
+        player.setVolume(1f)
+        loopCurrentQueueOnCompletion = session.loopOnCompletion
+
+        val restoredQueue = queueEngine.endTransientPlayback(session.queue)
+        queueIndex = restoredQueue.currentIndex
+        val restoredTrack = session.currentTrack
+        if (restoredTrack == null) {
+            player.stop()
+            _state.update {
+                it.copy(
+                    isVideoMode = session.videoMode,
+                    currentTrack = null,
+                    isPlaying = false,
+                    isResolving = false,
+                    positionMs = 0L,
+                    bufferedPositionMs = 0L,
+                    durationMs = 0L,
+                    playerError = null
+                )
+            }
+            updateWidget()
+            return
+        }
+
+        val durationMs = restoredTrack.durationMs
+        val resumeMs = session.positionMs.coerceAtLeast(0L).let { position ->
+            if (durationMs > 0L) position.coerceAtMost(durationMs) else position
+        }
+        _state.update { it.copy(isVideoMode = session.videoMode, playerError = null) }
+
+        if (restoredTrack.streamUrl.isBlank()) {
+            pendingSeekMs = resumeMs
+            startResolve(restoredTrack, startPaused = !session.wasPlaying)
+            return
+        }
+
+        repository.replace(restoredTrack)
+        player.play(restoredTrack, session.videoMode)
+        if (resumeMs > 0L) player.seekTo(resumeMs)
+        if (!session.wasPlaying) player.pause()
+        queueEngine.updatePosition(resumeMs)
+        _state.update {
+            it.copy(
+                currentTrack = restoredTrack,
+                isVideoMode = session.videoMode,
+                isPlaying = session.wasPlaying,
+                isResolving = false,
+                positionMs = resumeMs,
+                bufferedPositionMs = resumeMs,
+                durationMs = effectiveDuration(restoredTrack),
+                playerError = null
+            )
+        }
+        refreshQueuePrefetch()
+        updateWidget()
+    }
+
+    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {
         streamTransitionId++
         cancelResolutionSideJobs()
         val engagementVideoId = youtubeEngagementVideoId(track)
@@ -4349,6 +4560,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             player.setVolume(1f)
         }
         val requestId = ++playRequestId
+        val request = PlaybackResolveRequest(requestId, startPaused)
         playJob?.cancel()
         cancelBackgroundWarmups(cancelList = true)
         resolver.warmNetwork()
@@ -4370,7 +4582,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchLyricsAround(track)
         refreshMotionArtworkAround(track)
         playJob = viewModelScope.launch {
-            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)
+            resolveAndStartPlayback(track, request, autoRetryWhenOffline)
         }
     }
 
@@ -4393,9 +4605,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun CoroutineScope.resolveAndStartPlayback(
         track: Track,
-        requestId: Long,
+        request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
+        val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
         val playableTrack = youtubePlayableTrack(track, preferVideo = requestedVideoMode)
         if (requestedVideoMode && playableTrack == null) {
@@ -4416,7 +4629,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isActive || requestId != playRequestId) return
-            startPlayback(preserveEditorialArtwork(track, instant))
+            startPlayback(preserveEditorialArtwork(track, instant), request)
             prefetchAround(instant)
             return
         }
@@ -4424,7 +4637,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         try {
             val playable = resolveForPlayback(selectedTrack)
             if (!isActive || requestId != playRequestId) return
-            startPlayback(playable)
+            startPlayback(playable, request)
             prefetchAround(playable)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
@@ -4501,34 +4714,380 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val exploreCache = ConcurrentHashMap<String, List<Track>>()
     private var musicVideosLoadedLanguage = ""
+    private var musicVideosLoadedProfileSignature = ""
+    private var musicVideosRequestLanguage = ""
+    private var musicVideosRequestProfileSignature = ""
+    private var musicVideosRequestGeneration = 0L
+    private var musicVideosRetryLanguage = ""
+    private var musicVideosRetryAfterMs = 0L
+    private var musicVideosFailureCount = 0
     private var musicVideosJob: Job? = null
+    private var freshCurrentsLoadedLanguage = ""
+    private var freshCurrentsRequestLanguage = ""
+    private var freshCurrentsRequestGeneration = 0L
+    private var freshCurrentsJob: Job? = null
+    private var newReleasesLoadedLanguage = ""
+    private var newReleasesLoadedProfileSignature = ""
+    private var newReleasesRequestLanguage = ""
+    private var newReleasesRequestProfileSignature = ""
+    private var newReleasesRequestGeneration = 0L
+    private var newReleasesJob: Job? = null
     private var exploreJob: Job? = null
 
-    private fun ensureMusicVideosLoaded() {
+    private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
+        snapshot.currentTrack?.artist?.let(::add)
+        addAll(snapshot.followedArtists.map { artist -> artist.name })
+        addAll(snapshot.recentListens.map { track -> track.artist })
+        addAll(snapshot.favorites.map { track -> track.artist })
+        addAll(snapshot.personalOrbitTracks.map { track -> track.artist })
+        addAll(snapshot.homeResonanceTracks.map { track -> track.artist })
+        addAll(snapshot.charts.map { track -> track.artist })
+        snapshot.homeSections.forEach { section -> addAll(section.tracks.map { track -> track.artist }) }
+    }
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinctBy { artist -> artist.lowercase(java.util.Locale.ROOT) }
+        .take(limit)
+
+    private fun samplesDiscoveryProfileSignature(snapshot: LevyraUiState): String {
+        val artists = discoveryPreferredArtists(snapshot, 16)
+        val trackIds = buildList {
+            snapshot.currentTrack?.id?.let(::add)
+            addAll(snapshot.recentListens.take(8).map { track -> track.id })
+            addAll(snapshot.favorites.take(8).map { track -> track.id })
+            addAll(snapshot.personalOrbitTracks.take(8).map { track -> track.id })
+        }.filter(String::isNotBlank).distinct()
+        return buildString {
+            append(LevyraLanguageCatalog.normalize(snapshot.languageCode))
+            append('|').append(artists.joinToString("|"))
+            append('|').append(trackIds.joinToString("|"))
+        }
+    }
+
+    private fun ensureMusicVideosLoaded(force: Boolean = false) {
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
-        if (musicVideosJob?.isActive == true) return
-        if (musicVideosLoadedLanguage == languageCode && snapshot.exploreVideos.isNotEmpty()) return
+        val profileSignature = samplesDiscoveryProfileSignature(snapshot)
+        val sameActiveRequest = musicVideosRequestLanguage == languageCode &&
+            musicVideosRequestProfileSignature == profileSignature
+        if (musicVideosJob?.isActive == true) {
+            if (!force && sameActiveRequest) return
+            musicVideosJob?.cancel()
+        }
+        if (
+            !force &&
+            musicVideosLoadedLanguage == languageCode &&
+            musicVideosLoadedProfileSignature == profileSignature &&
+            snapshot.exploreSamples.isNotEmpty()
+        ) return
+        if (musicVideosRetryLanguage != languageCode) {
+            musicVideosRetryLanguage = languageCode
+            musicVideosRetryAfterMs = 0L
+            musicVideosFailureCount = 0
+        }
+        if (!force && System.currentTimeMillis() < musicVideosRetryAfterMs) return
+
+        val requestGeneration = ++musicVideosRequestGeneration
+        musicVideosRequestLanguage = languageCode
+        musicVideosRequestProfileSignature = profileSignature
+        val keepVisibleSamples = musicVideosLoadedLanguage == languageCode &&
+            musicVideosLoadedProfileSignature == profileSignature
+        updateSamplesState(languageCode) { current ->
+            current.copy(
+                exploreSamples = if (keepVisibleSamples) current.exploreSamples else emptyList(),
+                isSamplesLoading = true,
+                samplesLoadFailed = false
+            )
+        }
         musicVideosJob = viewModelScope.launch {
-            val remoteVideos = withContext(Dispatchers.IO) {
-                runCatching { repository.newMusicVideos(languageCode, 12) }.getOrDefault(emptyList())
-            }
-            if (_state.value.languageCode != languageCode) return@launch
-            val current = _state.value
-            val chartFallback = current.charts.filter { track ->
-                track.counterpartVideoId.isNotBlank() || track.videoType.contains("video", ignoreCase = true)
-            }
-            val videos = LevyraPersonalOrbit.distinctRecordings(remoteVideos + chartFallback)
-                .take(12)
-                .ifEmpty { current.exploreVideos }
-            if (videos.isNotEmpty()) {
-                musicVideosLoadedLanguage = languageCode
-                _state.update { state ->
-                    if (state.languageCode == languageCode) state.copy(exploreVideos = videos) else state
+            try {
+                if (!force && publishCachedSamples(languageCode, profileSignature, requestGeneration)) return@launch
+                refreshSamplesFeed(languageCode, profileSignature, requestGeneration)
+            } finally {
+                if (musicVideosRequestGeneration == requestGeneration) {
+                    updateSamplesState(languageCode) { current ->
+                        if (!current.isSamplesLoading) current else current.copy(isSamplesLoading = false)
+                    }
+                    musicVideosJob = null
                 }
-                refreshOfficialMetadataBatch(videos, 6)
-            } else {
-                musicVideosLoadedLanguage = ""
+            }
+        }
+    }
+
+    private fun updateSamplesState(languageCode: String, transform: (LevyraUiState) -> LevyraUiState) {
+        _state.update { current ->
+            if (current.languageCode == languageCode) transform(current) else current
+        }
+    }
+
+    private suspend fun publishCachedSamples(
+        languageCode: String,
+        profileSignature: String,
+        requestGeneration: Long
+    ): Boolean {
+        if (_state.value.exploreSamples.isNotEmpty()) return false
+        val cached = withContext(Dispatchers.IO) { shortsCache.load(languageCode, profileSignature) }
+        if (cached.tracks.isEmpty()) return false
+        if (musicVideosRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return false
+        updateSamplesState(languageCode) { current ->
+            current.withPublishedSamples(cached.tracks, loading = !cached.isFresh(), failed = false)
+        }
+        if (!cached.isFresh()) return false
+        musicVideosLoadedLanguage = languageCode
+        musicVideosLoadedProfileSignature = profileSignature
+        return true
+    }
+
+    private suspend fun refreshSamplesFeed(
+        languageCode: String,
+        profileSignature: String,
+        requestGeneration: Long
+    ) {
+        val resolvedFeedTracks = resolveSamplesFeed(samplesDiscoveryInput(_state.value), languageCode)
+        if (musicVideosRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return
+        if (resolvedFeedTracks == null) {
+            updateSamplesState(languageCode) { current ->
+                current.copy(isSamplesLoading = false, samplesLoadFailed = true)
+            }
+            registerShortsFeedFailure(languageCode)
+            return
+        }
+
+        musicVideosLoadedLanguage = languageCode
+        musicVideosLoadedProfileSignature = profileSignature
+        musicVideosRetryLanguage = ""
+        musicVideosRetryAfterMs = 0L
+        musicVideosFailureCount = 0
+        updateSamplesState(languageCode) { current ->
+            current.withPublishedSamples(resolvedFeedTracks, loading = false, failed = false)
+        }
+        withContext(Dispatchers.IO) {
+            shortsCache.save(
+                languageCode = languageCode,
+                tracks = resolvedFeedTracks,
+                profileSignature = profileSignature
+            )
+        }
+    }
+
+    private fun samplesDiscoveryInput(snapshot: LevyraUiState): SamplesDiscoveryInput {
+        val seeds = buildList {
+            snapshot.currentTrack?.let { track -> add(track) }
+            addAll(snapshot.recentListens)
+            addAll(snapshot.favorites)
+            addAll(snapshot.personalOrbitTracks)
+            addAll(snapshot.homeResonanceTracks)
+            addAll(snapshot.exploreTracks)
+            addAll(snapshot.charts)
+            snapshot.homeSections.forEach { section -> addAll(section.tracks) }
+            addAll(snapshot.tracks)
+        }
+            .distinctBy { track -> track.id }
+            .take(48)
+        val preferredChannelIds = buildList {
+            addAll(snapshot.followedArtists.map { artist -> artist.browseId })
+            seeds.forEach { track -> addAll(track.artistBrowseIds) }
+        }
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .take(20)
+        return SamplesDiscoveryInput(
+            seeds = seeds,
+            preferredArtists = discoveryPreferredArtists(snapshot, 16),
+            preferredChannelIds = preferredChannelIds
+        )
+    }
+
+    private suspend fun resolveSamplesFeed(
+        input: SamplesDiscoveryInput,
+        languageCode: String
+    ): List<Track>? {
+        val youtubeMusicSamples = try {
+            repository.musicSamples(
+                seeds = input.seeds,
+                preferredArtists = input.preferredArtists,
+                languageCode = languageCode,
+                limit = EXPLORE_SHORTS_FEED_LIMIT
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "YouTube Music Samples feed failed for %s", languageCode)
+            emptyList()
+        }
+        if (youtubeMusicSamples.isNotEmpty()) return youtubeMusicSamples
+
+        val fallbackFeed = try {
+            shortsRepository.feed(
+                seeds = input.seeds,
+                languageCode = languageCode,
+                preferredArtists = input.preferredArtists,
+                preferredChannelIds = input.preferredChannelIds,
+                limit = EXPLORE_SHORTS_FEED_LIMIT
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "NewPipe Shorts fallback failed for %s", languageCode)
+            null
+        }
+        if (fallbackFeed == null || !fallbackFeed.isConclusive || fallbackFeed.tracks.isEmpty()) {
+            return null
+        }
+        return fallbackFeed.tracks
+    }
+
+    private fun registerShortsFeedFailure(languageCode: String) {
+        if (musicVideosRetryLanguage != languageCode) {
+            musicVideosRetryLanguage = languageCode
+            musicVideosFailureCount = 0
+        }
+        musicVideosFailureCount = (musicVideosFailureCount + 1).coerceAtMost(5)
+        musicVideosRetryAfterMs = System.currentTimeMillis() +
+            youtubeShortsRetryDelayMs(musicVideosFailureCount)
+    }
+
+    private fun ensureFreshCurrentsLoaded(force: Boolean = false) {
+        val snapshot = _state.value
+        val languageCode = snapshot.languageCode
+        if (freshCurrentsJob?.isActive == true) {
+            if (shouldReuseFreshCurrentsRequest(freshCurrentsRequestLanguage, languageCode, force)) return
+            freshCurrentsJob?.cancel()
+        }
+        if (!force && freshCurrentsLoadedLanguage == languageCode && snapshot.exploreFreshTracks.isNotEmpty()) return
+
+        val requestGeneration = ++freshCurrentsRequestGeneration
+        freshCurrentsRequestLanguage = languageCode
+        _state.update { current ->
+            if (current.languageCode != languageCode) current
+            else current.copy(
+                exploreFreshTracks = if (freshCurrentsLoadedLanguage == languageCode) current.exploreFreshTracks else emptyList(),
+                isFreshCurrentsLoading = true
+            )
+        }
+        freshCurrentsJob = viewModelScope.launch {
+            try {
+                val market = ChartsCatalog.defaultRegionForLanguage(languageCode).country
+                val tracks = try {
+                    chartsRepository.freshCurrentTracks(country = market, limit = 24)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "Fresh currents failed for %s", market)
+                    emptyList()
+                }
+                if (freshCurrentsRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch
+                if (tracks.isNotEmpty()) freshCurrentsLoadedLanguage = languageCode
+                _state.update { current ->
+                    if (current.languageCode != languageCode) current
+                    else current.copy(
+                        exploreFreshTracks = tracks,
+                        exploreTracks = if (current.exploreZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) tracks else current.exploreTracks,
+                        isFreshCurrentsLoading = false,
+                        isExploreLoading = if (current.exploreZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) false else current.isExploreLoading
+                    )
+                }
+                if (tracks.isNotEmpty()) refreshOfficialMetadataBatch(tracks, 8)
+            } finally {
+                if (freshCurrentsRequestGeneration == requestGeneration) {
+                    _state.update { current ->
+                        if (current.languageCode == languageCode && current.isFreshCurrentsLoading) {
+                            current.copy(isFreshCurrentsLoading = false)
+                        } else current
+                    }
+                    freshCurrentsJob = null
+                }
+            }
+        }
+    }
+
+    private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
+        val snapshot = _state.value
+        val languageCode = snapshot.languageCode
+        val preferredArtists = discoveryPreferredArtists(snapshot, 24)
+        val profileSignature = buildString {
+            append(LevyraLanguageCatalog.normalize(languageCode))
+            append('|').append(preferredArtists.joinToString("|"))
+        }
+        val sameActiveRequest = newReleasesRequestLanguage == languageCode &&
+            newReleasesRequestProfileSignature == profileSignature
+        if (newReleasesJob?.isActive == true) {
+            if (!force && sameActiveRequest) return
+            newReleasesJob?.cancel()
+        }
+        if (
+            !force &&
+            newReleasesLoadedLanguage == languageCode &&
+            newReleasesLoadedProfileSignature == profileSignature &&
+            snapshot.exploreNewReleases.isNotEmpty()
+        ) return
+
+        val requestGeneration = ++newReleasesRequestGeneration
+        newReleasesRequestLanguage = languageCode
+        newReleasesRequestProfileSignature = profileSignature
+        _state.update { current ->
+            if (current.languageCode != languageCode) current
+            else current.copy(
+                exploreNewReleases = if (
+                    newReleasesLoadedLanguage == languageCode &&
+                    newReleasesLoadedProfileSignature == profileSignature
+                ) current.exploreNewReleases else emptyList(),
+                isNewReleasesLoading = true,
+                newReleasesLoadFailed = false
+            )
+        }
+        newReleasesJob = viewModelScope.launch {
+            try {
+                val market = ChartsCatalog.defaultRegionForLanguage(languageCode).country
+                val editorialReleases = try {
+                    chartsRepository.newReleaseAlbums(country = market, limit = 48)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.w(error, "Localized editorial releases failed for %s", market)
+                    emptyList()
+                }
+                val releases = prioritizeNewReleasesForUser(
+                    releases = editorialReleases,
+                    preferredArtists = preferredArtists,
+                    limit = 48
+                ).ifEmpty {
+                    try {
+                        repository.newReleases(
+                            languageCode = languageCode,
+                            limit = 48,
+                            preferredArtists = preferredArtists
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        Timber.w(error, "Personalized new releases fallback failed for %s", languageCode)
+                        emptyList()
+                    }
+                }
+                if (newReleasesRequestGeneration != requestGeneration || _state.value.languageCode != languageCode) return@launch
+                if (releases.isNotEmpty()) {
+                    newReleasesLoadedLanguage = languageCode
+                    newReleasesLoadedProfileSignature = profileSignature
+                }
+                _state.update { current ->
+                    if (current.languageCode != languageCode) current
+                    else current.copy(
+                        exploreNewReleases = releases,
+                        isNewReleasesLoading = false,
+                        newReleasesLoadFailed = releases.isEmpty()
+                    )
+                }
+            } finally {
+                if (newReleasesRequestGeneration == requestGeneration) {
+                    _state.update { current ->
+                        if (current.languageCode == languageCode && current.isNewReleasesLoading) {
+                            current.copy(isNewReleasesLoading = false)
+                        } else current
+                    }
+                    newReleasesJob = null
+                }
             }
         }
     }
@@ -4537,10 +5096,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_state.value.exploreZoneId == null) {
             selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
+        ensureFreshCurrentsLoaded()
+        ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
     }
 
+    fun ensureExploreSamples() {
+        ensureMusicVideosLoaded()
+    }
+
+    fun refreshExploreSamples() {
+        musicVideosLoadedLanguage = ""
+        musicVideosLoadedProfileSignature = ""
+        musicVideosRetryLanguage = ""
+        musicVideosRetryAfterMs = 0L
+        musicVideosFailureCount = 0
+        ensureMusicVideosLoaded(force = true)
+    }
+
     fun selectExploreZone(zone: ExploreZone) {
+        if (zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) {
+            _state.update { current ->
+                current.copy(
+                    exploreZoneId = zone.id,
+                    exploreTracks = current.exploreFreshTracks,
+                    isExploreLoading = current.isFreshCurrentsLoading
+                )
+            }
+            ensureFreshCurrentsLoaded()
+            return
+        }
         _state.update { it.copy(exploreZoneId = zone.id) }
         exploreCache[zone.id]?.let { cached ->
             _state.update { it.copy(exploreTracks = cached, isExploreLoading = false) }
@@ -4549,12 +5134,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         exploreJob?.cancel()
         _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
+        val languageCode = _state.value.languageCode
         exploreJob = viewModelScope.launch {
             val results = runCatching {
-                repository.exploreZone(zone.id, zone.query, _state.value.languageCode, 24)
+                repository.exploreZone(zone.id, zone.query, languageCode, 24)
             }.getOrDefault(emptyList())
             if (results.isNotEmpty()) exploreCache[zone.id] = results
-            if (_state.value.exploreZoneId != zone.id) return@launch
+            if (_state.value.exploreZoneId != zone.id || _state.value.languageCode != languageCode) return@launch
             _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
             refreshOfficialMetadataBatch(results, 8)
         }
@@ -4591,7 +5177,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(track)
     }
 
-    private fun startPlayback(playable: Track) {
+    private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
+        if (request.id != playRequestId) return
+        val startPaused = shouldStartPlaybackPaused(request, playRequestId)
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
@@ -4599,6 +5187,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         // Resume from the saved position when continuing the last session's track.
         val resumeMs = pendingSeekMs.takeIf { it > 1500L && it < playable.durationMs } ?: 0L
         if (resumeMs > 0L) player.seekTo(resumeMs)
+        if (startPaused) player.pause()
         queueEngine.updatePosition(resumeMs)
         pendingSeekMs = 0L
         _state.update {
@@ -4607,7 +5196,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 tracks = mergeTracks(it.tracks, listOf(playable)),
                 searchResults = mergeTracks(it.searchResults, listOf(playable)),
                 activeLyric = lyricsEngine.currentLine(resumeMs, it.lyrics),
-                isPlaying = true,
+                isPlaying = !startPaused,
                 isResolving = false,
                 durationMs = effectiveDuration(playable),
                 positionMs = resumeMs,
@@ -4615,15 +5204,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playerError = null
             )
         }
-        recordPlaybackHistory(playable)
-        beginListenSession(playable)
-        recordSmartPlayback(playable)
-        fetchSponsorSegments(playable)
+        handlePlaybackStartSideEffects(playable, startPaused)
         prefetchAlternateMode(playable, _state.value.isVideoMode)
         if (_state.value.selectedTab == LevyraTab.Player) {
             refreshYoutubeEngagement(playable)
         }
         updateWidget()
+    }
+
+    private fun handlePlaybackStartSideEffects(track: Track, startPaused: Boolean) {
+        val key = playbackIdentity(track)
+        if (!shouldDispatchPlaybackStartSideEffects(startPaused)) {
+            deferredPlaybackStartSideEffectsKey = key
+            return
+        }
+        deferredPlaybackStartSideEffectsKey = null
+        dispatchPlaybackStartSideEffects(track)
+    }
+
+    private fun commitDeferredPlaybackStartSideEffectsIfNeeded(track: Track) {
+        val key = playbackIdentity(track)
+        if (deferredPlaybackStartSideEffectsKey != key) return
+        deferredPlaybackStartSideEffectsKey = null
+        dispatchPlaybackStartSideEffects(track)
+    }
+
+    private fun dispatchPlaybackStartSideEffects(track: Track) {
+        recordPlaybackHistory(track)
+        beginListenSession(track)
+        recordSmartPlayback(track)
+        fetchSponsorSegments(track)
     }
 
     private fun refreshYoutubeEngagement(track: Track) {
@@ -5549,6 +6159,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(isPlaying = true) }
         }
         updateWidget()
+        if (_state.value.isPlaying) {
+            _state.value.currentTrack?.let(::commitDeferredPlaybackStartSideEffectsIfNeeded)
+        }
     }
 
     fun closePlayer() {

@@ -65,6 +65,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.io.IOException
 
@@ -126,9 +129,15 @@ class PlaybackService : MediaLibraryService() {
         private val ONLINE_RECOVERY_DELAYS_MS = longArrayOf(500L, 2_000L, 5_000L, 10_000L)
         private val LOCAL_RECOVERY_DELAYS_MS = longArrayOf(250L, 750L, 1_500L, 3_000L, 5_000L, 10_000L)
 
+        private val _activePlayerFlow = MutableStateFlow<ExoPlayer?>(null)
+        val activePlayerFlow: StateFlow<ExoPlayer?> = _activePlayerFlow.asStateFlow()
+
         @Volatile
         var activePlayer: ExoPlayer? = null
-            private set
+            private set(value) {
+                field = value
+                _activePlayerFlow.value = value
+            }
 
         @Volatile
         private var activeService: PlaybackService? = null

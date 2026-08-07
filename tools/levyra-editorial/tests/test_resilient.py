@@ -25,7 +25,7 @@ class PartialClient:
             "tracks": {"total": 1},
         }
 
-    def iter_playlist_items(self, playlist_id: str) -> list[dict[str, Any]]:
+    def iter_playlist_items(self, playlist_id: str, limit: int | None = None) -> list[dict[str, Any]]:
         if playlist_id in self.unavailable_playlist_ids:
             raise SourceApiError("playlist content is unavailable")
         return [
