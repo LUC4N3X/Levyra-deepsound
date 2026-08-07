@@ -304,7 +304,7 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         tracks = previous.tracks,
         recentSearches = previous.recentSearches,
         recentListens = previous.recentListens,
-        personalOrbitTracks = previous.personalOrbitTracks,
+        personalOrbitTracks = personalOrbitTracks,
         favorites = previous.favorites,
         charts = if (sameChartIdentity) previous.charts else charts,
         isLoadingCharts = if (sameChartIdentity) previous.isLoadingCharts else isLoadingCharts,

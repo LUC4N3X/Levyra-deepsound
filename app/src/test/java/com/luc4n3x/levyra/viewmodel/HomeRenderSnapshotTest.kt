@@ -50,6 +50,29 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
+    fun publishesPersonalOrbitRemovalImmediatelyWhileHomeStructureIsFrozen() {
+        val keptTrack = track("aaaaaaaaaaa")
+        val removedTrack = track("bbbbbbbbbbb")
+        val initialState = LevyraUiState(
+            tracks = listOf(keptTrack, removedTrack),
+            personalOrbitTracks = listOf(keptTrack, removedTrack),
+            homeSections = listOf(HomeSection("Initial", listOf(keptTrack, removedTrack)))
+        )
+        val previous = buildHomeRenderSnapshot(initialState)
+        val updatedState = initialState.copy(
+            tracks = listOf(removedTrack),
+            personalOrbitTracks = listOf(keptTrack),
+            homeSections = listOf(HomeSection("Refreshed", listOf(removedTrack)))
+        )
+
+        val frozen = buildStableHomeRenderSnapshot(updatedState, previous, freezeContent = true)
+
+        assertEquals(listOf(keptTrack), frozen.state.personalOrbitTracks)
+        assertSame(previous.state.tracks, frozen.state.tracks)
+        assertSame(previous.state.homeSections, frozen.state.homeSections)
+    }
+
+    @Test
     fun publishesLatestStructuralHomeContentAfterScrollingSettles() {
         val initialTrack = track("aaaaaaaaaaa")
         val refreshedTrack = track("bbbbbbbbbbb")
