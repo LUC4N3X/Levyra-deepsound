@@ -159,7 +159,7 @@ def main() -> None:
                         if (state.youtubeEngagement.videoId.isNotBlank()) {
                             PlayerGlassIconButton(
                                 icon = Icons.Rounded.ChatBubbleOutline,
-                                contentDescription = strings.comments,
+                                contentDescription = strings.totalComments,
                                 size = actionSize,
                                 iconSize = if (compactPlayer) 19.dp else 20.dp,
                                 tint = LevyraPlayerDesign.TextTertiary,
