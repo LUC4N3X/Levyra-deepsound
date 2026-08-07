@@ -1,0 +1,175 @@
+name: Apply PR 320 Header Semantics v2
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.number == 320
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: perf/home-scroll-header
+
+      - name: Apply semantics fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          test_path = Path('app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt')
+          app = app_path.read_text(encoding='utf-8')
+          test = test_path.read_text(encoding='utf-8')
+
+          def once(source, old, new, label):
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return source.replace(old, new, 1)
+
+          app = once(
+              app,
+              'import androidx.compose.ui.semantics.contentDescription\n',
+              'import androidx.compose.ui.semantics.contentDescription\nimport androidx.compose.ui.semantics.clearAndSetSemantics\n',
+              'import'
+          )
+
+          marker = '\n@Composable\nprivate fun HomeScreen(\n'
+          helpers = '''
+internal const val HOME_HEADER_SEMANTICS_SWITCH_PROGRESS = 0.5f
+
+internal data class HomeHeaderSemanticsState(
+    val expandedActive: Boolean,
+    val compactActive: Boolean
+)
+
+internal fun homeHeaderSemanticsState(collapseProgress: Float): HomeHeaderSemanticsState {
+    val compactActive = collapseProgress.coerceIn(0f, 1f) >= HOME_HEADER_SEMANTICS_SWITCH_PROGRESS
+    return HomeHeaderSemanticsState(
+        expandedActive = !compactActive,
+        compactActive = compactActive
+    )
+}
+
+private fun Modifier.homeHeaderSemanticsActive(active: Boolean): Modifier =
+    if (active) this else clearAndSetSemantics { }
+'''
+          app = once(app, marker, helpers + marker, 'helpers')
+
+          start = app.index('@Composable\nprivate fun HomeScrollReactiveHeader(')
+          end = app.index('\n@Composable\nprivate fun LevyraLogoMark', start)
+          header = app[start:end]
+
+          header = once(
+              header,
+              '    val divider = if (LevyraIsLight) Color(0x2011131F) else Color.White.copy(alpha = 0.09f)\n\n',
+              '''    val divider = if (LevyraIsLight) Color(0x2011131F) else Color.White.copy(alpha = 0.09f)
+    val semanticsState by remember(collapseProgress) {
+        derivedStateOf { homeHeaderSemanticsState(collapseProgress()) }
+    }
+
+''',
+              'threshold state'
+          )
+
+          header = once(
+              header,
+              '''                HomeSectionInset {
+                    GreetingBar(
+                        userName = userName,
+                        isResolving = isResolving,
+                        animationsEnabled = animationsEnabled,
+                        onSearch = onSearch,
+                        onSettings = onSettings
+                    )
+                }
+''',
+              '''                HomeSectionInset {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .homeHeaderSemanticsActive(semanticsState.expandedActive)
+                    ) {
+                        GreetingBar(
+                            userName = userName,
+                            isResolving = isResolving,
+                            animationsEnabled = animationsEnabled,
+                            onSearch = onSearch,
+                            onSettings = onSettings
+                        )
+                    }
+                }
+''',
+              'expanded semantics'
+          )
+
+          header = once(
+              header,
+              '''                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer {
+''',
+              '''                        modifier = Modifier
+                            .fillMaxWidth()
+                            .homeHeaderSemanticsActive(semanticsState.compactActive)
+                            .graphicsLayer {
+''',
+              'compact semantics'
+          )
+          app = app[:start] + header + app[end:]
+
+          stripped = test.rstrip()
+          if 'expandedHeaderOwnsSemanticsBeforeSwitchThreshold' in stripped:
+              raise SystemExit('semantics tests already exist')
+          if not stripped.endswith('}'):
+              raise SystemExit('test class closing brace missing')
+          test = stripped[:-1].rstrip() + '''
+
+    @Test
+    fun expandedHeaderOwnsSemanticsBeforeSwitchThreshold() {
+        assertEquals(
+            HomeHeaderSemanticsState(expandedActive = true, compactActive = false),
+            homeHeaderSemanticsState(0f)
+        )
+        assertEquals(
+            HomeHeaderSemanticsState(expandedActive = true, compactActive = false),
+            homeHeaderSemanticsState(HOME_HEADER_SEMANTICS_SWITCH_PROGRESS - 0.01f)
+        )
+    }
+
+    @Test
+    fun compactHeaderOwnsSemanticsAtAndAfterSwitchThreshold() {
+        assertEquals(
+            HomeHeaderSemanticsState(expandedActive = false, compactActive = true),
+            homeHeaderSemanticsState(HOME_HEADER_SEMANTICS_SWITCH_PROGRESS)
+        )
+        assertEquals(
+            HomeHeaderSemanticsState(expandedActive = false, compactActive = true),
+            homeHeaderSemanticsState(1f)
+        )
+    }
+}
+'''
+
+          app_path.write_text(app, encoding='utf-8')
+          test_path.write_text(test, encoding='utf-8')
+          PY
+
+      - name: Commit generated fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
+          git diff --cached --check
+          git commit -m 'fix(home): gate header accessibility semantics'
+          git push origin HEAD:perf/home-scroll-header
