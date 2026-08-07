@@ -1,17 +1,16 @@
 name: PR 313 mood card border
 
 on:
-  push:
+  pull_request:
     branches:
-      - claude/menu-esplora-redesign-t3j2l4
-    paths:
-      - .github/workflows/pr313-mood-border.yml
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply-mood-border:
+    if: github.head_ref == 'claude/menu-esplora-redesign-t3j2l4'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -29,144 +28,69 @@ jobs:
 
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text()
-          old = '''@Composable
-          private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onClick: () -> Unit) {
-              val animationsEnabled = LocalAnimationsEnabled.current
-              val accentStart = Color(zone.accentStart)
-              val accentEnd = Color(zone.accentEnd)
-              val shape = RoundedCornerShape(8.dp)
-              val background by animateColorAsState(
-                  targetValue = if (isSelected) {
-                      accentStart.copy(alpha = if (LevyraIsLight) 0.12f else 0.18f)
-                  } else {
-                      if (LevyraIsLight) LevyraAdaptiveCardDeep else Color(0xFF18181D)
-                  },
-                  animationSpec = if (animationsEnabled) tween(180) else snap(),
-                  label = "explore-mood-background"
-              )
-              val edgeBrush = remember(accentStart, accentEnd) {
-                  Brush.verticalGradient(listOf(accentStart, accentEnd))
-              }
-              Row(
-                  modifier = Modifier
-                      .weight(1f)
-                      .heightIn(min = 58.dp)
-                      .clip(shape)
-                      .background(background)
-                      .border(
-                          width = if (isSelected) 1.dp else Dp.Hairline,
-                          color = if (isSelected) accentStart.copy(alpha = 0.56f) else LevyraAdaptiveHairline,
-                          shape = shape
-                      )
-                      .semantics(mergeDescendants = true) {
-                          role = Role.Button
-                          selected = isSelected
-                      }
-                      .pressable(onClick = onClick),
-                  verticalAlignment = Alignment.CenterVertically
-              ) {
-                  Box(
-                      modifier = Modifier
-                          .fillMaxHeight()
-                          .width(6.dp)
-                          .background(edgeBrush)
-                  )
-                  Text(
-                      text = zone.label,
-                      modifier = Modifier
-                          .weight(1f)
-                          .padding(horizontal = 12.dp),
-                      color = LevyraText,
-                      fontSize = 14.sp,
-                      lineHeight = 18.sp,
-                      fontWeight = FontWeight.SemiBold,
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis
-                  )
-              }
-          }
-          '''.replace('          ', '')
-          new = '''@Composable
-          private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onClick: () -> Unit) {
-              val animationsEnabled = LocalAnimationsEnabled.current
-              val accentStart = Color(zone.accentStart)
-              val accentEnd = Color(zone.accentEnd)
-              val shape = RoundedCornerShape(10.dp)
-              val background by animateColorAsState(
-                  targetValue = if (isSelected) {
-                      accentStart.copy(alpha = if (LevyraIsLight) 0.12f else 0.18f)
-                  } else {
-                      if (LevyraIsLight) LevyraAdaptiveCardDeep else Color(0xFF18181D)
-                  },
-                  animationSpec = if (animationsEnabled) tween(180) else snap(),
-                  label = "explore-mood-background"
-              )
-              val edgeBrush = remember(accentStart, accentEnd) {
-                  Brush.verticalGradient(listOf(accentStart, accentEnd))
-              }
-              val outlineBrush = remember(accentStart, accentEnd, isSelected) {
-                  Brush.horizontalGradient(
-                      listOf(
-                          accentStart.copy(alpha = if (isSelected) 0.90f else 0.68f),
-                          accentEnd.copy(alpha = if (isSelected) 0.46f else 0.26f),
-                          Color.White.copy(alpha = if (isSelected) 0.14f else 0.07f)
-                      )
-                  )
-              }
-              Row(
-                  modifier = Modifier
-                      .weight(1f)
-                      .heightIn(min = 58.dp)
-                      .clip(shape)
-                      .background(background)
-                      .border(
-                          border = BorderStroke(
-                              width = if (isSelected) 1.5.dp else 1.dp,
-                              brush = outlineBrush
-                          ),
-                          shape = shape
-                      )
-                      .semantics(mergeDescendants = true) {
-                          role = Role.Button
-                          selected = isSelected
-                      }
-                      .pressable(onClick = onClick),
-                  verticalAlignment = Alignment.CenterVertically
-              ) {
-                  Box(
-                      modifier = Modifier
-                          .fillMaxHeight()
-                          .width(if (isSelected) 8.dp else 7.dp)
-                          .background(edgeBrush)
-                  )
-                  Text(
-                      text = zone.label,
-                      modifier = Modifier
-                          .weight(1f)
-                          .padding(horizontal = 12.dp),
-                      color = LevyraText,
-                      fontSize = 14.sp,
-                      lineHeight = 18.sp,
-                      fontWeight = FontWeight.SemiBold,
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis
-                  )
-              }
-          }
-          '''.replace('          ', '')
+          start = text.index('private fun RowScope.ExploreMoodCard(')
+          end = text.index('\n@Composable\nprivate fun ExploreSamplesRow(', start)
+          block = text[start:end]
 
-          if text.count(old) != 1:
-              raise SystemExit(f'ExploreMoodCard block mismatch: found {text.count(old)} matches')
-          updated = text.replace(old, new, 1)
+          if 'val outlineBrush = remember(accentStart, accentEnd, isSelected)' in block:
+              print('Mood card border already patched')
+              raise SystemExit(0)
+
+          replacements = [
+              ('val shape = RoundedCornerShape(8.dp)', 'val shape = RoundedCornerShape(10.dp)'),
+              (
+                  '    val edgeBrush = remember(accentStart, accentEnd) {\n'
+                  '        Brush.verticalGradient(listOf(accentStart, accentEnd))\n'
+                  '    }\n',
+                  '    val edgeBrush = remember(accentStart, accentEnd) {\n'
+                  '        Brush.verticalGradient(listOf(accentStart, accentEnd))\n'
+                  '    }\n'
+                  '    val outlineBrush = remember(accentStart, accentEnd, isSelected) {\n'
+                  '        Brush.horizontalGradient(\n'
+                  '            listOf(\n'
+                  '                accentStart.copy(alpha = if (isSelected) 0.90f else 0.68f),\n'
+                  '                accentEnd.copy(alpha = if (isSelected) 0.46f else 0.26f),\n'
+                  '                Color.White.copy(alpha = if (isSelected) 0.14f else 0.07f)\n'
+                  '            )\n'
+                  '        )\n'
+                  '    }\n'
+              ),
+              (
+                  '            .border(\n'
+                  '                width = if (isSelected) 1.dp else Dp.Hairline,\n'
+                  '                color = if (isSelected) accentStart.copy(alpha = 0.56f) else LevyraAdaptiveHairline,\n'
+                  '                shape = shape\n'
+                  '            )\n',
+                  '            .border(\n'
+                  '                border = BorderStroke(\n'
+                  '                    width = if (isSelected) 1.5.dp else 1.dp,\n'
+                  '                    brush = outlineBrush\n'
+                  '                ),\n'
+                  '                shape = shape\n'
+                  '            )\n'
+              ),
+              ('.width(6.dp)', '.width(if (isSelected) 8.dp else 7.dp)')
+          ]
+
+          for old, new in replacements:
+              count = block.count(old)
+              if count != 1:
+                  raise RuntimeError(f'ExploreMoodCard patch mismatch for {old[:40]!r}: {count} matches')
+              block = block.replace(old, new, 1)
+
+          updated = text[:start] + block + text[end:]
           path.write_text(updated)
           PY
 
           git diff --check -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          git diff -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
 
       - name: Commit only mood card visual change
         shell: bash
         run: |
+          if git diff --quiet -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt; then
+            echo "No mood card diff to commit"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
