@@ -143,7 +143,6 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.SlowMotionVideo
@@ -9471,7 +9470,6 @@ private fun LibraryScreen(
     val strings = LocalLevyraStrings.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
     var showCreate by remember { mutableStateOf(false) }
-    var showImport by remember { mutableStateOf(false) }
     var filter by rememberSaveable { mutableStateOf(LibraryFilter.All) }
     val showPlaylists = filter == LibraryFilter.All || filter == LibraryFilter.Playlists
     val showDownloads = filter == LibraryFilter.All || filter == LibraryFilter.Downloads
@@ -9517,9 +9515,7 @@ private fun LibraryScreen(
                         icon = Icons.AutoMirrored.Rounded.QueueMusic,
                         accent = LevyraViolet,
                         actionLabel = strings.newItem,
-                        onAction = { showCreate = true },
-                        secondaryActionIcon = Icons.Rounded.Link,
-                        onSecondaryAction = { showImport = true }
+                        onAction = { showCreate = true }
                     )
                 }
                 if (state.playlists.isEmpty()) {
@@ -9698,13 +9694,6 @@ private fun LibraryScreen(
                     viewModel.createPlaylist(name)
                     showCreate = false
                 }
-            )
-        }
-
-        if (showImport) {
-            UniversalImportDialog(
-                onDismiss = { showImport = false },
-                onImportUrl = { url -> viewModel.importPlaylist(url) }
             )
         }
 
@@ -10386,9 +10375,7 @@ private fun LibrarySectionHeader(
     icon: ImageVector,
     accent: Color,
     actionLabel: String? = null,
-    onAction: (() -> Unit)? = null,
-    secondaryActionIcon: ImageVector? = null,
-    onSecondaryAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -10423,36 +10410,19 @@ private fun LibrarySectionHeader(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (secondaryActionIcon != null && onSecondaryAction != null) {
-                IconButton(
-                    onClick = onSecondaryAction,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color.White.copy(alpha = 0.06f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = secondaryActionIcon,
-                        contentDescription = "Secondary Action",
-                        tint = LevyraText,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            if (actionLabel != null && onAction != null) {
-                IconButton(
-                    onClick = onAction,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color.White.copy(alpha = 0.06f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = cleanLibraryLabel(actionLabel),
-                        tint = LevyraText,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+        if (actionLabel != null && onAction != null) {
+            IconButton(
+                onClick = onAction,
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(Color.White.copy(alpha = 0.06f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = cleanLibraryLabel(actionLabel),
+                    tint = LevyraText,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -18956,65 +18926,4 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60L
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
-}
-
-@Composable
-private fun UniversalImportDialog(
-    onDismiss: () -> Unit,
-    onImportUrl: (String) -> Unit
-) {
-    var url by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = LevyraPanel,
-        title = {
-            Text(
-                text = "Importa Playlist",
-                color = LevyraText,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "Incolla il link di una playlist da YouTube, YouTube Music o Spotify, oppure inserisci il contenuto JSON di un backup.",
-                    color = LevyraMuted,
-                    fontSize = 14.sp
-                )
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    placeholder = { Text("https://...", color = LevyraMuted.copy(alpha = 0.5f)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = LevyraText,
-                        unfocusedTextColor = LevyraText,
-                        focusedBorderColor = LevyraCyan,
-                        unfocusedBorderColor = LevyraMuted.copy(alpha = 0.3f),
-                        cursorColor = LevyraCyan
-                    ),
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (url.isNotBlank()) {
-                        onImportUrl(url)
-                        onDismiss()
-                    }
-                }
-            ) {
-                Text("Importa", color = LevyraCyan, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Annulla", color = LevyraMuted)
-            }
-        }
-    )
 }
