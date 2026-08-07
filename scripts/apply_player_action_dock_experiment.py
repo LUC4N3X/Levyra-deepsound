@@ -4,6 +4,12 @@
 The experiment is presentation-only: playback commands and state ownership stay in
 Levyra's existing ViewModel/player stack. Gradle runs this patch before Android
 compilation so the draft APK can be evaluated on-device before source integration.
+
+The generated player keeps playlist/favorite beside metadata, keeps the compact
+YouTube engagement capsule for comments, and replaces the expandable lower area
+with one Material You action shelf: download, timer, queue, lyrics, speed and
+normalization. Artwork sizing and spacing become height-aware so common phone
+sizes can expose the complete primary player without requiring a scroll.
 """
 
 from pathlib import Path
