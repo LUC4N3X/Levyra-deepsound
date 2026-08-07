@@ -53,7 +53,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LibraryImportPlaylistCard(
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
 ) {
     val copy = LocalLevyraStrings.current.playlistImportCopy()
     val shape = RoundedCornerShape(24.dp)
@@ -173,7 +174,8 @@ internal fun LibraryImportPlaylistCard(
 @Composable
 internal fun LibraryImportPlaylistDialog(
     onDismiss: () -> Unit,
-    onImport: (String) -> Unit
+    onImport: (String) -> Unit,
+    @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
 ) {
     val copy = LocalLevyraStrings.current.playlistImportCopy()
     var input by remember { mutableStateOf("") }
