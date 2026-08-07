@@ -31,9 +31,20 @@ class SmartPlaylistStore(context: Context) {
                     id = event.trackId,
                     title = event.title,
                     artist = event.artist,
-                    durationSeconds = event.durationSeconds,
+                    album = event.album,
+                    durationMs = event.durationMs,
+                    streamUrl = "",
+                    videoUrl = event.videoUrl,
                     thumbnailUrl = event.thumbnailUrl,
-                    largeThumbnailUrl = event.thumbnailUrl
+                    largeThumbnailUrl = event.largeThumbnailUrl,
+                    source = event.source,
+                    moodTags = setOf("music"),
+                    energy = 50,
+                    vocal = 50,
+                    replayScore = 60,
+                    cacheScore = 50,
+                    accentStart = 0,
+                    accentEnd = 0
                 )
             }
         }
@@ -66,9 +77,27 @@ class SmartPlaylistStore(context: Context) {
     }
 
     suspend fun getRecentlyDownloadedPlaylist(limit: Int = 30): Playlist = withContext(Dispatchers.IO) {
-        val downloads = downloadedTracksDao.all()
-            .take(limit)
-            .map { it.toTrack() }
+        val downloads = downloadedTracksDao.recent(limit).map { entity ->
+            Track(
+                id = entity.trackId,
+                title = entity.title,
+                artist = entity.artist,
+                album = entity.album,
+                durationMs = entity.durationMs,
+                streamUrl = "",
+                videoUrl = "",
+                thumbnailUrl = "",
+                largeThumbnailUrl = "",
+                source = "download",
+                moodTags = setOf("offline"),
+                energy = 50,
+                vocal = 50,
+                replayScore = 50,
+                cacheScore = 50,
+                accentStart = 0,
+                accentEnd = 0
+            )
+        }
 
         val cover = downloads.firstOrNull()?.largeThumbnailUrl?.ifBlank { downloads.firstOrNull()?.thumbnailUrl }.orEmpty()
         Playlist(

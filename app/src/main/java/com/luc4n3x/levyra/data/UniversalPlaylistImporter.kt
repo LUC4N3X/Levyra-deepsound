@@ -49,7 +49,7 @@ class UniversalPlaylistImporter(
             return PlaylistImportResult.Failure("La playlist YouTube non contiene tracce o non è pubblica")
         }
 
-        val name = customName?.ifBlank { null } ?: fetchedPlaylist.name.ifBlank { "YouTube Playlist" }
+        val name = customName?.ifBlank { null } ?: fetchedPlaylist.title.ifBlank { "YouTube Playlist" }
         val created = playlistStore.create(name, fetchedPlaylist.tracks.firstOrNull())
         if (fetchedPlaylist.tracks.size > 1) {
             playlistStore.addTracks(created.id, fetchedPlaylist.tracks.drop(1))
@@ -114,9 +114,20 @@ class UniversalPlaylistImporter(
                     id = id,
                     title = title,
                     artist = artist,
-                    durationSeconds = duration,
+                    album = "",
+                    durationMs = duration * 1000L,
+                    streamUrl = "",
+                    videoUrl = "",
                     thumbnailUrl = thumb,
-                    largeThumbnailUrl = thumb
+                    largeThumbnailUrl = thumb,
+                    source = "import",
+                    moodTags = setOf("music"),
+                    energy = 50,
+                    vocal = 50,
+                    replayScore = 50,
+                    cacheScore = 50,
+                    accentStart = 0,
+                    accentEnd = 0
                 )
             )
         }
