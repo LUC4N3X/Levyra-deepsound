@@ -23,7 +23,7 @@ jobs:
           ref: feature/pro-audio-and-smart-importer
           fetch-depth: 0
 
-      - name: Keep import action inside Playlists only
+      - name: Keep import action inside Playlists and make the card dismissible
         shell: bash
         run: |
           set -euo pipefail
@@ -34,9 +34,17 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt')
-          source = path.read_text(encoding='utf-8')
-          block = '''            if (category == LibraryCategory.Overview) {
+          def replace_once(path: Path, old: str, new: str, label: str) -> None:
+              source = path.read_text(encoding='utf-8')
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              path.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          screen = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt')
+          source = screen.read_text(encoding='utf-8')
+
+          overview = '''            if (category == LibraryCategory.Overview) {
                 item(key = "overview-import-playlist") {
                     LibraryImportPlaylistCard(
                         onClick = { showImportPlaylist = true },
@@ -46,21 +54,208 @@ jobs:
             }
 
 '''
-          count = source.count(block)
-          if count != 1:
-              raise SystemExit(f'overview import block: expected exactly one match, found {count}')
-          source = source.replace(block, '', 1)
+          if overview in source:
+              source = source.replace(overview, '', 1)
+
+          state_anchor = '''    var showCreatePlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylist by remember { mutableStateOf(false) }
+'''
+          state_replacement = '''    var showCreatePlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
+'''
+          if state_replacement not in source:
+              count = source.count(state_anchor)
+              if count != 1:
+                  raise SystemExit(f'import card state: expected exactly one match, found {count}')
+              source = source.replace(state_anchor, state_replacement, 1)
+
+          old_playlist = '''                    item(key = "playlist-import-action") {
+                        LibraryImportPlaylistCard(
+                            onClick = { showImportPlaylist = true },
+                            isItalian = isItalian
+                        )
+                    }
+'''
+          new_playlist = '''                    item(key = "playlist-import-action") {
+                        if (showImportPlaylistCard) {
+                            LibraryImportPlaylistCard(
+                                onClick = { showImportPlaylist = true },
+                                onDismiss = { showImportPlaylistCard = false },
+                                isItalian = isItalian
+                            )
+                        } else {
+                            LibraryImportPlaylistCompactAction(
+                                onClick = { showImportPlaylist = true }
+                            )
+                        }
+                    }
+'''
+          if new_playlist not in source:
+              count = source.count(old_playlist)
+              if count != 1:
+                  raise SystemExit(f'playlist import action: expected exactly one match, found {count}')
+              source = source.replace(old_playlist, new_playlist, 1)
+
           if 'overview-import-playlist' in source:
               raise SystemExit('overview import action still present after patch')
-          path.write_text(source, encoding='utf-8')
+          screen.write_text(source, encoding='utf-8')
+
+          ui = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LibraryPlaylistImportUi.kt')
+          source = ui.read_text(encoding='utf-8')
+
+          close_import_anchor = 'import androidx.compose.material.icons.rounded.ArrowForward\n'
+          close_import = close_import_anchor + 'import androidx.compose.material.icons.rounded.Close\n'
+          if 'import androidx.compose.material.icons.rounded.Close\n' not in source:
+              if source.count(close_import_anchor) != 1:
+                  raise SystemExit('Close icon import anchor missing')
+              source = source.replace(close_import_anchor, close_import, 1)
+
+          icon_button_anchor = 'import androidx.compose.material3.Icon\n'
+          icon_button_import = icon_button_anchor + 'import androidx.compose.material3.IconButton\n'
+          if 'import androidx.compose.material3.IconButton\n' not in source:
+              if source.count(icon_button_anchor) != 1:
+                  raise SystemExit('IconButton import anchor missing')
+              source = source.replace(icon_button_anchor, icon_button_import, 1)
+
+          signature_old = '''internal fun LibraryImportPlaylistCard(
+    onClick: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
+) {
+'''
+          signature_new = '''internal fun LibraryImportPlaylistCard(
+    onClick: () -> Unit,
+    onDismiss: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
+) {
+'''
+          if signature_new not in source:
+              if source.count(signature_old) != 1:
+                  raise SystemExit('playlist card signature anchor missing')
+              source = source.replace(signature_old, signature_new, 1)
+
+          row_old = '''            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+'''
+          row_new = '''            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+'''
+          if row_new not in source:
+              if source.count(row_old) != 1:
+                  raise SystemExit('playlist card row anchor missing')
+              source = source.replace(row_old, row_new, 1)
+
+          arrow_block = '''                Surface(
+                    color = Color.Black.copy(alpha = 0.18f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowForward,
+                        contentDescription = copy.action,
+                        tint = LevyraCyan,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(17.dp)
+                    )
+                }
+            }
+'''
+          close_block = '''            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(30.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = copy.cancel,
+                    tint = LevyraMuted.copy(alpha = 0.78f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+'''
+          if close_block not in source:
+              if source.count(arrow_block) != 1:
+                  raise SystemExit('playlist card arrow block anchor missing')
+              source = source.replace(arrow_block, close_block, 1)
+
+          compact_anchor = '''}
+
+@Composable
+internal fun LibraryImportPlaylistDialog(
+'''
+          compact_block = '''}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun LibraryImportPlaylistCompactAction(
+    onClick: () -> Unit
+) {
+    val copy = LocalLevyraStrings.current.playlistImportCopy()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Surface(
+            color = Color.White.copy(alpha = 0.045f),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .combinedClickable(onClick = onClick)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(17.dp)
+                )
+                Text(
+                    text = copy.action,
+                    color = LevyraText,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun LibraryImportPlaylistDialog(
+'''
+          if 'internal fun LibraryImportPlaylistCompactAction(' not in source:
+              if source.count(compact_anchor) != 1:
+                  raise SystemExit('compact action insertion anchor missing')
+              source = source.replace(compact_anchor, compact_block, 1)
+
+          # ArrowForward is no longer used after replacing the trailing button.
+          source = source.replace('import androidx.compose.material.icons.rounded.ArrowForward\n', '')
+          ui.write_text(source, encoding='utf-8')
           PY
 
-          # This workflow is unrelated to the feature and must stay identical to main.
+          # Keep unrelated workflow code identical to main and remove this one-shot helper.
           git checkout origin/main -- .github/workflows/editorial-catalog.yml
           git rm .github/workflows/pr319-fix-library-placement.yml
 
           git add -A
           git diff --cached --check
-          git diff --cached -- app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt .github/workflows/editorial-catalog.yml
-          git commit -m 'fix(library): show playlist import only in Playlists'
+          git status --short
+          git commit -m 'fix(library): make playlist import card dismissible'
           git push origin HEAD:feature/pro-audio-and-smart-importer
