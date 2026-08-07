@@ -1,0 +1,138 @@
+name: PR 313 fresh-current request ownership
+
+on:
+  push:
+    branches:
+      - claude/menu-esplora-redesign-t3j2l4
+    paths:
+      - .github/workflows/pr313-fresh-request-language-fix.yml
+      - .github/scripts/pr313_fresh_request_language_fix.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr313-fresh-request-language-fix
+  cancel-in-progress: true
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: claude/menu-esplora-redesign-t3j2l4
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+        with:
+          cache-disabled: true
+
+      - name: Apply deterministic fix
+        id: patch
+        shell: bash
+        run: |
+          set +e
+          python .github/scripts/pr313_fresh_request_language_fix.py > /tmp/pr313-fresh-request-patch.log 2>&1
+          status=$?
+          cat /tmp/pr313-fresh-request-patch.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Compile
+        id: compile
+        if: steps.patch.outputs.status == '0'
+        shell: bash
+        run: |
+          set +e
+          {
+            git diff --check &&
+            ./gradlew --no-daemon :app:compileDebugKotlin
+          } > /tmp/pr313-fresh-request-compile.log 2>&1
+          status=$?
+          cat /tmp/pr313-fresh-request-compile.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Targeted tests
+        id: tests
+        if: steps.patch.outputs.status == '0' && steps.compile.outputs.status == '0'
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.viewmodel.FreshCurrentsRequestPolicyTest' \
+            --tests 'com.luc4n3x.levyra.data.FreshCurrentsPolicyTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.ExploreProjectionTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.SamplesStateIsolationTest' \
+            > /tmp/pr313-fresh-request-tests.log 2>&1
+          status=$?
+          cat /tmp/pr313-fresh-request-tests.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Commit validated fix
+        if: steps.patch.outputs.status == '0' && steps.compile.outputs.status == '0' && steps.tests.outputs.status == '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+            app/src/test/java/com/luc4n3x/levyra/viewmodel/FreshCurrentsRequestPolicyTest.kt
+          git commit -m "fix(explore): own fresh-current requests by language"
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
+
+      - name: Persist diagnostics
+        if: steps.patch.outputs.status != '0' || steps.compile.outputs.status != '0' || steps.tests.outputs.status != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "patch_status=${{ steps.patch.outputs.status }}"
+            echo "compile_status=${{ steps.compile.outputs.status }}"
+            echo "tests_status=${{ steps.tests.outputs.status }}"
+            echo
+            echo "--- PATCH ---"
+            cat /tmp/pr313-fresh-request-patch.log 2>/dev/null || true
+            echo
+            echo "--- COMPILE ---"
+            cat /tmp/pr313-fresh-request-compile.log 2>/dev/null || true
+            echo
+            echo "--- TESTS ---"
+            cat /tmp/pr313-fresh-request-tests.log 2>/dev/null || true
+          } > pr313-fresh-request-diagnostic.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pr313-fresh-request-diagnostic.txt
+          git commit -m "chore(ci): record fresh-current request diagnostics"
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
+          exit 1
