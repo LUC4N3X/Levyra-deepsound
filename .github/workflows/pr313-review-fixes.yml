@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/pr313-review-fixes.yml
       - .github/scripts/pr313_review_fixes.py
+      - .github/scripts/pr313_review_localization_followup.py
 
 permissions:
   contents: write
@@ -60,7 +61,10 @@ jobs:
         shell: bash
         run: |
           set +e
-          python .github/scripts/pr313_review_fixes.py > /tmp/pr313-review-patch.log 2>&1
+          {
+            python .github/scripts/pr313_review_fixes.py &&
+            python .github/scripts/pr313_review_localization_followup.py
+          } > /tmp/pr313-review-patch.log 2>&1
           status=$?
           cat /tmp/pr313-review-patch.log
           echo "status=$status" >> "$GITHUB_OUTPUT"
@@ -139,7 +143,8 @@ jobs:
             app/src/test/java/com/luc4n3x/levyra/data/FreshCurrentsPolicyTest.kt \
             app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesStateIsolationTest.kt \
             app/src/test/java/com/luc4n3x/levyra/ui/SamplesLoadSurfaceStateTest.kt \
-            app/src/test/java/com/luc4n3x/levyra/viewmodel/ExploreProjectionTest.kt
+            app/src/test/java/com/luc4n3x/levyra/viewmodel/ExploreProjectionTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/ui/i18n/LevyraStringsTest.kt
           git commit -m "fix(explore): harden Samples state and fresh discovery"
           git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
 
