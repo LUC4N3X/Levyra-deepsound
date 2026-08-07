@@ -17629,7 +17629,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     val animationsEnabled = LocalAnimationsEnabled.current
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
     val background by animateColorAsState(
         targetValue = if (isSelected) {
             accentStart.copy(alpha = if (LevyraIsLight) 0.12f else 0.18f)
@@ -17642,6 +17642,15 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     val edgeBrush = remember(accentStart, accentEnd) {
         Brush.verticalGradient(listOf(accentStart, accentEnd))
     }
+    val outlineBrush = remember(accentStart, accentEnd, isSelected) {
+        Brush.horizontalGradient(
+            listOf(
+                accentStart.copy(alpha = if (isSelected) 0.90f else 0.68f),
+                accentEnd.copy(alpha = if (isSelected) 0.46f else 0.26f),
+                Color.White.copy(alpha = if (isSelected) 0.14f else 0.07f)
+            )
+        )
+    }
     Row(
         modifier = Modifier
             .weight(1f)
@@ -17649,8 +17658,10 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
             .clip(shape)
             .background(background)
             .border(
-                width = if (isSelected) 1.dp else Dp.Hairline,
-                color = if (isSelected) accentStart.copy(alpha = 0.56f) else LevyraAdaptiveHairline,
+                border = BorderStroke(
+                    width = if (isSelected) 1.5.dp else 1.dp,
+                    brush = outlineBrush
+                ),
                 shape = shape
             )
             .semantics(mergeDescendants = true) {
@@ -17663,7 +17674,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(6.dp)
+                .width(if (isSelected) 8.dp else 7.dp)
                 .background(edgeBrush)
         )
         Text(
