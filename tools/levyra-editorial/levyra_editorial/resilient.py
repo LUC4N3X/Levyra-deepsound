@@ -34,8 +34,12 @@ class CentralEditorialClient:
     def get_playlist_metadata(self, playlist_id: str) -> dict[str, Any]:
         return self._spotify.get_playlist_metadata(playlist_id)
 
-    def iter_playlist_items(self, playlist_id: str) -> list[dict[str, Any]]:
-        return self._spotify.iter_playlist_items(playlist_id)
+    def iter_playlist_items(
+        self,
+        playlist_id: str,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        return self._spotify.iter_playlist_items(playlist_id, limit=limit)
 
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         enriched = self._spotify.enrich_track_metadata(items)
