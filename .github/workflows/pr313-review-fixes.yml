@@ -1,0 +1,174 @@
+name: PR 313 review fixes
+
+on:
+  push:
+    branches:
+      - claude/menu-esplora-redesign-t3j2l4
+    paths:
+      - .github/workflows/pr313-review-fixes.yml
+      - .github/scripts/pr313_review_fixes.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr313-review-fixes
+  cancel-in-progress: true
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: claude/menu-esplora-redesign-t3j2l4
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+        with:
+          cache-disabled: true
+
+      - name: Apply deterministic review fixes
+        id: patch
+        shell: bash
+        run: |
+          set +e
+          python .github/scripts/pr313_review_fixes.py > /tmp/pr313-review-patch.log 2>&1
+          status=$?
+          cat /tmp/pr313-review-patch.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Validate diff and compile
+        id: compile
+        if: steps.patch.outputs.status == '0'
+        shell: bash
+        run: |
+          set +e
+          {
+            git diff --check &&
+            ./gradlew --no-daemon :app:compileDebugKotlin
+          } > /tmp/pr313-review-compile.log 2>&1
+          status=$?
+          cat /tmp/pr313-review-compile.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Targeted regression tests
+        id: targeted
+        if: steps.patch.outputs.status == '0' && steps.compile.outputs.status == '0'
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.player.queue.PersistentQueueTransientPolicyTest' \
+            --tests 'com.luc4n3x.levyra.data.FreshCurrentsPolicyTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.SamplesStateIsolationTest' \
+            --tests 'com.luc4n3x.levyra.ui.SamplesLoadSurfaceStateTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackRestorePolicyTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.ExploreProjectionTest' \
+            --tests 'com.luc4n3x.levyra.data.YoutubeShortsRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.data.SamplesAllLanguagesPolicyTest' \
+            --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
+            > /tmp/pr313-review-targeted.log 2>&1
+          status=$?
+          cat /tmp/pr313-review-targeted.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Full app unit tests
+        id: fulltests
+        if: steps.patch.outputs.status == '0' && steps.compile.outputs.status == '0' && steps.targeted.outputs.status == '0'
+        shell: bash
+        run: |
+          set +e
+          ./gradlew --no-daemon :app:testDebugUnitTest > /tmp/pr313-review-fulltests.log 2>&1
+          status=$?
+          cat /tmp/pr313-review-fulltests.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Commit validated fixes
+        if: steps.patch.outputs.status == '0' && steps.compile.outputs.status == '0' && steps.targeted.outputs.status == '0' && steps.fulltests.outputs.status == '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/player/queue/PersistentQueueEngine.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeShortsCache.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraUiState.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/ExploreSamplesScreen.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraExploreStrings.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStrings.kt \
+            app/src/test/java/com/luc4n3x/levyra/player/queue/PersistentQueueTransientPolicyTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/FreshCurrentsPolicyTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesStateIsolationTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/ui/SamplesLoadSurfaceStateTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/viewmodel/ExploreProjectionTest.kt
+          git commit -m "fix(explore): harden Samples state and fresh discovery"
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
+
+      - name: Persist failure diagnostics
+        if: steps.patch.outputs.status != '0' || steps.compile.outputs.status != '0' || steps.targeted.outputs.status != '0' || steps.fulltests.outputs.status != '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "patch_status=${{ steps.patch.outputs.status }}"
+            echo "compile_status=${{ steps.compile.outputs.status }}"
+            echo "targeted_status=${{ steps.targeted.outputs.status }}"
+            echo "fulltests_status=${{ steps.fulltests.outputs.status }}"
+            echo
+            echo "--- PATCH ---"
+            cat /tmp/pr313-review-patch.log 2>/dev/null || true
+            echo
+            echo "--- COMPILE ---"
+            cat /tmp/pr313-review-compile.log 2>/dev/null || true
+            echo
+            echo "--- TARGETED TESTS ---"
+            cat /tmp/pr313-review-targeted.log 2>/dev/null || true
+            echo
+            echo "--- FULL UNIT TESTS ---"
+            cat /tmp/pr313-review-fulltests.log 2>/dev/null || true
+          } > pr313-review-fixes-diagnostic.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pr313-review-fixes-diagnostic.txt
+          git commit -m "chore(ci): record PR 313 review fix diagnostics"
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
+          exit 1
