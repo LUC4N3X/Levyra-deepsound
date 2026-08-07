@@ -1,0 +1,5 @@
+attach overlay header: expected exactly one match, found 2
+
+marker_status=0
+compile_status=0
+patch_status=1
