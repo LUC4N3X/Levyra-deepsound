@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07T07:13:03Z",
+  "generatedAt": "2026-08-07T07:20:37Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1290,12 +1290,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -1509,7 +1503,7 @@
         },
         {
           "position": 13,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1517,8 +1511,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1528,7 +1522,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 14,
@@ -2449,12 +2443,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -5785,12 +5773,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -6205,11 +6187,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 12,
@@ -6308,12 +6290,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -8353,12 +8329,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -10146,12 +10116,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -10447,11 +10411,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 39,
@@ -11843,12 +11807,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -12949,12 +12907,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -14939,12 +14891,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -16287,12 +16233,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -17169,7 +17109,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17177,12 +17117,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 28,
@@ -20807,12 +20747,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -24161,7 +24095,7 @@
         },
         {
           "position": 49,
-          "id": "levyra-e58c98ea589fa449e1d7",
+          "id": "levyra-0212b4c8036ae7ca6989",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24178,12 +24112,12 @@
             }
           ],
           "album": {
-            "name": "Guru (Original Motion Picture Soundtrack)",
-            "releaseDate": "2006-09-11"
+            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
+            "releaseDate": "2009-02-19"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
         },
         {
           "position": 50,
@@ -26526,11 +26460,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 48,
@@ -26666,6 +26600,8 @@
           "youtubeMusic": {
             "audioVideoId": "WmlGzY1iWAc",
             "audioConfidence": 100,
+            "videoId": "HTjkVCSsKv8",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCz8kusd-P42WEfu71ObB-aw"
           },
@@ -27116,6 +27052,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -28589,12 +28527,6 @@
           },
           "durationMs": 184248,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "fuBMrVffb84",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -30333,12 +30265,6 @@
           },
           "durationMs": 192000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "aM69Ur67d_I",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCy6qn2oxmoXA4_gBA5Q7zPw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fb053c289f43a1baa247e1b5"
         },
         {
