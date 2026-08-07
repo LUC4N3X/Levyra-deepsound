@@ -36,8 +36,6 @@ def main() -> None:
     if count != 1:
         raise RuntimeError(f"advancedControlsExpanded replacement failed: {count}")
 
-    # A taller compact breakpoint lets the layout proactively reduce artwork before
-    # the user needs to scroll on normal modern phones.
     text = replace_once(
         text,
         "        val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 700.dp)",
@@ -63,7 +61,6 @@ def main() -> None:
         "stacked player bottom padding",
     )
 
-    # The shelf is persistent, so the old chevron/reveal handle disappears.
     text, count = re.subn(
         r"\n        val pulseBlock: @Composable \(\) -> Unit = \{.*?\n        \}\n\n        val advancedBlock:",
         "\n        val advancedBlock:",
@@ -76,8 +73,6 @@ def main() -> None:
     text = text.replace("                        pulseBlock()\n", "", 1)
     text = text.replace("                    item { pulseBlock() }\n", "", 1)
 
-    # Material You / Pixel-style action shelf. Playlist and favorite remain next to
-    # metadata; this shelf carries the non-duplicated playback utilities.
     replacement = f'''@Composable
 private fun PlayerUtilityDock(
     activeColor: Color,
@@ -266,9 +261,6 @@ private fun compactYoutubeCount'''
             )'''
     text = replace_once(text, old_call, new_call, "PlayerUtilityDock wiring")
 
-    # Remove the second utility row and the large inline lyrics card. The existing
-    # actions remain available from the shelf/full lyrics surface, so the primary
-    # player no longer grows into a long scrolling page.
     extra_controls = '''            PlayerOptionsRow(
                 speed = state.playbackSpeed,
                 sleepMinutes = state.sleepTimerMinutes,
@@ -294,8 +286,6 @@ private fun compactYoutubeCount'''
 '''
     text = replace_once(text, extra_controls, "", "secondary utility rows")
 
-    # Keep YouTube engagement/comments available, but make the capsule lighter and
-    # shorter so it behaves like Pixel metadata rather than another large control row.
     text = replace_once(
         text,
         ".padding(top = if (compact) 7.dp else 9.dp)",
