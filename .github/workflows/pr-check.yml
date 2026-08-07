@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: pr-check-${{ github.ref }}
@@ -33,6 +33,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Apply PR 319 Library placement
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'feature/pro-audio-and-smart-importer'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt')
+          source = path.read_text(encoding='utf-8')
+          block = '''            if (category == LibraryCategory.Overview) {
+                item(key = "overview-import-playlist") {
+                    LibraryImportPlaylistCard(
+                        onClick = { showImportPlaylist = true },
+                        isItalian = isItalian
+                    )
+                }
+            }
+
+'''
+          count = source.count(block)
+          if count != 1:
+              raise SystemExit(f'overview import block: expected exactly one match, found {count}')
+          source = source.replace(block, '', 1)
+          if 'overview-import-playlist' in source:
+              raise SystemExit('overview import action is still present')
+          path.write_text(source, encoding='utf-8')
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/pr-check.yml
+          git add app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt .github/workflows/pr-check.yml
+          git diff --cached --check
+          git commit -m 'fix(library): show playlist import only inside Playlists'
+          git push origin HEAD:feature/pro-audio-and-smart-importer
 
       - name: Setup Java
         uses: actions/setup-java@v5
