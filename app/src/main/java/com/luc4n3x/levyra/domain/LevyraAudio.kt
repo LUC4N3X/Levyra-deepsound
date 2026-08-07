@@ -73,10 +73,10 @@ object LevyraAudioPresets {
         LevyraAudioPreset(JAZZ, "Jazz", listOf(24, 16, 8, 12, -10, -10, 0, 14, 28, 34), 20, 10),
         LevyraAudioPreset(ACOUSTIC, "Acoustic", listOf(28, 18, 10, 12, 18, 14, 22, 30, 26, 18), 15, 5),
         LevyraAudioPreset(CLASSICAL, "Classical", listOf(32, 24, 16, 8, -4, -4, 0, 16, 24, 28), 10, 15),
-        LevyraAudioPreset(AIRPODS_PRO, "AutoEQ: AirPods Pro", listOf(-12, -6, 4, 8, 2, -4, 6, 12, 8, -4), 10, 10),
-        LevyraAudioPreset(SONY_XM4, "AutoEQ: Sony WH-1000XM4", listOf(-28, -18, -8, 2, 8, 6, 4, 14, 10, -8), 0, 10),
-        LevyraAudioPreset(SONY_XM5, "AutoEQ: Sony WH-1000XM5", listOf(-22, -14, -4, 4, 6, 4, 6, 12, 6, -6), 0, 10),
-        LevyraAudioPreset(SENNHEISER_HD600, "AutoEQ: Sennheiser HD600", listOf(42, 32, 14, 2, -2, -4, 2, 8, 4, -12), 35, 5)
+        LevyraAudioPreset(AIRPODS_PRO, "AirPods Pro · Device tune", listOf(-12, -6, 4, 8, 2, -4, 6, 12, 8, -4), 10, 10),
+        LevyraAudioPreset(SONY_XM4, "Sony WH-1000XM4 · Device tune", listOf(-28, -18, -8, 2, 8, 6, 4, 14, 10, -8), 0, 10),
+        LevyraAudioPreset(SONY_XM5, "Sony WH-1000XM5 · Device tune", listOf(-22, -14, -4, 4, 6, 4, 6, 12, 6, -6), 0, 10),
+        LevyraAudioPreset(SENNHEISER_HD600, "Sennheiser HD600 · Device tune", listOf(42, 32, 14, 2, -2, -4, 2, 8, 4, -12), 35, 5)
     )
 
     fun normalizePreset(id: String): String = presets.firstOrNull { it.id == id }?.id ?: FLAT
