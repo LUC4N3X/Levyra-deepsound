@@ -1,0 +1,13 @@
+patch_status=1
+tests_status=
+
+--- patch log ---
+Traceback (most recent call last):
+  File "/home/runner/work/Levyra-deepsound/Levyra-deepsound/.github/scripts/pr313_targeted_fix.py", line 94, in <module>
+    vm = replace_once(
+         ^^^^^^^^^^^^^
+  File "/home/runner/work/Levyra-deepsound/Levyra-deepsound/.github/scripts/pr313_targeted_fix.py", line 7, in replace_once
+    raise RuntimeError(f"{label}: expected exactly 1 match, found {count}")
+RuntimeError: remove failure reset: expected exactly 1 match, found 2
+
+--- tests log ---
