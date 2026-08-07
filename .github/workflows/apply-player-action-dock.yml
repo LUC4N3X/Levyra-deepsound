@@ -1,0 +1,256 @@
+name: Apply player action dock experiment
+
+on:
+  push:
+    branches:
+      - agent/player-action-dock
+
+permissions:
+  contents: write
+
+jobs:
+  patch-player:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/player-action-dock
+          fetch-depth: 0
+
+      - name: Apply focused player UI patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f"{label}: expected 1 exact match, found {count}")
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              """        var advancedControlsExpanded by remember(track?.id) {\n            mutableStateOf(false)\n        }""",
+              """        val advancedControlsExpanded = true""",
+              "persistent advanced controls"
+          )
+
+          pulse_pattern = re.compile(
+              r"\n        val pulseBlock: @Composable \(\) -> Unit = \{\n"
+              r"            LevyraControlPulseHandle\(.*?\n"
+              r"        \}\n\n"
+              r"        val advancedBlock:",
+              re.S,
+          )
+          text, count = pulse_pattern.subn("\n        val advancedBlock:", text, count=1)
+          if count != 1:
+              raise RuntimeError(f"pulse block: expected 1 match, found {count}")
+
+          if text.count("                        pulseBlock()\n") != 1:
+              raise RuntimeError("side-by-side pulse call changed")
+          text = text.replace("                        pulseBlock()\n", "", 1)
+          if text.count("                    item { pulseBlock() }\n") != 1:
+              raise RuntimeError("stacked pulse call changed")
+          text = text.replace("                    item { pulseBlock() }\n", "", 1)
+
+          pulse_function_pattern = re.compile(
+              r"\n@Composable\nprivate fun LevyraControlPulseHandle\(.*?\n\}\n\n"
+              r"@Composable\nprivate fun PlayerUtilityDock",
+              re.S,
+          )
+          text, count = pulse_function_pattern.subn(
+              "\n@Composable\nprivate fun PlayerUtilityDock",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise RuntimeError(f"pulse function: expected 1 match, found {count}")
+
+          dock_pattern = re.compile(
+              r"@Composable\nprivate fun PlayerUtilityDock\(.*?\n\}\n\n"
+              r"@Composable\nprivate fun RowScope\.PlayerDockAction\(.*?\n\}\n\n"
+              r"private fun compactYoutubeCount",
+              re.S,
+          )
+          new_dock = r'''@Composable
+private fun PlayerUtilityDock(
+    activeColor: Color,
+    secondaryColor: Color,
+    lyricsAvailable: Boolean,
+    isExporting: Boolean,
+    isDownloaded: Boolean,
+    sleepMinutes: Int,
+    isFavorite: Boolean,
+    compact: Boolean,
+    onDownload: () -> Unit,
+    onSleep: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onQueue: () -> Unit,
+    onLyrics: () -> Unit,
+    onFavorite: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .playerGlass(
+                shape = LevyraPlayerDesign.ShapeLg,
+                fill = LevyraPlayerDesign.GlassFillSunken
+            )
+            .padding(horizontal = if (compact) 5.dp else 6.dp, vertical = if (compact) 5.dp else 6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            PlayerDockAction(
+                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                label = when {
+                    isExporting -> strings.downloadInProgress
+                    isDownloaded -> strings.downloaded
+                    else -> strings.download
+                },
+                tint = if (isExporting || isDownloaded) secondaryColor else Color.White.copy(alpha = 0.76f),
+                active = isDownloaded,
+                isBusy = isExporting,
+                enabled = !isExporting,
+                compact = compact,
+                onClick = onDownload
+            )
+            PlayerDockAction(
+                icon = Icons.Rounded.Bedtime,
+                label = if (sleepMinutes > 0) "${sleepMinutes}m" else strings.timer,
+                tint = if (sleepMinutes > 0) secondaryColor else Color.White.copy(alpha = 0.76f),
+                active = sleepMinutes > 0,
+                compact = compact,
+                onClick = onSleep
+            )
+            PlayerDockAction(
+                icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                label = strings.addToPlaylist,
+                tint = Color.White.copy(alpha = 0.82f),
+                compact = compact,
+                onClick = onAddToPlaylist
+            )
+            PlayerDockAction(
+                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                label = strings.queue,
+                tint = Color.White.copy(alpha = 0.82f),
+                compact = compact,
+                onClick = onQueue
+            )
+            PlayerDockAction(
+                icon = Icons.AutoMirrored.Rounded.Subject,
+                label = strings.lyrics,
+                tint = if (lyricsAvailable) activeColor else Color.White.copy(alpha = 0.72f),
+                active = lyricsAvailable,
+                compact = compact,
+                onClick = onLyrics
+            )
+            PlayerDockAction(
+                icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                label = strings.favoritesPlain,
+                tint = if (isFavorite) activeColor else Color.White.copy(alpha = 0.76f),
+                active = isFavorite,
+                compact = compact,
+                onClick = onFavorite
+            )
+        }
+    }
+}
+
+@Composable
+private fun RowScope.PlayerDockAction(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    active: Boolean = false,
+    isBusy: Boolean = false,
+    enabled: Boolean = true,
+    compact: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .height(if (compact) 48.dp else 52.dp)
+            .pressable(enabled = enabled, pressedScale = 0.92f, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(if (compact) 38.dp else 42.dp)
+                .background(
+                    if (active) tint.copy(alpha = 0.13f) else Color.Transparent,
+                    RoundedCornerShape(if (compact) 13.dp else 15.dp)
+                )
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        if (active) tint.copy(alpha = 0.20f) else Color.Transparent
+                    ),
+                    RoundedCornerShape(if (compact) 13.dp else 15.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isBusy) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(if (compact) 19.dp else 20.dp),
+                    strokeWidth = 2.3.dp,
+                    color = tint
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = tint,
+                    modifier = Modifier.size(if (compact) 21.dp else 22.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun compactYoutubeCount'''
+          text, count = dock_pattern.subn(new_dock, text, count=1)
+          if count != 1:
+              raise RuntimeError(f"action dock: expected 1 match, found {count}")
+
+          old_dock_call = """            PlayerUtilityDock(\n                activeColor = primaryContent,\n                secondaryColor = secondaryContent,\n                lyricsAvailable = state.lyrics.isNotEmpty(),\n                isExporting = state.isOfflineExporting,\n                isDownloaded = track.id in state.downloadedTrackIds,\n                compact = compact,\n                onQueue = viewModel::openQueue,\n                onLyrics = viewModel::openLyrics,\n                onAddToPlaylist = onAddToPlaylist,\n                onDownload = viewModel::exportCurrentTrack\n            )"""
+          new_dock_call = """            PlayerUtilityDock(\n                activeColor = primaryContent,\n                secondaryColor = secondaryContent,\n                lyricsAvailable = state.lyrics.isNotEmpty(),\n                isExporting = state.isOfflineExporting,\n                isDownloaded = track.id in state.downloadedTrackIds,\n                sleepMinutes = state.sleepTimerMinutes,\n                isFavorite = track.id in state.favoriteIds,\n                compact = compact,\n                onDownload = viewModel::exportCurrentTrack,\n                onSleep = viewModel::cycleSleepTimer,\n                onAddToPlaylist = onAddToPlaylist,\n                onQueue = viewModel::openQueue,\n                onLyrics = viewModel::openLyrics,\n                onFavorite = { viewModel.toggleFavorite(track) }\n            )"""
+          replace_once(old_dock_call, new_dock_call, "dock wiring")
+
+          title_actions_pattern = re.compile(
+              r"\n                    Spacer\(modifier = Modifier\.width\(LevyraPlayerDesign\.SpaceSm\)\)\n"
+              r"                    Row\(horizontalArrangement = Arrangement\.spacedBy\(LevyraPlayerDesign\.SpaceXs\)\) \{.*?\n"
+              r"                    \}\n"
+              r"                \}\n"
+              r"                PlayerYoutubeEngagementRow",
+              re.S,
+          )
+          text, count = title_actions_pattern.subn(
+              "\n                }\n                PlayerYoutubeEngagementRow",
+              text,
+              count=1,
+          )
+          if count != 1:
+              raise RuntimeError(f"title actions: expected 1 match, found {count}")
+
+          path.write_text(text, encoding="utf-8")
+
+      - name: Remove temporary workflow and commit patch
+        shell: bash
+        run: |
+          rm .github/workflows/apply-player-action-dock.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/apply-player-action-dock.yml
+          git commit -m "feat(player): replace expandable options with persistent action dock"
+          git push origin HEAD:agent/player-action-dock
