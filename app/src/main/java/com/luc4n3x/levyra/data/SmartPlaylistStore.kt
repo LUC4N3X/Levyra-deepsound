@@ -17,14 +17,14 @@ class SmartPlaylistStore(context: Context) {
     suspend fun getMostPlayedPlaylist(limit: Int = 30): Playlist = withContext(Dispatchers.IO) {
         val thirtyDaysAgo = System.currentTimeMillis() - 30L * 24L * 60L * 60L * 1000L
         val events = listenEventsDao.since(thirtyDaysAgo)
-        val trackCounts = events.groupingBy { it.trackId }.eachCount()
+        val trackCounts = events.groupingBy<com.luc4n3x.levyra.data.local.ListenEventEntity, String> { it.trackId }.eachCount()
         
         val topTrackIds = trackCounts.entries
             .sortedByDescending { it.value }
             .take(limit)
             .map { it.key }
 
-        val favorites = favoriteTracksDao.all().associateBy { it.trackId }
+        val favorites = favoriteTracksDao.all().associateBy { it.id }
         val tracks = topTrackIds.mapNotNull { id ->
             favorites[id]?.toTrack() ?: events.firstOrNull { it.trackId == id }?.let { event ->
                 Track(
