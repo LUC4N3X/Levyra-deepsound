@@ -1,0 +1,184 @@
+patch_status=0
+compile_status=0
+targeted_status=1
+fulltests_status=
+
+--- PATCH ---
+PR313_REVIEW_FIXES_PATCH_OK
+
+--- COMPILE ---
+Fetching distribution.
+Downloading https://services.gradle.org/distributions/gradle-9.6.1-bin.zip
+.............10%.............20%..............30%.............40%..............50%.............60%.............70%..............80%.............90%..............100%
+
+Welcome to Gradle 9.6.1!
+
+Here are the highlights of this release:
+ - Improved Configuration Cache hit rates
+ - Additional CLI rendering options
+ - Important project hierarchy lookup deprecations
+
+For more details see https://docs.gradle.org/9.6.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.6.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :LevyraNexus:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :LevyraExtractor:extractor:generateMainProtos
+> Task :LevyraExtractor:processResources NO-SOURCE
+> Task :LevyraExtractor:extractor:processResources NO-SOURCE
+> Task :LevyraExtractor:timeago-parser:compileJava
+> Task :LevyraNexus:processResources NO-SOURCE
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:generateDebugRFile
+> Task :LevyraExtractor:extractor:compileJava
+> Task :LevyraExtractor:compileJava NO-SOURCE
+> Task :LevyraExtractor:classes UP-TO-DATE
+> Task :LevyraExtractor:extractor:classes
+> Task :LevyraExtractor:jar
+> Task :LevyraExtractor:extractor:jar
+> Task :LevyraNexus:compileKotlin
+> Task :LevyraNexus:compileJava NO-SOURCE
+> Task :LevyraNexus:classes UP-TO-DATE
+> Task :LevyraNexus:jar
+> Task :app:kspDebugKotlin
+> Task :app:compileDebugKotlin
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1786086156075.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/Levyra-deepsound/Levyra-deepsound/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.6.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 3m 5s
+15 actionable tasks: 15 executed
+
+--- TARGETED TESTS ---
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.6.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :LevyraNexus:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :LevyraExtractor:extractor:generateMainProtos UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :LevyraExtractor:timeago-parser:compileJava UP-TO-DATE
+> Task :LevyraExtractor:processResources NO-SOURCE
+> Task :LevyraExtractor:timeago-parser:processResources NO-SOURCE
+> Task :LevyraExtractor:timeago-parser:classes UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :LevyraNexus:compileKotlin UP-TO-DATE
+> Task :LevyraNexus:compileJava NO-SOURCE
+> Task :LevyraNexus:processResources NO-SOURCE
+> Task :LevyraNexus:classes UP-TO-DATE
+> Task :LevyraNexus:jar UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :LevyraExtractor:extractor:compileJava UP-TO-DATE
+> Task :LevyraExtractor:compileJava NO-SOURCE
+> Task :LevyraExtractor:classes UP-TO-DATE
+> Task :LevyraExtractor:timeago-parser:jar
+> Task :LevyraExtractor:jar UP-TO-DATE
+> Task :LevyraExtractor:extractor:processResources NO-SOURCE
+> Task :LevyraExtractor:extractor:classes UP-TO-DATE
+> Task :LevyraExtractor:extractor:jar UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:checkDebugAarMetadata
+> Task :app:compileDebugJavaWithJavac
+> Task :app:mapDebugSourceSetPaths
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugJavaRes
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:kspDebugUnitTestKotlin SKIPPED
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+
+LevyraStringsTest > arabicFewPluralUsesModuloOneHundredAcrossFormatters FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:263
+
+LevyraStringsTest > greekAndFilipinoCollectionLabelsStayLocalized FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:88
+
+LevyraStringsTest > editorialCollectionsUseNeutralProfessionalCopyInEveryLanguage FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:73
+
+LevyraStringsTest > onboardingAndArtistHeadingsDoNotUseDecorativeEmoji FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:282
+
+LevyraStringsTest > lyricsControlsUseLocalizedLabels FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:178
+
+LevyraStringsTest > localizedFormattersUseSelectedLanguage FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:222
+
+LevyraStringsTest > dutchBundleDoesNotLeakItalianSearchCopy FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:59
+
+LevyraStringsTest > majorAsianBundlesContainNativeCoreCopy FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:110
+
+LevyraStringsTest > regionAndScriptVariantsResolveToSupportedBundles FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:44
+
+LevyraStringsTest > catalogAndStringBundlesStayInSync FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:15
+
+LevyraStringsTest > newlyAddedLanguagesContainNativeCoreCopy FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:99
+
+LevyraStringsTest > majorAsianFormattersUseSelectedLanguage FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:133
+
+LevyraStringsTest > rtlDynamicLatinTextUsesBidiIsolation FAILED
+    java.lang.IllegalArgumentException at LevyraStringsTest.kt:242
+
+58 tests completed, 13 failed
+
+> Task :app:testDebugUnitTest FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/targeted-1786086338622.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/Levyra-deepsound/Levyra-deepsound/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///home/runner/work/Levyra-deepsound/Levyra-deepsound/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.6.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 49s
+35 actionable tasks: 20 executed, 15 up-to-date
+
+--- FULL UNIT TESTS ---
