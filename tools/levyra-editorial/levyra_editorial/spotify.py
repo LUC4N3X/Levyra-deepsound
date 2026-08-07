@@ -263,6 +263,7 @@ class SpotifyWebClient:
         self._expires_at_ms = 0
         self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
         self._track_metadata: dict[str, Mapping[str, Any]] = {}
+        self._track_metadata_rate_limited = False
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
@@ -456,6 +457,8 @@ class SpotifyWebClient:
 
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
+        if self._track_metadata_rate_limited:
+            return items
         if self._access_token is None:
             self.authenticate()
         ids = [
@@ -487,17 +490,12 @@ class SpotifyWebClient:
                     self.authenticate()
                     response = request_batch()
                 if response.status_code == 429:
-                    delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                    self._track_metadata_rate_limited = True
                     LOGGER.warning(
-                        "Spotify track metadata rate-limited; retrying once in %d second(s).",
-                        delay,
+                        "Spotify track metadata rate-limited; disabling best-effort metadata "
+                        "enrichment for the remainder of this run."
                     )
-                    if delay > 0:
-                        time.sleep(delay)
-                    response = request_batch()
-                    if response.status_code == 401:
-                        self.authenticate()
-                        response = request_batch()
+                    break
                 if response.status_code >= 400:
                     LOGGER.warning(
                         "Spotify track metadata enrichment skipped after HTTP %s.",

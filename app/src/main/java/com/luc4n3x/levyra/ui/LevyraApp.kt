@@ -17645,7 +17645,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
     Row(
         modifier = Modifier
             .weight(1f)
-            .height(58.dp)
+            .heightIn(min = 58.dp)
             .clip(shape)
             .background(background)
             .border(
@@ -17675,7 +17675,7 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
             fontSize = 14.sp,
             lineHeight = 18.sp,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
     }

@@ -175,6 +175,16 @@ private data class SamplesPlaybackSession(
     val positionMs: Long
 )
 
+internal data class PlaybackResolveRequest(
+    val id: Long,
+    val startPaused: Boolean = false
+)
+
+internal fun shouldStartPlaybackPaused(
+    request: PlaybackResolveRequest,
+    activeRequestId: Long
+): Boolean = request.id == activeRequestId && request.startPaused
+
 internal fun prioritizeNewReleasesForUser(
     releases: List<AlbumHit>,
     preferredArtists: List<String>,
@@ -478,7 +488,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
     private var samplesPlaybackSession: SamplesPlaybackSession? = null
-    private var pauseAfterNextPlaybackStart: Boolean = false
     private var listenSessionTrack: Track? = null
     private var listenSessionStartedAt = 0L
     private var listenSessionAccumulatedMs = 0L
@@ -4492,8 +4501,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         if (restoredTrack.streamUrl.isBlank()) {
             pendingSeekMs = resumeMs
-            pauseAfterNextPlaybackStart = !session.wasPlaying
-            startResolve(restoredTrack)
+            startResolve(restoredTrack, startPaused = !session.wasPlaying)
             return
         }
 
@@ -4518,7 +4526,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateWidget()
     }
 
-    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
+    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {
         streamTransitionId++
         cancelResolutionSideJobs()
         val engagementVideoId = youtubeEngagementVideoId(track)
@@ -4528,6 +4536,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             player.setVolume(1f)
         }
         val requestId = ++playRequestId
+        val request = PlaybackResolveRequest(requestId, startPaused)
         playJob?.cancel()
         cancelBackgroundWarmups(cancelList = true)
         resolver.warmNetwork()
@@ -4549,7 +4558,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchLyricsAround(track)
         refreshMotionArtworkAround(track)
         playJob = viewModelScope.launch {
-            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)
+            resolveAndStartPlayback(track, request, autoRetryWhenOffline)
         }
     }
 
@@ -4572,9 +4581,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun CoroutineScope.resolveAndStartPlayback(
         track: Track,
-        requestId: Long,
+        request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
+        val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
         val playableTrack = youtubePlayableTrack(track, preferVideo = requestedVideoMode)
         if (requestedVideoMode && playableTrack == null) {
@@ -4595,7 +4605,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isActive || requestId != playRequestId) return
-            startPlayback(preserveEditorialArtwork(track, instant))
+            startPlayback(preserveEditorialArtwork(track, instant), request)
             prefetchAround(instant)
             return
         }
@@ -4603,7 +4613,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         try {
             val playable = resolveForPlayback(selectedTrack)
             if (!isActive || requestId != playRequestId) return
-            startPlayback(playable)
+            startPlayback(playable, request)
             prefetchAround(playable)
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
@@ -4619,7 +4629,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         autoRetryWhenOffline: Boolean
     ) {
         val retryWhenOnline = autoRetryWhenOffline && !hasInternetCapableNetwork()
-        pauseAfterNextPlaybackStart = false
         player.stop()
         _state.update {
             it.copy(
@@ -5023,12 +5032,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(track)
     }
 
-    private fun startPlayback(playable: Track) {
+    private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
+        if (request.id != playRequestId) return
+        val startPaused = shouldStartPlaybackPaused(request, playRequestId)
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
-        val startPaused = pauseAfterNextPlaybackStart
-        pauseAfterNextPlaybackStart = false
         player.play(playable, _state.value.isVideoMode)
         // Resume from the saved position when continuing the last session's track.
         val resumeMs = pendingSeekMs.takeIf { it > 1500L && it < playable.durationMs } ?: 0L
