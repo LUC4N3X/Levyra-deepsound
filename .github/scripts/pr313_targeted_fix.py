@@ -93,9 +93,12 @@ vm = replace_once(
 
 vm = replace_once(
     vm,
-    "        pauseAfterNextPlaybackStart = false\n",
-    "",
-    "remove failure reset",
+    "        val retryWhenOnline = autoRetryWhenOffline && !hasInternetCapableNetwork()\n"
+    "        pauseAfterNextPlaybackStart = false\n"
+    "        player.stop()\n",
+    "        val retryWhenOnline = autoRetryWhenOffline && !hasInternetCapableNetwork()\n"
+    "        player.stop()\n",
+    "remove resolve failure pause reset",
 )
 
 vm = replace_once(
