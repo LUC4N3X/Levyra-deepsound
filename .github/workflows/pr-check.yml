@@ -19,6 +19,111 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  apply-playlist-import-placement:
+    name: Apply playlist import placement
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feature/pro-audio-and-smart-importer' &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: feature/pro-audio-and-smart-importer
+          fetch-depth: 0
+
+      - name: Apply placement and dismissible-card wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt')
+          source = path.read_text(encoding='utf-8')
+
+          overview = '''            if (category == LibraryCategory.Overview) {
+                item(key = "overview-import-playlist") {
+                    LibraryImportPlaylistCard(
+                        onClick = { showImportPlaylist = true },
+                        isItalian = isItalian
+                    )
+                }
+            }
+
+'''
+          if overview in source:
+              source = source.replace(overview, '', 1)
+
+          state_old = '''    var showCreatePlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylist by remember { mutableStateOf(false) }
+'''
+          state_new = '''    var showCreatePlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
+'''
+          if state_new not in source:
+              count = source.count(state_old)
+              if count != 1:
+                  raise SystemExit(f'import card state: expected one match, found {count}')
+              source = source.replace(state_old, state_new, 1)
+
+          playlist_old = '''                    item(key = "playlist-import-action") {
+                        LibraryImportPlaylistCard(
+                            onClick = { showImportPlaylist = true },
+                            isItalian = isItalian
+                        )
+                    }
+'''
+          playlist_new = '''                    item(key = "playlist-import-action") {
+                        if (showImportPlaylistCard) {
+                            LibraryImportPlaylistCard(
+                                onClick = { showImportPlaylist = true },
+                                onDismiss = { showImportPlaylistCard = false },
+                                isItalian = isItalian
+                            )
+                        } else {
+                            LibraryImportPlaylistCompactAction(
+                                onClick = { showImportPlaylist = true }
+                            )
+                        }
+                    }
+'''
+          if playlist_new not in source:
+              count = source.count(playlist_old)
+              if count != 1:
+                  raise SystemExit(f'playlist import action: expected one match, found {count}')
+              source = source.replace(playlist_old, playlist_new, 1)
+
+          if 'overview-import-playlist' in source:
+              raise SystemExit('Import card still appears in Library overview')
+          if 'LibraryImportPlaylistCompactAction' not in source:
+              raise SystemExit('Compact fallback import action is missing')
+          path.write_text(source, encoding='utf-8')
+          PY
+
+          # Remove all one-shot CI scaffolding and restore the real workflows from main.
+          git checkout origin/main -- .github/workflows/pr-check.yml
+          git checkout origin/main -- .github/workflows/editorial-catalog.yml
+          git rm -f .github/workflows/pr319-fix-library-placement.yml || true
+
+          git add -A
+          git diff --cached --check
+          grep -q 'showImportPlaylistCard' app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt
+          ! grep -q 'overview-import-playlist' app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt
+          grep -q 'LibraryImportPlaylistCompactAction' app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt
+          git status --short
+          git commit -m 'fix(library): keep playlist import optional and accessible'
+          git push origin HEAD:feature/pro-audio-and-smart-importer
+
   android:
     name: Lint and Release Compile
     runs-on: ubuntu-latest
