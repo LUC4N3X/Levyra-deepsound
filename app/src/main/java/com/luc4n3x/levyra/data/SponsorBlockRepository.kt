@@ -44,9 +44,7 @@ class SponsorBlockRepository {
             val code = connection.responseCode
             // 404 means "no segments for this video" and is safe to negative-cache.
             if (code == HttpURLConnection.HTTP_NOT_FOUND) {
-                val emptyResult = emptyList<SponsorSegment>()
-                synchronized(cache) { cache[videoId] = emptyResult }
-                return@withContext emptyResult
+                return@withContext publishSponsorBlockCacheResult(cache, videoId, emptyList())
             }
             // Do not poison the in-memory cache for rate limits or transient server/network failures.
             if (code !in 200..299) return@withContext emptyList()
@@ -69,8 +67,7 @@ class SponsorBlockRepository {
                 }
             }
             val sortedSegments = segments.sortedBy { it.startMs }
-            synchronized(cache) { cache[videoId] = sortedSegments }
-            sortedSegments
+            publishSponsorBlockCacheResult(cache, videoId, sortedSegments)
         } finally {
             connection.disconnect()
         }
@@ -78,6 +75,14 @@ class SponsorBlockRepository {
 }
 
 private const val SPONSORBLOCK_MAX_RESPONSE_BYTES = 512L * 1024L
+
+internal fun publishSponsorBlockCacheResult(
+    cache: MutableMap<String, List<SponsorSegment>>,
+    videoId: String,
+    result: List<SponsorSegment>
+): List<SponsorSegment> = synchronized(cache) {
+    cache[videoId] ?: result.also { cache[videoId] = it }
+}
 
 internal fun readUtf8Bounded(input: InputStream, maxBytes: Long): String? {
     require(maxBytes > 0L)
