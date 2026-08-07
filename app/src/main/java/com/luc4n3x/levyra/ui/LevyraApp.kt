@@ -8098,46 +8098,57 @@ private fun ContinueListeningCard(
     progress: Float,
     onResume: () -> Unit
 ) {
-    val accentStart = Color(track.accentStart)
-    val accentEnd = Color(track.accentEnd)
+    val accentStart = if (track.accentStart == 0) LevyraCyan else Color(track.accentStart)
+    val accentEnd = if (track.accentEnd == 0) LevyraViolet else Color(track.accentEnd)
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(22.dp),
         border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 70.dp)
+            .heightIn(min = 86.dp)
             .pressable(onClick = onResume)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(cinematicGlassBrush(accentStart, accentEnd, 0.24f))
+                .background(cinematicGlassBrush(accentStart, accentEnd, 0.66f))
         ) {
             Box(
                 modifier = Modifier
-                    .size(104.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 44.dp)
+                    .size(132.dp)
+                    .align(Alignment.CenterStart)
+                    .offset(x = (-42).dp)
                     .background(
                         Brush.radialGradient(
-                            listOf(accentEnd.copy(alpha = 0.16f), Color.Transparent)
+                            listOf(accentStart.copy(alpha = 0.22f), Color.Transparent)
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .size(158.dp)
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 58.dp)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(accentEnd.copy(alpha = 0.25f), Color.Transparent)
                         )
                     )
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                    .padding(horizontal = 11.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(11.dp))
-                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(11.dp)),
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(15.dp)),
                     highRes = false
                 )
                 Column(
@@ -8157,8 +8168,8 @@ private fun ContinueListeningCard(
                         Text(
                             text = LocalLevyraStrings.current.continueListening,
                             color = LevyraCyan,
-                            fontSize = 9.8.sp,
-                            lineHeight = 11.5.sp,
+                            fontSize = 10.2.sp,
+                            lineHeight = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -8167,8 +8178,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 14.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 15.5.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -8176,8 +8187,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.artist,
                         color = LevyraMuted,
-                        fontSize = 10.8.sp,
-                        lineHeight = 12.5.sp,
+                        fontSize = 11.5.sp,
+                        lineHeight = 13.5.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -8187,14 +8198,14 @@ private fun ContinueListeningCard(
                     color = LevyraAdaptiveChip,
                     shape = CircleShape,
                     border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = null,
                             tint = LevyraText,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -8203,8 +8214,8 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(topEnd = 3.dp))
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(topEnd = 4.dp))
                     .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
             )
         }
