@@ -55,7 +55,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 @Composable
 internal fun LibraryImportPlaylistCard(
     onClick: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit = {},
     @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
 ) {
     val copy = LocalLevyraStrings.current.playlistImportCopy()
