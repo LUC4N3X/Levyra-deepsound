@@ -38,6 +38,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm \
             .github/workflows/apply-pr318-compact-resume.yml \
+            .github/pr318-compact-trigger.txt \
             scripts/apply_pr318_compact_resume.py
           git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
           git diff --cached --check
