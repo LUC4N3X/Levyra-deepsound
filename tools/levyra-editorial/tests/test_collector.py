@@ -43,7 +43,7 @@ class FakeClient:
             "tracks": {"total": 2},
         }
 
-    def iter_playlist_items(self, playlist_id: str) -> list[dict]:
+    def iter_playlist_items(self, playlist_id: str, limit: int | None = None) -> list[dict]:
         return [
             {
                 "track": {
@@ -426,3 +426,58 @@ def test_catalog_keeps_public_isrc_and_release_type() -> None:
     assert public["isrc"] == "ITB002000001"
     assert public["album"]["type"] == "album"
     assert public["album"]["totalTracks"] == 12
+
+
+def test_config_and_collection_accept_null_title_hints(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "collections": [
+                    {
+                        "id": "new-releases-it",
+                        "kind": "release",
+                        "market": "IT",
+                        "playlistQuery": "New Music Friday Italia",
+                        "titleHints": None,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    config = load_config(config_path)
+
+    class ResolvingClient(FakeClient):
+        def resolve_playlist_id(self, query: str, market: str, title_hints: list[str]) -> str:
+            assert title_hints == []
+            return "37i9dQZEVXbIQnj7RRhdSX"
+
+    catalog = build_catalog(config, ResolvingClient(), generated_at="2026-07-29T12:00:00Z")
+    assert catalog.to_dict()["collections"][0]["id"] == "new-releases-it"
+
+
+def test_configured_limit_is_forwarded_to_the_source() -> None:
+    requested: list[int | None] = []
+
+    class RecordingClient(FakeClient):
+        def iter_playlist_items(self, playlist_id: str, limit: int | None = None) -> list[dict]:
+            requested.append(limit)
+            return super().iter_playlist_items(playlist_id, limit)
+
+    config = {
+        "schemaVersion": 1,
+        "collections": [
+            {
+                "id": "new-releases-it",
+                "kind": "release",
+                "market": "IT",
+                "playlistId": "37i9dQZEVXbIQnj7RRhdSX",
+                "limit": 20,
+            }
+        ],
+    }
+    build_catalog(config, RecordingClient(), generated_at="2026-07-29T12:00:00Z")
+
+    assert requested == [20]

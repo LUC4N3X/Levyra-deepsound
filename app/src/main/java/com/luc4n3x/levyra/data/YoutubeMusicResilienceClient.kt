@@ -103,14 +103,14 @@ internal class YoutubeMusicResilienceClient(
         )
     )
 
-    fun search(query: String, languageCode: String): JSONObject? {
+    fun search(query: String, languageCode: String, params: String = ""): JSONObject? {
         val clean = query.trim()
         if (clean.length < 2 || apiKey.isBlank()) return null
         return request(
             kind = YoutubeMusicRequestKind.SEARCH,
             languageCode = languageCode,
             browseId = "",
-            params = "",
+            params = params.trim(),
             continuation = "",
             query = clean
         )
@@ -318,7 +318,10 @@ internal class YoutubeMusicResilienceClient(
 
         val root = JSONObject().put("context", JSONObject().put("client", client))
         when (kind) {
-            YoutubeMusicRequestKind.SEARCH -> root.put("query", query)
+            YoutubeMusicRequestKind.SEARCH -> {
+                root.put("query", query)
+                if (params.isNotBlank()) root.put("params", params)
+            }
             YoutubeMusicRequestKind.BROWSE -> {
                 if (browseId.isNotBlank()) root.put("browseId", browseId)
                 if (params.isNotBlank()) root.put("params", params)

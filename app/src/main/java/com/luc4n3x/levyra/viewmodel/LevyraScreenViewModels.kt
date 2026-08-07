@@ -172,9 +172,16 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
+    fun ensureSamples() = root.ensureExploreSamples()
+    fun refreshSamples() = root.refreshExploreSamples()
+    fun beginSamplesPlayback() = root.beginSamplesPlayback()
+    fun endSamplesPlayback() = root.endSamplesPlayback()
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
+    fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun togglePlay() = root.togglePlay()
 }
 
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
@@ -269,7 +276,6 @@ class LevyraScreenViewModelFactory(
         } as T
     }
 }
-
 
 private const val HOME_RENDER_SETTLE_MS = 360L
 
@@ -622,9 +628,6 @@ private fun buildHomeContentFingerprint(
     availability: HomeContentAvailability
 ): String {
     return buildString {
-        // Charts and playback presence are deliberately excluded: this fingerprint identifies the home
-        // content structure. Starting or closing playback must never read as new home content, or the
-        // home list is rebuilt underneath a user who is scrolled down to the charts.
         append(availability.copy(chartCount = 0, hasCurrentTrack = false).fingerprint())
         append('|')
         append(input.tracks.take(12).joinToString(",") { it.id })
@@ -842,24 +845,48 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
     searchSuggestions = state.searchSuggestions
 )
 
-private data class ExploreProjection(
+internal data class ExploreProjection(
     val currentTrack: Track?,
     val exploreTracks: List<Track>,
+    val exploreFreshTracks: List<Track>,
+    val exploreNewReleases: List<AlbumHit>,
     val exploreVideos: List<Track>,
+    val exploreSamples: List<Track>,
     val exploreZoneId: String?,
     val favoriteIds: Set<String>,
     val isExploreLoading: Boolean,
-    val isPlaying: Boolean
+    val isFreshCurrentsLoading: Boolean,
+    val isNewReleasesLoading: Boolean,
+    val newReleasesLoadFailed: Boolean,
+    val isPlaying: Boolean,
+    val isResolving: Boolean,
+    val isVideoMode: Boolean,
+    val isSamplesLoading: Boolean,
+    val samplesLoadFailed: Boolean,
+    val isSamplesOpen: Boolean,
+    val playlists: List<Playlist>
 )
 
-private fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
+internal fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
     currentTrack = state.currentTrack,
     exploreTracks = state.exploreTracks,
+    exploreFreshTracks = state.exploreFreshTracks,
+    exploreNewReleases = state.exploreNewReleases,
     exploreVideos = state.exploreVideos,
+    exploreSamples = state.exploreSamples,
     exploreZoneId = state.exploreZoneId,
     favoriteIds = state.favoriteIds,
     isExploreLoading = state.isExploreLoading,
-    isPlaying = state.isPlaying
+    isFreshCurrentsLoading = state.isFreshCurrentsLoading,
+    isNewReleasesLoading = state.isNewReleasesLoading,
+    newReleasesLoadFailed = state.newReleasesLoadFailed,
+    isPlaying = state.isPlaying,
+    isResolving = state.isResolving,
+    isVideoMode = state.isVideoMode,
+    isSamplesLoading = state.isSamplesLoading,
+    samplesLoadFailed = state.samplesLoadFailed,
+    isSamplesOpen = state.isSamplesOpen,
+    playlists = state.playlists
 )
 
 private data class LibraryProjection(

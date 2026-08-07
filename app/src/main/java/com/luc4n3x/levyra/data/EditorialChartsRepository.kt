@@ -84,6 +84,24 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.tracks(country, limit)
     }
 
+    suspend fun cachedNewReleaseTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val snapshot = usableSnapshot(now)
+        if (snapshot == null) {
+            warm()
+            return@withContext emptyList()
+        }
+        if (snapshot.needsRefresh(now)) warm()
+        snapshot.newReleases(country, limit)
+    }
+
+    suspend fun newReleaseTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyList()
+        if (snapshot.needsRefresh(now)) warm()
+        snapshot.newReleases(country, limit)
+    }
+
     suspend fun cachedAllMarkets(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyMap()
@@ -226,6 +244,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
 
 internal data class CatalogSnapshot(
     val byMarket: Map<String, List<Track>>,
+    val releaseByMarket: Map<String, List<Track>>,
     val generatedAtMs: Long,
     val loadedAt: Long,
     val rawJson: String,
@@ -240,6 +259,13 @@ internal data class CatalogSnapshot(
     fun tracks(country: String, limit: Int): List<Track> {
         val market = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: DEFAULT_MARKET
         return byMarket[market].orEmpty().take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET))
+    }
+
+    fun newReleases(country: String, limit: Int): List<Track> {
+        val market = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: DEFAULT_MARKET
+        val localized = releaseByMarket[market].orEmpty()
+        val fallback = releaseByMarket["US"].orEmpty()
+        return localized.ifEmpty { fallback }.take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET))
     }
 
     private companion object {
@@ -258,29 +284,34 @@ internal object EditorialCatalogParser {
         val generatedAtMs = parseInstant(root.optString("generatedAt")) ?: return null
         val collections = root.optJSONArray("collections") ?: return null
         val byMarket = LinkedHashMap<String, List<Track>>()
+        val releaseByMarket = LinkedHashMap<String, List<Track>>()
         for (index in 0 until collections.length()) {
             val collection = collections.optJSONObject(index) ?: continue
-            if (!collection.optString("kind").equals("chart", ignoreCase = true)) continue
+            val kind = collection.optString("kind").trim().lowercase(Locale.ROOT)
+            if (kind != "chart" && kind != "release") continue
             val market = collection.optString("market")
                 .trim()
                 .uppercase(Locale.ROOT)
                 .takeIf { it.length == 2 }
                 ?: continue
-            val tracks = parseTracks(collection.optJSONArray("tracks"))
-            if (tracks.isNotEmpty()) byMarket[market] = tracks
+            val tracks = parseTracks(collection.optJSONArray("tracks"), kind)
+            if (tracks.isEmpty()) continue
+            if (kind == "release") releaseByMarket[market] = tracks else byMarket[market] = tracks
         }
         if (byMarket.isEmpty()) return null
         return CatalogSnapshot(
             byMarket = byMarket,
+            releaseByMarket = releaseByMarket,
             generatedAtMs = generatedAtMs,
             loadedAt = loadedAt,
             rawJson = body,
         )
     }
 
-    private fun parseTracks(items: JSONArray?): List<Track> {
+    private fun parseTracks(items: JSONArray?, kind: String): List<Track> {
         if (items == null) return emptyList()
         val tracks = ArrayList<Track>(minOf(items.length(), MAX_TRACKS_PER_MARKET))
+        val releaseCollection = kind.equals("release", ignoreCase = true)
         for (index in 0 until items.length()) {
             if (tracks.size >= MAX_TRACKS_PER_MARKET) break
             val item = items.optJSONObject(index) ?: continue
@@ -325,7 +356,9 @@ internal object EditorialCatalogParser {
                 id = catalogTrackId,
                 title = title,
                 artist = artist,
-                album = album?.optString("name").orEmpty().trim().ifBlank { EDITORIAL_ALBUM },
+                album = album?.optString("name").orEmpty().trim().ifBlank {
+                    if (releaseCollection) title else EDITORIAL_ALBUM
+                },
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
                 videoUrl = youtubePlaybackId
@@ -334,11 +367,15 @@ internal object EditorialCatalogParser {
                     .orEmpty(),
                 thumbnailUrl = artwork,
                 largeThumbnailUrl = artwork,
-                source = EDITORIAL_SOURCE,
-                moodTags = setOf("hit", "chart"),
+                source = if (releaseCollection) EDITORIAL_RELEASE_SOURCE else EDITORIAL_SOURCE,
+                moodTags = if (releaseCollection) {
+                    setOf("new-release", "editorial")
+                } else {
+                    setOf("hit", "chart")
+                },
                 energy = 70,
                 vocal = 55,
-                replayScore = 95,
+                replayScore = if (releaseCollection) 90 else 95,
                 cacheScore = 88,
                 accentStart = palette.first,
                 accentEnd = palette.second,
@@ -354,7 +391,12 @@ internal object EditorialCatalogParser {
                     youtubeAudioVideoId.isNotBlank() -> "MUSIC_VIDEO_TYPE_ATV"
                     else -> ""
                 },
-                metadataProvider = if (youtubePlaybackId.isBlank()) EDITORIAL_SOURCE else "$EDITORIAL_SOURCE + YouTube Music",
+                metadataProvider = when {
+                    releaseCollection && youtubePlaybackId.isNotBlank() -> "$EDITORIAL_RELEASE_SOURCE + YouTube Music"
+                    releaseCollection -> EDITORIAL_RELEASE_SOURCE
+                    youtubePlaybackId.isNotBlank() -> "$EDITORIAL_SOURCE + YouTube Music"
+                    else -> EDITORIAL_SOURCE
+                },
                 metadataConfidence = if (youtubePlaybackId.isBlank()) 94 else youtubeConfidence,
             )
         }
@@ -434,6 +476,7 @@ internal object EditorialCatalogParser {
     private const val SUPPORTED_SCHEMA_VERSION = 1
     private const val MAX_TRACKS_PER_MARKET = 100
     private const val EDITORIAL_SOURCE = "Levyra Editorial"
+    private const val EDITORIAL_RELEASE_SOURCE = "Levyra Editorial Releases"
     private const val EDITORIAL_ALBUM = "Levyra Top 50"
     private const val MAX_ARTWORK_URL_LENGTH = 512
     private const val HTTPS_DEFAULT_PORT = 443

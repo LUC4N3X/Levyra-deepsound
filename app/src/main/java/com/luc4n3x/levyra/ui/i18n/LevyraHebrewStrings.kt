@@ -70,7 +70,6 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "explore" to "גילוי",
     "exploreTitle" to "גילוי",
     "exploreSubtitle" to "גלו מוזיקה, טרנדים וסרטונים חדשים",
-    "exploreZones" to "אזורי עומק",
     "exploreFresh" to "גלים חדשים",
     "exploreNewVideos" to "קליפים חדשים",
     "exploreEmpty" to "אין כרגע אות מהאזור הזה, נסו אזור אחר",

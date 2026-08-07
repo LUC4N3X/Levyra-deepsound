@@ -16,6 +16,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, LevyraStrings.all().map { it.code }.toSet())
         assertEquals(catalogCodes, lyricsActionLocalizationCodes())
         assertEquals(catalogCodes, playerExperienceLocalizationCodes())
+        assertEquals(catalogCodes, exploreLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.introHeadline.isNotBlank())
             assertTrue(strings.introBody.isNotBlank())
@@ -32,6 +33,11 @@ class LevyraStringsTest {
             assertTrue(strings.copyVerses.isNotBlank())
             assertTrue(strings.shareVerses.isNotBlank())
             assertTrue(strings.lyricsVersions.isNotBlank())
+            assertTrue(strings.exploreMoods.isNotBlank())
+            assertTrue(strings.exploreSamples.isNotBlank())
+            assertTrue(strings.exploreSamplesSubtitle.isNotBlank())
+            assertTrue(strings.exploreSamplesError.isNotBlank())
+            assertTrue(strings.exploreSamplesRetry.isNotBlank())
         }
     }
 
