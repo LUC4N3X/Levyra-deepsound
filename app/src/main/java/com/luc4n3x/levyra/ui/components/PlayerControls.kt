@@ -147,12 +147,10 @@ fun PlayerTransportControls(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val utilitySize = if (compact) LevyraPlayerDesign.UtilityButtonCompact else LevyraPlayerDesign.UtilityButton
-    val transportSize = if (compact) LevyraPlayerDesign.TransportButtonCompact else LevyraPlayerDesign.TransportButton
-    val primaryWidth = if (compact) LevyraPlayerDesign.PrimaryWidthCompact else LevyraPlayerDesign.PrimaryWidth
-    val primaryHeight = if (compact) LevyraPlayerDesign.PrimaryHeightCompact else LevyraPlayerDesign.PrimaryHeight
-    val transportFill = Color.White.copy(alpha = if (compact) 0.065f else 0.075f)
-    val transportBorder = Color.White.copy(alpha = 0.09f)
+    val utilitySize = if (compact) 36.dp else 40.dp
+    val transportSize = if (compact) 42.dp else 46.dp
+    val primaryWidth = if (compact) 80.dp else 86.dp
+    val primaryHeight = if (compact) 64.dp else 68.dp
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -166,7 +164,7 @@ fun PlayerTransportControls(
             accent = accents.primary,
             accentTarget = accents.primaryTarget,
             size = utilitySize,
-            iconSize = if (compact) 20.dp else 21.dp,
+            iconSize = if (compact) 19.dp else 20.dp,
             animated = animated,
             onClick = onShuffle
         )
@@ -174,9 +172,9 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipPrevious,
             contentDescription = labels.previous,
             size = transportSize,
-            iconSize = if (compact) 27.dp else 29.dp,
-            fill = transportFill,
-            borderTop = transportBorder,
+            iconSize = if (compact) 26.dp else 28.dp,
+            fill = Color.Transparent,
+            borderTop = Color.Transparent,
             borderBottom = Color.Transparent,
             onClick = onPrevious
         )
@@ -196,9 +194,9 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipNext,
             contentDescription = labels.next,
             size = transportSize,
-            iconSize = if (compact) 27.dp else 29.dp,
-            fill = transportFill,
-            borderTop = transportBorder,
+            iconSize = if (compact) 26.dp else 28.dp,
+            fill = Color.Transparent,
+            borderTop = Color.Transparent,
             borderBottom = Color.Transparent,
             onClick = onNext
         )
@@ -209,7 +207,7 @@ fun PlayerTransportControls(
             accent = accents.secondary,
             accentTarget = accents.secondaryTarget,
             size = utilitySize,
-            iconSize = if (compact) 20.dp else 21.dp,
+            iconSize = if (compact) 19.dp else 20.dp,
             animated = animated,
             onClick = onRepeat
         )
@@ -229,7 +227,7 @@ private fun PlayerModeToggleButton(
     onClick: () -> Unit
 ) {
     val fill = if (active) {
-        accent.playerMix(Color.White, 0.18f).copy(alpha = 0.18f)
+        accent.playerMix(Color.White, 0.18f).copy(alpha = 0.11f)
     } else {
         Color.Transparent
     }
@@ -238,7 +236,7 @@ private fun PlayerModeToggleButton(
     }
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
     val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.22f else 0f,
+        targetValue = if (active) 0.12f else 0f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-border"
     )
@@ -257,10 +255,10 @@ private fun PlayerModeToggleButton(
         Box(
             modifier = Modifier
                 .size(size)
-                .background(fill, RoundedCornerShape(14.dp))
+                .background(fill, RoundedCornerShape(13.dp))
                 .border(
                     BorderStroke(LevyraPlayerDesign.Hairline, accent.copy(alpha = borderAlpha)),
-                    RoundedCornerShape(14.dp)
+                    RoundedCornerShape(13.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -286,17 +284,17 @@ private fun Modifier.playerPrimarySurface(
     end: Color
 ): Modifier = this
     .shadow(
-        elevation = 5.dp,
+        elevation = 3.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.20f),
-        spotColor = Color.Black.copy(alpha = 0.28f)
+        ambientColor = Color.Black.copy(alpha = 0.16f),
+        spotColor = Color.Black.copy(alpha = 0.22f)
     )
     .background(Brush.linearGradient(listOf(start, end)), shape)
     .border(
         BorderStroke(
             LevyraPlayerDesign.Hairline,
-            Color.White.copy(alpha = 0.18f)
+            Color.White.copy(alpha = 0.12f)
         ),
         shape
     )
@@ -362,7 +360,7 @@ private fun PlayerPrimaryButton(
         animationSpec = colorSpec,
         label = "player-primary-content"
     )
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(24.dp)
 
     SpringIconButton(
         onClick = onClick,
