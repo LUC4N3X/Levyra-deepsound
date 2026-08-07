@@ -270,3 +270,14 @@ dependencies {
     testImplementation(libs.json)
     baselineProfile(project(":baselineprofile"))
 }
+
+val applyPlayerActionDockExperiment = tasks.register<Exec>("applyPlayerActionDockExperiment") {
+    group = "build setup"
+    description = "Applies the PR 317 persistent player action dock before Android compilation."
+    workingDir = rootProject.projectDir
+    commandLine("python3", rootProject.file("scripts/apply_player_action_dock_experiment.py").absolutePath)
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(applyPlayerActionDockExperiment)
+}
