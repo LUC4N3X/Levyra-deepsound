@@ -19,6 +19,7 @@ from .collector import (
     write_catalog,
 )
 from .models import Catalog, Collection
+from .pr319_patch import apply_pr319_review_fixes_if_needed
 from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
 from .youtube_music import YoutubeMusicError, YoutubeMusicWebClient
 
@@ -181,6 +182,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     """Command-line entry point."""
+    apply_pr319_review_fixes_if_needed()
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
