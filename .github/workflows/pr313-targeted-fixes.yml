@@ -1,0 +1,294 @@
+name: PR 313 targeted fixes
+
+on:
+  push:
+    branches:
+      - claude/menu-esplora-redesign-t3j2l4
+    paths:
+      - .github/workflows/pr313-targeted-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fixes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: claude/menu-esplora-redesign-t3j2l4
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Apply targeted fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          vm_path = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
+          vm = vm_path.read_text()
+
+          assert 'private var pauseAfterNextPlaybackStart: Boolean = false\n' in vm
+          vm = vm.replace('    private var pauseAfterNextPlaybackStart: Boolean = false\n', '', 1)
+
+          marker = '\ninternal fun prioritizeNewReleasesForUser('
+          assert marker in vm
+          assert 'internal data class PlaybackResolveRequest' not in vm
+          request_policy = '''
+          internal data class PlaybackResolveRequest(
+              val id: Long,
+              val startPaused: Boolean = false
+          )
+
+          internal fun shouldStartPlaybackPaused(
+              request: PlaybackResolveRequest,
+              activeRequestId: Long
+          ): Boolean = request.id == activeRequestId && request.startPaused
+
+          '''
+          vm = vm.replace(marker, '\n' + request_policy + 'internal fun prioritizeNewReleasesForUser(', 1)
+
+          old_restore = '''            pendingSeekMs = resumeMs
+                      pauseAfterNextPlaybackStart = !session.wasPlaying
+                      startResolve(restoredTrack)
+          '''
+          new_restore = '''            pendingSeekMs = resumeMs
+                      startResolve(restoredTrack, startPaused = !session.wasPlaying)
+          '''
+          assert old_restore in vm
+          vm = vm.replace(old_restore, new_restore, 1)
+
+          old_start_resolve = '    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {\n'
+          new_start_resolve = '    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {\n'
+          assert old_start_resolve in vm
+          vm = vm.replace(old_start_resolve, new_start_resolve, 1)
+
+          request_line = '        val requestId = ++playRequestId\n'
+          assert vm.count(request_line) >= 1
+          vm = vm.replace(request_line, request_line + '        val request = PlaybackResolveRequest(requestId, startPaused)\n', 1)
+
+          assert '            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)\n' in vm
+          vm = vm.replace(
+              '            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)\n',
+              '            resolveAndStartPlayback(track, request, autoRetryWhenOffline)\n',
+              1,
+          )
+
+          old_resolve_signature = '''    private suspend fun CoroutineScope.resolveAndStartPlayback(
+                  track: Track,
+                  requestId: Long,
+                  autoRetryWhenOffline: Boolean
+              ) {
+          '''
+          new_resolve_signature = '''    private suspend fun CoroutineScope.resolveAndStartPlayback(
+                  track: Track,
+                  request: PlaybackResolveRequest,
+                  autoRetryWhenOffline: Boolean
+              ) {
+                  val requestId = request.id
+          '''
+          assert old_resolve_signature in vm
+          vm = vm.replace(old_resolve_signature, new_resolve_signature, 1)
+
+          assert vm.count('            startPlayback(preserveEditorialArtwork(track, instant))\n') == 1
+          vm = vm.replace(
+              '            startPlayback(preserveEditorialArtwork(track, instant))\n',
+              '            startPlayback(preserveEditorialArtwork(track, instant), request)\n',
+              1,
+          )
+          assert vm.count('            startPlayback(playable)\n') == 1
+          vm = vm.replace('            startPlayback(playable)\n', '            startPlayback(playable, request)\n', 1)
+
+          assert '        pauseAfterNextPlaybackStart = false\n' in vm
+          vm = vm.replace('        pauseAfterNextPlaybackStart = false\n', '', 1)
+
+          old_start_playback = '''    private fun startPlayback(playable: Track) {
+                  val selectedIndex = queueEngine.state.value.currentIndex
+          '''
+          new_start_playback = '''    private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
+                  if (request.id != playRequestId) return
+                  val startPaused = shouldStartPlaybackPaused(request, playRequestId)
+                  val selectedIndex = queueEngine.state.value.currentIndex
+          '''
+          assert old_start_playback in vm
+          vm = vm.replace(old_start_playback, new_start_playback, 1)
+
+          old_global_read = '''        val startPaused = pauseAfterNextPlaybackStart
+                  pauseAfterNextPlaybackStart = false
+          '''
+          assert old_global_read in vm
+          vm = vm.replace(old_global_read, '', 1)
+
+          assert 'pauseAfterNextPlaybackStart' not in vm
+          assert vm.count('startPlayback(') == 3
+          vm_path.write_text(vm)
+
+          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          app = app_path.read_text()
+          start = app.index('private fun RowScope.ExploreMoodCard(')
+          end = app.index('\n@Composable\nprivate fun ExploreSamplesRow(', start)
+          block = app[start:end]
+          assert block.count('.height(58.dp)') == 1
+          assert block.count('maxLines = 1,') == 1
+          block = block.replace('.height(58.dp)', '.heightIn(min = 58.dp)', 1)
+          block = block.replace('maxLines = 1,', 'maxLines = 2,', 1)
+          app = app[:start] + block + app[end:]
+          app_path.write_text(app)
+
+          spotify_path = Path('tools/levyra-editorial/levyra_editorial/spotify.py')
+          spotify = spotify_path.read_text()
+          metadata_field = '        self._track_metadata: dict[str, Mapping[str, Any]] = {}\n'
+          assert metadata_field in spotify
+          assert '_track_metadata_rate_limited' not in spotify
+          spotify = spotify.replace(
+              metadata_field,
+              metadata_field + '        self._track_metadata_rate_limited = False\n',
+              1,
+          )
+          enrich_header = '''    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+                  """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
+          '''
+          assert enrich_header in spotify
+          spotify = spotify.replace(
+              enrich_header,
+              enrich_header + '        if self._track_metadata_rate_limited:\n            return items\n',
+              1,
+          )
+          old_429 = '''                if response.status_code == 429:
+                          delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                          LOGGER.warning(
+                              "Spotify track metadata rate-limited; retrying once in %d second(s).",
+                              delay,
+                          )
+                          if delay > 0:
+                              time.sleep(delay)
+                          response = request_batch()
+                          if response.status_code == 401:
+                              self.authenticate()
+                              response = request_batch()
+          '''
+          new_429 = '''                if response.status_code == 429:
+                          self._track_metadata_rate_limited = True
+                          LOGGER.warning(
+                              "Spotify track metadata rate-limited; disabling best-effort metadata enrichment for the remainder of this run."
+                          )
+                          break
+          '''
+          assert old_429 in spotify
+          spotify = spotify.replace(old_429, new_429, 1)
+          spotify_path.write_text(spotify)
+
+          pathfinder_path = Path('tools/levyra-editorial/tests/test_pathfinder.py')
+          pathfinder = pathfinder_path.read_text()
+          pathfinder = pathfinder.replace('import levyra_editorial.spotify as spotify_module\n', '', 1)
+          old_test_start = pathfinder.index('def test_track_metadata_enrichment_retries_one_rate_limited_batch(')
+          old_test_end = pathfinder.index('\n\ndef test_playlist_limit_stops_paging_after_the_first_page()', old_test_start)
+          new_test = '''def test_track_metadata_enrichment_disables_after_first_rate_limit() -> None:
+              session = SequencedSession(
+                  [FakeResponse({}, status_code=429, headers={"Retry-After": "5"})]
+              )
+              client = authenticated_client(session)
+              first = [{"track": {"id": "track12345", "album": {}}}]
+              second = [{"track": {"id": "track67890", "album": {}}}]
+
+              assert client.enrich_track_metadata(first) == first
+              assert client.enrich_track_metadata(second) == second
+              assert [url for url, _ in session.calls] == [f"{API_BASE_URL}/tracks"]
+          '''
+          pathfinder = pathfinder[:old_test_start] + new_test + pathfinder[old_test_end:]
+          pathfinder_path.write_text(pathfinder)
+
+          restore_test = Path('app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesPlaybackRestorePolicyTest.kt')
+          restore_test.write_text('''package com.luc4n3x.levyra.viewmodel
+
+          import org.junit.Assert.assertFalse
+          import org.junit.Assert.assertTrue
+          import org.junit.Test
+
+          class SamplesPlaybackRestorePolicyTest {
+              @Test
+              fun pausedRestoreStartsPausedOnlyForItsOwnRequest() {
+                  val request = PlaybackResolveRequest(id = 10L, startPaused = true)
+
+                  assertTrue(shouldStartPlaybackPaused(request, activeRequestId = 10L))
+              }
+
+              @Test
+              fun supersededRestoreCannotPauseTheReplacementRequest() {
+                  val staleRestore = PlaybackResolveRequest(id = 10L, startPaused = true)
+
+                  assertFalse(shouldStartPlaybackPaused(staleRestore, activeRequestId = 11L))
+              }
+
+              @Test
+              fun normalRequestAfterFailedRestoreDoesNotInheritPause() {
+                  val failedRestore = PlaybackResolveRequest(id = 10L, startPaused = true)
+                  val normalReplacement = PlaybackResolveRequest(id = 11L)
+
+                  assertFalse(shouldStartPlaybackPaused(failedRestore, activeRequestId = 11L))
+                  assertFalse(shouldStartPlaybackPaused(normalReplacement, activeRequestId = 11L))
+              }
+          }
+          '''.replace('          ', ''))
+
+          for path in (vm_path, app_path, spotify_path, pathfinder_path, restore_test):
+              text = path.read_text()
+              assert '\r\n' not in text
+              path.write_text(text)
+          PY
+
+      - name: Editorial regression tests
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check -e tools/levyra-editorial pytest ruff
+          ruff check tools/levyra-editorial
+          python -m pytest -q tools/levyra-editorial/tests/test_pathfinder.py tools/levyra-editorial/tests/test_resilient.py
+
+      - name: Android focused tests
+        shell: bash
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.viewmodel.ExploreProjectionTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackSelectionTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackRestorePolicyTest' \
+            --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest'
+          ./gradlew --no-daemon :app:compileDebugKotlin
+
+      - name: Validate patch
+        shell: bash
+        run: |
+          git diff --check
+          ! grep -R "pauseAfterNextPlaybackStart" -n app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -n "heightIn(min = 58.dp)" app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -n "maxLines = 2" app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -n "_track_metadata_rate_limited" tools/levyra-editorial/levyra_editorial/spotify.py
+
+      - name: Commit fixes and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/pr313-targeted-fixes.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(explore): harden samples restore and editorial collection"
+          git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
