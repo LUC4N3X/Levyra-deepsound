@@ -132,12 +132,14 @@ def main() -> None:
         "                                fontSize = if (compactPlayer) 22.sp else 25.sp,\n                                lineHeight = if (compactPlayer) 24.sp else 27.sp,",
         "title typography",
     )
-    text = replace_once(
+    text, count = re.subn(
+        r"(text = activeTrack\.artist,\n\s+color = LevyraPlayerDesign\.TextSecondary,\n\s+)fontSize = if \(compactPlayer\) 14\.sp else 15\.sp,",
+        r"\1fontSize = if (compactPlayer) 13.sp else 14.5.sp,",
         text,
-        "                                fontSize = if (compactPlayer) 14.sp else 15.sp,",
-        "                                fontSize = if (compactPlayer) 13.sp else 14.5.sp,",
-        "artist typography",
+        count=1,
     )
+    if count != 1:
+        raise RuntimeError(f"artist typography: expected one metadata match, found {count}")
     text = replace_once(
         text,
         '''            val actionSize = if (compactPlayer) {
