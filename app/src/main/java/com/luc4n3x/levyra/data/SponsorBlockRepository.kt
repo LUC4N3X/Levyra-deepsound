@@ -19,8 +19,17 @@ class SponsorBlockRepository {
 
     private val categories = listOf("sponsor", "selfpromo", "intro", "outro", "interaction", "music_offtopic", "preview")
 
+    private val cache = object : java.util.LinkedHashMap<String, List<SponsorSegment>>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<SponsorSegment>>?): Boolean {
+            return size > 200
+        }
+    }
+
     suspend fun segments(videoId: String): List<SponsorSegment> = withContext(Dispatchers.IO) {
         if (videoId.isBlank()) return@withContext emptyList()
+        synchronized(cache) {
+            cache[videoId]?.let { return@withContext it }
+        }
         val catsJson = categories.joinToString(",", prefix = "[", postfix = "]") { "\"$it\"" }
         val cats = URLEncoder.encode(catsJson, "UTF-8")
         val url = "https://sponsor.ajay.app/api/skipSegments?videoID=$videoId&categories=$cats"
@@ -33,7 +42,11 @@ class SponsorBlockRepository {
         }
         val code = connection.responseCode
         // 404 means "no segments for this video" — perfectly normal.
-        if (code !in 200..299) return@withContext emptyList()
+        if (code !in 200..299) {
+            val emptyResult = emptyList<SponsorSegment>()
+            synchronized(cache) { cache[videoId] = emptyResult }
+            return@withContext emptyResult
+        }
         val body = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
         val array = runCatching { JSONArray(body) }.getOrNull() ?: return@withContext emptyList()
         val segments = mutableListOf<SponsorSegment>()
@@ -47,6 +60,8 @@ class SponsorBlockRepository {
                 segments += SponsorSegment(startMs, endMs, item.optString("category", "sponsor"))
             }
         }
-        segments.sortedBy { it.startMs }
+        val sortedSegments = segments.sortedBy { it.startMs }
+        synchronized(cache) { cache[videoId] = sortedSegments }
+        sortedSegments
     }
 }
