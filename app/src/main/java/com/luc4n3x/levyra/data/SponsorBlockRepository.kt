@@ -1,15 +1,15 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.SponsorSegment
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
 
 /**
  * SponsorBlock community segments (sponsor.ajay.app) so LEVYRA can auto-skip the
@@ -51,7 +51,11 @@ class SponsorBlockRepository {
             // Do not poison the in-memory cache for rate limits or transient server/network failures.
             if (code !in 200..299) return@withContext emptyList()
 
-            val body = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
+            val declaredLength = connection.contentLengthLong
+            if (declaredLength > SPONSORBLOCK_MAX_RESPONSE_BYTES) return@withContext emptyList()
+            val body = connection.inputStream.use { input ->
+                readUtf8Bounded(input, SPONSORBLOCK_MAX_RESPONSE_BYTES) ?: return@withContext emptyList()
+            }
             val array = runCatching { JSONArray(body) }.getOrNull() ?: return@withContext emptyList()
             val segments = mutableListOf<SponsorSegment>()
             for (i in 0 until array.length()) {
@@ -71,4 +75,21 @@ class SponsorBlockRepository {
             connection.disconnect()
         }
     }
+}
+
+private const val SPONSORBLOCK_MAX_RESPONSE_BYTES = 512L * 1024L
+
+internal fun readUtf8Bounded(input: InputStream, maxBytes: Long): String? {
+    require(maxBytes > 0L)
+    val output = ByteArrayOutputStream(minOf(maxBytes, 16L * 1024L).toInt())
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0L
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > maxBytes) return null
+        output.write(buffer, 0, read)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
 }
