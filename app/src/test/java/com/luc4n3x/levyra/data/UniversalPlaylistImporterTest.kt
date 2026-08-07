@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import java.io.ByteArrayInputStream
+import java.net.Inet6Address
+import java.net.InetAddress
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -105,5 +107,50 @@ class UniversalPlaylistImporterTest {
     fun boundedReaderStopsBeforeOversizedBodyIsParsed() {
         assertEquals("hello", readUtf8Bounded(ByteArrayInputStream("hello".toByteArray()), 5L))
         assertNull(readUtf8Bounded(ByteArrayInputStream("hello!".toByteArray()), 5L))
+    }
+
+    @Test
+    fun spotifyImportAcceptsOnlyHtmlContentTypes() {
+        assertTrue(spotifyHtmlContentTypeAccepted("text/html; charset=utf-8"))
+        assertTrue(spotifyHtmlContentTypeAccepted("application/xhtml+xml"))
+        assertFalse(spotifyHtmlContentTypeAccepted("application/json"))
+        assertFalse(spotifyHtmlContentTypeAccepted("text/plain"))
+        assertFalse(spotifyHtmlContentTypeAccepted(null))
+    }
+
+    @Test
+    fun spotifyDestinationRejectsReservedIpv4Ranges() {
+        listOf(
+            "192.0.0.1",
+            "192.0.2.1",
+            "192.31.196.1",
+            "192.52.193.1",
+            "192.88.99.1",
+            "192.175.48.1",
+            "198.18.0.1",
+            "198.51.100.1",
+            "203.0.113.1"
+        ).forEach { value ->
+            assertFalse(value, isPublicNetworkAddress(InetAddress.getByName(value)))
+        }
+        assertTrue(isPublicNetworkAddress(InetAddress.getByName("8.8.8.8")))
+    }
+
+    @Test
+    fun spotifyDestinationRejectsIpv4MappedIpv6PrivateAndReservedAddresses() {
+        assertFalse(isPublicNetworkAddress(mappedIpv6(192, 168, 1, 10)))
+        assertFalse(isPublicNetworkAddress(mappedIpv6(192, 0, 2, 10)))
+        assertFalse(isPublicNetworkAddress(mappedIpv6(198, 18, 0, 10)))
+    }
+
+    private fun mappedIpv6(a: Int, b: Int, c: Int, d: Int): InetAddress {
+        val bytes = ByteArray(16)
+        bytes[10] = 0xFF.toByte()
+        bytes[11] = 0xFF.toByte()
+        bytes[12] = a.toByte()
+        bytes[13] = b.toByte()
+        bytes[14] = c.toByte()
+        bytes[15] = d.toByte()
+        return Inet6Address.getByAddress(null, bytes, -1)
     }
 }

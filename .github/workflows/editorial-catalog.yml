@@ -102,6 +102,7 @@ jobs:
             echo "::error::Catalog contains credential-related material"
             exit 1
           fi
+          # Cover artwork is published on purpose, but only from the source image CDN.
           if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
             echo "::error::Catalog contains artwork outside the allowed image CDN"
             exit 1
@@ -176,6 +177,7 @@ jobs:
             echo "::error::Catalog contains credential-related material"
             exit 1
           fi
+          # Cover artwork is published on purpose, but only from the source image CDN.
           if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
             echo "::error::Catalog contains artwork outside the allowed image CDN"
             exit 1

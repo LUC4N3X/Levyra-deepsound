@@ -4,6 +4,8 @@ import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.i18n.playlistImportAlreadyRunningMessage
+import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import java.io.IOException
 import java.net.InetAddress
 import java.net.URI
@@ -122,6 +124,15 @@ internal fun validateSpotifyImportUrl(value: String): HttpUrl? {
     return url
 }
 
+internal fun spotifyHtmlContentTypeAccepted(value: String?): Boolean {
+    val mime = value
+        ?.substringBefore(';')
+        ?.trim()
+        ?.lowercase()
+        .orEmpty()
+    return mime == "text/html" || mime == "application/xhtml+xml"
+}
+
 private fun spotifyMetaValues(html: String, key: String): List<String> {
     val expected = key.lowercase()
     return META_TAG_PATTERN.findAll(html).mapNotNull { match ->
@@ -189,28 +200,33 @@ class UniversalPlaylistImporter(
         .callTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    suspend fun importFromUrlOrJson(input: String, customName: String? = null): PlaylistImportResult = withContext(Dispatchers.IO) {
+    suspend fun importFromUrlOrJson(input: String, customName: String? = null, languageCode: String = "en"): PlaylistImportResult = withContext(Dispatchers.IO) {
         val trimmed = input.trim()
-        if (trimmed.isBlank()) return@withContext PlaylistImportResult.Failure("Input vuoto")
+        if (trimmed.isBlank()) return@withContext PlaylistImportResult.Failure(playlistImportFailureMessage(languageCode))
         if (trimmed.length > MAX_IMPORT_INPUT_CHARS) {
-            return@withContext PlaylistImportResult.Failure("Il contenuto da importare è troppo grande")
+            return@withContext PlaylistImportResult.Failure(playlistImportFailureMessage(languageCode))
         }
         if (!PlaylistImportCoordinator.tryBegin()) {
-            return@withContext PlaylistImportResult.Failure("Un'importazione playlist è già in corso")
+            return@withContext PlaylistImportResult.Failure(playlistImportAlreadyRunningMessage(languageCode))
         }
 
         try {
-            when {
+            val result = when {
                 trimmed.startsWith("{") || trimmed.startsWith("[") -> importFromJson(trimmed, customName)
                 isYoutubeUrl(trimmed) -> importFromYoutubeUrl(trimmed, customName)
                 isSpotifyUrl(trimmed) -> importFromSpotifyUrl(trimmed, customName)
-                else -> PlaylistImportResult.Failure("Formato o URL non supportato")
+                else -> PlaylistImportResult.Failure(playlistImportFailureMessage(languageCode))
+            }
+            if (result is PlaylistImportResult.Failure) {
+                PlaylistImportResult.Failure(playlistImportFailureMessage(languageCode))
+            } else {
+                result
             }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             Timber.w(error, "Playlist import failed")
-            PlaylistImportResult.Failure(error.message ?: "Errore durante l'importazione")
+            PlaylistImportResult.Failure(playlistImportFailureMessage(languageCode))
         } finally {
             PlaylistImportCoordinator.finish()
         }
@@ -427,6 +443,9 @@ class UniversalPlaylistImporter(
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code} durante l'importazione")
 
                 val body = response.body
+                if (!spotifyHtmlContentTypeAccepted(body.contentType()?.toString())) {
+                    throw IOException("Risposta Spotify non HTML")
+                }
                 val declaredLength = body.contentLength()
                 if (declaredLength > MAX_SPOTIFY_HTML_BYTES) {
                     throw IOException("Risposta Spotify troppo grande")
@@ -484,7 +503,7 @@ private val SPOTIFY_REDIRECT_CODES = setOf(301, 302, 303, 307, 308)
 private fun isAllowedSpotifyHost(host: String): Boolean =
     host == "spotify.com" || host.endsWith(".spotify.com") || host == "spotify.link"
 
-private fun isPublicNetworkAddress(address: InetAddress): Boolean {
+internal fun isPublicNetworkAddress(address: InetAddress): Boolean {
     if (
         address.isAnyLocalAddress ||
         address.isLoopbackAddress ||
@@ -494,15 +513,55 @@ private fun isPublicNetworkAddress(address: InetAddress): Boolean {
     ) return false
 
     val bytes = address.address
-    if (bytes.size == 4) {
-        val first = bytes[0].toInt() and 0xFF
-        val second = bytes[1].toInt() and 0xFF
-        if (first == 0 || first == 127 || first >= 224) return false
-        if (first == 100 && second in 64..127) return false
-        if (first == 169 && second == 254) return false
-    } else if (bytes.size == 16) {
-        val first = bytes[0].toInt() and 0xFF
-        if ((first and 0xFE) == 0xFC) return false // fc00::/7 unique-local
+    val ipv4Bytes = when {
+        bytes.size == 4 -> bytes
+        bytes.size == 16 &&
+            bytes.take(10).all { it == 0.toByte() } &&
+            bytes[10] == 0xFF.toByte() &&
+            bytes[11] == 0xFF.toByte() -> bytes.copyOfRange(12, 16)
+        else -> null
     }
+    if (ipv4Bytes != null) return isPublicIpv4Address(ipv4Bytes)
+    if (bytes.size != 16) return false
+
+    val first = bytes[0].toInt() and 0xFF
+    val second = bytes[1].toInt() and 0xFF
+    if ((first and 0xFE) == 0xFC) return false // fc00::/7 unique-local
+    if (first == 0x01 && second == 0x00 && bytes.drop(2).take(6).all { it == 0.toByte() }) return false // 100::/64 discard-only
+    if (first == 0x20 && second == 0x01) {
+        val third = bytes[2].toInt() and 0xFF
+        val fourth = bytes[3].toInt() and 0xFF
+        if (third <= 0x01) return false // 2001::/23 protocol assignments
+        if (third == 0x0D && fourth == 0xB8) return false // 2001:db8::/32 documentation
+    }
+    if (first == 0x20 && second == 0x02) return false // 2002::/16 deprecated 6to4
+    if (first == 0x3F && (second and 0xF0) == 0xF0) return false // 3fff::/20 documentation
     return true
+}
+
+private fun isPublicIpv4Address(bytes: ByteArray): Boolean {
+    if (bytes.size != 4) return false
+    val first = bytes[0].toInt() and 0xFF
+    val second = bytes[1].toInt() and 0xFF
+    val third = bytes[2].toInt() and 0xFF
+    return when {
+        first == 0 -> false
+        first == 10 -> false
+        first == 100 && second in 64..127 -> false
+        first == 127 -> false
+        first == 169 && second == 254 -> false
+        first == 172 && second in 16..31 -> false
+        first == 192 && second == 0 && third == 0 -> false
+        first == 192 && second == 0 && third == 2 -> false
+        first == 192 && second == 31 && third == 196 -> false
+        first == 192 && second == 52 && third == 193 -> false
+        first == 192 && second == 88 && third == 99 -> false
+        first == 192 && second == 168 -> false
+        first == 192 && second == 175 && third == 48 -> false
+        first == 198 && second in 18..19 -> false
+        first == 198 && second == 51 && third == 100 -> false
+        first == 203 && second == 0 && third == 113 -> false
+        first >= 224 -> false
+        else -> true
+    }
 }
