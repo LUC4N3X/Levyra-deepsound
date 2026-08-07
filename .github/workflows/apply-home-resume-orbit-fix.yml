@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - fix/home-resume-orbit-live
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
 
 permissions:
   contents: write
@@ -16,6 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: fix/home-resume-orbit-live
 
       - uses: actions/setup-java@v4
         with:
@@ -27,6 +33,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import textwrap
 
           app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           screen_vm_path = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt')
@@ -226,8 +233,6 @@ jobs:
               }
           }
           '''
-          # Strip the workflow's Python indentation from the Kotlin replacement.
-          import textwrap
           new_card = textwrap.dedent(new_card).rstrip()
           app = app[:start] + new_card + app[end:]
 
