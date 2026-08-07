@@ -166,6 +166,7 @@ internal fun LevyraLibraryScreen(
     var confirmDelete by remember { mutableStateOf(false) }
     var showCreatePlaylist by remember { mutableStateOf(false) }
     var showImportPlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val scrollPositions = remember { mutableStateMapOf<String, Pair<Int, Int>>() }
@@ -197,7 +198,6 @@ internal fun LevyraLibraryScreen(
     val visibleOffline = remember(catalog.offlineItems, query, sort) {
         filterLibraryOfflineItems(catalog.offlineItems, query, sort)
     }
-
     val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
         when (category) {
             LibraryCategory.Playlists -> state.playlists
@@ -329,15 +329,6 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            if (category == LibraryCategory.Overview) {
-                item(key = "overview-import-playlist") {
-                    LibraryImportPlaylistCard(
-                        onClick = { showImportPlaylist = true },
-                        isItalian = isItalian
-                    )
-                }
-            }
-
             if (category != LibraryCategory.Overview) {
                 item(key = "library-toolbar") {
                     LibraryToolbar(
@@ -455,10 +446,17 @@ internal fun LevyraLibraryScreen(
                         )
                     }
                     item(key = "playlist-import-action") {
-                        LibraryImportPlaylistCard(
-                            onClick = { showImportPlaylist = true },
-                            isItalian = isItalian
-                        )
+                        if (showImportPlaylistCard) {
+                            LibraryImportPlaylistCard(
+                                onClick = { showImportPlaylist = true },
+                                onDismiss = { showImportPlaylistCard = false },
+                                isItalian = isItalian
+                            )
+                        } else {
+                            LibraryImportPlaylistCompactAction(
+                                onClick = { showImportPlaylist = true }
+                            )
+                        }
                     }
                     if (visiblePlaylists.isEmpty()) {
                         item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, if (isItalian) "Nessuna playlist trovata" else "No playlists found") }
