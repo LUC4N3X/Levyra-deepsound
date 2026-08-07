@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07T18:29:54Z",
+  "generatedAt": "2026-08-07T18:33:13Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -10011,14 +10011,6 @@
           },
           "durationMs": 161075,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "UkeJ3GdK7c4",
-            "audioConfidence": 100,
-            "videoId": "63k0kNuCPak",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCHpZsd8IriyQ-znFZQWRrlQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c7b39af3c0eb6a0f6377db66"
         },
         {
@@ -12203,6 +12195,14 @@
           },
           "durationMs": 163200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "VIehh3I8Vn8",
+            "audioConfidence": 100,
+            "videoId": "U64Dx2Qx8G8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCvn0z96caW1oafs0b-GGv_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0259bf15c02d14660f9ad2569f"
         },
         {
@@ -12619,14 +12619,6 @@
           },
           "durationMs": 122608,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Tsa__phnDh8",
-            "audioConfidence": 100,
-            "videoId": "o7t7X500O3o",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCl8xd24oAVaDgMvlpmhwDMg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02db8bff42ce8230ad7b110447"
         },
         {
@@ -15372,11 +15364,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "releaseDate": "2010-08-24"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
         },
         {
           "position": 48,
@@ -16218,7 +16210,7 @@
         },
         {
           "position": 37,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16226,8 +16218,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16237,7 +16229,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 38,
@@ -22093,6 +22085,8 @@
           "youtubeMusic": {
             "audioVideoId": "R5By6ms2a3Y",
             "audioConfidence": 100,
+            "videoId": "gmjZf_Nxlec",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCXYVQ1uTq-KQbPk6IQlXHnA"
           },
@@ -22351,6 +22345,12 @@
           },
           "durationMs": 180000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "hGqYdubpcCM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC_Cx288SDUD9liYn7CiJLAA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d179b01c0b9baac10170d1ad"
         },
         {
@@ -24076,7 +24076,7 @@
         },
         {
           "position": 48,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24090,12 +24090,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         },
         {
           "position": 49,
