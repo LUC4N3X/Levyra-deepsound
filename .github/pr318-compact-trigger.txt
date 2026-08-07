@@ -1,1 +1,0 @@
-Trigger compact Continue Listening patch for PR 318.
