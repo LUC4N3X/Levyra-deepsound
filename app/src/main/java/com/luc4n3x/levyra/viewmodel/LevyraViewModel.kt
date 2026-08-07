@@ -223,6 +223,12 @@ internal fun LevyraUiState.withPublishedSamples(
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
 
+internal fun shouldReuseFreshCurrentsRequest(
+    activeRequestLanguage: String,
+    requestedLanguage: String,
+    force: Boolean
+): Boolean = !force && activeRequestLanguage == requestedLanguage
+
 
 internal fun selectYoutubeShortSample(list: List<Track>, requested: Track): Track? {
     if (list.isEmpty()) return null
@@ -4717,6 +4723,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var musicVideosFailureCount = 0
     private var musicVideosJob: Job? = null
     private var freshCurrentsLoadedLanguage = ""
+    private var freshCurrentsRequestLanguage = ""
     private var freshCurrentsRequestGeneration = 0L
     private var freshCurrentsJob: Job? = null
     private var newReleasesLoadedLanguage = ""
@@ -4945,12 +4952,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
         if (freshCurrentsJob?.isActive == true) {
-            if (!force && freshCurrentsLoadedLanguage == languageCode) return
+            if (shouldReuseFreshCurrentsRequest(freshCurrentsRequestLanguage, languageCode, force)) return
             freshCurrentsJob?.cancel()
         }
         if (!force && freshCurrentsLoadedLanguage == languageCode && snapshot.exploreFreshTracks.isNotEmpty()) return
 
         val requestGeneration = ++freshCurrentsRequestGeneration
+        freshCurrentsRequestLanguage = languageCode
         _state.update { current ->
             if (current.languageCode != languageCode) current
             else current.copy(
