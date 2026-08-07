@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/player-action-dock
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
