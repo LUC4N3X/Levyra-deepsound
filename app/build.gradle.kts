@@ -273,7 +273,7 @@ dependencies {
 
 val applyPlayerActionDockExperiment = tasks.register<Exec>("applyPlayerActionDockExperiment") {
     group = "build setup"
-    description = "Applies the PR 317 persistent player action dock before Android compilation."
+    description = "Applies the PR 317 Pixel-inspired no-scroll player experiment before Android compilation."
     workingDir = rootProject.projectDir
     commandLine("python3", rootProject.file("scripts/apply_player_action_dock_experiment.py").absolutePath)
 }
