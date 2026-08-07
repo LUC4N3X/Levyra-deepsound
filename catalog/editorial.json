@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07T20:22:03Z",
+  "generatedAt": "2026-08-07T20:44:30Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1915,7 +1915,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1923,12 +1923,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 33,
@@ -2133,12 +2133,6 @@
           },
           "durationMs": 159245,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Kf5pXDhx5Vc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVskJK4TXr5gqSEcQbjIJIg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1"
         },
         {
@@ -3314,12 +3308,6 @@
           },
           "durationMs": 159245,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Kf5pXDhx5Vc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVskJK4TXr5gqSEcQbjIJIg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1"
         },
         {
@@ -6509,12 +6497,6 @@
           },
           "durationMs": 159245,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Kf5pXDhx5Vc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVskJK4TXr5gqSEcQbjIJIg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1"
         },
         {
@@ -9939,14 +9921,6 @@
           },
           "durationMs": 212973,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "8_C6lXoGB5Y",
-            "audioConfidence": 100,
-            "videoId": "mrV8kK5t0V8",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -14480,12 +14454,6 @@
           },
           "durationMs": 334053,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "eC4X_y21Qkw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -18378,6 +18346,12 @@
           },
           "durationMs": 152184,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "fPYUIaI4lsg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3b9OZ16ZaKEXbJ2xq7J4DQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a0cbc5f07d3a807b85fafe55"
         },
         {
@@ -20770,6 +20744,12 @@
           },
           "durationMs": 135157,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "04x3RshrpG8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCpPjM4LS7K-JYoDPvwWqpUg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cc3d17f5595602ebde4e0785"
         },
         {
@@ -22393,7 +22373,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-09-30"
+            "releaseDate": "2019-08-31"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22403,7 +22383,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
         },
         {
           "position": 28,
@@ -26982,12 +26962,6 @@
           },
           "durationMs": 206416,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "44DrBGXCm9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCdCskNuCMMAU7FqK9pW7wiQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02afbae55931618ecd661b6db0"
         },
         {
@@ -28100,7 +28074,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 23,
