@@ -18964,22 +18964,19 @@ private fun UniversalImportDialog(
     onImportUrl: (String) -> Unit
 ) {
     var url by remember { mutableStateOf("") }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = LevyraBackground,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Importa Playlist",
-                    color = LevyraText,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LevyraPanel,
+        title = {
+            Text(
+                text = "Importa Playlist",
+                color = LevyraText,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     text = "Incolla il link di una playlist da YouTube, YouTube Music o Spotify, oppure inserisci il contenuto JSON di un backup.",
                     color = LevyraMuted,
@@ -18991,37 +18988,33 @@ private fun UniversalImportDialog(
                     placeholder = { Text("https://...", color = LevyraMuted.copy(alpha = 0.5f)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        textColor = LevyraText,
-                        cursorColor = LevyraCyan,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = LevyraText,
+                        unfocusedTextColor = LevyraText,
                         focusedBorderColor = LevyraCyan,
-                        unfocusedBorderColor = LevyraMuted.copy(alpha = 0.3f)
+                        unfocusedBorderColor = LevyraMuted.copy(alpha = 0.3f),
+                        cursorColor = LevyraCyan
                     ),
                     singleLine = true
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Annulla", color = LevyraMuted)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (url.isNotBlank()) {
-                                onImportUrl(url)
-                                onDismiss()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(backgroundColor = LevyraCyan, contentColor = Color.Black),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Importa")
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (url.isNotBlank()) {
+                        onImportUrl(url)
+                        onDismiss()
                     }
                 }
+            ) {
+                Text("Importa", color = LevyraCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annulla", color = LevyraMuted)
             }
         }
-    }
+    )
 }
