@@ -35,9 +35,10 @@ jobs:
           text = path.read_text(encoding='utf-8')
           old = '"@Composable\\nprivate fun LevyraLogoMark(size: Dp = 58.dp)"'
           new = '"@Composable\\nprivate fun LevyraLogoMark(\\n    size: Dp = 58.dp,\\n    modifier: Modifier = Modifier\\n)"'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one staged logo marker, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          count = text.count(old)
+          if count != 2:
+              raise SystemExit(f'expected two staged logo markers, found {count}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
           PY
           python3 -m py_compile scripts/apply_home_scroll_header.py
           python3 scripts/apply_home_scroll_header.py
