@@ -1,0 +1,66 @@
+name: Apply Home Scroll Header
+
+on:
+  push:
+    branches:
+      - perf/home-scroll-header
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-home-scroll-header-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: perf/home-scroll-header
+
+      - name: Apply deterministic Home patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/apply_home_scroll_header.py')
+          text = path.read_text(encoding='utf-8')
+          old = '"@Composable\\nprivate fun LevyraLogoMark(size: Dp = 58.dp)"'
+          new = '"@Composable\\nprivate fun LevyraLogoMark(\\n    size: Dp = 58.dp,\\n    modifier: Modifier = Modifier\\n)"'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one staged logo marker, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          python3 -m py_compile scripts/apply_home_scroll_header.py
+          python3 scripts/apply_home_scroll_header.py
+          git checkout -- scripts/apply_home_scroll_header.py
+
+      - name: Verify generated change
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'private fun HomeScrollReactiveHeader' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -q 'homeHeaderCollapseProgress' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -q 'class HomeScrollHeaderTest' app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
+          ! grep -q 'item(key = "home-top"' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+
+      - name: Commit generated implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
+          if git diff --cached --quiet; then
+            echo 'No generated changes to commit.'
+            exit 0
+          fi
+          git commit -m 'perf(home): add scroll-reactive header'
+          git push origin HEAD:perf/home-scroll-header
