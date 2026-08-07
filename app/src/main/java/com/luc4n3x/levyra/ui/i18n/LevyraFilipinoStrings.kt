@@ -70,7 +70,6 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "explore" to "Tuklasin",
     "exploreTitle" to "Tuklasin",
     "exploreSubtitle" to "Tumuklas ng bagong musika, trend, at video",
-    "exploreZones" to "Malalalim na zone",
     "exploreFresh" to "Mga sariwang agos",
     "exploreNewVideos" to "Mga bagong music video",
     "exploreEmpty" to "Walang signal mula sa zone na ito ngayon. Subukan ang iba",

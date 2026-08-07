@@ -4,7 +4,6 @@ from typing import Any
 
 import pytest
 
-import levyra_editorial.spotify as spotify_module
 from levyra_editorial.spotify import (
     API_BASE_URL,
     PATHFINDER_URL,
@@ -178,38 +177,27 @@ class SequencedSession:
         return None
 
 
-def test_track_metadata_enrichment_retries_one_rate_limited_batch(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_track_metadata_enrichment_disables_after_first_rate_limit() -> None:
     session = SequencedSession(
-        [
-            FakeResponse({}, status_code=429, headers={"Retry-After": "1"}),
-            FakeResponse(
-                {
-                    "tracks": [
-                        {
-                            "id": "track12345",
-                            "external_ids": {"isrc": "ITB002000001"},
-                            "album": {
-                                "album_type": "album",
-                                "total_tracks": 10,
-                                "release_date": "2026-07-01",
-                            },
-                        }
-                    ]
-                }
-            ),
-        ]
+        [FakeResponse({}, status_code=429, headers={"Retry-After": "5"})]
     )
-    waits: list[int] = []
-    monkeypatch.setattr(spotify_module.time, "sleep", waits.append)
     client = authenticated_client(session)
-    items = [{"track": {"id": "track12345", "album": {}}}]
+    first = [{"track": {"id": "track12345", "album": {}}}]
+    second = [{"track": {"id": "track67890", "album": {}}}]
 
-    enriched = client.enrich_track_metadata(items)
+    assert client.enrich_track_metadata(first) == first
+    assert client.enrich_track_metadata(second) == second
+    assert [url for url, _ in session.calls] == [f"{API_BASE_URL}/tracks"]
 
-    assert waits == [1]
-    assert [url for url, _ in session.calls] == [
-        f"{API_BASE_URL}/tracks",
-        f"{API_BASE_URL}/tracks",
-    ]
-    assert enriched[0]["track"]["external_ids"]["isrc"] == "ITB002000001"
-    assert enriched[0]["track"]["album"]["album_type"] == "album"
+
+def test_playlist_limit_stops_paging_after_the_first_page() -> None:
+    session = PathfinderSession(FakeResponse(playlist_payload()))
+    client = authenticated_client(session)
+
+    assert client.iter_playlist_items("playlist12345", limit=0) == []
+    assert session.calls == []
+
+    items = client.iter_playlist_items("playlist12345", limit=1)
+
+    assert len(items) == 1
+    assert len(session.calls) == 1

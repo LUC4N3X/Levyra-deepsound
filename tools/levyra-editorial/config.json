@@ -190,6 +190,341 @@
       "market": "IL",
       "playlistId": "37i9dQZEVXbJ6IpvItkve3",
       "title": "Top 50 ישראל"
+    },
+    {
+      "id": "new-releases-us",
+      "kind": "release",
+      "market": "US",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-it",
+      "kind": "release",
+      "market": "IT",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistId": "37i9dQZF1DWVKDF4ycOESi"
+    },
+    {
+      "id": "new-releases-es",
+      "kind": "release",
+      "market": "ES",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "Novedades Viernes España",
+      "titleHints": [
+        "Novedades Viernes España",
+        "New Music Friday Spain"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-fr",
+      "kind": "release",
+      "market": "FR",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday France",
+      "titleHints": [
+        "New Music Friday France"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-de",
+      "kind": "release",
+      "market": "DE",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Deutschland",
+      "titleHints": [
+        "New Music Friday Deutschland",
+        "New Music Friday Germany"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-br",
+      "kind": "release",
+      "market": "BR",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "Lançamentos da Semana",
+      "titleHints": [
+        "Lançamentos da Semana",
+        "New Music Friday Brasil"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-nl",
+      "kind": "release",
+      "market": "NL",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday NL",
+      "titleHints": [
+        "New Music Friday NL",
+        "New Music Friday Netherlands"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-pl",
+      "kind": "release",
+      "market": "PL",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Polska",
+      "titleHints": [
+        "New Music Friday Polska",
+        "New Music Friday Poland"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-ro",
+      "kind": "release",
+      "market": "RO",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Romania",
+      "titleHints": [
+        "New Music Friday Romania"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-gr",
+      "kind": "release",
+      "market": "GR",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Greece",
+      "titleHints": [
+        "New Music Friday Greece"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-se",
+      "kind": "release",
+      "market": "SE",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Sweden",
+      "titleHints": [
+        "New Music Friday Sweden"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-dk",
+      "kind": "release",
+      "market": "DK",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Denmark",
+      "titleHints": [
+        "New Music Friday Denmark"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-cz",
+      "kind": "release",
+      "market": "CZ",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Czech Republic",
+      "titleHints": [
+        "New Music Friday Czech Republic",
+        "New Music Friday Czechia"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-ua",
+      "kind": "release",
+      "market": "UA",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Ukraine",
+      "titleHints": [
+        "New Music Friday Ukraine"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-ru",
+      "kind": "release",
+      "market": "RU",
+      "title": "New releases",
+      "limit": 20,
+      "optional": true,
+      "playlistQuery": "New Music Friday Russia",
+      "titleHints": [
+        "New Music Friday Russia"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-tr",
+      "kind": "release",
+      "market": "TR",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Türkiye",
+      "titleHints": [
+        "New Music Friday Türkiye",
+        "New Music Friday Turkey"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-sa",
+      "kind": "release",
+      "market": "SA",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Arabic",
+      "titleHints": [
+        "New Music Friday Arabic",
+        "New Music Friday Arabia"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-cn",
+      "kind": "release",
+      "market": "CN",
+      "title": "New releases",
+      "limit": 20,
+      "optional": true,
+      "playlistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-jp",
+      "kind": "release",
+      "market": "JP",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Japan",
+      "titleHints": [
+        "New Music Friday Japan"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-kr",
+      "kind": "release",
+      "market": "KR",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Korea",
+      "titleHints": [
+        "New Music Friday Korea",
+        "New Music Friday South Korea"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-in",
+      "kind": "release",
+      "market": "IN",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday India",
+      "titleHints": [
+        "New Music Friday India"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-id",
+      "kind": "release",
+      "market": "ID",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Indonesia",
+      "titleHints": [
+        "New Music Friday Indonesia"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-vn",
+      "kind": "release",
+      "market": "VN",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Vietnam",
+      "titleHints": [
+        "New Music Friday Vietnam"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-th",
+      "kind": "release",
+      "market": "TH",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Thailand",
+      "titleHints": [
+        "New Music Friday Thailand"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-ph",
+      "kind": "release",
+      "market": "PH",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Philippines",
+      "titleHints": [
+        "New Music Friday Philippines"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
+    },
+    {
+      "id": "new-releases-il",
+      "kind": "release",
+      "market": "IL",
+      "title": "New releases",
+      "limit": 20,
+      "optional": false,
+      "playlistQuery": "New Music Friday Israel",
+      "titleHints": [
+        "New Music Friday Israel"
+      ],
+      "fallbackPlaylistId": "37i9dQZF1DX4JAvHpjipBk"
     }
   ]
 }
