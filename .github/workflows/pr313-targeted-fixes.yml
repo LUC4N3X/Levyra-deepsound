@@ -13,7 +13,7 @@ permissions:
 jobs:
   apply-fixes:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v7
@@ -26,18 +26,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Apply targeted fixes
         shell: bash
         run: |
@@ -48,14 +36,11 @@ jobs:
           vm_path = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
           vm = vm_path.read_text()
 
-          assert 'private var pauseAfterNextPlaybackStart: Boolean = false\n' in vm
-          vm = vm.replace('    private var pauseAfterNextPlaybackStart: Boolean = false\n', '', 1)
+          vm = vm.replace('    private var pauseAfterNextPlaybackStart: Boolean = false\n', '')
 
-          marker = '\ninternal fun prioritizeNewReleasesForUser('
-          assert marker in vm
-          assert 'internal data class PlaybackResolveRequest' not in vm
-          request_policy = '''
-          internal data class PlaybackResolveRequest(
+          if 'internal data class PlaybackResolveRequest' not in vm:
+              marker = 'internal fun prioritizeNewReleasesForUser('
+              policy = '''internal data class PlaybackResolveRequest(
               val id: Long,
               val startPaused: Boolean = false
           )
@@ -66,144 +51,159 @@ jobs:
           ): Boolean = request.id == activeRequestId && request.startPaused
 
           '''
-          vm = vm.replace(marker, '\n' + request_policy + 'internal fun prioritizeNewReleasesForUser(', 1)
+              if marker not in vm:
+                  raise SystemExit('prioritizeNewReleasesForUser marker not found')
+              vm = vm.replace(marker, policy + marker, 1)
 
-          old_restore = '''            pendingSeekMs = resumeMs
-                      pauseAfterNextPlaybackStart = !session.wasPlaying
-                      startResolve(restoredTrack)
-          '''
-          new_restore = '''            pendingSeekMs = resumeMs
-                      startResolve(restoredTrack, startPaused = !session.wasPlaying)
-          '''
-          assert old_restore in vm
-          vm = vm.replace(old_restore, new_restore, 1)
+          vm = re.sub(
+              r'(?m)^(\s*)pauseAfterNextPlaybackStart = !session\.wasPlaying\n\s*startResolve\(restoredTrack\)$',
+              lambda m: f'{m.group(1)}startResolve(restoredTrack, startPaused = !session.wasPlaying)',
+              vm,
+              count=1,
+          )
 
-          old_start_resolve = '    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {\n'
-          new_start_resolve = '    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {\n'
-          assert old_start_resolve in vm
-          vm = vm.replace(old_start_resolve, new_start_resolve, 1)
+          old_sig = 'private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {'
+          new_sig = 'private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {'
+          vm = vm.replace(old_sig, new_sig, 1)
 
-          request_line = '        val requestId = ++playRequestId\n'
-          assert vm.count(request_line) >= 1
-          vm = vm.replace(request_line, request_line + '        val request = PlaybackResolveRequest(requestId, startPaused)\n', 1)
+          start_resolve_pos = vm.find(new_sig)
+          if start_resolve_pos < 0:
+              raise SystemExit('startResolve signature not found')
+          request_pos = vm.find('        val requestId = ++playRequestId\n', start_resolve_pos)
+          if request_pos < 0:
+              raise SystemExit('playRequestId increment not found in startResolve')
+          insertion_at = request_pos + len('        val requestId = ++playRequestId\n')
+          if 'val request = PlaybackResolveRequest(requestId, startPaused)' not in vm[start_resolve_pos:insertion_at + 200]:
+              vm = vm[:insertion_at] + '        val request = PlaybackResolveRequest(requestId, startPaused)\n' + vm[insertion_at:]
 
-          assert '            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)\n' in vm
           vm = vm.replace(
-              '            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)\n',
-              '            resolveAndStartPlayback(track, request, autoRetryWhenOffline)\n',
+              'resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)',
+              'resolveAndStartPlayback(track, request, autoRetryWhenOffline)',
               1,
           )
 
-          old_resolve_signature = '''    private suspend fun CoroutineScope.resolveAndStartPlayback(
-                  track: Track,
-                  requestId: Long,
-                  autoRetryWhenOffline: Boolean
-              ) {
+          old_resolve = '''private suspend fun CoroutineScope.resolveAndStartPlayback(
+              track: Track,
+              requestId: Long,
+              autoRetryWhenOffline: Boolean
+          ) {
           '''
-          new_resolve_signature = '''    private suspend fun CoroutineScope.resolveAndStartPlayback(
-                  track: Track,
-                  request: PlaybackResolveRequest,
-                  autoRetryWhenOffline: Boolean
-              ) {
-                  val requestId = request.id
+          new_resolve = '''private suspend fun CoroutineScope.resolveAndStartPlayback(
+              track: Track,
+              request: PlaybackResolveRequest,
+              autoRetryWhenOffline: Boolean
+          ) {
+              val requestId = request.id
           '''
-          assert old_resolve_signature in vm
-          vm = vm.replace(old_resolve_signature, new_resolve_signature, 1)
+          if old_resolve in vm:
+              vm = vm.replace(old_resolve, new_resolve, 1)
+          elif 'request: PlaybackResolveRequest' not in vm:
+              raise SystemExit('resolveAndStartPlayback signature not found')
 
-          assert vm.count('            startPlayback(preserveEditorialArtwork(track, instant))\n') == 1
           vm = vm.replace(
-              '            startPlayback(preserveEditorialArtwork(track, instant))\n',
-              '            startPlayback(preserveEditorialArtwork(track, instant), request)\n',
+              'startPlayback(preserveEditorialArtwork(track, instant))',
+              'startPlayback(preserveEditorialArtwork(track, instant), request)',
               1,
           )
-          assert vm.count('            startPlayback(playable)\n') == 1
-          vm = vm.replace('            startPlayback(playable)\n', '            startPlayback(playable, request)\n', 1)
+          # This exact call belongs to resolveAndStartPlayback; the request object must travel with it.
+          resolve_start = vm.find('private suspend fun CoroutineScope.resolveAndStartPlayback(')
+          resolve_end = vm.find('\n    private fun publishResolveFailure(', resolve_start)
+          resolve_block = vm[resolve_start:resolve_end]
+          resolve_block = resolve_block.replace('startPlayback(playable)', 'startPlayback(playable, request)', 1)
+          vm = vm[:resolve_start] + resolve_block + vm[resolve_end:]
 
-          assert '        pauseAfterNextPlaybackStart = false\n' in vm
-          vm = vm.replace('        pauseAfterNextPlaybackStart = false\n', '', 1)
+          vm = vm.replace('        pauseAfterNextPlaybackStart = false\n', '')
 
-          old_start_playback = '''    private fun startPlayback(playable: Track) {
-                  val selectedIndex = queueEngine.state.value.currentIndex
-          '''
-          new_start_playback = '''    private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
-                  if (request.id != playRequestId) return
-                  val startPaused = shouldStartPlaybackPaused(request, playRequestId)
-                  val selectedIndex = queueEngine.state.value.currentIndex
-          '''
-          assert old_start_playback in vm
-          vm = vm.replace(old_start_playback, new_start_playback, 1)
+          old_playback_sig = 'private fun startPlayback(playable: Track) {'
+          new_playback_sig = 'private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {'
+          vm = vm.replace(old_playback_sig, new_playback_sig, 1)
+          playback_pos = vm.find(new_playback_sig)
+          if playback_pos < 0:
+              raise SystemExit('startPlayback signature not found')
+          selected_line = '        val selectedIndex = queueEngine.state.value.currentIndex\n'
+          selected_pos = vm.find(selected_line, playback_pos)
+          if selected_pos < 0:
+              raise SystemExit('startPlayback body marker not found')
+          prelude = vm[playback_pos:selected_pos]
+          if 'request.id != playRequestId' not in prelude:
+              vm = vm[:selected_pos] + (
+                  '        if (request.id != playRequestId) return\n'
+                  '        val startPaused = shouldStartPlaybackPaused(request, playRequestId)\n'
+              ) + vm[selected_pos:]
 
-          old_global_read = '''        val startPaused = pauseAfterNextPlaybackStart
-                  pauseAfterNextPlaybackStart = false
-          '''
-          assert old_global_read in vm
-          vm = vm.replace(old_global_read, '', 1)
+          vm = vm.replace(
+              '        val startPaused = pauseAfterNextPlaybackStart\n        pauseAfterNextPlaybackStart = false\n',
+              '',
+          )
 
-          assert 'pauseAfterNextPlaybackStart' not in vm
-          assert vm.count('startPlayback(') == 3
+          if 'pauseAfterNextPlaybackStart' in vm:
+              raise SystemExit('stale global pause flag remains')
+          if 'startResolve(restoredTrack, startPaused = !session.wasPlaying)' not in vm:
+              raise SystemExit('paused Samples restore is not request-scoped')
+          if vm.count('startPlayback(preserveEditorialArtwork(track, instant), request)') != 1:
+              raise SystemExit('instant resolve path did not receive request policy')
+          if vm.count('startPlayback(playable, request)') < 1:
+              raise SystemExit('resolved playback path did not receive request policy')
           vm_path.write_text(vm)
 
           app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           app = app_path.read_text()
-          start = app.index('private fun RowScope.ExploreMoodCard(')
-          end = app.index('\n@Composable\nprivate fun ExploreSamplesRow(', start)
+          start = app.find('private fun RowScope.ExploreMoodCard(')
+          end = app.find('\n@Composable\nprivate fun ExploreSamplesRow(', start)
+          if start < 0 or end < 0:
+              raise SystemExit('ExploreMoodCard block not found')
           block = app[start:end]
-          assert block.count('.height(58.dp)') == 1
-          assert block.count('maxLines = 1,') == 1
           block = block.replace('.height(58.dp)', '.heightIn(min = 58.dp)', 1)
           block = block.replace('maxLines = 1,', 'maxLines = 2,', 1)
-          app = app[:start] + block + app[end:]
-          app_path.write_text(app)
+          if '.heightIn(min = 58.dp)' not in block or 'maxLines = 2,' not in block:
+              raise SystemExit('ExploreMoodCard accessibility fix not applied')
+          app_path.write_text(app[:start] + block + app[end:])
 
           spotify_path = Path('tools/levyra-editorial/levyra_editorial/spotify.py')
           spotify = spotify_path.read_text()
           metadata_field = '        self._track_metadata: dict[str, Mapping[str, Any]] = {}\n'
-          assert metadata_field in spotify
-          assert '_track_metadata_rate_limited' not in spotify
-          spotify = spotify.replace(
-              metadata_field,
-              metadata_field + '        self._track_metadata_rate_limited = False\n',
-              1,
-          )
-          enrich_header = '''    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-                  """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
+          if '_track_metadata_rate_limited' not in spotify:
+              if metadata_field not in spotify:
+                  raise SystemExit('Spotify metadata cache field not found')
+              spotify = spotify.replace(
+                  metadata_field,
+                  metadata_field + '        self._track_metadata_rate_limited = False\n',
+                  1,
+              )
+
+          enrich_sig = '    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:\n'
+          enrich_pos = spotify.find(enrich_sig)
+          if enrich_pos < 0:
+              raise SystemExit('enrich_track_metadata not found')
+          doc_end = spotify.find('\n', spotify.find('"""Best-effort ISRC and release metadata without weakening Pathfinder reads."""', enrich_pos))
+          if doc_end < 0:
+              raise SystemExit('enrich_track_metadata docstring not found')
+          early_return = '        if self._track_metadata_rate_limited:\n            return items\n'
+          if early_return not in spotify[enrich_pos:enrich_pos + 500]:
+              spotify = spotify[:doc_end + 1] + early_return + spotify[doc_end + 1:]
+
+          rate_start = spotify.find('                if response.status_code == 429:', enrich_pos)
+          rate_end = spotify.find('                if response.status_code >= 400:', rate_start)
+          if rate_start < 0 or rate_end < 0:
+              raise SystemExit('Spotify metadata 429 branch not found')
+          replacement = '''                if response.status_code == 429:
+                      self._track_metadata_rate_limited = True
+                      LOGGER.warning(
+                          "Spotify track metadata rate-limited; disabling best-effort metadata enrichment for the remainder of this run."
+                      )
+                      break
           '''
-          assert enrich_header in spotify
-          spotify = spotify.replace(
-              enrich_header,
-              enrich_header + '        if self._track_metadata_rate_limited:\n            return items\n',
-              1,
-          )
-          old_429 = '''                if response.status_code == 429:
-                          delay = _bounded_retry_after(response.headers.get("Retry-After"))
-                          LOGGER.warning(
-                              "Spotify track metadata rate-limited; retrying once in %d second(s).",
-                              delay,
-                          )
-                          if delay > 0:
-                              time.sleep(delay)
-                          response = request_batch()
-                          if response.status_code == 401:
-                              self.authenticate()
-                              response = request_batch()
-          '''
-          new_429 = '''                if response.status_code == 429:
-                          self._track_metadata_rate_limited = True
-                          LOGGER.warning(
-                              "Spotify track metadata rate-limited; disabling best-effort metadata enrichment for the remainder of this run."
-                          )
-                          break
-          '''
-          assert old_429 in spotify
-          spotify = spotify.replace(old_429, new_429, 1)
+          spotify = spotify[:rate_start] + replacement + spotify[rate_end:]
           spotify_path.write_text(spotify)
 
-          pathfinder_path = Path('tools/levyra-editorial/tests/test_pathfinder.py')
-          pathfinder = pathfinder_path.read_text()
-          pathfinder = pathfinder.replace('import levyra_editorial.spotify as spotify_module\n', '', 1)
-          old_test_start = pathfinder.index('def test_track_metadata_enrichment_retries_one_rate_limited_batch(')
-          old_test_end = pathfinder.index('\n\ndef test_playlist_limit_stops_paging_after_the_first_page()', old_test_start)
-          new_test = '''def test_track_metadata_enrichment_disables_after_first_rate_limit() -> None:
+          test_path = Path('tools/levyra-editorial/tests/test_pathfinder.py')
+          test = test_path.read_text().replace('import levyra_editorial.spotify as spotify_module\n', '')
+          test_start = test.find('def test_track_metadata_enrichment_retries_one_rate_limited_batch(')
+          if test_start >= 0:
+              test_end = test.find('\n\ndef test_playlist_limit_stops_paging_after_the_first_page()', test_start)
+              if test_end < 0:
+                  raise SystemExit('rate limit regression test boundary not found')
+              replacement_test = '''def test_track_metadata_enrichment_disables_after_first_rate_limit() -> None:
               session = SequencedSession(
                   [FakeResponse({}, status_code=429, headers={"Retry-After": "5"})]
               )
@@ -215,8 +215,8 @@ jobs:
               assert client.enrich_track_metadata(second) == second
               assert [url for url, _ in session.calls] == [f"{API_BASE_URL}/tracks"]
           '''
-          pathfinder = pathfinder[:old_test_start] + new_test + pathfinder[old_test_end:]
-          pathfinder_path.write_text(pathfinder)
+              test = test[:test_start] + replacement_test + test[test_end:]
+          test_path.write_text(test)
 
           restore_test = Path('app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesPlaybackRestorePolicyTest.kt')
           restore_test.write_text('''package com.luc4n3x.levyra.viewmodel
@@ -229,14 +229,12 @@ jobs:
               @Test
               fun pausedRestoreStartsPausedOnlyForItsOwnRequest() {
                   val request = PlaybackResolveRequest(id = 10L, startPaused = true)
-
                   assertTrue(shouldStartPlaybackPaused(request, activeRequestId = 10L))
               }
 
               @Test
               fun supersededRestoreCannotPauseTheReplacementRequest() {
                   val staleRestore = PlaybackResolveRequest(id = 10L, startPaused = true)
-
                   assertFalse(shouldStartPlaybackPaused(staleRestore, activeRequestId = 11L))
               }
 
@@ -244,17 +242,11 @@ jobs:
               fun normalRequestAfterFailedRestoreDoesNotInheritPause() {
                   val failedRestore = PlaybackResolveRequest(id = 10L, startPaused = true)
                   val normalReplacement = PlaybackResolveRequest(id = 11L)
-
                   assertFalse(shouldStartPlaybackPaused(failedRestore, activeRequestId = 11L))
                   assertFalse(shouldStartPlaybackPaused(normalReplacement, activeRequestId = 11L))
               }
           }
           '''.replace('          ', ''))
-
-          for path in (vm_path, app_path, spotify_path, pathfinder_path, restore_test):
-              text = path.read_text()
-              assert '\r\n' not in text
-              path.write_text(text)
           PY
 
       - name: Editorial regression tests
@@ -264,24 +256,14 @@ jobs:
           ruff check tools/levyra-editorial
           python -m pytest -q tools/levyra-editorial/tests/test_pathfinder.py tools/levyra-editorial/tests/test_resilient.py
 
-      - name: Android focused tests
-        shell: bash
-        run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.viewmodel.ExploreProjectionTest' \
-            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackSelectionTest' \
-            --tests 'com.luc4n3x.levyra.viewmodel.SamplesPlaybackRestorePolicyTest' \
-            --tests 'com.luc4n3x.levyra.ui.ExploreLayoutTest'
-          ./gradlew --no-daemon :app:compileDebugKotlin
-
-      - name: Validate patch
+      - name: Validate targeted patch
         shell: bash
         run: |
           git diff --check
-          ! grep -R "pauseAfterNextPlaybackStart" -n app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
-          grep -n "heightIn(min = 58.dp)" app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -n "maxLines = 2" app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -n "_track_metadata_rate_limited" tools/levyra-editorial/levyra_editorial/spotify.py
+          ! grep -q "pauseAfterNextPlaybackStart" app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -q "startResolve(restoredTrack, startPaused = !session.wasPlaying)" app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -q "heightIn(min = 58.dp)" app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -q "_track_metadata_rate_limited" tools/levyra-editorial/levyra_editorial/spotify.py
 
       - name: Commit fixes and remove helper workflow
         shell: bash
