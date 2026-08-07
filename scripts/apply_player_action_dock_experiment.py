@@ -29,7 +29,6 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 
 def main() -> None:
     text = PLAYER.read_text(encoding="utf-8")
-
     if MARKER in text:
         return
 
