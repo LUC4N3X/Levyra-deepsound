@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07T20:44:30Z",
+  "generatedAt": "2026-08-07T20:52:01Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1915,7 +1915,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -1923,12 +1923,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 33,
@@ -2133,6 +2133,12 @@
           },
           "durationMs": 159245,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Kf5pXDhx5Vc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVskJK4TXr5gqSEcQbjIJIg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1"
         },
         {
@@ -3308,6 +3314,12 @@
           },
           "durationMs": 159245,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Kf5pXDhx5Vc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVskJK4TXr5gqSEcQbjIJIg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1"
         },
         {
@@ -6497,6 +6509,12 @@
           },
           "durationMs": 159245,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Kf5pXDhx5Vc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVskJK4TXr5gqSEcQbjIJIg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fddfffec51b4580acae727c1"
         },
         {
@@ -7004,6 +7022,14 @@
           },
           "durationMs": 284866,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "WivOyYEdjEE",
+            "audioConfidence": 100,
+            "videoId": "t4H_Zoh7G5A",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         }
       ]
@@ -7646,12 +7672,6 @@
           },
           "durationMs": 170658,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "pXGbTOmEGro",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCEL7LR-LrGBHqIehS5AW4nQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bedb9e39ee45979ce68b8449"
         },
         {
@@ -17364,6 +17384,14 @@
           },
           "durationMs": 284866,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "WivOyYEdjEE",
+            "audioConfidence": 100,
+            "videoId": "t4H_Zoh7G5A",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -20744,12 +20772,6 @@
           },
           "durationMs": 135157,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "04x3RshrpG8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCpPjM4LS7K-JYoDPvwWqpUg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cc3d17f5595602ebde4e0785"
         },
         {
@@ -22669,12 +22691,6 @@
           },
           "durationMs": 160688,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "HBqH4uJS0PU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f037c5fb9de6c78726cb8e2c"
         },
         {
@@ -24062,7 +24078,7 @@
         },
         {
           "position": 48,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24076,12 +24092,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         },
         {
           "position": 49,
@@ -26962,6 +26978,12 @@
           },
           "durationMs": 206416,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "44DrBGXCm9g",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdCskNuCMMAU7FqK9pW7wiQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02afbae55931618ecd661b6db0"
         },
         {
@@ -27327,6 +27349,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28074,7 +28098,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
         },
         {
           "position": 23,
@@ -28732,6 +28756,12 @@
           },
           "durationMs": 157959,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "DGIGqbBAm3c",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC2-rG7DMkCdDL3lE15wUrSw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021f50eee9553ec21741a42c38"
         },
         {
