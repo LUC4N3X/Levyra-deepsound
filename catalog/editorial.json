@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-07T06:00:30Z",
+  "generatedAt": "2026-08-07T06:08:19Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1503,7 +1503,7 @@
         },
         {
           "position": 13,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1511,8 +1511,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1522,7 +1522,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 14,
@@ -10411,11 +10411,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 39,
@@ -10801,12 +10801,6 @@
           },
           "durationMs": 213559,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "vtlRXh2C9_Y",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC8Yuo0-S4BMCXWzYajCbMug"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bb76d47861576a1f2a62911c"
         },
         {
@@ -17109,7 +17103,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17117,12 +17111,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 28,
@@ -18661,6 +18655,14 @@
           },
           "durationMs": 245669,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qRKUM9k0ntY",
+            "audioConfidence": 100,
+            "videoId": "EQQNb4iJVIk",
+            "videoConfidence": 97,
+            "confidence": 100,
+            "artistBrowseId": "UCavTTSUSD6aYPeF-F3ND9Yg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0265529d64da7ebede606463ae"
         },
         {
@@ -19407,6 +19409,14 @@
           },
           "durationMs": 146517,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "YKO78iqqtDE",
+            "audioConfidence": 100,
+            "videoId": "yRqJ6gbkBA0",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCavTTSUSD6aYPeF-F3ND9Yg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02be1b34819d010b15ea80f518"
         },
         {
@@ -20759,6 +20769,12 @@
           },
           "durationMs": 135157,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "04x3RshrpG8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCpPjM4LS7K-JYoDPvwWqpUg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cc3d17f5595602ebde4e0785"
         }
       ]
@@ -25036,12 +25052,6 @@
           },
           "durationMs": 222706,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "M2QKS9tte9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -26452,11 +26462,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 48,
@@ -27044,6 +27054,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -27147,6 +27159,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -30249,12 +30263,6 @@
           },
           "durationMs": 192000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "aM69Ur67d_I",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCy6qn2oxmoXA4_gBA5Q7zPw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fb053c289f43a1baa247e1b5"
         },
         {
@@ -30374,6 +30382,12 @@
           },
           "durationMs": 193024,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "rVgWsOBx1Dg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCMeAN48dnhN1POGIhjtN_bQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0286c9566284b71edf22791472"
         },
         {
