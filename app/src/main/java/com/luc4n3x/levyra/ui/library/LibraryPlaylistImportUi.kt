@@ -17,9 +17,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,6 +55,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 @Composable
 internal fun LibraryImportPlaylistCard(
     onClick: () -> Unit,
+    onDismiss: () -> Unit,
     @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
 ) {
     val copy = LocalLevyraStrings.current.playlistImportCopy()
@@ -113,7 +115,9 @@ internal fun LibraryImportPlaylistCard(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 28.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -152,20 +156,60 @@ internal fun LibraryImportPlaylistCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Surface(
-                    color = Color.Black.copy(alpha = 0.18f),
-                    shape = CircleShape,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowForward,
-                        contentDescription = copy.action,
-                        tint = LevyraCyan,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(17.dp)
-                    )
-                }
+            }
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(30.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = copy.cancel,
+                    tint = LevyraMuted.copy(alpha = 0.78f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun LibraryImportPlaylistCompactAction(
+    onClick: () -> Unit
+) {
+    val copy = LocalLevyraStrings.current.playlistImportCopy()
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Surface(
+            color = Color.White.copy(alpha = 0.045f),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .combinedClickable(onClick = onClick)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(17.dp)
+                )
+                Text(
+                    text = copy.action,
+                    color = LevyraText,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
