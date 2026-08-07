@@ -165,6 +165,7 @@ internal fun LevyraLibraryScreen(
     var addToPlaylistTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     var confirmDelete by remember { mutableStateOf(false) }
     var showCreatePlaylist by remember { mutableStateOf(false) }
+    var showImportPlaylist by remember { mutableStateOf(false) }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val scrollPositions = remember { mutableStateMapOf<String, Pair<Int, Int>>() }
@@ -328,6 +329,15 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
+            if (category == LibraryCategory.Overview) {
+                item(key = "overview-import-playlist") {
+                    LibraryImportPlaylistCard(
+                        onClick = { showImportPlaylist = true },
+                        isItalian = isItalian
+                    )
+                }
+            }
+
             if (category != LibraryCategory.Overview) {
                 item(key = "library-toolbar") {
                     LibraryToolbar(
@@ -442,6 +452,12 @@ internal fun LevyraLibraryScreen(
                             detail = if (isItalian) "${visiblePlaylists.size} raccolte" else "${visiblePlaylists.size} collections",
                             action = if (isItalian) "Nuova" else "New",
                             onAction = { showCreatePlaylist = true }
+                        )
+                    }
+                    item(key = "playlist-import-action") {
+                        LibraryImportPlaylistCard(
+                            onClick = { showImportPlaylist = true },
+                            isItalian = isItalian
                         )
                     }
                     if (visiblePlaylists.isEmpty()) {
@@ -754,6 +770,17 @@ internal fun LevyraLibraryScreen(
         )
     }
 
+    if (showImportPlaylist) {
+        LibraryImportPlaylistDialog(
+            isItalian = isItalian,
+            onDismiss = { showImportPlaylist = false },
+            onImport = { input ->
+                viewModel.importPlaylist(input)
+                showImportPlaylist = false
+            }
+        )
+    }
+
     if (addToPlaylistTracks.isNotEmpty()) {
         AddTracksToPlaylistDialog(
             tracks = addToPlaylistTracks,
@@ -1006,7 +1033,6 @@ internal fun LevyraPlaylistDetailScreen(
             }
         )
     }
-
 
     if (addTracksDialog && selectedTracks.isNotEmpty()) {
         AddTracksToPlaylistDialog(
@@ -2826,7 +2852,6 @@ private fun <T> List<T>.move(from: Int, to: Int): List<T> {
     if (from !in indices || to !in indices || from == to) return this
     return toMutableList().apply { add(to, removeAt(from)) }
 }
-
 
 private fun downloadProgressFor(track: Track, state: LevyraUiState): Int? {
     state.downloadQueue.firstOrNull { task ->
