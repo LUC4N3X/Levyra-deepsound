@@ -118,7 +118,7 @@ private fun normalizeSpotifyTrackUrl(value: String): String? {
             val host = uri.host.orEmpty().lowercase()
             val path = uri.path.orEmpty()
             if (host == "open.spotify.com" && path.startsWith("/track/")) {
-                "https://open.spotify.com/track/${path.substringAfter("/track/").substringBefore('/').substringBefore('?')}"
+                "https://open.spotify.com/track/${path.substringAfter("/track/").substringBefore('/')}"
             } else {
                 null
             }
@@ -262,11 +262,14 @@ class UniversalPlaylistImporter(
                     if (YOUTUBE_VIDEO_ID.matches(track.id)) return@async track
                     limiter.withPermit {
                         try {
-                            youtubeRepository.searchOne("${track.title} ${track.artist}")?.copy(
-                                thumbnailUrl = track.thumbnailUrl.ifBlank { it.thumbnailUrl },
+                            val resolved = youtubeRepository.searchOne("${track.title} ${track.artist}")
+                                ?: return@withPermit null
+                            resolved.copy(
+                                thumbnailUrl = track.thumbnailUrl.ifBlank { resolved.thumbnailUrl },
                                 largeThumbnailUrl = track.largeThumbnailUrl.ifBlank {
-                                    track.thumbnailUrl.ifBlank { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }
+                                    track.thumbnailUrl.ifBlank { resolved.largeThumbnailUrl.ifBlank { resolved.thumbnailUrl } }
                                 },
+                                durationMs = resolved.durationMs.takeIf { it > 0L } ?: track.durationMs,
                                 source = "Imported playlist"
                             )
                         } catch (error: CancellationException) {
@@ -341,7 +344,7 @@ class UniversalPlaylistImporter(
         val created = playlistStore.create(name, cleanTracks.first())
         if (cleanTracks.size > 1) playlistStore.addTracks(created.id, cleanTracks.drop(1))
         val updated = playlistStore.load(created.id) ?: created.copy(tracks = cleanTracks)
-        return PlaylistImportResult.Success(updated, updated.tracks.size.coerceAtLeast(cleanTracks.size))
+        return PlaylistImportResult.Success(updated, cleanTracks.size)
     }
 
     private fun fetchText(url: String): String {
