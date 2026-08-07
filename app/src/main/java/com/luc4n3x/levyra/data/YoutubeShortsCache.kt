@@ -26,7 +26,7 @@ internal class YoutubeShortsCache(context: Context) {
         Context.MODE_PRIVATE
     )
 
-    fun load(languageCode: String, profileSignature: String = ""): YoutubeShortsCacheSnapshot {
+    fun load(languageCode: String, profileSignature: String): YoutubeShortsCacheSnapshot {
         val wantedProfile = profileSignature.trim()
         if (wantedProfile.isBlank()) return YoutubeShortsCacheSnapshot(emptyList(), 0L)
         val raw = preferences.getString(cacheKey(languageCode), null).orEmpty()

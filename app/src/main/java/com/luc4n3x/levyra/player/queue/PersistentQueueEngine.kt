@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
+internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
+    !transientPlaybackActive
+
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -25,6 +28,7 @@ class PersistentQueueEngine private constructor(context: Context) {
     private var persistJob: Job? = null
     private var positionPersistJob: Job? = null
     private var undoRemoval: QueueRemoval? = null
+    @Volatile private var transientPlaybackActive: Boolean = false
 
     val state: StateFlow<PlaybackQueueSnapshot> = _state.asStateFlow()
 
@@ -36,6 +40,7 @@ class PersistentQueueEngine private constructor(context: Context) {
         fallbackShuffleEnabled: Boolean = false,
         fallbackRadioEnabled: Boolean = false
     ): PlaybackQueueSnapshot {
+        transientPlaybackActive = false
         val restored = runCatching { store.load() }
             .onFailure { Timber.w(it, "Persistent queue restore failed") }
             .getOrNull()
@@ -97,6 +102,49 @@ class PersistentQueueEngine private constructor(context: Context) {
             generation = current.generation + 1L,
             history = emptyList()
         )
+    }
+
+    fun beginTransientPlayback(
+        preservedSnapshot: PlaybackQueueSnapshot,
+        tracks: List<Track>,
+        currentIndex: Int,
+        positionMs: Long = 0L
+    ): PlaybackQueueSnapshot {
+        persistJob?.cancel()
+        positionPersistJob?.cancel()
+        val durableSnapshot = preservedSnapshot.toPersistent()
+        transientPlaybackActive = true
+        scope.launch {
+            runCatching { store.save(durableSnapshot) }
+                .onFailure { Timber.w(it, "Unable to preserve durable queue before transient playback") }
+        }
+        return replaceTransient(tracks, currentIndex, positionMs)
+    }
+
+    fun replaceTransient(
+        tracks: List<Track>,
+        currentIndex: Int,
+        positionMs: Long = 0L
+    ): PlaybackQueueSnapshot {
+        check(transientPlaybackActive) { "Transient playback must be started before replacement" }
+        return mutate(structural = true, immediatePersist = false) { current ->
+            val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
+            val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
+            buildSnapshot(
+                tracks = normalized,
+                currentIndex = safeIndex,
+                positionMs = positionMs,
+                repeatMode = RepeatMode.Off,
+                shuffleEnabled = false,
+                radioEnabled = false,
+                generation = current.generation + 1L
+            )
+        }
+    }
+
+    fun endTransientPlayback(snapshot: PlaybackQueueSnapshot): PlaybackQueueSnapshot {
+        transientPlaybackActive = false
+        return restoreSnapshot(snapshot)
     }
 
     fun restoreSnapshot(snapshot: PlaybackQueueSnapshot): PlaybackQueueSnapshot =
@@ -369,6 +417,7 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     suspend fun flush() {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return
         persistJob?.cancel()
         positionPersistJob?.cancel()
         val snapshot = _state.value.toPersistent()
@@ -406,6 +455,7 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     private fun schedulePersist(immediate: Boolean, delayMs: Long = 350L) {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return
         positionPersistJob?.cancel()
         persistJob?.cancel()
         persistJob = scope.launch {
@@ -417,6 +467,7 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     private fun schedulePositionPersist(snapshot: PlaybackQueueSnapshot) {
+        if (!queuePersistenceAllowed(transientPlaybackActive)) return
         positionPersistJob?.cancel()
         positionPersistJob = scope.launch {
             delay(1_500L)

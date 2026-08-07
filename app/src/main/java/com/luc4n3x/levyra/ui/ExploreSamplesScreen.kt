@@ -63,6 +63,19 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+
+internal enum class SamplesLoadSurfaceState {
+    Loading,
+    Error,
+    Empty
+}
+
+internal fun samplesLoadSurfaceState(isLoading: Boolean, loadFailed: Boolean): SamplesLoadSurfaceState = when {
+    isLoading -> SamplesLoadSurfaceState.Loading
+    loadFailed -> SamplesLoadSurfaceState.Error
+    else -> SamplesLoadSurfaceState.Empty
+}
+
 @Composable
 internal fun ExploreSamplesScreen(
     samples: List<Track>,
@@ -88,7 +101,6 @@ internal fun ExploreSamplesScreen(
     }
 
     if (samples.isEmpty()) {
-        LaunchedEffect(Unit) { onRequestFeed() }
         ExploreSamplesLoadingSurface(
             strings = strings,
             isLoading = isLoading,
@@ -230,12 +242,13 @@ private fun ExploreSamplesLoadingSurface(
             )
         }
 
+        val surfaceState = samplesLoadSurfaceState(isLoading, loadFailed)
         Column(
             modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            if (isLoading || !loadFailed) {
+            if (surfaceState == SamplesLoadSurfaceState.Loading) {
                 CircularProgressIndicator(
                     color = Color.White,
                     strokeWidth = 3.dp,
@@ -250,7 +263,11 @@ private fun ExploreSamplesLoadingSurface(
                 )
             }
             Text(
-                text = if (loadFailed) strings.exploreEmpty else strings.exploreSamplesSubtitle,
+                text = if (surfaceState == SamplesLoadSurfaceState.Error) {
+                    strings.exploreSamplesError
+                } else {
+                    strings.exploreSamplesSubtitle
+                },
                 color = Color.White.copy(alpha = 0.78f),
                 fontSize = 15.sp,
                 lineHeight = 20.sp,
@@ -258,29 +275,31 @@ private fun ExploreSamplesLoadingSurface(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            Box(
-                modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.12f), CircleShape)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            if (surfaceState != SamplesLoadSurfaceState.Loading) {
+                Box(
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.12f), CircleShape)
+                        .clickable(onClick = onRetry)
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Refresh,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = strings.exploreSamples,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = strings.exploreSamplesRetry,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

@@ -36,6 +36,8 @@ class LevyraStringsTest {
             assertTrue(strings.exploreMoods.isNotBlank())
             assertTrue(strings.exploreSamples.isNotBlank())
             assertTrue(strings.exploreSamplesSubtitle.isNotBlank())
+            assertTrue(strings.exploreSamplesError.isNotBlank())
+            assertTrue(strings.exploreSamplesRetry.isNotBlank())
         }
     }
 

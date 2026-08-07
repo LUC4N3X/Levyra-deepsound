@@ -41,6 +41,30 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 
+internal fun selectFreshCurrentTracks(
+    editorial: List<Track>,
+    fallback: List<Track>,
+    limit: Int
+): List<Track> {
+    if (limit <= 0) return emptyList()
+    fun eligible(track: Track): Boolean =
+        track.id.isNotBlank() &&
+            track.title.isNotBlank() &&
+            track.artist.isNotBlank() &&
+            (track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()) &&
+            !isYoutubeShortTrack(track)
+
+    val editorialClean = editorial.filter(::eligible)
+    val source = editorialClean.ifEmpty { fallback.filter(::eligible) }
+    return source
+        .distinctBy { track ->
+            track.isrc.ifBlank {
+                "${track.artist.trim().lowercase()}|${track.title.trim().lowercase()}"
+            }
+        }
+        .take(limit)
+}
+
 class ChartsRepository(context: Context) {
 
     private val appContext = context.applicationContext
@@ -117,6 +141,16 @@ class ChartsRepository(context: Context) {
             }
             .take(safeLimit)
             .toList()
+    }
+
+    suspend fun freshCurrentTracks(country: String, limit: Int = 24): List<Track> = withContext(Dispatchers.IO) {
+        val safeLimit = limit.coerceIn(1, 40)
+        val editorial = editorialCharts.newReleaseTracks(country, safeLimit)
+        if (editorial.isNotEmpty()) {
+            return@withContext selectFreshCurrentTracks(editorial, emptyList(), safeLimit)
+        }
+        val fallback = topSongs(country, safeLimit)
+        selectFreshCurrentTracks(emptyList(), fallback, safeLimit)
     }
 
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {

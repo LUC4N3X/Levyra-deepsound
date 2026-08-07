@@ -17307,7 +17307,7 @@ private fun CircleIconButton(
 @Composable
 private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
-    LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
+    LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
@@ -17318,14 +17318,14 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val selectedZone = remember(zones, state.exploreZoneId) {
         zones.firstOrNull { zone -> zone.id == state.exploreZoneId }
     }
-    val freshTracks = state.exploreTracks
-    val samples = remember(state.exploreVideos) {
-        exploreSampleTracks(state.exploreVideos, ExploreImmersiveSampleLimit)
+    val freshTracks = state.exploreFreshTracks
+    val samples = remember(state.exploreSamples) {
+        exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
     }
     val rows = remember(zones, state.isExploreLoading, freshTracks.isNotEmpty(), samples.isNotEmpty()) {
         buildExploreRows(
             zones = zones,
-            isFreshLoading = state.isExploreLoading,
+            isFreshLoading = state.isFreshCurrentsLoading,
             hasFreshTracks = freshTracks.isNotEmpty(),
             hasSamples = samples.isNotEmpty()
         )
@@ -17338,7 +17338,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                 exploreDestination = null
                 samplesStartIndex = 0
                 viewModel.beginSamplesPlayback()
-                if (samples.isEmpty()) viewModel.refreshSamples()
+                if (samples.isEmpty()) viewModel.ensureSamples()
             }
             ExploreShortcut.NewReleases -> {
                 samplesStartIndex = null
@@ -17386,7 +17386,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                     is ExploreRow.Header -> when (row.anchor) {
                         ExploreAnchor.Fresh -> ExploreSectionHeader(
                             title = strings.exploreFresh,
-                            subtitle = selectedZone?.label,
+                            subtitle = strings.exploreNewReleases,
                             onPlayAll = onPlayFresh
                         )
                         ExploreAnchor.Samples -> ExploreSectionHeader(

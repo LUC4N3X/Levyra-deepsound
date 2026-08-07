@@ -95,6 +95,13 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         snapshot.newReleases(country, limit)
     }
 
+    suspend fun newReleaseTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyList()
+        if (snapshot.needsRefresh(now)) warm()
+        snapshot.newReleases(country, limit)
+    }
+
     suspend fun cachedAllMarkets(limit: Int): Map<String, List<Track>> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyMap()
