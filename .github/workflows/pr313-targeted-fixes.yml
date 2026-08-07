@@ -273,12 +273,15 @@ jobs:
           grep -q "heightIn(min = 58.dp)" app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
           grep -q "_track_metadata_rate_limited" tools/levyra-editorial/levyra_editorial/spotify.py
 
-      - name: Commit fixes and remove helper workflow
+      - name: Commit targeted fixes
         shell: bash
         run: |
-          rm .github/workflows/pr313-targeted-fixes.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+                  app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+                  app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesPlaybackRestorePolicyTest.kt \
+                  tools/levyra-editorial/levyra_editorial/spotify.py \
+                  tools/levyra-editorial/tests/test_pathfinder.py
           git commit -m "fix(explore): harden samples restore and editorial collection"
           git push origin HEAD:claude/menu-esplora-redesign-t3j2l4
