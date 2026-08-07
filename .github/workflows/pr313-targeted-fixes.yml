@@ -45,17 +45,16 @@ jobs:
 
           if 'internal data class PlaybackResolveRequest' not in vm:
               marker = 'internal fun prioritizeNewReleasesForUser('
-              policy = '''internal data class PlaybackResolveRequest(
-              val id: Long,
-              val startPaused: Boolean = false
-          )
-
-          internal fun shouldStartPlaybackPaused(
-              request: PlaybackResolveRequest,
-              activeRequestId: Long
-          ): Boolean = request.id == activeRequestId && request.startPaused
-
-          '''
+              policy = (
+                  'internal data class PlaybackResolveRequest(\n'
+                  '    val id: Long,\n'
+                  '    val startPaused: Boolean = false\n'
+                  ')\n\n'
+                  'internal fun shouldStartPlaybackPaused(\n'
+                  '    request: PlaybackResolveRequest,\n'
+                  '    activeRequestId: Long\n'
+                  '): Boolean = request.id == activeRequestId && request.startPaused\n\n'
+              )
               if marker not in vm:
                   raise SystemExit('policy insertion marker missing')
               vm = vm.replace(marker, policy + marker, 1)
@@ -106,12 +105,14 @@ jobs:
           resolve_match = resolve_pattern.search(vm)
           if resolve_match is None:
               raise SystemExit('resolveAndStartPlayback signature missing')
-          resolve_replacement = '''private suspend fun CoroutineScope.resolveAndStartPlayback(
-              track: Track,
-              request: PlaybackResolveRequest,
-              autoRetryWhenOffline: Boolean
-          ) {
-              val requestId = request.id'''
+          resolve_replacement = (
+              'private suspend fun CoroutineScope.resolveAndStartPlayback(\n'
+              '        track: Track,\n'
+              '        request: PlaybackResolveRequest,\n'
+              '        autoRetryWhenOffline: Boolean\n'
+              '    ) {\n'
+              '        val requestId = request.id'
+          )
           vm = vm[:resolve_match.start()] + resolve_replacement + vm[resolve_match.end():]
 
           resolve_start = vm.index('private suspend fun CoroutineScope.resolveAndStartPlayback(')
@@ -142,15 +143,15 @@ jobs:
           playback_sig = 'private fun startPlayback(playable: Track) {'
           if playback_sig not in vm:
               raise SystemExit('startPlayback signature missing')
-          vm = vm.replace(
-              playback_sig,
-              '''private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
-              if (request.id != playRequestId) return
-              val startPaused = shouldStartPlaybackPaused(request, playRequestId)''',
-              1,
+          playback_replacement = (
+              'private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {\n'
+              '        if (request.id != playRequestId) return\n'
+              '        val startPaused = shouldStartPlaybackPaused(request, playRequestId)'
           )
+          vm = vm.replace(playback_sig, playback_replacement, 1)
           vm = vm.replace(
-              '        val startPaused = pauseAfterNextPlaybackStart\n        pauseAfterNextPlaybackStart = false\n',
+              '        val startPaused = pauseAfterNextPlaybackStart\n'
+              '        pauseAfterNextPlaybackStart = false\n',
               '',
           )
 
@@ -197,13 +198,15 @@ jobs:
 
           rate_start = enrich.index('                if response.status_code == 429:')
           rate_end = enrich.index('                if response.status_code >= 400:', rate_start)
-          rate_branch = '''                if response.status_code == 429:
-                      self._track_metadata_rate_limited = True
-                      LOGGER.warning(
-                          "Spotify track metadata rate-limited; disabling best-effort metadata enrichment for the remainder of this run."
-                      )
-                      break
-          '''
+          rate_branch = (
+              '                if response.status_code == 429:\n'
+              '                    self._track_metadata_rate_limited = True\n'
+              '                    LOGGER.warning(\n'
+              '                        "Spotify track metadata rate-limited; disabling best-effort metadata "\n'
+              '                        "enrichment for the remainder of this run."\n'
+              '                    )\n'
+              '                    break\n'
+          )
           enrich = enrich[:rate_start] + rate_branch + enrich[rate_end:]
           spotify_path.write_text(spotify[:enrich_start] + enrich + spotify[enrich_end:])
 
@@ -212,49 +215,46 @@ jobs:
           test = test.replace('import levyra_editorial.spotify as spotify_module\n', '')
           test_start = test.index('def test_track_metadata_enrichment_retries_one_rate_limited_batch(')
           test_end = test.index('\n\ndef test_playlist_limit_stops_paging_after_the_first_page()', test_start)
-          replacement_test = '''def test_track_metadata_enrichment_disables_after_first_rate_limit() -> None:
-              session = SequencedSession(
-                  [FakeResponse({}, status_code=429, headers={"Retry-After": "5"})]
-              )
-              client = authenticated_client(session)
-              first = [{"track": {"id": "track12345", "album": {}}}]
-              second = [{"track": {"id": "track67890", "album": {}}}]
-
-              assert client.enrich_track_metadata(first) == first
-              assert client.enrich_track_metadata(second) == second
-              assert [url for url, _ in session.calls] == [f"{API_BASE_URL}/tracks"]
-          '''
+          replacement_test = (
+              'def test_track_metadata_enrichment_disables_after_first_rate_limit() -> None:\n'
+              '    session = SequencedSession(\n'
+              '        [FakeResponse({}, status_code=429, headers={"Retry-After": "5"})]\n'
+              '    )\n'
+              '    client = authenticated_client(session)\n'
+              '    first = [{"track": {"id": "track12345", "album": {}}}]\n'
+              '    second = [{"track": {"id": "track67890", "album": {}}}]\n\n'
+              '    assert client.enrich_track_metadata(first) == first\n'
+              '    assert client.enrich_track_metadata(second) == second\n'
+              '    assert [url for url, _ in session.calls] == [f"{API_BASE_URL}/tracks"]\n'
+          )
           pathfinder_path.write_text(test[:test_start] + replacement_test + test[test_end:])
 
           restore_test = Path('app/src/test/java/com/luc4n3x/levyra/viewmodel/SamplesPlaybackRestorePolicyTest.kt')
-          restore_test.write_text('''package com.luc4n3x.levyra.viewmodel
-
-          import org.junit.Assert.assertFalse
-          import org.junit.Assert.assertTrue
-          import org.junit.Test
-
-          class SamplesPlaybackRestorePolicyTest {
-              @Test
-              fun pausedRestoreStartsPausedOnlyForItsOwnRequest() {
-                  val request = PlaybackResolveRequest(id = 10L, startPaused = true)
-                  assertTrue(shouldStartPlaybackPaused(request, activeRequestId = 10L))
-              }
-
-              @Test
-              fun supersededRestoreCannotPauseTheReplacementRequest() {
-                  val staleRestore = PlaybackResolveRequest(id = 10L, startPaused = true)
-                  assertFalse(shouldStartPlaybackPaused(staleRestore, activeRequestId = 11L))
-              }
-
-              @Test
-              fun normalRequestAfterFailedRestoreDoesNotInheritPause() {
-                  val failedRestore = PlaybackResolveRequest(id = 10L, startPaused = true)
-                  val normalReplacement = PlaybackResolveRequest(id = 11L)
-                  assertFalse(shouldStartPlaybackPaused(failedRestore, activeRequestId = 11L))
-                  assertFalse(shouldStartPlaybackPaused(normalReplacement, activeRequestId = 11L))
-              }
-          }
-          '''.replace('          ', ''))
+          restore_test.write_text(
+              'package com.luc4n3x.levyra.viewmodel\n\n'
+              'import org.junit.Assert.assertFalse\n'
+              'import org.junit.Assert.assertTrue\n'
+              'import org.junit.Test\n\n'
+              'class SamplesPlaybackRestorePolicyTest {\n'
+              '    @Test\n'
+              '    fun pausedRestoreStartsPausedOnlyForItsOwnRequest() {\n'
+              '        val request = PlaybackResolveRequest(id = 10L, startPaused = true)\n'
+              '        assertTrue(shouldStartPlaybackPaused(request, activeRequestId = 10L))\n'
+              '    }\n\n'
+              '    @Test\n'
+              '    fun supersededRestoreCannotPauseTheReplacementRequest() {\n'
+              '        val staleRestore = PlaybackResolveRequest(id = 10L, startPaused = true)\n'
+              '        assertFalse(shouldStartPlaybackPaused(staleRestore, activeRequestId = 11L))\n'
+              '    }\n\n'
+              '    @Test\n'
+              '    fun normalRequestAfterFailedRestoreDoesNotInheritPause() {\n'
+              '        val failedRestore = PlaybackResolveRequest(id = 10L, startPaused = true)\n'
+              '        val normalReplacement = PlaybackResolveRequest(id = 11L)\n'
+              '        assertFalse(shouldStartPlaybackPaused(failedRestore, activeRequestId = 11L))\n'
+              '        assertFalse(shouldStartPlaybackPaused(normalReplacement, activeRequestId = 11L))\n'
+              '    }\n'
+              '}\n'
+          )
           PY
 
       - name: Editorial regression tests
