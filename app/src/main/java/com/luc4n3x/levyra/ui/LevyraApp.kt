@@ -5627,31 +5627,6 @@ internal fun selectHomeSpotlightTracks(
     ).firstOrNull { it.isNotEmpty() }.orEmpty()
 }
 
-private val HomeScrollHeaderTopPadding = 8.dp
-private val HomeScrollHeaderExpandedGap = 16.dp
-private val HomeScrollHeaderCollapsedGap = 6.dp
-private val HomeScrollHeaderCollapseDistance = 88.dp
-private val HomeScrollHeaderExpandedHeight =
-    HomeScrollHeaderTopPadding +
-        LevyraHomeDesign.SettingsControlHeight +
-        HomeScrollHeaderExpandedGap +
-        LevyraHomeDesign.MoodChipHeight +
-        4.dp
-
-internal fun homeHeaderCollapseProgress(
-    firstVisibleItemIndex: Int,
-    firstVisibleItemScrollOffsetPx: Int,
-    collapseDistancePx: Int
-): Float {
-    if (firstVisibleItemIndex > 0) return 1f
-    if (firstVisibleItemIndex < 0) return 0f
-    if (collapseDistancePx <= 0) {
-        return if (firstVisibleItemScrollOffsetPx > 0) 1f else 0f
-    }
-    return (firstVisibleItemScrollOffsetPx.coerceAtLeast(0).toFloat() / collapseDistancePx.toFloat())
-        .coerceIn(0f, 1f)
-}
-
 @Composable
 private fun HomeScreen(
     viewModel: HomeViewModel,
@@ -5791,24 +5766,6 @@ private fun HomeScreen(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
     )
-    val homeSectionGap = if (state.interfaceSettings.compactHome) {
-        LevyraHomeDesign.SectionGapCompact
-    } else {
-        LevyraHomeDesign.SectionGap
-    }
-    val density = LocalDensity.current
-    val homeHeaderCollapseDistancePx = remember(density) {
-        with(density) { HomeScrollHeaderCollapseDistance.roundToPx().coerceAtLeast(1) }
-    }
-    val homeHeaderProgress = remember(homeListState, homeHeaderCollapseDistancePx) {
-        {
-            homeHeaderCollapseProgress(
-                firstVisibleItemIndex = homeListState.firstVisibleItemIndex,
-                firstVisibleItemScrollOffsetPx = homeListState.firstVisibleItemScrollOffset,
-                collapseDistancePx = homeHeaderCollapseDistancePx
-            )
-        }
-    }
     Box(modifier = Modifier.fillMaxSize()) {
         LevyraHomeAtmosphere(
             accentStart = animatedHomeAccentStart,
@@ -5820,12 +5777,34 @@ private fun HomeScreen(
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(
-                top = HomeScrollHeaderExpandedHeight + homeSectionGap,
-                bottom = homeBottomInset + LevyraBottomContentGap
-            ),
-            verticalArrangement = Arrangement.spacedBy(homeSectionGap)
+            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + LevyraBottomContentGap),
+            verticalArrangement = Arrangement.spacedBy(
+                if (state.interfaceSettings.compactHome) {
+                    LevyraHomeDesign.SectionGapCompact
+                } else {
+                    LevyraHomeDesign.SectionGap
+                }
+            )
         ) {
+            item(key = "home-top", contentType = "home-header") {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    HomeSectionInset {
+                        GreetingBar(
+                            userName = state.userName,
+                            isResolving = state.isResolving,
+                            animationsEnabled = state.animationsEnabled,
+                            onSearch = viewModel::openSearch,
+                            onSettings = viewModel::openSettings
+                        )
+                    }
+                    MoodRow(
+                        moods = state.moods,
+                        selectedId = state.selectedMood?.id,
+                        onSelect = viewModel::selectMood
+                    )
+                }
+            }
+
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
                 item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
@@ -6137,21 +6116,6 @@ private fun HomeScreen(
                 }
             }
         }
-
-        HomeScrollReactiveHeader(
-            userName = state.userName,
-            isResolving = state.isResolving,
-            animationsEnabled = state.animationsEnabled,
-            moods = state.moods,
-            selectedMoodId = state.selectedMood?.id,
-            collapseProgress = homeHeaderProgress,
-            onSearch = viewModel::openSearch,
-            onSettings = viewModel::openSettings,
-            onSelectMood = viewModel::selectMood,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .zIndex(4f)
-        )
     }
 
     addTarget?.let { track ->
@@ -15122,128 +15086,6 @@ private fun SettingsMiniButton(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black
             )
-        }
-    }
-}
-
-@Composable
-private fun HomeScrollReactiveHeader(
-    userName: String,
-    isResolving: Boolean,
-    animationsEnabled: Boolean,
-    moods: List<Mood>,
-    selectedMoodId: String?,
-    collapseProgress: () -> Float,
-    onSearch: () -> Unit,
-    onSettings: () -> Unit,
-    onSelectMood: (Mood) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val strings = LocalLevyraStrings.current
-    val surface = if (LevyraIsLight) Color(0xFFF8FAFF) else Color(0xFF050609)
-    val divider = if (LevyraIsLight) Color(0x2011131F) else Color.White.copy(alpha = 0.09f)
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .drawWithContent {
-                val progress = collapseProgress().coerceIn(0f, 1f)
-                if (progress > 0f) {
-                    drawRect(surface.copy(alpha = 0.92f * progress))
-                }
-                drawContent()
-                if (progress > 0.08f) {
-                    drawLine(
-                        color = divider.copy(alpha = divider.alpha * progress),
-                        start = Offset(0f, size.height - 0.5f),
-                        end = Offset(size.width, size.height - 0.5f),
-                        strokeWidth = 1f
-                    )
-                }
-            }
-    ) {
-        androidx.compose.ui.layout.Layout(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(top = HomeScrollHeaderTopPadding),
-            content = {
-                HomeSectionInset {
-                    GreetingBar(
-                        userName = userName,
-                        isResolving = isResolving,
-                        animationsEnabled = animationsEnabled,
-                        onSearch = onSearch,
-                        onSettings = onSettings
-                    )
-                }
-
-                HomeSectionInset {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer {
-                                val progress = collapseProgress().coerceIn(0f, 1f)
-                                alpha = ((progress - 0.22f) / 0.78f).coerceIn(0f, 1f)
-                                val scale = 0.96f + 0.04f * progress
-                                scaleX = scale
-                                scaleY = scale
-                                transformOrigin = TransformOrigin(0f, 0.5f)
-                            },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        LevyraLogoMark(size = 32.dp)
-                        Text(
-                            text = "LEVYRA",
-                            color = LevyraText,
-                            fontSize = 18.sp,
-                            lineHeight = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.55).sp,
-                            maxLines = 1,
-                            modifier = Modifier.weight(1f)
-                        )
-                        HomeHeaderIconButton(
-                            icon = Icons.Rounded.Search,
-                            contentDescription = strings.search,
-                            onClick = onSearch
-                        )
-                        OccasionallyRotatingSettingsButton(
-                            animationsEnabled = animationsEnabled,
-                            busy = isResolving,
-                            contentDescription = strings.settings,
-                            loading = isResolving,
-                            onClick = onSettings
-                        )
-                    }
-                }
-
-                MoodRow(
-                    moods = moods,
-                    selectedId = selectedMoodId,
-                    onSelect = onSelectMood
-                )
-            }
-        ) { measurables, constraints ->
-            val expanded = measurables[0].measure(constraints.copy(minHeight = 0))
-            val compact = measurables[1].measure(constraints.copy(minHeight = 0))
-            val moods = measurables[2].measure(constraints.copy(minHeight = 0))
-            val progress = collapseProgress().coerceIn(0f, 1f)
-            val expandedGap = HomeScrollHeaderExpandedGap.roundToPx()
-            val collapsedGap = HomeScrollHeaderCollapsedGap.roundToPx()
-            val gap = (expandedGap + (collapsedGap - expandedGap) * progress).toInt()
-            val titleHeight = (expanded.height + (compact.height - expanded.height) * progress).toInt()
-            val layoutHeight = titleHeight + gap + moods.height
-
-            layout(constraints.maxWidth, layoutHeight) {
-                expanded.placeRelativeWithLayer(0, 0) {
-                    alpha = (1f - progress * 1.35f).coerceIn(0f, 1f)
-                    translationY = -expanded.height * 0.16f * progress
-                }
-                compact.placeRelative(0, 0)
-                moods.placeRelative(0, titleHeight + gap)
-            }
         }
     }
 }
