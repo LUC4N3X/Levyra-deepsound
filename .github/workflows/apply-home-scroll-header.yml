@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - perf/home-scroll-header
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -17,7 +20,7 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout branch
         uses: actions/checkout@v7
         with:
           ref: perf/home-scroll-header
