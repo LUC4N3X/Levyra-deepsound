@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - perf/home-scroll-header
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -25,10 +22,11 @@ jobs:
         with:
           ref: perf/home-scroll-header
 
-      - name: Apply deterministic Home patch
+      - name: Apply patch and capture diagnostics
+        id: patch
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           python3 - <<'PY'
           from pathlib import Path
           path = Path('scripts/apply_home_scroll_header.py')
@@ -36,35 +34,52 @@ jobs:
           old = '"@Composable\\nprivate fun LevyraLogoMark(size: Dp = 58.dp)"'
           new = '"@Composable\\nprivate fun LevyraLogoMark(\\n    size: Dp = 58.dp,\\n    modifier: Modifier = Modifier\\n)"'
           count = text.count(old)
+          print(f'logo marker count: {count}')
           if count != 2:
               raise SystemExit(f'expected two staged logo markers, found {count}')
           path.write_text(text.replace(old, new), encoding='utf-8')
           PY
-          python3 -m py_compile scripts/apply_home_scroll_header.py
-          python3 scripts/apply_home_scroll_header.py
+          marker_status=$?
+          if [ "$marker_status" -eq 0 ]; then
+            python3 -m py_compile scripts/apply_home_scroll_header.py
+            compile_status=$?
+          else
+            compile_status=99
+          fi
+          if [ "$marker_status" -eq 0 ] && [ "$compile_status" -eq 0 ]; then
+            python3 scripts/apply_home_scroll_header.py > .home-scroll-header-diagnostics.txt 2>&1
+            patch_status=$?
+          else
+            printf 'marker_status=%s\ncompile_status=%s\n' "$marker_status" "$compile_status" > .home-scroll-header-diagnostics.txt
+            patch_status=98
+          fi
+          printf '\nmarker_status=%s\ncompile_status=%s\npatch_status=%s\n' "$marker_status" "$compile_status" "$patch_status" >> .home-scroll-header-diagnostics.txt
           git checkout -- scripts/apply_home_scroll_header.py
+          echo "patch_status=$patch_status" >> "$GITHUB_OUTPUT"
+          cat .home-scroll-header-diagnostics.txt
+          exit 0
 
-      - name: Verify generated change
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q 'private fun HomeScrollReactiveHeader' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -q 'homeHeaderCollapseProgress' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -q 'class HomeScrollHeaderTest' app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
-          ! grep -q 'item(key = "home-top"' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-
-      - name: Commit generated implementation
+      - name: Commit implementation or diagnostics
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
-            app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
-          if git diff --cached --quiet; then
-            echo 'No generated changes to commit.'
-            exit 0
+          if [ "${{ steps.patch.outputs.patch_status }}" = "0" ]; then
+            grep -q 'private fun HomeScrollReactiveHeader' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+            grep -q 'homeHeaderCollapseProgress' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+            grep -q 'class HomeScrollHeaderTest' app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
+            ! grep -q 'item(key = "home-top"' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+            rm -f .home-scroll-header-diagnostics.txt
+            git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/test/java/com/luc4n3x/levyra/ui/HomeScrollHeaderTest.kt
+            git commit -m 'perf(home): add scroll-reactive header'
+          else
+            git add .home-scroll-header-diagnostics.txt
+            git commit -m 'chore(ci): record Home scroll patch diagnostics'
           fi
-          git commit -m 'perf(home): add scroll-reactive header'
           git push origin HEAD:perf/home-scroll-header
+
+      - name: Fail when patch did not apply
+        if: steps.patch.outputs.patch_status != '0'
+        shell: bash
+        run: exit 1
