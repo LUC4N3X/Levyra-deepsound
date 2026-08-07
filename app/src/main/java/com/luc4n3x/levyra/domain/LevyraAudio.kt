@@ -1,12 +1,19 @@
 package com.luc4n3x.levyra.domain
 
+import androidx.compose.runtime.Composable
+import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
+
 data class LevyraAudioPreset(
     val id: String,
-    val label: String,
+    val fallbackLabel: String,
     val levels: List<Int>,
     val bassBoost: Int,
     val virtualizer: Int
-)
+) {
+    val label: String
+        @Composable get() = LocalLevyraStrings.current.localizedAudioPresetLabel(id, fallbackLabel)
+}
 
 data class LevyraAudioSettings(
     val equalizerEnabled: Boolean = false,
@@ -85,5 +92,5 @@ object LevyraAudioPresets {
 
     fun levelsFor(id: String): List<Int> = preset(id).levels
 
-    fun labelFor(id: String): String = preset(id).label
+    fun labelFor(id: String): String = preset(id).fallbackLabel
 }
