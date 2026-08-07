@@ -1,0 +1,175 @@
+name: Apply PR 319 Review Fixes
+
+on:
+  push:
+    branches:
+      - feature/pro-audio-and-smart-importer
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr319-review-fixes
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: feature/pro-audio-and-smart-importer
+          fetch-depth: 0
+
+      - name: Patch routed UI and localized status wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str, label: str):
+              source = path.read_text(encoding='utf-8')
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: {label}: expected exactly one match, found {count}')
+              path.write_text(source.replace(old, new, 1), encoding='utf-8')
+
+          library = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt')
+          overview_block = '''            if (category == LibraryCategory.Overview) {
+                item(key = "overview-import-playlist") {
+                    LibraryImportPlaylistCard(
+                        onClick = { showImportPlaylist = true },
+                        isItalian = isItalian
+                    )
+                }
+            }
+
+'''
+          source = library.read_text(encoding='utf-8')
+          if source.count(overview_block) != 1:
+              raise SystemExit(f'overview import block: expected exactly one match, found {source.count(overview_block)}')
+          source = source.replace(overview_block, '', 1)
+          old_card = '''                    item(key = "playlist-import-action") {
+                        LibraryImportPlaylistCard(
+                            onClick = { showImportPlaylist = true },
+                            isItalian = isItalian
+                        )
+                    }
+'''
+          new_card = '''                    item(key = "playlist-import-action") {
+                        LibraryImportPlaylistCard(
+                            onClick = { showImportPlaylist = true }
+                        )
+                    }
+'''
+          if source.count(old_card) != 1:
+              raise SystemExit(f'playlist import card: expected exactly one match, found {source.count(old_card)}')
+          source = source.replace(old_card, new_card, 1)
+          old_dialog = '''    if (showImportPlaylist) {
+        LibraryImportPlaylistDialog(
+            isItalian = isItalian,
+            onDismiss = { showImportPlaylist = false },
+'''
+          new_dialog = '''    if (showImportPlaylist) {
+        LibraryImportPlaylistDialog(
+            onDismiss = { showImportPlaylist = false },
+'''
+          if source.count(old_dialog) != 1:
+              raise SystemExit(f'import dialog call: expected exactly one match, found {source.count(old_dialog)}')
+          source = source.replace(old_dialog, new_dialog, 1)
+          if 'overview-import-playlist' in source:
+              raise SystemExit('playlist import must not remain on Library overview')
+          library.write_text(source, encoding='utf-8')
+
+          app = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          source = app.read_text(encoding='utf-8')
+          import_anchor = 'import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings\n'
+          import_line = import_anchor + 'import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel\n'
+          if 'import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel\n' not in source:
+              if source.count(import_anchor) != 1:
+                  raise SystemExit(f'audio localization import anchor: expected one, found {source.count(import_anchor)}')
+              source = source.replace(import_anchor, import_line, 1)
+          old_label = '                                    label = preset.label,\n'
+          new_label = '                                    label = strings.localizedAudioPresetLabel(preset.id, preset.label),\n'
+          if source.count(old_label) != 1:
+              raise SystemExit(f'preset label: expected exactly one match, found {source.count(old_label)}')
+          source = source.replace(old_label, new_label, 1)
+          app.write_text(source, encoding='utf-8')
+
+          viewmodel = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
+          source = viewmodel.read_text(encoding='utf-8')
+          old_import = '''    fun importPlaylist(input: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(offlineExportMessage = "Importazione playlist in corso...") }
+            val importer = com.luc4n3x.levyra.data.UniversalPlaylistImporter(
+                context = getApplication<Application>().applicationContext,
+                playlistStore = playlistStore,
+                youtubeRepository = repository
+            )
+            when (val result = importer.importFromUrlOrJson(input)) {
+                is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
+                    _state.update { it.copy(offlineExportMessage = "Importati ${result.importedCount} brani in ${result.playlist.name}!") }
+                    loadPlaylists()
+                }
+                is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
+                    _state.update { it.copy(offlineExportMessage = "Errore: ${result.reason}") }
+                }
+            }
+        }
+    }
+'''
+          new_import = '''    fun importPlaylist(input: String) {
+        viewModelScope.launch {
+            val languageCode = _state.value.languageCode
+            _state.update {
+                it.copy(
+                    offlineExportMessage = com.luc4n3x.levyra.ui.i18n.playlistImportStarted(languageCode)
+                )
+            }
+            val importer = com.luc4n3x.levyra.data.UniversalPlaylistImporter(
+                context = getApplication<Application>().applicationContext,
+                playlistStore = playlistStore,
+                youtubeRepository = repository
+            )
+            when (val result = importer.importFromUrlOrJson(input)) {
+                is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
+                    _state.update {
+                        it.copy(
+                            offlineExportMessage = com.luc4n3x.levyra.ui.i18n.playlistImportSuccess(
+                                languageCode,
+                                result.importedCount,
+                                result.playlist.name
+                            )
+                        )
+                    }
+                    loadPlaylists()
+                }
+                is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
+                    _state.update {
+                        it.copy(
+                            offlineExportMessage = com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage(languageCode)
+                        )
+                    }
+                }
+            }
+        }
+    }
+'''
+          if source.count(old_import) != 1:
+              raise SystemExit(f'importPlaylist function: expected exactly one match, found {source.count(old_import)}')
+          source = source.replace(old_import, new_import, 1)
+          viewmodel.write_text(source, encoding='utf-8')
+          PY
+
+          git rm .github/workflows/apply-pr319-review-fixes.yml
+          git add -A
+          git diff --cached --check
+          git status --short
+          git commit -m 'fix: address PR 319 review findings'
+          git push origin HEAD:feature/pro-audio-and-smart-importer
