@@ -40,28 +40,35 @@ class SponsorBlockRepository {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "LEVYRA Music Player (Android)")
         }
-        val code = connection.responseCode
-        // 404 means "no segments for this video" — perfectly normal.
-        if (code !in 200..299) {
-            val emptyResult = emptyList<SponsorSegment>()
-            synchronized(cache) { cache[videoId] = emptyResult }
-            return@withContext emptyResult
-        }
-        val body = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
-        val array = runCatching { JSONArray(body) }.getOrNull() ?: return@withContext emptyList()
-        val segments = mutableListOf<SponsorSegment>()
-        for (i in 0 until array.length()) {
-            val item = array.optJSONObject(i) ?: continue
-            val range = item.optJSONArray("segment") ?: continue
-            if (range.length() < 2) continue
-            val startMs = (range.optDouble(0, 0.0) * 1000).toLong()
-            val endMs = (range.optDouble(1, 0.0) * 1000).toLong()
-            if (endMs > startMs) {
-                segments += SponsorSegment(startMs, endMs, item.optString("category", "sponsor"))
+        try {
+            val code = connection.responseCode
+            // 404 means "no segments for this video" and is safe to negative-cache.
+            if (code == HttpURLConnection.HTTP_NOT_FOUND) {
+                val emptyResult = emptyList<SponsorSegment>()
+                synchronized(cache) { cache[videoId] = emptyResult }
+                return@withContext emptyResult
             }
+            // Do not poison the in-memory cache for rate limits or transient server/network failures.
+            if (code !in 200..299) return@withContext emptyList()
+
+            val body = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
+            val array = runCatching { JSONArray(body) }.getOrNull() ?: return@withContext emptyList()
+            val segments = mutableListOf<SponsorSegment>()
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val range = item.optJSONArray("segment") ?: continue
+                if (range.length() < 2) continue
+                val startMs = (range.optDouble(0, 0.0) * 1000).toLong()
+                val endMs = (range.optDouble(1, 0.0) * 1000).toLong()
+                if (endMs > startMs) {
+                    segments += SponsorSegment(startMs, endMs, item.optString("category", "sponsor"))
+                }
+            }
+            val sortedSegments = segments.sortedBy { it.startMs }
+            synchronized(cache) { cache[videoId] = sortedSegments }
+            sortedSegments
+        } finally {
+            connection.disconnect()
         }
-        val sortedSegments = segments.sortedBy { it.startMs }
-        synchronized(cache) { cache[videoId] = sortedSegments }
-        sortedSegments
     }
 }
