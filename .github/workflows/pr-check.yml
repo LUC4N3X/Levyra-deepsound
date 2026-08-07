@@ -107,6 +107,7 @@ jobs:
             --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
             --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
             --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest' \
+            --tests 'com.luc4n3x.levyra.data.SponsorBlockRepositoryTest' \
             --tests 'com.luc4n3x.levyra.feature.motion.*' \
             --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
             --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
