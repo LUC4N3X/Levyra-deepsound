@@ -1379,6 +1379,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun importPlaylist(input: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(offlineExportMessage = "Importazione playlist in corso...") }
+            val importer = com.luc4n3x.levyra.data.UniversalPlaylistImporter(
+                context = getApplication<Application>().applicationContext,
+                playlistStore = playlistStore,
+                youtubeRepository = repository
+            )
+            when (val result = importer.importFromUrlOrJson(input)) {
+                is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
+                    _state.update { it.copy(offlineExportMessage = "Importati ${result.importedCount} brani in ${result.playlist.name}!") }
+                    loadPlaylists()
+                }
+                is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
+                    _state.update { it.copy(offlineExportMessage = "Errore: ${result.reason}") }
+                }
+            }
+        }
+    }
+
     fun renamePlaylist(playlistId: String, name: String) {
         viewModelScope.launch {
             playlistStore.rename(playlistId, name)
