@@ -1,8 +1,12 @@
 package com.luc4n3x.levyra.data
 
+import java.io.ByteArrayInputStream
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UniversalPlaylistImporterTest {
@@ -67,5 +71,39 @@ class UniversalPlaylistImporterTest {
         assertEquals(201_234L, importedDurationMs(JSONObject().put("durationMs", 201_234L).put("duration", 10L)))
         assertEquals(201_000L, importedDurationMs(JSONObject().put("duration", 201L)))
         assertEquals(201_234L, importedDurationMs(JSONObject().put("duration", 201_234L)))
+    }
+
+    @Test
+    fun rejectsJsonImportAboveConfiguredTrackLimit() {
+        assertTrue(jsonImportTrackCountAccepted(MAX_JSON_IMPORT_TRACKS))
+        assertFalse(jsonImportTrackCountAccepted(MAX_JSON_IMPORT_TRACKS + 1))
+    }
+
+    @Test
+    fun importCoordinatorRejectsSecondConcurrentImport() {
+        PlaylistImportCoordinator.finish()
+        try {
+            assertTrue(PlaylistImportCoordinator.tryBegin())
+            assertFalse(PlaylistImportCoordinator.tryBegin())
+        } finally {
+            PlaylistImportCoordinator.finish()
+        }
+        assertTrue(PlaylistImportCoordinator.tryBegin())
+        PlaylistImportCoordinator.finish()
+    }
+
+    @Test
+    fun spotifyImportRequiresHttpsAndSpotifyOwnedHost() {
+        assertNotNull(validateSpotifyImportUrl("https://open.spotify.com/playlist/example"))
+        assertNotNull(validateSpotifyImportUrl("https://spotify.link/example"))
+        assertNull(validateSpotifyImportUrl("http://open.spotify.com/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://spotify.example.com/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://example.com/playlist/example"))
+    }
+
+    @Test
+    fun boundedReaderStopsBeforeOversizedBodyIsParsed() {
+        assertEquals("hello", readUtf8Bounded(ByteArrayInputStream("hello".toByteArray()), 5L))
+        assertNull(readUtf8Bounded(ByteArrayInputStream("hello!".toByteArray()), 5L))
     }
 }
