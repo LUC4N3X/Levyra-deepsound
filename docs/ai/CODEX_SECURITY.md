@@ -30,8 +30,9 @@ through the official Codex Security / Plugin Directory setup available to the
 active account and workspace. Levyra does not invent a CLI manifest identifier
 for it.
 
-The verified CLI-installable plugin manifest remains `codex-plugins.txt` and is
-installed only when explicitly requested through the setup scripts.
+The verified CLI-installable plugin manifest remains
+`.agents/config/codex-plugins.txt` and is installed only when explicitly
+requested through the setup scripts.
 
 ### Claude Code
 
