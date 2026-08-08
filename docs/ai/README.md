@@ -17,9 +17,9 @@ docs/project/                     specification, roadmap, and active tasks
 docs/ARCHITECTURE.md              current implementation ownership and flow
 .agents/skills/*/SKILL.md         canonical repository-native skills
 .agents/rules/levyra-workspace.md shared workspace-routing bridge
+.agents/config/codex-plugins.txt  verified opt-in plugin manifest
 .claude/                          Claude Code rules, skills, agents, and hooks
 .rtk/filters.toml                 Levyra-specific RTK filters
-codex-plugins.txt                 verified opt-in plugin manifest
 scripts/setup-ai.ps1              Windows setup and validation
 scripts/setup-ai.sh               Linux/macOS setup and validation
 docs/ai/RTK.md                    RTK routing, measurement, and raw fallback
@@ -178,7 +178,7 @@ The scripts:
 
 - optionally install RTK from `rtk-ai/rtk`;
 - configure detected supported runtimes;
-- install verified `codex-plugins.txt` entries only when requested;
+- install verified `.agents/config/codex-plugins.txt` entries only when requested;
 - run both repository validators;
 - fail closed when required Python validation cannot run;
 - do not install Ollama or local-model profiles;
