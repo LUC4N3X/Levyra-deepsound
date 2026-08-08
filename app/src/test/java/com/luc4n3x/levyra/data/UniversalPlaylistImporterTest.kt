@@ -138,7 +138,7 @@ class UniversalPlaylistImporterTest {
 
     @Test
     fun spotifyHeadOnlyDropsBodyMarkup() {
-        val html = "<html><head><meta property="og:title" content="Title"></head><body>${"x".repeat(500)}</body></html>"
+        val html = """<html><head><meta property="og:title" content="Title"></head><body>${"x".repeat(500)}</body></html>"""
         val head = spotifyHeadOnly(html)
         assertTrue(head.endsWith("</head>"))
         assertFalse(head.contains("<body>"))
