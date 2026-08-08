@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="androidx.car.app.MEDIA_TEMPLATES" />
 
     <application
         android:name=".LevyraApplication"
@@ -32,6 +33,17 @@
             android:authorities="${applicationId}.spotify-chart-bootstrap"
             android:exported="false"
             android:initOrder="100" />
+
+        <provider
+            android:name=".data.AutomaticBackupDocumentsProvider"
+            android:authorities="${applicationId}.automatic-backups"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
         
         <meta-data
             android:name="com.google.android.gms.car.application"

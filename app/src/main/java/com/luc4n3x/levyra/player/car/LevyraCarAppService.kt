@@ -70,22 +70,25 @@ class LevyraCarAppService : CarAppService() {
 private class LevyraCarSession : Session() {
     private var browserFuture: ListenableFuture<MediaBrowser>? = null
 
+    @Volatile
+    private var playbackTokenRegistered = false
+
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) = connectPlayback()
 
             override fun onDestroy(owner: LifecycleOwner) {
+                playbackTokenRegistered = false
                 browserFuture?.let(MediaController::releaseFuture)
                 browserFuture = null
             }
         })
     }
 
-    override fun onCreateScreen(intent: Intent): Screen {
-        carContext.getCarService(ScreenManager::class.java).push(
-            LevyraLibraryCarScreen(carContext, ::browser)
-        )
-        return LevyraNowPlayingCarScreen(carContext, ::browser)
+    override fun onCreateScreen(intent: Intent): Screen = if (intent.action in SHOW_PLAYBACK_ACTIONS) {
+        LevyraNowPlayingCarScreen(carContext, ::browser, ::playbackReady)
+    } else {
+        LevyraLibraryCarScreen(carContext, ::browser, ::playbackReady)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -93,7 +96,7 @@ private class LevyraCarSession : Session() {
         val manager = carContext.getCarService(ScreenManager::class.java)
         if (manager.top !is LevyraNowPlayingCarScreen) {
             manager.popToRoot()
-            manager.push(LevyraNowPlayingCarScreen(carContext, ::browser))
+            manager.push(LevyraNowPlayingCarScreen(carContext, ::browser, ::playbackReady))
         }
     }
 
@@ -102,6 +105,8 @@ private class LevyraCarSession : Session() {
         SessionToken(carContext, ComponentName(carContext, PlaybackService::class.java))
     ).setListener(object : MediaBrowser.Listener {
         override fun onDisconnected(controller: MediaController) {
+            playbackTokenRegistered = false
+            invalidatePlaybackScreen()
             browserFuture?.let(MediaController::releaseFuture)
             browserFuture = null
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) connectPlayback()
@@ -109,6 +114,7 @@ private class LevyraCarSession : Session() {
     }).buildAsync().also { browserFuture = it }
 
     private fun connectPlayback() {
+        playbackTokenRegistered = false
         val executor = ContextCompat.getMainExecutor(carContext)
         val connection = browser()
         connection.addListener({
@@ -128,11 +134,25 @@ private class LevyraCarSession : Session() {
                         if (response.resultCode == SessionResult.RESULT_SUCCESS && token != null) {
                             (carContext.getCarService(CarContext.MEDIA_PLAYBACK_SERVICE) as MediaPlaybackManager)
                                 .registerMediaPlaybackToken(MediaSessionCompat.Token.fromToken(token))
+                            playbackTokenRegistered = true
+                            invalidatePlaybackScreen()
                         }
-                    }.onFailure { Timber.w(it, "Android Auto playback token registration failed") }
+                    }.onFailure {
+                        playbackTokenRegistered = false
+                        Timber.w(it, "Android Auto playback token registration failed")
+                    }
                 }, executor)
-            }.onFailure { Timber.w(it, "Android Auto MediaBrowser connection failed") }
+            }.onFailure {
+                playbackTokenRegistered = false
+                Timber.w(it, "Android Auto MediaBrowser connection failed")
+            }
         }, executor)
+    }
+
+    private fun playbackReady(): Boolean = playbackTokenRegistered
+
+    private fun invalidatePlaybackScreen() {
+        (carContext.getCarService(ScreenManager::class.java).top as? LevyraNowPlayingCarScreen)?.invalidate()
     }
 
     private companion object {
@@ -146,7 +166,8 @@ private class LevyraCarSession : Session() {
 @UnstableApi
 private class LevyraLibraryCarScreen(
     carContext: CarContext,
-    private val browserProvider: () -> ListenableFuture<MediaBrowser>
+    private val browserProvider: () -> ListenableFuture<MediaBrowser>,
+    private val playbackReady: () -> Boolean
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var activeTab = AndroidAutoLibrary.ID_HOME
@@ -219,24 +240,25 @@ private class LevyraLibraryCarScreen(
                     LevyraBrowseCarScreen(
                         carContext,
                         browserProvider,
+                        playbackReady,
                         item.mediaId,
                         item.mediaMetadata.title?.toString().orEmpty().ifBlank { "Levyra" }
                     )
                 )
             } else {
                 playItem(carContext, browserProvider, item)
-                screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider))
+                screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady))
             }
         }
         .build()
 
     private fun searchAction(): Action = Action.Builder()
         .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_widget_note)).build())
-        .setOnClickListener { screenManager.push(LevyraSearchCarScreen(carContext, browserProvider)) }
+        .setOnClickListener { screenManager.push(LevyraSearchCarScreen(carContext, browserProvider, playbackReady)) }
         .build()
 
     private fun nowPlayingAction(): Action = Action.Builder(Action.MEDIA_PLAYBACK)
-        .setOnClickListener { screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider)) }
+        .setOnClickListener { screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady)) }
         .build()
 
     private data class CarTab(val id: String, val title: String, val icon: Int)
@@ -256,6 +278,7 @@ private class LevyraLibraryCarScreen(
 private class LevyraBrowseCarScreen(
     carContext: CarContext,
     private val browserProvider: () -> ListenableFuture<MediaBrowser>,
+    private val playbackReady: () -> Boolean,
     private val parentId: String,
     private val title: String
 ) : Screen(carContext) {
@@ -275,7 +298,7 @@ private class LevyraBrowseCarScreen(
     override fun onGetTemplate(): Template {
         val builder = ListTemplate.Builder()
             .addAction(Action.Builder(Action.MEDIA_PLAYBACK).setOnClickListener {
-                screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider))
+                screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady))
             }.build())
             .setHeader(Header.Builder().setStartHeaderAction(Action.BACK).setTitle(title).build())
         val loaded = children ?: return builder.setLoading(true).build()
@@ -294,13 +317,14 @@ private class LevyraBrowseCarScreen(
                             LevyraBrowseCarScreen(
                                 carContext,
                                 browserProvider,
+                                playbackReady,
                                 item.mediaId,
                                 item.mediaMetadata.title?.toString().orEmpty().ifBlank { "Levyra" }
                             )
                         )
                     } else {
                         playItem(carContext, browserProvider, item)
-                        screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider))
+                        screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady))
                     }
                 }.build())
         }
@@ -311,7 +335,8 @@ private class LevyraBrowseCarScreen(
 @UnstableApi
 private class LevyraSearchCarScreen(
     carContext: CarContext,
-    private val browserProvider: () -> ListenableFuture<MediaBrowser>
+    private val browserProvider: () -> ListenableFuture<MediaBrowser>,
+    private val playbackReady: () -> Boolean
 ) : Screen(carContext) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var searchJob: Job? = null
@@ -339,7 +364,7 @@ private class LevyraSearchCarScreen(
                     .apply { item.mediaMetadata.artist?.toString()?.takeIf(String::isNotBlank)?.let(::addText) }
                     .setOnClickListener {
                         playItem(carContext, browserProvider, item)
-                        screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider))
+                        screenManager.push(LevyraNowPlayingCarScreen(carContext, browserProvider, playbackReady))
                     }.build())
             }
             builder.setItemList(list.build())
@@ -381,27 +406,37 @@ private class LevyraSearchCarScreen(
 @UnstableApi
 private class LevyraNowPlayingCarScreen(
     carContext: CarContext,
-    private val browserProvider: () -> ListenableFuture<MediaBrowser>
+    private val browserProvider: () -> ListenableFuture<MediaBrowser>,
+    private val playbackReady: () -> Boolean
 ) : Screen(carContext) {
-    override fun onGetTemplate(): Template = MediaPlaybackTemplate.Builder()
-        .setHeader(
-            Header.Builder()
-                .setTitle("In riproduzione")
-                .addEndHeaderAction(
-                    Action.Builder()
-                        .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_widget_note)).build())
-                        .setOnClickListener {
-                            screenManager.push(
-                                LevyraBrowseCarScreen(
-                                    carContext,
-                                    browserProvider,
-                                    AndroidAutoLibrary.ID_QUEUE,
-                                    "Coda"
+    override fun onGetTemplate(): Template {
+        if (!playbackReady()) {
+            return ListTemplate.Builder()
+                .setLoading(true)
+                .setHeader(Header.Builder().setTitle("Connessione al player").build())
+                .build()
+        }
+        return MediaPlaybackTemplate.Builder()
+            .setHeader(
+                Header.Builder()
+                    .setTitle("In riproduzione")
+                    .addEndHeaderAction(
+                        Action.Builder()
+                            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_widget_note)).build())
+                            .setOnClickListener {
+                                screenManager.push(
+                                    LevyraBrowseCarScreen(
+                                        carContext,
+                                        browserProvider,
+                                        playbackReady,
+                                        AndroidAutoLibrary.ID_QUEUE,
+                                        "Coda"
+                                    )
                                 )
-                            )
-                        }.build()
-                ).build()
-        ).build()
+                            }.build()
+                    ).build()
+            ).build()
+    }
 }
 
 @UnstableApi

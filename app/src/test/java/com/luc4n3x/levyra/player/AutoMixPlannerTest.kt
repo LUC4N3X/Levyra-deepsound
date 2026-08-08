@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,6 +45,18 @@ class AutoMixPlannerTest {
             lowRam = false
         )
         assertEquals(7_500L, plan?.transitionMs)
+    }
+
+    @Test
+    fun handoffResyncOnlyWhenPlayersDriftPastTolerance() {
+        assertFalse(crossfadeHandoffNeedsResync(10_000L, 10_180L, toleranceMs = 250L))
+        assertTrue(crossfadeHandoffNeedsResync(10_000L, 10_400L, toleranceMs = 250L))
+    }
+
+    @Test
+    fun handoffSeekTargetsLiveSecondaryPositionAndClampsToDuration() {
+        assertEquals(12_120L, crossfadeHandoffSeekPosition(12_000L, 180_000L, leadMs = 120L))
+        assertEquals(19_999L, crossfadeHandoffSeekPosition(19_950L, 20_000L, leadMs = 120L))
     }
 
     private fun track(id: String = "current") = Track(

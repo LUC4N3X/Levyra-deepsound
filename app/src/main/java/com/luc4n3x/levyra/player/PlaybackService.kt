@@ -140,8 +140,11 @@ class PlaybackService : MediaLibraryService() {
         private const val WATCHDOG_STALL_TIMEOUT_MS = 15_000L
         private const val MAX_TRANSITION_LOOKAHEAD_MS = 20_000L
         private const val TRANSITION_PREPARE_TIMEOUT_MS = 8_000L
-        private const val PRIMARY_HANDOFF_TIMEOUT_MS = 5_000L
+        private const val PRIMARY_HANDOFF_WARN_MS = 5_000L
+        private const val PRIMARY_HANDOFF_SYNC_TIMEOUT_MS = 2_500L
         private const val PRIMARY_HANDOFF_FADE_MS = 240L
+        private const val PRIMARY_HANDOFF_SYNC_TOLERANCE_MS = 250L
+        private const val PRIMARY_HANDOFF_SYNC_LEAD_MS = 120L
         private const val TRANSITION_STEP_MS = 50L
         private const val SEEK_TOLERANCE_MS = 1_500L
         private val ONLINE_RECOVERY_DELAYS_MS = longArrayOf(500L, 2_000L, 5_000L, 10_000L)
@@ -349,6 +352,9 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (!playWhenReady && queueTransitionJob?.isActive == true) {
+                    cancelQueueTransition()
+                }
                 if (playWhenReady && serviceRecoveryExhausted) {
                     serviceRecoveryExhausted = false
                     serviceRecoveryAttempts = 0
@@ -837,24 +843,20 @@ class PlaybackService : MediaLibraryService() {
             val selected = queueEngine.next(respectRepeatOne = false)
             if (selected == null || playbackQueueIdentity(selected) != targetIdentity) return
             queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
-            val handoffPosition = secondary.currentPosition.coerceAtLeast(0L)
+
             primary.volume = 0f
-            primary.setMediaItem(LevyraMediaItemFactory.build(resolved), handoffPosition)
+            primary.setMediaItem(
+                LevyraMediaItemFactory.build(resolved),
+                secondary.currentPosition.coerceAtLeast(0L)
+            )
             primary.prepare()
-            primary.play()
-            val primaryReady = withTimeoutOrNull(PRIMARY_HANDOFF_TIMEOUT_MS) {
-                while (primary.playbackState != Player.STATE_READY) {
-                    if (primary.playerError != null) return@withTimeoutOrNull false
-                    delay(40L)
-                }
-                true
-            } == true
-            if (!primaryReady) {
-                Timber.w("Crossfade handoff timed out for %s", resolved.title)
-                primary.volume = 1f
-                return
+
+            if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return
+            if (!synchronizePrimaryHandoff(primary, secondary, targetIdentity)) return
+
+            fadePlayers(secondary, primary, PRIMARY_HANDOFF_FADE_MS) {
+                handoffStillValid(primary, secondary, targetIdentity)
             }
-            fadePlayers(secondary, primary, PRIMARY_HANDOFF_FADE_MS)
             queueEngine.updatePosition(primary.currentPosition)
             if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
         } catch (cancelled: CancellationException) {
@@ -867,6 +869,85 @@ class PlaybackService : MediaLibraryService() {
             if (transitionPlayer === secondary) transitionPlayer = null
             isQueueTransitionInProgress = false
         }
+    }
+
+    private suspend fun awaitPrimaryHandoffReady(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String,
+        title: String
+    ): Boolean {
+        val startedAt = SystemClock.elapsedRealtime()
+        var warned = false
+        while (true) {
+            if (!handoffStillValid(primary, secondary, targetIdentity)) return false
+            if (primary.playbackState == Player.STATE_READY && primary.playerError == null) return true
+            if (secondary.playbackState == Player.STATE_ENDED || secondary.playerError != null) return false
+            if (!warned && SystemClock.elapsedRealtime() - startedAt >= PRIMARY_HANDOFF_WARN_MS) {
+                warned = true
+                Timber.w("Crossfade handoff still preparing primary player for %s", title)
+            }
+            delay(40L)
+        }
+    }
+
+    private suspend fun synchronizePrimaryHandoff(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String
+    ): Boolean {
+        repeat(3) {
+            if (!handoffStillValid(primary, secondary, targetIdentity)) return false
+            if (!crossfadeHandoffNeedsResync(
+                    primary.currentPosition,
+                    secondary.currentPosition,
+                    PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
+                )
+            ) return true
+
+            primary.seekTo(
+                crossfadeHandoffSeekPosition(
+                    secondaryPositionMs = secondary.currentPosition,
+                    durationMs = primary.duration,
+                    leadMs = PRIMARY_HANDOFF_SYNC_LEAD_MS
+                )
+            )
+            val synced = withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
+                while (true) {
+                    if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
+                    if (primary.playerError != null) return@withTimeoutOrNull false
+                    if (primary.playbackState == Player.STATE_READY &&
+                        !crossfadeHandoffNeedsResync(
+                            primary.currentPosition,
+                            secondary.currentPosition,
+                            PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
+                        )
+                    ) return@withTimeoutOrNull true
+                    delay(30L)
+                }
+            } == true
+            if (synced) return true
+        }
+        return primary.playbackState == Player.STATE_READY &&
+            handoffStillValid(primary, secondary, targetIdentity) &&
+            !crossfadeHandoffNeedsResync(
+                primary.currentPosition,
+                secondary.currentPosition,
+                PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
+            )
+    }
+
+    private fun handoffStillValid(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        targetIdentity: String
+    ): Boolean {
+        val current = queueEngine.state.value
+        return playbackQueueIdentity(current.currentTrack ?: return false) == targetIdentity &&
+            current.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.One &&
+            primary.playWhenReady &&
+            secondary.playWhenReady &&
+            primary.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
     }
 
     private fun buildTransitionPlayer(track: Track): ExoPlayer {
@@ -957,6 +1038,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun cancelQueueTransition() {
         val running = queueTransitionJob
+        transitionPlayer?.pause()
         running?.cancel()
         queueTransitionJob = null
         if (running == null) {
