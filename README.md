@@ -350,7 +350,7 @@ Your listening habits are nobody's business, including mine.
 
 * **No analytics frameworks**: There are no tracking SDKs or developer-operated telemetry services.
 * **On-device statistics**: History, Pulse data, preferences and Desktop library state stay on the user's device.
-* **Network interactions**: Actions like searching, loading artwork, showing SponsorBlock segments, fetching lyrics, or using account features contact third-party endpoints. These connections send standard client data, including your IP address, device headers, and cookies where applicable.
+* **Network interactions**: Playback and discovery use YouTube/YouTube Music, including provider playback-security scripts executed in an isolated hidden WebView when tokens are required. Artwork and metadata may use Apple Music/iTunes, Deezer, Tidal, Qobuz, and Wikidata; lyrics may use YouTube Music, LRCLIB, Lyrics.ovh, and configured LyricsPlus mirrors. SponsorBlock segment skipping is enabled by default and may contact SponsorBlock during playback; users can disable it in Settings. Return YouTube Dislike may be contacted when engagement details are shown. These connections send standard client data, including your IP address and device headers. The F-Droid build disables Levyra's GitHub updater and remote announcement feed.
 
 ### Declared Android manifest permissions
 

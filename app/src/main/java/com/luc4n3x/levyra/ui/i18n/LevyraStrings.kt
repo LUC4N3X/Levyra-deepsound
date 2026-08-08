@@ -665,6 +665,71 @@ class LevyraStrings private constructor(
         }
     }
 
+    val loadingSharedPlaylist: String get() = if (code == "it") "Caricamento playlist" else "Loading playlist"
+    val loadingSharedAlbum: String get() = if (code == "it") "Caricamento album" else "Loading album"
+    val loadingSharedArtist: String get() = if (code == "it") "Caricamento artista" else "Loading artist"
+    val openingSharedContent: String get() = if (code == "it") "Apertura contenuto condiviso" else "Opening shared content"
+    val sharedContentUnavailable: String get() = if (code == "it") "Contenuto non disponibile" else "Content unavailable"
+    val searchFailed: String get() = if (code == "it") "Ricerca non riuscita" else "Search failed"
+    val operationFailed: String get() = if (code == "it") "Operazione non riuscita" else "Operation failed"
+
+    fun formatNoSearchResults(query: String): String {
+        val safeQuery = directionalValue(query)
+        return if (code == "it") "Nessun risultato trovato per $safeQuery" else "No results found for $safeQuery"
+    }
+
+    fun formatOfflineExportSaved(
+        destination: String,
+        fileName: String,
+        embeddedMetadata: Boolean
+    ): String {
+        val safeDestination = directionalValue(destination)
+        val safeFileName = directionalValue(fileName.ifBlank {
+            if (code == "it") "brano esportato" else "exported track"
+        })
+        val tagStatus = when {
+            code == "it" && embeddedMetadata -> "con copertina e tag Levyra"
+            code == "it" -> "con metadati Android"
+            embeddedMetadata -> "with Levyra cover and tags"
+            else -> "with Android metadata"
+        }
+        return if (code == "it") {
+            "Salvato in $safeDestination: $safeFileName ($tagStatus)"
+        } else {
+            "Saved in $safeDestination: $safeFileName ($tagStatus)"
+        }
+    }
+
+    fun localizeUserError(rawMessage: String?): String {
+        val raw = rawMessage?.trim().orEmpty()
+        return when {
+            raw.contains("Timed out waiting", ignoreCase = true) ||
+                raw.contains("sto aspettando lo stream", ignoreCase = true) -> if (code == "it") {
+                    "YouTube è lento: riprova tra qualche secondo"
+                } else {
+                    "YouTube is slow: try again in a few seconds"
+                }
+            raw.contains("EXTM3U", ignoreCase = true) ||
+                raw.contains("contentIsMalformed", ignoreCase = true) -> if (code == "it") {
+                    "La sorgente audio non è valida: riprova il brano"
+                } else {
+                    "The audio source is invalid: try the track again"
+                }
+            raw.contains("timeout", ignoreCase = true) -> if (code == "it") {
+                "Connessione lenta: riprova tra qualche secondo"
+            } else {
+                "Slow connection: try again in a few seconds"
+            }
+            raw.contains("Primary directory Music not allowed", ignoreCase = true) ||
+                raw.contains("content://media/external_primary/file", ignoreCase = true) -> if (code == "it") {
+                    "Questo dispositivo non ha consentito il salvataggio in Music/Levyra"
+                } else {
+                    "This device did not allow saving to Music/Levyra"
+                }
+            else -> operationFailed
+        }
+    }
+
     fun formatSavedTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
         return when (code) {

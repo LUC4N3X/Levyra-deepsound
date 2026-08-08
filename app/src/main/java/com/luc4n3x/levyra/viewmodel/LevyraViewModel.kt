@@ -3645,12 +3645,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
         val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty().ifBlank { "Music/Levyra" }
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
-        val tagStatus = if (embedded) "con cover e metadata Levyra" else "con metadata Android"
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
         completedTrack?.let { recordSmartDownload(it) }
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = "Salvato in $destinationLabel: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
+                offlineExportMessage = strings.formatOfflineExportSaved(
+                    destination = destinationLabel,
+                    fileName = fileName,
+                    embeddedMetadata = embedded
+                ),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
                 downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
@@ -3691,18 +3695,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
 
     private fun cleanUserError(error: Throwable): String {
-        if (error is TimeoutCancellationException) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
+        if (error is TimeoutCancellationException) {
+            return LevyraStrings.forCode(_state.value.languageCode).localizeUserError("timeout")
+        }
         return cleanUserError(error.message)
     }
 
     private fun cleanUserError(message: String?): String {
-        val raw = message?.trim().orEmpty()
-        if (raw.isBlank()) return "Operazione non riuscita"
-        if (raw.contains("Timed out waiting", ignoreCase = true)) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
-        if (raw.contains("EXTM3U", ignoreCase = true) || raw.contains("contentIsMalformed", ignoreCase = true)) return "Stream non valido per questo risultato: ho scartato la fonte rotta, riprova il brano"
-        if (raw.contains("timeout", ignoreCase = true)) return "Connessione lenta: riprova tra qualche secondo"
-        if (raw.contains("Primary directory Music not allowed", ignoreCase = true) || raw.contains("content://media/external_primary/file", ignoreCase = true)) return "Questo telefono blocca il salvataggio generico in Music: aggiorna l'app e riprova, Levyra userà MediaStore Audio o Downloads/Levyra"
-        return raw
+        return LevyraStrings.forCode(_state.value.languageCode).localizeUserError(message)
     }
 
     private fun updateDownloadProgress(trackId: String, progress: Int) {
@@ -3730,15 +3730,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun handleSharedMedia(request: SharedMediaRequest) {
         if (_state.value.sharedMediaPreview?.request?.key == request.key && _state.value.sharedMediaPreview?.loading == true) return
         sharedMediaJob?.cancel()
+        val strings = LevyraStrings.forCode(_state.value.languageCode)
         _state.update {
             it.copy(
                 sharedMediaPreview = SharedMediaPreview(
                     request = request,
                     title = when (request.kind) {
-                        SharedMediaKind.Playlist -> "Caricamento playlist"
-                        SharedMediaKind.Album -> "Caricamento album"
-                        SharedMediaKind.Artist, SharedMediaKind.Channel -> "Caricamento artista"
-                        else -> "Apertura contenuto condiviso"
+                        SharedMediaKind.Playlist -> strings.loadingSharedPlaylist
+                        SharedMediaKind.Album -> strings.loadingSharedAlbum
+                        SharedMediaKind.Artist, SharedMediaKind.Channel -> strings.loadingSharedArtist
+                        else -> strings.openingSharedContent
                     },
                     subtitle = request.url.ifBlank { request.query },
                     thumbnailUrl = "",
@@ -3760,7 +3761,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     it.copy(
                         sharedMediaPreview = SharedMediaPreview(
                             request = request,
-                            title = "Contenuto non disponibile",
+                            title = LevyraStrings.forCode(it.languageCode).sharedContentUnavailable,
                             subtitle = request.url.ifBlank { request.query },
                             thumbnailUrl = "",
                             tracks = emptyList(),
@@ -3945,6 +3946,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         result.onSuccess { data ->
+            val strings = LevyraStrings.forCode(_state.value.languageCode)
             val tracks = data.songs
             val mood = _state.value.selectedMood
             val queue = moodEngine.buildQueue(mood, tracks.ifEmpty { repository.cachedTracks() })
@@ -3956,7 +3958,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     cacheReport = repository.cacheReport(),
                     smartScore = calculateSmartScore(queue),
                     isSearching = false,
-                    searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
+                    searchError = if (data.isEmpty) strings.formatNoSearchResults(clean) else null
                 )
             }
             val startupPlan = adaptivePlaybackPolicy.current(videoMode = false)
@@ -3967,7 +3969,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update {
                 it.copy(
                     isSearching = false,
-                    searchError = error.message ?: "Ricerca non riuscita"
+                    searchError = LevyraStrings.forCode(it.languageCode).searchFailed
                 )
             }
         }
