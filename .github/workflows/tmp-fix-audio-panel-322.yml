@@ -1,0 +1,91 @@
+name: Temporary CodeRabbit Panel Fix
+
+on:
+  push:
+    branches:
+      - codex/smart-library-backup-auto-crossfade
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TARGET_BRANCH: codex/smart-library-backup-auto-crossfade
+      EXPECTED_PARENT: 148fa77425fad63bc8cab32752dd7071a46e57c6
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: codex/smart-library-backup-auto-crossfade
+          fetch-depth: 2
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+        with:
+          cache-disabled: true
+
+      - name: Patch, compile, and clean up
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Levyra Worker"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+
+          CURRENT_PARENT="$(git rev-parse HEAD^)"
+          if [ "${CURRENT_PARENT}" != "${EXPECTED_PARENT}" ]; then
+            echo "Unexpected parent: ${CURRENT_PARENT}"
+            exit 1
+          fi
+
+          git fetch origin "${TARGET_BRANCH}"
+          REMOTE_HEAD="$(git rev-parse "origin/${TARGET_BRANCH}")"
+          if [ "${REMOTE_HEAD}" != "${GITHUB_SHA}" ]; then
+            echo "Target branch moved: ${REMOTE_HEAD}"
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          old = '''                .navigationBarsPadding()
+                .clickable(interactionSource = blocker, indication = null) {}
+        ) {'''
+          new = '''                .navigationBarsPadding()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            event.changes.forEach { change ->
+                                if (change.previousPressed && !change.pressed && !change.isConsumed) {
+                                    change.consume()
+                                }
+                            }
+                        }
+                    }
+                }
+        ) {'''
+          if text.count(old) != 1:
+              raise SystemExit(f"Audio panel target mismatch: {text.count(old)} matches")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
+          git diff --check
+          ./gradlew --no-daemon :app:compileDebugKotlin
+
+          git rm .github/workflows/tmp-fix-audio-panel-322.yml
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git commit -m "fix(android): keep audio panel touch shield semantic-free"
+          git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
