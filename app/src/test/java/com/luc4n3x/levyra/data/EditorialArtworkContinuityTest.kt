@@ -1,10 +1,27 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import java.io.ByteArrayInputStream
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class EditorialArtworkContinuityTest {
+    @Test
+    fun boundedArtworkReaderAcceptsExactLimit() {
+        val bytes = ByteArray(32) { it.toByte() }
+
+        assertArrayEquals(bytes, readBytesBounded(ByteArrayInputStream(bytes), bytes.size.toLong()))
+    }
+
+    @Test
+    fun boundedArtworkReaderRejectsUnknownLengthBodyAboveLimit() {
+        val bytes = ByteArray(33) { it.toByte() }
+
+        assertNull(readBytesBounded(ByteArrayInputStream(bytes), 32L))
+    }
+
     @Test
     fun playerKeepsTheArtworkPresentedInTheTop50Row() {
         val presented = track(
