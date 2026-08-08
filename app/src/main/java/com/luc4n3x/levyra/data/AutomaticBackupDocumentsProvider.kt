@@ -118,10 +118,10 @@ class AutomaticBackupDocumentsProvider : DocumentsProvider() {
             name.substring(AUTOMATIC_BACKUP_PREFIX.length, name.length - 4).all(Char::isDigit)
 
     private fun rootColumns(projection: Array<out String>?): Array<String> =
-        projection?.map { it }.toTypedArray() ?: DEFAULT_ROOT_PROJECTION
+        projection?.map { it }?.toTypedArray() ?: DEFAULT_ROOT_PROJECTION
 
     private fun documentColumns(projection: Array<out String>?): Array<String> =
-        projection?.map { it }.toTypedArray() ?: DEFAULT_DOCUMENT_PROJECTION
+        projection?.map { it }?.toTypedArray() ?: DEFAULT_DOCUMENT_PROJECTION
 
     private companion object {
         const val ROOT_ID = "levyra-automatic-backups"
