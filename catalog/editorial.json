@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T18:34:15Z",
+  "generatedAt": "2026-08-08T18:50:42Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1017,7 +1017,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-43858d3c873c8799c605",
+          "id": "levyra-84cd8fae9d4edd0ebcfc",
           "title": "Cirano",
           "artists": [
             {
@@ -1025,12 +1025,12 @@
             }
           ],
           "album": {
-            "name": "The Platinum Collection",
-            "releaseDate": "2006-01-01"
+            "name": "D'Amore Di Morte E Di Altre Sciocchezze",
+            "releaseDate": "1996-01-01"
           },
-          "durationMs": 398151,
+          "durationMs": 400933,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e0ff765df88b6da6c0ba316a"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0231a0aac3e75592a99d24f671"
         },
         {
           "position": 44,
@@ -1413,14 +1413,6 @@
           },
           "durationMs": 217240,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "A0ttKAXj1xU",
-            "audioConfidence": 100,
-            "videoId": "Dg47eNL_Usw",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028606848da949bbaddf447d87"
         },
         {
@@ -1538,7 +1530,7 @@
         },
         {
           "position": 15,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1546,8 +1538,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1557,7 +1549,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 16,
@@ -1783,7 +1775,7 @@
         },
         {
           "position": 26,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1791,12 +1783,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 27,
@@ -14778,12 +14770,6 @@
           },
           "durationMs": 120545,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9YU5lFqpgV4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02463fce4562806107cddf6aea"
         },
         {
@@ -16236,7 +16222,7 @@
         },
         {
           "position": 44,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -16244,8 +16230,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16255,7 +16241,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 45,
@@ -17105,20 +17091,20 @@
         },
         {
           "position": 34,
-          "id": "levyra-9d3af210c1d9093eda1e",
-          "title": "Zakázané uvolnění",
+          "id": "levyra-a5a017fba38add2b0e35",
+          "title": "Zakazane uvolneni",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Hity & příběhy (Best Of 2001-2021)",
-            "releaseDate": "2021-11-26"
+            "name": "Den",
+            "releaseDate": "2014-05-12"
           },
-          "durationMs": 217013,
+          "durationMs": 217426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
         },
         {
           "position": 35,
@@ -19228,6 +19214,14 @@
           },
           "durationMs": 213906,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "gCAMQm--CZA",
+            "audioConfidence": 100,
+            "videoId": "aQb_uxNfcGk",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCJjP9Yna08Zq5_TimlS429w"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ef515a24ca4190ad477b3363"
         },
         {
@@ -23803,6 +23797,12 @@
           },
           "durationMs": 347040,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "XA_uBJjutgc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCTN01plFzn4npREHKT2_9Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f2706d41aa1ec24c04135ba"
         },
         {
@@ -23975,7 +23975,7 @@
         },
         {
           "position": 49,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23989,12 +23989,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         },
         {
           "position": 50,
@@ -26975,6 +26975,12 @@
           },
           "durationMs": 293500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "vZh6nx_H-ZE",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
@@ -27263,8 +27269,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28568,6 +28572,12 @@
           },
           "durationMs": 283825,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "g2t7utfVD50",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCczexwGX6z87RN5qZ9sYyTA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029f4a8c5a148b760d5d86e433"
         },
         {
