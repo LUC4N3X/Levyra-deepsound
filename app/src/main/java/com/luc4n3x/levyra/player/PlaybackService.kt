@@ -847,9 +847,9 @@ class PlaybackService : MediaLibraryService() {
 
             val upcoming = queueEngine.upcoming(1).firstOrNull()
             if (upcoming == null || playbackQueueIdentity(upcoming) != targetIdentity) return
-            val selected = queueEngine.next(respectRepeatOne = false)
-            if (selected == null || playbackQueueIdentity(selected) != targetIdentity) {
-                Timber.w("Crossfade queue target changed before handoff")
+            val selected = queueEngine.nextMatching(targetIdentity, respectRepeatOne = false)
+            if (selected == null) {
+                Timber.w("Crossfade queue target changed before atomic handoff")
                 return
             }
             queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
