@@ -312,6 +312,33 @@ class PersistentQueueEngine private constructor(context: Context) {
     fun nextMatching(expectedIdentity: String, respectRepeatOne: Boolean = true): Track? =
         advanceNext(respectRepeatOne, expectedIdentity)
 
+    fun handoffNext(
+        expectedGeneration: Long,
+        expectedCurrentIdentity: String,
+        expectedNextIdentity: String,
+        resolved: Track
+    ): Track? {
+        var result: Track? = null
+        mutate(structural = true, immediatePersist = true) { current ->
+            if (current.generation != expectedGeneration) return@mutate current
+            if (current.repeatMode == RepeatMode.One) return@mutate current
+            if (current.currentTrack?.let(::playbackQueueIdentity) != expectedCurrentIdentity) return@mutate current
+            if (playbackQueueIdentity(resolved) != expectedNextIdentity) return@mutate current
+
+            val target = nextTargetIndex(current) ?: return@mutate current
+            val selected = current.tracks[target]
+            if (playbackQueueIdentity(selected) != expectedNextIdentity) return@mutate current
+
+            val advanced = selectSnapshot(current, target, 0L, rememberCurrent = true)
+            val updatedTracks = advanced.tracks.toMutableList().apply {
+                set(target, resolved.queueStoredCopy())
+            }
+            result = resolved
+            advanced.copy(tracks = updatedTracks, generation = advanced.generation + 1L)
+        }
+        return result
+    }
+
     private fun advanceNext(respectRepeatOne: Boolean, expectedIdentity: String?): Track? {
         var result: Track? = null
         mutate(immediatePersist = true) { current ->
@@ -322,29 +349,33 @@ class PersistentQueueEngine private constructor(context: Context) {
                 result = repeated
                 return@mutate current.copy(positionMs = 0L)
             }
-            val target = if (current.shuffleEnabled) {
-                val order = normalizedShuffleOrder(current)
-                val cursor = order.indexOf(current.currentIndex).takeIf { it >= 0 } ?: current.shuffleCursor.coerceAtLeast(0)
-                val nextCursor = cursor + 1
-                when {
-                    nextCursor < order.size -> order[nextCursor]
-                    current.repeatMode == RepeatMode.All -> order.firstOrNull()
-                    else -> null
-                }
-            } else {
-                when {
-                    current.currentIndex < current.tracks.lastIndex -> current.currentIndex + 1
-                    current.repeatMode == RepeatMode.All -> 0
-                    else -> null
-                }
-            }
-            if (target == null) return@mutate current
+            val target = nextTargetIndex(current) ?: return@mutate current
             val selected = current.tracks[target]
             if (expectedIdentity != null && playbackQueueIdentity(selected) != expectedIdentity) return@mutate current
             result = selected
             selectSnapshot(current, target, 0L, rememberCurrent = true)
         }
         return result
+    }
+
+    private fun nextTargetIndex(current: PlaybackQueueSnapshot): Int? {
+        if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return null
+        return if (current.shuffleEnabled) {
+            val order = normalizedShuffleOrder(current)
+            val cursor = order.indexOf(current.currentIndex).takeIf { it >= 0 } ?: current.shuffleCursor.coerceAtLeast(0)
+            val nextCursor = cursor + 1
+            when {
+                nextCursor < order.size -> order[nextCursor]
+                current.repeatMode == RepeatMode.All -> order.firstOrNull()
+                else -> null
+            }
+        } else {
+            when {
+                current.currentIndex < current.tracks.lastIndex -> current.currentIndex + 1
+                current.repeatMode == RepeatMode.All -> 0
+                else -> null
+            }
+        }
     }
 
     fun previous(): Track? {
