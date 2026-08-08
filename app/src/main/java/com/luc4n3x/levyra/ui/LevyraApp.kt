@@ -18669,9 +18669,10 @@ private fun AudioQualityPanel(
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
                 .navigationBarsPadding()
-                .consumeOverlayTouches()
+                .clickable(interactionSource = blocker, indication = null) {}
         ) {
             LazyColumn(
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
