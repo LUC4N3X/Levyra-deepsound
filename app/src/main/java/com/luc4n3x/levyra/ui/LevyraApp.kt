@@ -394,6 +394,7 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
@@ -18713,7 +18714,7 @@ private fun AudioQualityPanel(
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 4.dp)) {
                             items(LevyraAudioPresets.presets, key = { it.id }) { preset ->
                                 PremiumPresetChip(
-                                    label = preset.label,
+                                    label = strings.localizedAudioPresetLabel(preset.id, preset.fallbackLabel),
                                     selected = audioSettings.presetId == preset.id,
                                     onClick = { onPreset(preset.id) }
                                 )

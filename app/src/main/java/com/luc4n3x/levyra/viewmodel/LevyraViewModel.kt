@@ -65,6 +65,10 @@ import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.playlistImportAlreadyRunningMessage
+import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
+import com.luc4n3x.levyra.ui.i18n.playlistImportStartedMessage
+import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
@@ -394,6 +398,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
     private var searchJob: Job? = null
+    private var playlistImportJob: Job? = null
     private var sharedMediaJob: Job? = null
     private var playJob: Job? = null
     private var modeSwitchJob: Job? = null
@@ -1377,6 +1382,58 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             loadPlaylists()
             _state.update { it.copy(offlineExportMessage = "Playlist creata: ${playlist.name}") }
         }
+    }
+
+    fun importPlaylist(input: String) {
+        if (playlistImportJob?.isActive == true) {
+            _state.update { current ->
+                current.copy(offlineExportMessage = playlistImportAlreadyRunningMessage(current.languageCode))
+            }
+            return
+        }
+        var job: Job? = null
+        job = viewModelScope.launch {
+            val importLanguage = _state.value.languageCode
+            try {
+                _state.update { current ->
+                    current.copy(offlineExportMessage = playlistImportStartedMessage(current.languageCode))
+                }
+                val importer = com.luc4n3x.levyra.data.UniversalPlaylistImporter(
+                    context = getApplication<Application>().applicationContext,
+                    playlistStore = playlistStore,
+                    youtubeRepository = repository
+                )
+                when (val result = importer.importFromUrlOrJson(input, languageCode = importLanguage)) {
+                    is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
+                        _state.update { current ->
+                            current.copy(
+                                offlineExportMessage = playlistImportSuccessMessage(
+                                    current.languageCode,
+                                    result.importedCount,
+                                    result.requestedCount,
+                                    result.playlist.name
+                                )
+                            )
+                        }
+                        loadPlaylists()
+                    }
+                    is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
+                        _state.update { current ->
+                            current.copy(
+                                offlineExportMessage = playlistImportFailureMessage(
+                                    current.languageCode,
+                                    result.kind,
+                                    result.limit
+                                )
+                            )
+                        }
+                    }
+                }
+            } finally {
+                if (playlistImportJob === job) playlistImportJob = null
+            }
+        }
+        playlistImportJob = job
     }
 
     fun renamePlaylist(playlistId: String, name: String) {
@@ -6848,6 +6905,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         queueEngine.updatePosition(player.positionMs)
         player.release()
         searchJob?.cancel()
+        playlistImportJob?.cancel()
         homeFeedJob?.cancel()
         homeAlbumsJob?.cancel()
         homeArtistsJob?.cancel()
