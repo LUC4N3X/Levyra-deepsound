@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T21:19:29Z",
+  "generatedAt": "2026-08-08T21:25:58Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1294,6 +1294,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -1530,7 +1536,7 @@
         },
         {
           "position": 15,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1538,8 +1544,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1549,7 +1555,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 16,
@@ -2363,7 +2369,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -2371,8 +2377,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2382,7 +2388,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 3,
@@ -2517,6 +2523,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -3255,7 +3267,7 @@
         },
         {
           "position": 42,
-          "id": "levyra-4c886bf7b578fe1d1532",
+          "id": "levyra-07bfa81c9a33aafde0f1",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3263,8 +3275,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Nice To Each Other",
+            "releaseDate": "2025-05-30"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3274,7 +3286,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
         },
         {
           "position": 43,
@@ -5883,6 +5895,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         }
       ]
@@ -6481,6 +6499,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -10272,6 +10296,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -10543,7 +10573,7 @@
         },
         {
           "position": 48,
-          "id": "levyra-62f091057573870630ff",
+          "id": "levyra-5d7a8244a6022b4ddba4",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -10551,12 +10581,12 @@
             }
           ],
           "album": {
-            "name": "Rumours (Super Deluxe)",
+            "name": "Rumours",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
         },
         {
           "position": 49,
@@ -13030,6 +13060,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -14787,6 +14823,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -16206,6 +16248,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -19855,6 +19903,12 @@
           },
           "durationMs": 301055,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "s-HPSmHiK2U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCNrsYqYuF7LkqjoeN0JfDlg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b057b18fd01c8eee341bd127"
         },
         {
@@ -20547,6 +20601,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -22185,7 +22245,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-09-30"
+            "releaseDate": "2019-08-31"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22195,7 +22255,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
         },
         {
           "position": 25,
@@ -27269,8 +27329,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28362,6 +28420,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
