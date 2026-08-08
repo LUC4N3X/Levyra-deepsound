@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T07:50:55Z",
+  "generatedAt": "2026-08-08T08:15:41Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2363,7 +2363,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -2371,8 +2371,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2382,7 +2382,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 3,
@@ -3001,11 +3001,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 31,
@@ -3131,7 +3131,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-07bfa81c9a33aafde0f1",
+          "id": "levyra-4c886bf7b578fe1d1532",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3139,8 +3139,8 @@
             }
           ],
           "album": {
-            "name": "Nice To Each Other",
-            "releaseDate": "2025-05-30"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3150,7 +3150,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 37,
@@ -9932,6 +9932,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -17083,7 +17089,7 @@
         },
         {
           "position": 26,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17091,12 +17097,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 27,
@@ -27316,6 +27322,12 @@
           },
           "durationMs": 293500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "vZh6nx_H-ZE",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
