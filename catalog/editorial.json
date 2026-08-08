@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T20:03:07Z",
+  "generatedAt": "2026-08-08T20:11:16Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1413,6 +1413,14 @@
           },
           "durationMs": 217240,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "A0ttKAXj1xU",
+            "audioConfidence": 100,
+            "videoId": "Dg47eNL_Usw",
+            "videoConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028606848da949bbaddf447d87"
         },
         {
@@ -1455,12 +1463,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -1559,7 +1561,7 @@
         },
         {
           "position": 16,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1567,12 +1569,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 17,
@@ -2310,7 +2312,7 @@
           "durationMs": 219584,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "bfszA_eFvnw",
+            "audioVideoId": "fUZVwTQF3LQ",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
@@ -2850,12 +2852,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -5163,12 +5159,6 @@
           },
           "durationMs": 226210,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "d4VKhBUgLJM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCYO-8CIkoBoUG2nOWz57Q9g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0243c8b89de39bc66cf21c4674"
         },
         {
@@ -5508,12 +5498,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -6359,12 +6343,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -7651,7 +7629,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-68fcfb916bb338f70aa5",
+          "id": "levyra-7fd08f9e4c7d58013a4d",
           "title": "Apaga Apaga Apaga - Ao Vivo",
           "artists": [
             {
@@ -7659,12 +7637,12 @@
             }
           ],
           "album": {
-            "name": "Toma Essa Verdade (Ao Vivo)",
-            "releaseDate": "2024-08-09"
+            "name": "As Mais Tocadas Danilo e Davi - 2026 (Ao Vivo)",
+            "releaseDate": "2025-09-23"
           },
           "durationMs": 178882,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020d5f00c853be5debb5eba851"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ee575d99f001805ca93ac8da"
         },
         {
           "position": 23,
@@ -7801,7 +7779,7 @@
           ],
           "album": {
             "name": "MOLHO (Ao Vivo)",
-            "releaseDate": "2025-10-16"
+            "releaseDate": "2026-04-16"
           },
           "durationMs": 192367,
           "explicit": false,
@@ -7811,7 +7789,7 @@
             "confidence": 100,
             "artistBrowseId": "UChn53L2iJ2EY1CGZcO4aV6A"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c89ff3434d85f33354c929b8"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f04abb4f70f72b26963eab5"
         },
         {
           "position": 29,
@@ -8037,7 +8015,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-9f7f7ed97ef04e3a1b78",
+          "id": "levyra-b13bf7899897168372d0",
           "title": "Foi por Conveniência",
           "artists": [
             {
@@ -8045,8 +8023,8 @@
             }
           ],
           "album": {
-            "name": "Foi por Conveniência",
-            "releaseDate": "2021-01-15"
+            "name": "Manuscritos, Capítulo I",
+            "releaseDate": "2026-04-22"
           },
           "durationMs": 205586,
           "explicit": false,
@@ -8056,7 +8034,7 @@
             "confidence": 100,
             "artistBrowseId": "UCj14PDgkcQQMz6v-g2eruBA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbdde8a138debae4178aaaa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029cea79f4d67ac59fc57191bc"
         },
         {
           "position": 39,
@@ -11701,14 +11679,6 @@
           },
           "durationMs": 158918,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "wf5mNKk6GzQ",
-            "audioConfidence": 100,
-            "videoId": "KsVjY8xzxHw",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCcEOJZgkTN0vrL4HWTorJhg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cd7e6e82e18e31f004fec8f5"
         },
         {
@@ -14859,7 +14829,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -14867,8 +14837,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -14878,7 +14848,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 30,
@@ -17157,12 +17127,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -17899,12 +17863,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -20312,12 +20270,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LrVwuWNwZ_o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -22335,12 +22287,6 @@
           },
           "durationMs": 180000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "hGqYdubpcCM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_Cx288SDUD9liYn7CiJLAA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d179b01c0b9baac10170d1ad"
         },
         {
@@ -22501,6 +22447,12 @@
           },
           "durationMs": 182000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "op05giODUE0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e5fd56cd91d38d69aec9a5a2"
         },
         {
@@ -24029,7 +23981,7 @@
         },
         {
           "position": 49,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24043,12 +23995,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         },
         {
           "position": 50,
@@ -26399,26 +26351,29 @@
         },
         {
           "position": 48,
-          "id": "levyra-50adcb205c108ed5f4ed",
-          "title": "24h",
+          "id": "levyra-a72a886ba586ee413e49",
+          "title": "24H",
           "artists": [
             {
               "name": "Lyly"
+            },
+            {
+              "name": "Magazine"
             }
           ],
           "album": {
-            "name": "24h",
-            "releaseDate": "2020-10-28"
+            "name": "24H",
+            "releaseDate": "2020-04-25"
           },
-          "durationMs": 257000,
-          "explicit": false,
+          "durationMs": 256905,
+          "explicit": true,
           "youtubeMusic": {
             "audioVideoId": "w8DEtCin4uI",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCtc2b3gvR1OjvaOScz3QM0Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9a33a39e11f920fabf6a5b0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa10ce68802568a9f53ecb8a"
         },
         {
           "position": 49,
@@ -27320,6 +27275,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -27684,6 +27641,12 @@
           },
           "durationMs": 194887,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "YMUsAAwd8GA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVJJot2WTh-OLjiKpxzU-bw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c3857d4eec0e38b496b06ef8"
         },
         {
