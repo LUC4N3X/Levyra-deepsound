@@ -76,6 +76,11 @@ jobs:
       - name: F-Droid Metadata Generator Tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
 
+      - name: F-Droid Review Contract Tests
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_fdroid_review_contract.py'
+          python3 scripts/validate_fdroid_review_contract.py
+
       - name: Prepare CI Release Signing
         shell: bash
         run: |
@@ -104,9 +109,14 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
-      - name: Home, Motion, Canvas, Artwork, Lyrics, DSP, and Import Unit Tests
+      - name: Android and F-Droid Regression Unit Tests
         run: |
           ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
+            --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriterTest' \
+            --tests 'com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepositoryTest' \
             --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
             --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
             --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest' \

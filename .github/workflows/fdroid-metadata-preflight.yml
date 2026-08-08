@@ -10,6 +10,8 @@ on:
       - fdroid/metadata/**
       - scripts/render_fdroid_metadata.py
       - scripts/tests/test_fdroid_metadata.py
+      - scripts/validate_fdroid_review_contract.py
+      - scripts/tests/test_fdroid_review_contract.py
       - .github/workflows/fdroid-metadata-preflight.yml
       - .github/workflows/release-apk.yml
   push:
@@ -21,6 +23,8 @@ on:
       - fdroid/metadata/**
       - scripts/render_fdroid_metadata.py
       - scripts/tests/test_fdroid_metadata.py
+      - scripts/validate_fdroid_review_contract.py
+      - scripts/tests/test_fdroid_review_contract.py
       - .github/workflows/fdroid-metadata-preflight.yml
       - .github/workflows/release-apk.yml
   workflow_dispatch:
@@ -49,6 +53,11 @@ jobs:
 
       - name: Run Metadata Generator Tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
+
+      - name: Validate F-Droid Review Contract
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_fdroid_review_contract.py'
+          python3 scripts/validate_fdroid_review_contract.py
 
       - name: Render Candidate Metadata
         shell: bash
