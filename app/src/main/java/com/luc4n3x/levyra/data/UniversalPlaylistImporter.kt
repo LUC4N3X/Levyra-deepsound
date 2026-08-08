@@ -73,7 +73,7 @@ private const val MAX_SPOTIFY_HTML_BYTES = 768L * 1024L
 private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 private val META_TAG_PATTERN = Regex("<meta\b[^>]*>", RegexOption.IGNORE_CASE)
 private val META_ATTRIBUTE_PATTERN = Regex(
-    """([A-Za-z_:][A-Za-z0-9_.:-]*)\s*=\s*(["'])(.*?)""",
+    """([A-Za-z_:][A-Za-z0-9_.:-]*)\s*=\s*(["'])(.*?)\2""",
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
 )
 private val DECIMAL_HTML_ENTITY = Regex("&#(\d+);")
@@ -209,7 +209,7 @@ private fun normalizeSpotifyTrackUrl(value: String): String? {
 private fun decodeHtmlEntities(value: String): String {
     var decoded = value
         .replace("&amp;", "&", ignoreCase = true)
-        .replace("&quot;", """)
+        .replace("&quot;", "\"")
         .replace("&#39;", "'")
         .replace("&apos;", "'")
         .replace("&lt;", "<", ignoreCase = true)
