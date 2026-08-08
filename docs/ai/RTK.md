@@ -111,8 +111,8 @@ instructions, rules, skills, hooks, or plugins.
 ```
 
 The script detects RTK, optionally installs it from `rtk-ai/rtk`, configures
-supported runtimes, installs verified `codex-plugins.txt` entries when requested,
-and runs both repository validators.
+supported runtimes, installs verified `.agents/config/codex-plugins.txt`
+entries when requested, and runs both repository validators.
 
 Missing Python blocks validation and returns a nonzero exit status. Setup is not
 reported complete when required validation cannot run.
@@ -131,8 +131,8 @@ Use `--skip-hooks` or `-SkipHooks` when only validation/plugin setup is needed.
 
 ## Verified plugin manifest
 
-`codex-plugins.txt` contains only verified CLI-installable identifiers. The
-current opt-in entry is:
+`.agents/config/codex-plugins.txt` contains only verified CLI-installable
+identifiers. The current opt-in entry is:
 
 ```text
 superpowers@openai-curated
