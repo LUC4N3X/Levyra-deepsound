@@ -847,14 +847,16 @@ class PlaybackService : MediaLibraryService() {
                     primary.duration - primary.currentPosition <= plan.transitionMs + SEEK_TOLERANCE_MS
             }
 
-            val upcoming = queueEngine.upcoming(1).firstOrNull()
-            if (upcoming == null || playbackQueueIdentity(upcoming) != targetIdentity) return
-            val selected = queueEngine.nextMatching(targetIdentity, respectRepeatOne = false)
-            if (selected == null) {
-                Timber.w("Crossfade queue target changed before atomic handoff")
+            val handedOff = queueEngine.handoffNext(
+                expectedGeneration = snapshot.generation,
+                expectedCurrentIdentity = currentIdentity,
+                expectedNextIdentity = targetIdentity,
+                resolved = resolved
+            )
+            if (handedOff == null) {
+                Timber.w("Crossfade queue changed before compare-and-set handoff")
                 return
             }
-            queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
 
             primary.volume = 0f
             primary.setMediaItem(
