@@ -12,73 +12,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  fix-pr319-coderabbit:
-    name: Apply PR 319 CodeRabbit fixes once
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 319 && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6.2.0
-        with:
-          cache-disabled: true
-
-      - name: Apply CodeRabbit fixes
-        run: python3 scripts/pr319_coderabbit_fix.py
-
-      - name: Run focused regression tests
-        run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.data.SponsorBlockRepositoryTest' \
-            --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest'
-
-      - name: Commit clean result
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show HEAD~1:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          git rm -f .github/workflows/pr319-coderabbit-fix.yml scripts/pr319_coderabbit_fix.py
-          git add .github/workflows/pr-check.yml
-          git add app/src/main/java/com/luc4n3x/levyra/data/SponsorBlockRepository.kt
-          git add app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt
-          git add app/src/test/java/com/luc4n3x/levyra/data/SponsorBlockRepositoryTest.kt
-          git diff --cached --check
-          git commit -m "fix(review): address CodeRabbit cancellation findings"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
   android:
     name: Lint and Release Compile
     runs-on: ubuntu-latest
