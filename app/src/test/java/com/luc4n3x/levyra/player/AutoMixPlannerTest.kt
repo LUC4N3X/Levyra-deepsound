@@ -18,8 +18,8 @@ class AutoMixPlannerTest {
 
         assertEquals(1f, start.outgoing, .001f)
         assertEquals(0f, start.incoming, .001f)
-        assertTrue(middle.outgoing in .70f..72f)
-        assertTrue(middle.incoming in .70f..72f)
+        assertEquals(0.7071f, middle.outgoing, .001f)
+        assertEquals(0.7071f, middle.incoming, .001f)
         assertEquals(0f, end.outgoing, .001f)
         assertEquals(1f, end.incoming, .001f)
     }

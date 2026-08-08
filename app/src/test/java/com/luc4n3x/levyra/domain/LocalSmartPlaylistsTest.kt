@@ -38,6 +38,22 @@ class LocalSmartPlaylistsTest {
         assertTrue(result.videoStreamUrl.isBlank())
     }
 
+    @Test
+    fun equalRanksUseStableTrackIdentityRegardlessOfInputOrder() {
+        val first = track("a").copy(title = "Same")
+        val second = track("b").copy(title = "Same")
+        val listens = listOf(
+            SmartPlaylistListen(second, listenedMs = 10_000L, startedAt = 20L),
+            SmartPlaylistListen(first, listenedMs = 10_000L, startedAt = 20L)
+        )
+
+        val forward = rankMostPlayedTracks(listens).map { it.id }
+        val reversed = rankMostPlayedTracks(listens.reversed()).map { it.id }
+
+        assertEquals(listOf("a", "b"), forward)
+        assertEquals(forward, reversed)
+    }
+
     private fun track(id: String) = Track(
         id = id,
         title = id,

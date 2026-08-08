@@ -63,7 +63,7 @@ class LevyraPlayer(context: Context) {
                     loadedTrack = queueTrack
                     loadedVideoMode = mediaItem.mediaMetadata.extras
                         ?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true
-                    loadedStreamIdentity = streamIdentity(queueTrack, loadedVideoMode)
+                    loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
                     startSponsorBlockMonitor(queueTrack)
                 }
 
@@ -322,7 +322,23 @@ class LevyraPlayer(context: Context) {
         return buildString {
             append(track.streamUrl)
             append('|')
-            append(track.videoStreamUrl)
+            append(if (videoMode) track.videoStreamUrl else "")
+            append('|')
+            append(videoMode)
+        }
+    }
+
+    private fun streamIdentity(mediaItem: androidx.media3.common.MediaItem, videoMode: Boolean): String {
+        return buildString {
+            append(mediaItem.localConfiguration?.uri?.toString().orEmpty())
+            append('|')
+            append(
+                if (videoMode) {
+                    mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL).orEmpty()
+                } else {
+                    ""
+                }
+            )
             append('|')
             append(videoMode)
         }

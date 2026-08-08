@@ -32,6 +32,7 @@ fun rankMostPlayedTracks(
             .thenByDescending { it.playCount }
             .thenByDescending { it.lastPlayedAt }
             .thenBy { it.track.title.lowercase(Locale.ROOT) }
+            .thenBy { smartPlaylistTrackKey(it.track) }
     )
     .take(limit.coerceIn(1, MAX_SMART_PLAYLIST_SIZE))
     .map { it.track }

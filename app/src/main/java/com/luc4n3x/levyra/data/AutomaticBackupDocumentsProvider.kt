@@ -20,7 +20,7 @@ class AutomaticBackupDocumentsProvider : DocumentsProvider() {
             .add(Root.COLUMN_ROOT_ID, ROOT_ID)
             .add(Root.COLUMN_DOCUMENT_ID, ROOT_DOCUMENT_ID)
             .add(Root.COLUMN_TITLE, "Levyra")
-            .add(Root.COLUMN_SUMMARY, "Backup automatici")
+            .add(Root.COLUMN_SUMMARY, automaticBackupsLabel())
             .add(Root.COLUMN_FLAGS, Root.FLAG_LOCAL_ONLY)
             .add(Root.COLUMN_MIME_TYPES, BACKUP_MIME_TYPE)
             .add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
@@ -70,7 +70,7 @@ class AutomaticBackupDocumentsProvider : DocumentsProvider() {
     private fun includeRootDocument(cursor: MatrixCursor) {
         cursor.newRow()
             .add(Document.COLUMN_DOCUMENT_ID, ROOT_DOCUMENT_ID)
-            .add(Document.COLUMN_DISPLAY_NAME, "Backup automatici")
+            .add(Document.COLUMN_DISPLAY_NAME, automaticBackupsLabel())
             .add(Document.COLUMN_MIME_TYPE, Document.MIME_TYPE_DIR)
             .add(Document.COLUMN_FLAGS, 0)
     }
@@ -84,6 +84,9 @@ class AutomaticBackupDocumentsProvider : DocumentsProvider() {
             .add(Document.COLUMN_LAST_MODIFIED, file.lastModified())
             .add(Document.COLUMN_SIZE, file.length())
     }
+
+    private fun automaticBackupsLabel(): String =
+        context?.getString(R.string.automatic_backups) ?: "Automatic backups"
 
     private fun automaticBackupFiles(): List<File> {
         val directory = backupDirectory()

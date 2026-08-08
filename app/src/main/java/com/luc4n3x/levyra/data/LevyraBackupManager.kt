@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -63,7 +64,11 @@ class LevyraBackupManager(private val context: Context) {
         } finally {
             if (temporary.exists()) temporary.delete()
         }
-        pruneAutomaticBackups(canonicalDirectory, retentionCount.coerceIn(1, MAX_AUTOMATIC_BACKUPS))
+        runCatching {
+            pruneAutomaticBackups(canonicalDirectory, retentionCount.coerceIn(1, MAX_AUTOMATIC_BACKUPS))
+        }.onFailure { error ->
+            Timber.w(error, "Automatic backup retention cleanup failed")
+        }
         LevyraBackupResult(target.name, checksum)
     }
 
