@@ -3,7 +3,7 @@ name: Temporary CodeRabbit Fixes
 on:
   push:
     branches:
-      - codex/smart-library-backup-auto-crossfade
+      - codex/coderabbit-322-fixes
 
 permissions:
   contents: write
@@ -12,9 +12,12 @@ jobs:
   fix:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      TARGET_BRANCH: codex/smart-library-backup-auto-crossfade
+      EXPECTED_HEAD: 4ce2eb018f7bc92763a4e4a33a38ea90fdbabd10
 
     steps:
-      - name: Checkout
+      - name: Checkout target PR branch
         uses: actions/checkout@v7
         with:
           ref: codex/smart-library-backup-auto-crossfade
@@ -35,12 +38,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TARGET_BRANCH="codex/smart-library-backup-auto-crossfade"
           git config user.name "LUC4N3X"
           git config user.email "241364318+LUC4N3X@users.noreply.github.com"
           git fetch origin "${TARGET_BRANCH}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_HEAD}"
+          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${EXPECTED_HEAD}"
 
           python3 - <<'PY'
           from pathlib import Path
@@ -176,5 +178,5 @@ jobs:
           git add -A
           git commit -m "fix(android): address CodeRabbit handoff review"
           git fetch origin "${TARGET_BRANCH}"
-          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${GITHUB_SHA}"
+          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${EXPECTED_HEAD}"
           git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
