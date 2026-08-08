@@ -1,0 +1,180 @@
+name: Temporary CodeRabbit Fixes
+
+on:
+  push:
+    branches:
+      - codex/smart-library-backup-auto-crossfade
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: codex/smart-library-backup-auto-crossfade
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.2.0
+        with:
+          cache-disabled: true
+
+      - name: Fix review findings and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_BRANCH="codex/smart-library-backup-auto-crossfade"
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git fetch origin "${TARGET_BRANCH}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${GITHUB_SHA}"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          queue = Path("app/src/main/java/com/luc4n3x/levyra/player/queue/PersistentQueueEngine.kt")
+          text = queue.read_text(encoding="utf-8")
+          old = '''            if (current.currentTrack?.let(::playbackQueueIdentity) != expectedCurrentIdentity) return@mutate current
+            if (playbackQueueIdentity(resolved) != expectedNextIdentity) return@mutate current
+
+            val target = nextTargetIndex(current) ?: return@mutate current
+            val selected = current.tracks[target]
+            if (playbackQueueIdentity(selected) != expectedNextIdentity) return@mutate current
+
+            val advanced = selectSnapshot(current, target, 0L, rememberCurrent = true)
+            val updatedTracks = advanced.tracks.toMutableList().apply {
+                set(target, resolved.queueStoredCopy())
+            }
+            result = resolved
+'''
+          new = '''            if (current.currentTrack?.let(::playbackQueueIdentity) != expectedCurrentIdentity) return@mutate current
+
+            val target = nextTargetIndex(current) ?: return@mutate current
+            val selected = current.tracks[target]
+            val replacement = resolvedQueueTrackForHandoff(selected, expectedNextIdentity, resolved)
+                ?: return@mutate current
+
+            val advanced = selectSnapshot(current, target, 0L, rememberCurrent = true)
+            val updatedTracks = advanced.tracks.toMutableList().apply {
+                set(target, replacement.queueStoredCopy())
+            }
+            result = replacement
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f"handoff block mismatch: {text.count(old)}")
+          text = text.replace(old, new, 1)
+
+          marker = '''internal fun Track.queueStoredCopy(): Track {
+'''
+          helper = '''internal fun resolvedQueueTrackForHandoff(
+    selected: Track,
+    expectedNextIdentity: String,
+    resolved: Track
+): Track? = resolved.takeIf {
+    playbackQueueIdentity(selected) == expectedNextIdentity
+}
+
+'''
+          if text.count(marker) != 1:
+              raise SystemExit("queue helper insertion point mismatch")
+          text = text.replace(marker, helper + marker, 1)
+          queue.write_text(text, encoding="utf-8")
+
+          service = Path("app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt")
+          text = service.read_text(encoding="utf-8")
+          old = '''            primary.volume = 0f
+            primary.setMediaItem(
+                LevyraMediaItemFactory.build(resolved),
+                secondary.currentPosition.coerceAtLeast(0L)
+            )
+            primary.prepare()
+
+            if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return
+            if (!synchronizePrimaryHandoff(primary, secondary, targetIdentity)) return
+
+            fadePlayers(secondary, primary, PRIMARY_HANDOFF_FADE_MS) {
+                handoffStillValid(primary, secondary, targetIdentity)
+            }
+'''
+          new = '''            val handoffIdentity = playbackQueueIdentity(resolved)
+            primary.volume = 0f
+            primary.setMediaItem(
+                LevyraMediaItemFactory.build(resolved),
+                secondary.currentPosition.coerceAtLeast(0L)
+            )
+            primary.prepare()
+
+            if (!awaitPrimaryHandoffReady(primary, secondary, handoffIdentity, resolved.title)) return
+            if (!synchronizePrimaryHandoff(primary, secondary, handoffIdentity)) return
+
+            fadePlayers(secondary, primary, PRIMARY_HANDOFF_FADE_MS) {
+                handoffStillValid(primary, secondary, handoffIdentity)
+            }
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f"post-handoff identity block mismatch: {text.count(old)}")
+          service.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          ui = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = ui.read_text(encoding="utf-8")
+          old = '.clickable(interactionSource = blocker, indication = null) {}'
+          new = '.pointerInput(Unit) { detectTapGestures(onTap = {}) }'
+          if text.count(old) != 1:
+              raise SystemExit(f"audio touch shield mismatch: {text.count(old)}")
+          ui.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          test = Path("app/src/test/java/com/luc4n3x/levyra/player/queue/PersistentQueueOrderTest.kt")
+          text = test.read_text(encoding="utf-8")
+          marker = '''    @Test
+    fun youtubeIdentityIgnoresTransientStreamUrls() {
+'''
+          addition = '''    @Test
+    fun resolvedHandoffAcceptsReplacementWithDifferentIdentity() {
+        val unresolved = track(4).copy(
+            id = "",
+            videoUrl = "",
+            title = "Unresolved title",
+            artist = "Unresolved artist"
+        )
+        val resolved = track(9).copy(
+            id = "resolved-track",
+            videoUrl = "https://www.youtube.com/watch?v=resolved9"
+        )
+        val expectedIdentity = playbackQueueIdentity(unresolved)
+
+        assertNotEquals(expectedIdentity, playbackQueueIdentity(resolved))
+        assertEquals(
+            resolved,
+            resolvedQueueTrackForHandoff(unresolved, expectedIdentity, resolved)
+        )
+    }
+
+'''
+          if text.count(marker) != 1:
+              raise SystemExit("queue test insertion point mismatch")
+          test.write_text(text.replace(marker, addition + marker, 1), encoding="utf-8")
+          PY
+
+          rm .github/workflows/tmp-coderabbit-322.yml
+          git diff --check
+          ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.player.queue.PersistentQueueOrderTest'
+          ./gradlew --no-daemon :app:compileDebugKotlin
+
+          git add -A
+          git commit -m "fix(android): address CodeRabbit handoff review"
+          git fetch origin "${TARGET_BRANCH}"
+          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${GITHUB_SHA}"
+          git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
