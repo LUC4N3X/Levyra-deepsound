@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -80,6 +81,7 @@ fun RemoteAnnouncementGate(
     languageCode: String,
     hasPositiveListeningMoment: Boolean
 ) {
+    if (!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) return
     val context = LocalContext.current.applicationContext
     val repository = remember(context) { RemoteAnnouncementRepository(context) }
     var launchCount by remember { mutableIntStateOf(0) }
@@ -148,6 +150,7 @@ fun SupportLevyraSettingsCard(
     languageCode: String,
     modifier: Modifier = Modifier
 ) {
+    if (!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) return
     val context = LocalContext.current.applicationContext
     val repository = remember(context) { RemoteAnnouncementRepository(context) }
     val announcement by produceState<RemoteAnnouncementPresentation?>(

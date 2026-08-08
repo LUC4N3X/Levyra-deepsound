@@ -35,6 +35,7 @@ import timber.log.Timber
 import java.io.IOException
 
 private const val PREFERENCES_NAME = "levyra_prefs"
+internal const val DEFAULT_SPONSORBLOCK_ENABLED = true
 
 private val Context.levyraDataStore by preferencesDataStore(
     name = PREFERENCES_NAME,
@@ -185,7 +186,9 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_DYNAMIC_COLOR] = value }
     }
 
-    fun sponsorBlock(): Boolean = read(true) { it[KEY_SPONSORBLOCK] ?: true }
+    fun sponsorBlock(): Boolean = read(DEFAULT_SPONSORBLOCK_ENABLED) {
+        it[KEY_SPONSORBLOCK] ?: DEFAULT_SPONSORBLOCK_ENABLED
+    }
 
     fun setSponsorBlock(value: Boolean) {
         write { it[KEY_SPONSORBLOCK] = value }
@@ -430,7 +433,7 @@ class LevyraPreferences(context: Context) {
             languageCode = normalizedLanguage,
             animationsEnabled = preferences[KEY_ANIMATIONS] ?: true,
             dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
-            sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: true,
+            sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: DEFAULT_SPONSORBLOCK_ENABLED,
             skipSilence = preferences[KEY_SKIP_SILENCE] ?: false,
             audioQuality = normalizeAudioQuality(preferences[KEY_AUDIO_QUALITY].orEmpty()),
             dismissedUpdateVersion = preferences[KEY_DISMISSED_UPDATE_VERSION].orEmpty(),
@@ -454,7 +457,7 @@ class LevyraPreferences(context: Context) {
         languageCode = LevyraLanguageCatalog.deviceDefault(),
         animationsEnabled = true,
         dynamicColor = true,
-        sponsorBlock = true,
+        sponsorBlock = DEFAULT_SPONSORBLOCK_ENABLED,
         skipSilence = false,
         audioQuality = "Auto",
         dismissedUpdateVersion = "",

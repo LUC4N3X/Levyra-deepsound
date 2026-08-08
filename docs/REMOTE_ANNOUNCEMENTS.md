@@ -7,7 +7,8 @@ Levyra can display small, reviewed announcements without requiring a new APK for
 The same JSON file serves two purposes:
 
 - it is packaged inside the APK as the offline and first-fetch fallback;
-- published clients read its raw version from the repository's `main` branch for future announcements.
+- upstream-published clients read its raw version from the repository's `main` branch for future announcements;
+- F-Droid builds disable both the remote feed and its support card at compile time.
 
 No executable code, HTML, JavaScript or APK fragments are downloaded.
 

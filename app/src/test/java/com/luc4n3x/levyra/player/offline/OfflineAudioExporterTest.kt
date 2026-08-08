@@ -1,12 +1,34 @@
 package com.luc4n3x.levyra.player.offline
 
 import kotlinx.coroutines.runBlocking
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OfflineAudioExporterTest {
+    @Test
+    fun offlineExportAcceptsOnlyMp4AudioSources() {
+        assertTrue(isMp4AudioExportUrl("https://rr.googlevideo.com/videoplayback?mime=audio%2Fmp4&itag=140"))
+        assertTrue(isMp4AudioExportUrl("https://example.com/track.m4a?token=abc"))
+        assertFalse(isMp4AudioExportUrl("https://rr.googlevideo.com/videoplayback?mime=audio%2Fwebm&itag=251"))
+        assertFalse(isMp4AudioExportUrl("https://example.com/track.webm"))
+    }
+
+    @Test
+    fun exporterNeverFallsBackToTheDownloadsCollection() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt")
+        ).firstOrNull(Files::exists) ?: error("OfflineAudioExporter.kt not found")
+        val content = Files.readString(source)
+
+        assertFalse(content.contains("MediaStore.Downloads"))
+        assertFalse(content.contains("downloadsDestinationLabel"))
+    }
+
     @Test
     fun lowRateLimitsReserveTheEntireTransferDuration() = runBlocking {
         var nowNanos = 0L
