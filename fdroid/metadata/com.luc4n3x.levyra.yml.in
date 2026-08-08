@@ -1,0 +1,42 @@
+AntiFeatures:
+  NonFreeNet:
+    en-US: Streams and metadata are obtained from YouTube, YouTube Music, and@FDROID_YAML_SPACE@
+      other non-free network services.
+Categories:
+  - Multimedia
+  - Online Media Player
+License: GPL-3.0-only
+AuthorName: LUC4N3X
+SourceCode: https://github.com/LUC4N3X/Levyra-deepsound
+IssueTracker: https://github.com/LUC4N3X/Levyra-deepsound/issues
+Changelog: https://github.com/LUC4N3X/Levyra-deepsound/releases
+
+AutoName: LEVYRA
+
+RepoType: git
+Repo: https://github.com/LUC4N3X/Levyra-deepsound.git
+Binaries:@FDROID_YAML_SPACE@
+  https://github.com/LUC4N3X/Levyra-deepsound/releases/download/fdroid-%v-r6/LEVYRA-%v-fdroid.apk
+
+Builds:
+  - versionName: @VERSION@
+    versionCode: @VERSION_CODE@
+    commit: @COMMIT@
+    subdir: app
+    gradle:
+      - yes
+    prebuild: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+    scanignore:
+      - app/build.gradle.kts
+    gradleprops:
+      - levyraFdroidBuild=true
+
+AllowedAPKSigningKeys:@FDROID_YAML_SPACE@
+  90221b5db83ec605c349fb256efe6801a4b0f2e6ed5da19e18dba6fa1f23e97b
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[\d.]+$
+UpdateCheckData:@FDROID_YAML_SPACE@
+  gradle.properties|levyraVersionCode=(\d+)|.|levyraVersionName=(.+)
+CurrentVersion: @VERSION@
+CurrentVersionCode: @VERSION_CODE@

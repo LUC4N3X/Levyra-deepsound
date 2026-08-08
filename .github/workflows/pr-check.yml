@@ -73,6 +73,9 @@ jobs:
       - name: Validate AI Efficiency Layer
         run: python3 scripts/validate_ai_efficiency.py
 
+      - name: F-Droid Metadata Generator Tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
+
       - name: Prepare CI Release Signing
         shell: bash
         run: |
