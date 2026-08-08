@@ -74,7 +74,8 @@ internal fun buildLibraryCatalog(
     playlists: List<Playlist>,
     downloads: List<DownloadedTrack>,
     recentListens: List<Track>,
-    followedArtists: List<FollowedArtist>
+    followedArtists: List<FollowedArtist>,
+    mostPlayedTracks: List<Track> = emptyList()
 ): LibraryCatalog {
     val knownTracks = sequenceOf(
         favorites.asSequence(),
@@ -175,14 +176,9 @@ internal fun buildLibraryCatalog(
             .thenBy { normalizeLibraryText(it.name) }
     )
 
-    val playCountByKey = recentListens.groupingBy(::libraryTrackKey).eachCount()
-    val mostPlayed = recentListens
+    val mostPlayed = mostPlayedTracks
         .filter(::isUsableLibraryTrack)
         .distinctBy(::libraryTrackKey)
-        .sortedWith(
-            compareByDescending<Track> { playCountByKey[libraryTrackKey(it)] ?: 0 }
-                .thenBy { normalizeLibraryText(it.title) }
-        )
 
     return LibraryCatalog(
         tracks = allTracks,

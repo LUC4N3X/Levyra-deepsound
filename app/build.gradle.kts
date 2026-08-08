@@ -241,6 +241,9 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.car.app)
+    implementation(libs.androidx.car.app.projected)
+    implementation(libs.androidx.media.compat)
     implementation(libs.androidx.media3.datasource.okhttp)
     implementation(libs.androidx.media3.datasource.cronet) {
         exclude(group = "org.chromium.net", module = "cronet-api")

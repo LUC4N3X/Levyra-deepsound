@@ -549,6 +549,36 @@ Responsibilities include:
 - player state publication to the application layer.
  
 The UI does not own ExoPlayer directly.
+
+### 12.1 Real crossfade and AutoMix
+
+`PlaybackService` owns the complete transition lifecycle. Near the end of an
+audio-mode track it resolves and prepares the next persistent-queue item in a
+secondary ExoPlayer that does not request audio focus. The secondary player has
+independent normalization, equalizer, spatial, limiter, and PCM processors
+configured from the same settings as the primary player.
+
+The transition uses equal-power gains. After the overlap, the resolved queue
+item is selected once, the primary player resumes at the secondary player's
+position, and a short handoff returns sole ownership to the MediaSession player.
+Queue generation and durable track identity cancel stale work. Pause, backward
+seek, queue mutation, repeat-one, native-video mode, low-memory pressure, and
+service destruction also cancel and release the secondary player.
+
+AutoMix changes only the bounded overlap duration, using local energy and vocal
+metadata. It does not claim beat, BPM, or key matching.
+
+### 12.2 Android Auto surfaces
+
+`AndroidAutoLibrary` remains the single browse catalog used by the classic
+MediaBrowser integration. `LevyraCarAppService` adds the Car App templated
+surface (Home, Download, Favorites, Playlists, search, queue, and now playing)
+through a MediaBrowser connected to the same `PlaybackService`.
+
+The car host receives a compat-wrapped platform MediaSession token through a
+restricted custom session command. The template service never creates another
+queue, player, resolver, or persistent catalog. Release builds validate hosts;
+only debuggable builds allow arbitrary development hosts.
  
 ---
  
@@ -610,6 +640,20 @@ Room stores structured application state including:
 Preferences store lightweight settings such as theme, content locale, playback options, and feature toggles.
  
 Home snapshots and important artwork use dedicated local files where atomic replacement is required.
+
+### 15.1 Local intelligence and automatic backups
+
+Listening events are also projected into local smart playlists. Recent listens
+remain recency ordered; the 30-day most-played list ranks total listening time,
+then play count and recency, and removes ephemeral stream URLs before state
+publication. No new Room schema or remote profile is introduced.
+
+Automatic backup preferences live in DataStore and are included in the existing
+backward-compatible backup payload. WorkManager runs the opt-in job with battery
+and storage constraints. Archives are written to `files/backups` through a
+temporary file, finalized atomically, checksum-protected, and pruned by an exact
+filename boundary to the configured retention count. Downloaded audio remains
+outside the archive; manual export and restore remain available.
  
 ---
  

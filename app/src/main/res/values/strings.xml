@@ -14,4 +14,16 @@
     <string name="radar_channel_name">Release Radar</string>
     <string name="radar_channel_description">New releases from artists you follow</string>
     <string name="radar_new_release_title">New release from %1$s</string>
+    <string name="automatic_backups">Automatic backups</string>
+    <string name="car_home">Home</string>
+    <string name="car_downloads">Downloads</string>
+    <string name="car_favorites">Favorites</string>
+    <string name="car_playlists">Playlists</string>
+    <string name="car_no_content">No content</string>
+    <string name="car_content_unavailable">Content unavailable</string>
+    <string name="car_search_tracks">Search tracks</string>
+    <string name="car_no_results">No results</string>
+    <string name="car_connecting_player">Connecting to player</string>
+    <string name="car_now_playing">Now playing</string>
+    <string name="car_queue">Queue</string>
 </resources>

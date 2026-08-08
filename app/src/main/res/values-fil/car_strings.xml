@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Mga awtomatikong backup</string>
+    <string name="car_home">Home</string>
+    <string name="car_downloads">Mga Download</string>
+    <string name="car_favorites">Mga Paborito</string>
+    <string name="car_playlists">Mga Playlist</string>
+    <string name="car_no_content">Walang content</string>
+    <string name="car_content_unavailable">Hindi available ang content</string>
+    <string name="car_search_tracks">Maghanap ng mga kanta</string>
+    <string name="car_no_results">Walang resulta</string>
+    <string name="car_connecting_player">Kumokonekta sa player</string>
+    <string name="car_now_playing">Nagpe-play ngayon</string>
+    <string name="car_queue">Queue</string>
+</resources>

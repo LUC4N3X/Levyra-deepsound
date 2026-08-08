@@ -13,6 +13,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,6 +34,7 @@ class LevyraPlayer(context: Context) {
         context,
         SessionToken(context, ComponentName(context, PlaybackService::class.java))
     ).buildAsync()
+    private val queueEngine = PersistentQueueEngine.get(context.applicationContext)
 
     private var loadedTrack: Track? = null
     private var loadedStreamIdentity: String? = null
@@ -55,6 +57,16 @@ class LevyraPlayer(context: Context) {
             controller = connected
             PlaybackService.setUiRecoveryAvailable(true)
             connected.addListener(object : Player.Listener {
+                override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                    val queueTrack = queueEngine.state.value.currentTrack ?: return
+                    if (mediaItem?.mediaId != LevyraMediaItemFactory.metadataOnly(queueTrack).mediaId) return
+                    loadedTrack = queueTrack
+                    loadedVideoMode = mediaItem.mediaMetadata.extras
+                        ?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true
+                    loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
+                    startSponsorBlockMonitor(queueTrack)
+                }
+
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) {
                         recoveryResetJob?.cancel()
@@ -310,7 +322,23 @@ class LevyraPlayer(context: Context) {
         return buildString {
             append(track.streamUrl)
             append('|')
-            append(track.videoStreamUrl)
+            append(if (videoMode) track.videoStreamUrl else "")
+            append('|')
+            append(videoMode)
+        }
+    }
+
+    private fun streamIdentity(mediaItem: androidx.media3.common.MediaItem, videoMode: Boolean): String {
+        return buildString {
+            append(mediaItem.localConfiguration?.uri?.toString().orEmpty())
+            append('|')
+            append(
+                if (videoMode) {
+                    mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL).orEmpty()
+                } else {
+                    ""
+                }
+            )
             append('|')
             append(videoMode)
         }

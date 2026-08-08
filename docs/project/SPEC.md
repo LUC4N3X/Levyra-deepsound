@@ -39,6 +39,12 @@ with its own playback, packaging, versioning, and release lifecycle.
   bounded and observable. An inconclusive failure must not be stored as a
   conclusive negative result.
 - Older asynchronous work must not publish over newer user intent.
+- Audio-mode crossfade uses overlapping players and an equal-power transition;
+  it must remain disabled for native-video mode, repeat-one, and low-RAM
+  devices. AutoMix may adapt timing only from bounded local track metadata.
+- Android Auto keeps the classic MediaBrowser surface and may add a templated
+  Car App interface, but both surfaces must use the same MediaSession, queue,
+  playback service, and browse catalog.
 
 ### User data and settings
 
@@ -50,6 +56,10 @@ with its own playback, packaging, versioning, and release lifecycle.
 - Durable identity must not depend on mutable display text.
 - Backup and restore behavior must remain backward compatible when new settings
   are introduced.
+- Local smart playlists are derived from on-device library and listening data;
+  they do not require an account, telemetry, or a second persistent catalog.
+- Automatic backups are opt-in, atomic, checksum-protected, bounded by an
+  explicit retention count, and exclude downloaded audio files.
 
 ### Interface and accessibility
 

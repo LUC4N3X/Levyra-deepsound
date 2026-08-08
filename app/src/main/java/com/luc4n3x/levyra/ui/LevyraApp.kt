@@ -337,6 +337,8 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraBackupFrequency
+import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -1473,11 +1475,13 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     themePreset = state.themePreset,
                     interfaceSettings = state.interfaceSettings,
                     downloadSettings = state.downloadSettings,
+                    backupSettings = state.backupSettings,
                     downloadQueue = state.downloadQueue,
                     playbackDiagnostics = state.playbackDiagnostics,
                     onThemePreset = viewModel::setThemePreset,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onDownloadSettings = viewModel::setDownloadSettings,
+                    onBackupSettings = viewModel::setBackupSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
@@ -14028,11 +14032,13 @@ private fun SettingsOverlay(
     themePreset: String,
     interfaceSettings: LevyraInterfaceSettings,
     downloadSettings: LevyraDownloadSettings,
+    backupSettings: LevyraBackupSettings,
     downloadQueue: List<OfflineDownloadTask>,
     playbackDiagnostics: String,
     onThemePreset: (String) -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
+    onBackupSettings: (LevyraBackupSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
@@ -14450,6 +14456,58 @@ private fun SettingsOverlay(
                             }
                         }
                         "backup" -> {
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.History,
+                                    title = strings.automaticBackup,
+                                    subtitle = strings.automaticBackupSubtitle,
+                                    checked = backupSettings.enabled,
+                                    onCheckedChange = { onBackupSettings(backupSettings.copy(enabled = it)) }
+                                )
+                            }
+                            if (backupSettings.enabled) {
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.Schedule,
+                                        title = strings.backupFrequency,
+                                        subtitle = strings.automaticBackupSubtitle,
+                                        options = LevyraBackupFrequency.entries.map { frequency ->
+                                            frequency.name to strings.backupFrequencyLabel(frequency.name)
+                                        },
+                                        selected = backupSettings.frequency.name,
+                                        onSelect = { selected ->
+                                            onBackupSettings(
+                                                backupSettings.copy(frequency = LevyraBackupFrequency.from(selected))
+                                            )
+                                        }
+                                    )
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.History,
+                                        title = strings.backupRetention,
+                                        subtitle = strings.automaticBackupSubtitle,
+                                        options = listOf(3, 5, 8, 12).map { count ->
+                                            count.toString() to strings.backupRetentionLabel(count)
+                                        },
+                                        selected = backupSettings.retentionCount.toString(),
+                                        onSelect = { selected ->
+                                            selected.toIntOrNull()?.let { count ->
+                                                onBackupSettings(backupSettings.copy(retentionCount = count))
+                                            }
+                                        }
+                                    )
+                                }
+                                item {
+                                    SettingsToggle(
+                                        icon = Icons.Rounded.Bolt,
+                                        title = strings.backupChargingOnly,
+                                        subtitle = strings.backupChargingOnlySubtitle,
+                                        checked = backupSettings.chargingOnly,
+                                        onCheckedChange = { onBackupSettings(backupSettings.copy(chargingOnly = it)) }
+                                    )
+                                }
+                            }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Download,
@@ -18611,9 +18669,10 @@ private fun AudioQualityPanel(
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
                 .navigationBarsPadding()
-                .consumeOverlayTouches()
+                .clickable(interactionSource = blocker, indication = null) {}
         ) {
             LazyColumn(
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {

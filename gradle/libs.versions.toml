@@ -6,6 +6,8 @@ coreKtx = "1.19.0"
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 media3 = "1.10.1"
+carApp = "1.9.0-alpha01"
+mediaCompat = "1.8.0"
 cronet = "500.0.1"
 coroutines = "1.11.0"
 coil = "3.5.0"
@@ -49,6 +51,9 @@ androidx-media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exop
 androidx-media3-exoplayer-dash = { group = "androidx.media3", name = "media3-exoplayer-dash", version.ref = "media3" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
+androidx-car-app-projected = { group = "androidx.car.app", name = "app-projected", version.ref = "carApp" }
+androidx-media-compat = { group = "androidx.media", name = "media", version.ref = "mediaCompat" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
 androidx-media3-datasource-cronet = { group = "androidx.media3", name = "media3-datasource-cronet", version.ref = "media3" }
 chromium-cronet-embedded = { group = "org.chromium.net", name = "cronet-embedded", version.ref = "cronet" }
