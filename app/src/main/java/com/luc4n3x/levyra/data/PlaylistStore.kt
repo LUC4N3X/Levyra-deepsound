@@ -7,10 +7,10 @@ import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.util.UUID
 
 class PlaylistStore(context: Context) {
     private val dao = LevyraDatabase.get(context.applicationContext).playlistDao()
@@ -35,12 +35,35 @@ class PlaylistStore(context: Context) {
         val now = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
         val cover = firstTrack?.largeThumbnailUrl?.ifBlank { firstTrack.thumbnailUrl }.orEmpty()
-        dao.upsertPlaylist(PlaylistEntity(id, name.trim().ifBlank { "Playlist" }, cover, now, now))
-        if (firstTrack != null) {
-            dao.insertTracks(listOf(firstTrack.toPlaylistTrackEntity(id, 0, now)))
-        }
+        dao.createPlaylistWithTracks(
+            playlist = PlaylistEntity(id, name.trim().ifBlank { "Playlist" }, cover, now, now),
+            tracks = firstTrack?.let { listOf(it.toPlaylistTrackEntity(id, 0, now)) }.orEmpty()
+        )
         val tracks = firstTrack?.let { listOf(it) } ?: emptyList()
         Playlist(id, name.trim().ifBlank { "Playlist" }, cover, tracks, now, now)
+    }
+
+    suspend fun createWithTracks(name: String, tracks: List<Track>): Playlist = withContext(Dispatchers.IO) {
+        val cleanTracks = tracks
+            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
+            .distinctBy { it.id }
+        require(cleanTracks.isNotEmpty()) { "Cannot create a playlist without valid tracks" }
+
+        val now = System.currentTimeMillis()
+        val id = UUID.randomUUID().toString()
+        val cleanName = name.trim().ifBlank { "Playlist" }
+        val cover = cleanTracks.firstNotNullOfOrNull { track ->
+            track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
+        }.orEmpty()
+        val entity = PlaylistEntity(id, cleanName, cover, now, now)
+        val trackEntities = cleanTracks.mapIndexed { index, track ->
+            track.toPlaylistTrackEntity(id, index, now)
+        }
+
+        // Room executes both the playlist row and every track row in one transaction.
+        // If insertion fails or the coroutine is cancelled, nothing is partially persisted.
+        dao.createPlaylistWithTracks(entity, trackEntities)
+        Playlist(id, cleanName, cover, cleanTracks, now, now)
     }
 
     suspend fun rename(playlistId: String, name: String) = withContext(Dispatchers.IO) {
