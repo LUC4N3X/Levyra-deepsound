@@ -2,25 +2,34 @@ package com.luc4n3x.levyra
 
 import android.Manifest
 import android.app.PictureInPictureParams
+import android.content.ClipData
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -28,28 +37,40 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.update.AppUpdateContract
+import com.luc4n3x.levyra.update.AppUpdateInstaller
+import com.luc4n3x.levyra.update.PreparedAppUpdate
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
@@ -69,9 +90,25 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
     recentListenCount = recentListens.size
 )
 
+private sealed interface InAppUpdateUiState {
+    data object Idle : InAppUpdateUiState
+    data class Downloading(
+        val versionName: String,
+        val progress: Int?
+    ) : InAppUpdateUiState
+}
+
 class MainActivity : ComponentActivity() {
     private val pipMode = mutableStateOf(false)
     private val viewModel: LevyraViewModel by viewModels()
+    private val updateUiState = mutableStateOf<InAppUpdateUiState>(InAppUpdateUiState.Idle)
+    private val updateInstaller by lazy { AppUpdateInstaller(applicationContext) }
+    private var updateJob: Job? = null
+    private var pendingUpdate: PreparedAppUpdate? = null
+
+    private val unknownSourcesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        resumePendingUpdateInstall()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,7 +124,9 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightStatusBars = startPalette.isLight
             isAppearanceLightNavigationBars = startPalette.isLight
         }
-        LevyraLaunchActions.consumeFrom(intent)
+        if (!handleInAppUpdateIntent(intent)) {
+            LevyraLaunchActions.consumeFrom(intent)
+        }
         if (Build.VERSION.SDK_INT >= 28) {
             val params = window.attributes
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -146,6 +185,10 @@ class MainActivity : ComponentActivity() {
                         listenedPlaybackMs = listenedPlaybackMs
                     )
                 )
+                InAppUpdateDialog(
+                    state = updateUiState.value,
+                    strings = LevyraStrings.forCode(activityUiState.languageCode)
+                )
             }
         }
     }
@@ -153,7 +196,9 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        LevyraLaunchActions.consumeFrom(intent)
+        if (!handleInAppUpdateIntent(intent)) {
+            LevyraLaunchActions.consumeFrom(intent)
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -176,8 +221,93 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        updateJob?.cancel()
         LevyraPipBridge.unbind()
         super.onDestroy()
+    }
+
+    private fun handleInAppUpdateIntent(intent: Intent?): Boolean {
+        if (!AppUpdateContract.matches(intent)) return false
+        if (intent?.getBooleanExtra(AppUpdateContract.EXTRA_CONSUMED, false) == true) return true
+        intent?.putExtra(AppUpdateContract.EXTRA_CONSUMED, true)
+        if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
+        return true
+    }
+
+    private fun beginInAppUpdate() {
+        if (updateJob?.isActive == true) return
+        updateJob = lifecycleScope.launch {
+            try {
+                val prepared = updateInstaller.prepareLatestUpdate { versionName, progress ->
+                    runOnUiThread {
+                        updateUiState.value = InAppUpdateUiState.Downloading(versionName, progress)
+                    }
+                }
+                pendingUpdate = prepared
+                updateUiState.value = InAppUpdateUiState.Idle
+                requestPackageInstall(prepared)
+            } catch (cancelled: CancellationException) {
+                updateUiState.value = InAppUpdateUiState.Idle
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "In-app update failed")
+                pendingUpdate = null
+                updateUiState.value = InAppUpdateUiState.Idle
+                viewModel.checkForUpdates(silent = false)
+            } finally {
+                updateJob = null
+            }
+        }
+    }
+
+    private fun requestPackageInstall(prepared: PreparedAppUpdate) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            pendingUpdate = prepared
+            val settingsIntent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:$packageName")
+            )
+            runCatching { unknownSourcesLauncher.launch(settingsIntent) }
+                .onFailure {
+                    Timber.w(it, "Unable to open unknown-source settings")
+                    pendingUpdate = null
+                    viewModel.checkForUpdates(silent = false)
+                }
+            return
+        }
+        launchPackageInstaller(prepared)
+    }
+
+    private fun resumePendingUpdateInstall() {
+        val prepared = pendingUpdate ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            pendingUpdate = null
+            viewModel.checkForUpdates(silent = false)
+            return
+        }
+        launchPackageInstaller(prepared)
+    }
+
+    private fun launchPackageInstaller(prepared: PreparedAppUpdate) {
+        val apkUri = runCatching {
+            FileProvider.getUriForFile(this, "$packageName.update-files", prepared.apkFile)
+        }.getOrElse {
+            Timber.w(it, "Unable to expose update APK")
+            pendingUpdate = null
+            viewModel.checkForUpdates(silent = false)
+            return
+        }
+        val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+            data = apkUri
+            clipData = ClipData.newRawUri("Levyra update", apkUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching { startActivity(installIntent) }
+            .onFailure {
+                Timber.w(it, "Unable to launch Android package installer")
+                viewModel.checkForUpdates(silent = false)
+            }
+        pendingUpdate = null
     }
 
     private fun enterPictureInPicture(): Boolean {
@@ -242,4 +372,35 @@ class MainActivity : ComponentActivity() {
     private fun configureFastImageLoader() {
         LevyraArtworkCache.configure(this)
     }
+}
+
+@Composable
+private fun InAppUpdateDialog(
+    state: InAppUpdateUiState,
+    strings: LevyraStrings
+) {
+    val downloading = state as? InAppUpdateUiState.Downloading ?: return
+    AlertDialog(
+        onDismissRequest = {},
+        confirmButton = {},
+        title = {
+            Text(
+                text = downloading.versionName.ifBlank { strings.updates }.let { version ->
+                    if (version == strings.updates) version else "LEVYRA $version"
+                },
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                CircularProgressIndicator()
+                Text(
+                    text = downloading.progress?.let { "${strings.update} · $it%" } ?: strings.updateDescription
+                )
+            }
+        }
+    )
 }
