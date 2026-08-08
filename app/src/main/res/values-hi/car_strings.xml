@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">स्वचालित बैकअप</string>
+    <string name="car_home">होम</string>
+    <string name="car_downloads">डाउनलोड</string>
+    <string name="car_favorites">पसंदीदा</string>
+    <string name="car_playlists">प्लेलिस्ट</string>
+    <string name="car_no_content">कोई सामग्री नहीं</string>
+    <string name="car_content_unavailable">सामग्री उपलब्ध नहीं</string>
+    <string name="car_search_tracks">गाने खोजें</string>
+    <string name="car_no_results">कोई परिणाम नहीं</string>
+    <string name="car_connecting_player">प्लेयर से कनेक्ट हो रहा है</string>
+    <string name="car_now_playing">अभी चल रहा है</string>
+    <string name="car_queue">कतार</string>
+</resources>

@@ -37,6 +37,29 @@ class PersistentQueueOrderTest {
     }
 
     @Test
+    fun resolvedHandoffKeepsQueueIdentityWhenResolverAddsCanonicalId() {
+        val unresolved = track(4).copy(
+            id = "",
+            videoUrl = "",
+            title = "Unresolved title",
+            artist = "Unresolved artist"
+        )
+        val resolved = track(9).copy(
+            id = "resolved-track",
+            videoUrl = "https://www.youtube.com/watch?v=resolved9",
+            streamUrl = "https://rr.example/videoplayback?expire=10"
+        )
+        val expectedIdentity = playbackQueueIdentity(unresolved)
+
+        assertNotEquals(expectedIdentity, playbackQueueIdentity(resolved))
+        val replacement = resolvedQueueTrackForHandoff(unresolved, expectedIdentity, resolved)
+            ?: error("Expected resolved handoff replacement")
+
+        assertEquals(expectedIdentity, playbackQueueIdentity(replacement))
+        assertEquals(resolved.streamUrl, replacement.streamUrl)
+    }
+
+    @Test
     fun youtubeIdentityIgnoresTransientStreamUrls() {
         val first = track(1).copy(streamUrl = "https://one.example/audio?expire=1")
         val second = track(1).copy(streamUrl = "https://two.example/audio?expire=2")

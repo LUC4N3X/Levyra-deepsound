@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Sauvegardes automatiques</string>
+    <string name="car_home">Accueil</string>
+    <string name="car_downloads">Téléchargements</string>
+    <string name="car_favorites">Favoris</string>
+    <string name="car_playlists">Playlists</string>
+    <string name="car_no_content">Aucun contenu</string>
+    <string name="car_content_unavailable">Contenu indisponible</string>
+    <string name="car_search_tracks">Rechercher des titres</string>
+    <string name="car_no_results">Aucun résultat</string>
+    <string name="car_connecting_player">Connexion au lecteur</string>
+    <string name="car_now_playing">Lecture en cours</string>
+    <string name="car_queue">File d’attente</string>
+</resources>
