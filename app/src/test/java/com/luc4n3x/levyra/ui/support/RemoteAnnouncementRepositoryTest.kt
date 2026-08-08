@@ -25,6 +25,23 @@ class RemoteAnnouncementRepositoryTest {
     )
 
     @Test
+    fun fdroidBuildDisablesRemoteAnnouncementsAndSupportCard() {
+        val buildFile = sequenceOf(
+            Path.of("app/build.gradle.kts"),
+            Path.of("build.gradle.kts")
+        ).firstOrNull(Files::exists) ?: error("app/build.gradle.kts not found")
+        val repositorySource = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/support/RemoteAnnouncementRepository.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/support/RemoteAnnouncementRepository.kt")
+        ).firstOrNull(Files::exists) ?: error("RemoteAnnouncementRepository.kt not found")
+        val promptSource = repositorySource.resolveSibling("OpenSourceSupportPrompt.kt")
+
+        assertTrue(Files.readString(buildFile).contains("REMOTE_ANNOUNCEMENTS_ENABLED\", (!isFdroidBuild).toString()"))
+        assertTrue(Files.readString(repositorySource).contains("!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED"))
+        assertTrue(Files.readString(promptSource).contains("!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED"))
+    }
+
+    @Test
     fun packagedCatalogIsValidCompleteAndLocalized() {
         val catalog = loadPackagedCatalog()
         assertEquals(2, catalog.schemaVersion)

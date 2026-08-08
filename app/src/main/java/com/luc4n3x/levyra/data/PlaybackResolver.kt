@@ -55,6 +55,20 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
 
+internal fun isMp4OfflineAudioCandidate(mimeOrFormat: String, url: String): Boolean {
+    val format = mimeOrFormat.lowercase()
+    val cleanUrl = url.lowercase()
+    val path = cleanUrl.substringBefore('?').substringBefore('#')
+    return format.contains("mpeg_4") ||
+        format.contains("mpeg-4") ||
+        format.contains("m4a") ||
+        format.contains("mp4") ||
+        cleanUrl.contains("mime=audio%2fmp4") ||
+        cleanUrl.contains("mime=audio/mp4") ||
+        path.endsWith(".m4a") ||
+        path.endsWith(".mp4")
+}
+
 internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {
     val artworkLocked = presented.source.equals("Levyra Editorial", ignoreCase = true) ||
         EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags
@@ -1448,6 +1462,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     val format = adaptiveFormats.optJSONObject(i) ?: continue
                     val mime = format.optString("mimeType")
                     if (!mime.startsWith("audio/", true)) continue
+                    if (preferMp4Audio && !isMp4OfflineAudioCandidate(mime, format.optString("url"))) continue
                     val itag = format.optInt("itag", 0)
                     val bitrate = format.optInt("bitrate", 0)
                     val formatAudioQuality = format.optString("audioQuality")
@@ -1649,7 +1664,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 isDirectAudioUrl(it.content)
         }
         val playable = direct.filter { streamStillFresh(it.content) }.ifEmpty { direct }
-        return playable.maxByOrNull { scoreExtractorAudio(it, preferMp4Audio, audioQuality) }
+        val compatible = if (preferMp4Audio) playable.filter(::isMp4AudioStream) else playable
+        return compatible.maxByOrNull { scoreExtractorAudio(it, preferMp4Audio, audioQuality) }
     }
 
     private fun scoreExtractorAudio(stream: AudioStream, preferMp4Audio: Boolean, audioQuality: String): Int {
@@ -1661,13 +1677,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun isMp4AudioStream(stream: AudioStream): Boolean {
         val formatName = stream.getFormat()?.name.orEmpty()
-        val content = stream.content.lowercase()
-        return formatName.contains("MPEG", ignoreCase = true) ||
-            formatName.contains("M4A", ignoreCase = true) ||
-            content.contains("mime=audio%2fmp4") ||
-            content.contains("mime=audio/mp4") ||
-            content.substringBefore('?').endsWith(".m4a") ||
-            content.substringBefore('?').endsWith(".mp4")
+        return isMp4OfflineAudioCandidate(formatName, stream.content)
     }
 
     private fun isVerifiedHlsManifest(url: String): Boolean {
