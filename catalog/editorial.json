@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T17:37:53Z",
+  "generatedAt": "2026-08-08T18:34:15Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1017,7 +1017,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-84cd8fae9d4edd0ebcfc",
+          "id": "levyra-43858d3c873c8799c605",
           "title": "Cirano",
           "artists": [
             {
@@ -1025,12 +1025,12 @@
             }
           ],
           "album": {
-            "name": "D'Amore Di Morte E Di Altre Sciocchezze",
-            "releaseDate": "1996-01-01"
+            "name": "The Platinum Collection",
+            "releaseDate": "2006-01-01"
           },
-          "durationMs": 400933,
+          "durationMs": 398151,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0231a0aac3e75592a99d24f671"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e0ff765df88b6da6c0ba316a"
         },
         {
           "position": 44,
@@ -1294,6 +1294,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -1532,7 +1538,7 @@
         },
         {
           "position": 15,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1540,8 +1546,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1551,11 +1557,11 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 16,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1563,12 +1569,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 17,
@@ -2519,6 +2525,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -2955,11 +2967,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 29,
@@ -5873,6 +5885,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         }
       ]
@@ -6465,6 +6483,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -10250,6 +10274,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -12215,6 +12245,12 @@
           },
           "durationMs": 173144,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "NGjlefWbFqY",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCDItydY2JH0ORCuZLEpXN0g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020c0c35bf7f1a0328e781e920"
         },
         {
@@ -13002,6 +13038,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -14347,12 +14389,6 @@
           },
           "durationMs": 334053,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "eC4X_y21Qkw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -14765,6 +14801,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -16184,6 +16226,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -16857,7 +16905,7 @@
         },
         {
           "position": 25,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16865,12 +16913,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 26,
@@ -17057,20 +17105,20 @@
         },
         {
           "position": 34,
-          "id": "levyra-a5a017fba38add2b0e35",
-          "title": "Zakazane uvolneni",
+          "id": "levyra-9d3af210c1d9093eda1e",
+          "title": "Zakázané uvolnění",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Den",
-            "releaseDate": "2014-05-12"
+            "name": "Hity & příběhy (Best Of 2001-2021)",
+            "releaseDate": "2021-11-26"
           },
-          "durationMs": 217426,
+          "durationMs": 217013,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
         },
         {
           "position": 35,
@@ -19180,14 +19228,6 @@
           },
           "durationMs": 213906,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "gCAMQm--CZA",
-            "audioConfidence": 100,
-            "videoId": "aQb_uxNfcGk",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCJjP9Yna08Zq5_TimlS429w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ef515a24ca4190ad477b3363"
         },
         {
@@ -20513,6 +20553,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -23099,6 +23145,12 @@
           },
           "durationMs": 161250,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "NmTq1R5wkPM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCnPcC-nHIv3sTimZcwgyFvA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0221d6e1053df28c5a33208c1a"
         },
         {
@@ -26923,12 +26975,6 @@
           },
           "durationMs": 293500,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "vZh6nx_H-ZE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
@@ -27217,6 +27263,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28308,6 +28356,12 @@
           },
           "durationMs": 184248,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "fuBMrVffb84",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0076UMUgEng8HORUw_MYHA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028baf677ee2d8dda6cc9fcbd7"
         },
         {
@@ -28514,12 +28568,6 @@
           },
           "durationMs": 283825,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "g2t7utfVD50",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCczexwGX6z87RN5qZ9sYyTA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029f4a8c5a148b760d5d86e433"
         },
         {
