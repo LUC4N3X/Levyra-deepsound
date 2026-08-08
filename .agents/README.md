@@ -18,9 +18,9 @@ docs/ARCHITECTURE.md              current architecture and ownership
 docs/ai/                          runtime, RTK, and security guidance
 .agents/rules/                    shared workspace-routing bridges
 .agents/skills/*/SKILL.md         canonical repository-native skills
+.agents/config/codex-plugins.txt  verified opt-in Codex plugin identifiers
 .claude/                          Claude Code rules, skills, agents, and hooks
 .rtk/filters.toml                 Levyra-specific RTK output filters
-codex-plugins.txt                 verified opt-in Codex plugin identifiers
 scripts/setup-ai.ps1              Windows setup and validation
 scripts/setup-ai.sh               Linux/macOS setup and validation
 ```
