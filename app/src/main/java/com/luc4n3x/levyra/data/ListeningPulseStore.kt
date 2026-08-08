@@ -8,9 +8,12 @@ import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.PersonalizedArtistCandidate
+import com.luc4n3x.levyra.domain.SmartPlaylistListen
 import com.luc4n3x.levyra.domain.rankPersonalizedArtistCandidates
+import com.luc4n3x.levyra.domain.rankMostPlayedTracks
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -98,6 +101,30 @@ class ListeningPulseStore(context: Context) {
             .getOrDefault(emptyList())
     }
 
+    suspend fun mostPlayedTracks(
+        days: Int = MOST_PLAYED_DAYS,
+        limit: Int = RECENT_LIMIT
+    ): List<Track> = withContext(Dispatchers.IO) {
+        val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.coerceAtLeast(1).toLong())
+        try {
+            rankMostPlayedTracks(
+                listens = dao.since(since).map { event ->
+                    SmartPlaylistListen(
+                        track = event.toTrack(),
+                        listenedMs = event.listenedMs,
+                        startedAt = event.startedAt
+                    )
+                },
+                limit = limit
+            )
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Most-played smart playlist load failed")
+            emptyList()
+        }
+    }
+
     suspend fun clear() = withContext(Dispatchers.IO) {
         runCatching { dao.clear() }.onFailure { Timber.w(it, "Listen events clear failed") }
         Unit
@@ -106,6 +133,7 @@ class ListeningPulseStore(context: Context) {
     private companion object {
         const val RETENTION_DAYS = 365
         const val RECENT_LIMIT = 40
+        const val MOST_PLAYED_DAYS = 30
         const val PERSONALIZED_ARTIST_DAYS = 180
         const val PERSONALIZED_ARTIST_LIMIT = 16
         const val OVERSCAN = 4

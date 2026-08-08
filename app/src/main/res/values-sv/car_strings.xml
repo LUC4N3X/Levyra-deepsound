@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Automatiska säkerhetskopior</string>
+    <string name="car_home">Hem</string>
+    <string name="car_downloads">Hämtningar</string>
+    <string name="car_favorites">Favoriter</string>
+    <string name="car_playlists">Spellistor</string>
+    <string name="car_no_content">Inget innehåll</string>
+    <string name="car_content_unavailable">Innehållet är inte tillgängligt</string>
+    <string name="car_search_tracks">Sök låtar</string>
+    <string name="car_no_results">Inga resultat</string>
+    <string name="car_connecting_player">Ansluter till spelaren</string>
+    <string name="car_now_playing">Spelas nu</string>
+    <string name="car_queue">Kö</string>
+</resources>

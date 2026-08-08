@@ -23,6 +23,11 @@ visual polish or feature breadth.
   correct.
 - DSP work remains real-time safe and does not allocate, block, scan mutable
   collections, or perform expensive transcendentals per sample.
+- Audio-mode crossfade performs a real bounded overlap while the MediaSession
+  and persistent queue remain synchronized; AutoMix respects video, repeat,
+  memory, cancellation, and user-seek boundaries.
+- Classic and templated Android Auto surfaces share one media catalog and one
+  playback token.
 
 ### Exit criteria for a phase
 
@@ -46,6 +51,9 @@ provider changes, hidden fallback latency, and duplicated playback state.
 - Preferences, backups, queues, playlists, favorites, lyrics, and history keep
   backward-compatible identity.
 - Offline content remains usable without remote decoration.
+- Smart playlists remain local projections over durable listening/library data.
+- Automatic backups are opt-in, atomic, checksum-protected, constrained by
+  WorkManager, and pruned to a bounded retention count.
 
 ### Exit criteria for a phase
 

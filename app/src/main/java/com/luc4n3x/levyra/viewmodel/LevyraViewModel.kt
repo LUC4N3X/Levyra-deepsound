@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
+import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
@@ -80,6 +81,7 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
@@ -394,6 +396,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled,
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
+            backupSettings = startupSettings.backupSettings,
             playbackDiagnostics = resolver.playbackDiagnostics()
         )
     )
@@ -418,9 +421,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var motionArtworkRequestKey: String? = null
     private var motionArtworkPrefetchJob: Job? = null
     private var sleepJob: Job? = null
-    private var crossfadeJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
-    private var crossfadeInProgress = false
     private var lyricsJob: Job? = null
     private var lyricsVersionsJob: Job? = null
     private var lyricsPrefetchJob: Job? = null
@@ -1611,7 +1612,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun onTrackCompleted() {
         val snapshot = _state.value
         val current = snapshot.currentTrack ?: return
-        if (crossfadeInProgress) return
+        if (PlaybackService.isQueueTransitionInProgress) return
         if (snapshot.isResolving || playJob?.isActive == true || current.streamUrl.isBlank()) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
@@ -2505,6 +2506,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(downloadSettings = normalized) }
     }
 
+    fun setBackupSettings(value: LevyraBackupSettings) {
+        val normalized = value.normalized()
+        preferences.setBackupSettings(normalized)
+        AutomaticBackupScheduler.schedule(getApplication<Application>().applicationContext, normalized)
+        _state.update { it.copy(backupSettings = normalized) }
+    }
+
     fun pauseDownload(taskKey: String) {
         viewModelScope.launch(Dispatchers.IO) {
             OfflineExportWorker.pause(getApplication<Application>().applicationContext, taskKey)
@@ -2587,6 +2595,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 themePreset = snapshot.themePreset,
                 interfaceSettings = snapshot.interfaceSettings,
                 downloadSettings = snapshot.downloadSettings,
+                backupSettings = snapshot.backupSettings,
                 showOnboarding = !snapshot.onboarded,
                 currentTrack = restoredTrack ?: it.currentTrack,
                 positionMs = if (restoredTrack != null) pendingSeekMs else it.positionMs,
@@ -4550,9 +4559,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playJob?.cancel()
         cancelResolutionSideJobs()
         cancelBackgroundWarmups(cancelList = true)
-        crossfadeJob?.cancel()
-        crossfadeInProgress = false
-        player.setVolume(1f)
         loopCurrentQueueOnCompletion = session.loopOnCompletion
 
         val restoredQueue = queueEngine.endTransientPlayback(session.queue)
@@ -4609,15 +4615,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateWidget()
     }
 
-    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {
+    private fun startResolve(track: Track, autoRetryWhenOffline: Boolean = false, startPaused: Boolean = false) {
         streamTransitionId++
         cancelResolutionSideJobs()
         val engagementVideoId = youtubeEngagementVideoId(track)
-        if (!preserveCrossfade) {
-            crossfadeJob?.cancel()
-            crossfadeInProgress = false
-            player.setVolume(1f)
-        }
         val requestId = ++playRequestId
         val request = PlaybackResolveRequest(requestId, startPaused)
         playJob?.cancel()
@@ -6243,7 +6244,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
-        crossfadeJob?.cancel()
         lyricsJob?.cancel()
         lyricsPrefetchJob?.cancel()
         sponsorJob?.cancel()
@@ -6253,8 +6253,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sleepJob = null
         sponsorSegments = emptyList()
         cancelBackgroundWarmups(cancelList = true)
-        crossfadeInProgress = false
-        player.setVolume(1f)
         pendingSeekMs = 0L
         queueIndex = -1
         flushListenSession()
@@ -6443,7 +6441,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     val segment = sponsorSegments.firstOrNull { pos >= it.startMs && pos < it.endMs - 250 }
                     if (segment != null) player.seekTo(segment.endMs)
                 }
-                maybeStartCrossfade(snapshot, current, player.positionMs, duration)
 
                 val nowElapsed = android.os.SystemClock.elapsedRealtime()
                 if (listenSessionTrack != null && player.isPlaying && listenTickElapsedMs > 0L) {
@@ -6492,50 +6489,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 delay(if (snapshot.showLyrics) 50L else 500L)
             }
-        }
-    }
-
-
-    private fun maybeStartCrossfade(snapshot: LevyraUiState, current: Track?, position: Long, duration: Long) {
-        val settings = snapshot.audioSettings
-        if (!settings.gaplessEnabled || settings.crossfadeSeconds <= 0 || current == null || crossfadeInProgress || !player.isPlaying) return
-        if (duration <= 30_000L) return
-        val windowMs = settings.crossfadeSeconds * 1000L
-        if (position < duration - windowMs) return
-        val nextTrack = nextTrackForCrossfade(snapshot) ?: return
-        crossfadeInProgress = true
-        crossfadeJob?.cancel()
-        crossfadeJob = viewModelScope.launch {
-            val fadeOutMs = if (settings.djSoftMode) maxOf(windowMs, 3_500L) else windowMs
-            fadeVolume(from = 1f, to = 0.08f, durationMs = fadeOutMs.coerceAtLeast(800L))
-            startResolve(nextTrack, preserveCrossfade = true)
-            val targetId = youtubePlayableTrack(nextTrack)?.id ?: nextTrack.id
-            var waited = 0L
-            while (isActive && waited < 8_000L) {
-                val active = _state.value.currentTrack
-                val activeId = active?.id.orEmpty()
-                if ((activeId == targetId || activeId == nextTrack.id) && active?.streamUrl?.isNotBlank() == true && player.isPlaying) break
-                delay(120L)
-                waited += 120L
-            }
-            fadeVolume(from = 0.08f, to = 1f, durationMs = if (settings.djSoftMode) 1_800L else 900L)
-            player.setVolume(1f)
-            crossfadeInProgress = false
-        }
-    }
-
-    private fun nextTrackForCrossfade(snapshot: LevyraUiState): Track? {
-        if (snapshot.repeatMode == RepeatMode.One) return null
-        return queueEngine.next(respectRepeatOne = false)
-    }
-
-    private suspend fun fadeVolume(from: Float, to: Float, durationMs: Long) {
-        val steps = 12
-        val safeDuration = durationMs.coerceAtLeast(120L)
-        repeat(steps + 1) { step ->
-            val t = step.toFloat() / steps.toFloat()
-            player.setVolume(from + ((to - from) * t))
-            delay(safeDuration / steps)
         }
     }
 
@@ -6753,10 +6706,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (waitMs > 0L) delay(waitMs)
             val events = listeningPulseStore.eventsWindow()
             val recent = listeningPulseStore.recentTracks()
+            val mostPlayed = listeningPulseStore.mostPlayedTracks()
             val pulse = listeningPulseEngine.build(events)
             lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
             _state.update { current ->
-                val updated = current.copy(listeningPulse = pulse, recentListens = recent)
+                val updated = current.copy(
+                    listeningPulse = pulse,
+                    recentListens = recent,
+                    mostPlayedTracks = mostPlayed
+                )
                 val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
                 val rankedAlbums = rankAlbumRecommendations(
                     remote = current.homeAlbums,
@@ -6903,7 +6861,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         artistLoreJob?.cancel()
         radarJob?.cancel()
         radioJob?.cancel()
-        crossfadeJob?.cancel()
         queueEngine.updatePosition(player.positionMs)
         player.release()
         searchJob?.cancel()

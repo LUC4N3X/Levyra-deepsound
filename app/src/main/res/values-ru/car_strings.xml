@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Автоматические резервные копии</string>
+    <string name="car_home">Главная</string>
+    <string name="car_downloads">Загрузки</string>
+    <string name="car_favorites">Избранное</string>
+    <string name="car_playlists">Плейлисты</string>
+    <string name="car_no_content">Нет контента</string>
+    <string name="car_content_unavailable">Контент недоступен</string>
+    <string name="car_search_tracks">Поиск треков</string>
+    <string name="car_no_results">Нет результатов</string>
+    <string name="car_connecting_player">Подключение к плееру</string>
+    <string name="car_now_playing">Сейчас играет</string>
+    <string name="car_queue">Очередь</string>
+</resources>

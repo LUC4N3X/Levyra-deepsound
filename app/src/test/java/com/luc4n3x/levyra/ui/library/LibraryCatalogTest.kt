@@ -67,7 +67,8 @@ class LibraryCatalogTest {
             playlists = listOf(playlist),
             downloads = listOf(download),
             recentListens = listOf(song, song),
-            followedArtists = emptyList()
+            followedArtists = emptyList(),
+            mostPlayedTracks = listOf(song)
         )
 
         assertEquals(1, catalog.tracks.size)

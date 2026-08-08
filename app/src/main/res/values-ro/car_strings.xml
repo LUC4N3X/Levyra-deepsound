@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Copii de rezervă automate</string>
+    <string name="car_home">Acasă</string>
+    <string name="car_downloads">Descărcări</string>
+    <string name="car_favorites">Favorite</string>
+    <string name="car_playlists">Liste de redare</string>
+    <string name="car_no_content">Niciun conținut</string>
+    <string name="car_content_unavailable">Conținut indisponibil</string>
+    <string name="car_search_tracks">Caută melodii</string>
+    <string name="car_no_results">Niciun rezultat</string>
+    <string name="car_connecting_player">Se conectează la player</string>
+    <string name="car_now_playing">Se redă acum</string>
+    <string name="car_queue">Coadă</string>
+</resources>

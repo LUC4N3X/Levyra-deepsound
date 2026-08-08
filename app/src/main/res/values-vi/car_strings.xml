@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Sao lưu tự động</string>
+    <string name="car_home">Trang chủ</string>
+    <string name="car_downloads">Tải xuống</string>
+    <string name="car_favorites">Yêu thích</string>
+    <string name="car_playlists">Danh sách phát</string>
+    <string name="car_no_content">Không có nội dung</string>
+    <string name="car_content_unavailable">Nội dung không khả dụng</string>
+    <string name="car_search_tracks">Tìm bài hát</string>
+    <string name="car_no_results">Không có kết quả</string>
+    <string name="car_connecting_player">Đang kết nối với trình phát</string>
+    <string name="car_now_playing">Đang phát</string>
+    <string name="car_queue">Hàng đợi</string>
+</resources>
