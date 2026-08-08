@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T21:02:06Z",
+  "generatedAt": "2026-08-08T21:09:01Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1413,14 +1413,6 @@
           },
           "durationMs": 217240,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "A0ttKAXj1xU",
-            "audioConfidence": 100,
-            "videoId": "Dg47eNL_Usw",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028606848da949bbaddf447d87"
         },
         {
@@ -1463,6 +1455,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -2371,7 +2369,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -2379,8 +2377,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2390,7 +2388,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 3,
@@ -2852,6 +2850,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -3263,7 +3267,7 @@
         },
         {
           "position": 42,
-          "id": "levyra-07bfa81c9a33aafde0f1",
+          "id": "levyra-4c886bf7b578fe1d1532",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3271,8 +3275,8 @@
             }
           ],
           "album": {
-            "name": "Nice To Each Other",
-            "releaseDate": "2025-05-30"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3282,7 +3286,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 43,
@@ -4430,6 +4434,14 @@
           },
           "durationMs": 198153,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "CcqmAiO8ZHw",
+            "audioConfidence": 100,
+            "videoId": "qy6PB3LQizY",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCtfkGa4ie0BivwCPWCHalOw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027e3722344b0226b81ae8b50c"
         },
         {
@@ -5496,6 +5508,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -6341,6 +6359,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -7755,6 +7779,12 @@
           },
           "durationMs": 141692,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "Xb6zpm3U1NU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -8557,12 +8587,6 @@
           },
           "durationMs": 147200,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "8QlDHUi2Mw4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5TYeA9Hw3L5VlZYtMt3pqg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0286626ffe26c2d2c68e8956b7"
         },
         {
@@ -16897,7 +16921,7 @@
         },
         {
           "position": 25,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16905,12 +16929,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 26,
@@ -17127,6 +17151,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -17863,6 +17893,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -20270,6 +20306,12 @@
           },
           "durationMs": 97960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "LrVwuWNwZ_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -22197,7 +22239,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-08-31"
+            "releaseDate": "2019-09-30"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22207,7 +22249,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
         },
         {
           "position": 25,
@@ -23987,7 +24029,7 @@
         },
         {
           "position": 49,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24001,12 +24043,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         },
         {
           "position": 50,
@@ -25286,12 +25328,6 @@
           },
           "durationMs": 174866,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "5008LmjAq-g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCZzzKGVP9wqbVOtjK0nCSFA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e2436033be92c06e4afee32"
         },
         {
@@ -26357,29 +26393,26 @@
         },
         {
           "position": 48,
-          "id": "levyra-a72a886ba586ee413e49",
-          "title": "24H",
+          "id": "levyra-50adcb205c108ed5f4ed",
+          "title": "24h",
           "artists": [
             {
               "name": "Lyly"
-            },
-            {
-              "name": "Magazine"
             }
           ],
           "album": {
-            "name": "24H",
-            "releaseDate": "2020-04-25"
+            "name": "24h",
+            "releaseDate": "2020-10-28"
           },
-          "durationMs": 256905,
-          "explicit": true,
+          "durationMs": 257000,
+          "explicit": false,
           "youtubeMusic": {
             "audioVideoId": "w8DEtCin4uI",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCtc2b3gvR1OjvaOScz3QM0Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa10ce68802568a9f53ecb8a"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9a33a39e11f920fabf6a5b0"
         },
         {
           "position": 49,
@@ -26824,12 +26857,6 @@
           },
           "durationMs": 206416,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "44DrBGXCm9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCdCskNuCMMAU7FqK9pW7wiQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02afbae55931618ecd661b6db0"
         },
         {
