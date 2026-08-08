@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T08:18:55Z",
+  "generatedAt": "2026-08-08T08:26:44Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1043,6 +1043,12 @@
           },
           "durationMs": 181384,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ko1x5v-zaNU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3t2VUrtQbfgr_s8sd0qSqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02158cbe80b9b9573b46d2b50f"
         },
         {
@@ -6951,6 +6957,12 @@
           },
           "durationMs": 181384,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ko1x5v-zaNU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3t2VUrtQbfgr_s8sd0qSqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02158cbe80b9b9573b46d2b50f"
         },
         {
@@ -9656,6 +9668,12 @@
           },
           "durationMs": 181384,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ko1x5v-zaNU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3t2VUrtQbfgr_s8sd0qSqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02158cbe80b9b9573b46d2b50f"
         },
         {
@@ -10359,11 +10377,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 37,
@@ -18405,7 +18423,7 @@
           "durationMs": 216000,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "q6xUpqd0sm8",
+            "audioVideoId": "ROOll1FaeBk",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCraa5kIpeNY6mhufQO_qkWg"
@@ -24088,7 +24106,7 @@
         },
         {
           "position": 48,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -24102,12 +24120,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         },
         {
           "position": 49,
@@ -27371,8 +27389,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
