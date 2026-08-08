@@ -12,13 +12,69 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  fix-pr319-escaping:
+    name: Repair PR 319 importer escaping
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 319 && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Repair generated Kotlin escaping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt')
+          source = path.read_text(encoding='utf-8')
+
+          if source.count('\x02') != 1:
+              raise SystemExit(f'expected exactly one control-character backreference, found {source.count(chr(2))}')
+          source = source.replace('\x02', r'\2', 1)
+
+          malformed_quote = '.replace("&quot;", """)'
+          fixed_quote = '.replace("&quot;", "\\\"")'
+          if source.count(malformed_quote) != 1:
+              raise SystemExit(f'expected exactly one malformed &quot; replacement, found {source.count(malformed_quote)}')
+          source = source.replace(malformed_quote, fixed_quote, 1)
+          path.write_text(source, encoding='utf-8')
+
+          bad = []
+          for kotlin in Path('app/src').rglob('*.kt'):
+              text = kotlin.read_text(encoding='utf-8')
+              controls = sorted({ord(ch) for ch in text if ord(ch) < 32 and ch not in '\n\r\t'})
+              if controls:
+                  bad.append((str(kotlin), controls))
+          if bad:
+              raise SystemExit(f'unexpected control characters remain: {bad}')
+          PY
+
+          grep -F '(["'"'])(.*?)\2' app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt
+          grep -F '.replace("&quot;", "\"")' app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt
+
+      - name: Commit source-only fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt
+          git diff --cached --check
+          git commit -m "fix(import): repair Spotify parser escaping"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
   android:
     name: Lint and Release Compile
     runs-on: ubuntu-latest
