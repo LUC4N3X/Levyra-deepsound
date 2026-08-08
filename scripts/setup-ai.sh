@@ -13,7 +13,7 @@ Usage: ./scripts/setup-ai.sh [options]
 Options:
   --dry-run       Print planned actions without changing the machine
   --install-rtk   Install RTK through Cargo when it is missing
-  --plugins       Install plugins listed in codex-plugins.txt
+  --plugins       Install plugins listed in .agents/config/codex-plugins.txt
   --skip-hooks    Do not initialize RTK instructions/hooks/integrations
   -h, --help      Show this help
 EOF
@@ -33,7 +33,7 @@ done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-PLUGIN_MANIFEST="$REPO_ROOT/codex-plugins.txt"
+PLUGIN_MANIFEST="$REPO_ROOT/.agents/config/codex-plugins.txt"
 
 has_command() {
   command -v "$1" >/dev/null 2>&1
