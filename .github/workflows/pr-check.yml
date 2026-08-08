@@ -59,10 +59,13 @@ jobs:
                   bad.append((str(kotlin), controls))
           if bad:
               raise SystemExit(f'unexpected control characters remain: {bad}')
-          PY
 
-          grep -F '(["'"'])(.*?)\2' app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt
-          grep -F '.replace("&quot;", "\"")' app/src/main/java/com/luc4n3x/levyra/data/UniversalPlaylistImporter.kt
+          repaired = path.read_text(encoding='utf-8')
+          if r'(["\''])(.*?)\2' not in repaired:
+              raise SystemExit('quoted-attribute backreference was not restored')
+          if '.replace("&quot;", "\\\"")' not in repaired:
+              raise SystemExit('HTML quote replacement was not restored')
+          PY
 
       - name: Commit source-only fix
         shell: bash
