@@ -14,6 +14,8 @@ import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraBackupFrequency
+import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
@@ -22,7 +24,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
+import java.io.OutputStream
+import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -35,6 +40,34 @@ class LevyraBackupManager(private val context: Context) {
     private val followedArtistsStore = FollowedArtistsStore(appContext)
 
     suspend fun exportTo(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
+        val output = appContext.contentResolver.openOutputStream(uri, "w") ?: throw IOException("Impossibile aprire il file di backup")
+        val checksum = output.use { writeBackup(it) }
+        LevyraBackupResult("Backup completato", checksum)
+    }
+
+    suspend fun exportAutomatic(retentionCount: Int): LevyraBackupResult = withContext(Dispatchers.IO) {
+        val directory = File(appContext.filesDir, AUTOMATIC_BACKUP_DIRECTORY)
+        if ((!directory.exists() && !directory.mkdirs()) || !directory.isDirectory) {
+            throw IOException("Impossibile creare la cartella dei backup automatici")
+        }
+        val canonicalDirectory = directory.canonicalFile
+        val timestamp = System.currentTimeMillis()
+        val target = File(canonicalDirectory, "$AUTOMATIC_BACKUP_PREFIX$timestamp.zip")
+        val temporary = File(canonicalDirectory, ".$AUTOMATIC_BACKUP_PREFIX$timestamp.tmp")
+        checkBackupChild(canonicalDirectory, target)
+        checkBackupChild(canonicalDirectory, temporary)
+        val checksum = try {
+            temporary.outputStream().buffered().use { writeBackup(it) }
+            if (!temporary.renameTo(target)) throw IOException("Impossibile finalizzare il backup automatico")
+            checksumOf(target)
+        } finally {
+            if (temporary.exists()) temporary.delete()
+        }
+        pruneAutomaticBackups(canonicalDirectory, retentionCount.coerceIn(1, MAX_AUTOMATIC_BACKUPS))
+        LevyraBackupResult(target.name, checksum)
+    }
+
+    private suspend fun writeBackup(output: OutputStream): String {
         val payload = createPayload().toString().toByteArray(Charsets.UTF_8)
         val checksum = sha256(payload)
         val manifest = JSONObject()
@@ -44,18 +77,15 @@ class LevyraBackupManager(private val context: Context) {
             .put("payloadSha256", checksum)
             .toString()
             .toByteArray(Charsets.UTF_8)
-        val output = appContext.contentResolver.openOutputStream(uri, "w") ?: throw IOException("Impossibile aprire il file di backup")
-        output.use { stream ->
-            ZipOutputStream(stream.buffered()).use { zip ->
-                zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
-                zip.write(manifest)
-                zip.closeEntry()
-                zip.putNextEntry(ZipEntry(PAYLOAD_ENTRY))
-                zip.write(payload)
-                zip.closeEntry()
-            }
+        ZipOutputStream(output.buffered()).use { zip ->
+            zip.putNextEntry(ZipEntry(MANIFEST_ENTRY))
+            zip.write(manifest)
+            zip.closeEntry()
+            zip.putNextEntry(ZipEntry(PAYLOAD_ENTRY))
+            zip.write(payload)
+            zip.closeEntry()
         }
-        LevyraBackupResult("Backup completato", checksum)
+        return checksum
     }
 
     suspend fun restoreFrom(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
@@ -163,6 +193,7 @@ class LevyraBackupManager(private val context: Context) {
             database.listenEventsDao().replaceAll(payload.history)
             restoreQueue(payload.queue)
         }
+        AutomaticBackupScheduler.schedule(appContext, payload.settings.backupSettings)
     }
 
     private fun settingsToJson(snapshot: LevyraPreferencesSnapshot): JSONObject {
@@ -182,6 +213,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("audioSettings", audioSettingsToJson(snapshot.audioSettings))
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
             .put("downloadSettings", downloadSettingsToJson(snapshot.downloadSettings))
+            .put("backupSettings", backupSettingsToJson(snapshot.backupSettings))
             .put("recentSearches", JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } })
             .put("personalOrbitTracks", JSONArray().apply { snapshot.personalOrbitTracks.forEach { put(TrackJson.toJson(it)) } })
             .put("lastTrack", snapshot.lastTrack?.let(TrackJson::toJson) ?: JSONObject.NULL)
@@ -209,7 +241,8 @@ class LevyraBackupManager(private val context: Context) {
             themePreset = json.optString("themePreset"),
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings")),
-            downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings"))
+            downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
+            backupSettings = parseBackupSettings(json.optJSONObject("backupSettings"))
         )
     }
 
@@ -327,6 +360,22 @@ class LevyraBackupManager(private val context: Context) {
         ).normalized()
     }
 
+    private fun backupSettingsToJson(value: LevyraBackupSettings): JSONObject = JSONObject()
+        .put("enabled", value.enabled)
+        .put("frequency", value.frequency.name)
+        .put("retentionCount", value.retentionCount)
+        .put("chargingOnly", value.chargingOnly)
+
+    private fun parseBackupSettings(json: JSONObject?): LevyraBackupSettings {
+        if (json == null) return LevyraBackupSettings()
+        return LevyraBackupSettings(
+            enabled = json.optBoolean("enabled"),
+            frequency = LevyraBackupFrequency.from(json.optString("frequency")),
+            retentionCount = json.optInt("retentionCount", 5),
+            chargingOnly = json.optBoolean("chargingOnly", true)
+        ).normalized()
+    }
+
     private fun followedArtistsToJson(values: List<FollowedArtist>): JSONArray = JSONArray().apply {
         values.forEach { put(JSONObject().put("browseId", it.browseId).put("name", it.name).put("thumbnailUrl", it.thumbnailUrl).put("followedAt", it.followedAt)) }
     }
@@ -423,6 +472,36 @@ class LevyraBackupManager(private val context: Context) {
 
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
+    private fun checksumOf(file: File): String = file.inputStream().buffered().use { input ->
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            digest.update(buffer, 0, count)
+        }
+        digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private fun pruneAutomaticBackups(directory: File, retentionCount: Int) {
+        val candidates = directory.listFiles().orEmpty().filter { file ->
+            file.name.startsWith(AUTOMATIC_BACKUP_PREFIX) &&
+                file.name.endsWith(".zip") &&
+                file.canonicalFile.parentFile == directory &&
+                Files.isRegularFile(file.toPath()) &&
+                !Files.isSymbolicLink(file.toPath())
+        }
+        automaticBackupFilesToDelete(candidates.map { it.name }, retentionCount).forEach { name ->
+            val target = File(directory, name)
+            checkBackupChild(directory, target)
+            if (target.exists() && !target.delete()) throw IOException("Impossibile applicare la conservazione dei backup")
+        }
+    }
+
+    private fun checkBackupChild(directory: File, file: File) {
+        if (file.canonicalFile.parentFile != directory.canonicalFile) throw IOException("Percorso backup non valido")
+    }
+
     private data class RestorePayload(
         val settings: LevyraPreferencesSnapshot,
         val favoriteTracks: List<com.luc4n3x.levyra.domain.Track>,
@@ -439,8 +518,16 @@ class LevyraBackupManager(private val context: Context) {
         const val MAX_ZIP_ENTRIES = 32
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
         const val MAX_TOTAL_BYTES = 65L * 1024L * 1024L
+        const val MAX_AUTOMATIC_BACKUPS = 12
+        const val AUTOMATIC_BACKUP_DIRECTORY = "backups"
+        const val AUTOMATIC_BACKUP_PREFIX = "levyra-auto-backup-"
         val REQUIRED_ENTRIES = setOf(MANIFEST_ENTRY, PAYLOAD_ENTRY)
     }
 }
+
+internal fun automaticBackupFilesToDelete(fileNames: List<String>, retentionCount: Int): List<String> = fileNames
+    .filter { it.startsWith("levyra-auto-backup-") && it.endsWith(".zip") }
+    .sortedDescending()
+    .drop(retentionCount.coerceIn(1, 12))
 
 data class LevyraBackupResult(val message: String, val checksum: String)
