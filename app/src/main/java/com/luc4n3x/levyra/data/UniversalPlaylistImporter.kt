@@ -661,7 +661,7 @@ class UniversalPlaylistImporter(
                     response.close()
                     return
                 }
-                continuation.resume(response)
+                continuation.resume(response) { _, value, _ -> value.close() }
             }
         })
     }

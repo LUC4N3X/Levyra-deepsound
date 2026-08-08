@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.SponsorSegment
 import java.io.ByteArrayInputStream
+import kotlinx.coroutines.CancellationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
@@ -36,6 +37,20 @@ class SponsorBlockRepositoryTest {
         assertTrue(repositorySegments(repository, "video").isEmpty())
         assertTrue(repositorySegments(repository, "video").isEmpty())
         assertEquals(2, fetcher.calls)
+    }
+
+    @Test
+    fun cancellationFromFetcherPropagates() {
+        val repository = SponsorBlockRepository(
+            SponsorBlockHttpFetcher { throw CancellationException("cancelled") }
+        ) { 1_000L }
+
+        try {
+            repositorySegments(repository, "video")
+            throw AssertionError("Expected CancellationException")
+        } catch (error: CancellationException) {
+            assertEquals("cancelled", error.message)
+        }
     }
 
     @Test

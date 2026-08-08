@@ -3,11 +3,13 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.SponsorSegment
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
+import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -38,7 +40,13 @@ class SponsorBlockRepository internal constructor(
         val cats = URLEncoder.encode(catsJson, "UTF-8")
         val url = "https://sponsor.ajay.app/api/skipSegments?videoID=$videoId&categories=$cats"
 
-        val response = runCatching { fetcher.fetch(url) }.getOrNull() ?: return@withContext emptyList()
+        val response = try {
+            fetcher.fetch(url)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: IOException) {
+            return@withContext emptyList()
+        }
         response.use {
             when {
                 response.code == HttpURLConnection.HTTP_NOT_FOUND -> {
@@ -139,6 +147,7 @@ private class UrlConnectionSponsorBlockHttpFetcher : SponsorBlockHttpFetcher {
             requestMethod = "GET"
             connectTimeout = 9000
             readTimeout = 11000
+            setInstanceFollowRedirects(false)
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "LEVYRA Music Player (Android)")
         }
