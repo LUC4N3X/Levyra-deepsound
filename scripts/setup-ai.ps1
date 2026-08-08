@@ -10,7 +10,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$pluginManifest = Join-Path $repoRoot 'codex-plugins.txt'
+$pluginManifest = Join-Path $repoRoot '.agents/config/codex-plugins.txt'
 
 function Test-Command {
     param([Parameter(Mandatory)][string] $Name)
