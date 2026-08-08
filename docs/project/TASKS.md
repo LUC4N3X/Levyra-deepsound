@@ -50,8 +50,6 @@
 
 ## Work items
 
-- [x] Inspect SimpMusic Car App, automatic backup, and crossfade architecture.
-- [x] Credit the GPL-3.0 architectural reference in third-party notices.
 - [x] Implement and test deterministic local most-played ranking.
 - [x] Implement DataStore backup settings and backward-compatible serialization.
 - [x] Implement WorkManager scheduling, atomic archive creation, and retention.

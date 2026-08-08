@@ -21,7 +21,6 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 | Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
 | PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
 | MusicApp-KMP | https://github.com/SEAbdulbasit/MusicApp-KMP | UI and modular styling inspiration only | No ownership claim is made over the original project |
-| SimpMusic | https://github.com/maxrave-dev/SimpMusic | Architectural reference for Car App templated media and dual-player crossfade | GPL-3.0; Levyra-specific implementations retain upstream attribution |
 
 
 ## Local YouTube Decoder Attribution
@@ -37,19 +36,6 @@ Upstream license: GNU General Public License v3.0
 Two Levyra behaviors are adapted from the Metrolist project. The consecutive-failure and half-open backoff window that gates rebuilding the local decoder's WebView runtime follows the policy of Metrolist's `RendererRecoveryPolicy`; the surrounding renderer recovery described in the section above remains the zemer-cipher-derived integration. The TTML lyrics parser's global `lyricOffset` handling, line-timing recovery from the earliest child `span`, and namespace-prefix-agnostic attribute lookup follow the behavior of Metrolist's BetterLyrics `TTMLParser`. Both were reimplemented against Levyra's existing decoder and lyric models rather than vendored as separate stacks.
 
 Upstream project: https://github.com/MetrolistGroup/Metrolist
-
-Upstream license: GNU General Public License v3.0
-
-## SimpMusic Attribution
-
-Levyra's Android Auto templated surface and service-owned dual-player
-crossfade were implemented against Levyra's existing Media3 session, queue,
-resolver, DSP, and persistence architecture after studying SimpMusic's Car App
-and crossfade organization. The code in this repository is Levyra-specific and
-does not vendor SimpMusic modules, dependency injection, domain models, or
-playback handlers.
-
-Upstream project: https://github.com/maxrave-dev/SimpMusic
 
 Upstream license: GNU General Public License v3.0
 
