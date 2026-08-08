@@ -1,0 +1,68 @@
+package com.luc4n3x.levyra.player
+
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.RepeatMode
+import com.luc4n3x.levyra.domain.Track
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AutoMixPlannerTest {
+    @Test
+    fun crossfadeUsesEqualPowerCurve() {
+        val start = equalPowerCrossfade(0f)
+        val middle = equalPowerCrossfade(.5f)
+        val end = equalPowerCrossfade(1f)
+
+        assertEquals(1f, start.outgoing, .001f)
+        assertEquals(0f, start.incoming, .001f)
+        assertTrue(middle.outgoing in .70f..72f)
+        assertTrue(middle.incoming in .70f..72f)
+        assertEquals(0f, end.outgoing, .001f)
+        assertEquals(1f, end.incoming, .001f)
+    }
+
+    @Test
+    fun nativeVideoRepeatOneAndLowRamNeverStartSecondPlayer() {
+        val settings = LevyraAudioSettings(crossfadeSeconds = 6)
+        assertNull(planAutoMix(track(), track("next"), settings, RepeatMode.Off, videoMode = true, lowRam = false))
+        assertNull(planAutoMix(track(), track("next"), settings, RepeatMode.One, videoMode = false, lowRam = false))
+        assertNull(planAutoMix(track(), track("next"), settings, RepeatMode.Off, videoMode = false, lowRam = true))
+    }
+
+    @Test
+    fun autoMixAdaptsDurationWithoutExceedingBounds() {
+        val current = track().copy(energy = 70, vocal = 30)
+        val next = track("next").copy(energy = 75, vocal = 30)
+        val plan = planAutoMix(
+            current,
+            next,
+            LevyraAudioSettings(crossfadeSeconds = 6, djSoftMode = true),
+            RepeatMode.Off,
+            videoMode = false,
+            lowRam = false
+        )
+        assertEquals(7_500L, plan?.transitionMs)
+    }
+
+    private fun track(id: String = "current") = Track(
+        id = id,
+        title = id,
+        artist = "Artist",
+        album = "Album",
+        durationMs = 180_000L,
+        streamUrl = "",
+        videoUrl = "",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "test",
+        moodTags = emptySet(),
+        energy = 50,
+        vocal = 50,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0
+    )
+}

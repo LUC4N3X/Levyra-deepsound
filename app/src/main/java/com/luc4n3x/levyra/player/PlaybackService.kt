@@ -18,6 +18,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
@@ -52,11 +53,14 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
+import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -65,6 +69,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -88,6 +93,11 @@ class PlaybackService : MediaLibraryService() {
     private var recoveryResetJob: Job? = null
     private var stickyRestoreJob: Job? = null
     private var playbackWatchdogJob: Job? = null
+    private var queueTransitionJob: Job? = null
+    private var queueTransitionMonitorJob: Job? = null
+    private var transitionPlayer: ExoPlayer? = null
+    private var currentAudioSettings = LevyraAudioSettings()
+    private var currentAudioNormalization = false
     private lateinit var playbackWakeLock: PowerManager.WakeLock
     private lateinit var playbackStateStore: SharedPreferences
     private var serviceRecoveryAttempts = 0
@@ -117,6 +127,8 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_VIDEO_MODE = "levyra.videoMode"
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
+        const val ACTION_GET_PLATFORM_TOKEN = "levyra.media.GET_PLATFORM_TOKEN"
+        const val KEY_PLATFORM_TOKEN = "levyra.media.PLATFORM_TOKEN"
         private const val ACTION_QUEUE_PREVIOUS = "levyra.queue.previous"
         private const val ACTION_QUEUE_NEXT = "levyra.queue.next"
         private const val PLAYBACK_STATE_PREFS = "levyra.playback.service.state"
@@ -126,6 +138,12 @@ class PlaybackService : MediaLibraryService() {
         private const val STICKY_RESTORE_MAX_AGE_MS = 12L * 60L * 60L * 1_000L
         private const val WATCHDOG_INTERVAL_MS = 5_000L
         private const val WATCHDOG_STALL_TIMEOUT_MS = 15_000L
+        private const val MAX_TRANSITION_LOOKAHEAD_MS = 20_000L
+        private const val TRANSITION_PREPARE_TIMEOUT_MS = 8_000L
+        private const val PRIMARY_HANDOFF_TIMEOUT_MS = 5_000L
+        private const val PRIMARY_HANDOFF_FADE_MS = 240L
+        private const val TRANSITION_STEP_MS = 50L
+        private const val SEEK_TOLERANCE_MS = 1_500L
         private val ONLINE_RECOVERY_DELAYS_MS = longArrayOf(500L, 2_000L, 5_000L, 10_000L)
         private val LOCAL_RECOVERY_DELAYS_MS = longArrayOf(250L, 750L, 1_500L, 3_000L, 5_000L, 10_000L)
 
@@ -167,6 +185,10 @@ class PlaybackService : MediaLibraryService() {
 
         fun consumePreparedQueueNext(trackId: String) = Unit
 
+        @Volatile
+        var isQueueTransitionInProgress: Boolean = false
+            private set
+
         val normalizationProcessor = NormalizationAudioProcessor()
         val equalizerProcessor = LevyraEqualizerAudioProcessor()
         val spatialAudioProcessor = StereoSpatialAudioProcessor()
@@ -187,6 +209,7 @@ class PlaybackService : MediaLibraryService() {
             limiterProcessor.enabled = normalized.limiterEnabled &&
                 (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
                     normalized.replayGainEnabled || audioNormalization)
+            activeService?.updateQueueTransitionSettings(normalized, audioNormalization)
         }
     }
 
@@ -195,6 +218,7 @@ class PlaybackService : MediaLibraryService() {
     private val queueNextCommand by lazy { SessionCommand(ACTION_QUEUE_NEXT, Bundle.EMPTY) }
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
+    private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
 
     override fun onCreate() {
         super.onCreate()
@@ -283,6 +307,8 @@ class PlaybackService : MediaLibraryService() {
             .build()
         val prefs = LevyraPreferences(this)
         val snapshot = prefs.snapshot()
+        currentAudioSettings = snapshot.audioSettings.normalized()
+        currentAudioNormalization = snapshot.audioNormalization
         player.skipSilenceEnabled = snapshot.skipSilence
         normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
         applyPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
@@ -309,7 +335,10 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) scheduleRecoveryReset(player)
-                if (playbackState == Player.STATE_ENDED && LevyraWidgetBridge.onNext == null) {
+                if (playbackState == Player.STATE_ENDED &&
+                    LevyraWidgetBridge.onNext == null &&
+                    !isQueueTransitionInProgress
+                ) {
                     skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
                 }
             }
@@ -369,6 +398,7 @@ class PlaybackService : MediaLibraryService() {
                     .add(queuePreviousCommand)
                     .add(queueNextCommand)
                     .add(queueLikeCommand)
+                    .add(platformTokenCommand)
                     .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(sessionCommands)
@@ -418,6 +448,12 @@ class PlaybackService : MediaLibraryService() {
                 args: Bundle
             ): ListenableFuture<SessionResult> {
                 return when (customCommand.customAction) {
+                    ACTION_GET_PLATFORM_TOKEN -> {
+                        val extras = Bundle().apply {
+                            putParcelable(KEY_PLATFORM_TOKEN, session.platformToken)
+                        }
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, extras))
+                    }
                     ACTION_QUEUE_PREVIOUS -> {
                         skipQueue(forward = false, respectRepeatOne = false)
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -546,6 +582,7 @@ class PlaybackService : MediaLibraryService() {
         val notificationProvider = DefaultMediaNotificationProvider(this)
         setMediaNotificationProvider(notificationProvider)
         activeService = this
+        startQueueTransitionMonitor(player)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -555,6 +592,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun skipQueue(forward: Boolean, respectRepeatOne: Boolean, autoAdvance: Boolean = false) {
+        cancelQueueTransition()
         queueSkipJob?.cancel()
         servicePrefetchJob?.cancel()
         queueSkipJob = serviceScope.launch {
@@ -712,10 +750,228 @@ class PlaybackService : MediaLibraryService() {
         return resolver.resolve(candidate)
     }
 
+    private fun updateQueueTransitionSettings(settings: LevyraAudioSettings, audioNormalization: Boolean) {
+        currentAudioSettings = settings.normalized()
+        currentAudioNormalization = audioNormalization
+        if (currentAudioSettings.crossfadeSeconds <= 0 || !currentAudioSettings.gaplessEnabled) {
+            cancelQueueTransition()
+        }
+    }
+
+    private fun startQueueTransitionMonitor(player: ExoPlayer) {
+        queueTransitionMonitorJob?.cancel()
+        queueTransitionMonitorJob = serviceScope.launch {
+            while (isActive) {
+                maybePrepareQueueTransition(player)
+                delay(250L)
+            }
+        }
+    }
+
+    private fun maybePrepareQueueTransition(player: ExoPlayer) {
+        if (queueTransitionJob?.isActive == true || !player.isPlaying || player.playbackState != Player.STATE_READY) return
+        val duration = player.duration.takeIf { it > 0L && it != C.TIME_UNSET } ?: return
+        val remaining = duration - player.currentPosition
+        if (remaining !in 1L..MAX_TRANSITION_LOOKAHEAD_MS) return
+        val snapshot = queueEngine.state.value
+        val current = snapshot.currentTrack ?: return
+        val next = queueEngine.upcoming(1).firstOrNull()
+        val videoMode = player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
+        val plan = planAutoMix(
+            current = current.copy(durationMs = duration),
+            next = next,
+            settings = currentAudioSettings,
+            repeatMode = snapshot.repeatMode,
+            videoMode = videoMode,
+            lowRam = adaptivePlaybackPolicy.current(videoMode = false).lowRam
+        ) ?: return
+        if (remaining > plan.preloadLeadMs) return
+        queueTransitionJob = serviceScope.launch {
+            runQueueTransition(player, snapshot, current, next ?: return@launch, plan)
+        }
+    }
+
+    private suspend fun runQueueTransition(
+        primary: ExoPlayer,
+        snapshot: PlaybackQueueSnapshot,
+        current: Track,
+        target: Track,
+        plan: AutoMixPlan
+    ) {
+        val currentIdentity = playbackQueueIdentity(current)
+        val targetIdentity = playbackQueueIdentity(target)
+        var secondary: ExoPlayer? = null
+        try {
+            val resolved = withContext(Dispatchers.IO) { resolveQueueTrack(target) }
+            if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
+            secondary = buildTransitionPlayer(resolved).also { transitionPlayer = it }
+            secondary.setPlaybackParameters(
+                PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
+            )
+            secondary.volume = 0f
+            secondary.setMediaItem(LevyraMediaItemFactory.build(resolved))
+            secondary.prepare()
+            val prepared = withTimeoutOrNull(TRANSITION_PREPARE_TIMEOUT_MS) {
+                while (secondary.playbackState != Player.STATE_READY) {
+                    if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return@withTimeoutOrNull false
+                    if (secondary.playerError != null) return@withTimeoutOrNull false
+                    delay(50L)
+                }
+                true
+            } == true
+            if (!prepared) return
+
+            while (primary.duration > 0L && primary.duration - primary.currentPosition > plan.transitionMs) {
+                if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
+                delay(50L)
+            }
+            if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
+
+            isQueueTransitionInProgress = true
+            secondary.play()
+            fadePlayers(primary, secondary, plan.transitionMs) {
+                transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary) &&
+                    primary.duration - primary.currentPosition <= plan.transitionMs + SEEK_TOLERANCE_MS
+            }
+
+            val selected = queueEngine.next(respectRepeatOne = false)
+            if (selected == null || playbackQueueIdentity(selected) != targetIdentity) return
+            queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
+            val handoffPosition = secondary.currentPosition.coerceAtLeast(0L)
+            primary.volume = 0f
+            primary.setMediaItem(LevyraMediaItemFactory.build(resolved), handoffPosition)
+            primary.prepare()
+            primary.play()
+            val primaryReady = withTimeoutOrNull(PRIMARY_HANDOFF_TIMEOUT_MS) {
+                while (primary.playbackState != Player.STATE_READY) {
+                    if (primary.playerError != null) return@withTimeoutOrNull false
+                    delay(40L)
+                }
+                true
+            } == true
+            if (!primaryReady) {
+                Timber.w("Crossfade handoff timed out for %s", resolved.title)
+                primary.volume = 1f
+                return
+            }
+            fadePlayers(secondary, primary, PRIMARY_HANDOFF_FADE_MS)
+            queueEngine.updatePosition(primary.currentPosition)
+            if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Queue crossfade failed")
+        } finally {
+            primary.volume = 1f
+            secondary?.release()
+            if (transitionPlayer === secondary) transitionPlayer = null
+            isQueueTransitionInProgress = false
+        }
+    }
+
+    private fun buildTransitionPlayer(track: Track): ExoPlayer {
+        val normalization = NormalizationAudioProcessor().apply {
+            enabled = currentAudioNormalization || currentAudioSettings.replayGainEnabled
+            setYoutubeLoudness(track.youtubeLoudnessDb, track.youtubePerceptualLoudnessDb)
+        }
+        val equalizer = LevyraEqualizerAudioProcessor().apply {
+            enabled = currentAudioSettings.equalizerEnabled
+            setBandLevels(currentAudioSettings.bandLevels)
+            bassBoost = currentAudioSettings.bassBoost
+            preampDb = currentAudioSettings.preampDb
+            outputProfile = equalizerProcessor.outputProfile
+        }
+        val spatial = StereoSpatialAudioProcessor().apply {
+            strength = if (currentAudioSettings.equalizerEnabled) currentAudioSettings.virtualizer else 0
+        }
+        val limiter = TruePeakLimiterAudioProcessor().apply {
+            enabled = currentAudioSettings.limiterEnabled &&
+                (currentAudioSettings.equalizerEnabled || currentAudioSettings.virtualizer > 0 ||
+                    currentAudioSettings.replayGainEnabled || currentAudioNormalization)
+        }
+        val renderers = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink = DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(false)
+                .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
+                .setAudioProcessors(
+                    arrayOf(
+                        normalization,
+                        equalizer,
+                        spatial,
+                        limiter,
+                        Pcm16OutputAudioProcessor()
+                    )
+                )
+                .build()
+        }.apply { setEnableDecoderFallback(true) }
+        return ExoPlayer.Builder(this)
+            .setRenderersFactory(renderers)
+            .setMediaSourceFactory(sharedMediaSourceFactory)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                false
+            )
+            .setHandleAudioBecomingNoisy(false)
+            .build()
+    }
+
+    private suspend fun fadePlayers(
+        outgoing: ExoPlayer,
+        incoming: ExoPlayer,
+        durationMs: Long,
+        isValid: () -> Boolean = { true }
+    ) {
+        val steps = (durationMs / TRANSITION_STEP_MS).toInt().coerceIn(8, 120)
+        repeat(steps + 1) { step ->
+            if ((!outgoing.playWhenReady || !incoming.playWhenReady || !isValid()) && step < steps) {
+                throw CancellationException("Playback paused during crossfade")
+            }
+            val gains = equalPowerCrossfade(step.toFloat() / steps.toFloat())
+            outgoing.volume = gains.outgoing
+            incoming.volume = gains.incoming
+            if (step < steps) delay((durationMs / steps).coerceAtLeast(10L))
+        }
+    }
+
+    private fun transitionStillValid(
+        generation: Long,
+        currentIdentity: String,
+        targetIdentity: String,
+        player: ExoPlayer
+    ): Boolean {
+        val current = queueEngine.state.value
+        return current.generation == generation &&
+            playbackQueueIdentity(current.currentTrack ?: return false) == currentIdentity &&
+            current.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.One &&
+            queueEngine.upcoming(1).firstOrNull()?.let(::playbackQueueIdentity) == targetIdentity &&
+            player.playWhenReady &&
+            player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
+    }
+
+    private fun cancelQueueTransition() {
+        val running = queueTransitionJob
+        running?.cancel()
+        queueTransitionJob = null
+        if (running == null) {
+            transitionPlayer?.release()
+            transitionPlayer = null
+        }
+        activePlayer?.volume = 1f
+        isQueueTransitionInProgress = false
+    }
+
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (shouldCancelPrefetchForMemoryPressure(level)) {
             servicePrefetchJob?.cancel()
+            cancelQueueTransition()
         }
     }
 
@@ -743,6 +999,8 @@ class PlaybackService : MediaLibraryService() {
         recoveryResetJob?.cancel()
         stickyRestoreJob?.cancel()
         playbackWatchdogJob?.cancel()
+        cancelQueueTransition()
+        queueTransitionMonitorJob?.cancel()
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
         if (activeService === this) activeService = null

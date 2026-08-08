@@ -18,6 +18,8 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraBackupFrequency
+import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -61,7 +63,8 @@ data class LevyraPreferencesSnapshot(
     val themePreset: String,
     val audioSettings: LevyraAudioSettings,
     val interfaceSettings: LevyraInterfaceSettings,
-    val downloadSettings: LevyraDownloadSettings
+    val downloadSettings: LevyraDownloadSettings,
+    val backupSettings: LevyraBackupSettings
 )
 
 class LevyraPreferences(context: Context) {
@@ -74,6 +77,7 @@ class LevyraPreferences(context: Context) {
         val normalizedAudio = snapshot.audioSettings.normalized()
         val normalizedInterface = snapshot.interfaceSettings.normalized()
         val normalizedDownloads = snapshot.downloadSettings.normalized()
+        val normalizedBackup = snapshot.backupSettings.normalized()
         val recentSearchesJson = JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } }.toString()
         val personalOrbitJson = JSONArray().apply {
             snapshot.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT).forEach { put(TrackJson.toJson(it)) }
@@ -126,6 +130,10 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_DOWNLOAD_EMBED_ARTWORK] = normalizedDownloads.embedArtwork
             mutable[KEY_DOWNLOAD_VERIFY_FILE] = normalizedDownloads.verifyFile
             mutable[KEY_DOWNLOAD_SKIP_EXISTING] = normalizedDownloads.skipExisting
+            mutable[KEY_BACKUP_ENABLED] = normalizedBackup.enabled
+            mutable[KEY_BACKUP_FREQUENCY] = normalizedBackup.frequency.name
+            mutable[KEY_BACKUP_RETENTION] = normalizedBackup.retentionCount
+            mutable[KEY_BACKUP_CHARGING_ONLY] = normalizedBackup.chargingOnly
             mutable[KEY_RECENT_SEARCHES] = recentSearchesJson
             mutable[personalOrbitTracksKey(normalizedLanguage)] = personalOrbitJson
             if (snapshot.lastTrack == null) {
@@ -244,6 +252,18 @@ class LevyraPreferences(context: Context) {
             it[KEY_DOWNLOAD_EMBED_ARTWORK] = normalized.embedArtwork
             it[KEY_DOWNLOAD_VERIFY_FILE] = normalized.verifyFile
             it[KEY_DOWNLOAD_SKIP_EXISTING] = normalized.skipExisting
+        }
+    }
+
+    fun backupSettings(): LevyraBackupSettings = read(LevyraBackupSettings()) { backupSettingsFrom(it) }
+
+    fun setBackupSettings(value: LevyraBackupSettings) {
+        val normalized = value.normalized()
+        write {
+            it[KEY_BACKUP_ENABLED] = normalized.enabled
+            it[KEY_BACKUP_FREQUENCY] = normalized.frequency.name
+            it[KEY_BACKUP_RETENTION] = normalized.retentionCount
+            it[KEY_BACKUP_CHARGING_ONLY] = normalized.chargingOnly
         }
     }
 
@@ -443,7 +463,8 @@ class LevyraPreferences(context: Context) {
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
             audioSettings = audioSettingsFrom(preferences),
             interfaceSettings = interfaceSettingsFrom(preferences),
-            downloadSettings = downloadSettingsFrom(preferences)
+            downloadSettings = downloadSettingsFrom(preferences),
+            backupSettings = backupSettingsFrom(preferences)
         )
     }
 
@@ -467,7 +488,8 @@ class LevyraPreferences(context: Context) {
         themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC,
         audioSettings = LevyraAudioSettings(),
         interfaceSettings = LevyraInterfaceSettings(),
-        downloadSettings = LevyraDownloadSettings()
+        downloadSettings = LevyraDownloadSettings(),
+        backupSettings = LevyraBackupSettings()
     )
 
 
@@ -497,6 +519,13 @@ class LevyraPreferences(context: Context) {
         embedArtwork = preferences[KEY_DOWNLOAD_EMBED_ARTWORK] ?: true,
         verifyFile = preferences[KEY_DOWNLOAD_VERIFY_FILE] ?: true,
         skipExisting = preferences[KEY_DOWNLOAD_SKIP_EXISTING] ?: true
+    ).normalized()
+
+    private fun backupSettingsFrom(preferences: Preferences): LevyraBackupSettings = LevyraBackupSettings(
+        enabled = preferences[KEY_BACKUP_ENABLED] ?: false,
+        frequency = LevyraBackupFrequency.from(preferences[KEY_BACKUP_FREQUENCY].orEmpty()),
+        retentionCount = preferences[KEY_BACKUP_RETENTION] ?: 5,
+        chargingOnly = preferences[KEY_BACKUP_CHARGING_ONLY] ?: true
     ).normalized()
 
     private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_v2_${LevyraLanguageCatalog.normalize(languageCode)}")
@@ -676,5 +705,9 @@ class LevyraPreferences(context: Context) {
         val KEY_DOWNLOAD_EMBED_ARTWORK = booleanPreferencesKey("download_embed_artwork")
         val KEY_DOWNLOAD_VERIFY_FILE = booleanPreferencesKey("download_verify_file")
         val KEY_DOWNLOAD_SKIP_EXISTING = booleanPreferencesKey("download_skip_existing")
+        val KEY_BACKUP_ENABLED = booleanPreferencesKey("automatic_backup_enabled")
+        val KEY_BACKUP_FREQUENCY = stringPreferencesKey("automatic_backup_frequency")
+        val KEY_BACKUP_RETENTION = intPreferencesKey("automatic_backup_retention")
+        val KEY_BACKUP_CHARGING_ONLY = booleanPreferencesKey("automatic_backup_charging_only")
     }
 }

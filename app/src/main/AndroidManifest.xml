@@ -36,6 +36,9 @@
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="8" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -105,6 +108,17 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
                 <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".player.car.LevyraCarAppService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <action android:name="androidx.car.app.media.action.SHOW_MEDIA_PLAYBACK" />
+                <category android:name="androidx.car.app.category.MEDIA" />
             </intent-filter>
         </service>
 
