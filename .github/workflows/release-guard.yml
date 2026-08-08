@@ -13,7 +13,10 @@ on:
       - fdroid/metadata/**
       - scripts/render_fdroid_metadata.py
       - scripts/tests/test_fdroid_metadata.py
+      - scripts/validate_fdroid_review_contract.py
+      - scripts/tests/test_fdroid_review_contract.py
       - .github/workflows/apk-artifact-check.yml
+      - .github/workflows/pr-check.yml
       - .github/workflows/fdroid-metadata-preflight.yml
       - .github/workflows/release-apk.yml
       - .github/workflows/release-guard.yml
@@ -106,6 +109,7 @@ jobs:
 
           RELEASE_WORKFLOW=".github/workflows/release-apk.yml"
           test -f "${RELEASE_WORKFLOW}"
+          python3 scripts/validate_fdroid_review_contract.py
           grep -F "gradle.properties" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "docs/RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F ":app:lintRelease" "${RELEASE_WORKFLOW}" >/dev/null
