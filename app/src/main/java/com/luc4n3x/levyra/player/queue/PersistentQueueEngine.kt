@@ -307,12 +307,19 @@ class PersistentQueueEngine private constructor(context: Context) {
         current.copy(radioEnabled = enabled)
     }
 
-    fun next(respectRepeatOne: Boolean = true): Track? {
+    fun next(respectRepeatOne: Boolean = true): Track? = advanceNext(respectRepeatOne, expectedIdentity = null)
+
+    fun nextMatching(expectedIdentity: String, respectRepeatOne: Boolean = true): Track? =
+        advanceNext(respectRepeatOne, expectedIdentity)
+
+    private fun advanceNext(respectRepeatOne: Boolean, expectedIdentity: String?): Track? {
         var result: Track? = null
         mutate(immediatePersist = true) { current ->
             if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return@mutate current
             if (respectRepeatOne && current.repeatMode == RepeatMode.One) {
-                result = current.currentTrack
+                val repeated = current.currentTrack
+                if (expectedIdentity != null && repeated?.let(::playbackQueueIdentity) != expectedIdentity) return@mutate current
+                result = repeated
                 return@mutate current.copy(positionMs = 0L)
             }
             val target = if (current.shuffleEnabled) {
@@ -332,7 +339,9 @@ class PersistentQueueEngine private constructor(context: Context) {
                 }
             }
             if (target == null) return@mutate current
-            result = current.tracks[target]
+            val selected = current.tracks[target]
+            if (expectedIdentity != null && playbackQueueIdentity(selected) != expectedIdentity) return@mutate current
+            result = selected
             selectSnapshot(current, target, 0L, rememberCurrent = true)
         }
         return result
