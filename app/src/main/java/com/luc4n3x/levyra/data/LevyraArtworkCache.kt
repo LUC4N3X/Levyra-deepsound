@@ -28,9 +28,26 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.security.MessageDigest
 import java.nio.charset.StandardCharsets
+
+internal fun readBytesBounded(input: InputStream, maxBytes: Long): ByteArray? {
+    require(maxBytes > 0L)
+    val output = ByteArrayOutputStream(minOf(maxBytes, 16L * 1024L).toInt())
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0L
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        total += read
+        if (total > maxBytes) return null
+        output.write(buffer, 0, read)
+    }
+    return output.toByteArray()
+}
 
 internal fun isLikelyArtworkBytes(bytes: ByteArray): Boolean {
     if (bytes.size >= 3 &&
@@ -274,7 +291,7 @@ object LevyraArtworkCache {
                         val body = response.body
                         val length = body.contentLength()
                         if (length > MAX_FILE_BYTES) return@use false
-                        val bytes = body.bytes()
+                        val bytes = readBytesBounded(body.byteStream(), MAX_FILE_BYTES) ?: return@use false
                         if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES || !isLikelyArtworkBytes(bytes)) return@use false
                         val temp = File(file.parentFile, "${file.name}.tmp")
                         temp.writeBytes(bytes)
