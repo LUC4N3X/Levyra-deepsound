@@ -1391,7 +1391,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             return
         }
-        playlistImportJob = viewModelScope.launch {
+        var job: Job? = null
+        job = viewModelScope.launch {
+            val importLanguage = _state.value.languageCode
             try {
                 _state.update { current ->
                     current.copy(offlineExportMessage = playlistImportStartedMessage(current.languageCode))
@@ -1401,13 +1403,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     playlistStore = playlistStore,
                     youtubeRepository = repository
                 )
-                when (val result = importer.importFromUrlOrJson(input, languageCode = _state.value.languageCode)) {
+                when (val result = importer.importFromUrlOrJson(input, languageCode = importLanguage)) {
                     is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
                         _state.update { current ->
                             current.copy(
                                 offlineExportMessage = playlistImportSuccessMessage(
                                     current.languageCode,
                                     result.importedCount,
+                                    result.requestedCount,
                                     result.playlist.name
                                 )
                             )
@@ -1416,21 +1419,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
                         _state.update { current ->
-                            val alreadyRunning = playlistImportAlreadyRunningMessage(current.languageCode)
                             current.copy(
-                                offlineExportMessage = if (result.reason == alreadyRunning) {
-                                    alreadyRunning
-                                } else {
-                                    playlistImportFailureMessage(current.languageCode)
-                                }
+                                offlineExportMessage = playlistImportFailureMessage(
+                                    current.languageCode,
+                                    result.kind,
+                                    result.limit
+                                )
                             )
                         }
                     }
                 }
             } finally {
-                playlistImportJob = null
+                if (playlistImportJob === job) playlistImportJob = null
             }
         }
+        playlistImportJob = job
     }
 
     fun renamePlaylist(playlistId: String, name: String) {

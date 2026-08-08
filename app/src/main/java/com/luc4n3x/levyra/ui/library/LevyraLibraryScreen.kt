@@ -449,8 +449,7 @@ internal fun LevyraLibraryScreen(
                         if (showImportPlaylistCard) {
                             LibraryImportPlaylistCard(
                                 onClick = { showImportPlaylist = true },
-                                onDismiss = { showImportPlaylistCard = false },
-                                isItalian = isItalian
+                                onDismiss = { showImportPlaylistCard = false }
                             )
                         } else {
                             LibraryImportPlaylistCompactAction(
@@ -770,7 +769,6 @@ internal fun LevyraLibraryScreen(
 
     if (showImportPlaylist) {
         LibraryImportPlaylistDialog(
-            isItalian = isItalian,
             onDismiss = { showImportPlaylist = false },
             onImport = { input ->
                 viewModel.importPlaylist(input)

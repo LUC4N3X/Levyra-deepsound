@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.Track
 import java.io.ByteArrayInputStream
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -14,10 +15,11 @@ import org.junit.Test
 class UniversalPlaylistImporterTest {
 
     @Test
-    fun parsesSpotifyPlaylistTitleAndTrackUrlsWithoutDependingOnAttributeOrder() {
+    fun parsesSpotifyPlaylistTitleTrackCountAndUrlsWithoutDependingOnAttributeOrder() {
         val html = """
             <html><head>
             <meta content="Road &amp; Night | Spotify" property="og:title">
+            <meta content="42" property="music:song_count">
             <meta name="music:song" content="https://open.spotify.com/track/trackOne?si=abc">
             <meta content="spotify:track:trackTwo" name="music:song">
             <meta property="music:song" content="https://open.spotify.com/track/trackOne?si=duplicate">
@@ -27,13 +29,23 @@ class UniversalPlaylistImporterTest {
         val page = parseSpotifyPlaylistPage(html)
 
         assertEquals("Road & Night", page.title)
-        assertEquals(
-            listOf(
-                "https://open.spotify.com/track/trackOne",
-                "https://open.spotify.com/track/trackTwo"
-            ),
-            page.trackUrls
-        )
+        assertEquals(42, page.declaredTrackCount)
+        assertEquals(listOf("https://open.spotify.com/track/trackOne", "https://open.spotify.com/track/trackTwo"), page.trackUrls)
+    }
+
+    @Test
+    fun metaAttributeParserPreservesApostrophesInsideDoubleQuotedContent() {
+        val html = """
+            <head>
+            <meta property="og:title" content="Rock 'n' Roll">
+            <meta name="music:musician_description" content="Guns N' Roses">
+            </head>
+        """.trimIndent()
+
+        val track = parseSpotifyTrackPage(html)
+
+        assertEquals("Rock 'n' Roll", track?.title)
+        assertEquals("Guns N' Roses", track?.artist)
     }
 
     @Test
@@ -57,15 +69,41 @@ class UniversalPlaylistImporterTest {
     }
 
     @Test
-    fun fallsBackToSpotifyDescriptionForArtist() {
+    fun fallsBackToTwitterDescriptionForArtist() {
         val html = """
             <meta property="og:title" content="Song Title">
             <meta name="twitter:description" content="Fallback Artist · Song Title · Song · 2026">
         """.trimIndent()
 
-        val track = parseSpotifyTrackPage(html)
+        assertEquals("Fallback Artist", parseSpotifyTrackPage(html)?.artist)
+    }
 
-        assertEquals("Fallback Artist", track?.artist)
+    @Test
+    fun genericSpotifyDescriptionUsesArtistFieldAfterSongDescriptor() {
+        val html = """
+            <meta property="og:title" content="Song Title">
+            <meta name="description" content="Listen to Song Title on Spotify. Song · Real Artist · 2026">
+        """.trimIndent()
+
+        assertEquals("Real Artist", parseSpotifyTrackPage(html)?.artist)
+    }
+
+    @Test
+    fun candidateScoringRejectsWrongLiveVersionAndPrefersStudioMatch() {
+        val studio = track("studio", "My Song", "The Artist", 201_000L)
+        val live = track("live", "My Song Live", "The Artist", 240_000L)
+        val wrongArtist = track("wrong", "My Song", "Other Artist", 201_000L)
+
+        val best = bestPlaylistImportCandidate("My Song", "The Artist", 201_000L, listOf(live, wrongArtist, studio))
+
+        assertEquals(studio, best)
+        assertTrue(playlistImportCandidateScore("My Song", "The Artist", 201_000L, studio) > playlistImportCandidateScore("My Song", "The Artist", 201_000L, live))
+    }
+
+    @Test
+    fun candidateScoringRejectsUnrelatedFirstSearchResult() {
+        val unrelated = track("wrong", "Completely Different", "Someone Else", 201_000L)
+        assertNull(bestPlaylistImportCandidate("My Song", "The Artist", 201_000L, listOf(unrelated)))
     }
 
     @Test
@@ -82,23 +120,12 @@ class UniversalPlaylistImporterTest {
     }
 
     @Test
-    fun importCoordinatorRejectsSecondConcurrentImport() {
-        PlaylistImportCoordinator.finish()
-        try {
-            assertTrue(PlaylistImportCoordinator.tryBegin())
-            assertFalse(PlaylistImportCoordinator.tryBegin())
-        } finally {
-            PlaylistImportCoordinator.finish()
-        }
-        assertTrue(PlaylistImportCoordinator.tryBegin())
-        PlaylistImportCoordinator.finish()
-    }
-
-    @Test
-    fun spotifyImportRequiresHttpsAndSpotifyOwnedHost() {
+    fun spotifyImportRequiresHttpsDefaultPortNoCredentialsAndAllowedHost() {
         assertNotNull(validateSpotifyImportUrl("https://open.spotify.com/playlist/example"))
         assertNotNull(validateSpotifyImportUrl("https://spotify.link/example"))
         assertNull(validateSpotifyImportUrl("http://open.spotify.com/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://open.spotify.com:8443/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://user:pass@open.spotify.com/playlist/example"))
         assertNull(validateSpotifyImportUrl("https://spotify.example.com/playlist/example"))
         assertNull(validateSpotifyImportUrl("https://example.com/playlist/example"))
     }
@@ -107,6 +134,14 @@ class UniversalPlaylistImporterTest {
     fun boundedReaderStopsBeforeOversizedBodyIsParsed() {
         assertEquals("hello", readUtf8Bounded(ByteArrayInputStream("hello".toByteArray()), 5L))
         assertNull(readUtf8Bounded(ByteArrayInputStream("hello!".toByteArray()), 5L))
+    }
+
+    @Test
+    fun spotifyHeadOnlyDropsBodyMarkup() {
+        val html = "<html><head><meta property="og:title" content="Title"></head><body>${"x".repeat(500)}</body></html>"
+        val head = spotifyHeadOnly(html)
+        assertTrue(head.endsWith("</head>"))
+        assertFalse(head.contains("<body>"))
     }
 
     @Test
@@ -130,9 +165,7 @@ class UniversalPlaylistImporterTest {
             "198.18.0.1",
             "198.51.100.1",
             "203.0.113.1"
-        ).forEach { value ->
-            assertFalse(value, isPublicNetworkAddress(InetAddress.getByName(value)))
-        }
+        ).forEach { value -> assertFalse(value, isPublicNetworkAddress(InetAddress.getByName(value))) }
         assertTrue(isPublicNetworkAddress(InetAddress.getByName("8.8.8.8")))
     }
 
@@ -153,4 +186,24 @@ class UniversalPlaylistImporterTest {
         bytes[15] = d.toByte()
         return Inet6Address.getByAddress(null, bytes, -1)
     }
+
+    private fun track(id: String, title: String, artist: String, durationMs: Long): Track = Track(
+        id = id,
+        title = title,
+        artist = artist,
+        album = "",
+        durationMs = durationMs,
+        streamUrl = "",
+        videoUrl = "",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "test",
+        moodTags = emptySet(),
+        energy = 50,
+        vocal = 50,
+        replayScore = 50,
+        cacheScore = 50,
+        accentStart = 0,
+        accentEnd = 0
+    )
 }

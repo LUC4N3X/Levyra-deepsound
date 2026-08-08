@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playlistImportCopy
+import com.luc4n3x.levyra.ui.i18n.playlistImportDismissMessage
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -55,10 +57,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 @Composable
 internal fun LibraryImportPlaylistCard(
     onClick: () -> Unit,
-    onDismiss: () -> Unit = {},
-    @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
+    onDismiss: () -> Unit = {}
 ) {
-    val copy = LocalLevyraStrings.current.playlistImportCopy()
+    val strings = LocalLevyraStrings.current
+    val copy = strings.playlistImportCopy()
     val shape = RoundedCornerShape(24.dp)
     Surface(
         color = Color.Transparent,
@@ -162,11 +164,11 @@ internal fun LibraryImportPlaylistCard(
                 onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .size(30.dp)
+                    .size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Close,
-                    contentDescription = copy.cancel,
+                    contentDescription = playlistImportDismissMessage(strings.code),
                     tint = LevyraMuted.copy(alpha = 0.78f),
                     modifier = Modifier.size(16.dp)
                 )
@@ -180,7 +182,8 @@ internal fun LibraryImportPlaylistCard(
 internal fun LibraryImportPlaylistCompactAction(
     onClick: () -> Unit
 ) {
-    val copy = LocalLevyraStrings.current.playlistImportCopy()
+    val strings = LocalLevyraStrings.current
+    val copy = strings.playlistImportCopy()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End
@@ -190,6 +193,7 @@ internal fun LibraryImportPlaylistCompactAction(
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
             modifier = Modifier
+                .sizeIn(minHeight = 48.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .combinedClickable(onClick = onClick)
         ) {
@@ -218,10 +222,10 @@ internal fun LibraryImportPlaylistCompactAction(
 @Composable
 internal fun LibraryImportPlaylistDialog(
     onDismiss: () -> Unit,
-    onImport: (String) -> Unit,
-    @Suppress("UNUSED_PARAMETER") isItalian: Boolean = false
+    onImport: (String) -> Unit
 ) {
-    val copy = LocalLevyraStrings.current.playlistImportCopy()
+    val strings = LocalLevyraStrings.current
+    val copy = strings.playlistImportCopy()
     var input by remember { mutableStateOf("") }
     val canImport = input.isNotBlank()
     AlertDialog(
