@@ -12,4 +12,16 @@
     <string name="radar_channel_name">Radar delle uscite</string>
     <string name="radar_channel_description">Nuove uscite degli artisti che segui</string>
     <string name="radar_new_release_title">Nuova uscita di %1$s</string>
+    <string name="automatic_backups">Backup automatici</string>
+    <string name="car_home">Home</string>
+    <string name="car_downloads">Download</string>
+    <string name="car_favorites">Preferiti</string>
+    <string name="car_playlists">Playlist</string>
+    <string name="car_no_content">Nessun contenuto</string>
+    <string name="car_content_unavailable">Contenuto non disponibile</string>
+    <string name="car_search_tracks">Cerca brani</string>
+    <string name="car_no_results">Nessun risultato</string>
+    <string name="car_connecting_player">Connessione al player</string>
+    <string name="car_now_playing">In riproduzione</string>
+    <string name="car_queue">Coda</string>
 </resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">النسخ الاحتياطية التلقائية</string>
+    <string name="car_home">الرئيسية</string>
+    <string name="car_downloads">التنزيلات</string>
+    <string name="car_favorites">المفضلة</string>
+    <string name="car_playlists">قوائم التشغيل</string>
+    <string name="car_no_content">لا يوجد محتوى</string>
+    <string name="car_content_unavailable">المحتوى غير متاح</string>
+    <string name="car_search_tracks">البحث عن مقاطع</string>
+    <string name="car_no_results">لا توجد نتائج</string>
+    <string name="car_connecting_player">جارٍ الاتصال بالمشغّل</string>
+    <string name="car_now_playing">قيد التشغيل الآن</string>
+    <string name="car_queue">قائمة الانتظار</string>
+</resources>

@@ -416,6 +416,26 @@ class LevyraStrings private constructor(
     val simultaneousDownloads: String get() = value("simultaneousDownloads")
     val simultaneousDownloadsSubtitle: String get() = value("simultaneousDownloadsSubtitle")
     val backupRestoreSection: String get() = value("backupRestoreSection")
+    val automaticBackup: String get() = if (code == "it") "Backup automatici" else "Automatic backups"
+    val automaticBackupSubtitle: String get() = if (code == "it") {
+        "Crea archivi locali verificati senza includere i file audio"
+    } else {
+        "Create verified local archives without audio files"
+    }
+    val backupFrequency: String get() = if (code == "it") "Frequenza" else "Frequency"
+    val backupRetention: String get() = if (code == "it") "Conservazione" else "Retention"
+    val backupChargingOnly: String get() = if (code == "it") "Solo durante la ricarica" else "Only while charging"
+    val backupChargingOnlySubtitle: String get() = if (code == "it") {
+        "Riduce l'impatto sulla batteria; si applica solo ai backup automatici"
+    } else {
+        "Reduces battery impact; applies only to automatic backups"
+    }
+    fun backupFrequencyLabel(name: String): String = when (name) {
+        "Daily" -> if (code == "it") "Ogni giorno" else "Daily"
+        "Monthly" -> if (code == "it") "Ogni mese" else "Monthly"
+        else -> if (code == "it") "Ogni settimana" else "Weekly"
+    }
+    fun backupRetentionLabel(count: Int): String = if (code == "it") "$count copie" else "$count copies"
     val restoreBackup: String get() = value("restoreBackup")
     val restoreBackupSubtitle: String get() = value("restoreBackupSubtitle")
     val playbackResilienceSection: String get() = value("playbackResilienceSection")
