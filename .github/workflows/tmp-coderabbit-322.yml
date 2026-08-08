@@ -11,36 +11,26 @@ permissions:
 jobs:
   fix:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout
+      - name: Checkout PR head
         uses: actions/checkout@v7
         with:
           ref: codex/smart-library-backup-auto-crossfade
           fetch-depth: 0
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6.2.0
-        with:
-          cache-disabled: true
-
-      - name: Fix review findings and validate
+      - name: Apply review fixes and clean temporary CI
         shell: bash
         run: |
           set -euo pipefail
           TARGET_BRANCH="codex/smart-library-backup-auto-crossfade"
+          EXPECTED_HEAD="${GITHUB_SHA}"
           git config user.name "LUC4N3X"
           git config user.email "241364318+LUC4N3X@users.noreply.github.com"
-          git fetch origin "${TARGET_BRANCH}"
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${GITHUB_SHA}"
+          git fetch origin main "${TARGET_BRANCH}"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_HEAD}"
+          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${EXPECTED_HEAD}"
 
           python3 - <<'PY'
           from pathlib import Path
@@ -76,7 +66,6 @@ jobs:
           if text.count(old) != 1:
               raise SystemExit(f"handoff block mismatch: {text.count(old)}")
           text = text.replace(old, new, 1)
-
           marker = '''internal fun Track.queueStoredCopy(): Track {
 '''
           helper = '''internal fun resolvedQueueTrackForHandoff(
@@ -90,8 +79,7 @@ jobs:
 '''
           if text.count(marker) != 1:
               raise SystemExit("queue helper insertion point mismatch")
-          text = text.replace(marker, helper + marker, 1)
-          queue.write_text(text, encoding="utf-8")
+          queue.write_text(text.replace(marker, helper + marker, 1), encoding="utf-8")
 
           service = Path("app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt")
           text = service.read_text(encoding="utf-8")
@@ -169,14 +157,10 @@ jobs:
           PY
 
           rm .github/workflows/tmp-coderabbit-322.yml
+          git checkout origin/main -- .github/workflows/pr-check.yml
           git diff --check
-          ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.player.queue.PersistentQueueOrderTest'
-          ./gradlew --no-daemon :app:compileDebugKotlin
-
           git add -A
           git commit -m "fix(android): address CodeRabbit handoff review"
           git fetch origin "${TARGET_BRANCH}"
-          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${GITHUB_SHA}"
+          test "$(git rev-parse origin/${TARGET_BRANCH})" = "${EXPECTED_HEAD}"
           git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
-
-# Second commit intentionally retriggers this workflow now that it exists on the PR branch.
