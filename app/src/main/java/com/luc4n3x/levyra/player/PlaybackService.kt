@@ -398,16 +398,17 @@ class PlaybackService : MediaLibraryService() {
                 session: MediaSession,
                 controller: MediaSession.ControllerInfo
             ): MediaSession.ConnectionResult {
-                val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+                val commandBuilder = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                     .buildUpon()
                     .add(queueShuffleCommand)
                     .add(queuePreviousCommand)
                     .add(queueNextCommand)
                     .add(queueLikeCommand)
-                    .add(platformTokenCommand)
-                    .build()
+                if (controller.packageName == packageName) {
+                    commandBuilder.add(platformTokenCommand)
+                }
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                    .setAvailableSessionCommands(sessionCommands)
+                    .setAvailableSessionCommands(commandBuilder.build())
                     .build()
             }
 
@@ -455,10 +456,14 @@ class PlaybackService : MediaLibraryService() {
             ): ListenableFuture<SessionResult> {
                 return when (customCommand.customAction) {
                     ACTION_GET_PLATFORM_TOKEN -> {
-                        val extras = Bundle().apply {
-                            putParcelable(KEY_PLATFORM_TOKEN, session.platformToken)
+                        if (controller.packageName != packageName) {
+                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                        } else {
+                            val extras = Bundle().apply {
+                                putParcelable(KEY_PLATFORM_TOKEN, session.platformToken)
+                            }
+                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, extras))
                         }
-                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, extras))
                     }
                     ACTION_QUEUE_PREVIOUS -> {
                         skipQueue(forward = false, respectRepeatOne = false)
@@ -840,8 +845,13 @@ class PlaybackService : MediaLibraryService() {
                     primary.duration - primary.currentPosition <= plan.transitionMs + SEEK_TOLERANCE_MS
             }
 
+            val upcoming = queueEngine.upcoming(1).firstOrNull()
+            if (upcoming == null || playbackQueueIdentity(upcoming) != targetIdentity) return
             val selected = queueEngine.next(respectRepeatOne = false)
-            if (selected == null || playbackQueueIdentity(selected) != targetIdentity) return
+            if (selected == null || playbackQueueIdentity(selected) != targetIdentity) {
+                Timber.w("Crossfade queue target changed before handoff")
+                return
+            }
             queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
 
             primary.volume = 0f
@@ -864,10 +874,15 @@ class PlaybackService : MediaLibraryService() {
         } catch (error: Exception) {
             Timber.w(error, "Queue crossfade failed")
         } finally {
-            primary.volume = 1f
-            secondary?.release()
-            if (transitionPlayer === secondary) transitionPlayer = null
             isQueueTransitionInProgress = false
+            primary.volume = 1f
+            if (transitionPlayer === secondary) {
+                transitionPlayer = null
+                secondary?.let { player ->
+                    runCatching { player.release() }
+                        .onFailure { Timber.w(it, "Queue crossfade secondary release failed") }
+                }
+            }
         }
     }
 
@@ -1037,16 +1052,18 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun cancelQueueTransition() {
-        val running = queueTransitionJob
-        transitionPlayer?.pause()
-        running?.cancel()
+        queueTransitionJob?.cancel()
         queueTransitionJob = null
-        if (running == null) {
-            transitionPlayer?.release()
-            transitionPlayer = null
-        }
-        activePlayer?.volume = 1f
+        val secondary = transitionPlayer
+        transitionPlayer = null
         isQueueTransitionInProgress = false
+        activePlayer?.volume = 1f
+        secondary?.let { player ->
+            runCatching {
+                player.pause()
+                player.release()
+            }.onFailure { Timber.w(it, "Queue crossfade cancellation release failed") }
+        }
     }
 
     override fun onTrimMemory(level: Int) {
