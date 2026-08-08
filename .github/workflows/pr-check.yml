@@ -12,44 +12,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  harden-pr319:
-    name: Apply PR 319 hardening once
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 319 && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-
-      - name: Prepare deterministic patcher
-        run: python3 scripts/pr319_hardening_followup.py pre
-
-      - name: Apply hardening patch
-        run: python3 scripts/pr319_hardening_once.py
-
-      - name: Apply CodeRabbit follow-up
-        run: python3 scripts/pr319_hardening_followup.py post
-
-      - name: Commit source changes and remove script helpers
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm -f scripts/pr319_hardening_once.py scripts/pr319_hardening_followup.py
-          git add -A
-          git commit -m "fix(import): harden playlist resolution and cache semantics"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
   android:
     name: Lint and Release Compile
     runs-on: ubuntu-latest
