@@ -457,7 +457,9 @@ class PlaybackService : MediaLibraryService() {
                 return when (customCommand.customAction) {
                     ACTION_GET_PLATFORM_TOKEN -> {
                         if (controller.packageName != packageName) {
-                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED))
+                            Futures.immediateFuture(
+                                SessionResult(androidx.media3.session.SessionError.ERROR_PERMISSION_DENIED)
+                            )
                         } else {
                             val extras = Bundle().apply {
                                 putParcelable(KEY_PLATFORM_TOKEN, session.platformToken)
