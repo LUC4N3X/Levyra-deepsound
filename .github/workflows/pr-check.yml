@@ -61,9 +61,9 @@ jobs:
               raise SystemExit(f'unexpected control characters remain: {bad}')
 
           repaired = path.read_text(encoding='utf-8')
-          if r'(["\''])(.*?)\2' not in repaired:
+          if r'(.*?)\2"""' not in repaired:
               raise SystemExit('quoted-attribute backreference was not restored')
-          if '.replace("&quot;", "\\\"")' not in repaired:
+          if r'.replace("&quot;", "\"")' not in repaired:
               raise SystemExit('HTML quote replacement was not restored')
           PY
 
