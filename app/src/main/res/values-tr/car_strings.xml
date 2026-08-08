@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Otomatik yedeklemeler</string>
+    <string name="car_home">Ana sayfa</string>
+    <string name="car_downloads">İndirilenler</string>
+    <string name="car_favorites">Favoriler</string>
+    <string name="car_playlists">Çalma listeleri</string>
+    <string name="car_no_content">İçerik yok</string>
+    <string name="car_content_unavailable">İçerik kullanılamıyor</string>
+    <string name="car_search_tracks">Şarkı ara</string>
+    <string name="car_no_results">Sonuç yok</string>
+    <string name="car_connecting_player">Oynatıcıya bağlanılıyor</string>
+    <string name="car_now_playing">Şimdi çalıyor</string>
+    <string name="car_queue">Sıra</string>
+</resources>

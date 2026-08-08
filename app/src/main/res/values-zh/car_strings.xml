@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">自动备份</string>
+    <string name="car_home">首页</string>
+    <string name="car_downloads">下载</string>
+    <string name="car_favorites">收藏</string>
+    <string name="car_playlists">播放列表</string>
+    <string name="car_no_content">暂无内容</string>
+    <string name="car_content_unavailable">内容不可用</string>
+    <string name="car_search_tracks">搜索歌曲</string>
+    <string name="car_no_results">无结果</string>
+    <string name="car_connecting_player">正在连接播放器</string>
+    <string name="car_now_playing">正在播放</string>
+    <string name="car_queue">队列</string>
+</resources>

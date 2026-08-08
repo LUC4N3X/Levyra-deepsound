@@ -4,7 +4,7 @@ Levyra can display small, reviewed announcements without requiring a new APK for
 
 `app/src/main/assets/config/announcements.json`
 
-The same JSON file serves two purposes:
+The same JSON file serves these purposes:
 
 - it is packaged inside the APK as the offline and first-fetch fallback;
 - upstream-published clients read its raw version from the repository's `main` branch for future announcements;

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Automatiske sikkerhedskopier</string>
+    <string name="car_home">Hjem</string>
+    <string name="car_downloads">Downloads</string>
+    <string name="car_favorites">Favoritter</string>
+    <string name="car_playlists">Playlister</string>
+    <string name="car_no_content">Intet indhold</string>
+    <string name="car_content_unavailable">Indholdet er ikke tilgængeligt</string>
+    <string name="car_search_tracks">Søg efter sange</string>
+    <string name="car_no_results">Ingen resultater</string>
+    <string name="car_connecting_player">Opretter forbindelse til afspilleren</string>
+    <string name="car_now_playing">Afspiller nu</string>
+    <string name="car_queue">Kø</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">גיבויים אוטומטיים</string>
+    <string name="car_home">בית</string>
+    <string name="car_downloads">הורדות</string>
+    <string name="car_favorites">מועדפים</string>
+    <string name="car_playlists">רשימות השמעה</string>
+    <string name="car_no_content">אין תוכן</string>
+    <string name="car_content_unavailable">התוכן אינו זמין</string>
+    <string name="car_search_tracks">חיפוש שירים</string>
+    <string name="car_no_results">אין תוצאות</string>
+    <string name="car_connecting_player">מתחבר לנגן</string>
+    <string name="car_now_playing">מתנגן כעת</string>
+    <string name="car_queue">תור</string>
+</resources>
