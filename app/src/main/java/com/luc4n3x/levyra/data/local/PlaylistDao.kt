@@ -51,6 +51,15 @@ abstract class PlaylistDao {
     @Query("UPDATE playlists SET updatedAt = :updatedAt WHERE id = :playlistId")
     abstract suspend fun touch(playlistId: String, updatedAt: Long)
 
+    @Transaction
+    open suspend fun createPlaylistWithTracks(
+        playlist: PlaylistEntity,
+        tracks: List<PlaylistTrackEntity>
+    ) {
+        upsertPlaylist(playlist)
+        if (tracks.isNotEmpty()) insertTracks(tracks)
+    }
+
     /** Riscrive l'intero ordine di una playlist (usato dopo un riordino o rimozione). */
     @Transaction
     open suspend fun replaceTracks(playlistId: String, tracks: List<PlaylistTrackEntity>) {

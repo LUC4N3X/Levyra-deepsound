@@ -1,0 +1,209 @@
+package com.luc4n3x.levyra.data
+
+import com.luc4n3x.levyra.domain.Track
+import java.io.ByteArrayInputStream
+import java.net.Inet6Address
+import java.net.InetAddress
+import org.json.JSONObject
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class UniversalPlaylistImporterTest {
+
+    @Test
+    fun parsesSpotifyPlaylistTitleTrackCountAndUrlsWithoutDependingOnAttributeOrder() {
+        val html = """
+            <html><head>
+            <meta content="Road &amp; Night | Spotify" property="og:title">
+            <meta content="42" property="music:song_count">
+            <meta name="music:song" content="https://open.spotify.com/track/trackOne?si=abc">
+            <meta content="spotify:track:trackTwo" name="music:song">
+            <meta property="music:song" content="https://open.spotify.com/track/trackOne?si=duplicate">
+            </head></html>
+        """.trimIndent()
+
+        val page = parseSpotifyPlaylistPage(html)
+
+        assertEquals("Road & Night", page.title)
+        assertEquals(42, page.declaredTrackCount)
+        assertEquals(listOf("https://open.spotify.com/track/trackOne", "https://open.spotify.com/track/trackTwo"), page.trackUrls)
+    }
+
+    @Test
+    fun metaAttributeParserPreservesApostrophesInsideDoubleQuotedContent() {
+        val html = """
+            <head>
+            <meta property="og:title" content="Rock 'n' Roll">
+            <meta name="music:musician_description" content="Guns N' Roses">
+            </head>
+        """.trimIndent()
+
+        val track = parseSpotifyTrackPage(html)
+
+        assertEquals("Rock 'n' Roll", track?.title)
+        assertEquals("Guns N' Roses", track?.artist)
+    }
+
+    @Test
+    fun parsesSpotifyTrackMetadata() {
+        val html = """
+            <html><head>
+            <meta property="og:title" content="A &amp; B">
+            <meta content="Artist Name" name="music:musician_description">
+            <meta name="music:duration" content="213">
+            <meta content="https://image.test/cover.jpg" property="og:image">
+            </head></html>
+        """.trimIndent()
+
+        val track = parseSpotifyTrackPage(html)
+
+        assertNotNull(track)
+        assertEquals("A & B", track?.title)
+        assertEquals("Artist Name", track?.artist)
+        assertEquals(213_000L, track?.durationMs)
+        assertEquals("https://image.test/cover.jpg", track?.artworkUrl)
+    }
+
+    @Test
+    fun fallsBackToTwitterDescriptionForArtist() {
+        val html = """
+            <meta property="og:title" content="Song Title">
+            <meta name="twitter:description" content="Fallback Artist · Song Title · Song · 2026">
+        """.trimIndent()
+
+        assertEquals("Fallback Artist", parseSpotifyTrackPage(html)?.artist)
+    }
+
+    @Test
+    fun genericSpotifyDescriptionUsesArtistFieldAfterSongDescriptor() {
+        val html = """
+            <meta property="og:title" content="Song Title">
+            <meta name="description" content="Listen to Song Title on Spotify. Song · Real Artist · 2026">
+        """.trimIndent()
+
+        assertEquals("Real Artist", parseSpotifyTrackPage(html)?.artist)
+    }
+
+    @Test
+    fun candidateScoringRejectsWrongLiveVersionAndPrefersStudioMatch() {
+        val studio = track("studio", "My Song", "The Artist", 201_000L)
+        val live = track("live", "My Song Live", "The Artist", 240_000L)
+        val wrongArtist = track("wrong", "My Song", "Other Artist", 201_000L)
+
+        val best = bestPlaylistImportCandidate("My Song", "The Artist", 201_000L, listOf(live, wrongArtist, studio))
+
+        assertEquals(studio, best)
+        assertTrue(playlistImportCandidateScore("My Song", "The Artist", 201_000L, studio) > playlistImportCandidateScore("My Song", "The Artist", 201_000L, live))
+    }
+
+    @Test
+    fun candidateScoringRejectsUnrelatedFirstSearchResult() {
+        val unrelated = track("wrong", "Completely Different", "Someone Else", 201_000L)
+        assertNull(bestPlaylistImportCandidate("My Song", "The Artist", 201_000L, listOf(unrelated)))
+    }
+
+    @Test
+    fun prefersExplicitDurationMsAndSupportsSecondOrMillisecondExports() {
+        assertEquals(201_234L, importedDurationMs(JSONObject().put("durationMs", 201_234L).put("duration", 10L)))
+        assertEquals(201_000L, importedDurationMs(JSONObject().put("duration", 201L)))
+        assertEquals(201_234L, importedDurationMs(JSONObject().put("duration", 201_234L)))
+    }
+
+    @Test
+    fun rejectsJsonImportAboveConfiguredTrackLimit() {
+        assertTrue(jsonImportTrackCountAccepted(MAX_JSON_IMPORT_TRACKS))
+        assertFalse(jsonImportTrackCountAccepted(MAX_JSON_IMPORT_TRACKS + 1))
+    }
+
+    @Test
+    fun spotifyImportRequiresHttpsDefaultPortNoCredentialsAndAllowedHost() {
+        assertNotNull(validateSpotifyImportUrl("https://open.spotify.com/playlist/example"))
+        assertNotNull(validateSpotifyImportUrl("https://spotify.link/example"))
+        assertNull(validateSpotifyImportUrl("http://open.spotify.com/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://open.spotify.com:8443/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://user:pass@open.spotify.com/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://spotify.example.com/playlist/example"))
+        assertNull(validateSpotifyImportUrl("https://example.com/playlist/example"))
+    }
+
+    @Test
+    fun boundedReaderStopsBeforeOversizedBodyIsParsed() {
+        assertEquals("hello", readUtf8Bounded(ByteArrayInputStream("hello".toByteArray()), 5L))
+        assertNull(readUtf8Bounded(ByteArrayInputStream("hello!".toByteArray()), 5L))
+    }
+
+    @Test
+    fun spotifyHeadOnlyDropsBodyMarkup() {
+        val html = """<html><head><meta property="og:title" content="Title"></head><body>${"x".repeat(500)}</body></html>"""
+        val head = spotifyHeadOnly(html)
+        assertTrue(head.endsWith("</head>"))
+        assertFalse(head.contains("<body>"))
+    }
+
+    @Test
+    fun spotifyImportAcceptsOnlyHtmlContentTypes() {
+        assertTrue(spotifyHtmlContentTypeAccepted("text/html; charset=utf-8"))
+        assertTrue(spotifyHtmlContentTypeAccepted("application/xhtml+xml"))
+        assertFalse(spotifyHtmlContentTypeAccepted("application/json"))
+        assertFalse(spotifyHtmlContentTypeAccepted("text/plain"))
+        assertFalse(spotifyHtmlContentTypeAccepted(null))
+    }
+
+    @Test
+    fun spotifyDestinationRejectsReservedIpv4Ranges() {
+        listOf(
+            "192.0.0.1",
+            "192.0.2.1",
+            "192.31.196.1",
+            "192.52.193.1",
+            "192.88.99.1",
+            "192.175.48.1",
+            "198.18.0.1",
+            "198.51.100.1",
+            "203.0.113.1"
+        ).forEach { value -> assertFalse(value, isPublicNetworkAddress(InetAddress.getByName(value))) }
+        assertTrue(isPublicNetworkAddress(InetAddress.getByName("8.8.8.8")))
+    }
+
+    @Test
+    fun spotifyDestinationRejectsIpv4MappedIpv6PrivateAndReservedAddresses() {
+        assertFalse(isPublicNetworkAddress(mappedIpv6(192, 168, 1, 10)))
+        assertFalse(isPublicNetworkAddress(mappedIpv6(192, 0, 2, 10)))
+        assertFalse(isPublicNetworkAddress(mappedIpv6(198, 18, 0, 10)))
+    }
+
+    private fun mappedIpv6(a: Int, b: Int, c: Int, d: Int): InetAddress {
+        val bytes = ByteArray(16)
+        bytes[10] = 0xFF.toByte()
+        bytes[11] = 0xFF.toByte()
+        bytes[12] = a.toByte()
+        bytes[13] = b.toByte()
+        bytes[14] = c.toByte()
+        bytes[15] = d.toByte()
+        return Inet6Address.getByAddress(null, bytes, -1)
+    }
+
+    private fun track(id: String, title: String, artist: String, durationMs: Long): Track = Track(
+        id = id,
+        title = title,
+        artist = artist,
+        album = "",
+        durationMs = durationMs,
+        streamUrl = "",
+        videoUrl = "",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "test",
+        moodTags = emptySet(),
+        energy = 50,
+        vocal = 50,
+        replayScore = 50,
+        cacheScore = 50,
+        accentStart = 0,
+        accentEnd = 0
+    )
+}
