@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">การสำรองข้อมูลอัตโนมัติ</string>
+    <string name="car_home">หน้าหลัก</string>
+    <string name="car_downloads">ดาวน์โหลด</string>
+    <string name="car_favorites">รายการโปรด</string>
+    <string name="car_playlists">เพลย์ลิสต์</string>
+    <string name="car_no_content">ไม่มีเนื้อหา</string>
+    <string name="car_content_unavailable">เนื้อหาไม่พร้อมใช้งาน</string>
+    <string name="car_search_tracks">ค้นหาเพลง</string>
+    <string name="car_no_results">ไม่พบผลลัพธ์</string>
+    <string name="car_connecting_player">กำลังเชื่อมต่อกับเครื่องเล่น</string>
+    <string name="car_now_playing">กำลังเล่น</string>
+    <string name="car_queue">คิว</string>
+</resources>

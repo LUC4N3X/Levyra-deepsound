@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Pencadangan otomatis</string>
+    <string name="car_home">Beranda</string>
+    <string name="car_downloads">Unduhan</string>
+    <string name="car_favorites">Favorit</string>
+    <string name="car_playlists">Daftar putar</string>
+    <string name="car_no_content">Tidak ada konten</string>
+    <string name="car_content_unavailable">Konten tidak tersedia</string>
+    <string name="car_search_tracks">Cari lagu</string>
+    <string name="car_no_results">Tidak ada hasil</string>
+    <string name="car_connecting_player">Menghubungkan ke pemutar</string>
+    <string name="car_now_playing">Sedang diputar</string>
+    <string name="car_queue">Antrean</string>
+</resources>

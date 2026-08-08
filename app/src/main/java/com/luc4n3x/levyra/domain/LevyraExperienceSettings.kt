@@ -82,6 +82,27 @@ data class LevyraDownloadSettings(
     }
 }
 
+enum class LevyraBackupFrequency(val intervalDays: Long) {
+    Daily(1L),
+    Weekly(7L),
+    Monthly(30L);
+
+    companion object {
+        fun from(value: String): LevyraBackupFrequency = entries.firstOrNull {
+            it.name.equals(value, ignoreCase = true)
+        } ?: Weekly
+    }
+}
+
+data class LevyraBackupSettings(
+    val enabled: Boolean = false,
+    val frequency: LevyraBackupFrequency = LevyraBackupFrequency.Weekly,
+    val retentionCount: Int = 5,
+    val chargingOnly: Boolean = true
+) {
+    fun normalized(): LevyraBackupSettings = copy(retentionCount = retentionCount.coerceIn(1, 12))
+}
+
 internal fun LevyraDownloadSettings.shouldSkipExistingDownload(
     trackId: String,
     downloadedTrackIds: Set<String>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Automatické zálohy</string>
+    <string name="car_home">Domů</string>
+    <string name="car_downloads">Stažené</string>
+    <string name="car_favorites">Oblíbené</string>
+    <string name="car_playlists">Playlisty</string>
+    <string name="car_no_content">Žádný obsah</string>
+    <string name="car_content_unavailable">Obsah není dostupný</string>
+    <string name="car_search_tracks">Hledat skladby</string>
+    <string name="car_no_results">Žádné výsledky</string>
+    <string name="car_connecting_player">Připojování k přehrávači</string>
+    <string name="car_now_playing">Právě hraje</string>
+    <string name="car_queue">Fronta</string>
+</resources>
