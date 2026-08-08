@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T13:38:03Z",
+  "generatedAt": "2026-08-08T15:02:39Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2979,11 +2979,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 31,
@@ -10299,11 +10299,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 37,
@@ -10343,14 +10343,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -13514,6 +13506,12 @@
           },
           "durationMs": 160373,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "M3NTok2mPfc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCP1iQcxYik45U3q1tzIt6gA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c227b85cc35a65d563aaa2c9"
         },
         {
@@ -16136,7 +16134,7 @@
         },
         {
           "position": 37,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16144,8 +16142,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16155,7 +16153,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 38,
@@ -18304,12 +18302,6 @@
           },
           "durationMs": 216000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "q6xUpqd0sm8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCraa5kIpeNY6mhufQO_qkWg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02049ba0ce46fb355feb8cce0b"
         },
         {
@@ -22287,7 +22279,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-09-30"
+            "releaseDate": "2019-08-31"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22297,7 +22289,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
         },
         {
           "position": 28,
@@ -27210,12 +27202,6 @@
           },
           "durationMs": 293500,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "vZh6nx_H-ZE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
@@ -27983,14 +27969,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
