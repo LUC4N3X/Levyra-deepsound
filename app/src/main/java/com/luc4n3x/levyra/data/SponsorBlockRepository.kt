@@ -34,7 +34,7 @@ class SponsorBlockRepository internal constructor(
         if (videoId.isBlank()) return@withContext emptyList()
         cachedSponsorBlockResult(cache, videoId, clockMs())?.let { return@withContext it }
 
-        val catsJson = categories.joinToString(",", prefix = "[", postfix = "]") { ""$it"" }
+        val catsJson = categories.joinToString(",", prefix = "[", postfix = "]") { "\"$it\"" }
         val cats = URLEncoder.encode(catsJson, "UTF-8")
         val url = "https://sponsor.ajay.app/api/skipSegments?videoID=$videoId&categories=$cats"
 

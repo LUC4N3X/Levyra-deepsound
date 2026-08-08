@@ -14,6 +14,8 @@ import java.text.Normalizer
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -71,12 +73,12 @@ private const val MIN_IMPORT_CANDIDATE_SCORE = 170
 private const val MAX_SPOTIFY_REDIRECTS = 4
 private const val MAX_SPOTIFY_HTML_BYTES = 768L * 1024L
 private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
-private val META_TAG_PATTERN = Regex("<meta\b[^>]*>", RegexOption.IGNORE_CASE)
+private val META_TAG_PATTERN = Regex("""<meta\b[^>]*>""", RegexOption.IGNORE_CASE)
 private val META_ATTRIBUTE_PATTERN = Regex(
     """([A-Za-z_:][A-Za-z0-9_.:-]*)\s*=\s*(["'])(.*?)\2""",
     setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
 )
-private val DECIMAL_HTML_ENTITY = Regex("&#(\d+);")
+private val DECIMAL_HTML_ENTITY = Regex("""&#(\d+);""")
 private val HEX_HTML_ENTITY = Regex("&#x([0-9A-Fa-f]+);")
 private val IMPORT_VARIANT_MARKERS = listOf(
     "live",
@@ -284,10 +286,10 @@ private fun importTextSimilarity(left: String, right: String): Int {
 }
 
 private fun normalizeImportText(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
-    .replace(Regex("\p{M}+"), "")
+    .replace(Regex("""\p{M}+"""), "")
     .lowercase(Locale.ROOT)
-    .replace(Regex("[^\p{L}\p{N}]+"), " ")
-    .replace(Regex("\s+"), " ")
+    .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
+    .replace(Regex("""\s+"""), " ")
     .trim()
 
 private fun importVariantFlags(value: String): Set<String> {
@@ -649,17 +651,17 @@ class UniversalPlaylistImporter(
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
-                val token = continuation.tryResumeWithException(error) ?: return
-                continuation.completeResume(token)
+                if (continuation.isActive) {
+                    continuation.resumeWithException(error)
+                }
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val token = continuation.tryResume(response)
-                if (token == null) {
+                if (!continuation.isActive) {
                     response.close()
                     return
                 }
-                continuation.completeResume(token)
+                continuation.resume(response)
             }
         })
     }
