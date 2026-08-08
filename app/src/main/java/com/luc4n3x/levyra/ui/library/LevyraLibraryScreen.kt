@@ -143,6 +143,7 @@ internal fun LevyraLibraryScreen(
         state.playlists,
         state.downloads,
         state.recentListens,
+        state.mostPlayedTracks,
         state.followedArtists
     ) {
         buildLibraryCatalog(
@@ -150,7 +151,8 @@ internal fun LevyraLibraryScreen(
             playlists = state.playlists,
             downloads = state.downloads,
             recentListens = state.recentListens,
-            followedArtists = state.followedArtists
+            followedArtists = state.followedArtists,
+            mostPlayedTracks = state.mostPlayedTracks
         )
     }
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }

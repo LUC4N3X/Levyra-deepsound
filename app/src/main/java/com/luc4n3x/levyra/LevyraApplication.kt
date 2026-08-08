@@ -8,6 +8,8 @@ import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
+import com.luc4n3x.levyra.data.AutomaticBackupScheduler
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,12 @@ class LevyraApplication : Application() {
             delay(1800L)
             runCatching { ReleaseRadarWorker.schedule(this@LevyraApplication) }
                 .onFailure { Timber.w(it, "Release radar scheduling failed") }
+            runCatching {
+                AutomaticBackupScheduler.schedule(
+                    this@LevyraApplication,
+                    LevyraPreferences(this@LevyraApplication).backupSettings()
+                )
+            }.onFailure { Timber.w(it, "Automatic backup scheduling failed") }
         }
     }
 

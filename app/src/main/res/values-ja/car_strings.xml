@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">自動バックアップ</string>
+    <string name="car_home">ホーム</string>
+    <string name="car_downloads">ダウンロード</string>
+    <string name="car_favorites">お気に入り</string>
+    <string name="car_playlists">プレイリスト</string>
+    <string name="car_no_content">コンテンツがありません</string>
+    <string name="car_content_unavailable">コンテンツを利用できません</string>
+    <string name="car_search_tracks">曲を検索</string>
+    <string name="car_no_results">結果がありません</string>
+    <string name="car_connecting_player">プレーヤーに接続中</string>
+    <string name="car_now_playing">再生中</string>
+    <string name="car_queue">キュー</string>
+</resources>

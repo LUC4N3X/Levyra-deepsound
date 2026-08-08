@@ -14,7 +14,18 @@ class OfflineAudioExporterTest {
         assertTrue(isMp4AudioExportUrl("https://rr.googlevideo.com/videoplayback?mime=audio%2Fmp4&itag=140"))
         assertTrue(isMp4AudioExportUrl("https://example.com/track.m4a?token=abc"))
         assertFalse(isMp4AudioExportUrl("https://rr.googlevideo.com/videoplayback?mime=audio%2Fwebm&itag=251"))
+        assertFalse(isMp4AudioExportUrl("https://rr.googlevideo.com/videoplayback?mime=video%2Fmp4&itag=137"))
         assertFalse(isMp4AudioExportUrl("https://example.com/track.webm"))
+        assertFalse(isMp4AudioExportUrl("https://example.com/clip.mp4"))
+    }
+
+    @Test
+    fun responseMimeMustBeMp4Audio() {
+        assertTrue(isMp4AudioSource("audio/mp4", "https://example.com/videoplayback"))
+        assertTrue(isMp4AudioSource("", "https://example.com/track.m4a"))
+        assertFalse(isMp4AudioSource("video/mp4", "https://example.com/track.m4a"))
+        assertFalse(isMp4AudioSource("video/mp4", "https://example.com/clip.mp4"))
+        assertFalse(isMp4AudioSource("audio/webm", "https://example.com/track.m4a"))
     }
 
     @Test
@@ -143,6 +154,7 @@ class OfflineAudioExporterTest {
         assertEquals(73400320L, audioContentLengthFromUrl(url))
         assertEquals(-1L, audioContentLengthFromUrl("https://example.com/audio.m4a"))
     }
+
     @Test
     fun longDownloadsUseAdaptiveChunksAndHighConcurrency() {
         val oneMb = 1024L * 1024L
@@ -158,5 +170,4 @@ class OfflineAudioExporterTest {
         assertEquals("track_id_with_spaces", offlineDownloadTaskFileKey(" track id with spaces "))
         assertEquals("unknown", offlineDownloadTaskFileKey(""))
     }
-
 }

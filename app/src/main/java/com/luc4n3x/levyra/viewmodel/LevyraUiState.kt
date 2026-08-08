@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.ListeningPulse
@@ -163,12 +164,14 @@ data class LevyraUiState(
     val themePreset: String = LevyraThemes.COSMIC,
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
+    val backupSettings: LevyraBackupSettings = LevyraBackupSettings(),
     val sharedMediaPreview: SharedMediaPreview? = null,
     val intelligenceSummary: LevyraIntelligenceSummary = LevyraIntelligenceSummary(),
     val backupMessage: String? = null,
     val playbackDiagnostics: String = "",
     val listeningPulse: ListeningPulse = ListeningPulse(),
     val recentListens: List<Track> = emptyList(),
+    val mostPlayedTracks: List<Track> = emptyList(),
     val followedArtists: List<FollowedArtist> = emptyList(),
     val followedArtistKeys: Set<String> = emptySet(),
     val releaseRadar: List<ReleaseRadarEntry> = emptyList(),

@@ -215,8 +215,18 @@ internal fun isMp4AudioExportUrl(url: String): Boolean {
     return mime == "audio/mp4" ||
         clean.contains("mime=audio%2fmp4") ||
         clean.contains("mime=audio/mp4") ||
-        path.endsWith(".m4a") ||
-        path.endsWith(".mp4")
+        path.endsWith(".m4a")
+}
+
+internal fun isMp4AudioSource(contentType: String, url: String): Boolean {
+    val normalizedType = contentType.substringBefore(';').trim().lowercase(Locale.US)
+    if (normalizedType.startsWith("video/")) return false
+    if (normalizedType.isNotBlank()) {
+        return normalizedType == "audio/mp4" ||
+            normalizedType == "audio/m4a" ||
+            normalizedType == "audio/x-m4a"
+    }
+    return isMp4AudioExportUrl(url)
 }
 
 internal fun audioContentLengthFromRangeHeader(contentRange: String): Long {
@@ -389,6 +399,9 @@ class OfflineAudioExporter(
         val probe = probeAudio(sourceUrl)
         val expectedLength = probe.contentLength
         val contentType = probe.contentType
+        if (!isMp4AudioSource(contentType, sourceUrl)) {
+            throw IOException("Offline export requires an M4A audio source")
+        }
         val container = detectContainer(contentType, sourceUrl)
         val partial = resumablePartialFile(workspace, container)
         val existingBytes = partial.takeIf { settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
@@ -473,6 +486,10 @@ class OfflineAudioExporter(
             .build()
         return executeCancellable(request) { response ->
             if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
+            val responseType = response.header("Content-Type").orEmpty()
+            if (!isMp4AudioSource(responseType, response.request.url.toString())) {
+                throw IOException("Offline export received a non-audio MP4 source")
+            }
             val body = response.body
             val declaredLength = body.contentLength()
             val contentRange = response.header("Content-Range").orEmpty()
@@ -788,6 +805,10 @@ class OfflineAudioExporter(
             .apply { if (!rangeParamApplied) header("Range", "bytes=${range.start}-${range.endInclusive}") }
             .build()
         executeCancellable(request) { response ->
+            val responseType = response.header("Content-Type").orEmpty()
+            if (!isMp4AudioSource(responseType, response.request.url.toString())) {
+                throw IOException("Offline export received a non-audio MP4 source")
+            }
             val body = response.body
             val contentLength = body.contentLength()
             val contentRange = response.header("Content-Range").orEmpty()
@@ -1235,13 +1256,10 @@ class OfflineAudioExporter(
     }
 
     private fun detectContainer(contentType: String, url: String): AudioContainer {
-        val cleanUrl = url.substringBefore('?').lowercase(Locale.US)
-        return when {
-            contentType.contains("mp4") || contentType.contains("m4a") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".mp4") -> AudioContainer("m4a", "audio/mp4", true)
-            contentType.contains("webm") || cleanUrl.endsWith(".webm") -> AudioContainer("webm", "audio/webm", false)
-            contentType.contains("mpeg") || contentType.contains("mp3") || cleanUrl.endsWith(".mp3") -> AudioContainer("mp3", "audio/mpeg", false)
-            else -> AudioContainer("m4a", "audio/mp4", true)
+        if (!isMp4AudioSource(contentType, url)) {
+            throw IOException("Offline export requires an M4A audio source")
         }
+        return AudioContainer("m4a", "audio/mp4", true)
     }
 
     private suspend fun reportProgress(value: Int) {

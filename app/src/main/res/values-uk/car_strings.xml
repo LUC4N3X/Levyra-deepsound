@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Автоматичні резервні копії</string>
+    <string name="car_home">Головна</string>
+    <string name="car_downloads">Завантаження</string>
+    <string name="car_favorites">Вибране</string>
+    <string name="car_playlists">Плейлисти</string>
+    <string name="car_no_content">Немає вмісту</string>
+    <string name="car_content_unavailable">Вміст недоступний</string>
+    <string name="car_search_tracks">Пошук треків</string>
+    <string name="car_no_results">Немає результатів</string>
+    <string name="car_connecting_player">Підключення до програвача</string>
+    <string name="car_now_playing">Зараз відтворюється</string>
+    <string name="car_queue">Черга</string>
+</resources>
