@@ -362,6 +362,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Validate F-Droid Review Contract
+        run: python3 scripts/validate_fdroid_review_contract.py
+
       - name: Resolve F-Droid Asset
         id: fdroid
         shell: bash
