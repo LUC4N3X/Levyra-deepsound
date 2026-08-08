@@ -571,3 +571,19 @@ jobs:
             cd fdroid-verification
             sha256sum --check "${FDROID_CHECKSUM_NAME}"
           )
+
+      - name: Render Canonical F-Droid Metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
+          python3 scripts/render_fdroid_metadata.py \
+            --commit "${GITHUB_SHA}" \
+            --output "fdroid-submission/metadata/com.luc4n3x.levyra.yml"
+
+      - name: Upload F-Droid Metadata Submission
+        uses: actions/upload-artifact@v7
+        with:
+          name: fdroid-metadata-${{ steps.fdroid.outputs.version }}-${{ github.sha }}
+          path: fdroid-submission/metadata/com.luc4n3x.levyra.yml
+          if-no-files-found: error

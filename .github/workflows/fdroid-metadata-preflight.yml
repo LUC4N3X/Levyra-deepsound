@@ -1,0 +1,98 @@
+name: F-Droid Metadata Preflight
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - gradle.properties
+      - fdroid/metadata/**
+      - scripts/render_fdroid_metadata.py
+      - scripts/tests/test_fdroid_metadata.py
+      - .github/workflows/fdroid-metadata-preflight.yml
+      - .github/workflows/release-apk.yml
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - gradle.properties
+      - fdroid/metadata/**
+      - scripts/render_fdroid_metadata.py
+      - scripts/tests/test_fdroid_metadata.py
+      - .github/workflows/fdroid-metadata-preflight.yml
+      - .github/workflows/release-apk.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fdroid-metadata-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metadata:
+    name: Render and Run F-Droid rewritemeta
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run Metadata Generator Tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_fdroid_metadata.py'
+
+      - name: Render Candidate Metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/fdroid-preflight/metadata"
+          python3 scripts/render_fdroid_metadata.py \
+            --commit "${GITHUB_SHA}" \
+            --output "${RUNNER_TEMP}/fdroid-preflight/metadata/com.luc4n3x.levyra.yml"
+          cp "${RUNNER_TEMP}/fdroid-preflight/metadata/com.luc4n3x.levyra.yml" \
+            "${RUNNER_TEMP}/expected-com.luc4n3x.levyra.yml"
+
+      - name: Install Current F-Droid Metadata Tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "${RUNNER_TEMP}/fdroid-venv"
+          "${RUNNER_TEMP}/fdroid-venv/bin/python" -m pip install \
+            --disable-pip-version-check \
+            "git+https://gitlab.com/fdroid/fdroidserver.git@master"
+
+      - name: Verify Canonical F-Droid Formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/fdroid-preflight"
+          curl --fail --location --silent --show-error \
+            --output config.yml \
+            "https://gitlab.com/fdroid/fdroiddata/-/raw/master/config.yml"
+          chmod 0600 config.yml
+          "${RUNNER_TEMP}/fdroid-venv/bin/fdroid" rewritemeta com.luc4n3x.levyra
+          cmp --silent \
+            "${RUNNER_TEMP}/expected-com.luc4n3x.levyra.yml" \
+            metadata/com.luc4n3x.levyra.yml || {
+              diff --unified \
+                "${RUNNER_TEMP}/expected-com.luc4n3x.levyra.yml" \
+                metadata/com.luc4n3x.levyra.yml
+              echo "Generated metadata is not canonical according to fdroid rewritemeta."
+              exit 1
+            }
+
+      - name: Upload Canonical Metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: fdroid-metadata-preflight-${{ github.sha }}
+          path: ${{ runner.temp }}/fdroid-preflight/metadata/com.luc4n3x.levyra.yml
+          if-no-files-found: error

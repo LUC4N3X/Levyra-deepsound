@@ -313,6 +313,17 @@ compatibility with GitHub installations:
 ./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
 ```
 
+Before updating the F-Droid merge request, generate its metadata from the
+current Android version and exact release commit instead of editing YAML by
+hand. The generator and CI preflight also run F-Droid's canonical
+`rewritemeta` formatter, catching whitespace and schema changes before GitLab:
+
+```bash
+python3 scripts/render_fdroid_metadata.py \
+  --commit <40-character-release-commit> \
+  --output fdroid-submission/metadata/com.luc4n3x.levyra.yml
+```
+
 Architecture and size-control details are summarized in the sections above and enforced by the Gradle and CI configuration.
 
 ### Versioning & CI

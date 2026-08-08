@@ -10,7 +10,11 @@ on:
       - app/build.gradle.kts
       - README.md
       - docs/RELEASE_NOTES.md
+      - fdroid/metadata/**
+      - scripts/render_fdroid_metadata.py
+      - scripts/tests/test_fdroid_metadata.py
       - .github/workflows/apk-artifact-check.yml
+      - .github/workflows/fdroid-metadata-preflight.yml
       - .github/workflows/release-apk.yml
       - .github/workflows/release-guard.yml
   push:
@@ -114,6 +118,7 @@ jobs:
           grep -F "LEVYRA_SIGNING_CERT_SHA256" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "FDROID_TAG" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "FDROID_APK_NAME" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "scripts/render_fdroid_metadata.py" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F -- "--notes-file docs/RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
 
           if grep -Eq 'actions/artifacts|Wait for Matching APK Artifact|Download and Verify APK Artifact' "${RELEASE_WORKFLOW}"; then
