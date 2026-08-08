@@ -8,15 +8,35 @@ import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.nexus.update.LevyraUpdateArtifact
 import com.luc4n3x.levyra.nexus.update.LevyraUpdateSelector
 import com.luc4n3x.levyra.nexus.update.LevyraVersionComparator
+import com.luc4n3x.levyra.update.AppUpdateContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
 
+internal data class InstallableAppUpdate(
+    val info: AppUpdateInfo,
+    val assetDownloadUrl: String,
+    val assetSizeBytes: Long
+)
+
 class AppUpdateRepository(context: Context) {
     private val client = LevyraHttpClientFactory.general(context.applicationContext)
 
     suspend fun latest(): AppUpdateInfo = withContext(Dispatchers.IO) {
+        parseLatestRelease(fetchLatestRelease()).info
+    }
+
+    internal suspend fun latestInstallable(): InstallableAppUpdate = withContext(Dispatchers.IO) {
+        val update = parseLatestRelease(fetchLatestRelease())
+        if (!update.info.isNewer) throw IllegalStateException("No newer Levyra release is available")
+        if (!update.info.directApk || update.assetDownloadUrl.isBlank()) {
+            throw IllegalStateException("The latest Levyra release has no installable APK")
+        }
+        update
+    }
+
+    private fun fetchLatestRelease(): JSONObject {
         val request = Request.Builder()
             .url(BuildConfig.UPDATE_LATEST_URL)
             .header("Accept", "application/vnd.github+json")
@@ -32,11 +52,11 @@ class AppUpdateRepository(context: Context) {
                 }
                 throw IllegalStateException(message)
             }
-            parseLatestRelease(JSONObject(body))
+            return JSONObject(body)
         }
     }
 
-    private fun parseLatestRelease(root: JSONObject): AppUpdateInfo {
+    private fun parseLatestRelease(root: JSONObject): InstallableAppUpdate {
         val latestTag = root.optString("tag_name").ifBlank { root.optString("name") }
         val latestVersion = normalizeDisplayVersion(latestTag)
         val releaseUrl = root.optString("html_url")
@@ -46,12 +66,18 @@ class AppUpdateRepository(context: Context) {
             sdk = Build.VERSION.SDK_INT,
             supportedAbis = Build.SUPPORTED_ABIS.orEmpty().toList()
         )
-        val downloadUrl = selected?.downloadUrl?.ifBlank { releaseUrl } ?: releaseUrl
+        val assetDownloadUrl = selected?.downloadUrl.orEmpty()
+        val directApk = selected?.isApk == true && assetDownloadUrl.isNotBlank()
+        val downloadUrl = if (directApk) {
+            AppUpdateContract.INSTALL_URI
+        } else {
+            assetDownloadUrl.ifBlank { releaseUrl }
+        }
         val assetName = selected?.name.orEmpty()
         val releaseTitle = root.optString("name").ifBlank { "LEVYRA $latestVersion" }
         val notes = root.optString("body").trim()
         val current = BuildConfig.VERSION_NAME
-        return AppUpdateInfo(
+        val info = AppUpdateInfo(
             currentVersionName = current,
             latestVersionName = latestVersion,
             latestTag = latestTag.ifBlank { latestVersion },
@@ -59,10 +85,15 @@ class AppUpdateRepository(context: Context) {
             releaseNotes = notes,
             publishedAt = root.optString("published_at"),
             downloadUrl = downloadUrl,
-            releaseUrl = releaseUrl.ifBlank { downloadUrl },
+            releaseUrl = releaseUrl.ifBlank { assetDownloadUrl },
             assetName = assetName,
-            directApk = selected?.isApk == true,
+            directApk = directApk,
             isNewer = LevyraVersionComparator.compare(latestVersion, current) > 0
+        )
+        return InstallableAppUpdate(
+            info = info,
+            assetDownloadUrl = assetDownloadUrl,
+            assetSizeBytes = selected?.sizeBytes?.coerceAtLeast(0L) ?: 0L
         )
     }
 
