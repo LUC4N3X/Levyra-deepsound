@@ -309,7 +309,8 @@ internal class RemoteAnnouncementRepository(context: Context) {
         readBundledCatalog()
     }
 
-    fun recordAppLaunch(nowMs: Long = System.currentTimeMillis()): Int = store.recordAppLaunch(nowMs)
+    fun recordAppLaunch(nowMs: Long = System.currentTimeMillis()): Int =
+        if (BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) store.recordAppLaunch(nowMs) else 0
 
     suspend fun resolveForPrompt(
         languageCode: String,
@@ -318,6 +319,7 @@ internal class RemoteAnnouncementRepository(context: Context) {
         versionCode: Int = BuildConfig.VERSION_CODE,
         nowMs: Long = System.currentTimeMillis()
     ): RemoteAnnouncementPresentation? = withContext(Dispatchers.IO) {
+        if (!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) return@withContext null
         resolveAvailable(
             languageCode = languageCode,
             versionCode = versionCode,
@@ -336,6 +338,7 @@ internal class RemoteAnnouncementRepository(context: Context) {
     }
 
     fun bundledSupportPresentation(languageCode: String): RemoteAnnouncementPresentation? {
+        if (!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) return null
         val announcement = bundledCatalog
             ?.announcements
             ?.firstOrNull { it.id == BUILT_IN_SUPPORT_ANNOUNCEMENT_ID }

@@ -220,6 +220,26 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun viewModelDoesNotLeakReportedItalianRuntimeMessages() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
+        val content = Files.readString(source)
+
+        listOf(
+            "Salvato in $",
+            "Caricamento playlist",
+            "Nessun risultato trovato per $"
+        ).forEach { leaked ->
+            assertFalse("Hardcoded runtime localization leak: $leaked", content.contains(leaked))
+        }
+        assertTrue(LevyraStrings.forCode("en").formatOfflineExportSaved("Music/Levyra", "track.m4a", true).startsWith("Saved in Music/Levyra"))
+        assertEquals("Loading playlist", LevyraStrings.forCode("en").loadingSharedPlaylist)
+        assertEquals("No results found for Levyra", LevyraStrings.forCode("en").formatNoSearchResults("Levyra"))
+    }
+
+    @Test
     fun localizedFormattersUseSelectedLanguage() {
         val dutch = LevyraStrings.forCode("nl")
         val polish = LevyraStrings.forCode("pl")

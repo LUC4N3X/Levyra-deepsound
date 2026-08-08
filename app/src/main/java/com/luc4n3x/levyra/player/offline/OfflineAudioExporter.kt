@@ -208,6 +208,17 @@ internal fun audioContentTypeFromUrl(url: String): String {
         .orEmpty()
 }
 
+internal fun isMp4AudioExportUrl(url: String): Boolean {
+    val clean = url.trim().lowercase(Locale.US)
+    val path = clean.substringBefore('?').substringBefore('#')
+    val mime = audioContentTypeFromUrl(clean)
+    return mime == "audio/mp4" ||
+        clean.contains("mime=audio%2fmp4") ||
+        clean.contains("mime=audio/mp4") ||
+        path.endsWith(".m4a") ||
+        path.endsWith(".mp4")
+}
+
 internal fun audioContentLengthFromRangeHeader(contentRange: String): Long {
     return contentRange.substringAfterLast('/', "")
         .trim()
@@ -286,7 +297,11 @@ class OfflineAudioExporter(
     suspend fun export(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
         reportProgress(1)
         val forceQualityResolution = settings.resolverAudioQuality != null
-        var playable = if (track.streamUrl.isNotBlank() && !forceQualityResolution) {
+        var playable = if (
+            track.streamUrl.isNotBlank() &&
+            !forceQualityResolution &&
+            isMp4AudioExportUrl(track.streamUrl)
+        ) {
             track
         } else {
             reportProgress(4)
@@ -314,6 +329,9 @@ class OfflineAudioExporter(
                 metadataTrack = mergeOfflineMetadataTrack(track, playable)
                 reportProgress(10)
                 downloadAudio(playable, workspace)
+            }
+            if (!downloaded.container.supportsEmbeddedMetadata) {
+                throw IOException("Offline export requires an M4A audio source")
             }
             var embeddedFile: PreparedAudioFile? = null
             try {
@@ -912,8 +930,14 @@ class OfflineAudioExporter(
         workspace: File
     ): PreparedAudioFile {
         val fileName = buildFileName(track, container.extension)
-        if (!settings.embedMetadata || !container.supportsEmbeddedMetadata || !shouldEmbedFastMetadata(input.length(), track.durationMs)) {
+        if (!settings.embedMetadata) {
             return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
+        }
+        if (!container.supportsEmbeddedMetadata) {
+            throw IOException("Offline metadata embedding requires an M4A audio source")
+        }
+        if (!shouldEmbedFastMetadata(input.length(), track.durationMs)) {
+            throw IOException("Audio file is outside the safe metadata embedding limit")
         }
         val output = File(workspace, "tagged-${System.nanoTime()}.${container.extension}")
         val tagResult = LevyraM4aTagWriter.write(
@@ -928,7 +952,7 @@ class OfflineAudioExporter(
             PreparedAudioFile(output, fileName, container, fileMetadataEmbedded = true)
         } else {
             runCatching { output.delete() }
-            PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
+            throw IOException("Unable to embed M4A metadata: ${tagResult.reason}")
         }
     }
 
@@ -983,27 +1007,10 @@ class OfflineAudioExporter(
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private suspend fun saveScoped(input: File, track: Track, container: AudioContainer): SavedAudioDestination {
-        return try {
-            SavedAudioDestination(
-                uri = saveScopedAudio(input, track, container),
-                destinationLabel = musicDestinationLabel(track)
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (audioError: Throwable) {
-            Timber.w(audioError, "Audio MediaStore refused %s, falling back to Downloads collection", container.mimeType)
-            try {
-                SavedAudioDestination(
-                    uri = saveScopedDownloadFile(input, track, container),
-                    destinationLabel = downloadsDestinationLabel(track)
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (downloadError: Throwable) {
-                audioError.addSuppressed(downloadError)
-                throw audioError
-            }
-        }
+        return SavedAudioDestination(
+            uri = saveScopedAudio(input, track, container),
+            destinationLabel = musicDestinationLabel(track)
+        )
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -1022,31 +1029,6 @@ class OfflineAudioExporter(
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore non ha creato il file")
-        try {
-            copyIntoMediaStore(uri, input)
-            currentCoroutineContext().ensureActive()
-            values.clear()
-            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            return uri
-        } catch (error: Throwable) {
-            resolver.delete(uri, null, null)
-            throw error
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private suspend fun saveScopedDownloadFile(input: File, track: Track, container: AudioContainer): Uri {
-        val resolver = context.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, buildFileName(track, container.extension))
-            put(MediaStore.MediaColumns.MIME_TYPE, container.fileCollectionMimeType)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, downloadsDestinationLabel(track))
-            put(MediaStore.MediaColumns.SIZE, input.length())
-            put(MediaStore.MediaColumns.IS_PENDING, 1)
-        }
-        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore non ha creato il file")
         try {
             copyIntoMediaStore(uri, input)
@@ -1237,11 +1219,6 @@ class OfflineAudioExporter(
         return listOf(Environment.DIRECTORY_MUSIC, "Levyra", suffix).filter { it.isNotBlank() }.joinToString("/")
     }
 
-    private fun downloadsDestinationLabel(track: Track): String {
-        val suffix = relativeFolderSuffix(track)
-        return listOf(Environment.DIRECTORY_DOWNLOADS, "Levyra", suffix).filter { it.isNotBlank() }.joinToString("/")
-    }
-
     private fun legacyRelativeSubdirectory(track: Track): String {
         val suffix = relativeFolderSuffix(track)
         return listOf("Levyra", suffix).filter { it.isNotBlank() }.joinToString(File.separator)
@@ -1260,10 +1237,10 @@ class OfflineAudioExporter(
     private fun detectContainer(contentType: String, url: String): AudioContainer {
         val cleanUrl = url.substringBefore('?').lowercase(Locale.US)
         return when {
-            contentType.contains("mp4") || contentType.contains("m4a") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".mp4") -> AudioContainer("m4a", "audio/mp4", "audio/mp4", true)
-            contentType.contains("webm") || cleanUrl.endsWith(".webm") -> AudioContainer("webm", "audio/webm", "application/octet-stream", false)
-            contentType.contains("mpeg") || contentType.contains("mp3") || cleanUrl.endsWith(".mp3") -> AudioContainer("mp3", "audio/mpeg", "audio/mpeg", false)
-            else -> AudioContainer("m4a", "audio/mp4", "audio/mp4", true)
+            contentType.contains("mp4") || contentType.contains("m4a") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".mp4") -> AudioContainer("m4a", "audio/mp4", true)
+            contentType.contains("webm") || cleanUrl.endsWith(".webm") -> AudioContainer("webm", "audio/webm", false)
+            contentType.contains("mpeg") || contentType.contains("mp3") || cleanUrl.endsWith(".mp3") -> AudioContainer("mp3", "audio/mpeg", false)
+            else -> AudioContainer("m4a", "audio/mp4", true)
         }
     }
 
@@ -1394,6 +1371,5 @@ private data class AudioProbe(
 private data class AudioContainer(
     val extension: String,
     val mimeType: String,
-    val fileCollectionMimeType: String,
     val supportsEmbeddedMetadata: Boolean
 )
