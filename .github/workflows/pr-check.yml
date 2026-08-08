@@ -39,14 +39,13 @@ jobs:
       - name: Apply CodeRabbit follow-up
         run: python3 scripts/pr319_hardening_followup.py post
 
-      - name: Commit clean result and remove helpers
+      - name: Commit source changes and remove script helpers
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show d087e43808e6f3a8c00dd6eea0bd6a8d523a4cc4:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          git rm -f .github/workflows/pr319-hardening-once.yml scripts/pr319_hardening_once.py scripts/pr319_hardening_followup.py
+          git rm -f scripts/pr319_hardening_once.py scripts/pr319_hardening_followup.py
           git add -A
           git commit -m "fix(import): harden playlist resolution and cache semantics"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
