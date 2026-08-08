@@ -26,7 +26,7 @@ REQUIRED_FILES = (
     ".claude/rules/security.md",
     ".github/workflows/dependency-review.yml",
     ".github/workflows/pr-check.yml",
-    "codex-plugins.txt",
+    ".agents/config/codex-plugins.txt",
     "docs/README.md",
     "docs/ai/ANTIGRAVITY.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
@@ -205,7 +205,7 @@ def main() -> int:
 
     validate_filters(errors)
 
-    plugin_path = ROOT / "codex-plugins.txt"
+    plugin_path = ROOT / ".agents/config/codex-plugins.txt"
     if plugin_path.is_file():
         plugins = tuple(
             line.strip()
@@ -215,7 +215,7 @@ def main() -> int:
         if plugins != EXPECTED_PLUGINS:
             fail(
                 errors,
-                "codex-plugins.txt must contain exactly the verified plugins in "
+                ".agents/config/codex-plugins.txt must contain exactly the verified plugins in "
                 f"order: {EXPECTED_PLUGINS!r}",
             )
 
@@ -232,6 +232,7 @@ def main() -> int:
             "rtk init --agent antigravity",
             "rtk init -g --opencode",
             "codex plugin add",
+            ".agents/config/codex-plugins.txt",
             "Validation blocked: Python",
             "validate_agent_config.py",
             "validate_ai_efficiency.py",
@@ -251,6 +252,7 @@ def main() -> int:
             "rtk init --agent antigravity",
             "rtk init -g --opencode",
             "codex plugin add",
+            ".agents/config/codex-plugins.txt",
             "[blocked] Python",
             "validate_agent_config.py",
             "validate_ai_efficiency.py",
