@@ -323,15 +323,15 @@ class PersistentQueueEngine private constructor(context: Context) {
             if (current.generation != expectedGeneration) return@mutate current
             if (current.repeatMode == RepeatMode.One) return@mutate current
             if (current.currentTrack?.let(::playbackQueueIdentity) != expectedCurrentIdentity) return@mutate current
-            if (playbackQueueIdentity(resolved) != expectedNextIdentity) return@mutate current
 
             val target = nextTargetIndex(current) ?: return@mutate current
             val selected = current.tracks[target]
-            if (playbackQueueIdentity(selected) != expectedNextIdentity) return@mutate current
+            val replacement = resolvedQueueTrackForHandoff(selected, expectedNextIdentity, resolved)
+                ?: return@mutate current
 
             val advanced = selectSnapshot(current, target, 0L, rememberCurrent = true)
             val updatedTracks = advanced.tracks.toMutableList().apply {
-                set(target, resolved.queueStoredCopy())
+                set(target, replacement.queueStoredCopy())
             }
             result = resolved
             advanced.copy(tracks = updatedTracks, generation = advanced.generation + 1L)
@@ -660,6 +660,20 @@ data class PlaybackQueueSnapshot(
 ) {
     val currentTrack: Track?
         get() = tracks.getOrNull(currentIndex)
+}
+
+internal fun resolvedQueueTrackForHandoff(
+    selected: Track,
+    expectedNextIdentity: String,
+    resolved: Track
+): Track? {
+    if (playbackQueueIdentity(selected) != expectedNextIdentity) return null
+    return resolved.copy(
+        id = selected.id,
+        title = selected.title,
+        artist = selected.artist,
+        videoUrl = selected.videoUrl
+    )
 }
 
 internal fun Track.queueStoredCopy(): Track {
