@@ -127,7 +127,8 @@ jobs:
             --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
             --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
             --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
-            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest'
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
+            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
