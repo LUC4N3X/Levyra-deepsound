@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Automatische back-ups</string>
+    <string name="car_home">Start</string>
+    <string name="car_downloads">Downloads</string>
+    <string name="car_favorites">Favorieten</string>
+    <string name="car_playlists">Afspeellijsten</string>
+    <string name="car_no_content">Geen inhoud</string>
+    <string name="car_content_unavailable">Inhoud niet beschikbaar</string>
+    <string name="car_search_tracks">Nummers zoeken</string>
+    <string name="car_no_results">Geen resultaten</string>
+    <string name="car_connecting_player">Verbinden met speler</string>
+    <string name="car_now_playing">Wordt nu afgespeeld</string>
+    <string name="car_queue">Wachtrij</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automatic_backups">Αυτόματα αντίγραφα ασφαλείας</string>
+    <string name="car_home">Αρχική</string>
+    <string name="car_downloads">Λήψεις</string>
+    <string name="car_favorites">Αγαπημένα</string>
+    <string name="car_playlists">Λίστες αναπαραγωγής</string>
+    <string name="car_no_content">Δεν υπάρχει περιεχόμενο</string>
+    <string name="car_content_unavailable">Το περιεχόμενο δεν είναι διαθέσιμο</string>
+    <string name="car_search_tracks">Αναζήτηση κομματιών</string>
+    <string name="car_no_results">Δεν υπάρχουν αποτελέσματα</string>
+    <string name="car_connecting_player">Σύνδεση με το πρόγραμμα αναπαραγωγής</string>
+    <string name="car_now_playing">Αναπαράγεται τώρα</string>
+    <string name="car_queue">Ουρά</string>
+</resources>
