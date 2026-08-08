@@ -142,8 +142,9 @@ internal class AppUpdateInstaller(
         .callTimeout(45, TimeUnit.SECONDS)
         .build()
 
-    suspend fun prepareLatestUpdate(onProgress: (Int?) -> Unit): PreparedAppUpdate = withContext(Dispatchers.IO) {
+    suspend fun prepareLatestUpdate(onProgress: (String, Int?) -> Unit): PreparedAppUpdate = withContext(Dispatchers.IO) {
         val update = repository.latestInstallable()
+        val versionName = update.info.latestVersionName
         if (update.assetSizeBytes > MAX_UPDATE_APK_BYTES) throw IOException("Update APK is too large")
 
         val directory = File(appContext.cacheDir, "updates")
@@ -155,8 +156,10 @@ internal class AppUpdateInstaller(
         if (finalFile.isFile) {
             try {
                 verifyDownloadedApk(finalFile, update)
-                onProgress(100)
-                return@withContext PreparedAppUpdate(update.info.latestVersionName, finalFile)
+                onProgress(versionName, 100)
+                return@withContext PreparedAppUpdate(versionName, finalFile)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Throwable) {
                 finalFile.delete()
             }
@@ -164,19 +167,22 @@ internal class AppUpdateInstaller(
 
         val initialUrl = validateLevyraUpdateUrl(update.assetDownloadUrl, initial = true)
             ?: throw IOException("Invalid Levyra update URL")
-        downloadToFile(initialUrl, update, partFile, onProgress)
+        downloadToFile(initialUrl, update, partFile) { progress -> onProgress(versionName, progress) }
         if (!partFile.renameTo(finalFile)) {
             partFile.delete()
             throw IOException("Unable to finalize update APK")
         }
         try {
             verifyDownloadedApk(finalFile, update)
+        } catch (cancelled: CancellationException) {
+            finalFile.delete()
+            throw cancelled
         } catch (error: Throwable) {
             finalFile.delete()
             throw error
         }
-        onProgress(100)
-        PreparedAppUpdate(update.info.latestVersionName, finalFile)
+        onProgress(versionName, 100)
+        PreparedAppUpdate(versionName, finalFile)
     }
 
     private suspend fun downloadToFile(
@@ -201,8 +207,10 @@ internal class AppUpdateInstaller(
             }
             val response = try {
                 call.execute()
-            } finally {
-                if (call.isCanceled()) cancellation.dispose()
+            } catch (error: Throwable) {
+                cancellation.dispose()
+                destination.delete()
+                throw error
             }
             try {
                 if (response.code in UPDATE_REDIRECT_CODES) {
@@ -259,6 +267,9 @@ internal class AppUpdateInstaller(
                     throw IOException("Downloaded update is incomplete")
                 }
                 return
+            } catch (cancelled: CancellationException) {
+                destination.delete()
+                throw cancelled
             } catch (error: Throwable) {
                 destination.delete()
                 throw error
