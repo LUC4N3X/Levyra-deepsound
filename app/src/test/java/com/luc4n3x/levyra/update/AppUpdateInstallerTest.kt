@@ -41,6 +41,14 @@ class AppUpdateInstallerTest {
     }
 
     @Test
+    fun `internal install handoff only matches the private update URI`() {
+        assertTrue(AppUpdateContract.matches("android.intent.action.VIEW", AppUpdateContract.INSTALL_URI))
+        assertFalse(AppUpdateContract.matches("android.intent.action.SEND", AppUpdateContract.INSTALL_URI))
+        assertFalse(AppUpdateContract.matches("android.intent.action.VIEW", "levyra://updates/install"))
+        assertFalse(AppUpdateContract.matches("android.intent.action.VIEW", "https://github.com/LUC4N3X/Levyra-deepsound"))
+    }
+
+    @Test
     fun `private and special destinations are rejected`() {
         assertFalse(isPublicUpdateAddress(InetAddress.getByName("10.0.0.1")))
         assertFalse(isPublicUpdateAddress(InetAddress.getByName("100.64.0.1")))
