@@ -1,0 +1,44 @@
+name: Apply Core Stabilization
+
+on:
+  push:
+    branches:
+      - agent/stabilize-playback-core
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: agent/stabilize-playback-core
+          fetch-depth: 0
+
+      - name: Apply checked stabilization patch
+        run: python3 scripts/apply_core_stabilization.py
+
+      - name: Validate patch whitespace
+        run: git diff --check
+
+      - name: Commit patched sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt \
+            app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          git commit -m "fix: harden playback cancellation and single flight"
+          git push origin HEAD:agent/stabilize-playback-core
