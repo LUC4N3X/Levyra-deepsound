@@ -95,7 +95,7 @@ private data class RingParam(
     val alpha: Float
 )
 
-private data class ProceduralParams(
+internal data class ProceduralParams(
     val backgroundBrush: Brush,
     val centerXRatio: Float,
     val centerYRatio: Float,
@@ -103,8 +103,9 @@ private data class ProceduralParams(
     val rings: List<RingParam>
 )
 
-private fun generateProceduralParams(seed: String, darkTheme: Boolean): ProceduralParams {
-    val hash = abs(seed.hashCode())
+internal fun generateProceduralParams(seed: String, darkTheme: Boolean): ProceduralParams {
+    val rawHash = seed.hashCode()
+    val hash = if (rawHash == Int.MIN_VALUE) 0 else abs(rawHash)
     val r1 = (hash and 0xFF) / 255f
     val r2 = ((hash shr 8) and 0xFF) / 255f
     val r3 = ((hash shr 16) and 0xFF) / 255f

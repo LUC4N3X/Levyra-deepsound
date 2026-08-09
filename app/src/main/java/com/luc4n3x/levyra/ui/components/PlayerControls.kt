@@ -84,7 +84,8 @@ private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
         "SkipPrevious" -> LevyraIonicons.SkipPrevious
         "SkipNext" -> LevyraIonicons.SkipNext
         "Shuffle" -> LevyraIonicons.Shuffle
-        "Repeat", "RepeatOne" -> LevyraIonicons.Repeat
+        "Repeat" -> LevyraIonicons.Repeat
+        "RepeatOne" -> LevyraIonicons.RepeatOne
         "KeyboardArrowDown" -> LevyraIonicons.ChevronDown
         "MoreVert" -> LevyraIonicons.MoreVertical
         "PlaylistAdd" -> LevyraIonicons.AddCircle
@@ -109,32 +110,12 @@ private fun PlayerIcon(
     modifier: Modifier = Modifier
 ) {
     val resolved = remember(icon) { ioniconForPlayer(icon) ?: icon }
-    val repeatOne = icon.name.substringAfterLast('.') == "RepeatOne"
-
-    if (repeatOne) {
-        Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = resolved,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.fillMaxSize()
-            )
-            Text(
-                text = "1",
-                color = tint,
-                fontSize = 7.sp,
-                lineHeight = 7.sp,
-                fontWeight = FontWeight.Black
-            )
-        }
-    } else {
-        Icon(
-            imageVector = resolved,
-            contentDescription = null,
-            tint = tint,
-            modifier = modifier
-        )
-    }
+    Icon(
+        imageVector = resolved,
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier
+    )
 }
 
 fun Modifier.playerGlass(

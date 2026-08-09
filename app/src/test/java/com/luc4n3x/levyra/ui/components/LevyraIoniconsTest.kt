@@ -14,6 +14,7 @@ class LevyraIoniconsTest {
             LevyraIonicons.SkipNext,
             LevyraIonicons.Shuffle,
             LevyraIonicons.Repeat,
+            LevyraIonicons.RepeatOne,
             LevyraIonicons.ChevronDown,
             LevyraIonicons.MoreVertical,
             LevyraIonicons.AddCircle,
