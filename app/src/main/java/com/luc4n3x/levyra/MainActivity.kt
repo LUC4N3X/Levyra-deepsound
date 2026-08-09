@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -186,7 +187,8 @@ class MainActivity : ComponentActivity() {
                 )
                 InAppUpdateDialog(
                     state = updateUiState.value,
-                    strings = LevyraStrings.forCode(activityUiState.languageCode)
+                    strings = LevyraStrings.forCode(activityUiState.languageCode),
+                    onCancel = ::cancelInAppUpdate
                 )
             }
         }
@@ -199,11 +201,19 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun startActivity(intent: Intent) {
-        if (AppUpdateContract.matches(intent)) {
-            if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
-            return
-        }
+        if (handleInAppUpdateIntent(intent)) return
         super.startActivity(intent)
+    }
+
+    override fun startActivity(intent: Intent, options: Bundle?) {
+        if (handleInAppUpdateIntent(intent)) return
+        super.startActivity(intent, options)
+    }
+
+    private fun handleInAppUpdateIntent(intent: Intent): Boolean {
+        if (!AppUpdateContract.matches(intent)) return false
+        if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
+        return true
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -233,7 +243,8 @@ class MainActivity : ComponentActivity() {
 
     private fun beginInAppUpdate() {
         if (!BuildConfig.UPSTREAM_UPDATES_ENABLED || updateJob?.isActive == true) return
-        updateJob = lifecycleScope.launch {
+        lateinit var job: Job
+        job = lifecycleScope.launch {
             try {
                 val prepared = updateInstaller.prepareLatestUpdate { versionName, progress ->
                     runOnUiThread {
@@ -252,9 +263,18 @@ class MainActivity : ComponentActivity() {
                 updateUiState.value = InAppUpdateUiState.Idle
                 showUpdateFailure()
             } finally {
-                updateJob = null
+                if (updateJob === job) updateJob = null
             }
         }
+        updateJob = job
+    }
+
+    private fun cancelInAppUpdate() {
+        val job = updateJob
+        updateJob = null
+        pendingUpdate = null
+        updateUiState.value = InAppUpdateUiState.Idle
+        job?.cancel()
     }
 
     private fun requestPackageInstall(prepared: PreparedAppUpdate) {
@@ -383,12 +403,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun InAppUpdateDialog(
     state: InAppUpdateUiState,
-    strings: LevyraStrings
+    strings: LevyraStrings,
+    onCancel: () -> Unit
 ) {
     val downloading = state as? InAppUpdateUiState.Downloading ?: return
     AlertDialog(
         onDismissRequest = {},
-        confirmButton = {},
+        confirmButton = {
+            TextButton(onClick = onCancel) {
+                Text(strings.cancel)
+            }
+        },
         title = {
             Text(
                 text = downloading.versionName.ifBlank { strings.updates }.let { version ->
