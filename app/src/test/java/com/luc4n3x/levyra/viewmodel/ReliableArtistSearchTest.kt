@@ -118,6 +118,24 @@ class ReliableArtistSearchTest {
         assertEquals("YouTube Music", result.topTrack?.artist)
     }
 
+    @Test
+    fun existingBrowseIdIsPreservedWhenPlaceholderArtistIsEnriched() {
+        val placeholder = track(
+            title = "Felices los 4",
+            artist = "YouTube Music",
+            artistBrowseIds = listOf("UC-existing")
+        )
+
+        val result = enrichSearchTracksWithExactArtist(
+            query = "maluma",
+            results = SearchResults(topTrack = placeholder),
+            reliableArtists = listOf(artist("Maluma", "UC-maluma"))
+        )
+
+        assertEquals("Maluma", result.topTrack?.artist)
+        assertEquals(listOf("UC-existing"), result.topTrack?.artistBrowseIds)
+    }
+
     private fun artist(name: String, browseId: String) = ArtistHit(
         name = name,
         subscribers = "",
@@ -128,7 +146,11 @@ class ReliableArtistSearchTest {
         officialArtwork = true
     )
 
-    private fun track(title: String, artist: String) = Track(
+    private fun track(
+        title: String,
+        artist: String,
+        artistBrowseIds: List<String> = emptyList()
+    ) = Track(
         id = title.lowercase().replace(' ', '-'),
         title = title,
         artist = artist,
@@ -145,6 +167,7 @@ class ReliableArtistSearchTest {
         replayScore = 0,
         cacheScore = 0,
         accentStart = 0,
-        accentEnd = 0
+        accentEnd = 0,
+        artistBrowseIds = artistBrowseIds
     )
 }
