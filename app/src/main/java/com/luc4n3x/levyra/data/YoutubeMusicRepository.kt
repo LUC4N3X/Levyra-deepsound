@@ -2231,10 +2231,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             ?.cleanAlbumArtistLabel()
             ?.takeIf(String::isNotBlank)
             ?: fallbackArtist
-        val album = subtitleLines
-            .drop(1)
-            .flatMap { it.split(" • ", " · ", " - ") }
-            .map(String::trim)
+        val artistTokenIndex = tokens.indexOfFirst { it.equals(artist, ignoreCase = true) }
+        val albumCandidates = if (artistTokenIndex >= 0) tokens.drop(artistTokenIndex + 1) else tokens
+        val album = albumCandidates
             .firstOrNull { token ->
                 isPlausibleSearchMetadataLabel(token) && !token.equals(artist, ignoreCase = true)
             }
