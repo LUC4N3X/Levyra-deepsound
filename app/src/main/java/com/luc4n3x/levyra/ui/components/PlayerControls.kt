@@ -19,6 +19,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -49,8 +51,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
 import com.luc4n3x.levyra.ui.playerContrastGradient
 import com.luc4n3x.levyra.ui.playerMix
@@ -72,6 +76,66 @@ data class PlayerControlLabels(
     val next: String,
     val repeat: String
 )
+
+private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
+    return when (icon.name.substringAfterLast('.')) {
+        "PlayArrow" -> LevyraIonicons.Play
+        "Pause" -> LevyraIonicons.Pause
+        "SkipPrevious" -> LevyraIonicons.SkipPrevious
+        "SkipNext" -> LevyraIonicons.SkipNext
+        "Shuffle" -> LevyraIonicons.Shuffle
+        "Repeat", "RepeatOne" -> LevyraIonicons.Repeat
+        "KeyboardArrowDown" -> LevyraIonicons.ChevronDown
+        "MoreVert" -> LevyraIonicons.MoreVertical
+        "PlaylistAdd" -> LevyraIonicons.AddCircle
+        "Favorite" -> LevyraIonicons.Heart
+        "FavoriteBorder" -> LevyraIonicons.HeartOutline
+        "Download", "FileDownload" -> LevyraIonicons.Download
+        "QueueMusic", "PlaylistPlay" -> LevyraIonicons.Queue
+        "Subject", "TextFields" -> LevyraIonicons.Lyrics
+        "Bedtime", "Schedule", "Timer" -> LevyraIonicons.Timer
+        "Equalizer", "GraphicEq", "Tune" -> LevyraIonicons.Equalizer
+        "PhoneAndroid", "Devices" -> LevyraIonicons.Device
+        "Settings" -> LevyraIonicons.Settings
+        "Share" -> LevyraIonicons.Share
+        else -> null
+    }
+}
+
+@Composable
+private fun PlayerIcon(
+    icon: ImageVector,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    val resolved = remember(icon) { ioniconForPlayer(icon) ?: icon }
+    val repeatOne = icon.name.substringAfterLast('.') == "RepeatOne"
+
+    if (repeatOne) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = resolved,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.fillMaxSize()
+            )
+            Text(
+                text = "1",
+                color = tint,
+                fontSize = 7.sp,
+                lineHeight = 7.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    } else {
+        Icon(
+            imageVector = resolved,
+            contentDescription = null,
+            tint = tint,
+            modifier = modifier
+        )
+    }
+}
 
 fun Modifier.playerGlass(
     shape: Shape,
@@ -119,9 +183,8 @@ fun PlayerGlassIconButton(
                 .playerGlass(shape = shape, fill = fill, borderTop = borderTop, borderBottom = borderBottom),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
+            PlayerIcon(
+                icon = icon,
                 tint = tint,
                 modifier = Modifier.size(iconSize)
             )
@@ -256,9 +319,8 @@ private fun PlayerModeToggleButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
+            PlayerIcon(
+                icon = icon,
                 tint = tint,
                 modifier = Modifier.size(iconSize)
             )
@@ -306,9 +368,8 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, ani
         },
         label = "player-primary-icon"
     ) { playing ->
-        Icon(
-            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-            contentDescription = null,
+        PlayerIcon(
+            icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
             tint = tint,
             modifier = Modifier
                 .size(iconSize)
