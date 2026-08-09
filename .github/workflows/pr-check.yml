@@ -48,30 +48,9 @@ jobs:
           set -euo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-
-          SDK_LIST="$("${SDKMANAGER}" --list --channel=3)"
-          PLATFORM_PACKAGE="$(
-            printf '%s\n' "${SDK_LIST}" |
-              awk -F '|' '
-                $1 ~ /^[[:space:]]*platforms;android-(37|CinnamonBun)[[:space:]]*$/ {
-                  value=$1
-                  gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
-                  print value
-                  exit
-                }
-              '
-          )"
-
-          if [ -z "${PLATFORM_PACKAGE}" ]; then
-            echo "Android 17 / Cinnamon Bun SDK platform was not found by sdkmanager." >&2
-            printf '%s\n' "${SDK_LIST}" | grep -Ei 'platforms;android-(37|Cinnamon)' || true
-            exit 1
-          fi
-
-          echo "Installing ${PLATFORM_PACKAGE}"
           "${SDKMANAGER}" --channel=3 \
             "platform-tools" \
-            "${PLATFORM_PACKAGE}" \
+            "platforms;android-37.0" \
             "build-tools;36.0.0"
 
       - name: Setup Gradle
