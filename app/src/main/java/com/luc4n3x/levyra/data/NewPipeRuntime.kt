@@ -26,6 +26,7 @@ import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 internal const val MAX_EXTRACTOR_RESPONSE_BYTES = 8L * 1024L * 1024L
 
@@ -84,12 +85,19 @@ internal fun readBoundedBody(
 object NewPipeRuntime {
     private val initLock = Any()
     private val providerInstalled = AtomicBoolean(false)
+    private val localeRequestGeneration = AtomicLong(0L)
 
     @Volatile
     private var initialized = false
 
     @Volatile
     private var applicationContext: Context? = null
+
+    @Volatile
+    private var localeConfig = newPipeLocaleConfig(LevyraLanguageCatalog.deviceDefault())
+
+    @Volatile
+    private var appliedLocaleKey = ""
 
     internal fun attachContext(context: Context) {
         applicationContext = context.applicationContext
@@ -98,28 +106,42 @@ object NewPipeRuntime {
     fun ensure(context: Context? = null) {
         context?.let(::attachContext)
 
+        val localeRequestId = if (context != null) localeRequestGeneration.incrementAndGet() else 0L
+        val requestedLocale = if (context != null) currentLocaleConfig() else null
+
+        if (context == null && initialized && providerInstalled.get()) return
+
         synchronized(initLock) {
-            val localeConfig = currentLocaleConfig()
+            if (requestedLocale != null && localeRequestId == localeRequestGeneration.get()) {
+                localeConfig = requestedLocale
+            }
+
+            val activeLocale = localeConfig
+            val localeKey = localeKey(activeLocale)
             if (!initialized) {
                 NewPipe.init(
                     OkHttpNewPipeDownloader(),
-                    localeConfig.localization,
-                    localeConfig.contentCountry
+                    activeLocale.localization,
+                    activeLocale.contentCountry
                 )
                 initialized = true
+                appliedLocaleKey = localeKey
+            } else if (appliedLocaleKey != localeKey) {
+                NewPipe.setupLocalization(activeLocale.localization, activeLocale.contentCountry)
+                appliedLocaleKey = localeKey
             }
-            NewPipe.setupLocalization(localeConfig.localization, localeConfig.contentCountry)
-        }
 
-        val appContext = applicationContext ?: return
-        if (providerInstalled.compareAndSet(false, true)) {
-            try {
-                NewPipe.setYoutubeSessionPoTokenProvider(
-                    LevyraYoutubeSessionPoTokenProvider(appContext)
-                )
-            } catch (error: Throwable) {
-                providerInstalled.set(false)
-                throw error
+            val appContext = applicationContext
+            if (appContext != null && !providerInstalled.get()) {
+                try {
+                    NewPipe.setYoutubeSessionPoTokenProvider(
+                        LevyraYoutubeSessionPoTokenProvider(appContext)
+                    )
+                    providerInstalled.set(true)
+                } catch (error: Throwable) {
+                    providerInstalled.set(false)
+                    throw error
+                }
             }
         }
     }
@@ -130,6 +152,9 @@ object NewPipeRuntime {
             ?: LevyraLanguageCatalog.deviceDefault()
         return newPipeLocaleConfig(languageCode)
     }
+
+    private fun localeKey(config: NewPipeLocaleConfig): String =
+        "${config.localization.languageCode}|${config.localization.countryCode}|${config.contentCountry.countryCode}"
 }
 
 internal fun watchPlaybackCancellation(cancelAction: () -> Unit): AutoCloseable {
