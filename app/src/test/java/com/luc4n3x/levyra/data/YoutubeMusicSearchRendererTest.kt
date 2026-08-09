@@ -76,9 +76,95 @@ class YoutubeMusicSearchRendererTest {
         assertEquals("Ghost Stories", track.album)
     }
 
+    @Test
+    fun `collaborating artist is not used as album`() {
+        val track = repository.parseMusicRenderer(
+            renderer(
+                line("O"),
+                packedLine(
+                    artistRun("Coldplay", "UC_COLDPLAY"),
+                    textRun(" & "),
+                    artistRun("BTS", "UC_BTS")
+                ),
+                line("My Universe")
+            ),
+            query = "Coldplay BTS"
+        )
+
+        requireNotNull(track)
+        assertEquals("Coldplay", track.artist)
+        assertEquals("My Universe", track.album)
+        assertEquals(listOf("UC_COLDPLAY", "UC_BTS"), track.artistBrowseIds)
+    }
+
+    @Test
+    fun `structured album reference wins and browse id is preserved`() {
+        val track = repository.parseMusicRenderer(
+            renderer(
+                line("O"),
+                packedLine(
+                    artistRun("Coldplay", "UC_COLDPLAY"),
+                    textRun(" • "),
+                    albumRun("Ghost Stories", "MPRE_GHOST_STORIES")
+                ),
+                line("27M plays")
+            ),
+            query = "Coldplay"
+        )
+
+        requireNotNull(track)
+        assertEquals("Coldplay", track.artist)
+        assertEquals("Ghost Stories", track.album)
+        assertEquals("MPRE_GHOST_STORIES", track.albumBrowseId)
+    }
+
+    @Test
+    fun `localized play count is ignored`() {
+        val track = repository.parseMusicRenderer(
+            renderer(
+                line("O"),
+                line("27 M reproducciones"),
+                artistLine("Coldplay", "UC_COLDPLAY")
+            ),
+            query = "Coldplay"
+        )
+
+        requireNotNull(track)
+        assertEquals("Coldplay", track.artist)
+        assertEquals("YouTube Music", track.album)
+    }
+
+    @Test
+    fun `two row carousel prefers artist reference over localized metric`() {
+        val track = repository.parseCarouselItem(
+            carouselItem(
+                textRun("27 M reproducciones"),
+                textRun(" • "),
+                artistRun("Coldplay", "UC_COLDPLAY")
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals("Coldplay", track.artist)
+        assertEquals(listOf("UC_COLDPLAY"), track.artistBrowseIds)
+    }
+
     private fun renderer(vararg flexLines: JSONObject): JSONObject = JSONObject()
         .put("playlistItemData", JSONObject().put("videoId", "2nd73lyvq4w"))
         .put("flexColumns", JSONArray(flexLines.toList()))
+
+    private fun carouselItem(vararg subtitleRuns: JSONObject): JSONObject {
+        val runs = JSONArray()
+        subtitleRuns.forEach { runs.put(it) }
+        val two = JSONObject()
+            .put("title", JSONObject().put("runs", JSONArray().put(textRun("O"))))
+            .put("subtitle", JSONObject().put("runs", runs))
+            .put(
+                "navigationEndpoint",
+                JSONObject().put("watchEndpoint", JSONObject().put("videoId", "2nd73lyvq4w"))
+            )
+        return JSONObject().put("musicTwoRowItemRenderer", two)
+    }
 
     private fun line(text: String): JSONObject = flexColumn(
         JSONArray().put(JSONObject().put("text", text))
@@ -99,19 +185,28 @@ class YoutubeMusicSearchRendererTest {
         .put("text", name)
         .put(
             "navigationEndpoint",
-            JSONObject().put(
-                "browseEndpoint",
-                JSONObject()
-                    .put("browseId", browseId)
-                    .put(
-                        "browseEndpointContextSupportedConfigs",
-                        JSONObject().put(
-                            "browseEndpointContextMusicConfig",
-                            JSONObject().put("pageType", "MUSIC_PAGE_TYPE_ARTIST")
-                        )
-                    )
-            )
+            browseEndpoint(browseId, "MUSIC_PAGE_TYPE_ARTIST")
         )
+
+    private fun albumRun(name: String, browseId: String): JSONObject = JSONObject()
+        .put("text", name)
+        .put(
+            "navigationEndpoint",
+            browseEndpoint(browseId, "MUSIC_PAGE_TYPE_ALBUM")
+        )
+
+    private fun browseEndpoint(browseId: String, pageType: String): JSONObject = JSONObject().put(
+        "browseEndpoint",
+        JSONObject()
+            .put("browseId", browseId)
+            .put(
+                "browseEndpointContextSupportedConfigs",
+                JSONObject().put(
+                    "browseEndpointContextMusicConfig",
+                    JSONObject().put("pageType", pageType)
+                )
+            )
+    )
 
     private fun flexColumn(runs: JSONArray): JSONObject = JSONObject().put(
         "musicResponsiveListItemFlexColumnRenderer",
