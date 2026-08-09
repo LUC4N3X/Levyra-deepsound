@@ -10,11 +10,11 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /*
- * Volume processor inspired by Metrolist's normalization pipeline.
- * Levyra keeps its existing loudness behaviour and RMS fallback.
+ * Inspired by Metrolist's GPL-3.0 volume normalization processor.
+ * Adapted to keep Levyra's existing loudness behaviour and RMS fallback.
  */
 @UnstableApi
-class VolumeNormalizationAudioProcessor : AudioProcessor {
+open class VolumeNormalizationAudioProcessor : AudioProcessor {
 
     @Volatile
     var enabled: Boolean = false
@@ -26,7 +26,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
     private var youtubePerceptualLoudnessDb: Float? = null
 
     @Volatile
-    private var explicitGain: GainState? = null
+    private var explicitGain: Float? = null
 
     private var inputAudioFormat = AudioFormat.NOT_SET
     private var bytesPerSample = 0
@@ -37,21 +37,16 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
     private var currentGain = 1.0f
     private var targetGain = 1.0f
 
-    private data class GainState(
-        val gainMb: Int,
-        val linearGain: Float,
-    )
-
     fun setYoutubeLoudness(loudnessDb: Float?, perceptualLoudnessDb: Float?) {
         youtubeLoudnessDb = loudnessDb?.takeIf { it.isFinite() }
         youtubePerceptualLoudnessDb = perceptualLoudnessDb?.takeIf { it.isFinite() }
         explicitGain = null
     }
 
-    @Synchronized
     fun setTargetGain(gainMb: Int) {
-        val linearGain = 10.0.pow(gainMb / 2000.0).toFloat()
-        explicitGain = GainState(gainMb, linearGain)
+        explicitGain = 10.0.pow(gainMb / 2000.0)
+            .toFloat()
+            .coerceIn(MIN_METADATA_GAIN, MAX_DYNAMIC_GAIN)
     }
 
     internal fun metadataGain(): Float? {
@@ -119,7 +114,7 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
     }
 
     private fun updateGain(inputBuffer: ByteBuffer, sampleCount: Int): Float {
-        val fixedGain = explicitGain?.linearGain ?: metadataGain()
+        val fixedGain = explicitGain ?: metadataGain()
         if (fixedGain != null) {
             targetGain = fixedGain
             currentGain += (targetGain - currentGain) * METADATA_SMOOTHING

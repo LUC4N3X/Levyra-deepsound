@@ -1,3 +1,6 @@
 package com.luc4n3x.levyra.player
 
-typealias NormalizationAudioProcessor = VolumeNormalizationAudioProcessor
+import androidx.media3.common.util.UnstableApi
+
+@UnstableApi
+class NormalizationAudioProcessor : VolumeNormalizationAudioProcessor()
