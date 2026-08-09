@@ -30,11 +30,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 internal object AppUpdateContract {
-    const val INSTALL_URI = "levyra://updates/install"
-    const val EXTRA_CONSUMED = "levyra.update_intent_consumed"
+    const val INSTALL_URI = "levyra-internal://updates/install"
 
-    fun matches(intent: Intent?): Boolean =
-        intent?.action == Intent.ACTION_VIEW && intent.data?.toString() == INSTALL_URI
+    fun matches(action: String?, uri: String?): Boolean =
+        action == Intent.ACTION_VIEW && uri == INSTALL_URI
+
+    fun matches(intent: Intent?): Boolean = matches(intent?.action, intent?.dataString)
 }
 
 internal data class PreparedAppUpdate(
@@ -139,10 +140,13 @@ internal class AppUpdateInstaller(
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(10, TimeUnit.SECONDS)
-        .callTimeout(45, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
     suspend fun prepareLatestUpdate(onProgress: (String, Int?) -> Unit): PreparedAppUpdate = withContext(Dispatchers.IO) {
+        if (!BuildConfig.UPSTREAM_UPDATES_ENABLED) {
+            throw IllegalStateException("Upstream updates are disabled")
+        }
         val update = repository.latestInstallable()
         val versionName = update.info.latestVersionName
         if (update.assetSizeBytes > MAX_UPDATE_APK_BYTES) throw IOException("Update APK is too large")
