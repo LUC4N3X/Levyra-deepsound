@@ -120,6 +120,21 @@ existing OpenAI skills reference them.
 
 ## Review and publication gates
 
+All implementation runtimes share one executable quality contract:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile fast
+python3 scripts/ai_quality_gate.py --profile full
+```
+
+The fast profile is required before commit. The full profile is required before
+push or pull-request publication and adds platform checks selected from the
+complete branch diff. GitHub PR Check repeats the fast preflight before its
+build, lint, manifest, and packaging checks. ChatGPT must run the commands when
+it has repository execution, or put them in the implementation handoff without
+claiming they passed. A reviewer bot is supplementary and cannot replace this
+gate.
+
 A pull request is not ready merely because code compiles.
 
 Required evidence depends on scope, but the gate may include:

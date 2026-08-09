@@ -176,7 +176,7 @@ Linux/macOS:
 
 The scripts:
 
-- optionally install RTK from `rtk-ai/rtk`;
+- support the automatic agent bootstrap of the pinned `rtk-ai/rtk` build;
 - configure detected supported runtimes;
 - install verified `.agents/config/codex-plugins.txt` entries only when requested;
 - run both repository validators;
@@ -207,9 +207,9 @@ severity remain blocking.
 | Runtime | Primary role | Main configuration |
 | --- | --- | --- |
 | ChatGPT Project | Requirements, investigation, architecture, planning, PR interpretation, and task preparation | Project instructions plus connected repository |
-| Codex | Focused implementation, tests, validation, and authorized repository delivery | root/path `AGENTS.md`, planning files, shared skills, instruction-based RTK, optional tools |
+| Codex | Focused implementation, tests, validation, and authorized repository delivery | root/path `AGENTS.md`, planning files, shared skills, automatic pinned RTK, optional tools |
 | Claude Code | Implementation and independent review with automatic skill routing | `.claude/` plus shared planning and skills |
-| Antigravity/OpenCode | Workspace implementation and review using shared rules and skills | `.agents/`, root/path instructions, optional RTK integration |
+| Antigravity/OpenCode | Workspace implementation and review using shared rules and skills | `.agents/`, root/path instructions, automatic pinned RTK integration |
 | OpenClaw | Explicit delegation, status collection, and handoff | dedicated workspace, shared skills, narrow tool policy |
 | RTK | Compact non-sensitive terminal output and measure reductions | executable, supported runtime integration, `.rtk/filters.toml` |
 | Security engine | Additional threat modeling, scanning, validation, and patch proposals | official setup plus `levyra-security-review` |
@@ -236,6 +236,18 @@ one "done" state.
 
 ## Validation
 
+Every supported coding runtime, including ChatGPT when it has command access,
+uses the repository quality gate:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile fast
+python3 scripts/ai_quality_gate.py --profile full
+```
+
+Run the fast profile before commit and the full profile before push or pull
+request publication. Without command access, ChatGPT must require the commands
+in its implementation handoff and must not report them as passed.
+
 ```bash
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
@@ -252,6 +264,7 @@ scripts, plugins, security routing, or dependency-review configuration.
 - Update `RTK.md`, `.rtk/filters.toml`, and setup scripts together.
 - Update `CODEX_SECURITY.md`, `levyra-security-review`, Claude routing, ChatGPT
   instructions, and Antigravity routing together when security behavior changes.
-- Keep executable/plugin installation opt-in and permissions least-privileged.
+- Keep the pinned RTK agent bootstrap least-privileged; every other executable
+  and plugin installation remains opt-in.
 - Verify paths, commands, skill names, hooks, workflows, artifacts, and
   publication state after structural changes.

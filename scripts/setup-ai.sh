@@ -34,9 +34,14 @@ done
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 PLUGIN_MANIFEST="$REPO_ROOT/.agents/config/codex-plugins.txt"
+RTK_GIT_REVISION="b34be37caf3796b69a50952a28e60e32b5daad43"
 
 has_command() {
   command -v "$1" >/dev/null 2>&1
+}
+
+is_token_killer_rtk() {
+  has_command rtk && rtk gain >/dev/null 2>&1
 }
 
 run_step() {
@@ -55,19 +60,20 @@ run_step() {
 echo "Levyra AI efficiency setup"
 echo "Repository: $REPO_ROOT"
 
-if ! has_command rtk; then
+if ! is_token_killer_rtk; then
   if [[ "$INSTALL_RTK" -ne 1 ]]; then
-    echo "[warn] RTK is not installed. Re-run with --install-rtk to install it through Cargo." >&2
+    echo "[warn] The official RTK Token Killer is missing. Re-run with --install-rtk to install the pinned build through Cargo." >&2
   elif ! has_command cargo; then
     echo "Cargo is required for --install-rtk. Install Rust/Cargo or install an official RTK binary manually." >&2
     exit 1
   else
-    run_step "Install RTK from rtk-ai/rtk" cargo install --git https://github.com/rtk-ai/rtk
+    run_step "Install RTK from rtk-ai/rtk" cargo install --git https://github.com/rtk-ai/rtk --rev "$RTK_GIT_REVISION" --force
   fi
 fi
 
-if has_command rtk; then
+if is_token_killer_rtk; then
   run_step "Verify RTK" rtk --version
+  run_step "Verify RTK Token Killer commands" rtk gain
 
   if [[ "$SKIP_HOOKS" -ne 1 ]]; then
     if has_command codex; then
