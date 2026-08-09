@@ -18,10 +18,14 @@ import java.net.UnknownHostException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Dns
 import okhttp3.HttpUrl
@@ -112,6 +116,15 @@ internal fun isPublicUpdateAddress(address: InetAddress): Boolean {
     }
     return true
 }
+
+internal fun CoroutineScope.launchUpdateCallCancellationWatcher(cancelCall: () -> Unit): Job =
+    launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) {
+        try {
+            awaitCancellation()
+        } finally {
+            cancelCall()
+        }
+    }
 
 private fun isAllowedUpdateHost(host: String): Boolean =
     host == "github.com" || host == "githubusercontent.com" || host.endsWith(".githubusercontent.com")
@@ -206,14 +219,14 @@ internal class AppUpdateInstaller(
                 .header("Cache-Control", "no-cache")
                 .build()
             val call = downloadClient.newCall(request)
-            val cancellation = currentCoroutineContext().job.invokeOnCompletion { cause ->
-                if (cause is CancellationException) call.cancel()
-            }
+            val cancellationWatcher = CoroutineScope(currentCoroutineContext())
+                .launchUpdateCallCancellationWatcher(call::cancel)
             val response = try {
-                call.execute()
+                call.execute().also { currentCoroutineContext().ensureActive() }
             } catch (error: Throwable) {
-                cancellation.dispose()
+                cancellationWatcher.cancel()
                 destination.delete()
+                currentCoroutineContext().ensureActive()
                 throw error
             }
             try {
@@ -276,10 +289,11 @@ internal class AppUpdateInstaller(
                 throw cancelled
             } catch (error: Throwable) {
                 destination.delete()
+                currentCoroutineContext().ensureActive()
                 throw error
             } finally {
                 response.close()
-                cancellation.dispose()
+                cancellationWatcher.cancel()
             }
         }
     }
