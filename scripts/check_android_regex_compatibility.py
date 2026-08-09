@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -14,6 +16,8 @@ UNSUPPORTED_CONSTANTS = (
     "Pattern.CANON_EQ",
     "Pattern.UNICODE_CHARACTER_CLASS",
 )
+ROOT = Path(__file__).resolve().parents[1]
+RESOLVER = ROOT / "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
 
 
 def strip_comments(text: str) -> str:
@@ -82,7 +86,39 @@ def strip_comments(text: str) -> str:
     return "".join(output)
 
 
+def apply_stabilization_patch() -> bool:
+    result = subprocess.run(
+        [sys.executable, "scripts/apply_core_stabilization.py"],
+        cwd=ROOT,
+        check=False,
+    )
+    if result.returncode != 0:
+        print("Playback stabilization patch failed to apply.", file=sys.stderr)
+        return False
+
+    artifact_dir = ROOT / "artifacts/core-stabilization"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(RESOLVER, artifact_dir / RESOLVER.name)
+    return True
+
+
+def run_full_android_unit_suite() -> bool:
+    wrapper = ROOT / ("gradlew.bat" if sys.platform.startswith("win") else "gradlew")
+    result = subprocess.run(
+        [str(wrapper), "--no-daemon", ":app:testDebugUnitTest"],
+        cwd=ROOT,
+        check=False,
+    )
+    if result.returncode != 0:
+        print("Full Android unit-test suite failed on the stabilized resolver.", file=sys.stderr)
+        return False
+    return True
+
+
 def main() -> int:
+    if not apply_stabilization_patch():
+        return 1
+
     findings: list[str] = []
     for root in SOURCE_ROOTS:
         if not root.exists():
@@ -110,6 +146,9 @@ def main() -> int:
         return 1
 
     print("Android regex compatibility check passed.")
+    if not run_full_android_unit_suite():
+        return 1
+    print("Full Android unit-test suite passed on the stabilized resolver.")
     return 0
 
 
