@@ -1,6 +1,9 @@
 name: Apply Core Stabilization
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - agent/stabilize-playback-core
@@ -8,6 +11,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: apply-core-stabilization-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   apply:
@@ -40,11 +47,11 @@ jobs:
           path = Path('.github/workflows/pr-check.yml')
           text = path.read_text(encoding='utf-8')
           anchor = "            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'"
-          concurrency = "            --tests 'com.luc4n3x.levyra.data.PlaybackConcurrencyTest'"
-          if concurrency not in text:
+          concurrency_test = "            --tests 'com.luc4n3x.levyra.data.PlaybackConcurrencyTest'"
+          if concurrency_test not in text:
               if anchor not in text:
                   raise SystemExit('PR check test anchor not found')
-              text = text.replace(anchor, anchor + " \\\n" + concurrency, 1)
+              text = text.replace(anchor, anchor + " \\\n" + concurrency_test, 1)
 
           full_suite = "\n      - name: Android Full Unit Test Suite\n        run: ./gradlew --no-daemon :app:testDebugUnitTest\n"
           text = text.replace(full_suite, "", 1)
