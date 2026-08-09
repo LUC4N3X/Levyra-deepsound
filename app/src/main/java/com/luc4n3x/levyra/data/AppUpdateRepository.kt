@@ -68,7 +68,7 @@ class AppUpdateRepository(context: Context) {
         )
         val assetDownloadUrl = selected?.downloadUrl.orEmpty()
         val directApk = selected?.isApk == true && assetDownloadUrl.isNotBlank()
-        val downloadUrl = if (directApk) {
+        val downloadUrl = if (directApk && BuildConfig.UPSTREAM_UPDATES_ENABLED) {
             AppUpdateContract.INSTALL_URI
         } else {
             assetDownloadUrl.ifBlank { releaseUrl }
