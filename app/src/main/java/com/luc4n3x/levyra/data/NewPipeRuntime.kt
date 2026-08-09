@@ -37,7 +37,7 @@ internal data class NewPipeLocaleConfig(
 internal fun newPipeLocaleConfig(languageCode: String): NewPipeLocaleConfig {
     val locale = LevyraContentLocales.forLanguage(languageCode)
     return NewPipeLocaleConfig(
-        localization = Localization(locale.hl, locale.gl),
+        localization = Localization(locale.languageCode, locale.gl),
         contentCountry = ContentCountry(locale.gl)
     )
 }
@@ -91,8 +91,12 @@ object NewPipeRuntime {
     @Volatile
     private var applicationContext: Context? = null
 
+    internal fun attachContext(context: Context) {
+        applicationContext = context.applicationContext
+    }
+
     fun ensure(context: Context? = null) {
-        context?.applicationContext?.let { applicationContext = it }
+        context?.let(::attachContext)
 
         val localeConfig = currentLocaleConfig()
         ensureInitialized(localeConfig)
@@ -321,14 +325,14 @@ private class OkHttpNewPipeDownloader : Downloader() {
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
+        if (response.code == 429) {
+            throw IOException("YouTube ha limitato temporaneamente le richieste")
+        }
         val responseBytes = readBoundedBody(
             response.body.byteStream(),
             response.body.contentLength()
         )
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
-        if (response.code == 429) {
-            throw IOException("YouTube ha limitato temporaneamente le richieste")
-        }
         return Response(
             response.code,
             response.message,
