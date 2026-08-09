@@ -60,6 +60,7 @@ class PlaybackConcurrencyTest {
         try {
             val singleFlight = PlaybackSingleFlight<String, Int>(ownerScope)
             val started = CompletableDeferred<Unit>()
+            val secondEntered = CompletableDeferred<Unit>()
             val release = CompletableDeferred<Unit>()
             val calls = AtomicInteger(0)
 
@@ -73,11 +74,13 @@ class PlaybackConcurrencyTest {
             }
             started.await()
             val second = async {
+                secondEntered.complete(Unit)
                 singleFlight.run("track") {
                     calls.incrementAndGet()
                     99
                 }
             }
+            secondEntered.await()
 
             release.complete(Unit)
 
@@ -96,6 +99,7 @@ class PlaybackConcurrencyTest {
         try {
             val singleFlight = PlaybackSingleFlight<String, Int>(ownerScope)
             val started = CompletableDeferred<Unit>()
+            val secondEntered = CompletableDeferred<Unit>()
             val release = CompletableDeferred<Unit>()
             val calls = AtomicInteger(0)
 
@@ -109,11 +113,13 @@ class PlaybackConcurrencyTest {
             }
             started.await()
             val second = async {
+                secondEntered.complete(Unit)
                 singleFlight.run("track") {
                     calls.incrementAndGet()
                     84
                 }
             }
+            secondEntered.await()
 
             first.cancel()
             release.complete(Unit)
