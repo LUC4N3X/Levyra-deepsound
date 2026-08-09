@@ -287,37 +287,11 @@ class LevyraBackupManager(private val context: Context) {
         }
     }
 
-    private fun audioSettingsToJson(value: LevyraAudioSettings): JSONObject = JSONObject()
-        .put("equalizerEnabled", value.equalizerEnabled)
-        .put("presetId", value.presetId)
-        .put("bandLevels", JSONArray(value.bandLevels))
-        .put("bassBoost", value.bassBoost)
-        .put("virtualizer", value.virtualizer)
-        .put("crossfadeSeconds", value.crossfadeSeconds)
-        .put("djSoftMode", value.djSoftMode)
-        .put("replayGainEnabled", value.replayGainEnabled)
-        .put("playbackSpeed", value.playbackSpeed.toDouble())
-        .put("pitch", value.pitch.toDouble())
-        .put("gaplessEnabled", value.gaplessEnabled)
+    private fun audioSettingsToJson(value: LevyraAudioSettings): JSONObject =
+        backupAudioSettingsToJson(value)
 
-    private fun parseAudioSettings(json: JSONObject?): LevyraAudioSettings {
-        if (json == null) return LevyraAudioSettings()
-        val levelsArray = json.optJSONArray("bandLevels") ?: JSONArray()
-        val levels = buildList { for (index in 0 until levelsArray.length()) add(levelsArray.optInt(index)) }
-        return LevyraAudioSettings(
-            equalizerEnabled = json.optBoolean("equalizerEnabled"),
-            presetId = json.optString("presetId"),
-            bandLevels = levels,
-            bassBoost = json.optInt("bassBoost"),
-            virtualizer = json.optInt("virtualizer"),
-            crossfadeSeconds = json.optInt("crossfadeSeconds"),
-            djSoftMode = json.optBoolean("djSoftMode"),
-            replayGainEnabled = json.optBoolean("replayGainEnabled"),
-            playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat(),
-            pitch = json.optDouble("pitch", 1.0).toFloat(),
-            gaplessEnabled = json.optBoolean("gaplessEnabled", true)
-        ).normalized()
-    }
+    private fun parseAudioSettings(json: JSONObject?): LevyraAudioSettings =
+        backupAudioSettingsFromJson(json)
 
     private fun interfaceSettingsToJson(value: LevyraInterfaceSettings): JSONObject = JSONObject()
         .put("compactHome", value.compactHome)
@@ -528,6 +502,42 @@ class LevyraBackupManager(private val context: Context) {
         const val AUTOMATIC_BACKUP_PREFIX = "levyra-auto-backup-"
         val REQUIRED_ENTRIES = setOf(MANIFEST_ENTRY, PAYLOAD_ENTRY)
     }
+}
+
+internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject = JSONObject()
+    .put("equalizerEnabled", value.equalizerEnabled)
+    .put("presetId", value.presetId)
+    .put("bandLevels", JSONArray(value.bandLevels))
+    .put("bassBoost", value.bassBoost)
+    .put("virtualizer", value.virtualizer)
+    .put("preampDb", value.preampDb.toDouble())
+    .put("limiterEnabled", value.limiterEnabled)
+    .put("crossfadeSeconds", value.crossfadeSeconds)
+    .put("djSoftMode", value.djSoftMode)
+    .put("replayGainEnabled", value.replayGainEnabled)
+    .put("playbackSpeed", value.playbackSpeed.toDouble())
+    .put("pitch", value.pitch.toDouble())
+    .put("gaplessEnabled", value.gaplessEnabled)
+
+internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings {
+    if (json == null) return LevyraAudioSettings()
+    val levelsArray = json.optJSONArray("bandLevels") ?: JSONArray()
+    val levels = buildList { for (index in 0 until levelsArray.length()) add(levelsArray.optInt(index)) }
+    return LevyraAudioSettings(
+        equalizerEnabled = json.optBoolean("equalizerEnabled"),
+        presetId = json.optString("presetId"),
+        bandLevels = levels,
+        bassBoost = json.optInt("bassBoost"),
+        virtualizer = json.optInt("virtualizer"),
+        preampDb = json.optDouble("preampDb", 0.0).toFloat(),
+        limiterEnabled = json.optBoolean("limiterEnabled", true),
+        crossfadeSeconds = json.optInt("crossfadeSeconds"),
+        djSoftMode = json.optBoolean("djSoftMode"),
+        replayGainEnabled = json.optBoolean("replayGainEnabled"),
+        playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat(),
+        pitch = json.optDouble("pitch", 1.0).toFloat(),
+        gaplessEnabled = json.optBoolean("gaplessEnabled", true)
+    ).normalized()
 }
 
 internal fun automaticBackupFilesToDelete(fileNames: List<String>, retentionCount: Int): List<String> = fileNames
