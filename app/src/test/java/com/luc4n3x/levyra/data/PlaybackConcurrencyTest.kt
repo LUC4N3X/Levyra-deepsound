@@ -8,9 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -132,6 +134,43 @@ class PlaybackConcurrencyTest {
             }
             assertEquals(21, second.await())
             assertEquals(1, calls.get())
+            assertEquals(0, singleFlight.activeCount())
+        } finally {
+            ownerScope.cancel()
+        }
+    }
+
+    @Test
+    fun cancellingLastWaiterCancelsSharedRequestAndAllowsRetry() = runBlocking {
+        val ownerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val singleFlight = PlaybackSingleFlight<String, Int>(ownerScope)
+            val started = CompletableDeferred<Unit>()
+            val sharedCancelled = CompletableDeferred<Unit>()
+
+            val waiter = async {
+                singleFlight.run("track") {
+                    try {
+                        started.complete(Unit)
+                        awaitCancellation()
+                    } finally {
+                        sharedCancelled.complete(Unit)
+                    }
+                }
+            }
+
+            started.await()
+            waiter.cancel()
+            try {
+                waiter.await()
+                fail("Waiter must stay cancelled")
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                assertTrue(waiter.isCancelled)
+            }
+
+            withTimeout(2_000L) { sharedCancelled.await() }
+            assertEquals(0, singleFlight.activeCount())
+            assertEquals(33, singleFlight.run("track") { 33 })
             assertEquals(0, singleFlight.activeCount())
         } finally {
             ownerScope.cancel()
