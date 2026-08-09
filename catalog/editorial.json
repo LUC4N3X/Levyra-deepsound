@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-09T12:22:24Z",
+  "generatedAt": "2026-08-09T12:34:03Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1530,7 +1530,7 @@
         },
         {
           "position": 15,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1538,8 +1538,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1549,11 +1549,11 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 16,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1561,12 +1561,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 17,
@@ -6237,11 +6237,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 16,
@@ -10224,7 +10224,7 @@
         },
         {
           "position": 34,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -10232,8 +10232,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -10243,7 +10243,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 35,
@@ -10429,14 +10429,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -14823,7 +14815,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -14831,8 +14823,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -14842,7 +14834,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 30,
@@ -16891,7 +16883,7 @@
         },
         {
           "position": 25,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16899,12 +16891,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 26,
@@ -19855,12 +19847,6 @@
           },
           "durationMs": 301055,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9DQY3wm5hd0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNrsYqYuF7LkqjoeN0JfDlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b057b18fd01c8eee341bd127"
         },
         {
@@ -22287,6 +22273,12 @@
           },
           "durationMs": 180000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "hGqYdubpcCM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC_Cx288SDUD9liYn7CiJLAA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d179b01c0b9baac10170d1ad"
         },
         {
@@ -22447,6 +22439,12 @@
           },
           "durationMs": 182000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "op05giODUE0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e5fd56cd91d38d69aec9a5a2"
         },
         {
@@ -24461,11 +24459,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 20,
@@ -25072,12 +25070,6 @@
           },
           "durationMs": 240800,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "sUQb8fQ1egI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCnPlS1Ok2wmMcwC2qkZ0GKA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7105ffabf2ff9ddd265eab1"
         },
         {
@@ -26343,26 +26335,29 @@
         },
         {
           "position": 48,
-          "id": "levyra-50adcb205c108ed5f4ed",
-          "title": "24h",
+          "id": "levyra-a72a886ba586ee413e49",
+          "title": "24H",
           "artists": [
             {
               "name": "Lyly"
+            },
+            {
+              "name": "Magazine"
             }
           ],
           "album": {
-            "name": "24h",
-            "releaseDate": "2020-10-28"
+            "name": "24H",
+            "releaseDate": "2020-04-25"
           },
-          "durationMs": 257000,
-          "explicit": false,
+          "durationMs": 256905,
+          "explicit": true,
           "youtubeMusic": {
             "audioVideoId": "w8DEtCin4uI",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCtc2b3gvR1OjvaOScz3QM0Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9a33a39e11f920fabf6a5b0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa10ce68802568a9f53ecb8a"
         },
         {
           "position": 49,
@@ -26970,12 +26965,6 @@
           },
           "durationMs": 293500,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "vZh6nx_H-ZE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
@@ -27867,14 +27856,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
