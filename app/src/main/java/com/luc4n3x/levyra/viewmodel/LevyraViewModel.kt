@@ -3948,9 +3948,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     exactArtist = exactArtist,
                     verifiedArtists = verifiedGeneralArtists
                 )
-                raw.copy(
+                val artistResolvedResults = enrichSearchTracksWithExactArtist(
+                    query = clean,
+                    results = raw,
+                    reliableArtists = officialArtists
+                )
+                artistResolvedResults.copy(
                     artists = officialArtists,
-                    albums = searchAlbumsForArtistQuery(clean, raw, officialArtists)
+                    albums = searchAlbumsForArtistQuery(clean, artistResolvedResults, officialArtists)
                 )
             }
         }

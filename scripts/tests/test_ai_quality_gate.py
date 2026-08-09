@@ -70,6 +70,30 @@ class AiQualityGateTest(unittest.TestCase):
 
         self.assertEqual(1, len(findings))
 
+    def test_allows_token_identifiers_and_kotlin_type_annotations(self) -> None:
+        findings = scan_added_lines(
+            [
+                "val normalizedToken = normalizedReleaseArtist(token)",
+                "return referenceNames.all(normalizedToken::contains)",
+                "private fun label(token: String): Boolean = token.isNotBlank()",
+            ],
+            "fixture",
+        )
+
+        self.assertEqual([], findings)
+
+    def test_still_detects_standalone_token_assignments(self) -> None:
+        credential = "real" + "-production-token-123"
+        findings = scan_added_lines(
+            [
+                f'{"to" + "ken"} = "{credential}"',
+                f'{"api" + "_" + "key"}: "{credential}"',
+            ],
+            "fixture",
+        )
+
+        self.assertEqual(2, len(findings))
+
     def test_full_android_profile_adds_tests_lint_and_compile(self) -> None:
         commands, blocked = build_commands(
             {"app/src/main/java/example.kt"},

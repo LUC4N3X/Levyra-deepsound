@@ -40,8 +40,12 @@ PRIVATE_KEY_MARKERS = (
 )
 GITHUB_TOKEN_RE = re.compile(r"(?:ghp|github_pat)_[A-Za-z0-9_]{20,}")
 SECRET_ASSIGNMENT_RE = re.compile(
-    r"(?i)(?:api[_-]?key|client[_-]?secret|password|private[_-]?key|token)"
-    r"\s*[:=]\s*[\"']?([^\s\"']{8,})"
+    r"(?i)(?<![\w])(?:api[_-]?key|client[_-]?secret|password|private[_-]?key|token)(?![\w])"
+    r"\s*([:=])\s*[\"']?([^\s\"']{8,})"
+)
+KOTLIN_SECRET_TYPE_ANNOTATION_RE = re.compile(
+    r"(?i)(?<![\w])(?:api[_-]?key|client[_-]?secret|password|private[_-]?key|token)(?![\w])"
+    r"\s*:\s*(?:String|Boolean|Byte|Short|Int|Long|Float|Double|Char)\??\b"
 )
 SAFE_DYNAMIC_SECRET_MARKERS = (
     "${",
@@ -199,7 +203,10 @@ def scan_added_lines(lines: Iterable[str], source: str) -> list[str]:
             findings.append(f"{source}:{line_number}: possible GitHub token")
         match = SECRET_ASSIGNMENT_RE.search(value)
         if match:
-            assigned = match.group(1).lower()
+            delimiter = match.group(1)
+            if delimiter == ":" and KOTLIN_SECRET_TYPE_ANNOTATION_RE.search(value):
+                continue
+            assigned = match.group(2).lower()
             is_dynamic = any(marker in assigned for marker in SAFE_DYNAMIC_SECRET_MARKERS)
             is_synthetic = SAFE_SYNTHETIC_VALUE_RE.search(assigned) is not None
             if not is_dynamic and not is_synthetic:

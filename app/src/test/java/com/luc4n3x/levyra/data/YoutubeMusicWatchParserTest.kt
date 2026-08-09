@@ -592,6 +592,7 @@ class YoutubeMusicWatchParserTest {
         assertTrue(isYoutubeMusicAlbumTrackMetadata("2,2 Mln riproduzioni"))
         assertTrue(isYoutubeMusicAlbumTrackMetadata("16 Mln riproduzioni"))
         assertTrue(isYoutubeMusicAlbumTrackMetadata("232 Mln riproduzioni"))
+        assertTrue(isYoutubeMusicAlbumTrackMetadata("27 M reproducciones"))
     }
 
     @Test
