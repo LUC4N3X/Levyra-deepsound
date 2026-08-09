@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-labelledby="title desc">
+<title id="title">Add Levyra to Obtainium</title><desc id="desc">Install and track Levyra updates directly from GitHub with Obtainium</desc>
+<defs><linearGradient id="p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#121826"/><stop offset="1" stop-color="#0A0F1D"/></linearGradient><linearGradient id="a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#22D3EE"/></linearGradient></defs>
+<rect x="8" y="8" width="744" height="138" rx="24" fill="url(#p)" stroke="#2A354A" stroke-width="2"/>
+<rect x="32" y="26" width="4" height="102" rx="2" fill="url(#a)"/>
+<rect x="54" y="38" width="76" height="76" rx="22" fill="#171F31" stroke="#354057"/>
+<circle cx="92" cy="76" r="25" fill="#0D1824" stroke="#34D399" stroke-width="2"/>
+<path d="M92 57v27m0 0-10-10m10 10 10-10" fill="none" stroke="#67E8F9" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M76 92c5 7 12 10 20 9 7-.8 13-4 17-10" fill="none" stroke="#34D399" stroke-width="3" stroke-linecap="round"/>
+<path d="m110 86 4 7-8 1" fill="none" stroke="#34D399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="154" y="49" fill="#6EE7B7" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.6">OBTAINIUM · DIRECT FROM GITHUB</text>
+<text x="154" y="81" fill="#FFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="30" font-weight="800">Install with Obtainium</text>
+<text x="154" y="108" fill="#94A3B8" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="600">One tap · Signed APK · Automatic update tracking</text>
+<g opacity=".22" fill="#34D399"><rect x="154" y="118" width="5" height="10" rx="2.5"/><rect x="165" y="112" width="5" height="16" rx="2.5"/><rect x="176" y="116" width="5" height="12" rx="2.5"/><rect x="187" y="108" width="5" height="20" rx="2.5"/><rect x="198" y="114" width="5" height="14" rx="2.5"/></g>
+<g transform="translate(558 49)"><rect width="164" height="56" rx="17" fill="url(#a)"/><text x="70" y="35" text-anchor="middle" fill="#06141A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="15" font-weight="900">Add to Obtainium</text><path d="M139 20.5 147 28l-8 7.5M146 28h-18" fill="none" stroke="#06141A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg>
