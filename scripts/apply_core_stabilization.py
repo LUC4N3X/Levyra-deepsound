@@ -226,6 +226,13 @@ text = replace_exact(
     "    private fun resolveVideoWithLevyraExtractor(\n",
     "    private suspend fun resolveVideoWithLevyraExtractor(\n",
 )
+text = replace_exact(
+    text,
+    "        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)\n",
+    "        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)\n"
+    "        currentCoroutineContext().ensureActive()\n",
+    count=2,
+)
 
 FILE.write_text(text, encoding="utf-8")
 print("PlaybackResolver stabilization patch applied cleanly")
