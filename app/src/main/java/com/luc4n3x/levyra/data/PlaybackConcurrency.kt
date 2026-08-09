@@ -5,7 +5,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.asContextElement
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -13,17 +15,24 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+private val playbackCancellationJob = ThreadLocal<Job?>()
+
+internal fun currentPlaybackCancellationJob(): Job? = playbackCancellationJob.get()
+
 internal suspend inline fun <T> runCatchingPreservingCancellation(
     crossinline block: suspend () -> T
 ): Result<T> {
+    val context = currentCoroutineContext()
     return try {
-        val value = block()
-        currentCoroutineContext().ensureActive()
+        val value = withContext(playbackCancellationJob.asContextElement(context[Job])) {
+            block()
+        }
+        context.ensureActive()
         Result.success(value)
     } catch (error: CancellationException) {
         throw error
     } catch (error: Throwable) {
-        currentCoroutineContext().ensureActive()
+        context.ensureActive()
         Result.failure(error)
     }
 }
