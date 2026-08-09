@@ -126,13 +126,7 @@ internal fun isPlausibleYoutubeMusicAlbumTitle(value: String): Boolean {
         trackCountParts.last() in trackCountLabels
     ) return false
 
-    val metricWords = listOf(
-        "view", "visualizz", "riproduzion", "ascolt", "play", "stream",
-        "reproduccion", "reproducción", "escucha", "vue", "écoute",
-        "aufruf", "wiedergabe", "reprodução", "visualização",
-        "просмотр", "прослушив", "再生", "조회수", "스트리밍", "צפיות", "השמעות"
-    )
-    if (normalized.any(Char::isDigit) && metricWords.any(normalized::contains)) return false
+    if (hasYoutubeMusicMetricWord(normalized)) return false
     return !ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
 }
 
@@ -1432,7 +1426,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
         "فنان", "قناة", "ملف شخصي", "قائمة تشغيل", "歌手", "频道", "个人资料", "播放列表",
         "アーティスト", "チャンネル", "プロフィール", "プレイリスト", "再生リスト",
-        "아티스트", "채널", "프로필", "재생목록", "플레이리스트",
+        "아티스트", "채널", "프로필", "재생목록", "플레이리スト",
         "कलाकार", "चैनल", "प्रोफ़ाइल", "प्लेलिस्ट",
         "saluran", "daftar putar", "nghệ sĩ", "kênh", "hồ sơ", "danh sách phát",
         "ศิลปิน", "ช่อง", "โปรไฟล์", "เพลย์ลิสต์",
@@ -2074,19 +2068,23 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return LevyraLocalizedDiscovery.suggestions(query, locale.languageCode, remote)
     }
 
-    private fun parseCarouselItem(item: JSONObject): Track? {
+    internal fun parseCarouselItem(item: JSONObject): Track? {
         item.optJSONObject("musicResponsiveListItemRenderer")?.let { return parseMusicRenderer(it, "home") }
         val two = item.optJSONObject("musicTwoRowItemRenderer") ?: return null
         val title = two.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
         if (title.isBlank()) return null
         val videoId = firstWatchVideoId(two).ifBlank { return null }
         val subtitle = two.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty()
-        
+
         val tokens = subtitle.split(" • ", " · ", " - ").map { it.trim() }
         if (tokens.isNotEmpty() && tokens[0].lowercase() in excludedTypes) return null
-        
-        val artist = tokens.firstOrNull()?.takeIf { it.isNotBlank() && it.lowercase() !in typeLabels } ?: "YouTube Music"
-        val artistReferences = extractYoutubeMusicArtistReferences(two, artist)
+
+        val fallbackArtist = tokens.firstOrNull(::isPlausibleSearchMetadataLabel) ?: "YouTube Music"
+        val artistReferences = extractYoutubeMusicArtistReferences(two, fallbackArtist)
+        val artist = artistReferences.firstOrNull()?.name
+            ?.cleanAlbumArtistLabel()
+            ?.takeIf(String::isNotBlank)
+            ?: fallbackArtist
         val thumbnail = findBestThumbnail(two)
         return buildTrack(
             id = videoId,
@@ -2218,11 +2216,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val videoId = extractPrimaryMusicVideoId(renderer).takeIf { it.isNotBlank() } ?: return null
         val allText = renderer.toString()
         val duration = extractDuration(allText)
-        
+
         val subtitleLines = lines.drop(1)
         val tokens = subtitleLines.flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }
         if (tokens.isNotEmpty() && tokens[0].lowercase() in excludedTypes) return null
-        
+
         val fallbackArtist = tokens
             .firstOrNull(::isPlausibleSearchMetadataLabel)
             ?: "YouTube Music"
@@ -2231,11 +2229,15 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             ?.cleanAlbumArtistLabel()
             ?.takeIf(String::isNotBlank)
             ?: fallbackArtist
-        val artistTokenIndex = tokens.indexOfFirst { it.equals(artist, ignoreCase = true) }
-        val albumCandidates = if (artistTokenIndex >= 0) tokens.drop(artistTokenIndex + 1) else tokens
-        val album = albumCandidates
-            .firstOrNull { token ->
-                isPlausibleSearchMetadataLabel(token) && !token.equals(artist, ignoreCase = true)
+        val albumReference = extractYoutubeMusicAlbumReference(renderer)
+        val album = albumReference.first
+            .takeIf { label ->
+                isPlausibleSearchMetadataLabel(label) &&
+                    !isResolvedArtistMetadataToken(label, artist, artistReferences)
+            }
+            ?: tokens.firstOrNull { token ->
+                isPlausibleSearchMetadataLabel(token) &&
+                    !isResolvedArtistMetadataToken(token, artist, artistReferences)
             }
             ?: "YouTube Music"
         val thumbnail = findBestThumbnail(renderer)
@@ -2250,9 +2252,26 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = query,
             source = "YouTube Music",
+            albumBrowseId = albumReference.second,
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty()
         )
+    }
+
+    private fun isResolvedArtistMetadataToken(
+        token: String,
+        artist: String,
+        artistReferences: List<YoutubeMusicArtistReference>
+    ): Boolean {
+        val normalizedToken = normalizedReleaseArtist(token)
+        if (normalizedToken.isBlank()) return false
+        if (normalizedToken == normalizedReleaseArtist(artist)) return true
+        if (artistReferences.any { reference -> normalizedToken == normalizedReleaseArtist(reference.name) }) return true
+
+        val referenceNames = artistReferences
+            .map { reference -> normalizedReleaseArtist(reference.name) }
+            .filter(String::isNotBlank)
+        return referenceNames.size > 1 && referenceNames.all(normalizedToken::contains)
     }
 
     private fun isPlausibleSearchMetadataLabel(token: String): Boolean {
@@ -2582,14 +2601,24 @@ internal fun isYoutubeMusicAlbumTrackMetadata(value: String): Boolean {
         .replace('\u00A0', ' ')
         .replace('\u202F', ' ')
         .trim()
-        .lowercase()
+        .lowercase(Locale.ROOT)
     if (normalized.isBlank()) return true
     if (normalized.matches(Regex("^(?:19|20)\\d{2}$"))) return true
     if (normalized.matches(Regex("^\\d{1,2}:\\d{2}(?::\\d{2})?$"))) return true
     if (normalized.matches(Regex("^\\d+\\s*(?:brani|tracce|songs?|tracks?)$", RegexOption.IGNORE_CASE))) return true
     if (normalized.none(Char::isDigit)) return false
-    return ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
+    return hasYoutubeMusicMetricWord(normalized) || ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
 }
+
+private fun hasYoutubeMusicMetricWord(value: String): Boolean =
+    value.any(Char::isDigit) && YOUTUBE_MUSIC_METRIC_WORDS.any(value::contains)
+
+private val YOUTUBE_MUSIC_METRIC_WORDS = listOf(
+    "view", "visualizz", "riproduzion", "ascolt", "play", "stream",
+    "reproduccion", "reproducción", "escucha", "vue", "écoute",
+    "aufruf", "wiedergabe", "reprodução", "visualização",
+    "просмотр", "прослушив", "再生", "조회수", "스트리밍", "צפיות", "השמעות"
+)
 
 private val ALBUM_TRACK_METRIC_PATTERN = Regex(
     "(?:^|\\s)[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?\\s*(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?)\\b",
