@@ -16,6 +16,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Rational
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -124,9 +125,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightStatusBars = startPalette.isLight
             isAppearanceLightNavigationBars = startPalette.isLight
         }
-        if (!handleInAppUpdateIntent(intent)) {
-            LevyraLaunchActions.consumeFrom(intent)
-        }
+        LevyraLaunchActions.consumeFrom(intent)
         if (Build.VERSION.SDK_INT >= 28) {
             val params = window.attributes
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -196,9 +195,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (!handleInAppUpdateIntent(intent)) {
-            LevyraLaunchActions.consumeFrom(intent)
+        LevyraLaunchActions.consumeFrom(intent)
+    }
+
+    override fun startActivity(intent: Intent) {
+        if (AppUpdateContract.matches(intent)) {
+            if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
+            return
         }
+        super.startActivity(intent)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -226,16 +231,8 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun handleInAppUpdateIntent(intent: Intent?): Boolean {
-        if (!AppUpdateContract.matches(intent)) return false
-        if (intent?.getBooleanExtra(AppUpdateContract.EXTRA_CONSUMED, false) == true) return true
-        intent?.putExtra(AppUpdateContract.EXTRA_CONSUMED, true)
-        if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
-        return true
-    }
-
     private fun beginInAppUpdate() {
-        if (updateJob?.isActive == true) return
+        if (!BuildConfig.UPSTREAM_UPDATES_ENABLED || updateJob?.isActive == true) return
         updateJob = lifecycleScope.launch {
             try {
                 val prepared = updateInstaller.prepareLatestUpdate { versionName, progress ->
@@ -253,7 +250,7 @@ class MainActivity : ComponentActivity() {
                 Timber.w(error, "In-app update failed")
                 pendingUpdate = null
                 updateUiState.value = InAppUpdateUiState.Idle
-                viewModel.checkForUpdates(silent = false)
+                showUpdateFailure()
             } finally {
                 updateJob = null
             }
@@ -271,7 +268,7 @@ class MainActivity : ComponentActivity() {
                 .onFailure {
                     Timber.w(it, "Unable to open unknown-source settings")
                     pendingUpdate = null
-                    viewModel.checkForUpdates(silent = false)
+                    showUpdateFailure()
                 }
             return
         }
@@ -282,7 +279,7 @@ class MainActivity : ComponentActivity() {
         val prepared = pendingUpdate ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
             pendingUpdate = null
-            viewModel.checkForUpdates(silent = false)
+            showUpdateFailure()
             return
         }
         launchPackageInstaller(prepared)
@@ -294,7 +291,7 @@ class MainActivity : ComponentActivity() {
         }.getOrElse {
             Timber.w(it, "Unable to expose update APK")
             pendingUpdate = null
-            viewModel.checkForUpdates(silent = false)
+            showUpdateFailure()
             return
         }
         val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
@@ -305,9 +302,14 @@ class MainActivity : ComponentActivity() {
         runCatching { startActivity(installIntent) }
             .onFailure {
                 Timber.w(it, "Unable to launch Android package installer")
-                viewModel.checkForUpdates(silent = false)
+                showUpdateFailure()
             }
         pendingUpdate = null
+    }
+
+    private fun showUpdateFailure() {
+        val strings = LevyraStrings.forCode(viewModel.state.value.languageCode)
+        Toast.makeText(this, strings.cannotOpenDownload, Toast.LENGTH_LONG).show()
     }
 
     private fun enterPictureInPicture(): Boolean {
