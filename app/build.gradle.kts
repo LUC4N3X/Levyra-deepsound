@@ -126,6 +126,12 @@ android {
         versionCode = levyraVersionCode
         versionName = levyraVersionName
         vectorDrawables.useSupportLibrary = true
+        manifestPlaceholders["upstreamInstallPermission"] = if (isFdroidBuild) {
+            "android.permission.INTERNET"
+        } else {
+            "android.permission.REQUEST_INSTALL_PACKAGES"
+        }
+        manifestPlaceholders["upstreamUpdatesEnabled"] = (!isFdroidBuild).toString()
         buildConfigField("String", "UPDATE_REPOSITORY", "\"LUC4N3X/Levyra-deepsound\"")
         buildConfigField("String", "UPDATE_LATEST_URL", "\"https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest\"")
         buildConfigField("boolean", "UPSTREAM_UPDATES_ENABLED", (!isFdroidBuild).toString())
