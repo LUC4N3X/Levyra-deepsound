@@ -32,7 +32,7 @@ class LevyraApplication : Application() {
         NewPipeRuntime.attachContext(this)
         startupScope.launch(Dispatchers.IO) {
             try {
-                NewPipeRuntime.ensure()
+                NewPipeRuntime.ensure(this@LevyraApplication)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Throwable) {
