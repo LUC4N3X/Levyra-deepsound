@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,8 +31,13 @@ class LevyraApplication : Application() {
         PlaybackNetworkStack.initialize(this)
         NewPipeRuntime.attachContext(this)
         startupScope.launch(Dispatchers.IO) {
-            runCatching { NewPipeRuntime.ensure() }
-                .onFailure { Timber.w(it, "Extractor initialization failed") }
+            try {
+                NewPipeRuntime.ensure()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "Extractor initialization failed")
+            }
         }
         warmPlaybackPipeline()
         startupScope.launch {
