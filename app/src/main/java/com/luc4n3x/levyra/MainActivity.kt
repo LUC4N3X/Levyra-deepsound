@@ -276,10 +276,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun resumePendingUpdateInstall() {
-        val prepared = pendingUpdate ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
             pendingUpdate = null
             showUpdateFailure()
+            return
+        }
+        val prepared = pendingUpdate
+        if (prepared == null) {
+            if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
             return
         }
         launchPackageInstaller(prepared)
