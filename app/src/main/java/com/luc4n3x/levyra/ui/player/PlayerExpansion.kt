@@ -19,8 +19,8 @@ private const val SurfaceScaleStart = 0.94f
 private const val SurfaceLiftStart = 0.055f
 
 fun playerExpansionFromDrag(start: Float, dragPx: Float, travelPx: Float): Float {
-    val safeStart = start.finiteOr(PlayerExpansionCollapsed)
-        .coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
+    if (!start.isFinite()) return PlayerExpansionCollapsed
+    val safeStart = start.coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
     if (!dragPx.isFinite() || !travelPx.isFinite() || travelPx <= 0f) return safeStart
     val delta = -dragPx / travelPx
     return (safeStart + delta).coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
