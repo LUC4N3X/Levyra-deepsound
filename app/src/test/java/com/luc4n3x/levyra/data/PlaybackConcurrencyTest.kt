@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +57,40 @@ class PlaybackConcurrencyTest {
         } catch (_: kotlinx.coroutines.CancellationException) {
             assertTrue(worker.isCancelled)
         }
+    }
+
+    @Test
+    fun cancellationReleasesBlockedExtractionCall() = runBlocking {
+        val entered = CompletableDeferred<Unit>()
+        val release = CountDownLatch(1)
+        val cancellationObserved = AtomicBoolean(false)
+
+        val worker = async(Dispatchers.IO) {
+            runCatchingPreservingCancellation {
+                val binding = watchPlaybackCancellation {
+                    cancellationObserved.set(true)
+                    release.countDown()
+                }
+                try {
+                    entered.complete(Unit)
+                    release.await()
+                    7
+                } finally {
+                    binding.close()
+                }
+            }
+        }
+
+        entered.await()
+        worker.cancel()
+
+        try {
+            withTimeout(2_000L) { worker.await() }
+            fail("Blocked extraction must remain cancelled")
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            assertTrue(worker.isCancelled)
+        }
+        assertTrue(cancellationObserved.get())
     }
 
     @Test
