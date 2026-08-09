@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-08T21:25:58Z",
+  "generatedAt": "2026-08-09T02:31:25Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1017,7 +1017,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-84cd8fae9d4edd0ebcfc",
+          "id": "levyra-43858d3c873c8799c605",
           "title": "Cirano",
           "artists": [
             {
@@ -1025,12 +1025,12 @@
             }
           ],
           "album": {
-            "name": "D'Amore Di Morte E Di Altre Sciocchezze",
-            "releaseDate": "1996-01-01"
+            "name": "The Platinum Collection",
+            "releaseDate": "2006-01-01"
           },
-          "durationMs": 400933,
+          "durationMs": 398151,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0231a0aac3e75592a99d24f671"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e0ff765df88b6da6c0ba316a"
         },
         {
           "position": 44,
@@ -1225,12 +1225,6 @@
           },
           "durationMs": 231746,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3s1sZbW7Rt8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028606848da949bbaddf447d87"
         },
         {
@@ -2405,12 +2399,6 @@
           },
           "durationMs": 231746,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3s1sZbW7Rt8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028606848da949bbaddf447d87"
         },
         {
@@ -5534,12 +5522,6 @@
           },
           "durationMs": 151875,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "7fyJzGY8Tio",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCjItmeylMPcafIMD7DEhwoQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e028611f6a625443b2993ee4"
         },
         {
@@ -5872,12 +5854,6 @@
           },
           "durationMs": 164307,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "2OL1n5R6ogI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCOBSsvA4X0FyWIZLtAe63Sw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e18339fa86707ccf2cd59eab"
         },
         {
@@ -6053,6 +6029,12 @@
           },
           "durationMs": 143130,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "Qwecvi-yZE4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCY2f-ZnXFcL6vjtVr0ELzxA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bd3385902199779232956b36"
         },
         {
@@ -7779,12 +7761,6 @@
           },
           "durationMs": 141692,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "Xb6zpm3U1NU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -8587,12 +8563,6 @@
           },
           "durationMs": 147200,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "8QlDHUi2Mw4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5TYeA9Hw3L5VlZYtMt3pqg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0286626ffe26c2d2c68e8956b7"
         },
         {
@@ -9849,12 +9819,6 @@
           },
           "durationMs": 198425,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SkHJ5ChXcDo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -10573,7 +10537,7 @@
         },
         {
           "position": 48,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -10581,12 +10545,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 49,
@@ -14554,12 +14518,6 @@
           },
           "durationMs": 231746,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3s1sZbW7Rt8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028606848da949bbaddf447d87"
         },
         {
@@ -14859,7 +14817,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -14867,8 +14825,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -14878,7 +14836,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 30,
@@ -16927,7 +16885,7 @@
         },
         {
           "position": 25,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16935,12 +16893,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 26,
@@ -18135,12 +18093,6 @@
           },
           "durationMs": 216000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "ROOll1FaeBk",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCraa5kIpeNY6mhufQO_qkWg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02049ba0ce46fb355feb8cce0b"
         },
         {
@@ -22398,6 +22350,12 @@
           },
           "durationMs": 265000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "t8P-zdkoeJA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC8-EI2rTBYgkZl5kB_b-2Pw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f694adfa02990eaca79fec1b"
         },
         {
@@ -22501,12 +22459,6 @@
           },
           "durationMs": 182000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "op05giODUE0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e5fd56cd91d38d69aec9a5a2"
         },
         {
@@ -26405,29 +26357,26 @@
         },
         {
           "position": 48,
-          "id": "levyra-a72a886ba586ee413e49",
-          "title": "24H",
+          "id": "levyra-50adcb205c108ed5f4ed",
+          "title": "24h",
           "artists": [
             {
               "name": "Lyly"
-            },
-            {
-              "name": "Magazine"
             }
           ],
           "album": {
-            "name": "24H",
-            "releaseDate": "2020-04-25"
+            "name": "24h",
+            "releaseDate": "2020-10-28"
           },
-          "durationMs": 256905,
-          "explicit": true,
+          "durationMs": 257000,
+          "explicit": false,
           "youtubeMusic": {
             "audioVideoId": "w8DEtCin4uI",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCtc2b3gvR1OjvaOScz3QM0Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa10ce68802568a9f53ecb8a"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9a33a39e11f920fabf6a5b0"
         },
         {
           "position": 49,
@@ -27035,12 +26984,6 @@
           },
           "durationMs": 293500,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "vZh6nx_H-ZE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5zu-qqMC4_xkU99uOPh3XA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e104724f24489a06887b626"
         },
         {
@@ -28357,6 +28300,12 @@
           },
           "durationMs": 228571,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "NNtMnerQsUw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVJJot2WTh-OLjiKpxzU-bw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027dc2965600ea32042cd0b8a9"
         },
         {
