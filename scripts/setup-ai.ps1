@@ -11,10 +11,21 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $pluginManifest = Join-Path $repoRoot '.agents/config/codex-plugins.txt'
+$rtkGitRevision = 'b34be37caf3796b69a50952a28e60e32b5daad43'
 
 function Test-Command {
     param([Parameter(Mandatory)][string] $Name)
     return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Test-RtkTokenKiller {
+    if (-not (Test-Command 'rtk')) {
+        return $false
+    }
+
+    $global:LASTEXITCODE = 0
+    & rtk gain *> $null
+    return $LASTEXITCODE -eq 0
 }
 
 function Invoke-SetupCommand {
@@ -39,22 +50,23 @@ function Invoke-SetupCommand {
 Write-Output "Levyra AI efficiency setup"
 Write-Output "Repository: $repoRoot"
 
-if (-not (Test-Command 'rtk')) {
+if (-not (Test-RtkTokenKiller)) {
     if (-not $InstallRtk) {
-        Write-Warning 'RTK is not installed. Re-run with -InstallRtk to install it through Cargo.'
+        Write-Warning 'The official RTK Token Killer is missing. Re-run with -InstallRtk to install the pinned build through Cargo.'
     }
     elseif (-not (Test-Command 'cargo')) {
         throw 'Cargo is required for -InstallRtk. Install Rust/Cargo or install the official RTK Windows release manually.'
     }
     else {
         Invoke-SetupCommand 'Install RTK from rtk-ai/rtk' {
-            cargo install --git https://github.com/rtk-ai/rtk
+            cargo install --git https://github.com/rtk-ai/rtk --rev $rtkGitRevision --force
         }
     }
 }
 
-if (Test-Command 'rtk') {
+if (Test-RtkTokenKiller) {
     Invoke-SetupCommand 'Verify RTK' { rtk --version }
+    Invoke-SetupCommand 'Verify RTK Token Killer commands' { rtk gain }
 
     if (-not $SkipHooks) {
         if (Test-Command 'codex') {

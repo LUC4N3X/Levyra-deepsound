@@ -140,9 +140,12 @@ because they are available globally.
 6. A fresh reviewer inspects the latest diff.
 7. Actionable findings return to the implementation runtime.
 8. Validation repeats after changes.
-9. A branch and draft pull request are created only when the owner authorized
+9. The implementation runtime runs
+   `python3 scripts/ai_quality_gate.py --profile fast` before commit and
+   `python3 scripts/ai_quality_gate.py --profile full` before publication.
+10. A branch and draft pull request are created only when the owner authorized
    publication.
-10. `levyra` returns evidence to `main`; merge and release remain owner actions.
+11. `levyra` returns evidence to `main`; merge and release remain owner actions.
 
 ## Tool boundaries
 

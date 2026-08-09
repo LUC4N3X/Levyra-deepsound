@@ -152,8 +152,9 @@ Linux/macOS:
 ```
 
 The scripts do not configure Ollama/local-model profiles, unrestricted
-sandboxing, or silent approval bypasses. Executable and plugin installation
-remain opt-in.
+sandboxing, or silent approval bypasses. Root `AGENTS.md` authorizes coding
+agents to bootstrap only the pinned official RTK build; every other executable
+and plugin installation remains opt-in.
 
 ## Validation
 
@@ -173,7 +174,8 @@ absence of unapproved local-model profiles.
   as routing bridges.
 - Keep RTK as an output layer, never validation authority.
 - Keep security findings evidence-based and revalidate every remediation.
-- Keep plugin/executable installation opt-in.
+- Keep the pinned RTK agent bootstrap narrow and keep every other plugin or
+  executable installation opt-in.
 - Keep commit, push, PR, merge, tag, release, upload, and repository settings
   under explicit owner authorization.
 - Verify paths, commands, skills, workflows, and documentation after structural
