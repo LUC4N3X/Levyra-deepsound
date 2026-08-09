@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKey
 
 /**
@@ -39,4 +41,35 @@ internal fun mergeReliableArtistSearchResults(
         .forEach(::add)
 
     return merged.values.take(limit.coerceIn(1, 24))
+}
+
+/**
+ * Replaces provider placeholders on song results only when the search query exactly matches an
+ * independently verified artist. Real song artist metadata always wins.
+ */
+internal fun enrichSearchTracksWithExactArtist(
+    query: String,
+    results: SearchResults,
+    reliableArtists: List<ArtistHit>
+): SearchResults {
+    val queryKey = artistIdentityKey(query)
+    val exactArtist = reliableArtists.firstOrNull { artist ->
+        queryKey.isNotBlank() && artistIdentityKey(artist.name) == queryKey
+    } ?: return results
+
+    fun Track.withExactArtistWhenMissing(): Track {
+        val hasProviderPlaceholder = artist.isBlank() ||
+            artist.equals("YouTube Music", ignoreCase = true) ||
+            artist.equals("YouTube", ignoreCase = true)
+        if (!hasProviderPlaceholder) return this
+        return copy(
+            artist = exactArtist.name,
+            artistBrowseIds = artistBrowseIds.ifEmpty { listOf(exactArtist.browseId) }
+        )
+    }
+
+    return results.copy(
+        topTrack = results.topTrack?.withExactArtistWhenMissing(),
+        songs = results.songs.map(Track::withExactArtistWhenMissing)
+    )
 }
