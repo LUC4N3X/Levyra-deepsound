@@ -236,6 +236,18 @@ one "done" state.
 
 ## Validation
 
+Every supported coding runtime, including ChatGPT when it has command access,
+uses the repository quality gate:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile fast
+python3 scripts/ai_quality_gate.py --profile full
+```
+
+Run the fast profile before commit and the full profile before push or pull
+request publication. Without command access, ChatGPT must require the commands
+in its implementation handoff and must not report them as passed.
+
 ```bash
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py

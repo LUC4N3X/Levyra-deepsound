@@ -204,6 +204,34 @@ When the owner says "only this", modify only the named behavior or files unless
 an additional change is strictly required for correctness. State that dependency
 before expanding scope.
 
+## Mandatory AI quality gate
+
+Every coding runtime working on Levyra, including Codex, ChatGPT, Claude Code,
+Google Antigravity, OpenCode, and OpenClaw-delegated runtimes, must use the same
+repository gate:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile fast
+python3 scripts/ai_quality_gate.py --profile full
+```
+
+- Run `fast` before creating a commit.
+- Run `full` before push or pull-request publication. It selects Android,
+  Desktop, extractor, Bash, PowerShell, and repository checks from the complete
+  diff against the base branch.
+- ChatGPT or another runtime without command execution must include the exact
+  gate commands in its implementation handoff and must not claim validation;
+  the implementing runtime must run them.
+- `.github/workflows/pr-check.yml` runs the fast gate again before build jobs.
+- Missing tools, failed checks, unresolved findings, and skipped required
+  evidence are blocked, not passed.
+- CodeRabbit and other reviewers are supplementary. Convert every valid review
+  finding into a deterministic test or validator whenever practical.
+
+Do not bypass the gate with `--no-verify`, remove checks to obtain a green run,
+or treat an AI-authored review as independent proof. Publication authorization
+remains separate from validation.
+
 ## Validation
 
 Use repository wrappers, never a system Gradle installation.
