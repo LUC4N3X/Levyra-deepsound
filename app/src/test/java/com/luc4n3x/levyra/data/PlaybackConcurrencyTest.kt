@@ -4,6 +4,7 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
@@ -62,7 +63,6 @@ class PlaybackConcurrencyTest {
         try {
             val singleFlight = PlaybackSingleFlight<String, Int>(ownerScope)
             val started = CompletableDeferred<Unit>()
-            val secondEntered = CompletableDeferred<Unit>()
             val release = CompletableDeferred<Unit>()
             val calls = AtomicInteger(0)
 
@@ -75,14 +75,12 @@ class PlaybackConcurrencyTest {
                 }
             }
             started.await()
-            val second = async {
-                secondEntered.complete(Unit)
+            val second = async(start = CoroutineStart.UNDISPATCHED) {
                 singleFlight.run("track") {
                     calls.incrementAndGet()
                     99
                 }
             }
-            secondEntered.await()
 
             release.complete(Unit)
 
@@ -101,7 +99,6 @@ class PlaybackConcurrencyTest {
         try {
             val singleFlight = PlaybackSingleFlight<String, Int>(ownerScope)
             val started = CompletableDeferred<Unit>()
-            val secondEntered = CompletableDeferred<Unit>()
             val release = CompletableDeferred<Unit>()
             val calls = AtomicInteger(0)
 
@@ -114,14 +111,12 @@ class PlaybackConcurrencyTest {
                 }
             }
             started.await()
-            val second = async {
-                secondEntered.complete(Unit)
+            val second = async(start = CoroutineStart.UNDISPATCHED) {
                 singleFlight.run("track") {
                     calls.incrementAndGet()
                     84
                 }
             }
-            secondEntered.await()
 
             first.cancel()
             release.complete(Unit)
