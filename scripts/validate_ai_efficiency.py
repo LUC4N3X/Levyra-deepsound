@@ -221,11 +221,27 @@ def main() -> int:
 
     require_terms(
         errors,
+        "AGENTS.md",
+        "root agent bootstrap contract",
+        (
+            "RTK agent bootstrap",
+            "rtk --version",
+            "rtk gain",
+            "scripts/setup-ai.ps1 -InstallRtk",
+            "./scripts/setup-ai.sh --install-rtk",
+            "pinned `rtk-ai/rtk` bootstrap",
+        ),
+    )
+    require_terms(
+        errors,
         "scripts/setup-ai.ps1",
         "Windows setup script",
         (
             "[switch] $DryRun",
             "[switch] $InstallRtk",
+            "$rtkGitRevision = 'b34be37caf3796b69a50952a28e60e32b5daad43'",
+            "Test-RtkTokenKiller",
+            "--rev $rtkGitRevision --force",
             "[switch] $Plugins",
             "Install global RTK instructions for Codex",
             "rtk init -g --codex",
@@ -246,6 +262,9 @@ def main() -> int:
             "set -euo pipefail",
             "--dry-run",
             "--install-rtk",
+            'RTK_GIT_REVISION="b34be37caf3796b69a50952a28e60e32b5daad43"',
+            "is_token_killer_rtk",
+            '--rev "$RTK_GIT_REVISION" --force',
             "--plugins",
             "Install global RTK instructions for Codex",
             "rtk init -g --codex",

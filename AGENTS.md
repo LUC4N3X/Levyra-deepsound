@@ -63,6 +63,27 @@ Runtime-specific discovery must not create separate sources of truth. This file,
 nearest scoped instructions, approved planning, matching skills, and current
 repository evidence remain the shared hierarchy.
 
+## RTK agent bootstrap
+
+The repository owner authorizes supported coding agents to bootstrap only the
+official `rtk-ai/rtk` command-output tool when working in this repository.
+Before the first noisy shell task in a session:
+
+1. run `rtk --version` and `rtk gain` without RTK wrapping;
+2. if either command fails, run `scripts/setup-ai.ps1 -InstallRtk` on Windows or
+   `./scripts/setup-ai.sh --install-rtk` on Linux/macOS;
+3. let the setup script install the pinned RTK revision through Cargo and initialize
+   integrations only for detected supported agents;
+4. if Cargo is unavailable or installation fails, report the blocked bootstrap
+   once and continue with raw commands instead of downloading an unverified
+   executable or weakening validation.
+
+This standing authorization applies only to the pinned `rtk-ai/rtk` bootstrap.
+Plugins, other executables, unrestricted sandboxing, approval bypasses, commit,
+push, pull request, merge, tag, release, and repository settings still require
+their normal explicit authorization. Keep security, signing, checksum, secret,
+and exact reproduction evidence raw.
+
 ## Product invariants
 
 - Protect playback reliability, responsiveness, privacy, user data, and
