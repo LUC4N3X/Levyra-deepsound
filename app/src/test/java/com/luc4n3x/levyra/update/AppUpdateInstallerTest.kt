@@ -1,10 +1,19 @@
 package com.luc4n3x.levyra.update
 
 import java.net.InetAddress
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class AppUpdateInstallerTest {
@@ -62,5 +71,33 @@ class AppUpdateInstallerTest {
         assertFalse(isPublicUpdateAddress(InetAddress.getByName("fc00::1")))
         assertTrue(isPublicUpdateAddress(InetAddress.getByName("8.8.8.8")))
         assertTrue(isPublicUpdateAddress(InetAddress.getByName("2606:4700:4700::1111")))
+    }
+
+    @Test
+    fun `cancelling update work interrupts a blocking call`() = runBlocking {
+        val enteredCall = CountDownLatch(1)
+        val cancelledCall = CountDownLatch(1)
+        val worker = async(Dispatchers.IO) {
+            val watcher = CoroutineScope(currentCoroutineContext())
+                .launchUpdateCallCancellationWatcher(cancelledCall::countDown)
+            try {
+                enteredCall.countDown()
+                check(cancelledCall.await(2, TimeUnit.SECONDS)) {
+                    "Blocking update call was not interrupted"
+                }
+            } finally {
+                watcher.cancel()
+            }
+        }
+
+        assertTrue(enteredCall.await(2, TimeUnit.SECONDS))
+        worker.cancel()
+        try {
+            worker.await()
+            fail("Cancelled update work must not complete successfully")
+        } catch (_: CancellationException) {
+            // Expected.
+        }
+        assertTrue(cancelledCall.await(2, TimeUnit.SECONDS))
     }
 }
