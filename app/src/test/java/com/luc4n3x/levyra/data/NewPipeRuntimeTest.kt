@@ -78,6 +78,7 @@ class NewPipeRuntimeTest {
     fun localeConfigUsesLevyraLanguageAndMarket() {
         val french = newPipeLocaleConfig("fr-FR")
         val japanese = newPipeLocaleConfig("ja-JP")
+        val chinese = newPipeLocaleConfig("zh-CN")
 
         assertEquals("fr", french.localization.languageCode)
         assertEquals("FR", french.localization.countryCode)
@@ -85,14 +86,19 @@ class NewPipeRuntimeTest {
         assertEquals("ja", japanese.localization.languageCode)
         assertEquals("JP", japanese.localization.countryCode)
         assertEquals("JP", japanese.contentCountry.countryCode)
+        assertEquals("zh", chinese.localization.languageCode)
+        assertEquals("CN", chinese.localization.countryCode)
+        assertEquals("CN", chinese.contentCountry.countryCode)
     }
 
     @Test
     fun acceptLanguageFollowsCurrentLocalization() {
         val french = newPipeLocaleConfig("fr").localization
         val english = newPipeLocaleConfig("en").localization
+        val chinese = newPipeLocaleConfig("zh").localization
 
         assertEquals("fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7", newPipeAcceptLanguage(french))
         assertEquals("en-US,en;q=0.9", newPipeAcceptLanguage(english))
+        assertEquals("zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7", newPipeAcceptLanguage(chinese))
     }
 }
