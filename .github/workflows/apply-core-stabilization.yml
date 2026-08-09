@@ -1,9 +1,6 @@
 name: Apply Core Stabilization
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - agent/stabilize-playback-core
@@ -13,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-core-stabilization-${{ github.event.pull_request.number || github.ref }}
+  group: apply-core-stabilization
   cancel-in-progress: true
 
 jobs:
@@ -37,40 +34,19 @@ jobs:
             python3 scripts/apply_core_stabilization.py
           fi
 
-      - name: Keep PR regression gate scoped
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('.github/workflows/pr-check.yml')
-          text = path.read_text(encoding='utf-8')
-          anchor = "            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'"
-          concurrency_test = "            --tests 'com.luc4n3x.levyra.data.PlaybackConcurrencyTest'"
-          if concurrency_test not in text:
-              if anchor not in text:
-                  raise SystemExit('PR check test anchor not found')
-              text = text.replace(anchor, anchor + " \\\n" + concurrency_test, 1)
-
-          full_suite = "\n      - name: Android Full Unit Test Suite\n        run: ./gradlew --no-daemon :app:testDebugUnitTest\n"
-          text = text.replace(full_suite, "", 1)
-          path.write_text(text, encoding='utf-8')
-          PY
-
       - name: Validate patch
         run: git diff --check
 
-      - name: Commit stabilized sources
+      - name: Commit stabilized resolver
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt .github/workflows/pr-check.yml; then
-            echo "Stabilization sources are already committed."
+          if git diff --quiet -- app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt; then
+            echo "PlaybackResolver.kt is already stabilized."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt .github/workflows/pr-check.yml
+          git add app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt
           git commit -m "fix: commit playback stabilization"
           git push origin HEAD:agent/stabilize-playback-core
