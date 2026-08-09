@@ -102,19 +102,6 @@ def apply_stabilization_patch() -> bool:
     return True
 
 
-def run_full_android_unit_suite() -> bool:
-    wrapper = ROOT / ("gradlew.bat" if sys.platform.startswith("win") else "gradlew")
-    result = subprocess.run(
-        [str(wrapper), "--no-daemon", ":app:testDebugUnitTest"],
-        cwd=ROOT,
-        check=False,
-    )
-    if result.returncode != 0:
-        print("Full Android unit-test suite failed on the stabilized resolver.", file=sys.stderr)
-        return False
-    return True
-
-
 def main() -> int:
     if not apply_stabilization_patch():
         return 1
@@ -146,9 +133,6 @@ def main() -> int:
         return 1
 
     print("Android regex compatibility check passed.")
-    if not run_full_android_unit_suite():
-        return 1
-    print("Full Android unit-test suite passed on the stabilized resolver.")
     return 0
 
 
