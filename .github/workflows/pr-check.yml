@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --channel=3 \
             "platform-tools" \
             "platforms;android-37" \
             "build-tools;36.0.0"
