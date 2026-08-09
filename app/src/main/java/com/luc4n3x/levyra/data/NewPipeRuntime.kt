@@ -98,9 +98,18 @@ object NewPipeRuntime {
     fun ensure(context: Context? = null) {
         context?.let(::attachContext)
 
-        val localeConfig = currentLocaleConfig()
-        ensureInitialized(localeConfig)
-        NewPipe.setupLocalization(localeConfig.localization, localeConfig.contentCountry)
+        synchronized(initLock) {
+            val localeConfig = currentLocaleConfig()
+            if (!initialized) {
+                NewPipe.init(
+                    OkHttpNewPipeDownloader(),
+                    localeConfig.localization,
+                    localeConfig.contentCountry
+                )
+                initialized = true
+            }
+            NewPipe.setupLocalization(localeConfig.localization, localeConfig.contentCountry)
+        }
 
         val appContext = applicationContext ?: return
         if (providerInstalled.compareAndSet(false, true)) {
@@ -120,19 +129,6 @@ object NewPipeRuntime {
             ?.let { LevyraPreferences(it).languageCode() }
             ?: LevyraLanguageCatalog.deviceDefault()
         return newPipeLocaleConfig(languageCode)
-    }
-
-    private fun ensureInitialized(localeConfig: NewPipeLocaleConfig) {
-        if (initialized) return
-        synchronized(initLock) {
-            if (initialized) return
-            NewPipe.init(
-                OkHttpNewPipeDownloader(),
-                localeConfig.localization,
-                localeConfig.contentCountry
-            )
-            initialized = true
-        }
     }
 }
 
