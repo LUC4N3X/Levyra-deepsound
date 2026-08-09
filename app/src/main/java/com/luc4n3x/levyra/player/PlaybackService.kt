@@ -98,6 +98,7 @@ class PlaybackService : MediaLibraryService() {
     private var transitionPlayer: ExoPlayer? = null
     private var currentAudioSettings = LevyraAudioSettings()
     private var currentAudioNormalization = false
+    private val streamUrlCache = StreamUrlCache()
     private lateinit var playbackWakeLock: PowerManager.WakeLock
     private lateinit var playbackStateStore: SharedPreferences
     private var serviceRecoveryAttempts = 0
@@ -192,7 +193,7 @@ class PlaybackService : MediaLibraryService() {
         var isQueueTransitionInProgress: Boolean = false
             private set
 
-        val normalizationProcessor = NormalizationAudioProcessor()
+        val normalizationProcessor = VolumeNormalizationAudioProcessor()
         val equalizerProcessor = LevyraEqualizerAudioProcessor()
         val spatialAudioProcessor = StereoSpatialAudioProcessor()
         val limiterProcessor = TruePeakLimiterAudioProcessor()
@@ -331,7 +332,17 @@ class PlaybackService : MediaLibraryService() {
                     ?.getFloat(EXTRA_YOUTUBE_LOUDNESS_DB)
                 val perceptual = extras?.takeIf { it.containsKey(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB) }
                     ?.getFloat(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB)
-                normalizationProcessor.setYoutubeLoudness(loudness, perceptual)
+
+                val targetLufs = -14.0f
+                val measuredLufs = perceptual ?: loudness?.let { it + targetLufs }
+                if (measuredLufs != null) {
+                    val diffDb = measuredLufs - targetLufs
+                    val targetGain = (-(diffDb * 100.0)).toInt()
+                    normalizationProcessor.setTargetGain(targetGain.coerceIn(-3000, 3000))
+                } else {
+                    normalizationProcessor.setTargetGain(0)
+                }
+
                 watchdogPositionMs = C.TIME_UNSET
                 watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
             }
@@ -347,6 +358,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                activePlayer?.currentMediaItem?.mediaId?.let { streamUrlCache.invalidate(it) }
                 updatePlaybackProtection(player)
                 scheduleServiceRecovery(error)
             }
@@ -741,6 +753,12 @@ class PlaybackService : MediaLibraryService() {
             }
             return track.copy(videoStreamUrl = "")
         }
+
+        val cachedStream = streamUrlCache[track.id]
+        if (cachedStream != null) {
+            return track.copy(streamUrl = cachedStream.url)
+        }
+
         val hasYoutubeIdentity = track.videoUrl.contains("youtube.com", true) ||
             track.videoUrl.contains("youtu.be", true) ||
             Regex("^[A-Za-z0-9_-]{11}$").matches(track.id)
@@ -760,7 +778,15 @@ class PlaybackService : MediaLibraryService() {
                 accentEnd = track.accentEnd
             ) ?: track
         }
-        return resolver.resolve(candidate)
+        val resolved = resolver.resolve(candidate)
+        streamUrlCache.put(
+            mediaId = resolved.id,
+            url = resolved.streamUrl,
+            requestHeaders = emptyMap(),
+            clientName = "Levyra",
+            expiresInSeconds = 21600
+        )
+        return resolved
     }
 
     private fun updateQueueTransitionSettings(settings: LevyraAudioSettings, audioNormalization: Boolean) {
@@ -970,9 +996,16 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun buildTransitionPlayer(track: Track): ExoPlayer {
-        val normalization = NormalizationAudioProcessor().apply {
+        val normalization = VolumeNormalizationAudioProcessor().apply {
             enabled = currentAudioNormalization || currentAudioSettings.replayGainEnabled
-            setYoutubeLoudness(track.youtubeLoudnessDb, track.youtubePerceptualLoudnessDb)
+            val targetLufs = -14.0f
+            val measuredLufs = track.youtubePerceptualLoudnessDb ?: track.youtubeLoudnessDb?.let { it + targetLufs }
+            if (measuredLufs != null) {
+                val diffDb = measuredLufs - targetLufs
+                setTargetGain((-(diffDb * 100.0)).toInt().coerceIn(-3000, 3000))
+            } else {
+                setTargetGain(0)
+            }
         }
         val equalizer = LevyraEqualizerAudioProcessor().apply {
             enabled = currentAudioSettings.equalizerEnabled
