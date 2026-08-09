@@ -1,34 +1,41 @@
-name: Validate Core Stabilization Patch
+name: Apply Core Stabilization
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - agent/stabilize-playback-core
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate:
+  apply:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
+      - name: Checkout branch
         uses: actions/checkout@v7
+        with:
+          ref: agent/stabilize-playback-core
+          fetch-depth: 0
 
-      - name: Apply checked stabilization patch
+      - name: Apply stabilization
         run: python3 scripts/apply_core_stabilization.py
 
-      - name: Validate patch whitespace
+      - name: Validate patch
         run: git diff --check
 
-      - name: Save patched sources
-        uses: actions/upload-artifact@v7
-        with:
-          name: core-stabilization-patched-sources
-          path: |
-            app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt
-            app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt
-            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
-          if-no-files-found: error
+      - name: Commit generated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt; then
+            echo "PlaybackResolver.kt is already stabilized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt
+          git commit -m "fix: commit playback stabilization"
+          git push origin HEAD:agent/stabilize-playback-core
