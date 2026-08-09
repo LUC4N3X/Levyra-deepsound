@@ -33,6 +33,9 @@ REQUIRED_FILES = (
     "docs/ai/CODEX_SECURITY.md",
     "docs/ai/README.md",
     "docs/ai/RTK.md",
+    "scripts/ai_quality_gate.py",
+    "scripts/ai_quality_gate_allowlist.txt",
+    "scripts/tests/test_ai_quality_gate.py",
     "scripts/setup-ai.ps1",
     "scripts/setup-ai.sh",
 )
@@ -221,11 +224,73 @@ def main() -> int:
 
     require_terms(
         errors,
+        "AGENTS.md",
+        "root agent bootstrap contract",
+        (
+            "RTK agent bootstrap",
+            "rtk --version",
+            "rtk gain",
+            "scripts/setup-ai.ps1 -InstallRtk",
+            "./scripts/setup-ai.sh --install-rtk",
+            "pinned `rtk-ai/rtk` bootstrap",
+        ),
+    )
+    require_terms(
+        errors,
+        "AGENTS.md",
+        "root AI quality-gate contract",
+        (
+            "Mandatory AI quality gate",
+            "ChatGPT",
+            "scripts/ai_quality_gate.py --profile fast",
+            "scripts/ai_quality_gate.py --profile full",
+            "CodeRabbit",
+        ),
+    )
+    require_terms(
+        errors,
+        "scripts/ai_quality_gate.py",
+        "cross-runtime AI quality gate",
+        (
+            'choices=("fast", "full")',
+            "collect_changed_files",
+            "forbidden_path_findings",
+            "binary_diff_findings",
+            "scan_patch",
+            "Check Android runtime compatibility",
+            "Run all Android unit tests",
+            "Run Android release lint",
+            "Compile unsigned F-Droid release",
+            "Run Desktop checks and assembly",
+            "Run extractor tests",
+            "AI quality gate failed.",
+        ),
+    )
+    for relative_path, label in (
+        (".agents/rules/levyra-workspace.md", "shared workspace quality gate"),
+        (".claude/rules/testing-release.md", "Claude quality gate"),
+        ("docs/ai/OPENCLAW.md", "OpenClaw quality gate"),
+        ("docs/ai/WORKFLOW.md", "shared AI workflow quality gate"),
+    ):
+        require_terms(
+            errors,
+            relative_path,
+            label,
+            (
+                "scripts/ai_quality_gate.py --profile fast",
+                "scripts/ai_quality_gate.py --profile full",
+            ),
+        )
+    require_terms(
+        errors,
         "scripts/setup-ai.ps1",
         "Windows setup script",
         (
             "[switch] $DryRun",
             "[switch] $InstallRtk",
+            "$rtkGitRevision = 'b34be37caf3796b69a50952a28e60e32b5daad43'",
+            "Test-RtkTokenKiller",
+            "--rev $rtkGitRevision --force",
             "[switch] $Plugins",
             "Install global RTK instructions for Codex",
             "rtk init -g --codex",
@@ -246,6 +311,9 @@ def main() -> int:
             "set -euo pipefail",
             "--dry-run",
             "--install-rtk",
+            'RTK_GIT_REVISION="b34be37caf3796b69a50952a28e60e32b5daad43"',
+            "is_token_killer_rtk",
+            '--rev "$RTK_GIT_REVISION" --force',
             "--plugins",
             "Install global RTK instructions for Codex",
             "rtk init -g --codex",
@@ -359,6 +427,8 @@ def main() -> int:
             "levyra-security-review",
             "Require security review",
             "Preparing work for Codex or Claude Code",
+            "Mandatory ChatGPT quality gate",
+            "scripts/ai_quality_gate.py --profile full",
         ),
     )
     require_terms(
@@ -370,6 +440,7 @@ def main() -> int:
             "threat model",
             "revalidation",
             ".agents/rules/levyra-workspace.md",
+            "scripts/ai_quality_gate.py --profile full",
         ),
     )
     require_terms(
@@ -399,9 +470,9 @@ def main() -> int:
         ".github/workflows/pr-check.yml",
         "PR workflow",
         (
-            "Validate Agent Configuration",
-            "Validate AI Efficiency Layer",
-            "python3 scripts/validate_ai_efficiency.py",
+            "fetch-depth: 0",
+            "AI Quality Gate",
+            "python3 scripts/ai_quality_gate.py --profile fast",
         ),
     )
 

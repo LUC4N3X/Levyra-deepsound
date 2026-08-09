@@ -2,7 +2,8 @@
 
 ## Goal
 
-Levyra uses RTK as an optional command-output compression layer. Repository
+Levyra uses RTK as a command-output compression layer for supported coding
+agents. Repository
 instructions and skills decide what to inspect, validate, preserve, and review;
 RTK only reduces repetitive terminal output before it reaches agent context.
 
@@ -13,7 +14,8 @@ The integration:
   runtimes;
 - adds project filters in `.rtk/filters.toml`;
 - detects installed Codex, Claude Code, OpenCode, and Antigravity integrations;
-- keeps executable/plugin installation opt-in;
+- automatically bootstraps the pinned official RTK build for coding agents;
+- keeps every other executable and plugin installation opt-in;
 - excludes Ollama and other local-model profiles;
 - keeps exact security, signing, checksum, and release evidence raw.
 
@@ -101,6 +103,22 @@ docs/AGENTS.md
 Restart the coding agent or begin a new conversation after pulling changes to
 instructions, rules, skills, hooks, or plugins.
 
+## Automatic agent bootstrap
+
+Root `AGENTS.md` gives supported coding agents standing permission to verify
+RTK before their first noisy shell task. Agents run `rtk --version` and
+`rtk gain` raw. If RTK is missing, or if another project named `rtk` is on the
+path, the agent runs the platform setup script with `-InstallRtk` or
+`--install-rtk`.
+
+The scripts install `rtk-ai/rtk` from commit
+`b34be37caf3796b69a50952a28e60e32b5daad43`, the revision published for the
+official `v0.45.0` release, through Cargo, verify that `rtk gain` is available,
+and configure only detected supported runtimes. They do not silently install
+plugins. If Cargo is unavailable or the install fails, the agent reports the
+blocked bootstrap and continues with raw commands; it must not fall back to an
+unverified download.
+
 ## Windows setup
 
 ```powershell
@@ -110,9 +128,10 @@ instructions, rules, skills, hooks, or plugins.
 .\scripts\setup-ai.ps1 -InstallRtk -Plugins
 ```
 
-The script detects RTK, optionally installs it from `rtk-ai/rtk`, configures
-supported runtimes, installs verified `.agents/config/codex-plugins.txt`
-entries when requested, and runs both repository validators.
+The script detects and validates the correct RTK, installs the pinned revision
+when an agent invokes the authorized install flag, configures supported
+runtimes, installs verified `.agents/config/codex-plugins.txt` entries when
+requested, and runs both repository validators.
 
 Missing Python blocks validation and returns a nonzero exit status. Setup is not
 reported complete when required validation cannot run.

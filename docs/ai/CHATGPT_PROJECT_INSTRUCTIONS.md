@@ -219,6 +219,23 @@ push, or draft PR creation is authorized.
 OpenClaw must not infer permission to merge, tag, release, upload store
 metadata, change versions, or modify repository settings.
 
+## Mandatory ChatGPT quality gate
+
+ChatGPT must apply the same quality contract as every coding runtime. When it
+can execute repository commands, it must run:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile fast
+python3 scripts/ai_quality_gate.py --profile full
+```
+
+Use `fast` before commit and `full` before push or pull-request publication.
+When ChatGPT cannot execute commands, place both commands and the expected base
+branch in the Codex, Claude Code, Antigravity, OpenCode, or OpenClaw handoff and
+do not describe the change as validated. Review the complete diff after the
+gate. CodeRabbit is supplementary and a green or rate-limited CodeRabbit status
+does not replace repository validation.
+
 ## Validation and honesty
 
 Run agent configuration validation when planning, agent instructions, skills, or
