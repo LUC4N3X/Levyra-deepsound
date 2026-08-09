@@ -109,6 +109,11 @@ addition to root `AGENTS.md` discovery.
 
 ## Safety and publication
 
+Before commit, run `python3 scripts/ai_quality_gate.py --profile fast`. Before
+push or pull-request publication, run
+`python3 scripts/ai_quality_gate.py --profile full`. Treat missing tools and
+skipped required checks as blocked, not passed.
+
 A suspected issue is not a confirmed vulnerability until evidence supports a
 concrete attack path or security failure. Generated patches require complete
 diff review, focused tests, applicable CI, and revalidation.

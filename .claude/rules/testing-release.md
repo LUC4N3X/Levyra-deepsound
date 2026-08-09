@@ -22,3 +22,6 @@ paths:
 - Do not update app version values outside explicit release work.
 - Run `git diff --check`; inspect for conflict markers, HTML accidentally pasted into source, generated binaries, secrets, and unrelated formatting churn.
 - Mark manual checks such as device installation, playback, downloads, Android Auto, and language switching as complete only after they were actually performed.
+- Run `python3 scripts/ai_quality_gate.py --profile fast` before commit and
+  `python3 scripts/ai_quality_gate.py --profile full` before push or pull
+  request publication. A blocked or skipped required check is not a pass.

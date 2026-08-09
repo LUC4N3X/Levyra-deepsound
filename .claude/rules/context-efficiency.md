@@ -17,6 +17,8 @@ Project-specific filters live in `.rtk/filters.toml`. Setup and measurement are
 documented in `docs/ai/RTK.md` and automated by `scripts/setup-ai.ps1` and
 `scripts/setup-ai.sh`.
 
-Do not install RTK, plugins, hooks, or global configuration without explicit
-owner authorization. Do not infer permission to commit, push, open a pull
-request, merge, tag, publish, or release.
+Follow the owner-authorized automatic RTK bootstrap in root `AGENTS.md` when
+the pinned official RTK build is unavailable or is the wrong `rtk` project.
+Do not install other executables or plugins without explicit owner
+authorization. Do not infer permission to commit, push, open a pull request,
+merge, tag, publish, or release.

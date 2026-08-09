@@ -25,8 +25,13 @@ context handling, not product behavior.
 
 ## Automatic routing
 
-1. Detect whether `rtk` is available with `rtk --version`.
-2. When available, prefer RTK for supported noisy commands:
+1. Verify the correct RTK is available with raw `rtk --version` and `rtk gain`.
+2. If either command fails, follow the owner-authorized bootstrap in root
+   `AGENTS.md`: run `scripts/setup-ai.ps1 -InstallRtk` on Windows or
+   `./scripts/setup-ai.sh --install-rtk` on Linux/macOS. The scripts install the
+   pinned `rtk-ai/rtk` revision through Cargo and configure detected runtimes.
+3. If bootstrap is blocked, report it once and continue with raw commands.
+4. When available, prefer RTK for supported noisy commands:
 
    ```text
    rtk gradlew <tasks>
@@ -43,12 +48,12 @@ context handling, not product behavior.
    rtk summary <command>
    ```
 
-3. Keep short commands and exact-output checks raw.
-4. If RTK rejects a command, obscures the root cause, truncates required
+5. Keep short commands and exact-output checks raw.
+6. If RTK rejects a command, obscures the root cause, truncates required
    evidence, or changes exit-code interpretation, rerun the exact command raw.
-5. Use verbose or stacktrace flags when the task requires complete diagnostics;
+7. Use verbose or stacktrace flags when the task requires complete diagnostics;
    RTK's Gradle integration passes through full output for diagnostic modes.
-6. Never report a check as passed merely because filtered output is short or
+8. Never report a check as passed merely because filtered output is short or
    empty. Verify the exit status and final success/failure marker.
 
 ## Levyra command policy
@@ -110,9 +115,10 @@ scripts/setup-ai.ps1
 scripts/setup-ai.sh
 ```
 
-The setup scripts install or configure only explicitly selected components,
-initialize RTK instructions, hooks, or integrations for detected supported
-agents, and optionally install the plugins listed in
+The root contract gives agents standing authorization to install only the
+pinned official RTK build when it is missing or is the wrong `rtk` project.
+The setup scripts initialize RTK instructions, hooks, or integrations for
+detected supported agents and optionally install the plugins listed in
 `.agents/config/codex-plugins.txt`.
 
 After pulling instruction, skill, rule, or integration changes, restart the
@@ -125,8 +131,9 @@ integration are rebuilt.
   approval bypasses.
 - Do not expose or filter away secrets, signing material, tokens, cookies,
   private URLs, keystores, or local properties.
-- Do not install executables, plugins, hooks, or global configuration unless the
-  user explicitly requested setup or passed the matching setup-script flag.
+- Do not install other executables or plugins without explicit authorization.
+  The pinned RTK bootstrap and its detected-runtime integration are the only
+  standing exception, as defined by root `AGENTS.md`.
 - Do not let compact output replace independent review, CI, manual device
   testing, or owner-controlled publication.
 - Never infer permission to commit, push, open a PR, merge, tag, or release.

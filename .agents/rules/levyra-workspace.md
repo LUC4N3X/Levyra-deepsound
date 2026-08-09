@@ -25,8 +25,11 @@ contract. Before investigating, editing, reviewing, or running commands:
 9. for security work, follow threat model, identification, safe validation,
    minimal remediation, human review, and revalidation;
 10. make the smallest coherent change and preserve unrelated behavior;
-11. run focused validation first, then the applicable repository checks;
-12. keep implementation, validation, review, publication, merge, and release as
+11. run focused validation first, then
+    `python3 scripts/ai_quality_gate.py --profile fast` before commit and
+    `python3 scripts/ai_quality_gate.py --profile full` before push or PR;
+12. treat every blocked or skipped required gate check as not passed;
+13. keep implementation, validation, review, publication, merge, and release as
     separate states.
 
 RTK reduces command output; it is not validation authority and its savings are
