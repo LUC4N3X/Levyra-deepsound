@@ -22,6 +22,7 @@ class AppUpdateInstallerTest {
         assertNull(validateLevyraUpdateUrl("https://github.com:8443/LUC4N3X/Levyra-deepsound/releases/download/v2.3.20/app.apk", true))
         assertNull(validateLevyraUpdateUrl("https://github.com/other/project/releases/download/v1/app.apk", true))
         assertNull(validateLevyraUpdateUrl("https://example.com/LUC4N3X/Levyra-deepsound/releases/download/v2.3.20/app.apk", true))
+        assertNull(validateLevyraUpdateUrl("https://github.com/LUC4N3X/Levyra-deepsound/releases/download/../../../other/app.apk", true))
     }
 
     @Test
@@ -29,6 +30,11 @@ class AppUpdateInstallerTest {
         assertNotNull(validateLevyraUpdateUrl("https://release-assets.githubusercontent.com/github-production-release-asset/file.apk", false))
         assertNotNull(validateLevyraUpdateUrl("https://github.com/LUC4N3X/Levyra-deepsound/releases/download/v2.3.20/app.apk", false))
         assertNull(validateLevyraUpdateUrl("https://example.com/app.apk", false))
+        assertNull(validateLevyraUpdateUrl("https://release-assets.githubusercontent.com:8443/file.apk", false))
+        assertNull(validateLevyraUpdateUrl("https://user:pass@release-assets.githubusercontent.com/file.apk", false))
+        assertNull(validateLevyraUpdateUrl("https://release-assets.githubusercontent.com/file.apk#frag", false))
+        assertNull(validateLevyraUpdateUrl("http://release-assets.githubusercontent.com/file.apk", false))
+        assertNull(validateLevyraUpdateUrl("https://evil.githubusercontent.com.attacker.test/file.apk", false))
     }
 
     @Test
