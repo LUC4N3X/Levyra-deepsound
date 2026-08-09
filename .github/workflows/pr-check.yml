@@ -20,9 +20,9 @@ concurrency:
 
 jobs:
   android:
-    name: Lint and Release Compile
+    name: Lint, Full Tests and Release Compile
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
       LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
@@ -49,7 +49,7 @@ jobs:
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
-            "platforms;android-36" \
+            "platforms;android-37" \
             "build-tools;36.0.0"
 
       - name: Setup Gradle
@@ -109,26 +109,8 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
-      - name: Android and F-Droid Regression Unit Tests
-        run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
-            --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
-            --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
-            --tests 'com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriterTest' \
-            --tests 'com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepositoryTest' \
-            --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
-            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
-            --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest' \
-            --tests 'com.luc4n3x.levyra.data.SponsorBlockRepositoryTest' \
-            --tests 'com.luc4n3x.levyra.domain.LevyraAudioPresetsTest' \
-            --tests 'com.luc4n3x.levyra.feature.motion.*' \
-            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
-            --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
-            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
-            --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
-            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
-            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
+      - name: Android Full Unit Test Suite
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
