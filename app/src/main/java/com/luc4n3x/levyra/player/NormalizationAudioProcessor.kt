@@ -1,0 +1,3 @@
+package com.luc4n3x.levyra.player
+
+typealias NormalizationAudioProcessor = VolumeNormalizationAudioProcessor
