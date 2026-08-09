@@ -127,10 +127,41 @@ jobs:
             --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
             --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
             --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
-            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest'
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
+            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+
+      - name: Upstream updater manifest contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_APK="app/build/outputs/apk/release/app-release.apk"
+          APK_ANALYZER="${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer"
+          test -f "${UPSTREAM_APK}"
+          test -x "${APK_ANALYZER}"
+          "${APK_ANALYZER}" manifest print "${UPSTREAM_APK}" > /tmp/levyra-upstream-manifest.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          manifest = ET.parse('/tmp/levyra-upstream-manifest.xml').getroot()
+          android = '{http://schemas.android.com/apk/res/android}'
+          permissions = {
+              item.get(android + 'name')
+              for item in manifest.findall('uses-permission')
+          }
+          if 'android.permission.REQUEST_INSTALL_PACKAGES' not in permissions:
+              raise SystemExit('Upstream APK must request REQUEST_INSTALL_PACKAGES')
+
+          authorities = 'com.luc4n3x.levyra.update-files'
+          providers = [
+              item for item in manifest.findall('.//provider')
+              if item.get(android + 'authorities') == authorities
+          ]
+          if len(providers) != 1 or providers[0].get(android + 'enabled', 'true') != 'true':
+              raise SystemExit('Upstream APK must keep the GitHub update provider enabled')
+          PY
 
       - name: Setup Java 21 for F-Droid
         uses: actions/setup-java@v5
@@ -156,6 +187,30 @@ jobs:
             echo "F-Droid source build must remain unsigned."
             exit 1
           fi
+
+          APK_ANALYZER="${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "${APK_ANALYZER}"
+          "${APK_ANALYZER}" manifest print "${FDROID_APK}" > /tmp/levyra-fdroid-manifest.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          manifest = ET.parse('/tmp/levyra-fdroid-manifest.xml').getroot()
+          android = '{http://schemas.android.com/apk/res/android}'
+          permissions = {
+              item.get(android + 'name')
+              for item in manifest.findall('uses-permission')
+          }
+          if 'android.permission.REQUEST_INSTALL_PACKAGES' in permissions:
+              raise SystemExit('F-Droid APK must not request REQUEST_INSTALL_PACKAGES')
+
+          authorities = 'com.luc4n3x.levyra.update-files'
+          providers = [
+              item for item in manifest.findall('.//provider')
+              if item.get(android + 'authorities') == authorities
+          ]
+          if len(providers) != 1 or providers[0].get(android + 'enabled', 'true') != 'false':
+              raise SystemExit('F-Droid APK must keep the GitHub update provider disabled')
+          PY
 
       - name: Collect Reports
         if: always()
