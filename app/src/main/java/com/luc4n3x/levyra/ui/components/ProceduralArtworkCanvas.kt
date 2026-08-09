@@ -79,7 +79,7 @@ fun ProceduralArtworkCanvas(
     }
 }
 
-private data class BlobParam(
+internal data class BlobParam(
     val sizeRatio: Float,
     val amplitude: Float,
     val frequency: Float,
@@ -88,7 +88,7 @@ private data class BlobParam(
     val alpha: Float
 )
 
-private data class RingParam(
+internal data class RingParam(
     val radiusRatio: Float,
     val strokeWidth: Float,
     val color: Color,
