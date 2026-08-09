@@ -5,9 +5,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 internal suspend inline fun <T> runCatchingPreservingCancellation(
     crossinline block: suspend () -> T
@@ -27,21 +31,45 @@ internal suspend inline fun <T> runCatchingPreservingCancellation(
 internal class PlaybackSingleFlight<K : Any, V>(
     private val scope: CoroutineScope
 ) {
-    private val requests = ConcurrentHashMap<K, Deferred<V>>()
+    private data class Entry<V>(
+        val deferred: Deferred<V>,
+        var waiters: Int
+    )
+
+    private val requests = ConcurrentHashMap<K, Entry<V>>()
+    private val mutex = Mutex()
 
     suspend fun run(key: K, block: suspend () -> V): V {
-        val candidate = scope.async(start = CoroutineStart.LAZY) { block() }
-        val existing = requests.putIfAbsent(key, candidate)
-        if (existing != null) {
-            candidate.cancel()
-            return existing.await()
+        currentCoroutineContext().ensureActive()
+
+        val entry = mutex.withLock {
+            requests[key]?.also { existing ->
+                existing.waiters += 1
+            } ?: Entry(
+                deferred = scope.async(start = CoroutineStart.LAZY) { block() },
+                waiters = 1
+            ).also { created ->
+                requests[key] = created
+                created.deferred.start()
+            }
         }
 
-        candidate.invokeOnCompletion {
-            requests.remove(key, candidate)
+        try {
+            return entry.deferred.await()
+        } finally {
+            val cancelShared = withContext(NonCancellable) {
+                mutex.withLock {
+                    entry.waiters -= 1
+                    if (entry.waiters == 0 && requests[key] === entry) {
+                        requests.remove(key, entry)
+                        !entry.deferred.isCompleted
+                    } else {
+                        false
+                    }
+                }
+            }
+            if (cancelShared) entry.deferred.cancel()
         }
-        candidate.start()
-        return candidate.await()
     }
 
     internal fun activeCount(): Int = requests.size
