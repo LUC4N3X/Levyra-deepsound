@@ -2,6 +2,12 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import okhttp3.Headers
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
@@ -12,6 +18,7 @@ import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.downloader.StreamingResponse
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
@@ -45,7 +52,27 @@ object NewPipeRuntime {
     }
 }
 
+internal fun watchPlaybackCancellation(cancelAction: () -> Unit): AutoCloseable {
+    val parent = currentPlaybackCancellationJob() ?: return AutoCloseable { }
+    val active = AtomicBoolean(true)
+    val watcher: Job = CoroutineScope(parent + Dispatchers.Default).launch(start = CoroutineStart.UNDISPATCHED) {
+        try {
+            awaitCancellation()
+        } finally {
+            if (active.getAndSet(false)) cancelAction()
+        }
+    }
+    return AutoCloseable {
+        active.set(false)
+        watcher.cancel()
+    }
+}
+
 private class OkHttpNewPipeDownloader : Downloader() {
+    companion object {
+        private const val MAX_EXTRACTOR_RESPONSE_BYTES = 8L * 1024L * 1024L
+    }
+
     private val client = LevyraHttpClientFactory.extractor().newBuilder()
         .followRedirects(true)
         .followSslRedirects(true)
@@ -111,16 +138,24 @@ private class OkHttpNewPipeDownloader : Downloader() {
     )
 
     override fun execute(request: Request): Response {
-        client.newCall(toOkHttpRequest(request)).execute().use { response ->
-            return toExtractorResponse(response)
+        val call = client.newCall(toOkHttpRequest(request))
+        val cancellation = watchPlaybackCancellation(call::cancel)
+        try {
+            call.execute().use { response ->
+                return toExtractorResponse(response)
+            }
+        } finally {
+            cancellation.close()
         }
     }
 
     override fun executeAsync(request: Request, callback: Downloader.AsyncCallback): CancellableCall {
         val call = client.newCall(toOkHttpRequest(request))
+        val cancellation = watchPlaybackCancellation(call::cancel)
         val cancellableCall = CancellableCall(call)
         call.enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {
+                cancellation.close()
                 cancellableCall.setFinished()
                 callback.onError(e)
             }
@@ -131,6 +166,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
                 } catch (error: Exception) {
                     callback.onError(error)
                 } finally {
+                    cancellation.close()
                     cancellableCall.setFinished()
                 }
             }
@@ -142,8 +178,16 @@ private class OkHttpNewPipeDownloader : Downloader() {
         request: Request,
         httpClient: okhttp3.OkHttpClient
     ): StreamingResponse {
-        val response = httpClient.newCall(toOkHttpRequest(request)).execute()
+        val call = httpClient.newCall(toOkHttpRequest(request))
+        val cancellation = watchPlaybackCancellation(call::cancel)
+        val response = try {
+            call.execute()
+        } catch (error: Throwable) {
+            cancellation.close()
+            throw error
+        }
         if (response.code == 429) {
+            cancellation.close()
             response.close()
             throw IOException("YouTube ha limitato temporaneamente le richieste")
         }
@@ -154,6 +198,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
             responseBody.byteStream()
         ) {
             override fun close() {
+                cancellation.close()
                 response.close()
             }
         }
@@ -197,7 +242,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
-        val responseBytes = response.body.bytes()
+        val responseBytes = readBoundedBody(response.body)
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
         if (response.code == 429) {
             throw IOException("YouTube ha limitato temporaneamente le richieste")
@@ -210,6 +255,31 @@ private class OkHttpNewPipeDownloader : Downloader() {
             responseBytes,
             response.request.url.toString()
         )
+    }
+
+    private fun readBoundedBody(body: okhttp3.ResponseBody): ByteArray {
+        val declaredLength = body.contentLength()
+        if (declaredLength > MAX_EXTRACTOR_RESPONSE_BYTES) {
+            throw IOException("NewPipe response exceeds ${MAX_EXTRACTOR_RESPONSE_BYTES / 1024 / 1024} MiB limit")
+        }
+
+        val output = ByteArrayOutputStream(
+            declaredLength.takeIf { it in 1..MAX_EXTRACTOR_RESPONSE_BYTES }?.toInt() ?: 8192
+        )
+        body.byteStream().use { input ->
+            val buffer = ByteArray(8192)
+            var total = 0L
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                if (total > MAX_EXTRACTOR_RESPONSE_BYTES) {
+                    throw IOException("NewPipe response exceeds ${MAX_EXTRACTOR_RESPONSE_BYTES / 1024 / 1024} MiB limit")
+                }
+                output.write(buffer, 0, read)
+            }
+        }
+        return output.toByteArray()
     }
 
     private fun Map<String, List<String>>.toOkHttpHeaders(): Headers {
