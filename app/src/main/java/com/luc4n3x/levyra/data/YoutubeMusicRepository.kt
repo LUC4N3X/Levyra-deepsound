@@ -1810,13 +1810,15 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }
 
         fun parseRenderer(renderer: JSONObject) {
-            parseArtistRuns(
-                renderer.optJSONArray("flexColumns")
-                    ?.optJSONObject(1)
+            val flexColumns = renderer.optJSONArray("flexColumns") ?: JSONArray()
+            for (index in 0 until flexColumns.length()) {
+                parseArtistRuns(
+                    flexColumns.optJSONObject(index)
                     ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
                     ?.optJSONObject("text")
                     ?.optJSONArray("runs")
-            )
+                )
+            }
             parseArtistRuns(renderer.optJSONObject("subtitle")?.optJSONArray("runs"))
         }
 
@@ -2210,7 +2212,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun isTypeLabel(token: String): Boolean =
         token.trim().lowercase(Locale.ROOT) in typeLabels
 
-    private fun parseMusicRenderer(renderer: JSONObject, query: String): Track? {
+    internal fun parseMusicRenderer(renderer: JSONObject, query: String): Track? {
         val lines = extractFlexLines(renderer)
         val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
         val videoId = extractPrimaryMusicVideoId(renderer).takeIf { it.isNotBlank() } ?: return null
@@ -2221,16 +2223,28 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val tokens = subtitleLines.flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }
         if (tokens.isNotEmpty() && tokens[0].lowercase() in excludedTypes) return null
         
-        val artist = tokens
-            .firstOrNull { token -> token.isNotBlank() && !isTypeLabel(token) && !token.matches(Regex("\\d+:\\d{2}")) }
+        val fallbackArtist = tokens
+            .firstOrNull(::isPlausibleSearchMetadataLabel)
             ?: "YouTube Music"
-        val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, fallbackArtist)
+        val artist = artistReferences.firstOrNull()?.name
+            ?.cleanAlbumArtistLabel()
+            ?.takeIf(String::isNotBlank)
+            ?: fallbackArtist
+        val album = subtitleLines
+            .drop(1)
+            .flatMap { it.split(" • ", " · ", " - ") }
+            .map(String::trim)
+            .firstOrNull { token ->
+                isPlausibleSearchMetadataLabel(token) && !token.equals(artist, ignoreCase = true)
+            }
+            ?: "YouTube Music"
         val thumbnail = findBestThumbnail(renderer)
         return buildTrack(
             id = videoId,
             title = title,
             artist = artist,
-            album = lines.drop(1).getOrNull(1)?.takeIf { it.isNotBlank() } ?: "YouTube Music",
+            album = album,
             durationMs = duration,
             thumbnailUrl = thumbnail,
             largeThumbnailUrl = upgradeThumbnail(thumbnail),
@@ -2240,6 +2254,12 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty()
         )
+    }
+
+    private fun isPlausibleSearchMetadataLabel(token: String): Boolean {
+        return token.isNotBlank() &&
+            !isTypeLabel(token) &&
+            !isYoutubeMusicAlbumTrackMetadata(token)
     }
 
     private fun extractPrimaryMusicVideoId(renderer: JSONObject): String {
