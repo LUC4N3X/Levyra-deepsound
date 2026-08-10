@@ -1,0 +1,94 @@
+name: Apply playback runtime fix
+
+on:
+  push:
+    branches:
+      - agent/newpipe-runtime-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/newpipe-runtime-hardening
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Apply targeted playback fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          viewmodel = "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
+          resolver = "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
+          player_test = "app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt"
+
+          replace_once(
+              viewmodel,
+              '    val videoId = if (preferVideo) counterpart else regular.ifBlank { counterpart }',
+              '    val videoId = if (preferVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }'
+          )
+
+          replace_once(
+              viewmodel,
+              '''                val baseTrack = (youtubePlayableTrack(track, preferVideo = targetMode) ?: track)\n                    .copy(streamUrl = "", videoStreamUrl = "")\n                val resolved = withContext(Dispatchers.IO) {\n                    resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)\n                }''',
+              '''                val baseTrack = (youtubePlayableTrack(track, preferVideo = targetMode) ?: track)\n                    .copy(streamUrl = "", videoStreamUrl = "")\n                val resolved = withContext(Dispatchers.IO) {\n                    try {\n                        resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)\n                    } catch (error: Throwable) {\n                        if (error is CancellationException) throw error\n                        if (!targetMode) throw error\n                        val fallback = youtubePlayableTrack(track, preferVideo = false)\n                            ?.copy(streamUrl = "", videoStreamUrl = "")\n                            ?.takeIf { youtubeVideoId(it.videoUrl) != youtubeVideoId(baseTrack.videoUrl) }\n                            ?: throw error\n                        resolver.cached(fallback, true) ?: providerRouter.resolve(fallback, true)\n                    }\n                }'''
+          )
+
+          replace_once(
+              resolver,
+              '''        if (track.streamUrl.isNotBlank()) {\n            if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null\n            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null\n            return if (streamStillFresh(track.streamUrl)) track else null\n        }''',
+              '''        if (track.streamUrl.isNotBlank()) {\n            if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null\n            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null\n            if (!streamStillFresh(track.streamUrl)) return null\n            if (isVideoMode && track.videoStreamUrl.isNotBlank() && !streamStillFresh(track.videoStreamUrl)) return null\n            return track\n        }'''
+          )
+
+          replace_once(
+              resolver,
+              '''    suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {\n        if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }\n        if (track.streamUrl.isNotBlank()) {\n            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null\n            if (streamStillFresh(track.streamUrl)) {\n                store(track, track, isVideoMode)\n                return track\n            }\n            return null\n        }\n        cached(track, isVideoMode)?.let { return it }\n        if (!hasInternetCapableNetwork()) return null\n        return runCatchingPreservingCancellation { resolve(track, isVideoMode) }.getOrNull()\n    }''',
+              '''    suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {\n        if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }\n        val reusableProvidedStream = track.streamUrl.isNotBlank() &&\n            !isPlaybackUrlBlocked(track.streamUrl) &&\n            (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&\n            (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&\n            streamStillFresh(track.streamUrl) &&\n            (!isVideoMode || track.videoStreamUrl.isBlank() || streamStillFresh(track.videoStreamUrl))\n        if (reusableProvidedStream) {\n            store(track, track, isVideoMode)\n            return track\n        }\n\n        val cleanTrack = if (track.streamUrl.isNotBlank() || track.videoStreamUrl.isNotBlank()) {\n            track.copy(streamUrl = "", videoStreamUrl = "")\n        } else {\n            track\n        }\n        cached(cleanTrack, isVideoMode)?.let { return it }\n        if (!hasInternetCapableNetwork()) return null\n        return runCatchingPreservingCancellation { resolve(cleanTrack, isVideoMode) }.getOrNull()\n    }'''
+          )
+
+          replace_once(
+              player_test,
+              'import org.junit.Assert.assertNull\n',
+              ''
+          )
+
+          replace_once(
+              player_test,
+              '''    @Test\n    fun youtubePlayableTrackDoesNotUseUnverifiedCurrentVideoInVideoMode() {\n        val unverified = track(streamUrl = "").copy(counterpartVideoId = "")\n\n        assertNull(youtubePlayableTrack(unverified, preferVideo = true))\n    }''',
+              '''    @Test\n    fun youtubePlayableTrackFallsBackToCanonicalVideoWhenCounterpartIsMissing() {\n        val canonical = track(streamUrl = "").copy(counterpartVideoId = "")\n\n        val playable = youtubePlayableTrack(canonical, preferVideo = true)\n\n        assertEquals("video123456", playable?.id)\n        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)\n    }'''
+          )
+          PY
+
+      - name: Verify focused playback tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.player.LevyraPlayerTest'
+
+      - name: Commit source fix and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/playback-runtime-fix.yml
+          git config user.name "Levyra Worker"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: restore video switching and stream prefetch"
+          git push origin HEAD:agent/newpipe-runtime-hardening
