@@ -13,6 +13,8 @@ import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
+private val YOUTUBE_MUSIC_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
+
 internal fun selectYoutubeMusicOfficialCounterpart(
     sourceVideoId: String,
     tracks: List<YoutubeMusicWatchTrack>
@@ -38,6 +40,18 @@ internal fun selectYoutubeMusicOfficialCounterpart(
             else -> 0
         }
     }
+}
+
+internal fun youtubeMusicAudioSourceId(track: Track): String {
+    track.audioVideoId.trim()
+        .takeIf(YOUTUBE_MUSIC_VIDEO_ID::matches)
+        ?.let { return it }
+    track.id.trim()
+        .takeIf(YOUTUBE_MUSIC_VIDEO_ID::matches)
+        ?.let { return it }
+    return PlaybackSourceIdentity.sourceVideoId(track)
+        .takeIf(YOUTUBE_MUSIC_VIDEO_ID::matches)
+        .orEmpty()
 }
 
 internal fun buildYoutubeMusicPairingPayload(
@@ -91,7 +105,7 @@ internal class YoutubeMusicOfficialVideoResolver {
         track: Track,
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): Track? = withContext(Dispatchers.IO) {
-        val sourceVideoId = audioVideoId(track)
+        val sourceVideoId = youtubeMusicAudioSourceId(track)
         if (sourceVideoId.isBlank()) return@withContext null
 
         val locale = LevyraContentLocales.forLanguage(languageCode)
@@ -153,15 +167,6 @@ internal class YoutubeMusicOfficialVideoResolver {
         }
     }
 
-    private fun audioVideoId(track: Track): String {
-        track.audioVideoId.trim()
-            .takeIf(YOUTUBE_VIDEO_ID::matches)
-            ?.let { return it }
-        return PlaybackSourceIdentity.sourceVideoId(track)
-            .takeIf(YOUTUBE_VIDEO_ID::matches)
-            .orEmpty()
-    }
-
     private fun Track.withOfficialCounterpart(
         sourceVideoId: String,
         counterpart: YoutubeMusicWatchTrack
@@ -170,7 +175,7 @@ internal class YoutubeMusicOfficialVideoResolver {
             videoUrl = "https://www.youtube.com/watch?v=${counterpart.videoId}",
             counterpartVideoId = counterpart.videoId,
             videoType = counterpart.videoType,
-            audioVideoId = audioVideoId.trim().takeIf(YOUTUBE_VIDEO_ID::matches).orEmpty().ifBlank { sourceVideoId }
+            audioVideoId = audioVideoId.trim().takeIf(YOUTUBE_MUSIC_VIDEO_ID::matches).orEmpty().ifBlank { sourceVideoId }
         )
     }
 
@@ -191,7 +196,6 @@ internal class YoutubeMusicOfficialVideoResolver {
     )
 
     private companion object {
-        private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private const val YOUTUBE_MUSIC_ORIGIN = "https://music.youtube.com"
         private const val WEB_REMIX_CLIENT_ID = "67"
