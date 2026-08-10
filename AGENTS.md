@@ -35,6 +35,8 @@ Surface conflicts between planning files and implementation before editing.
 - `docs/`: project documentation; additional rules in `docs/AGENTS.md`.
 - `docs/project/`: product specification, engineering roadmap, and active task
   phase.
+- `docs/agents/`: repository-specific configuration consumed by external agent
+  skills, including issue-tracker and domain-document conventions.
 - `docs/ai/`: ChatGPT, Codex, Google Antigravity, Claude Code, and OpenClaw
   collaboration guidance.
 - `.agents/rules/`: lightweight workspace rules that link to this canonical
@@ -63,6 +65,22 @@ Runtime-specific discovery must not create separate sources of truth. This file,
 nearest scoped instructions, approved planning, matching skills, and current
 repository evidence remain the shared hierarchy.
 
+## Agent skills
+
+### Issue tracker
+
+Levyra tracks issues and publishable engineering tickets in GitHub Issues for
+`LUC4N3X/Levyra-deepsound`. Reads may use the runtime's authenticated GitHub
+integration or `gh`; issue writes require explicit owner authorization. See
+`docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Levyra uses a single shared domain-language context. Read root `CONTEXT.md` and
+relevant `docs/adr/` entries when they exist; create either lazily only when a
+reusable term or durable architectural decision actually warrants it. See
+`docs/agents/domain.md`.
+
 ## RTK agent bootstrap
 
 The repository owner authorizes supported coding agents to bootstrap only the
@@ -78,11 +96,39 @@ Before the first noisy shell task in a session:
    once and continue with raw commands instead of downloading an unverified
    executable or weakening validation.
 
-This standing authorization applies only to the pinned `rtk-ai/rtk` bootstrap.
-Plugins, other executables, unrestricted sandboxing, approval bypasses, commit,
-push, pull request, merge, tag, release, and repository settings still require
-their normal explicit authorization. Keep security, signing, checksum, secret,
-and exact reproduction evidence raw.
+This standing authorization applies to the pinned `rtk-ai/rtk` bootstrap and
+the focused Matt Pocock skill bootstrap documented below. Other plugins,
+executables, unrestricted sandboxing, approval bypasses, commit, push, pull
+request, merge, tag, release, and repository settings still require their normal
+explicit authorization. Keep security, signing, checksum, secret, and exact
+reproduction evidence raw.
+
+## Matt Pocock skills bootstrap
+
+The repository owner authorizes the exact `mattpocock/skills` engineering
+integration defined by this repository:
+
+- Codex: `scripts/setup-ai.ps1` / `scripts/setup-ai.sh` may use the official
+  `skills` CLI through `npx` to install only the focused allowlist declared in
+  those scripts, globally for the Codex agent. Use `-SkipMattSkills` or
+  `--skip-matt-skills` to opt out on a machine.
+- Claude Code: `.claude/settings.json` enables
+  `mattpocock-skills@claude-plugins-official`; Claude's normal project trust and
+  plugin installation controls remain intact.
+- ChatGPT and Antigravity: use the repository-native
+  `levyra-real-engineering` adapter whether or not an upstream package is
+  installed in the runtime.
+
+The one-time upstream repository configuration is represented by this
+`## Agent skills` block plus `docs/agents/issue-tracker.md` and
+`docs/agents/domain.md`. `triage` is intentionally not installed or configured.
+Do not rerun `setup-matt-pocock-skills` during ordinary work unless the owner
+wants to change the issue tracker or domain-doc layout.
+
+External skills are supplementary. `AGENTS.md`, approved planning, current
+architecture, focused `levyra-*` skills, tests, quality gates, and explicit
+owner publication controls always take precedence. See
+`docs/ai/MATT_POCOCK_SKILLS.md`.
 
 ## Product invariants
 
@@ -113,6 +159,7 @@ skills over the general coordinator.
 | --- | --- |
 | Requirements, roadmap, active phase, acceptance criteria, task status, implementation handoff | `levyra-project-manager` |
 | OpenClaw delegation, coding-runtime coordination, evidence collection, safe publication handoff | `levyra-openclaw-orchestrator` |
+| Non-trivial feature, architectural change, unclear defect, or multi-step work needing clarification/spec/tickets/implementation/review separation | `levyra-real-engineering` |
 | Android playback, queue, Media3, MediaSession, notification, Android Auto, prefetch, audio/video mode | `levyra-player` |
 | InnerTube, extraction, stream resolution, runtime configuration, retry, cache, fallback | `levyra-extractor` |
 | Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
@@ -128,7 +175,8 @@ skills over the general coordinator.
 Several skills may apply. A playback change that modifies stream resolution
 uses player and extractor skills; provider-controlled media normally also
 requires security review. A tracked multi-phase task additionally uses
-`levyra-project-manager`; OpenClaw coordination additionally uses
+`levyra-project-manager`; non-trivial ambiguous/multi-step work additionally
+uses `levyra-real-engineering`; OpenClaw coordination additionally uses
 `levyra-openclaw-orchestrator`.
 
 ## Planning documents
@@ -144,6 +192,8 @@ active phase:
 - `docs/ARCHITECTURE.md` describes current implementation ownership and data
   flow.
 - `docs/ai/WORKFLOW.md` defines the complete AI-assisted lifecycle.
+- `docs/ai/MATT_POCOCK_SKILLS.md` defines the real-engineering stage routing and
+  runtime-specific upstream skill installation.
 - `docs/ai/ANTIGRAVITY.md` defines Antigravity discovery, workspace, and
   verification guidance.
 - `docs/ai/OPENCLAW.md` defines the recommended OpenClaw role and tool
@@ -240,6 +290,8 @@ Agent configuration checks from the repository root:
 
 ```bash
 python3 scripts/validate_agent_config.py
+python3 scripts/validate_ai_efficiency.py
+python3 scripts/validate_matt_skills.py
 ```
 
 Android checks from the repository root:

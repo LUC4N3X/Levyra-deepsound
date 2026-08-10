@@ -18,48 +18,90 @@ Native skills under `.agents/skills/` define repeatable workflows. Detailed
 domain playbooks remain under `.claude/skills/` and `.claude/rules/` where
 existing OpenAI skills reference them.
 
+For non-trivial work, `levyra-real-engineering` adapts Matt Pocock's workflow to
+Levyra. It separates unresolved decisions, specification, ticket decomposition,
+implementation, and review without replacing Levyra's own requirements,
+architecture, domain skills, validation, or owner-controlled publication. See
+`docs/ai/MATT_POCOCK_SKILLS.md`.
+
 ## Complete lifecycle
 
 1. **Orient**
    - Inspect the real repository, branch, worktree, current diff, architecture,
      tests, build files, and workflows.
    - Read root and nearest `AGENTS.md` files.
-   - Read `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and the active phase
-     in `docs/project/TASKS.md`.
+   - Read only the relevant parts of `docs/project/SPEC.md`,
+     `docs/project/ROADMAP.md`, and the active phase in `docs/project/TASKS.md`.
    - Load every matching native skill.
+   - For non-trivial features, architectural work, unclear defects, or
+     multi-step changes, additionally load `levyra-real-engineering`.
 
-2. **Define the phase**
-   - State the requested outcome and non-goals.
-   - Identify behavior that must remain unchanged.
-   - Map the work to specification requirements and roadmap outcomes.
+2. **Resolve only genuine ambiguity**
+   - Inspect repository evidence before asking the owner questions.
+   - Use `grill-with-docs` when product behavior, compatibility, ownership, or a
+     real trade-off remains unresolved.
+   - Use `wayfinder` first when several unresolved decisions make an immediate
+     specification premature.
+   - Skip this stage for small or already-unambiguous work.
+   - Add durable vocabulary or an ADR only when it will genuinely reduce future
+     ambiguity; do not create documentation as ceremony.
+
+3. **Define the implementation contract**
+   - State the requested outcome, non-goals, and behavior that must remain
+     unchanged.
+   - Once intent is settled, use `to-spec` for work large enough to benefit from
+     an implementation-ready specification.
+   - Map the work to approved requirements and roadmap outcomes where relevant.
    - Record acceptance criteria, automated checks, manual checks, rollback, and
      owner checkpoints in `docs/project/TASKS.md` when the task is large enough
      to require a tracked phase.
+   - Do not invent requirements that the owner did not approve.
 
-3. **Plan**
+4. **Split oversized work**
+   - Use `to-tickets` only when the specification is too large for one coherent,
+     reviewable implementation.
+   - Prefer vertical, independently reviewable slices over horizontal layer
+     tasks.
+   - Make each ticket self-contained enough for a fresh agent context.
+   - Do not create GitHub issues unless the owner explicitly authorized issue
+     publication; otherwise keep the ticket set in the approved handoff or
+     planning material.
+
+5. **Plan the current ticket or phase**
    - Trace the current control and data flow.
-   - Identify the verified root cause for a defect.
+   - Identify the verified root cause for a defect; use `diagnosing-bugs` when
+     the cause remains unclear.
    - Choose the smallest coherent design that matches current architecture.
    - List expected files, risks, migration/security/localization implications,
      and focused validation.
    - Stop before implementation only when the owner reserved plan approval.
 
-4. **Implement one reviewable phase**
-   - Use a dedicated branch.
-   - Touch only files required by the active phase.
+6. **Implement one reviewable ticket or phase**
+   - Use `implement` and `tdd` when the upstream skills are available and the
+     logic benefits from deterministic test-first coverage.
+   - Prefer a fresh context when moving to an independent ticket, carrying
+     forward the approved spec, exact ticket, durable decisions, and direct
+     validation evidence rather than stale exploratory chatter.
+   - Use a dedicated branch unless the owner explicitly authorized direct
+     `main` publication for the exact scope.
+   - Touch only files required by the current ticket or phase.
    - Keep unrelated cleanup, dependency changes, versions, signing, and release
      work out of the diff.
    - Add regression coverage where applicable.
 
-5. **Run focused validation**
+7. **Run focused validation**
    - Run the smallest check that can disprove the change first.
    - Read complete errors and fix causes instead of weakening checks.
    - Treat missing SDKs, JDKs, native runtimes, signing inputs, devices, or
      operating systems as blocked checks.
 
-6. **Run the applicable repository gate**
+8. **Run the applicable repository gate**
    - Agent configuration:
      `python3 scripts/validate_agent_config.py`
+   - AI efficiency/security configuration:
+     `python3 scripts/validate_ai_efficiency.py`
+   - Matt Pocock integration:
+     `python3 scripts/validate_matt_skills.py`
    - Android:
      `./gradlew --no-daemon :app:testDebugUnitTest`
      `./gradlew --no-daemon :app:lintRelease`
@@ -70,7 +112,7 @@ existing OpenAI skills reference them.
    - Diff hygiene:
      `git diff --check`
 
-7. **Inspect the complete diff**
+9. **Inspect the complete diff**
    - Check for unrelated edits, generated files, binaries, secrets, conflict
      markers, accidental version changes, duplicated sources of truth, and
      misleading documentation.
@@ -78,34 +120,71 @@ existing OpenAI skills reference them.
      `docs/project/TASKS.md`, architecture, and user documentation remain
      synchronized where affected.
 
-8. **Independent review**
-   - Use `levyra-pr-review` on the latest commit.
-   - Use CodeRabbit locally or on the pull request when available.
-   - Prefer a fresh reviewer model or human that did not implement the change.
-   - Require severity, exact location, triggering scenario, consequence,
-     smallest compatible fix, and missing test coverage for each finding.
-   - Do not accept speculative findings without a concrete failure path.
+10. **Independent review**
+    - Use the upstream `code-review` stage when available, then apply
+      `levyra-pr-review` to the latest commit or diff.
+    - Use CodeRabbit locally or on the pull request when available.
+    - Prefer a fresh reviewer model or human that did not implement the change.
+    - Require severity, exact location, triggering scenario, consequence,
+      smallest compatible fix, and missing test coverage for each finding.
+    - Do not accept speculative findings without a concrete failure path.
+    - Generic style or smell advice never overrides Levyra's documented
+      architecture and invariants.
 
-9. **Publish only when authorized**
-   - Stage only intended files.
-   - Use a focused professional commit message.
-   - Push a dedicated branch and open a draft pull request by default.
-   - Record problem, approach, impact, exact checks, blocked checks, manual
-     checks, limitations, and rollback/revert scope.
+11. **Publish only when authorized**
+    - Stage only intended files.
+    - Use a focused professional commit message.
+    - Push a dedicated branch and open a draft pull request by default unless
+      the owner explicitly authorized direct `main` publication for the scope.
+    - Record problem, approach, impact, exact checks, blocked checks, manual
+      checks, limitations, and rollback/revert scope.
+    - Specification or ticket generation does not imply permission to create or
+      update GitHub issues.
 
-10. **Repeat after every push**
+12. **Repeat after every push**
     - Re-run affected validation.
     - Review the latest commit rather than stale comments.
     - Fix or explain every actionable finding.
     - Keep manual checks unmarked until performed.
 
-11. **Owner-controlled completion**
+13. **Owner-controlled completion**
     - Merge only after the final diff, CI, applicable security checks,
       independent review, review threads, and required manual checks are clean,
       unless the owner explicitly authorizes a narrower documentation-only
       exception for the exact change.
     - Tagging, publishing, releases, store metadata, and repository settings are
       separate explicit owner actions.
+
+## Stage selection
+
+The Matt Pocock workflow is deliberately composable. Use the lightest stage that
+reduces real uncertainty or implementation risk:
+
+```text
+small obvious change
+→ normal Levyra work method
+
+ambiguous feature / architecture
+→ grill-with-docs
+→ to-spec
+→ to-tickets only when needed
+→ implement + tdd
+→ code-review + levyra-pr-review
+
+large unresolved decision map
+→ wayfinder
+→ continue from the appropriate stage
+
+unclear defect
+→ diagnosing-bugs
+→ minimal fix + regression test
+→ code-review + levyra-pr-review
+```
+
+When the upstream skill package is installed, load the exact stage skill instead
+of recreating its instructions from memory. If it is unavailable, follow the
+repository-native `levyra-real-engineering` adapter and continue without
+blocking ordinary work.
 
 ## Role separation
 
@@ -114,6 +193,7 @@ existing OpenAI skills reference them.
 | ChatGPT Project | Requirements, investigation, architecture, planning, PR interpretation, task preparation | Repository writes or successful validation without evidence |
 | Codex | Focused implementation, tests, local validation, branch/PR work when authorized | Permission to merge or release |
 | Claude Code | Implementation or independent review using Claude-specific tooling | That its own report is sufficient evidence |
+| Google Antigravity | Workspace implementation/review through shared `.agents` skills | That a workspace skill grants publication permission |
 | CodeRabbit | Automated review signal | Authority over repository requirements |
 | OpenClaw | Delegation, status collection, recurring checks, and handoff between configured agents | Broad tool access, publication, merge, or release permission |
 | Owner | Scope, trade-offs, publication authorization, merge, release | None; final authority remains human |
@@ -132,8 +212,8 @@ push or pull-request publication and adds platform checks selected from the
 complete branch diff. GitHub PR Check repeats the fast preflight before its
 build, lint, manifest, and packaging checks. ChatGPT must run the commands when
 it has repository execution, or put them in the implementation handoff without
-claiming they passed. A reviewer bot is supplementary and cannot replace this
-gate.
+claiming they passed. A reviewer bot or external skill is supplementary and
+cannot replace this gate.
 
 A pull request is not ready merely because code compiles.
 
@@ -178,5 +258,6 @@ Every implementation or review agent should return:
 - Do not weaken security validation for one provider response.
 - Do not convert cancellation into failure.
 - Do not mark a task complete because an agent says it is complete.
+- Do not treat an external skill's self-assessment as validation evidence.
 - When evidence is unavailable, state the exact limitation and leave the gate
   open.
