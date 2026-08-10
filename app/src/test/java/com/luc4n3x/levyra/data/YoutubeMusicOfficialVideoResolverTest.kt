@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YoutubeMusicOfficialVideoResolverTest {
@@ -78,6 +80,41 @@ class YoutubeMusicOfficialVideoResolverTest {
         )
 
         assertNull(selectYoutubeMusicOfficialCounterpart(sourceId, listOf(unrelated)))
+    }
+
+    @Test
+    fun audioPrimaryRequestAsksForPersistentAtvWrapper() {
+        val payload = buildYoutubeMusicPairingPayload(
+            sourceVideoId = "audio123456",
+            hl = "it",
+            gl = "IT",
+            audioPrimary = true
+        )
+
+        assertTrue(payload.getBoolean("enablePersistentPlaylistPanel"))
+        assertTrue(payload.getBoolean("isAudioOnly"))
+        assertEquals("RDAMVMaudio123456", payload.getString("playlistId"))
+        assertEquals(
+            "MUSIC_VIDEO_TYPE_ATV",
+            payload.getJSONObject("watchEndpointMusicSupportedConfigs")
+                .getJSONObject("watchEndpointMusicConfig")
+                .getString("musicVideoType")
+        )
+    }
+
+    @Test
+    fun neutralRequestKeepsTheRadioContextWithoutForcingAtv() {
+        val payload = buildYoutubeMusicPairingPayload(
+            sourceVideoId = "audio123456",
+            hl = "it",
+            gl = "IT",
+            audioPrimary = false
+        )
+
+        assertTrue(payload.getBoolean("enablePersistentPlaylistPanel"))
+        assertEquals("RDAMVMaudio123456", payload.getString("playlistId"))
+        assertFalse(payload.has("isAudioOnly"))
+        assertFalse(payload.has("watchEndpointMusicSupportedConfigs"))
     }
 
     private fun watchTrack(
