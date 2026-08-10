@@ -28,8 +28,9 @@ class EditorialCatalogParserTest {
         val track = snapshot!!.byMarket.getValue("IT").single()
         assertTrue(track.id.startsWith("chart-"))
         assertEquals("https://www.youtube.com/watch?v=Audio123456", track.videoUrl)
+        assertEquals("Audio123456", track.audioVideoId)
         assertEquals("fcnDmrtj6Sk", track.counterpartVideoId)
-        assertEquals("MUSIC_VIDEO_TYPE_OMV", track.videoType)
+        assertEquals("MUSIC_VIDEO_TYPE_ATV", track.videoType)
         assertEquals(99, track.metadataConfidence)
     }
 

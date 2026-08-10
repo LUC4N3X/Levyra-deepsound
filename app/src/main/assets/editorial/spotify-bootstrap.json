@@ -218,6 +218,8 @@
           "youtubeMusic": {
             "audioVideoId": "Y7ztJQaiCZc",
             "audioConfidence": 100,
+            "videoId": "BXpFlt8VwDk",
+            "videoConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UChexJ9ht1tA6M537EtnZkoQ"
           },
