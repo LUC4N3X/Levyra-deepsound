@@ -22,23 +22,15 @@ internal fun selectYoutubeMusicOfficialCounterpart(
     val source = sourceVideoId.trim()
     if (source.isBlank()) return null
 
-    val paired = buildList {
+    return buildList {
         tracks.forEach { track ->
             if (track.videoId == source) track.counterpart?.let(::add)
             if (track.counterpart?.videoId == source) add(track)
         }
-    }.filter { candidate ->
+    }.firstOrNull { candidate ->
         candidate.videoId.isNotBlank() &&
             candidate.videoId != source &&
-            !candidate.videoType.contains("ATV", ignoreCase = true)
-    }
-
-    return paired.maxByOrNull { candidate ->
-        when {
-            candidate.videoType.contains("OMV", ignoreCase = true) -> 2
-            candidate.videoType.contains("UGC", ignoreCase = true) -> 1
-            else -> 0
-        }
+            candidate.videoType.contains("OMV", ignoreCase = true)
     }
 }
 
@@ -63,25 +55,6 @@ internal fun youtubeMusicAudioPlaybackSeed(track: Track): Track? {
         playbackManifest = null,
         videoUrl = "https://www.youtube.com/watch?v=$sourceVideoId",
         audioVideoId = sourceVideoId
-    )
-}
-
-internal fun youtubeMusicTrustedCatalogVideoFallback(track: Track): Track? {
-    if (!track.videoType.contains("ATV", ignoreCase = true)) return null
-    val sourceVideoId = youtubeMusicAudioSourceId(track)
-    val counterpartVideoId = track.counterpartVideoId.trim()
-        .takeIf(YOUTUBE_MUSIC_VIDEO_ID::matches)
-        .orEmpty()
-    if (sourceVideoId.isBlank() || counterpartVideoId.isBlank() || counterpartVideoId == sourceVideoId) return null
-
-    return track.copy(
-        streamUrl = "",
-        videoStreamUrl = "",
-        playbackManifest = null,
-        videoUrl = "https://www.youtube.com/watch?v=$counterpartVideoId",
-        counterpartVideoId = counterpartVideoId,
-        audioVideoId = sourceVideoId,
-        videoType = ""
     )
 }
 
