@@ -154,8 +154,7 @@ private class LevyraCarSession : Session() {
                 if (response.resultCode != SessionResult.RESULT_SUCCESS || token == null) {
                     throw IllegalStateException("Playback token unavailable")
                 }
-                (carContext.getCarService(CarContext.MEDIA_PLAYBACK_SERVICE) as MediaPlaybackManager)
-                    .registerMediaPlaybackToken(MediaSessionCompat.Token.fromToken(token))
+                registerPlatformPlaybackToken(token)
                 playbackTokenRegistered = true
                 reconnectAttempts = 0
                 invalidatePlaybackScreen()
@@ -167,6 +166,13 @@ private class LevyraCarSession : Session() {
                 scheduleReconnect()
             }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun registerPlatformPlaybackToken(sessionToken: android.media.session.MediaSession.Token) {
+        // AndroidX Car App 1.9.0-alpha01 still accepts only MediaSessionCompat.Token.
+        (carContext.getCarService(CarContext.MEDIA_PLAYBACK_SERVICE) as MediaPlaybackManager)
+            .registerMediaPlaybackToken(MediaSessionCompat.Token.fromToken(sessionToken))
     }
 
     private fun handleDisconnected(controller: MediaController) {

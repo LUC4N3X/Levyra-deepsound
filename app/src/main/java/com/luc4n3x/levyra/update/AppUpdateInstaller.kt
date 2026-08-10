@@ -351,6 +351,7 @@ internal class AppUpdateInstaller(
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun signingFlags(): Int =
         if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
 

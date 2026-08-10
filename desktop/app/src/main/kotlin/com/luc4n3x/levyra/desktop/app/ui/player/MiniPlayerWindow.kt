@@ -37,7 +37,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
@@ -48,6 +47,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
+import com.luc4n3x.levyra.desktop.app.ui.components.levyraIconPainter
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
@@ -106,7 +106,7 @@ fun MiniPlayerWindow(
         onCloseRequest = onClose,
         state = windowState,
         title = "Levyra · Mini ${strings.navNowPlaying}",
-        icon = painterResource("icons/levyra.png"),
+        icon = levyraIconPainter(),
         alwaysOnTop = true,
         undecorated = true,
         transparent = true,

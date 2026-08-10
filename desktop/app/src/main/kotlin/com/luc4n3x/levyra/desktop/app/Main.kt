@@ -13,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
@@ -36,6 +35,7 @@ import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
 import com.luc4n3x.levyra.desktop.app.ui.DesktopUpdateDialogHost
 import com.luc4n3x.levyra.desktop.app.ui.LevyraRoot
 import com.luc4n3x.levyra.desktop.app.ui.components.TextInputFocus
+import com.luc4n3x.levyra.desktop.app.ui.components.levyraIconPainter
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.player.MiniPlayerWindow
@@ -181,7 +181,7 @@ fun main(args: Array<String>) {
             state = windowState,
             visible = windowVisible,
             title = strings.appName,
-            icon = painterResource(APP_ICON),
+            icon = levyraIconPainter(),
             onKeyEvent = { event ->
                 val action = DesktopShortcuts.resolve(event, TextInputFocus.active)
                 if (action == null) {
@@ -281,7 +281,7 @@ private fun ApplicationScope.LevyraTray(
     onQuit: () -> Unit
 ) {
     Tray(
-        icon = painterResource(APP_ICON),
+        icon = levyraIconPainter(),
         tooltip = trackTooltip?.let { "${strings.appName} · $it" } ?: strings.appName,
         onAction = onShow,
         menu = {
@@ -376,7 +376,6 @@ private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
     sleepRemainingMs = 0L
 )
 
-private const val APP_ICON = "icons/levyra.png"
 private const val ARTWORK_CACHE_BYTES = 512L * 1024L * 1024L
 private const val MIN_WINDOW_WIDTH = 960
 private const val MIN_WINDOW_HEIGHT = 640
