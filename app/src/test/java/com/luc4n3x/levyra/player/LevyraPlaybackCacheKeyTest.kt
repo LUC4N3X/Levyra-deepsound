@@ -32,12 +32,12 @@ class LevyraPlaybackCacheKeyTest {
     }
 
     @Test
-    fun nativeVideoUsesRotatedCacheNamespace() {
+    fun nativeVideoUsesOfficialPairingCacheNamespace() {
         val track = track("https://rr.example/videoplayback?itag=140").copy(
             videoStreamUrl = "https://rr.example/videoplayback?itag=137"
         )
 
-        assertTrue(LevyraPlaybackCacheKey.video(track).contains(":video-v2:itag-137"))
+        assertTrue(LevyraPlaybackCacheKey.video(track).contains(":video-v3:itag-137"))
     }
 
     private fun track(streamUrl: String): Track = Track(
