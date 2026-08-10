@@ -121,6 +121,7 @@ class AiQualityGateTest(unittest.TestCase):
         self.assertNotIn("Run all Android unit tests", labels)
 
     def test_full_desktop_profile_uses_desktop_project_directory(self) -> None:
+        """The full gate must invoke the Desktop wrapper in the Desktop project."""
         commands, blocked = build_commands(
             {"desktop/app/src/main/kotlin/example.kt"},
             "full",

@@ -307,6 +307,7 @@ def gradle_wrapper(directory: str = ".") -> str:
 def build_commands(
     paths: set[str], profile: str, python: str | None = None
 ) -> tuple[list[GateCommand], list[str]]:
+    """Build the validation commands selected by changed paths and gate profile."""
     python = python or sys.executable
     kinds = classify_changes(paths)
     commands = [
