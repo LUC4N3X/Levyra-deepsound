@@ -1,6 +1,7 @@
 [versions]
 kotlin = "2.4.10"
 compose = "1.11.1"
+composeMaterial3 = "1.11.0-alpha07"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 okhttp = "5.4.0"
@@ -31,6 +32,10 @@ slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4
 json = { group = "org.json", name = "json", version.ref = "json" }
 levyra-extractor = { group = "com.github.LUC4N3X", name = "LevyraExtractor", version.ref = "levyraExtractor" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "composeMaterial3" }
+compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose" }
+compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "compose" }
+compose-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

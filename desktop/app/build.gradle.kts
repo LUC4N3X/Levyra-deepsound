@@ -1,5 +1,6 @@
 import java.util.Properties
 import org.gradle.language.jvm.tasks.ProcessResources
+import org.gradle.api.tasks.Sync
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -28,7 +29,7 @@ require(levyraDesktopVersion.matches(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+([-.+][0-9A
 }
 
 val generatedVersionResources = layout.buildDirectory.dir("generated/resources/desktopVersion")
-val generateDesktopVersionResource by tasks.registering {
+val generateDesktopVersionResource = tasks.register("generateDesktopVersionResource") {
     inputs.property("levyraDesktopVersion", levyraDesktopVersion)
     outputs.dir(generatedVersionResources)
     doLast {
@@ -45,8 +46,23 @@ tasks.named<ProcessResources>("processResources") {
 
 kotlin {
     sourceSets.named("main") {
-        kotlin.srcDir(rootProject.file("../app/src/main/java/com/luc4n3x/levyra/ui/i18n"))
+        val sharedAndroidSources = objects.sourceDirectorySet(
+            "sharedAndroidSources",
+            "Android sources shared with Levyra Desktop"
+        ).apply {
+            srcDir(rootProject.file("../app/src/main/java"))
+            include("com/luc4n3x/levyra/ui/i18n/**/*.kt")
+            include("com/luc4n3x/levyra/domain/LevyraAudio.kt")
+            include("com/luc4n3x/levyra/domain/PlaylistImportFailureKind.kt")
+        }
+        kotlin.source(sharedAndroidSources)
     }
+}
+
+val generatedComposeResources = layout.buildDirectory.dir("generated/composeResources/main")
+val prepareComposeResources = tasks.register<Sync>("prepareComposeResources") {
+    from(layout.projectDirectory.file("src/main/resources/icons/levyra.png"))
+    into(generatedComposeResources.map { it.dir("drawable") })
 }
 
 dependencies {
@@ -54,9 +70,10 @@ dependencies {
     implementation(project(":player"))
 
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation(compose.foundation)
-    implementation(compose.ui)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.resources)
 
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
@@ -73,6 +90,12 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+}
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.luc4n3x.levyra.desktop.app.generated.resources"
+    customDirectory("main", prepareComposeResources.map { generatedComposeResources.get() })
 }
 
 compose.desktop {

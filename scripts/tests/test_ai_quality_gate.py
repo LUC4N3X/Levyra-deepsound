@@ -6,6 +6,7 @@ from scripts.ai_quality_gate import (
     build_commands,
     classify_changes,
     forbidden_path_findings,
+    gradle_wrapper,
     scan_added_lines,
 )
 
@@ -118,6 +119,21 @@ class AiQualityGateTest(unittest.TestCase):
 
         self.assertEqual([], blocked)
         self.assertNotIn("Run all Android unit tests", labels)
+
+    def test_full_desktop_profile_uses_desktop_project_directory(self) -> None:
+        """The full gate must invoke the Desktop wrapper in the Desktop project."""
+        commands, blocked = build_commands(
+            {"desktop/app/src/main/kotlin/example.kt"},
+            "full",
+            python="python",
+        )
+        desktop_command = next(
+            command for command in commands if command.label == "Run Desktop checks and assembly"
+        )
+
+        self.assertEqual([], blocked)
+        self.assertEqual(gradle_wrapper("desktop"), desktop_command.argv[0])
+        self.assertEqual(("-p", "desktop", "check", "assemble"), desktop_command.argv[-4:])
 
 
 if __name__ == "__main__":
