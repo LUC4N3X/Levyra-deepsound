@@ -2,115 +2,71 @@
 
 ## Active phase
 
-**Name:** Local intelligence, automatic recovery, templated car UI, and real audio transitions
+**Name:** Native video reliability and seamless song/video handoff
 
-**Roadmap tracks:** Track 1 - Playback critical path; Track 2 - Persistence, offline use, and recovery; Track 3 - Responsive, accessible interface
+**Roadmap tracks:** Track 1 - Playback critical path; Track 4 - Extractor and remote-media resilience
 
-**Status:** Implementation and available local checks complete; draft PR pending
-**Scope:** Add local smart playlists, opt-in automatic backups, an Android Auto Car App templated surface, and service-owned real crossfade/AutoMix. Preserve classic Android Auto, the explicit audio/video choice, the persistent queue, existing backup compatibility, user data, Android/Desktop versions, signing, packaging, and release behavior.
+**Status:** Implementation in review; CI and physical-device verification pending
+
+**Scope:** Stabilize native YouTube video playback without changing the working song/audio path. Keep Brano and Video explicit, use a video-specific client/fallback policy, reject stale or incomplete video sources, prefer the most reliable muxed source when available, and preserve live playback intent across Brano <-> Video handoffs.
 
 ## Verified current behavior and rationale
 
-- The Library already exposed recent and most-played smart cards, but recent
-  history was deduplicated before `LibraryCatalog` counted it. Every play count
-  was therefore one and the most-played ordering was not meaningful.
-- Manual backup/restore already produced checksum-verified archives and restored
-  transactionally, but no periodic scheduler, atomic automatic destination, or
-  retention policy existed.
-- `AndroidAutoLibrary` already exposed a rich Media3 browse tree through
-  `PlaybackService`; no Car App templated UI consumed it.
-- ViewModel crossfade faded one player down, changed source, and faded the same
-  player up. The streams never overlapped, so it was not a real crossfade.
+- Song/audio playback is working and is not the target of this phase.
+- Native-video resolution previously reused the same client ladder and YouTube Music ATV request context as audio playback.
+- Split video URLs could be reused while only the audio URL was checked for freshness.
+- Video warmup previously wrote a bounded video fragment into the normal playback cache; video warmup is now cacheless and the old video cache namespace is rotated.
+- PipePipe's current anonymous YouTube path exposes VisionOS and prefers a dedicated video playback path. Levyra adopts only the compatible direct-player ideas here; it does not copy PipePipe's full player or SABR stack into this hotfix.
+- Levyra does not currently provide PipePipe's `SabrDashMediaSource` transport. Non-URL SABR streams therefore remain outside this phase rather than being partially wired into a progressive Media3 path.
 
 ## Acceptance criteria
 
-- Most-played ranks 30-day local listening time, play count, and recency without
-  persisting resolved stream URLs or introducing a second catalog.
-- Recent, favorites, offline, playlists, downloads, and existing Library actions
-  remain unchanged.
-- Automatic backup is opt-in; frequency, charging constraint, and bounded
-  retention are user configurable.
-- Automatic archives reuse the existing payload/checksum format, exclude audio,
-  finalize atomically in app-private storage, and keep manual export/restore
-  backward compatible.
-- Classic MediaBrowser Android Auto remains available.
-- The templated Car App surface exposes Home, Download, Favorites, Playlists,
-  browse, search, queue, and now-playing using the existing MediaSession and
-  `AndroidAutoLibrary`.
-- Release car hosts are validated; arbitrary hosts are permitted only in debug.
-- Audio-mode crossfade overlaps two real ExoPlayers with equal-power gains.
-- AutoMix adapts bounded duration only from local energy/vocal metadata.
-- Queue generation and identity prevent stale transition publication.
-- Pause, seek, queue mutation, repeat-one, native-video mode, low-RAM pressure,
-  and lifecycle cleanup cancel the secondary player.
-- MediaSession, notification, queue, background service, and Android Auto return
-  to the primary player after handoff.
-- No Room migration, account, cookie, private token, telemetry, tracking,
-  permission expansion, version change, Desktop change, merge, tag, or release.
+- Brano keeps its current resolver order, YouTube Music audio context, cache behavior, DSP, queue, crossfade, and offline behavior.
+- Video uses an independent client order with VisionOS as the preferred anonymous direct-player profile and bounded fallbacks.
+- Native-video player requests do not carry the audio-only `MUSIC_VIDEO_TYPE_ATV` context.
+- A video result is accepted only when its selected manifest actually contains muxed video, a selected video stream, or HLS.
+- A stale separate video URL is never reused merely because its paired audio URL is still fresh.
+- A stable compatible muxed stream is preferred over split audio/video when one is available; split playback remains a fallback.
+- Video warmup never writes a partial video resource into the normal playback cache.
+- Brano -> Video and Video -> Brano keep the current timestamp and current play/pause intent.
+- If the user seeks while the alternate mode is resolving, the handoff follows the latest user position rather than the position captured when the button was tapped.
+- Recovery preserves the requested recovery point and does not publish stale mode-switch work.
+- Official audio/video recording identity remains verified before switching to a counterpart.
+- No account cookie, private credential, version change, Desktop change, merge, tag, or release is part of this phase.
 
 ## Work items
 
-- [x] Implement and test deterministic local most-played ranking.
-- [x] Implement DataStore backup settings and backward-compatible serialization.
-- [x] Implement WorkManager scheduling, atomic archive creation, and retention.
-- [x] Add automatic-backup settings UI.
-- [x] Add Car App dependencies, manifest service, platform-token handshake, tabs,
-  browse, search, queue, and now-playing templates.
-- [x] Implement service-owned dual-player equal-power transition and AutoMix
-  planning with independent DSP processors.
-- [x] Remove the old single-player pseudo-crossfade path.
-- [x] Add focused smart-playlist, backup-retention, and AutoMix tests.
-- [x] Run focused unit tests and debug Kotlin compilation.
-- [x] Run the full Android unit suite and record its four out-of-scope failures.
-- [x] Run debug lint and debug assembly.
-- [ ] Run release assembly where local signing/configuration permits.
-- [x] Complete final security and diff review.
-- [x] Prepare the authorized branch and draft pull-request handoff.
-- [ ] Verify Android Auto templates on DHU or a compatible head unit.
-- [ ] Verify real audio overlap, pause/seek/skip, notification, lock screen,
-  repeat, shuffle, EQ/normalization, low-memory cancellation, and native video
-  on a physical device.
+- [x] Remove partial video writes from playback warmup and rotate the video cache namespace.
+- [x] Preserve same-track handoff position without leaking position between different tracks.
+- [x] Preserve live play/pause and backward-seek intent while a mode switch resolves.
+- [x] Keep the audio resolver ladder unchanged and introduce a video-only client ladder.
+- [x] Add VisionOS as the preferred native-video direct-player profile.
+- [x] Remove YouTube Music ATV request context from native-video player requests.
+- [x] Reject stale split-video URLs and incomplete video manifests.
+- [x] Prefer stable muxed video over split audio/video when both are available.
+- [x] Keep the reported Bresh - Da Dio official-video identity as a regression fixture.
+- [ ] Pass the current PR quality gate, unit tests, lint, and release compilation.
+- [ ] Verify Brano playback regression-free on a physical device.
+- [ ] Verify Brano -> Video -> Brano at multiple timestamps on a physical device.
+- [ ] Verify reported black-screen, few-second stall, and operation-failed cases on a physical device.
+- [ ] If direct playback remains insufficient, open a separate scoped phase for a real SABR Media3 transport instead of mixing a partial SABR implementation into this PR.
 
-## Current validation evidence
+## Validation evidence
 
-- `:app:compileDebugKotlin`: passed locally with Android SDK configured through
-  `ANDROID_HOME`.
-- Focused `:app:testDebugUnitTest` selectors for smart playlists, automatic
-  backup retention, AutoMix, and Library catalog: passed locally.
-- Full `:app:testDebugUnitTest`: 624 tests executed, with four failures in
-  untouched areas (`AlbumRecommendationPolicyTest`, two
-  `YoutubeLocalDecoderTest` fixtures, and `PlayerExpansionTest`).
-- `:app:lintDebug`: passed locally.
-- `:app:assembleDebug`: passed locally.
-- `:app:lintRelease`: blocked before execution by the repository's required
-  `YOUTUBE_INNERTUBE_API_KEY` gate. The F-Droid release lint path is blocked by
-  the unavailable JDK 21 toolchain.
-- `git diff --check`: passed at the current working state.
-- Physical-device audio, Android Auto host, notification/lock-screen, memory
-  pressure, and automatic WorkManager execution checks remain unverified.
-- The previous Home identity phase recorded implementation completion but its
-  reported final-head CI/device checks were not reclassified as passed here.
+- PR #341 contains focused regression coverage for cache namespace, source selection, recording identity, and handoff position policy.
+- GitHub CI for the latest head is the source of truth for repository checks; checks still running are not treated as passed.
+- Physical-device playback remains unverified until an APK built from the latest head is tested.
 
 ## Preserved behavior
 
-- The explicit song/audio versus native-video selection is unchanged.
-- Static artwork, downloads, favorites, playlists, queue, lyrics, history,
-  settings, localization, onboarding, sessions, and backup restore remain.
-- Direct playback remains the critical path; transition preparation is bounded,
-  cancellable, and disabled on low-RAM devices and native video.
-- Android and Desktop versions, packages, artifacts, signing, tags, and releases
-  remain independent and unchanged.
+- Song/audio resolution and its existing provider order remain unchanged.
+- Audio DSP, queue, crossfade/AutoMix, downloads, favorites, playlists, lyrics, history, settings, localization, backups, Android Auto, and offline playback are outside the change unless required to preserve playback state.
+- Android and Desktop versions, packages, signing, tags, and releases remain unchanged.
 
 ## Rollback boundary
 
-Revert the smart-playlist projection, automatic-backup settings/worker, Car App
-surface/dependencies, dual-player transition planner/service integration, tests,
-attribution, and planning documentation as one Android-only change. No Room
-migration or durable data rollback is required; unknown DataStore keys are
-ignored by older builds and existing backup schema readers remain compatible.
+Revert the native-video resolver policy, selector reliability preference, video cache/warmup changes, handoff policy, focused tests, and this task phase as one Android-only change. No Room migration or user-data rollback is required.
 
 ## Update rule
 
-Record CI, review, DHU, physical-device, merge, and release status only from
-direct evidence. Replace this phase when a new reviewable task begins instead
-of accumulating unrelated work.
+Record CI and physical-device results only from direct evidence. Keep a full SABR transport as a separate reviewable phase if it becomes necessary.
