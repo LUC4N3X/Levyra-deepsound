@@ -4,6 +4,8 @@ import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicOfficialVideoResolver
 import com.luc4n3x.levyra.data.YoutubeMusicPlaylistDetail
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.youtubeMusicAudioPlaybackSeed
+import com.luc4n3x.levyra.data.youtubeMusicTrustedCatalogVideoFallback
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
@@ -193,16 +195,24 @@ class LevyraNativePlaybackProvider(
     private val officialVideoResolver = YoutubeMusicOfficialVideoResolver()
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+        val audioSeed = youtubeMusicAudioPlaybackSeed(track)
+            ?: track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
         val sourceTrack = if (videoMode) {
-            officialVideoResolver.resolve(track) ?: track
+            officialVideoResolver.resolve(audioSeed)
+                ?: youtubeMusicTrustedCatalogVideoFallback(track)
+                ?: throw LevyraProviderMissException("Video ufficiale YouTube Music non disponibile")
         } else {
-            track
+            audioSeed
         }
+
         val first = resolver.resolve(sourceTrack, videoMode)
         if (!videoMode || first.hasVideoPlaybackPayload()) return first
 
         resolver.reportPlaybackFailure(first, true, "Sorgente video priva di una traccia video")
-        val retry = resolver.resolve(sourceTrack.copy(streamUrl = "", videoStreamUrl = ""), true)
+        val retry = resolver.resolve(
+            sourceTrack.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null),
+            true
+        )
         if (!retry.hasVideoPlaybackPayload()) {
             throw LevyraProviderMissException("Il resolver non ha restituito una traccia video")
         }
