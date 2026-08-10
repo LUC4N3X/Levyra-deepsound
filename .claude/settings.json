@@ -23,7 +23,8 @@
   "enabledPlugins": {
     "chrisbanes-skills@chrisbanes-skills": true,
     "kotlin-agent-skills@Kotlin": true,
-    "andrej-karpathy-skills@karpathy-skills": true
+    "andrej-karpathy-skills@karpathy-skills": true,
+    "mattpocock-skills@claude-plugins-official": true
   },
   "permissions": {
     "allow": [
