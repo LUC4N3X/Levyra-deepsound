@@ -1,0 +1,178 @@
+name: Apply video identity lookup fix
+
+on:
+  push:
+    branches:
+      - fix/video-playback-handoff
+    paths:
+      - .github/workflows/patch-video-identity-lookup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/video-playback-handoff
+          fetch-depth: 0
+
+      - name: Apply targeted patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicWatchRepository.kt')
+          text = path.read_text()
+
+          anchor = '''data class YoutubeMusicWatchPlaylist(
+              val tracks: List<YoutubeMusicWatchTrack>,
+              val playlistId: String,
+              val lyricsBrowseId: String,
+              val relatedBrowseId: String,
+              val continuation: String,
+              val radio: Boolean = false,
+              val shuffled: Boolean = false
+          )
+          '''
+          helper = anchor + '''
+          internal fun shouldStopWatchPaginationForCounterpart(
+              requestedVideoId: String,
+              limit: Int,
+              radio: Boolean,
+              shuffle: Boolean,
+              playlist: YoutubeMusicWatchPlaylist
+          ): Boolean {
+              if (requestedVideoId.isBlank() || limit > 3 || radio || shuffle) return false
+              return playlist.tracks
+                  .firstOrNull { it.videoId == requestedVideoId }
+                  ?.counterpart != null
+          }
+          '''
+          if 'shouldStopWatchPaginationForCounterpart' not in text:
+              if anchor not in text:
+                  raise SystemExit('watch playlist data-class anchor not found')
+              text = text.replace(anchor, helper, 1)
+
+          initial = '''        val parsedInitial = cachedPlaylist ?: YoutubeMusicWatchParser.parseWatchPlaylist(
+              post("next", requestBody, languageCode, mobile = false)
+          ).copy(radio = radio, shuffled = shuffle)
+          var parsed = parsedInitial
+          '''
+          replacement = '''        val parsedInitial = cachedPlaylist ?: YoutubeMusicWatchParser.parseWatchPlaylist(
+              post("next", requestBody, languageCode, mobile = false)
+          ).copy(radio = radio, shuffled = shuffle)
+          if (
+              shouldStopWatchPaginationForCounterpart(
+                  requestedVideoId = cleanVideoId,
+                  limit = boundedLimit,
+                  radio = radio,
+                  shuffle = shuffle,
+                  playlist = parsedInitial
+              )
+          ) {
+              val initialResult = parsedInitial.copy(
+                  playlistId = parsedInitial.playlistId.ifBlank { effectivePlaylistId },
+                  radio = radio,
+                  shuffled = shuffle
+              )
+              putCached(watchCache, cacheKey, initialResult, WATCH_CACHE_MAX_ENTRIES)
+              return@withContext initialResult.copy(tracks = initialResult.tracks.take(boundedLimit))
+          }
+          var parsed = parsedInitial
+          '''
+          if 'shouldStopWatchPaginationForCounterpart(' in text and replacement not in text:
+              if initial not in text:
+                  raise SystemExit('initial watch parse anchor not found')
+              text = text.replace(initial, replacement, 1)
+
+          path.write_text(text)
+
+          test = Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicWatchPaginationPolicyTest.kt')
+          test.write_text('''package com.luc4n3x.levyra.data
+
+          import org.junit.Assert.assertFalse
+          import org.junit.Assert.assertTrue
+          import org.junit.Test
+
+          class YoutubeMusicWatchPaginationPolicyTest {
+              @Test
+              fun shortIdentityLookupStopsWhenInitialResponseHasCounterpart() {
+                  val counterpart = watchTrack("video123456", counterpart = null)
+                  val audio = watchTrack("audio123456", counterpart = counterpart)
+                  val playlist = YoutubeMusicWatchPlaylist(
+                      tracks = listOf(audio),
+                      playlistId = "RDAMVMaudio123456",
+                      lyricsBrowseId = "",
+                      relatedBrowseId = "",
+                      continuation = "CONT"
+                  )
+
+                  assertTrue(
+                      shouldStopWatchPaginationForCounterpart(
+                          requestedVideoId = "audio123456",
+                          limit = 3,
+                          radio = false,
+                          shuffle = false,
+                          playlist = playlist
+                      )
+                  )
+              }
+
+              @Test
+              fun normalWatchQueueStillAllowsPagination() {
+                  val counterpart = watchTrack("video123456", counterpart = null)
+                  val audio = watchTrack("audio123456", counterpart = counterpart)
+                  val playlist = YoutubeMusicWatchPlaylist(
+                      tracks = listOf(audio),
+                      playlistId = "RDAMVMaudio123456",
+                      lyricsBrowseId = "",
+                      relatedBrowseId = "",
+                      continuation = "CONT"
+                  )
+
+                  assertFalse(
+                      shouldStopWatchPaginationForCounterpart(
+                          requestedVideoId = "audio123456",
+                          limit = 25,
+                          radio = false,
+                          shuffle = false,
+                          playlist = playlist
+                      )
+                  )
+              }
+
+              private fun watchTrack(
+                  videoId: String,
+                  counterpart: YoutubeMusicWatchTrack?
+              ) = YoutubeMusicWatchTrack(
+                  videoId = videoId,
+                  title = "Da Dio",
+                  artists = listOf(YoutubeMusicWatchArtist("Bresh", "")),
+                  albumTitle = "",
+                  albumBrowseId = "",
+                  durationMs = 173_000L,
+                  thumbnailUrl = "",
+                  videoType = if (counterpart == null) "MUSIC_VIDEO_TYPE_OMV" else "MUSIC_VIDEO_TYPE_ATV",
+                  explicit = false,
+                  counterpart = counterpart
+              )
+          }
+          '''.replace('\n          ', '\n').lstrip())
+          PY
+
+          git diff --check
+          git diff --exit-code -- app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicWatchRepository.kt app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicWatchPaginationPolicyTest.kt && exit 0 || true
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicWatchRepository.kt app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicWatchPaginationPolicyTest.kt
+          git commit -m "fix(video): stop counterpart lookup after initial match"
+          git push origin HEAD:fix/video-playback-handoff
