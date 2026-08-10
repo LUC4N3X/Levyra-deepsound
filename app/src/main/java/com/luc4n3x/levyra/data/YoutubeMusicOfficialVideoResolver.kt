@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -84,8 +85,14 @@ internal class YoutubeMusicOfficialVideoResolver(
                         )
                         .put("user", JSONObject())
                 )
+            val endpoint = "https://music.youtube.com/youtubei/v1/next"
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("key", apiKey)
+                .addQueryParameter("prettyPrint", "false")
+                .build()
             val request = Request.Builder()
-                .url("https://music.youtube.com/youtubei/v1/next?key=$apiKey&prettyPrint=false")
+                .url(endpoint)
                 .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
                 .header("Accept", "application/json")
                 .header("Accept-Encoding", "br,gzip")
@@ -136,7 +143,10 @@ internal class YoutubeMusicOfficialVideoResolver(
             expiresAtMs = now + if (counterpart == null) NEGATIVE_CACHE_TTL_MS else CACHE_TTL_MS
         )
         if (cache.size > CACHE_MAX_ENTRIES) {
-            cache.entries.removeIf { entry -> entry.value.expiresAtMs <= now }
+            cache.keys.toList().forEach { candidateKey ->
+                val cached = cache[candidateKey] ?: return@forEach
+                if (cached.expiresAtMs <= now) cache.remove(candidateKey, cached)
+            }
             if (cache.size > CACHE_MAX_ENTRIES) cache.clear()
         }
     }
