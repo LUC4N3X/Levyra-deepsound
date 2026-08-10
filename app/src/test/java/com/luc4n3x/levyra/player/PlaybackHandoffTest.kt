@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.player
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackHandoffTest {
@@ -83,5 +85,19 @@ class PlaybackHandoffTest {
                 durationMs = 180_000L
             )
         )
+    }
+
+    @Test
+    fun malformedContainerAndManifestErrorsAreRecoverable() {
+        assertTrue(isRecoverablePlaybackErrorCode(3001))
+        assertTrue(isRecoverablePlaybackErrorCode(3002))
+        assertTrue(isRecoverablePlaybackErrorCode(3003))
+        assertTrue(isRecoverablePlaybackErrorCode(3004))
+    }
+
+    @Test
+    fun unrelatedPlaybackErrorsRemainFatal() {
+        assertFalse(isRecoverablePlaybackErrorCode(1001))
+        assertFalse(isRecoverablePlaybackErrorCode(5001))
     }
 }
