@@ -1,15 +1,11 @@
 package com.luc4n3x.levyra.data
 
-import android.content.Context
-import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
-import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -44,10 +40,7 @@ internal fun selectYoutubeMusicOfficialCounterpart(
     }
 }
 
-internal class YoutubeMusicOfficialVideoResolver(
-    private val context: Context? = null
-) {
-    private val innertubeKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
+internal class YoutubeMusicOfficialVideoResolver {
     private val client = LevyraHttpClientFactory.youtubePlayer()
     private val cache = ConcurrentHashMap<String, CachedCounterpart>()
 
@@ -56,14 +49,14 @@ internal class YoutubeMusicOfficialVideoResolver(
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): Track? = withContext(Dispatchers.IO) {
         val sourceVideoId = audioVideoId(track)
-        if (sourceVideoId.isBlank() || innertubeKey.isBlank()) return@withContext null
+        if (sourceVideoId.isBlank()) return@withContext null
 
         val locale = LevyraContentLocales.forLanguage(languageCode)
         val cacheKey = "$sourceVideoId|${locale.gl.lowercase(Locale.ROOT)}"
         val now = System.currentTimeMillis()
         cache[cacheKey]?.let { cached ->
             if (cached.expiresAtMs > now) {
-                return@withContext cached.counterpart?.let { track.withOfficialCounterpart(sourceVideoId, it) }
+                return@withContext track.withOfficialCounterpart(sourceVideoId, cached.counterpart)
             }
             cache.remove(cacheKey, cached)
         }
@@ -85,23 +78,17 @@ internal class YoutubeMusicOfficialVideoResolver(
                         )
                         .put("user", JSONObject())
                 )
-            val endpoint = "https://music.youtube.com/youtubei/v1/next"
-                .toHttpUrl()
-                .newBuilder()
-                .addQueryParameter("key", innertubeKey)
-                .addQueryParameter("prettyPrint", "false")
-                .build()
             val request = Request.Builder()
-                .url(endpoint)
+                .url("https://music.youtube.com/youtubei/v1/next?prettyPrint=false")
                 .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
                 .header("Accept", "application/json")
                 .header("Accept-Encoding", "br,gzip")
-                .header("Origin", "https://music.youtube.com")
-                .header("Referer", "https://music.youtube.com/")
+                .header("X-Goog-Api-Format-Version", "1")
+                .header("X-Origin", YOUTUBE_MUSIC_ORIGIN)
+                .header("Referer", "$YOUTUBE_MUSIC_ORIGIN/")
                 .header("User-Agent", WEB_USER_AGENT)
                 .header("X-Youtube-Client-Name", WEB_REMIX_CLIENT_ID)
                 .header("X-Youtube-Client-Version", WEB_REMIX_CLIENT_VERSION)
-                .also { GoogleApiKeyHeaders.applyTo(it, context) }
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -110,10 +97,10 @@ internal class YoutubeMusicOfficialVideoResolver(
                 val playlist = YoutubeMusicWatchParser.parseWatchPlaylist(JSONObject(responseBody))
                 selectYoutubeMusicOfficialCounterpart(sourceVideoId, playlist.tracks)
             }
-        }.getOrNull()
+        }.getOrNull() ?: return@withContext null
 
         remember(cacheKey, counterpart, now)
-        counterpart?.let { track.withOfficialCounterpart(sourceVideoId, it) }
+        track.withOfficialCounterpart(sourceVideoId, counterpart)
     }
 
     private fun audioVideoId(track: Track): String {
@@ -137,34 +124,31 @@ internal class YoutubeMusicOfficialVideoResolver(
         )
     }
 
-    private fun remember(key: String, counterpart: YoutubeMusicWatchTrack?, now: Long) {
-        cache[key] = CachedCounterpart(
-            counterpart = counterpart,
-            expiresAtMs = now + if (counterpart == null) NEGATIVE_CACHE_TTL_MS else CACHE_TTL_MS
-        )
-        if (cache.size > CACHE_MAX_ENTRIES) {
-            cache.keys.toList().forEach { candidateKey ->
-                val cached = cache[candidateKey] ?: return@forEach
-                if (cached.expiresAtMs <= now) cache.remove(candidateKey, cached)
-            }
-            if (cache.size > CACHE_MAX_ENTRIES) cache.clear()
+    private fun remember(key: String, counterpart: YoutubeMusicWatchTrack, now: Long) {
+        cache[key] = CachedCounterpart(counterpart, now + CACHE_TTL_MS)
+        if (cache.size <= CACHE_MAX_ENTRIES) return
+
+        cache.keys.toList().forEach { candidateKey ->
+            val cached = cache[candidateKey] ?: return@forEach
+            if (cached.expiresAtMs <= now) cache.remove(candidateKey, cached)
         }
+        if (cache.size > CACHE_MAX_ENTRIES) cache.clear()
     }
 
     private data class CachedCounterpart(
-        val counterpart: YoutubeMusicWatchTrack?,
+        val counterpart: YoutubeMusicWatchTrack,
         val expiresAtMs: Long
     )
 
     private companion object {
         private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        private const val YOUTUBE_MUSIC_ORIGIN = "https://music.youtube.com"
         private const val WEB_REMIX_CLIENT_NAME = "WEB_REMIX"
         private const val WEB_REMIX_CLIENT_ID = "67"
         private const val WEB_REMIX_CLIENT_VERSION = "1.20260423.01.00"
         private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
         private const val CACHE_TTL_MS = 20L * 60L * 1000L
-        private const val NEGATIVE_CACHE_TTL_MS = 2L * 60L * 1000L
         private const val CACHE_MAX_ENTRIES = 96
     }
 }
