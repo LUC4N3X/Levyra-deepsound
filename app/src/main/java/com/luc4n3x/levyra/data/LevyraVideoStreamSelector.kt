@@ -9,7 +9,6 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import kotlin.math.abs
-import kotlin.math.max
 import java.util.concurrent.ConcurrentHashMap
 
 internal data class LevyraVideoCandidate(
@@ -59,6 +58,11 @@ internal fun stableAndroidVideoCandidates(
     return avc.ifEmpty { candidates }
 }
 
+internal fun reliableVideoCandidate(
+    muxed: LevyraVideoCandidate?,
+    videoOnly: LevyraVideoCandidate?
+): LevyraVideoCandidate? = muxed ?: videoOnly
+
 internal class LevyraVideoStreamSelector(context: Context) {
     private val appContext = context.applicationContext
     private val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -93,19 +97,14 @@ internal class LevyraVideoStreamSelector(context: Context) {
         val usableVideoOnly = stableAndroidVideoCandidates(compatibleVideoOnly, targetHeight)
         val bestMuxed = usableMuxed.maxByOrNull { score(it, targetHeight) }
         val bestVideoOnly = usableVideoOnly.maxByOrNull { score(it, targetHeight) }
-        val chosen = when {
-            bestVideoOnly == null -> bestMuxed
-            bestMuxed == null -> bestVideoOnly
-            shouldPreferSeparated(bestMuxed, bestVideoOnly, targetHeight) -> bestVideoOnly
-            else -> bestMuxed
-        } ?: return null
+        val chosen = reliableVideoCandidate(bestMuxed, bestVideoOnly) ?: return null
         val hardware = decoderSupport(chosen).hardware
         val reason = buildString {
             append(chosen.height.takeIf { it > 0 }?.let { "${it}p" } ?: "auto")
             append(" · ")
             append(codecFamily(chosen))
             append(if (hardware) " HW" else " compat")
-            append(if (chosen.muxed) " · avvio rapido" else " · qualità separata")
+            append(if (chosen.muxed) " · muxed stabile" else " · audio/video separati")
         }
         return LevyraVideoSelection(chosen, targetHeight, hardware, reason)
     }
@@ -141,21 +140,6 @@ internal class LevyraVideoStreamSelector(context: Context) {
         return candidates.filter { candidate ->
             decoderSupport(candidate).supported
         }
-    }
-
-    private fun shouldPreferSeparated(
-        muxed: LevyraVideoCandidate,
-        videoOnly: LevyraVideoCandidate,
-        targetHeight: Int
-    ): Boolean {
-        val lowRam = activityManager.isLowRamDevice
-        val constrained = powerManager.isPowerSaveMode || connectivityManager.isActiveNetworkMetered
-        if (lowRam || constrained) return false
-        val muxedHeight = muxed.height.coerceAtLeast(0)
-        val videoHeight = videoOnly.height.coerceAtLeast(0)
-        if (videoHeight <= muxedHeight) return false
-        if (videoHeight > targetHeight && muxedHeight >= targetHeight) return false
-        return videoHeight - muxedHeight >= 240 || videoHeight >= 1080 && muxedHeight < 1080
     }
 
     private fun score(candidate: LevyraVideoCandidate, targetHeight: Int): Int {
