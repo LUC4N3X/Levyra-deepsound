@@ -39,6 +39,8 @@ object TrackJson {
     fun fromJson(json: JSONObject): Track? {
         val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
         val title = json.optString("title").takeIf { it.isNotBlank() } ?: return null
+        val audioVideoId = json.optString("audioVideoId")
+        val restoredVideoId = audioVideoId.ifBlank { id }
         return Track(
             id = id,
             title = title,
@@ -46,7 +48,8 @@ object TrackJson {
             album = json.optString("album", "YouTube Music"),
             durationMs = json.optLong("durationMs", 0L),
             streamUrl = "",
-            videoUrl = json.optString("videoUrl", "https://www.youtube.com/watch?v=$id"),
+            videoUrl = json.optString("videoUrl")
+                .ifBlank { "https://www.youtube.com/watch?v=$restoredVideoId" },
             thumbnailUrl = json.optString("thumbnailUrl"),
             largeThumbnailUrl = json.optString("largeThumbnailUrl"),
             source = json.optString("source", "YouTube Music"),
@@ -70,7 +73,7 @@ object TrackJson {
             artistBrowseIds = json.optJSONArray("artistBrowseIds").toStringList(),
             counterpartVideoId = json.optString("counterpartVideoId"),
             videoType = json.optString("videoType"),
-            audioVideoId = json.optString("audioVideoId"),
+            audioVideoId = audioVideoId,
             metadataProvider = json.optString("metadataProvider"),
             metadataConfidence = json.optInt("metadataConfidence").coerceIn(0, 100),
             canonicalAlbumUrl = json.optString("canonicalAlbumUrl"),

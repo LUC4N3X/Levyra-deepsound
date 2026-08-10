@@ -39,6 +39,7 @@ import com.luc4n3x.levyra.data.YoutubeCommentsResult
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.YoutubeMusicWatchTrack
 import com.luc4n3x.levyra.data.YoutubeShortsRepository
 import com.luc4n3x.levyra.data.YoutubeShortsCache
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
@@ -321,11 +322,22 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val type = candidate.videoType.uppercase()
     val videoPreference = when {
         type.contains("OMV") || type.contains("OFFICIAL_MUSIC_VIDEO") -> 20_000
-        type.contains("UGC") || type.contains("MUSIC_VIDEO") -> 1_000
         type.contains("ATV") -> -20_000
+        type.contains("UGC") || type.contains("MUSIC_VIDEO") -> 1_000
         else -> 0
     }
     return recordingScore + videoPreference
+}
+
+internal fun selectPreferredVideoPlaybackCandidate(target: Track, candidates: List<Track>): Track? {
+    return candidates.asSequence()
+        .filter { candidate ->
+            val videoId = youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
+            YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoId) &&
+                !candidate.videoType.contains("ATV", ignoreCase = true)
+        }
+        .filter { candidate -> isPlaybackCandidateCompatible(target, candidate) }
+        .maxByOrNull { candidate -> videoPlaybackCandidateScore(target, candidate) }
 }
 
 internal fun playbackTextKey(value: String): String {
@@ -421,6 +433,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var modeSwitchJob: Job? = null
     private var streamRecoveryJob: Job? = null
     private var alternateModePrefetchJob: Job? = null
+    private val verifiedVideoIdentityCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, Track>(VERIFIED_VIDEO_IDENTITY_CACHE_SIZE, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Track>?): Boolean {
+                return size > VERIFIED_VIDEO_IDENTITY_CACHE_SIZE
+            }
+        }
+    )
     private var youtubeEngagementJob: Job? = null
     private var youtubeDislikeJob: Job? = null
     private var youtubeCommentsJob: Job? = null
@@ -1669,7 +1688,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val transitionId = ++streamTransitionId
         streamRecoveryJob?.cancel()
         modeSwitchJob?.cancel()
-        _state.update { it.copy(isResolving = true, playerError = null) }
+        _state.update { it.copy(pendingVideoMode = targetMode, isResolving = true, playerError = null) }
         modeSwitchJob = viewModelScope.launch {
             try {
                 val selectedSource = if (targetMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
@@ -1693,6 +1712,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     it.copy(
                         currentTrack = resolved,
                         isVideoMode = targetMode,
+                        pendingVideoMode = null,
                         isResolving = false,
                         isPlaying = shouldPlay,
                         positionMs = positionMs,
@@ -1712,6 +1732,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update {
                     it.copy(
                         isVideoMode = sourceMode,
+                        pendingVideoMode = null,
                         isResolving = false,
                         isPlaying = player.isPlaying || snapshot.isPlaying,
                         playerError = cleanUserError(error)
@@ -4673,6 +4694,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun cancelResolutionSideJobs() {
         modeSwitchJob?.cancel()
+        if (_state.value.pendingVideoMode != null) {
+            _state.update { it.copy(pendingVideoMode = null) }
+        }
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         youtubeEngagementJob?.cancel()
@@ -6281,6 +6305,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 radioEnabled = false,
                 sleepTimerMinutes = 0,
                 isPlaying = false,
+                pendingVideoMode = null,
                 isResolving = false,
                 positionMs = 0L,
                 bufferedPositionMs = 0L,
@@ -6580,40 +6605,77 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun preferredVideoPlaybackTrack(track: Track): Track? {
-        youtubePlayableTrack(track, preferVideo = true)?.let { return it }
-
         val sourceId = PlaybackSourceIdentity.sourceVideoId(track)
-        val watch = withTimeoutOrNull(VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS) {
-            repository.getWatchPlaylist(track, _state.value.languageCode, limit = 3)
-        }
-        val primary = watch?.tracks?.firstOrNull { it.videoId == sourceId }
-            ?: watch?.tracks?.firstOrNull()
-        if (primary != null) {
-            val official = sequenceOf(primary, primary.counterpart)
-                .filterNotNull()
-                .firstOrNull { it.videoType.contains("OMV", ignoreCase = true) }
-            val officialId = official?.videoId
-                ?.trim()
-                ?.takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
-                .orEmpty()
-            val enriched = track.copy(
-                videoUrl = officialId
-                    .takeIf(String::isNotBlank)
-                    ?.let { "https://www.youtube.com/watch?v=$it" }
-                    .orEmpty()
-                    .ifBlank { track.videoUrl },
-                counterpartVideoId = officialId.ifBlank { track.counterpartVideoId },
-                videoType = official?.videoType.orEmpty()
-                    .ifBlank { primary.videoType }
-                    .ifBlank { track.videoType },
-                audioVideoId = track.audioVideoId.ifBlank { sourceId }
-            )
-            youtubePlayableTrack(enriched, preferVideo = true)?.let { return it }
+        val cacheKey = track.audioVideoId.trim()
+            .takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
+            .orEmpty()
+            .ifBlank { sourceId }
+            .ifBlank { playbackIdentity(track) }
+        verifiedVideoIdentityCache[cacheKey]?.let { candidate ->
+            return track.withVerifiedVideoCandidate(candidate, sourceId)
         }
 
-        // Metadata can legitimately be incomplete. Keep native-video mode and let
-        // the resolver try the selected YouTube identity instead of aborting early.
-        return youtubePlayableTrack(track)
+        val query = "${track.title} ${track.artist} official music video".trim()
+        val (watchCandidates, searchCandidates) = coroutineScope {
+            val watch = async(Dispatchers.IO) {
+                withTimeoutOrNull(VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS) {
+                    repository.getWatchPlaylist(track, _state.value.languageCode, limit = 3)
+                }
+            }
+            val search = async(Dispatchers.IO) {
+                withTimeoutOrNull(VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS) {
+                    repository.searchMusicVideos(query, 8, _state.value.languageCode)
+                }.orEmpty()
+            }
+            val playlist = watch.await()
+            val primary = playlist?.tracks?.firstOrNull { it.videoId == sourceId }
+                ?: playlist?.tracks?.firstOrNull()
+            val related = sequenceOf(primary, primary?.counterpart)
+                .filterNotNull()
+                .map { item -> item.asVideoCandidate(track) }
+                .toList()
+            related to search.await()
+        }
+
+        val selected = selectPreferredVideoPlaybackCandidate(track, watchCandidates)
+            ?: selectPreferredVideoPlaybackCandidate(track, searchCandidates)
+        if (selected != null) {
+            verifiedVideoIdentityCache[cacheKey] = selected
+            return track.withVerifiedVideoCandidate(selected, sourceId)
+        }
+
+        // A catalog counterpart remains a bounded availability fallback when the
+        // authoritative YouTube lookup is temporarily inconclusive. Never fall
+        // back to the ATV itself in native-video mode.
+        return youtubePlayableTrack(track, preferVideo = true)
+    }
+
+    private fun YoutubeMusicWatchTrack.asVideoCandidate(seed: Track): Track {
+        val resolvedArtist = artists.joinToString(", ") { artist -> artist.name }.ifBlank { seed.artist }
+        return seed.copy(
+            id = videoId,
+            title = title.ifBlank { seed.title },
+            artist = resolvedArtist,
+            album = albumTitle.ifBlank { seed.album },
+            durationMs = durationMs.takeIf { it > 0L } ?: seed.durationMs,
+            videoUrl = "https://www.youtube.com/watch?v=$videoId",
+            thumbnailUrl = thumbnailUrl.ifBlank { seed.thumbnailUrl },
+            largeThumbnailUrl = thumbnailUrl.ifBlank { seed.largeThumbnailUrl },
+            videoType = videoType
+        )
+    }
+
+    private fun Track.withVerifiedVideoCandidate(candidate: Track, sourceId: String): Track? {
+        val videoId = youtubeVideoId(candidate.videoUrl)
+            .ifBlank { candidate.id.trim() }
+            .takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
+            ?: return null
+        return copy(
+            videoUrl = "https://www.youtube.com/watch?v=$videoId",
+            counterpartVideoId = videoId,
+            videoType = candidate.videoType,
+            audioVideoId = audioVideoId.ifBlank { sourceId }
+        )
     }
 
     private fun isLocalPlaybackTrack(track: Track): Boolean {
@@ -6882,6 +6944,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
         private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 3_000L
+        private const val VERIFIED_VIDEO_IDENTITY_CACHE_SIZE = 64
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4

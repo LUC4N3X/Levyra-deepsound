@@ -391,6 +391,7 @@ internal object EditorialCatalogParser {
                 videoType = youtubeAudioVideoId.takeIf(String::isNotBlank)
                     ?.let { "MUSIC_VIDEO_TYPE_ATV" }
                     .orEmpty(),
+                audioVideoId = youtubeAudioVideoId,
                 metadataProvider = when {
                     releaseCollection && youtubePlaybackId.isNotBlank() -> "$EDITORIAL_RELEASE_SOURCE + YouTube Music"
                     releaseCollection -> EDITORIAL_RELEASE_SOURCE

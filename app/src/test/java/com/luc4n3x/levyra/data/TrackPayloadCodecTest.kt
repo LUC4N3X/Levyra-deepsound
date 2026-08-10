@@ -7,6 +7,17 @@ import org.junit.Test
 
 class TrackPayloadCodecTest {
     @Test
+    fun blankVideoUrlRestoresAuthoritativeAudioVideoId() {
+        val restored = TrackPayloadCodec.decode(
+            """{"id":"Video123456","title":"Song","videoUrl":"","audioVideoId":"Audio123456"}"""
+        )
+
+        requireNotNull(restored)
+        assertEquals("Audio123456", restored.audioVideoId)
+        assertEquals("https://www.youtube.com/watch?v=Audio123456", restored.videoUrl)
+    }
+
+    @Test
     fun offlineMetadataSurvivesWorkManagerPayloadRoundTrip() {
         val track = Track(
             id = "video-123",

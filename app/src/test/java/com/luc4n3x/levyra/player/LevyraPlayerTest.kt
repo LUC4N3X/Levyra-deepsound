@@ -47,6 +47,22 @@ class LevyraPlayerTest {
     }
 
     @Test
+    fun trackJsonUsesAudioIdentityWhenPersistedVideoUrlIsBlank() {
+        val json = TrackJson.toJson(
+            track(streamUrl = "").copy(
+                id = "video123456",
+                videoUrl = "",
+                audioVideoId = "audio123456"
+            )
+        )
+
+        val restored = TrackJson.fromJson(json)
+
+        assertEquals("https://www.youtube.com/watch?v=audio123456", restored?.videoUrl)
+        assertEquals("audio123456", restored?.audioVideoId)
+    }
+
+    @Test
     fun playbackIdentitySeparatesTracksWithBlankIds() {
         val first = track(streamUrl = "").copy(
             id = "",
