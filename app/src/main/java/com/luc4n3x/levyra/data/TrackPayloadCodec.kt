@@ -47,6 +47,7 @@ object TrackPayloadCodec {
         artistBrowseIds = artistBrowseIds,
         counterpartVideoId = counterpartVideoId,
         videoType = videoType,
+        audioVideoId = audioVideoId,
         metadataProvider = metadataProvider,
         metadataConfidence = metadataConfidence,
         canonicalAlbumUrl = canonicalAlbumUrl,
@@ -87,6 +88,7 @@ private data class TrackPayload(
     val artistBrowseIds: List<String> = emptyList(),
     val counterpartVideoId: String = "",
     val videoType: String = "",
+    val audioVideoId: String = "",
     val metadataProvider: String = "",
     val metadataConfidence: Int = 0,
     val canonicalAlbumUrl: String = "",
@@ -95,6 +97,7 @@ private data class TrackPayload(
 ) {
     fun toTrack(): Track? {
         if (id.isBlank() || title.isBlank()) return null
+        val restoredVideoId = audioVideoId.ifBlank { id }
         return Track(
             id = id,
             title = title,
@@ -102,7 +105,7 @@ private data class TrackPayload(
             album = album,
             durationMs = durationMs,
             streamUrl = streamUrl,
-            videoUrl = videoUrl.ifBlank { "https://www.youtube.com/watch?v=$id" },
+            videoUrl = videoUrl.ifBlank { "https://www.youtube.com/watch?v=$restoredVideoId" },
             thumbnailUrl = thumbnailUrl,
             largeThumbnailUrl = largeThumbnailUrl,
             source = source,
@@ -126,6 +129,7 @@ private data class TrackPayload(
             artistBrowseIds = artistBrowseIds.filter { it.isNotBlank() },
             counterpartVideoId = counterpartVideoId,
             videoType = videoType,
+            audioVideoId = audioVideoId,
             metadataProvider = metadataProvider,
             metadataConfidence = metadataConfidence.coerceIn(0, 100),
             canonicalAlbumUrl = canonicalAlbumUrl,

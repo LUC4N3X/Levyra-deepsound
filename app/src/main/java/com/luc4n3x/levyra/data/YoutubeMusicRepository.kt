@@ -459,14 +459,50 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()
-        val remote = runCatching { searchInnerTube(cleanQuery, limit, languageCode) }.getOrDefault(emptyList())
+        val remote = try {
+            searchInnerTube(cleanQuery, limit, languageCode)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
         if (remote.isNotEmpty()) {
             remote.forEach { memory[it.id] = it }
             return@withContext remote
         }
-        runCatching { searchYoutubeExtractor(cleanQuery, limit) }
-            .getOrDefault(emptyList())
-            .also { items -> items.forEach { memory[it.id] = it } }
+        try {
+            searchYoutubeExtractor(cleanQuery, limit)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }.also { items -> items.forEach { memory[it.id] = it } }
+    }
+
+    /** YouTube Music video-filtered search, with a bounded generic-search fallback. */
+    suspend fun searchMusicVideos(
+        query: String,
+        limit: Int = 12,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): List<Track> = withContext(Dispatchers.IO) {
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return@withContext emptyList()
+        val boundedLimit = limit.coerceIn(1, 40)
+        val filtered = try {
+            searchMusicVideoTracks(cleanQuery, languageCode, boundedLimit)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        val result = filtered.ifEmpty {
+            // The video filter can occasionally omit type metadata. Keep generic
+            // search results as a last resort and let the playback identity checks
+            // and resolver validate them instead of turning an inconclusive miss
+            // into an early, negative result.
+            search(cleanQuery, boundedLimit, languageCode)
+        }
+        result.take(boundedLimit).also { items -> items.forEach { memory[it.id] = it } }
     }
 
     /** First YouTube Music match for a query, used to make chart entries playable. */
@@ -802,25 +838,39 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         languageCode: String,
         limit: Int
     ): List<Track> {
+        return searchMusicVideoTracks(query, languageCode, limit)
+            .filter(::isVisualYoutubeMusicVideo)
+            .mapNotNull(::asYoutubeMusicSample)
+    }
+
+    private fun searchMusicVideoTracks(
+        query: String,
+        languageCode: String,
+        limit: Int
+    ): List<Track> {
         val root = searchInnerTubeRaw(query, languageCode, YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS)
             ?: return emptyList()
         val renderers = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
         return renderers.asSequence()
             .mapNotNull { renderer -> parseMusicRenderer(renderer, query) }
-            .filter(::isVisualYoutubeMusicVideo)
-            .mapNotNull(::asYoutubeMusicSample)
+            .filter(::isPotentialYoutubeMusicVideo)
             .distinctBy { it.id }
             .take(limit)
             .toList()
     }
 
     private fun isVisualYoutubeMusicVideo(track: Track): Boolean {
+        if (!isPotentialYoutubeMusicVideo(track)) return false
+        val type = track.videoType.uppercase(Locale.ROOT)
+        return type.contains("OMV") || type.contains("UGC") || type.contains("MUSIC_VIDEO")
+    }
+
+    private fun isPotentialYoutubeMusicVideo(track: Track): Boolean {
         if (track.id.length != 11 || track.videoUrl.isBlank()) return false
         if (track.title.isBlank() || track.artist.isBlank()) return false
         val type = track.videoType.uppercase(Locale.ROOT)
-        if (type.contains("ATV") || type.contains("PODCAST")) return false
-        return type.contains("OMV") || type.contains("UGC") || type.contains("MUSIC_VIDEO")
+        return !type.contains("ATV") && !type.contains("PODCAST")
     }
 
     private fun asYoutubeMusicSample(track: Track): Track? {
@@ -1930,7 +1980,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     ): YoutubeMusicWatchPlaylist? = withContext(Dispatchers.IO) {
         val videoId = resolveVideoId(seed)
         if (videoId.isBlank() && playlistId.isBlank()) return@withContext null
-        runCatching {
+        try {
             watchRepository.getWatchPlaylistAdvanced(
                 videoId = videoId,
                 playlistId = playlistId,
@@ -1939,7 +1989,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 radio = radio,
                 shuffle = shuffle
             )
-        }.getOrNull()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     suspend fun getSongRelated(
@@ -2001,8 +2055,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun resolveVideoId(seed: Track): String {
-        return seed.id.takeIf { it.isNotBlank() && !it.contains("://") }
-            ?: extractVideoId(seed.videoUrl)
+        return PlaybackSourceIdentity.sourceVideoId(seed)
     }
 
     private fun watchTrackToTrack(item: YoutubeMusicWatchTrack, seed: Track, query: String): Track {

@@ -39,6 +39,9 @@ object PlaybackSourceIdentity {
     }
 
     fun sourceVideoId(track: Track): String {
+        track.audioVideoId.trim()
+            .takeIf { youtubeIdPattern.matches(it) && isAudioSelection(track) }
+            ?.let { return it }
         extractYoutubeVideoId(track.videoUrl).takeIf { it.isNotBlank() }?.let { return it }
         track.id.trim().takeIf { youtubeIdPattern.matches(it) }?.let { return it }
         track.counterpartVideoId.trim().takeIf { youtubeIdPattern.matches(it) }?.let { return it }
@@ -66,10 +69,15 @@ object PlaybackSourceIdentity {
     }
 
     private fun recordingDiscriminator(track: Track): String {
-        extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
+        sourceVideoId(track).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
         normalizeIdentifier(track.id).takeIf { it.isNotBlank() }?.let { return "id:$it" }
         normalizeIdentifier(track.counterpartVideoId).takeIf { it.isNotBlank() }?.let { return "counterpart:$it" }
         return "metadata-only"
+    }
+
+    private fun isAudioSelection(track: Track): Boolean {
+        val selected = extractYoutubeVideoId(track.videoUrl)
+        return selected.isBlank() || selected == track.audioVideoId.trim()
     }
 
     private fun normalizeIdentifier(value: String): String {

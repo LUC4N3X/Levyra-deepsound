@@ -36,6 +36,7 @@ data class Track(
     val artistBrowseIds: List<String> = emptyList(),
     val counterpartVideoId: String = "",
     val videoType: String = "",
+    val audioVideoId: String = "",
     val metadataProvider: String = "",
     val metadataConfidence: Int = 0,
     val canonicalAlbumUrl: String = "",

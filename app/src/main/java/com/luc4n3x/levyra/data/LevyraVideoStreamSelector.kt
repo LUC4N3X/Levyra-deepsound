@@ -32,6 +32,17 @@ internal data class LevyraVideoSelection(
     val reason: String
 )
 
+internal fun conservativeVideoFallbackCandidates(
+    candidates: List<LevyraVideoCandidate>
+): List<LevyraVideoCandidate> {
+    if (candidates.isEmpty()) return emptyList()
+    val broadlySupported = candidates.filter { candidate ->
+        val format = "${candidate.mimeType} ${candidate.codec}".lowercase()
+        format.contains("video/mp4") || format.contains("avc1") || format.contains("h264")
+    }
+    return broadlySupported.ifEmpty { candidates }
+}
+
 internal class LevyraVideoStreamSelector(context: Context) {
     private val appContext = context.applicationContext
     private val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -60,8 +71,8 @@ internal class LevyraVideoStreamSelector(context: Context) {
         } else {
             emptyList()
         }
-        val usableMuxed = compatibleCandidates(rawMuxed)
-        val usableVideoOnly = compatibleCandidates(rawVideoOnly)
+        val usableMuxed = compatibleCandidates(rawMuxed).ifEmpty { conservativeVideoFallbackCandidates(rawMuxed) }
+        val usableVideoOnly = compatibleCandidates(rawVideoOnly).ifEmpty { conservativeVideoFallbackCandidates(rawVideoOnly) }
         val bestMuxed = usableMuxed.maxByOrNull { score(it, targetHeight) }
         val bestVideoOnly = usableVideoOnly.maxByOrNull { score(it, targetHeight) }
         val chosen = when {

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.TrackJson
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.playbackIdentity
@@ -30,6 +31,37 @@ class LevyraPlayerTest {
 
         assertEquals(5.5f, restored?.youtubeLoudnessDb)
         assertEquals(3.25f, restored?.youtubePerceptualLoudnessDb)
+    }
+
+    @Test
+    fun trackJsonPersistsAudioIdentityAcrossVideoModeRestoration() {
+        val json = TrackJson.toJson(
+            track(streamUrl = "").copy(
+                videoUrl = "https://www.youtube.com/watch?v=video123456",
+                audioVideoId = "audio123456"
+            )
+        )
+
+        val restored = TrackJson.fromJson(json)
+
+        assertEquals("audio123456", restored?.audioVideoId)
+    }
+
+    @Test
+    fun trackJsonUsesAudioIdentityWhenPersistedVideoUrlIsBlank() {
+        val json = TrackJson.toJson(
+            track(streamUrl = "").copy(
+                id = "video123456",
+                videoUrl = "",
+                audioVideoId = "audio123456"
+            )
+        )
+
+        val restored = TrackJson.fromJson(json)
+
+        assertEquals("https://www.youtube.com/watch?v=audio123456", restored?.videoUrl)
+        assertEquals("audio123456", restored?.audioVideoId)
+        assertEquals("audio123456", restored?.let(PlaybackSourceIdentity::sourceVideoId))
     }
 
     @Test
@@ -80,6 +112,35 @@ class LevyraPlayerTest {
         val audio = youtubePlayableTrack(video!!, preferVideo = false)
         assertEquals("audio123456", audio?.id)
         assertEquals("https://www.youtube.com/watch?v=audio123456", audio?.videoUrl)
+    }
+
+    @Test
+    fun youtubePlayableTrackKeepsCurrentOfficialVideoInsteadOfAudioCounterpart() {
+        val officialVideo = track(streamUrl = "").copy(
+            id = "video123456",
+            videoUrl = "https://www.youtube.com/watch?v=video123456",
+            counterpartVideoId = "audio123456",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        val playable = youtubePlayableTrack(officialVideo, preferVideo = true)
+
+        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
+    }
+
+    @Test
+    fun youtubePlayableTrackUsesOfficialCounterpartForAudioTrack() {
+        val audioTrack = track(streamUrl = "").copy(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=audio123456",
+            counterpartVideoId = "video123456",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+
+        val playable = youtubePlayableTrack(audioTrack, preferVideo = true)
+
+        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
+        assertEquals("audio123456", playable?.audioVideoId)
     }
 
     @Test
