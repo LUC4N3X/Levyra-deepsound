@@ -17,6 +17,18 @@ class YoutubeEngagementIdentityTest {
     }
 
     @Test
+    fun officialVideoWinsWhileOriginalAudioIdentityIsPreserved() {
+        val track = track(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            counterpartVideoId = "fcnDmrtj6Sk",
+            audioVideoId = "audio123456"
+        )
+
+        assertEquals("fcnDmrtj6Sk", youtubeEngagementVideoId(track))
+    }
+
+    @Test
     fun counterpartIsUsedWhenTrackIdIsNotAYouTubeId() {
         val track = track(
             id = "chart-123",
@@ -66,6 +78,7 @@ class YoutubeEngagementIdentityTest {
         id: String,
         videoUrl: String = "",
         counterpartVideoId: String = "",
+        audioVideoId: String = "",
         source: String = "YouTube Music"
     ) = Track(
         id = id,
@@ -85,6 +98,7 @@ class YoutubeEngagementIdentityTest {
         cacheScore = 50,
         accentStart = 0,
         accentEnd = 0,
-        counterpartVideoId = counterpartVideoId
+        counterpartVideoId = counterpartVideoId,
+        audioVideoId = audioVideoId
     )
 }
