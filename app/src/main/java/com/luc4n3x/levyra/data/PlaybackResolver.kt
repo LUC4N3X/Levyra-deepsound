@@ -17,13 +17,12 @@ import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,7 +106,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val clientHealthPrefs = context.getSharedPreferences("levyra_innertube_client_health", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
-    private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
+    private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
     private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
     private val failedPlaybackUrls = ConcurrentHashMap<String, Long>()
     private val youtubeEngagementCache = ConcurrentHashMap<String, CachedYoutubeEngagement>()
@@ -218,16 +218,20 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         val videoUrl = track.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
         return withContext(Dispatchers.IO) {
-            runCatching {
+            runCatchingPreservingCancellation {
                 NewPipeRuntime.ensure()
-                val info = StreamInfo.getInfo(ServiceList.YouTube, videoUrl)
-                cacheYoutubeEngagement(videoId, info.likeCount, info.viewCount)
-                track.withYoutubeEngagement(info.likeCount, info.viewCount)
-            }.getOrElse { error ->
-                Timber.d(error, "youtube engagement unavailable for %s", videoId)
-                cacheYoutubeEngagement(videoId, -1L, -1L)
-                track
-            }
+                StreamInfo.getInfo(ServiceList.YouTube, videoUrl)
+            }.fold(
+                onSuccess = { info ->
+                    cacheYoutubeEngagement(videoId, info.likeCount, info.viewCount)
+                    track.withYoutubeEngagement(info.likeCount, info.viewCount)
+                },
+                onFailure = { error ->
+                    Timber.d(error, "youtube engagement unavailable for %s", videoId)
+                    cacheYoutubeEngagement(videoId, -1L, -1L)
+                    track
+                }
+            )
         }
     }
 
@@ -293,7 +297,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             else -> minOf(recovery.quarantineMs, 20_000L)
         }
         sourceMatchScope.launch {
-            runCatching {
+            runCatchingPreservingCancellation {
                 sourceMatchStore.recordFailure(track, isVideoMode, selectedAudioQuality, sourceMatchQuarantineMs)
             }.onFailure { error ->
                 Timber.w(error, "persistent source match failure update failed")
@@ -446,7 +450,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         val key = "${cacheKey(track, isVideoMode, audioQuality)}_$requestKind"
         Timber.d("resolver start kind=%s mode=%s id=%s quality=%s", requestKind, if (isVideoMode) "video" else "audio", track.id, audioQuality)
-        val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
+        return@coroutineScope singleFlight.run(key) {
             try {
                 withTimeout(timeoutMs) {
                     resolveUncached(track.copy(streamUrl = "", videoStreamUrl = ""), isVideoMode, preferMp4Audio, audioQuality)
@@ -455,19 +459,6 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val label = if (requestKind == "offline") "Download" else "YouTube"
                 throw PlaybackBlockedException("$label lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo")
             }
-        }
-        val previous = inFlight.putIfAbsent(key, deferred)
-        if (previous != null) {
-            deferred.cancel()
-            Timber.d("resolver in-flight join kind=%s mode=%s id=%s", requestKind, if (isVideoMode) "video" else "audio", track.id)
-            return@coroutineScope previous.await()
-        }
-
-        try {
-            deferred.start()
-            return@coroutineScope deferred.await()
-        } finally {
-            inFlight.remove(key, deferred)
         }
     }
 
@@ -483,7 +474,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         cached(track, isVideoMode)?.let { return it }
         if (!hasInternetCapableNetwork()) return null
-        return runCatching { resolve(track, isVideoMode) }.getOrNull()
+        return runCatchingPreservingCancellation { resolve(track, isVideoMode) }.getOrNull()
     }
 
     private suspend fun resolveUncached(
@@ -505,7 +496,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val extractorJob = launch {
                     delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val result = runCatching { resolveVideoWithLevyraExtractor(track, audioQuality) }
+                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }
                     result.onSuccess { winner.complete(it) }
                         .onFailure { error ->
                             errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
@@ -514,7 +505,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val innerTubeJob = launch {
                     delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val stream = runCatching { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
+                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
                     if (stream != null) {
                         winner.complete(track.withDirectStream(stream))
                     }
@@ -572,7 +563,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val extractorJob = launch {
                 delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = false))
                 if (winner.isCompleted) return@launch
-                val resolved = runCatching { resolveWithLevyraExtractor(track, false, audioQuality) }
+                val resolved = runCatchingPreservingCancellation { resolveWithLevyraExtractor(track, false, audioQuality) }
                 resolved.onSuccess { winner.complete(it) }
                     .onFailure { error ->
                         errors += "LevyraExtractor: ${error.playbackDiagnostic()}"
@@ -581,7 +572,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val innerTubeJob = launch {
                 delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = false))
                 if (winner.isCompleted) return@launch
-                val stream = runCatching { hedgedInnerTube(track, errors, false, audioQuality) }.getOrNull()
+                val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, false, audioQuality) }.getOrNull()
                 if (stream != null) winner.complete(track.withDirectStream(stream))
             }
             launch {
@@ -604,7 +595,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val extractorJob = launch {
             delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = true))
             if (winner.isCompleted) return@launch
-            val resolved = runCatching { resolveWithLevyraExtractor(track, true, audioQuality) }
+            val resolved = runCatchingPreservingCancellation { resolveWithLevyraExtractor(track, true, audioQuality) }
             resolved.onSuccess { winner.complete(it) }
                 .onFailure { error ->
                     errors += "LevyraExtractor: ${error.playbackDiagnostic()}"
@@ -613,7 +604,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val innerTubeJob = launch {
             delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = true))
             if (winner.isCompleted) return@launch
-            val stream = runCatching { raceInnerTube(track, errors, false, true, audioQuality) }.getOrNull()
+            val stream = runCatchingPreservingCancellation { raceInnerTube(track, errors, false, true, audioQuality) }.getOrNull()
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         launch {
@@ -636,7 +627,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (candidates.isEmpty()) return null
         for (candidate in candidates) {
             val localErrors = Collections.synchronizedList(mutableListOf<String>())
-            val resolved = runCatching { resolveAudioFast(candidate, localErrors, preferMp4Audio, audioQuality) }.getOrNull()
+            val resolved = runCatchingPreservingCancellation { resolveAudioFast(candidate, localErrors, preferMp4Audio, audioQuality) }.getOrNull()
             if (
                 resolved != null &&
                 resolved.streamUrl.isNotBlank() &&
@@ -672,9 +663,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         errors: MutableList<String>,
         allowNetworkRefresh: Boolean = true
     ): Track? {
-        val stored = runCatching { sourceMatchStore.load(track, isVideoMode, audioQuality, preferMp4Audio) }
+        val stored = runCatchingPreservingCancellation { sourceMatchStore.load(track, isVideoMode, audioQuality, preferMp4Audio) }
             .onFailure { error ->
-                if (error is CancellationException) throw error
                 Timber.w(error, "persistent source match load failed")
             }
             .getOrNull() ?: return null
@@ -732,25 +722,23 @@ class PlaybackResolver private constructor(private val context: Context) {
         audioQuality: String,
         errors: MutableList<String>
     ): Track? {
-        val extractor = runCatching {
+        val extractor = runCatchingPreservingCancellation {
             if (isVideoMode) {
                 resolveVideoWithLevyraExtractor(sourceTrack, audioQuality)
             } else {
                 resolveWithLevyraExtractor(sourceTrack, preferMp4Audio, audioQuality)
             }
         }.onFailure { error ->
-            if (error is CancellationException) throw error
             errors += "Persistent LevyraExtractor: ${error.playbackDiagnostic()}"
         }.getOrNull()
         if (extractor != null && manifestUrlsUsable(extractor.playbackManifest, isVideoMode, preferMp4Audio)) return extractor
-        val direct = runCatching {
+        val direct = runCatchingPreservingCancellation {
             if (preferMp4Audio) {
                 raceInnerTube(sourceTrack, errors, isVideoMode, true, audioQuality)
             } else {
                 hedgedInnerTube(sourceTrack, errors, isVideoMode, audioQuality)
             }
         }.onFailure { error ->
-            if (error is CancellationException) throw error
             errors += "Persistent InnerTube: ${error.playbackDiagnostic()}"
         }.getOrNull() ?: return null
         val resolved = sourceTrack.withDirectStream(direct)
@@ -864,7 +852,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .filter { !sameVideoIdentity(track, it) }
                 .forEach { candidate -> output.putIfAbsent(candidate.id, candidate) }
             if (output.size < 4) {
-                runCatching { repository.search(query, 6, userPreferences.languageCode()) }
+                runCatchingPreservingCancellation { repository.search(query, 6, userPreferences.languageCode()) }
                     .getOrDefault(emptyList())
                     .asSequence()
                     .filter { it.id.isNotBlank() }
@@ -894,7 +882,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         ).map { it.trim() }.filter { it.length >= 2 }.distinct()
     }
 
-    private fun searchYouTubeWebCandidates(track: Track, query: String): List<Track> {
+    private suspend fun searchYouTubeWebCandidates(track: Track, query: String): List<Track> {
         val encoded = query.urlEncode()
         val request = Request.Builder()
             .url("https://www.youtube.com/results?search_query=$encoded")
@@ -903,7 +891,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
             .header("User-Agent", profiles.first { it.clientName == "WEB_REMIX" }.userAgent)
             .build()
-        return runCatching {
+        val result = runCatchingPreservingCancellation {
             searchFallbackClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use emptyList()
                 val html = response.body.string()
@@ -924,6 +912,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                     .toList()
             }
         }.getOrDefault(emptyList())
+        currentCoroutineContext().ensureActive()
+        return result
     }
 
     private fun sameVideoIdentity(left: Track, right: Track): Boolean {
@@ -986,7 +976,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val ladder = orderedProfiles().map { profile ->
             listOf(
                 suspend {
-                    runCatching { resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality) }
+                    runCatchingPreservingCancellation { resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality) }
                         .onFailure { error ->
                             error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
                         }
@@ -1031,7 +1021,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             launch {
                 val dynamicDelay = profile.delayMs + index * 20L
                 if (dynamicDelay > 0L) delay(dynamicDelay)
-                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio, audioQuality) }
+                val attempt = runCatchingPreservingCancellation { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio, audioQuality) }
                 attempt.onSuccess { stream ->
                     if (!acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)) {
                         recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
@@ -1266,7 +1256,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") || path.endsWith(".m4a") || path.endsWith(".mp4")
     }
 
-    private fun acceptResolvedStream(stream: DirectStream, isVideoMode: Boolean, label: String, errors: MutableList<String>): Boolean {
+    private suspend fun acceptResolvedStream(stream: DirectStream, isVideoMode: Boolean, label: String, errors: MutableList<String>): Boolean {
         if (stream.url.isBlank()) return false
         if (isPlaybackUrlBlocked(stream.url) || stream.videoUrl.isNotBlank() && isPlaybackUrlBlocked(stream.videoUrl)) {
             errors += "$label: stream temporaneamente escluso dopo un errore di riproduzione"
@@ -1295,7 +1285,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return true
     }
 
-    private fun verifyDirectAudioUrlFast(url: String): Boolean {
+    private suspend fun verifyDirectAudioUrlFast(url: String): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
         if (isTrustedGoogleVideoUrl(url)) return true
         val request = Request.Builder()
@@ -1306,7 +1296,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("Accept-Encoding", "identity")
             .header("User-Agent", profiles.first().userAgent)
             .build()
-        return runCatching {
+        val result = runCatchingPreservingCancellation {
             streamProbeClient.newCall(request).execute().use { response ->
                 if (response.code == 403 || response.code == 404 || response.code == 410 || response.code == 416 || response.code == 429) return@use false
                 if (response.code !in 200..299 && response.code != 206) return@use false
@@ -1316,6 +1306,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 sample.isNotEmpty()
             }
         }.getOrDefault(false)
+        currentCoroutineContext().ensureActive()
+        return result
     }
 
     private fun isTrustedGoogleVideoUrl(url: String): Boolean {
@@ -1363,7 +1355,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val mode = if (isVideoMode) "video" else if (preferMp4Audio) "offline" else "audio"
         resilienceEngine.recordAttempt(profile.label, mode)
         return try {
-            val firstAttempt = runCatching {
+            val firstAttempt = runCatchingPreservingCancellation {
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             val stream = firstAttempt.getOrElse { firstError ->
@@ -1375,7 +1367,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             recordClientSuccess(profile, latency)
             resilienceEngine.recordSuccess(profile.label, mode, latency, stream.source)
             stream
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Throwable) {
+            currentCoroutineContext().ensureActive()
             val latency = elapsedMs(startedAt)
             if (hasValidatedInternet()) {
                 recordClientFailure(profile, latency, error)
@@ -1406,7 +1401,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(sourceVideoId, session) else null
         val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
-            runCatching { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(sourceVideoId) }.getOrNull()
+            runCatchingPreservingCancellation {
+                YoutubeJavaScriptPlayerManager.getSignatureTimestamp(sourceVideoId)
+            }.getOrNull()
         } else {
             null
         }
@@ -1684,7 +1681,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return isMp4OfflineAudioCandidate(formatName, stream.content)
     }
 
-    private fun isVerifiedHlsManifest(url: String): Boolean {
+    private suspend fun isVerifiedHlsManifest(url: String): Boolean {
         if (url.isBlank() || !isHlsManifestUrl(url)) return false
         val request = Request.Builder()
             .url(url)
@@ -1693,16 +1690,18 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("User-Agent", profiles.first().userAgent)
             .header("Range", "bytes=0-2047")
             .build()
-        return runCatching {
+        val result = runCatchingPreservingCancellation {
             youtubeHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use false
                 val head = response.peekBody(2048L).string().trimStart('\uFEFF', ' ', '\n', '\r', '\t')
                 head.startsWith("#EXTM3U")
             }
         }.getOrDefault(false)
+        currentCoroutineContext().ensureActive()
+        return result
     }
 
-    private fun resolveWithLevyraExtractor(
+    private suspend fun resolveWithLevyraExtractor(
         track: Track,
         preferMp4Audio: Boolean = false,
         audioQuality: String = selectedAudioQuality
@@ -1713,6 +1712,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?: throw IllegalStateException("Identità video YouTube assente o non valida")
         val sourceVideoUrl = "https://www.youtube.com/watch?v=$sourceVideoId"
         val info = StreamInfo.getInfo(ServiceList.YouTube, sourceVideoUrl)
+        currentCoroutineContext().ensureActive()
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio, audioQuality)
         val hlsUrl = if (audio == null && !preferMp4Audio) {
             info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
@@ -1763,7 +1763,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun resolveVideoWithLevyraExtractor(
+    private suspend fun resolveVideoWithLevyraExtractor(
         track: Track,
         audioQuality: String = selectedAudioQuality
     ): Track {
@@ -1773,6 +1773,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?: throw IllegalStateException("Identità video YouTube assente o non valida")
         val sourceVideoUrl = "https://www.youtube.com/watch?v=$sourceVideoId"
         val info = StreamInfo.getInfo(ServiceList.YouTube, sourceVideoUrl)
+        currentCoroutineContext().ensureActive()
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()

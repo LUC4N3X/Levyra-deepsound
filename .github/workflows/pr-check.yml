@@ -20,9 +20,9 @@ concurrency:
 
 jobs:
   android:
-    name: Lint and Release Compile
+    name: Lint, Full Tests and Release Compile
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
       LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
@@ -46,14 +46,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
             "platform-tools" \
-            "platforms;android-36" \
+            "platforms;android-37.0" \
             "build-tools;36.0.0"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6.2.0
+        uses: gradle/actions/setup-gradle@v6.3.0
         with:
           cache-disabled: true
 
@@ -129,6 +130,9 @@ jobs:
             --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
             --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
             --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
+
+      - name: Android Full Unit Test Suite
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
