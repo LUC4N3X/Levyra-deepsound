@@ -63,11 +63,33 @@ class LevyraVideoStreamSelectorTest {
         )
     }
 
+    @Test
+    fun reliableSelectionUsesMuxedBeforeSplitVideo() {
+        val muxed = candidate(
+            url = "https://media.example/muxed-720",
+            mime = "video/mp4",
+            codec = "avc1.64001f",
+            height = 720,
+            muxed = true
+        )
+        val split = candidate(
+            url = "https://media.example/video-only-1080",
+            mime = "video/mp4",
+            codec = "avc1.640028",
+            height = 1080,
+            muxed = false
+        )
+
+        assertEquals(muxed, reliableVideoCandidate(muxed, split))
+        assertEquals(split, reliableVideoCandidate(null, split))
+    }
+
     private fun candidate(
         url: String,
         mime: String,
         codec: String,
-        height: Int = 720
+        height: Int = 720,
+        muxed: Boolean = true
     ) = LevyraVideoCandidate(
         url = url,
         mimeType = mime,
@@ -77,7 +99,7 @@ class LevyraVideoStreamSelectorTest {
         fps = 30,
         bitrate = 1_500_000,
         itag = 0,
-        muxed = true,
+        muxed = muxed,
         label = "test"
     )
 }
