@@ -103,9 +103,12 @@ class LevyraPlayer(context: Context) {
                 if (observedServicePlayer === servicePlayer) return@collect
                 observedServicePlayer?.removeListener(videoRenderListener)
                 observedServicePlayer = servicePlayer
-                videoSurfaceAttached = false
                 renderedVideoFrame = false
+                videoSurfaceAttached = servicePlayer?.surfaceSize?.let { size ->
+                    size.width > 0 && size.height > 0
+                } == true
                 servicePlayer?.addListener(videoRenderListener)
+                if (videoSurfaceAttached) scheduleVideoFrameWatchdog()
             }
         }
 
@@ -125,6 +128,7 @@ class LevyraPlayer(context: Context) {
                         ?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true
                     loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
                     renderedVideoFrame = false
+                    refreshVideoSurfaceState()
                     videoFrameWatchdogJob?.cancel()
                     videoFrameWatchdogJob = null
                     startSponsorBlockMonitor(queueTrack)
@@ -282,6 +286,7 @@ class LevyraPlayer(context: Context) {
         loadedStreamIdentity = streamIdentity(track, videoMode)
         loadedVideoMode = videoMode
         renderedVideoFrame = false
+        refreshVideoSurfaceState()
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
         PlaybackService.consumePreparedQueueNext(track.id)
@@ -422,13 +427,14 @@ class LevyraPlayer(context: Context) {
         videoFrameWatchdogJob?.cancel()
         val track = loadedTrack ?: return
         val identity = loadedStreamIdentity ?: return
-        if (!loadedVideoMode || !track.hasVideoPlaybackPayload() || !videoSurfaceAttached || renderedVideoFrame) return
+        if (!loadedVideoMode || !track.hasVideoPlaybackPayload() || renderedVideoFrame) return
+        if (!refreshVideoSurfaceState()) return
 
         videoFrameWatchdogJob = scope.launch {
             delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
             val active = controller ?: return@launch
             if (!loadedVideoMode || loadedStreamIdentity != identity || loadedTrack?.id != track.id) return@launch
-            if (!videoSurfaceAttached || renderedVideoFrame || active.playbackState != Player.STATE_READY) return@launch
+            if (!refreshVideoSurfaceState() || renderedVideoFrame || active.playbackState != Player.STATE_READY) return@launch
             if (recoveryInFlight || recoveryAttempts >= 3) return@launch
             val callback = onRecoverableStreamError ?: return@launch
 
@@ -446,6 +452,14 @@ class LevyraPlayer(context: Context) {
                 "Decoder video senza fotogrammi renderizzati"
             )
         }
+    }
+
+    private fun refreshVideoSurfaceState(): Boolean {
+        val size = observedServicePlayer?.surfaceSize
+        if (size != null && size.width > 0 && size.height > 0) {
+            videoSurfaceAttached = true
+        }
+        return videoSurfaceAttached
     }
 
     private fun startSponsorBlockMonitor(track: Track) {
