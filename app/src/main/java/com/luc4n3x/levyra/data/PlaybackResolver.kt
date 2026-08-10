@@ -412,6 +412,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             audioQuality = selectedAudioQuality,
             reuseProvidedStream = true
         )
+        withContext(Dispatchers.IO) { registerInlineDashManifests(resolved) }
         return preserveEditorialArtwork(track, resolved)
     }
 
@@ -1950,6 +1951,28 @@ class PlaybackResolver private constructor(private val context: Context) {
         return playable.maxByOrNull { scoreExtractorAudio(it, false, audioQuality) }
     }
 
+    private fun registerInlineDashManifests(track: Track) {
+        track.playbackManifest?.streams
+            ?.asSequence()
+            ?.filter { descriptor ->
+                descriptor.deliveryMethod == PlaybackDeliveryMethod.DASH &&
+                    descriptor.manifestContent.isNotBlank()
+            }
+            ?.forEach { descriptor ->
+                LevyraDashManifestStore.register(descriptor.url, descriptor.manifestContent)
+            }
+    }
+
+    private fun inlineDashPlaybackSource(url: String, manifestContent: String): NewPipePlaybackSource {
+        LevyraDashManifestStore.register(url, manifestContent)
+            ?: error("Manifest DASH NewPipe non valido")
+        return NewPipePlaybackSource(
+            url = url,
+            deliveryMethod = PlaybackDeliveryMethod.DASH,
+            manifestContent = manifestContent
+        )
+    }
+
     private fun newPipePlaybackSource(stream: AudioStream, durationSeconds: Long): NewPipePlaybackSource {
         val url = stream.content
         return when (stream.deliveryMethod) {
@@ -1962,14 +1985,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (inlineManifest.isBlank()) {
                     NewPipePlaybackSource(url, PlaybackDeliveryMethod.PROGRESSIVE)
                 } else {
-                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.DASH, inlineManifest)
+                    inlineDashPlaybackSource(url, inlineManifest)
                 }
             }
             DeliveryMethod.DASH -> {
                 val itag = requireNotNull(stream.itagItem)
-                NewPipePlaybackSource(
+                inlineDashPlaybackSource(
                     url,
-                    PlaybackDeliveryMethod.DASH,
                     YoutubeOtfDashManifestCreator.fromOtfStreamingUrl(url, itag, durationSeconds)
                 )
             }
@@ -1994,14 +2016,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (inlineManifest.isBlank()) {
                     NewPipePlaybackSource(url, PlaybackDeliveryMethod.PROGRESSIVE)
                 } else {
-                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.DASH, inlineManifest)
+                    inlineDashPlaybackSource(url, inlineManifest)
                 }
             }
             DeliveryMethod.DASH -> {
                 val itag = requireNotNull(stream.itagItem)
-                NewPipePlaybackSource(
+                inlineDashPlaybackSource(
                     url,
-                    PlaybackDeliveryMethod.DASH,
                     YoutubeOtfDashManifestCreator.fromOtfStreamingUrl(url, itag, durationSeconds)
                 )
             }
