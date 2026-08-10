@@ -38,6 +38,17 @@ class OfficialVideoCandidateTest {
     }
 
     @Test
+    fun artTrackStillLooksForOfficialVideo() {
+        assertEquals(true, shouldLookupOfficialVideo("MUSIC_VIDEO_TYPE_ATV"))
+    }
+
+    @Test
+    fun visualVideoTypesDoNotGetRewritten() {
+        assertEquals(false, shouldLookupOfficialVideo("MUSIC_VIDEO_TYPE_OMV"))
+        assertEquals(false, shouldLookupOfficialVideo("MUSIC_VIDEO_TYPE_UGC"))
+    }
+
+    @Test
     fun rejectsUserGeneratedCounterpartAsOfficial() {
         val audio = watchTrack(
             videoId = "audio123456",

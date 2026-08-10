@@ -99,6 +99,11 @@ internal fun officialYoutubeMusicVideoCandidate(
         }
 }
 
+internal fun shouldLookupOfficialVideo(videoType: String): Boolean {
+    val type = videoType.uppercase(java.util.Locale.ROOT)
+    return !type.contains("OMV") && !type.contains("UGC")
+}
+
 class PlaybackResolver private constructor(private val context: Context) {
     companion object {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
@@ -149,6 +154,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val youtubeEngagementNegativeTtlMs = 30L * 60L * 1000L
     private val youtubeEngagementCacheMaxEntries = 192
     private val playbackResolveTimeoutMs = 30_000L
+    private val officialVideoLookupTimeoutMs = 2_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
     private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
@@ -593,15 +599,12 @@ class PlaybackResolver private constructor(private val context: Context) {
     private suspend fun preferOfficialVideo(track: Track): Track {
         val sourceVideoId = extractVideoId(track.videoUrl)
             .ifBlank { track.id.takeIf(youtubeVideoIdRegex::matches).orEmpty() }
-        if (sourceVideoId.isBlank()) return track
-        if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track
+        if (sourceVideoId.isBlank() || !shouldLookupOfficialVideo(track.videoType)) return track
 
-        val currentType = track.videoType.uppercase(java.util.Locale.ROOT)
-        val currentIsVisual = currentType.contains("OMV") || currentType.contains("UGC") || currentType.contains("MUSIC_VIDEO")
         val knownCounterpart = track.counterpartVideoId
             .trim()
             .takeIf(youtubeVideoIdRegex::matches)
-            ?.takeIf { it != sourceVideoId && !currentIsVisual }
+            ?.takeIf { it != sourceVideoId }
         if (knownCounterpart != null) {
             return track.copy(
                 videoUrl = "https://www.youtube.com/watch?v=$knownCounterpart",
@@ -610,7 +613,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
 
         val watch = runCatchingPreservingCancellation {
-            watchRepository.getWatchPlaylist(sourceVideoId, userPreferences.languageCode(), 1)
+            withTimeout(officialVideoLookupTimeoutMs) {
+                watchRepository.getWatchPlaylist(sourceVideoId, userPreferences.languageCode(), 1)
+            }
         }.getOrNull() ?: return track
         val official = officialYoutubeMusicVideoCandidate(sourceVideoId, watch) ?: return track
         return track.copy(
