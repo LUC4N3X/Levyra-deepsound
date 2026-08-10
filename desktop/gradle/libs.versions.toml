@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.4.10"
 compose = "1.11.1"
-composeMaterial3 = "1.9.0"
+composeMaterial3 = "1.11.0-alpha07"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 okhttp = "5.4.0"

@@ -6,6 +6,7 @@ from scripts.ai_quality_gate import (
     build_commands,
     classify_changes,
     forbidden_path_findings,
+    gradle_wrapper,
     scan_added_lines,
 )
 
@@ -130,6 +131,7 @@ class AiQualityGateTest(unittest.TestCase):
         )
 
         self.assertEqual([], blocked)
+        self.assertEqual(gradle_wrapper("desktop"), desktop_command.argv[0])
         self.assertEqual(("-p", "desktop", "check", "assemble"), desktop_command.argv[-4:])
 
 
