@@ -5,7 +5,6 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.playbackIdentity
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LevyraPlayerTest {
@@ -83,10 +82,45 @@ class LevyraPlayerTest {
     }
 
     @Test
-    fun youtubePlayableTrackDoesNotUseUnverifiedCurrentVideoInVideoMode() {
-        val unverified = track(streamUrl = "").copy(counterpartVideoId = "")
+    fun youtubePlayableTrackKeepsCanonicalAudioIdentityWithSelectedOfficialUrl() {
+        val hybrid = track(streamUrl = "").copy(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=video123456",
+            counterpartVideoId = "video123456",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
 
-        assertNull(youtubePlayableTrack(unverified, preferVideo = true))
+        val video = youtubePlayableTrack(hybrid, preferVideo = true)
+        val audio = youtubePlayableTrack(hybrid, preferVideo = false)
+
+        assertEquals("audio123456", video?.id)
+        assertEquals("https://www.youtube.com/watch?v=video123456", video?.videoUrl)
+        assertEquals("audio123456", audio?.id)
+        assertEquals("https://www.youtube.com/watch?v=audio123456", audio?.videoUrl)
+    }
+
+    @Test
+    fun youtubePlayableTrackAllowsCanonicalVideoWhileOfficialLookupRuns() {
+        val canonical = track(streamUrl = "").copy(counterpartVideoId = "")
+
+        val playable = youtubePlayableTrack(canonical, preferVideo = true)
+
+        assertEquals("video123456", playable?.id)
+        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
+    }
+
+    @Test
+    fun youtubePlayableTrackKeepsOfficialVideoWhenCounterpartPointsBackToAudio() {
+        val official = track(streamUrl = "").copy(
+            id = "video123456",
+            videoUrl = "https://www.youtube.com/watch?v=video123456",
+            counterpartVideoId = "audio123456",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        val playable = youtubePlayableTrack(official, preferVideo = true)
+
+        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
     }
 
     private fun track(streamUrl: String): Track = Track(

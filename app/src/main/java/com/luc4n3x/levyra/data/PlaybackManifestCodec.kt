@@ -30,6 +30,7 @@ object PlaybackManifestCodec {
                     .put("qualityLabel", stream.qualityLabel)
                     .put("expiresAtMs", stream.expiresAtMs)
                     .put("selected", stream.selected)
+                    .put("manifestContent", stream.manifestContent)
             )
         }
         return JSONObject()
@@ -74,7 +75,8 @@ object PlaybackManifestCodec {
                         itag = json.optInt("itag", -1),
                         qualityLabel = json.optString("qualityLabel"),
                         expiresAtMs = json.optLong("expiresAtMs", 0L),
-                        selected = json.optBoolean("selected", false)
+                        selected = json.optBoolean("selected", false),
+                        manifestContent = json.optString("manifestContent")
                     )
                 )
             }

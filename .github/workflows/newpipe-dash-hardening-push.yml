@@ -1,0 +1,208 @@
+name: Harden NewPipe DASH handoff push
+
+on:
+  push:
+    branches: [agent/newpipe-runtime-hardening]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/newpipe-runtime-hardening
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Apply DASH handoff hardening
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          resolver = "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
+          manifest_model = "app/src/main/java/com/luc4n3x/levyra/domain/PlaybackManifest.kt"
+          manifest_codec = "app/src/main/java/com/luc4n3x/levyra/data/PlaybackManifestCodec.kt"
+          media_factory = "app/src/main/java/com/luc4n3x/levyra/player/LevyraMediaItemFactory.kt"
+          service = "app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt"
+          manifest_test = "app/src/test/java/com/luc4n3x/levyra/data/PlaybackManifestCodecTest.kt"
+          store = Path("app/src/main/java/com/luc4n3x/levyra/data/LevyraDashManifestStore.kt")
+
+          store.write_text('''package com.luc4n3x.levyra.data
+
+import android.net.Uri
+import androidx.media3.exoplayer.dash.manifest.DashManifest
+import androidx.media3.exoplayer.dash.manifest.DashManifestParser
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.LinkedHashMap
+
+internal object LevyraDashManifestStore {
+    internal const val MAX_INLINE_DASH_BYTES = 1024 * 1024
+    private const val MAX_ENTRIES = 16
+    private val manifests = object : LinkedHashMap<String, DashManifest>(MAX_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, DashManifest>?): Boolean =
+            size > MAX_ENTRIES
+    }
+
+    @Synchronized
+    fun register(sourceUrl: String, content: String): String? {
+        if (sourceUrl.isBlank() || content.isBlank()) return null
+        val bytes = content.toByteArray(StandardCharsets.UTF_8)
+        if (bytes.size > MAX_INLINE_DASH_BYTES) return null
+        val manifest = runCatching {
+            DashManifestParser().parse(Uri.parse(sourceUrl), ByteArrayInputStream(bytes))
+        }.getOrNull() ?: return null
+        if (manifest.dynamic) return null
+        val key = keyFor(sourceUrl, content)
+        manifests[key] = manifest
+        return key
+    }
+
+    @Synchronized
+    fun get(key: String): DashManifest? = manifests[key]
+
+    @Synchronized
+    fun contains(key: String): Boolean = key.isNotBlank() && manifests.containsKey(key)
+
+    fun keyFor(sourceUrl: String, content: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update(sourceUrl.toByteArray(StandardCharsets.UTF_8))
+        digest.update(0)
+        digest.update(content.toByteArray(StandardCharsets.UTF_8))
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
+}
+''')
+
+          replace_once(manifest_model,
+              '''    val selected: Boolean = false,\n    val manifestContent: String = ""\n) {''',
+              '''    val selected: Boolean = false,\n    val manifestContent: String = "",\n    val manifestKey: String = ""\n) {''')
+
+          replace_once(manifest_codec,
+              '''                    .put("selected", stream.selected)\n                    .put("manifestContent", stream.manifestContent)''',
+              '''                    .put("selected", stream.selected)\n                    .put("manifestContent", stream.manifestContent)\n                    .put("manifestKey", stream.manifestKey)''')
+          replace_once(manifest_codec,
+              '''                        selected = json.optBoolean("selected", false),\n                        manifestContent = json.optString("manifestContent")''',
+              '''                        selected = json.optBoolean("selected", false),\n                        manifestContent = json.optString("manifestContent"),\n                        manifestKey = json.optString("manifestKey")''')
+
+          replace_once(resolver,
+              '''        return preserveEditorialArtwork(track, resolved)\n    }''',
+              '''        val prepared = withContext(Dispatchers.IO) { registerInlineDashManifests(resolved) }\n        return preserveEditorialArtwork(track, prepared)\n    }''')
+
+          marker = '''    private fun newPipePlaybackSource(stream: AudioStream, durationSeconds: Long): NewPipePlaybackSource {'''
+          replace_once(resolver, marker, '''    private fun registerInlineDashManifests(track: Track): Track {\n        val manifest = track.playbackManifest ?: return track\n        var changed = false\n        val streams = manifest.streams.map { descriptor ->\n            if (descriptor.deliveryMethod == PlaybackDeliveryMethod.DASH && descriptor.manifestContent.isNotBlank()) {\n                val key = LevyraDashManifestStore.register(descriptor.url, descriptor.manifestContent)\n                if (key != null) {\n                    if (descriptor.manifestKey == key) descriptor else {\n                        changed = true\n                        descriptor.copy(manifestKey = key)\n                    }\n                } else {\n                    changed = true\n                    descriptor.copy(manifestContent = "", manifestKey = "")\n                }\n            } else {\n                descriptor\n            }\n        }\n        return if (changed) track.copy(playbackManifest = manifest.copy(streams = streams)) else track\n    }\n\n    private fun inlineDashPlaybackSource(url: String, manifestContent: String): NewPipePlaybackSource {\n        val key = LevyraDashManifestStore.register(url, manifestContent)\n            ?: error("Manifest DASH NewPipe non valido")\n        return NewPipePlaybackSource(\n            url = url,\n            deliveryMethod = PlaybackDeliveryMethod.DASH,\n            manifestContent = manifestContent,\n            manifestKey = key\n        )\n    }\n\n''' + marker)
+
+          for _ in range(2):
+              replace_once(resolver,
+                  '''                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.DASH, inlineManifest)''',
+                  '''                    inlineDashPlaybackSource(url, inlineManifest)''')
+              replace_once(resolver,
+                  '''                NewPipePlaybackSource(\n                    url,\n                    PlaybackDeliveryMethod.DASH,\n                    YoutubeOtfDashManifestCreator.fromOtfStreamingUrl(url, itag, durationSeconds)\n                )''',
+                  '''                inlineDashPlaybackSource(\n                    url,\n                    YoutubeOtfDashManifestCreator.fromOtfStreamingUrl(url, itag, durationSeconds)\n                )''')
+
+          for _ in range(2):
+              replace_once(resolver,
+                  '''            selected = selected,\n            manifestContent = source.manifestContent\n        )''',
+                  '''            selected = selected,\n            manifestContent = source.manifestContent,\n            manifestKey = source.manifestKey\n        )''')
+
+          replace_once(resolver,
+              '''private data class NewPipePlaybackSource(\n    val url: String,\n    val deliveryMethod: PlaybackDeliveryMethod,\n    val manifestContent: String = ""\n)''',
+              '''private data class NewPipePlaybackSource(\n    val url: String,\n    val deliveryMethod: PlaybackDeliveryMethod,\n    val manifestContent: String = "",\n    val manifestKey: String = ""\n)''')
+
+          replace_once(media_factory,
+              '''import androidx.media3.common.MediaMetadata\nimport com.luc4n3x.levyra.domain.PlaybackDeliveryMethod''',
+              '''import androidx.media3.common.MediaMetadata\nimport com.luc4n3x.levyra.data.LevyraDashManifestStore\nimport com.luc4n3x.levyra.domain.PlaybackDeliveryMethod''')
+          replace_once(media_factory, 'val primaryDashManifest = selectedDashManifest(track, streamUrl)', 'val primaryDashManifestKey = selectedDashManifestKey(track, streamUrl)')
+          replace_once(media_factory, 'if (primaryDashManifest.isNotBlank()) {', 'if (primaryDashManifestKey.isNotBlank()) {')
+          replace_once(media_factory,
+              '''            selectedDashManifest(track, track.streamUrl).takeIf(String::isNotBlank)?.let {\n                putString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST, it)\n            }''',
+              '''            selectedDashManifestKey(track, track.streamUrl).takeIf(String::isNotBlank)?.let {\n                putString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST_KEY, it)\n            }''')
+          replace_once(media_factory, 'val videoDashManifest = selectedDashManifest(track, track.videoStreamUrl)', 'val videoDashManifestKey = selectedDashManifestKey(track, track.videoStreamUrl)')
+          replace_once(media_factory, 'if (videoDashManifest.isNotBlank()) {', 'if (videoDashManifestKey.isNotBlank()) {')
+          replace_once(media_factory, 'putString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST, videoDashManifest)', 'putString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST_KEY, videoDashManifestKey)')
+          replace_once(media_factory,
+              '''    private fun selectedDashManifest(track: Track, url: String): String {\n        if (url.isBlank()) return ""\n        return track.playbackManifest?.streams\n            ?.firstOrNull { descriptor ->\n                descriptor.selected &&\n                    descriptor.url == url &&\n                    descriptor.deliveryMethod == PlaybackDeliveryMethod.DASH\n            }\n            ?.manifestContent\n            .orEmpty()\n    }''',
+              '''    private fun selectedDashManifestKey(track: Track, url: String): String {\n        if (url.isBlank()) return ""\n        val descriptor = track.playbackManifest?.streams\n            ?.firstOrNull { stream ->\n                stream.selected &&\n                    stream.url == url &&\n                    stream.deliveryMethod == PlaybackDeliveryMethod.DASH\n            }\n            ?: return ""\n        return descriptor.manifestKey.takeIf(LevyraDashManifestStore::contains).orEmpty()\n    }''')
+
+          replace_once(service, 'import androidx.media3.exoplayer.dash.manifest.DashManifestParser\n', '')
+          replace_once(service, 'import com.luc4n3x.levyra.data.LevyraPreferences\n', 'import com.luc4n3x.levyra.data.LevyraPreferences\nimport com.luc4n3x.levyra.data.LevyraDashManifestStore\n')
+          replace_once(service, 'import java.io.ByteArrayInputStream\n', '')
+          replace_once(service, 'import java.nio.charset.StandardCharsets\n', '')
+          replace_once(service,
+              '''        const val EXTRA_PRIMARY_DASH_MANIFEST = "levyra.primaryDashManifest"\n        const val EXTRA_VIDEO_DASH_MANIFEST = "levyra.videoDashManifest"''',
+              '''        const val EXTRA_PRIMARY_DASH_MANIFEST_KEY = "levyra.primaryDashManifestKey"\n        const val EXTRA_VIDEO_DASH_MANIFEST_KEY = "levyra.videoDashManifestKey"''')
+          replace_once(service,
+              '''        val primaryDashManifest = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST)\n            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST)''',
+              '''        val primaryDashManifestKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST_KEY)\n            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST_KEY)''')
+          replace_once(service, 'return mediaSourceFor(mediaItem, primaryDashManifest)', 'return mediaSourceFor(mediaItem, primaryDashManifestKey)')
+          replace_once(service,
+              '''        val videoDashManifest = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST)\n            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST)\n\n        val audioSource = mediaSourceFor(mediaItem, primaryDashManifest)''',
+              '''        val videoDashManifestKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST_KEY)\n            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST_KEY)\n\n        val audioSource = mediaSourceFor(mediaItem, primaryDashManifestKey)''')
+          replace_once(service, 'val videoSource = mediaSourceFor(videoItem, videoDashManifest)', 'val videoSource = mediaSourceFor(videoItem, videoDashManifestKey)')
+          replace_once(service,
+              '''    private fun mediaSourceFor(mediaItem: MediaItem, inlineDashManifest: String? = null): MediaSource {\n        if (!inlineDashManifest.isNullOrBlank()) {\n            val manifestUri = mediaItem.localConfiguration?.uri ?: android.net.Uri.EMPTY\n            val manifest = DashManifestParser().parse(\n                manifestUri,\n                ByteArrayInputStream(inlineDashManifest.toByteArray(StandardCharsets.UTF_8))\n            )\n            return DashMediaSource.Factory(dataSourceFactory).createMediaSource(manifest, mediaItem)\n        }''',
+              '''    private fun mediaSourceFor(mediaItem: MediaItem, inlineDashManifestKey: String? = null): MediaSource {\n        inlineDashManifestKey\n            ?.takeIf { it.isNotBlank() }\n            ?.let(LevyraDashManifestStore::get)\n            ?.takeIf { !it.dynamic }\n            ?.let { manifest ->\n                return DashMediaSource.Factory(dataSourceFactory).createMediaSource(manifest, mediaItem)\n            }''')
+          replace_once(service,
+              '''        return when {\n            isHlsManifestUri(uri) -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)\n            isDashManifestUri(uri) -> DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)''',
+              '''        return when {\n            isHlsManifestUri(uri) -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)\n            mediaItem.localConfiguration?.mimeType.equals("application/dash+xml", ignoreCase = true) || isDashManifestUri(uri) ->\n                DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)''')
+
+          replace_once(manifest_test,
+              '''                    selected = true,\n                    manifestContent = "<MPD type=\\"static\\"></MPD>"''',
+              '''                    selected = true,\n                    manifestContent = "<MPD type=\\"static\\"></MPD>",\n                    manifestKey = "dash-key"''')
+          replace_once(manifest_test,
+              '''        assertEquals("<MPD type=\\"static\\"></MPD>", decodedVideo.manifestContent)\n        assertTrue(decoded.isFresh(now))''',
+              '''        assertEquals("<MPD type=\\"static\\"></MPD>", decodedVideo.manifestContent)\n        assertEquals("dash-key", decodedVideo.manifestKey)\n        assertTrue(decoded.isFresh(now))''')
+          PY
+
+      - name: Verify focused playback tests
+        run: >-
+          ./gradlew :app:testDebugUnitTest
+          --tests 'com.luc4n3x.levyra.data.PlaybackManifestCodecTest'
+          --tests 'com.luc4n3x.levyra.player.LevyraPlayerTest'
+          --tests 'com.luc4n3x.levyra.data.OfficialVideoCandidateTest'
+          :app:compileDebugKotlin --stacktrace
+
+      - name: Commit hardening and cleanup
+        env:
+          PUSH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          rm -f .github/workflows/newpipe-dash-hardening.yml
+          rm -f .github/workflows/newpipe-dash-hardening-push.yml
+          rm -f .github/newpipe-dash-trigger
+          git config user.name "Levyra Worker"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add -- \
+            app/src/main/java/com/luc4n3x/levyra/data/LevyraDashManifestStore.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt \
+            app/src/main/java/com/luc4n3x/levyra/domain/PlaybackManifest.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/PlaybackManifestCodec.kt \
+            app/src/main/java/com/luc4n3x/levyra/player/LevyraMediaItemFactory.kt \
+            app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/PlaybackManifestCodecTest.kt \
+            .github/workflows/newpipe-dash-hardening.yml \
+            .github/workflows/newpipe-dash-hardening-push.yml \
+            .github/newpipe-dash-trigger
+          git diff --cached --check
+          git commit -m "fix: harden NewPipe DASH playback"
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:agent/newpipe-runtime-hardening

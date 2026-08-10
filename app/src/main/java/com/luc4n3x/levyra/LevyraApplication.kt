@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,8 +29,16 @@ class LevyraApplication : Application() {
         LevyraArtworkCache.configure(this)
         YoutubeLocalDecoder.install(this)
         PlaybackNetworkStack.initialize(this)
-        runCatching { NewPipeRuntime.ensure(this) }
-            .onFailure { Timber.w(it, "Extractor initialization failed") }
+        NewPipeRuntime.attachContext(this)
+        startupScope.launch(Dispatchers.IO) {
+            try {
+                NewPipeRuntime.ensure(this@LevyraApplication)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "Extractor initialization failed")
+            }
+        }
         warmPlaybackPipeline()
         startupScope.launch {
             delay(1800L)

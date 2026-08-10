@@ -33,9 +33,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerManager
+import org.schabi.newpipe.extractor.services.youtube.dashmanifestcreators.YoutubeOtfDashManifestCreator
+import org.schabi.newpipe.extractor.services.youtube.dashmanifestcreators.YoutubeProgressiveDashManifestCreator
 import timber.log.Timber
 import okhttp3.Call
 import okhttp3.Callback
@@ -81,11 +84,32 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
     )
 }
 
+internal fun officialYoutubeMusicVideoCandidate(
+    sourceVideoId: String,
+    playlist: YoutubeMusicWatchPlaylist
+): YoutubeMusicWatchTrack? {
+    val primary = playlist.tracks.firstOrNull { it.videoId == sourceVideoId }
+        ?: playlist.tracks.firstOrNull()
+    return sequenceOf(primary?.counterpart, primary)
+        .filterNotNull()
+        .firstOrNull { candidate ->
+            candidate.videoId.length == 11 &&
+                candidate.videoId.all { it.isLetterOrDigit() || it == '_' || it == '-' } &&
+                candidate.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)
+        }
+}
+
 class PlaybackResolver private constructor(private val context: Context) {
     companion object {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
         private const val LEVYRA_EXTRACTOR_PROVIDER = "LevyraExtractor"
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
+        private val NEWPIPE_SUPPORTED_ITAGS = setOf(
+            17, 36, 18, 34, 35, 59, 78, 22, 37, 38, 43, 44, 45, 46,
+            171, 172, 139, 140, 141, 249, 250, 251,
+            160, 133, 134, 135, 212, 136, 298, 137, 299, 266,
+            278, 242, 243, 244, 245, 246, 247, 248, 271, 272, 302, 303, 308, 313, 315
+        )
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]($YOUTUBE_VIDEO_ID_PATTERN)\\?["]""")
@@ -105,6 +129,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val prefs = context.getSharedPreferences("levyra_stream_cache", Context.MODE_PRIVATE)
     private val clientHealthPrefs = context.getSharedPreferences("levyra_innertube_client_health", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
+    private val watchRepository = YoutubeMusicWatchRepository(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
@@ -243,7 +268,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.streamUrl.isNotBlank()) {
             if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            return if (streamStillFresh(track.streamUrl)) track else null
+            if (!streamStillFresh(track.streamUrl)) return null
+            if (isVideoMode && track.videoStreamUrl.isNotBlank() && !streamStillFresh(track.videoStreamUrl)) return null
+            return track
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
         val hit = streamCache[key] ?: return null
@@ -464,17 +491,25 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
-        if (track.streamUrl.isNotBlank()) {
-            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            if (streamStillFresh(track.streamUrl)) {
-                store(track, track, isVideoMode)
-                return track
-            }
-            return null
+        val reusableProvidedStream = track.streamUrl.isNotBlank() &&
+            !isPlaybackUrlBlocked(track.streamUrl) &&
+            (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
+            (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
+            streamStillFresh(track.streamUrl) &&
+            (!isVideoMode || track.videoStreamUrl.isBlank() || streamStillFresh(track.videoStreamUrl))
+        if (reusableProvidedStream) {
+            store(track, track, isVideoMode)
+            return track
         }
-        cached(track, isVideoMode)?.let { return it }
+
+        val cleanTrack = if (track.streamUrl.isNotBlank() || track.videoStreamUrl.isNotBlank()) {
+            track.copy(streamUrl = "", videoStreamUrl = "")
+        } else {
+            track
+        }
+        cached(cleanTrack, isVideoMode)?.let { return it }
         if (!hasInternetCapableNetwork()) return null
-        return runCatchingPreservingCancellation { resolve(track, isVideoMode) }.getOrNull()
+        return runCatchingPreservingCancellation { resolve(cleanTrack, isVideoMode) }.getOrNull()
     }
 
     private suspend fun resolveUncached(
@@ -484,9 +519,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         audioQuality: String = selectedAudioQuality
     ): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
+        val sourceTrack = if (isVideoMode) preferOfficialVideo(track) else track
 
-        restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
+        restorePersistentSource(sourceTrack, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
             store(track, restored, isVideoMode, audioQuality)
+            if (sourceTrack.videoUrl != track.videoUrl) store(sourceTrack, restored, isVideoMode, audioQuality)
             return@withContext restored
         }
 
@@ -496,7 +533,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val extractorJob = launch {
                     delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }
+                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(sourceTrack, audioQuality) }
                     result.onSuccess { winner.complete(it) }
                         .onFailure { error ->
                             errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
@@ -505,9 +542,9 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val innerTubeJob = launch {
                     delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
+                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(sourceTrack, errors, true, audioQuality) }.getOrNull()
                     if (stream != null) {
-                        winner.complete(track.withDirectStream(stream))
+                        winner.complete(sourceTrack.withDirectStream(stream))
                     }
                 }
                 launch {
@@ -521,7 +558,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
             if (resolved != null) {
                 store(track, resolved, isVideoMode, audioQuality)
-                persistResolvedSource(track, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)
+                if (sourceTrack.videoUrl != track.videoUrl) store(sourceTrack, resolved, isVideoMode, audioQuality)
+                persistResolvedSource(sourceTrack, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)
                 return@withContext resolved
             }
             val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
@@ -549,6 +587,35 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
+    }
+
+    private suspend fun preferOfficialVideo(track: Track): Track {
+        val sourceVideoId = extractVideoId(track.videoUrl)
+            .ifBlank { track.id.takeIf(youtubeVideoIdRegex::matches).orEmpty() }
+        if (sourceVideoId.isBlank()) return track
+        if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track
+
+        val currentType = track.videoType.uppercase(java.util.Locale.ROOT)
+        val currentIsVisual = currentType.contains("OMV") || currentType.contains("UGC") || currentType.contains("MUSIC_VIDEO")
+        val knownCounterpart = track.counterpartVideoId
+            .trim()
+            .takeIf(youtubeVideoIdRegex::matches)
+            ?.takeIf { it != sourceVideoId && !currentIsVisual }
+        if (knownCounterpart != null) {
+            return track.copy(
+                videoUrl = "https://www.youtube.com/watch?v=$knownCounterpart",
+                counterpartVideoId = knownCounterpart
+            )
+        }
+
+        val watch = runCatchingPreservingCancellation {
+            watchRepository.getWatchPlaylist(sourceVideoId, userPreferences.languageCode(), 1)
+        }.getOrNull() ?: return track
+        val official = officialYoutubeMusicVideoCandidate(sourceVideoId, watch) ?: return track
+        return track.copy(
+            videoUrl = "https://www.youtube.com/watch?v=${official.videoId}",
+            counterpartVideoId = official.videoId
+        )
     }
 
     private suspend fun resolveAudioFast(
@@ -1390,20 +1457,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean,
         audioQuality: String
     ): DirectStream = withContext(Dispatchers.IO) {
+        val requestVideoId = extractVideoId(track.videoUrl).ifBlank { track.id }
         val session = if (profile.requiresPoToken) {
             playbackSecurity.currentSession()
         } else {
             playbackSecurity.cachedSession()
         }
-        val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(track.id, session) else null
+        val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(requestVideoId, session) else null
         val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
-            runCatchingPreservingCancellation { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(track.id) }.getOrNull()
+            runCatchingPreservingCancellation { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(requestVideoId) }.getOrNull()
         } else {
             null
         }
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(
-            videoId = track.id,
+            videoId = requestVideoId,
             profile = profile,
             visitorData = session.visitorData,
             playerPoToken = poTokens?.playerToken,
@@ -1415,7 +1483,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
-            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${track.id}" else track.videoUrl)
+            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${requestVideoId}" else track.videoUrl)
             .header("User-Agent", profile.userAgent)
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
@@ -1476,7 +1544,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             var bestAudioFormat: JSONObject? = null
             for ((format, _, label) in audioCandidates) {
                 val url = format.resolveFormatUrl(
-                    videoId = track.id,
+                    videoId = requestVideoId,
                     streamingPoToken = poTokens?.streamingToken,
                     transformThrottling = profile.clientName.startsWith("WEB")
                 )
@@ -1492,7 +1560,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until adaptiveFormats.length()) {
                         val format = adaptiveFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
+                        val url = format.resolveFormatUrl(requestVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1514,7 +1582,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until muxedFormats.length()) {
                         val format = muxedFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
+                        val url = format.resolveFormatUrl(requestVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1541,7 +1609,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val hlsUrl = if (selection == null) {
                     streamingData.optString("hlsManifestUrl")
                         .takeIf { it.isNotBlank() }
-                        ?.let { it.finalizeStreamingUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB")) }
+                        ?.let { it.finalizeStreamingUrl(requestVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB")) }
                         ?.takeIf { !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
                         .orEmpty()
                 } else {
@@ -1553,7 +1621,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 return@responseUse when {
                     selection?.candidate?.muxed == true -> {
                         val manifest = buildManifest(
-                            sourceVideoId = track.id,
+                            sourceVideoId = requestVideoId,
                             provider = "YouTube ${profile.label}",
                             durationMs = duration,
                             selectedAudioUrl = selection.candidate.url,
@@ -1574,7 +1642,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                     selection != null && bestAudioUrl.isNotBlank() -> {
                         val manifest = buildManifest(
-                            sourceVideoId = track.id,
+                            sourceVideoId = requestVideoId,
                             provider = "YouTube ${profile.label}",
                             durationMs = duration,
                             selectedAudioUrl = bestAudioUrl,
@@ -1598,7 +1666,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                     hlsUrl.isNotBlank() -> {
                         val manifest = buildManifest(
-                            sourceVideoId = track.id,
+                            sourceVideoId = requestVideoId,
                             provider = "YouTube HLS ${profile.label}",
                             durationMs = duration,
                             selectedAudioUrl = hlsUrl,
@@ -1626,7 +1694,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
             val manifest = buildManifest(
-                sourceVideoId = track.id,
+                sourceVideoId = requestVideoId,
                 provider = "YouTube ${profile.label}",
                 durationMs = duration,
                 selectedAudioUrl = bestAudioUrl,
@@ -1771,47 +1839,68 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceVideoId = extractVideoId(track.videoUrl).ifBlank { track.id }
         cacheYoutubeEngagement(sourceVideoId, info.likeCount, info.viewCount)
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
-        val selectedAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false, audioQuality = audioQuality)
-        val bestAudio = selectedAudio?.content.orEmpty()
-        val muxedCandidates = info.videoStreams
-            .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
-            .map(::extractorVideoCandidate)
-        val videoOnlyCandidates = info.videoOnlyStreams
-            .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
-            .map(::extractorVideoCandidate)
+
+        val selectedAudio = selectVideoAudioStream(info.audioStreams, audioQuality)
+        val selectedAudioSource = selectedAudio?.let { stream ->
+            runCatching { newPipePlaybackSource(stream, info.duration) }.getOrNull()
+        }
+        val muxedStreams = info.videoStreams.filter(::isNewPipePlayableVideoStream)
+        val videoOnlyStreams = info.videoOnlyStreams.filter(::isNewPipePlayableVideoStream)
+        val muxedCandidates = muxedStreams.map(::extractorVideoCandidate)
+        val videoOnlyCandidates = videoOnlyStreams.map(::extractorVideoCandidate)
         val selection = videoSelector.select(
             muxedCandidates = muxedCandidates,
             videoOnlyCandidates = videoOnlyCandidates,
-            hasSeparateAudio = bestAudio.isNotBlank(),
+            hasSeparateAudio = selectedAudioSource != null,
             blocked = ::isPlaybackUrlBlocked
         )
         if (selection != null) {
-            val selectedAudioUrl = if (selection.candidate.muxed) selection.candidate.url else bestAudio
-            val selectedVideoUrl = if (selection.candidate.muxed) "" else selection.candidate.url
-            val descriptors = buildList {
-                info.audioStreams
-                    .asSequence()
-                    .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
-                    .mapTo(this) { audioDescriptor(it, it.content == selectedAudioUrl) }
-                muxedCandidates.mapTo(this) { videoDescriptor(it, it.url == selection.candidate.url) }
-                videoOnlyCandidates.mapTo(this) { videoDescriptor(it, it.url == selection.candidate.url) }
+            val selectedVideo = (muxedStreams + videoOnlyStreams).firstOrNull { stream ->
+                stream.itag == selection.candidate.itag && stream.content == selection.candidate.url
             }
-            val manifest = buildManifest(
-                sourceVideoId = sourceVideoId,
-                provider = LEVYRA_EXTRACTOR_PROVIDER,
-                durationMs = durationMs,
-                selectedAudioUrl = selectedAudioUrl,
-                selectedVideoUrl = selectedVideoUrl,
-                streams = descriptors
-            )
-            return artworkSafe.copy(
-                streamUrl = selectedAudioUrl,
-                videoStreamUrl = selectedVideoUrl,
-                durationMs = durationMs,
-                source = "LevyraExtractor · ${selection.reason}",
-                playbackManifest = manifest
-            )
+            val selectedVideoSource = selectedVideo?.let { stream ->
+                runCatching { newPipePlaybackSource(stream, info.duration) }.getOrNull()
+            }
+            if (selectedVideo != null && selectedVideoSource != null) {
+                val selectedAudioUrl: String
+                val selectedVideoUrl: String
+                val descriptors: List<PlaybackStreamDescriptor>
+                if (selection.candidate.muxed) {
+                    selectedAudioUrl = selectedVideoSource.url
+                    selectedVideoUrl = ""
+                    descriptors = listOf(newPipeVideoDescriptor(selectedVideo, selectedVideoSource, true))
+                } else if (selectedAudio != null && selectedAudioSource != null) {
+                    selectedAudioUrl = selectedAudioSource.url
+                    selectedVideoUrl = selectedVideoSource.url
+                    descriptors = listOf(
+                        newPipeAudioDescriptor(selectedAudio, selectedAudioSource, true),
+                        newPipeVideoDescriptor(selectedVideo, selectedVideoSource, true)
+                    )
+                } else {
+                    selectedAudioUrl = ""
+                    selectedVideoUrl = ""
+                    descriptors = emptyList()
+                }
+                if (selectedAudioUrl.isNotBlank()) {
+                    val manifest = buildManifest(
+                        sourceVideoId = sourceVideoId,
+                        provider = LEVYRA_EXTRACTOR_PROVIDER,
+                        durationMs = durationMs,
+                        selectedAudioUrl = selectedAudioUrl,
+                        selectedVideoUrl = selectedVideoUrl,
+                        streams = descriptors
+                    )
+                    return artworkSafe.copy(
+                        streamUrl = selectedAudioUrl,
+                        videoStreamUrl = selectedVideoUrl,
+                        durationMs = durationMs,
+                        source = "LevyraExtractor · ${selection.reason}",
+                        playbackManifest = manifest
+                    )
+                }
+            }
         }
+
         val hls = info.hlsUrl.takeIf { it.isNotBlank() && !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
         if (hls != null) {
             val manifest = buildManifest(
@@ -1831,6 +1920,143 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
         throw IllegalStateException("Nessuno stream video compatibile per ${track.title}")
+    }
+
+    private fun isNewPipePlayableVideoStream(stream: VideoStream): Boolean {
+        if (stream.content.isBlank() || isPlaybackUrlBlocked(stream.content) || !streamStillFresh(stream.content)) return false
+        if (stream.itag > 0 && stream.itag !in NEWPIPE_SUPPORTED_ITAGS) return false
+        return when (stream.deliveryMethod) {
+            DeliveryMethod.PROGRESSIVE_HTTP -> stream.isUrl
+            DeliveryMethod.DASH -> stream.itagItem != null
+            DeliveryMethod.HLS -> stream.isUrl
+            else -> false
+        }
+    }
+
+    private fun selectVideoAudioStream(
+        streams: List<AudioStream>,
+        audioQuality: String
+    ): AudioStream? {
+        val playable = streams.filter { stream ->
+            if (stream.content.isBlank() || isPlaybackUrlBlocked(stream.content) || !streamStillFresh(stream.content)) return@filter false
+            if (stream.itag > 0 && stream.itag !in NEWPIPE_SUPPORTED_ITAGS) return@filter false
+            when (stream.deliveryMethod) {
+                DeliveryMethod.PROGRESSIVE_HTTP -> stream.isUrl
+                DeliveryMethod.DASH -> stream.itagItem != null
+                DeliveryMethod.HLS -> stream.isUrl && !stream.getFormat()?.name.equals("OPUS", ignoreCase = true)
+                else -> false
+            }
+        }
+        return playable.maxByOrNull { scoreExtractorAudio(it, false, audioQuality) }
+    }
+
+    private fun newPipePlaybackSource(stream: AudioStream, durationSeconds: Long): NewPipePlaybackSource {
+        val url = stream.content
+        return when (stream.deliveryMethod) {
+            DeliveryMethod.PROGRESSIVE_HTTP -> {
+                val inlineManifest = stream.itagItem?.let { itag ->
+                    runCatching {
+                        YoutubeProgressiveDashManifestCreator.fromProgressiveStreamingUrl(url, itag, durationSeconds)
+                    }.getOrNull()
+                }.orEmpty()
+                if (inlineManifest.isBlank()) {
+                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.PROGRESSIVE)
+                } else {
+                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.DASH, inlineManifest)
+                }
+            }
+            DeliveryMethod.DASH -> {
+                val itag = requireNotNull(stream.itagItem)
+                NewPipePlaybackSource(
+                    url,
+                    PlaybackDeliveryMethod.DASH,
+                    YoutubeOtfDashManifestCreator.fromOtfStreamingUrl(url, itag, durationSeconds)
+                )
+            }
+            DeliveryMethod.HLS -> NewPipePlaybackSource(url, PlaybackDeliveryMethod.HLS)
+            else -> error("Delivery audio NewPipe non supportata: ${stream.deliveryMethod}")
+        }
+    }
+
+    private fun newPipePlaybackSource(stream: VideoStream, durationSeconds: Long): NewPipePlaybackSource {
+        val url = stream.content
+        return when (stream.deliveryMethod) {
+            DeliveryMethod.PROGRESSIVE_HTTP -> {
+                val inlineManifest = if (stream.isVideoOnly()) {
+                    stream.itagItem?.let { itag ->
+                        runCatching {
+                            YoutubeProgressiveDashManifestCreator.fromProgressiveStreamingUrl(url, itag, durationSeconds)
+                        }.getOrNull()
+                    }.orEmpty()
+                } else {
+                    ""
+                }
+                if (inlineManifest.isBlank()) {
+                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.PROGRESSIVE)
+                } else {
+                    NewPipePlaybackSource(url, PlaybackDeliveryMethod.DASH, inlineManifest)
+                }
+            }
+            DeliveryMethod.DASH -> {
+                val itag = requireNotNull(stream.itagItem)
+                NewPipePlaybackSource(
+                    url,
+                    PlaybackDeliveryMethod.DASH,
+                    YoutubeOtfDashManifestCreator.fromOtfStreamingUrl(url, itag, durationSeconds)
+                )
+            }
+            DeliveryMethod.HLS -> NewPipePlaybackSource(url, PlaybackDeliveryMethod.HLS)
+            else -> error("Delivery video NewPipe non supportata: ${stream.deliveryMethod}")
+        }
+    }
+
+    private fun newPipeAudioDescriptor(
+        stream: AudioStream,
+        source: NewPipePlaybackSource,
+        selected: Boolean
+    ): PlaybackStreamDescriptor {
+        val format = stream.getFormat()
+        return PlaybackStreamDescriptor(
+            url = source.url,
+            kind = PlaybackStreamKind.AUDIO,
+            deliveryMethod = source.deliveryMethod,
+            container = format?.suffix.orEmpty(),
+            mimeType = format?.mimeType.orEmpty(),
+            codec = stream.codec.orEmpty(),
+            bitrate = stream.bitrate.coerceAtLeast(0),
+            averageBitrate = stream.averageBitrate.coerceAtLeast(0),
+            itag = stream.itag,
+            qualityLabel = stream.quality.orEmpty(),
+            expiresAtMs = expiresAtFor(source.url),
+            selected = selected,
+            manifestContent = source.manifestContent
+        )
+    }
+
+    private fun newPipeVideoDescriptor(
+        stream: VideoStream,
+        source: NewPipePlaybackSource,
+        selected: Boolean
+    ): PlaybackStreamDescriptor {
+        val format = stream.getFormat()
+        val resolution = stream.getResolution()
+        return PlaybackStreamDescriptor(
+            url = source.url,
+            kind = if (stream.isVideoOnly()) PlaybackStreamKind.VIDEO else PlaybackStreamKind.MUXED,
+            deliveryMethod = source.deliveryMethod,
+            container = format?.suffix.orEmpty(),
+            mimeType = format?.mimeType.orEmpty(),
+            codec = stream.codec.orEmpty(),
+            bitrate = stream.bitrate.coerceAtLeast(0),
+            width = stream.width.coerceAtLeast(0),
+            height = (stream.height.takeIf { it > 0 } ?: heightOf(resolution)).coerceAtLeast(0),
+            fps = stream.fps.coerceAtLeast(0),
+            itag = stream.itag,
+            qualityLabel = resolution.orEmpty(),
+            expiresAtMs = expiresAtFor(source.url),
+            selected = selected,
+            manifestContent = source.manifestContent
+        )
     }
 
     private fun Track.withYoutubeEngagement(likeCount: Long, viewCount: Long): Track = copy(
@@ -2292,6 +2518,12 @@ private data class ClientHealth(
 private data class PlaybackLoudness(
     val loudnessDb: Float? = null,
     val perceptualLoudnessDb: Float? = null
+)
+
+private data class NewPipePlaybackSource(
+    val url: String,
+    val deliveryMethod: PlaybackDeliveryMethod,
+    val manifestContent: String = ""
 )
 
 private data class DirectStream(
