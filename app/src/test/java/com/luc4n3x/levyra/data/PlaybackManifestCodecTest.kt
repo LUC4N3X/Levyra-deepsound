@@ -50,7 +50,8 @@ class PlaybackManifestCodecTest {
                     fps = 30,
                     itag = 248,
                     expiresAtMs = now + 3_600_000L,
-                    selected = true
+                    selected = true,
+                    manifestContent = "<MPD type=\"static\"></MPD>"
                 )
             )
         )
@@ -62,7 +63,9 @@ class PlaybackManifestCodecTest {
         assertEquals(manifest.selectedAudioUrl, decoded.selectedAudioUrl)
         assertEquals(manifest.selectedVideoUrl, decoded.selectedVideoUrl)
         assertEquals("opus", decoded.streams.first { it.kind == PlaybackStreamKind.AUDIO }.codec)
-        assertEquals(1080, decoded.streams.first { it.kind == PlaybackStreamKind.VIDEO }.height)
+        val decodedVideo = decoded.streams.first { it.kind == PlaybackStreamKind.VIDEO }
+        assertEquals(1080, decodedVideo.height)
+        assertEquals("<MPD type=\"static\"></MPD>", decodedVideo.manifestContent)
         assertTrue(decoded.isFresh(now))
     }
 
