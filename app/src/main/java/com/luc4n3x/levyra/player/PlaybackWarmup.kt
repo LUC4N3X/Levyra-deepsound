@@ -7,6 +7,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
+import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.Track
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,7 @@ class PlaybackWarmup(context: Context) {
         val lock = primeLocks.computeIfAbsent(lockKey) { Mutex() }
         try {
             lock.withLock {
-                runCatching {
+                runCatchingPreservingCancellation {
                     val source = LevyraYoutubeDataSource.Factory(
                         PlaybackNetworkStack.warmupFactory(appContext)
                             .setDefaultRequestProperties(
