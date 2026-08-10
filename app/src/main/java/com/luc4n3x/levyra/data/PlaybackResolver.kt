@@ -86,6 +86,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
         private const val LEVYRA_EXTRACTOR_PROVIDER = "LevyraExtractor"
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
+        private const val VIDEO_EXTRACTOR_HEDGE_DELAY_MS = 450L
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]($YOUTUBE_VIDEO_ID_PATTERN)\\?["]""")
@@ -153,6 +154,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 4, true),
         ClientProfile("WEB", "2.20260630.01.00", "YouTube Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 5, true),
         ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 6, false)
+    )
+    private val visionOsVideoProfile = ClientProfile(
+        "VISIONOS",
+        "1.02",
+        "VisionOS",
+        "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X; IT)",
+        false,
+        0L,
+        0,
+        false
+    )
+    private val videoProfiles = listOf(
+        visionOsVideoProfile,
+        profiles.first { it.clientName == "ANDROID_VR" },
+        profiles.first { it.clientName == "IOS" },
+        profiles.first { it.clientName == "ANDROID" },
+        profiles.first { it.clientName == "WEB" },
+        profiles.first { it.clientName == "WEB_REMIX" },
+        profiles.first { it.clientName == "WEB_EMBEDDED_PLAYER" }
     )
 
     init {
@@ -243,7 +263,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.streamUrl.isNotBlank()) {
             if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            return if (streamStillFresh(track.streamUrl)) track else null
+            val videoFresh = !isVideoMode || track.videoStreamUrl.isBlank() || streamStillFresh(track.videoStreamUrl)
+            return if (streamStillFresh(track.streamUrl) && videoFresh) track else null
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
         val hit = streamCache[key] ?: return null
@@ -252,6 +273,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             return null
         }
         if (!isVideoMode && !isPlayableAudioUrl(hit.track.streamUrl)) {
+            remove(key)
+            return null
+        }
+        if (isVideoMode && hit.track.videoStreamUrl.isNotBlank() && !streamStillFresh(hit.track.videoStreamUrl)) {
             remove(key)
             return null
         }
@@ -423,6 +448,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
+                (!isVideoMode || track.videoStreamUrl.isBlank() || streamStillFresh(track.videoStreamUrl)) &&
                 (isVideoMode || isPlayableAudioUrl(it)) &&
                 (!preferMp4Audio || track.playbackManifest?.supportsMp4AudioExport() == true || isMp4AudioUrl(it))
         }?.let { return@coroutineScope track }
@@ -466,6 +492,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
+            if (isVideoMode && track.videoStreamUrl.isNotBlank() && !streamStillFresh(track.videoStreamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
                 store(track, track, isVideoMode)
                 return track
@@ -493,26 +520,29 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isVideoMode) {
             val resolved = coroutineScope {
                 val winner = CompletableDeferred<Track?>()
-                val extractorJob = launch {
-                    delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
-                    if (winner.isCompleted) return@launch
-                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }
-                    result.onSuccess { winner.complete(it) }
-                        .onFailure { error ->
-                            errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
-                        }
-                }
                 val innerTubeJob = launch {
-                    delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
-                    if (winner.isCompleted) return@launch
                     val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
                     if (stream != null) {
                         winner.complete(track.withDirectStream(stream))
                     }
                 }
+                val extractorJob = launch {
+                    delay(VIDEO_EXTRACTOR_HEDGE_DELAY_MS)
+                    if (winner.isCompleted) return@launch
+                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }
+                    result.onSuccess { candidate ->
+                        if (manifestUrlsUsable(candidate.playbackManifest, true)) {
+                            winner.complete(candidate)
+                        } else {
+                            errors += "LevyraExtractor video: stream video incompleto o scaduto"
+                        }
+                    }.onFailure { error ->
+                        errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
+                    }
+                }
                 launch {
-                    extractorJob.join()
                     innerTubeJob.join()
+                    extractorJob.join()
                     winner.complete(null)
                 }
                 val result = winner.await()
@@ -756,6 +786,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (preferMp4Audio && !manifest.supportsMp4AudioExport()) return false
         val videoUrl = manifest.selectedVideoUrl
         if (videoUrl.isNotBlank() && (isPlaybackUrlBlocked(videoUrl) || !streamStillFresh(videoUrl))) return false
+        if (isVideoMode) {
+            val selected = manifest.streams.filter { it.selected }
+            val hasVideo = selected.any { descriptor ->
+                descriptor.kind == PlaybackStreamKind.MUXED ||
+                    descriptor.kind == PlaybackStreamKind.VIDEO ||
+                    descriptor.kind == PlaybackStreamKind.HLS
+            }
+            if (!hasVideo) return false
+        }
         return true
     }
 
@@ -973,7 +1012,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         audioQuality: String
     ): DirectStream? {
-        val ladder = orderedProfiles().map { profile ->
+        val ladder = orderedProfiles(isVideoMode).map { profile ->
             listOf(
                 suspend {
                     runCatchingPreservingCancellation { resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality) }
@@ -1017,7 +1056,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
         val fallback = AtomicReference<DirectStream?>(null)
-        val workers = orderedProfiles().mapIndexed { index, profile ->
+        val workers = orderedProfiles(isVideoMode).mapIndexed { index, profile ->
             launch {
                 val dynamicDelay = profile.delayMs + index * 20L
                 if (dynamicDelay > 0L) delay(dynamicDelay)
@@ -1050,27 +1089,31 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun profileFromSource(source: String): ClientProfile? {
         val normalized = source.lowercase()
-        return profiles.firstOrNull { profile ->
-            normalized.contains(profile.label.lowercase()) || normalized.contains(profile.clientName.lowercase())
-        }
+        return (profiles + videoProfiles)
+            .distinctBy { it.clientName }
+            .firstOrNull { profile ->
+                normalized.contains(profile.label.lowercase()) || normalized.contains(profile.clientName.lowercase())
+            }
     }
 
-    private fun orderedProfiles(): List<ClientProfile> {
+    private fun orderedProfiles(isVideoMode: Boolean = false): List<ClientProfile> {
+        val sourceProfiles = if (isVideoMode) videoProfiles else profiles
         val now = System.currentTimeMillis()
-        val available = profiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
-        val candidates = if (available.isNotEmpty()) available else profiles
+        val available = sourceProfiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
+        val candidates = if (available.isNotEmpty()) available else sourceProfiles
         val sorted = candidates.sortedWith(
             compareByDescending<ClientProfile> { profile -> clientHealth[profile.clientName]?.score ?: 50.0 }
                 .thenBy { profile -> clientHealth[profile.clientName]?.averageLatencyMs ?: Long.MAX_VALUE }
                 .thenBy { it.tier }
         )
-        val vr = sorted.firstOrNull { it.clientName == "ANDROID_VR" } ?: return sorted
+        val preferredName = if (isVideoMode) "VISIONOS" else "ANDROID_VR"
+        val preferred = sorted.firstOrNull { it.clientName == preferredName } ?: return sorted
         val best = sorted.firstOrNull() ?: return sorted
-        val vrHealth = clientHealth[vr.clientName]
+        val preferredHealth = clientHealth[preferred.clientName]
         val bestScore = clientHealth[best.clientName]?.score ?: 50.0
-        val vrScore = vrHealth?.score ?: 50.0
-        val keepVrPrimary = vrHealth?.consecutiveFailures.orZero() == 0 && vrScore >= bestScore - 12.0
-        return if (keepVrPrimary) listOf(vr) + sorted.filterNot { it === vr } else sorted
+        val preferredScore = preferredHealth?.score ?: 50.0
+        val keepPreferredPrimary = preferredHealth?.consecutiveFailures.orZero() == 0 && preferredScore >= bestScore - 12.0
+        return if (keepPreferredPrimary) listOf(preferred) + sorted.filterNot { it === preferred } else sorted
     }
 
     private fun recordClientSuccess(profile: ClientProfile, latencyMs: Long) {
@@ -1196,6 +1239,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         audioQuality: String = selectedAudioQuality
     ) {
         if (resolvedTrack.streamUrl.isBlank() || !streamStillFresh(resolvedTrack.streamUrl)) return
+        if (isVideoMode && resolvedTrack.videoStreamUrl.isNotBlank() && !streamStillFresh(resolvedTrack.videoStreamUrl)) return
         if (!isVideoMode && !isPlayableAudioUrl(resolvedTrack.streamUrl)) return
         val key = cacheKey(requestedTrack, isVideoMode, audioQuality)
         val expiresAt = resolvedTrack.playbackManifest?.expiresAtMs
@@ -1266,7 +1310,17 @@ class PlaybackResolver private constructor(private val context: Context) {
             errors += "$label: URL scaduto"
             return false
         }
-        if (isVideoMode) return true
+        if (stream.videoUrl.isNotBlank() && !streamStillFresh(stream.videoUrl)) {
+            errors += "$label: URL video scaduto"
+            return false
+        }
+        if (isVideoMode) {
+            if (!manifestUrlsUsable(stream.manifest, true)) {
+                errors += "$label: risposta priva di uno stream video completo"
+                return false
+            }
+            return true
+        }
         if (isHlsManifestUrl(stream.url)) {
             if (!isVerifiedHlsManifest(stream.url)) {
                 errors += "$label: manifest HLS non valido"
@@ -1413,7 +1467,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             profile = profile,
             visitorData = session.visitorData,
             playerPoToken = poTokens?.playerToken,
-            signatureTimestamp = signatureTimestamp
+            signatureTimestamp = signatureTimestamp,
+            isVideoMode = isVideoMode
         ).toString()
         val requestBuilder = Request.Builder()
             .url(endpoint)
@@ -2016,7 +2071,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         profile: ClientProfile,
         visitorData: String,
         playerPoToken: String?,
-        signatureTimestamp: Int?
+        signatureTimestamp: Int?,
+        isVideoMode: Boolean
     ): JSONObject {
         val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
         val client = JSONObject()
@@ -2038,6 +2094,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                     .put("deviceModel", "Quest 3")
             }
         }
+        if (profile.clientName == "VISIONOS") {
+            client.put("deviceMake", "Apple")
+                .put("deviceModel", "RealityDevice14,1")
+                .put("osName", "visionOS")
+                .put("osVersion", "25.6.0.23O471")
+                .put("platform", "MOBILE")
+        }
         if (profile.clientName == "IOS") {
             client.put("deviceMake", "Apple")
                 .put("deviceModel", "iPhone16,2")
@@ -2057,9 +2120,17 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("contentCheckOk", true)
             .put("racyCheckOk", true)
             .put("playbackContext", JSONObject().put("contentPlaybackContext", contentPlaybackContext))
-            .put("params", "CgIQBg")
-            .put("watchEndpointMusicSupportedConfigs", JSONObject().put("watchEndpointMusicConfig", JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")))
             .apply {
+                if (!isVideoMode) {
+                    put("params", "CgIQBg")
+                    put(
+                        "watchEndpointMusicSupportedConfigs",
+                        JSONObject().put(
+                            "watchEndpointMusicConfig",
+                            JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")
+                        )
+                    )
+                }
                 playerPoToken?.takeIf { it.isNotBlank() }?.let {
                     put("serviceIntegrityDimensions", JSONObject().put("poToken", it))
                 }
@@ -2277,6 +2348,7 @@ private data class ClientProfile(
             "ANDROID_MUSIC" -> "21"
             "ANDROID_VR" -> "28"
             "IOS" -> "5"
+            "VISIONOS" -> "101"
             "WEB_REMIX" -> "67"
             "WEB" -> "1"
             "WEB_EMBEDDED_PLAYER" -> "56"
