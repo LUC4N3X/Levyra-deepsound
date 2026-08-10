@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.TrackJson
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.playbackIdentity
@@ -60,6 +61,7 @@ class LevyraPlayerTest {
 
         assertEquals("https://www.youtube.com/watch?v=audio123456", restored?.videoUrl)
         assertEquals("audio123456", restored?.audioVideoId)
+        assertEquals("audio123456", restored?.let(PlaybackSourceIdentity::sourceVideoId))
     }
 
     @Test

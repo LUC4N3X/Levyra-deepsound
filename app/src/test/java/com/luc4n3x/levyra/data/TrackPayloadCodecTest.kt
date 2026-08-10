@@ -15,6 +15,7 @@ class TrackPayloadCodecTest {
         requireNotNull(restored)
         assertEquals("Audio123456", restored.audioVideoId)
         assertEquals("https://www.youtube.com/watch?v=Audio123456", restored.videoUrl)
+        assertEquals("Audio123456", PlaybackSourceIdentity.sourceVideoId(restored))
     }
 
     @Test

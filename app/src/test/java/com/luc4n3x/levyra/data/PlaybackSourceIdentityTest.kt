@@ -112,6 +112,17 @@ class PlaybackSourceIdentityTest {
         assertEquals("catalog-recording-1", selected.id)
     }
 
+    @Test
+    fun sourceVideoIdUsesAuthoritativeAudioIdentityWhenNoVideoIsSelected() {
+        val audio = track(
+            id = "catalog-recording-1",
+            videoUrl = ""
+        ).copy(audioVideoId = "lFQdcPTTzSg")
+
+        assertEquals("lFQdcPTTzSg", PlaybackSourceIdentity.sourceVideoId(audio))
+        assertEquals("catalog-recording-1", audio.id)
+    }
+
     private fun track(
         id: String = "track-id",
         title: String = "Song Title",
