@@ -42,6 +42,11 @@ internal fun replacementStartPosition(
     return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
 }
 
+internal fun isRecoverablePlaybackErrorCode(errorCode: Int): Boolean =
+    errorCode in 2000..2008 ||
+        errorCode in 3001..3004 ||
+        errorCode in 4001..4005
+
 @UnstableApi
 class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
@@ -399,7 +404,7 @@ class LevyraPlayer(context: Context) {
             if (next === current) break
             current = next
         }
-        return error.errorCode in 2000..2008 || error.errorCode in 4001..4005
+        return isRecoverablePlaybackErrorCode(error.errorCode)
     }
 
     private fun cleanError(error: PlaybackException): String {
