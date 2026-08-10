@@ -1,18 +1,17 @@
 name: Apply playback runtime fix
 
 on:
-  push:
-    branches:
-      - agent/newpipe-runtime-hardening
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: github.event.pull_request.head.ref == 'agent/newpipe-runtime-hardening' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,17 +40,24 @@ jobs:
           viewmodel = "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
           resolver = "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
           player_test = "app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt"
+          official_test = Path("app/src/test/java/com/luc4n3x/levyra/data/OfficialVideoCandidateTest.kt")
 
           replace_once(
               viewmodel,
-              '    val videoId = if (preferVideo) counterpart else regular.ifBlank { counterpart }',
-              '    val videoId = if (preferVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }'
+              '''    val regular = sequenceOf(fromIdUrl, rawId, fromUrl).firstOrNull(String::isNotBlank).orEmpty()\n    val videoId = if (preferVideo) counterpart else regular.ifBlank { counterpart }''',
+              '''    val regular = sequenceOf(fromIdUrl, rawId, fromUrl).firstOrNull(String::isNotBlank).orEmpty()\n    val currentIsOfficialVideo = track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)\n    val videoId = if (preferVideo) {\n        if (currentIsOfficialVideo) regular else counterpart.ifBlank { regular }\n    } else {\n        if (currentIsOfficialVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }\n    }'''
           )
 
           replace_once(
-              viewmodel,
-              '''                val baseTrack = (youtubePlayableTrack(track, preferVideo = targetMode) ?: track)\n                    .copy(streamUrl = "", videoStreamUrl = "")\n                val resolved = withContext(Dispatchers.IO) {\n                    resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)\n                }''',
-              '''                val baseTrack = (youtubePlayableTrack(track, preferVideo = targetMode) ?: track)\n                    .copy(streamUrl = "", videoStreamUrl = "")\n                val resolved = withContext(Dispatchers.IO) {\n                    try {\n                        resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)\n                    } catch (error: Throwable) {\n                        if (error is CancellationException) throw error\n                        if (!targetMode) throw error\n                        val fallback = youtubePlayableTrack(track, preferVideo = false)\n                            ?.copy(streamUrl = "", videoStreamUrl = "")\n                            ?.takeIf { youtubeVideoId(it.videoUrl) != youtubeVideoId(baseTrack.videoUrl) }\n                            ?: throw error\n                        resolver.cached(fallback, true) ?: providerRouter.resolve(fallback, true)\n                    }\n                }'''
+              resolver,
+              '''internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {\n    val artworkLocked = presented.source.equals("Levyra Editorial", ignoreCase = true) ||\n        EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags\n    if (!artworkLocked) return resolved\n    val artwork = presented.largeThumbnailUrl.trim().ifBlank { presented.thumbnailUrl.trim() }\n    if (artwork.isBlank()) return resolved\n    return resolved.copy(\n        thumbnailUrl = artwork,\n        largeThumbnailUrl = artwork,\n        moodTags = resolved.moodTags + EDITORIAL_ARTWORK_LOCK_TAG\n    )\n}\n''',
+              '''internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {\n    val artworkLocked = presented.source.equals("Levyra Editorial", ignoreCase = true) ||\n        EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags\n    if (!artworkLocked) return resolved\n    val artwork = presented.largeThumbnailUrl.trim().ifBlank { presented.thumbnailUrl.trim() }\n    if (artwork.isBlank()) return resolved\n    return resolved.copy(\n        thumbnailUrl = artwork,\n        largeThumbnailUrl = artwork,\n        moodTags = resolved.moodTags + EDITORIAL_ARTWORK_LOCK_TAG\n    )\n}\n\ninternal fun officialYoutubeMusicVideoCandidate(\n    sourceVideoId: String,\n    playlist: YoutubeMusicWatchPlaylist\n): YoutubeMusicWatchTrack? {\n    val primary = playlist.tracks.firstOrNull { it.videoId == sourceVideoId }\n        ?: playlist.tracks.firstOrNull()\n    return sequenceOf(primary?.counterpart, primary)\n        .filterNotNull()\n        .firstOrNull { candidate ->\n            candidate.videoId.length == 11 &&\n                candidate.videoId.all { it.isLetterOrDigit() || it == '_' || it == '-' } &&\n                candidate.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)\n        }\n}\n'''
+          )
+
+          replace_once(
+              resolver,
+              '''    private val userPreferences = LevyraPreferences(context)\n    private val streamCache = ConcurrentHashMap<String, CachedStream>()''',
+              '''    private val userPreferences = LevyraPreferences(context)\n    private val watchRepository = YoutubeMusicWatchRepository(context)\n    private val streamCache = ConcurrentHashMap<String, CachedStream>()'''
           )
 
           replace_once(
@@ -67,6 +73,34 @@ jobs:
           )
 
           replace_once(
+              resolver,
+              '''    private suspend fun resolveUncached(\n        track: Track,\n        isVideoMode: Boolean = false,\n        preferMp4Audio: Boolean = false,\n        audioQuality: String = selectedAudioQuality\n    ): Track = withContext(Dispatchers.IO) {\n        val errors = Collections.synchronizedList(mutableListOf<String>())\n\n        restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->\n            store(track, restored, isVideoMode, audioQuality)\n            return@withContext restored\n        }\n\n        if (isVideoMode) {''',
+              '''    private suspend fun resolveUncached(\n        track: Track,\n        isVideoMode: Boolean = false,\n        preferMp4Audio: Boolean = false,\n        audioQuality: String = selectedAudioQuality\n    ): Track = withContext(Dispatchers.IO) {\n        val errors = Collections.synchronizedList(mutableListOf<String>())\n        val sourceTrack = if (isVideoMode) preferOfficialVideo(track) else track\n\n        restorePersistentSource(sourceTrack, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->\n            store(track, restored, isVideoMode, audioQuality)\n            if (sourceTrack.videoUrl != track.videoUrl) store(sourceTrack, restored, isVideoMode, audioQuality)\n            return@withContext restored\n        }\n\n        if (isVideoMode) {'''
+          )
+
+          replace_once(
+              resolver,
+              '''                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }''',
+              '''                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(sourceTrack, audioQuality) }'''
+          )
+
+          replace_once(
+              resolver,
+              '''                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()\n                    if (stream != null) {\n                        winner.complete(track.withDirectStream(stream))''',
+              '''                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(sourceTrack, errors, true, audioQuality) }.getOrNull()\n                    if (stream != null) {\n                        winner.complete(sourceTrack.withDirectStream(stream))'''
+          )
+
+          replace_once(
+              resolver,
+              '''            if (resolved != null) {\n                store(track, resolved, isVideoMode, audioQuality)\n                persistResolvedSource(track, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)\n                return@withContext resolved\n            }''',
+              '''            if (resolved != null) {\n                store(track, resolved, isVideoMode, audioQuality)\n                if (sourceTrack.videoUrl != track.videoUrl) store(sourceTrack, resolved, isVideoMode, audioQuality)\n                persistResolvedSource(sourceTrack, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)\n                return@withContext resolved\n            }'''
+          )
+
+          marker = '''    private suspend fun resolveAudioFast(\n        track: Track,\n        errors: MutableList<String>,\n        preferMp4Audio: Boolean,\n        audioQuality: String\n    ): Track? {'''
+          helper = '''    private suspend fun preferOfficialVideo(track: Track): Track {\n        val sourceVideoId = extractVideoId(track.videoUrl)\n            .ifBlank { track.id.takeIf(youtubeVideoIdRegex::matches).orEmpty() }\n        if (sourceVideoId.isBlank()) return track\n        if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track\n\n        val knownCounterpart = track.counterpartVideoId.trim().takeIf(youtubeVideoIdRegex::matches)\n        if (knownCounterpart != null) {\n            return track.copy(\n                videoUrl = "https://www.youtube.com/watch?v=$knownCounterpart",\n                counterpartVideoId = knownCounterpart,\n                videoType = "MUSIC_VIDEO_TYPE_OMV"\n            )\n        }\n\n        val watch = runCatchingPreservingCancellation {\n            watchRepository.getWatchPlaylist(sourceVideoId, userPreferences.languageCode(), 1)\n        }.getOrNull() ?: return track\n        val official = officialYoutubeMusicVideoCandidate(sourceVideoId, watch) ?: return track\n        return track.copy(\n            videoUrl = "https://www.youtube.com/watch?v=${official.videoId}",\n            counterpartVideoId = official.videoId,\n            videoType = official.videoType\n        )\n    }\n\n''' + marker
+          replace_once(resolver, marker, helper)
+
+          replace_once(
               player_test,
               'import org.junit.Assert.assertNull\n',
               ''
@@ -75,12 +109,17 @@ jobs:
           replace_once(
               player_test,
               '''    @Test\n    fun youtubePlayableTrackDoesNotUseUnverifiedCurrentVideoInVideoMode() {\n        val unverified = track(streamUrl = "").copy(counterpartVideoId = "")\n\n        assertNull(youtubePlayableTrack(unverified, preferVideo = true))\n    }''',
-              '''    @Test\n    fun youtubePlayableTrackFallsBackToCanonicalVideoWhenCounterpartIsMissing() {\n        val canonical = track(streamUrl = "").copy(counterpartVideoId = "")\n\n        val playable = youtubePlayableTrack(canonical, preferVideo = true)\n\n        assertEquals("video123456", playable?.id)\n        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)\n    }'''
+              '''    @Test\n    fun youtubePlayableTrackAllowsCanonicalVideoWhileOfficialLookupRuns() {\n        val canonical = track(streamUrl = "").copy(counterpartVideoId = "")\n\n        val playable = youtubePlayableTrack(canonical, preferVideo = true)\n\n        assertEquals("video123456", playable?.id)\n        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)\n    }\n\n    @Test\n    fun youtubePlayableTrackKeepsOfficialVideoWhenCounterpartPointsBackToAudio() {\n        val official = track(streamUrl = "").copy(\n            id = "video123456",\n            videoUrl = "https://www.youtube.com/watch?v=video123456",\n            counterpartVideoId = "audio123456",\n            videoType = "MUSIC_VIDEO_TYPE_OMV"\n        )\n\n        val playable = youtubePlayableTrack(official, preferVideo = true)\n\n        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)\n    }'''
           )
+
+          official_test.write_text('''package com.luc4n3x.levyra.data\n\nimport org.junit.Assert.assertEquals\nimport org.junit.Assert.assertNull\nimport org.junit.Test\n\nclass OfficialVideoCandidateTest {\n    @Test\n    fun prefersOfficialCounterpartForAudioTrack() {\n        val audio = watchTrack(\n            videoId = "audio123456",\n            videoType = "MUSIC_VIDEO_TYPE_ATV",\n            counterpart = watchTrack("video123456", "MUSIC_VIDEO_TYPE_OMV")\n        )\n\n        val candidate = officialYoutubeMusicVideoCandidate(\n            "audio123456",\n            YoutubeMusicWatchPlaylist(listOf(audio), "", "", "", "")\n        )\n\n        assertEquals("video123456", candidate?.videoId)\n    }\n\n    @Test\n    fun keepsPrimaryWhenItIsAlreadyOfficial() {\n        val official = watchTrack(\n            videoId = "video123456",\n            videoType = "MUSIC_VIDEO_TYPE_OMV",\n            counterpart = watchTrack("audio123456", "MUSIC_VIDEO_TYPE_ATV")\n        )\n\n        val candidate = officialYoutubeMusicVideoCandidate(\n            "video123456",\n            YoutubeMusicWatchPlaylist(listOf(official), "", "", "", "")\n        )\n\n        assertEquals("video123456", candidate?.videoId)\n    }\n\n    @Test\n    fun rejectsUserGeneratedCounterpartAsOfficial() {\n        val audio = watchTrack(\n            videoId = "audio123456",\n            videoType = "MUSIC_VIDEO_TYPE_ATV",\n            counterpart = watchTrack("upload12345", "MUSIC_VIDEO_TYPE_UGC")\n        )\n\n        val candidate = officialYoutubeMusicVideoCandidate(\n            "audio123456",\n            YoutubeMusicWatchPlaylist(listOf(audio), "", "", "", "")\n        )\n\n        assertNull(candidate)\n    }\n\n    private fun watchTrack(\n        videoId: String,\n        videoType: String,\n        counterpart: YoutubeMusicWatchTrack? = null\n    ) = YoutubeMusicWatchTrack(\n        videoId = videoId,\n        title = "Song",\n        artists = emptyList(),\n        albumTitle = "Album",\n        albumBrowseId = "",\n        durationMs = 180_000L,\n        thumbnailUrl = "",\n        videoType = videoType,\n        explicit = false,\n        counterpart = counterpart\n    )\n}\n''')
           PY
 
       - name: Verify focused playback tests
-        run: ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.player.LevyraPlayerTest'
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.player.LevyraPlayerTest' \
+            --tests 'com.luc4n3x.levyra.data.OfficialVideoCandidateTest'
 
       - name: Commit source fix and remove helper workflow
         shell: bash
@@ -90,5 +129,5 @@ jobs:
           git config user.email "241364318+LUC4N3X@users.noreply.github.com"
           git add -A
           git diff --cached --check
-          git commit -m "fix: restore video switching and stream prefetch"
+          git commit -m "fix: restore official video switching and prefetch"
           git push origin HEAD:agent/newpipe-runtime-hardening
