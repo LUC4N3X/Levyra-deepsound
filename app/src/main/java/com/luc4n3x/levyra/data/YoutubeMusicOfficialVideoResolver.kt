@@ -54,6 +54,37 @@ internal fun youtubeMusicAudioSourceId(track: Track): String {
         .orEmpty()
 }
 
+internal fun youtubeMusicAudioPlaybackSeed(track: Track): Track? {
+    val sourceVideoId = youtubeMusicAudioSourceId(track)
+    if (sourceVideoId.isBlank()) return null
+    return track.copy(
+        streamUrl = "",
+        videoStreamUrl = "",
+        playbackManifest = null,
+        videoUrl = "https://www.youtube.com/watch?v=$sourceVideoId",
+        audioVideoId = sourceVideoId
+    )
+}
+
+internal fun youtubeMusicTrustedCatalogVideoFallback(track: Track): Track? {
+    if (!track.videoType.contains("ATV", ignoreCase = true)) return null
+    val sourceVideoId = youtubeMusicAudioSourceId(track)
+    val counterpartVideoId = track.counterpartVideoId.trim()
+        .takeIf(YOUTUBE_MUSIC_VIDEO_ID::matches)
+        .orEmpty()
+    if (sourceVideoId.isBlank() || counterpartVideoId.isBlank() || counterpartVideoId == sourceVideoId) return null
+
+    return track.copy(
+        streamUrl = "",
+        videoStreamUrl = "",
+        playbackManifest = null,
+        videoUrl = "https://www.youtube.com/watch?v=$counterpartVideoId",
+        counterpartVideoId = counterpartVideoId,
+        audioVideoId = sourceVideoId,
+        videoType = ""
+    )
+}
+
 internal fun buildYoutubeMusicPairingPayload(
     sourceVideoId: String,
     hl: String,
@@ -172,6 +203,9 @@ internal class YoutubeMusicOfficialVideoResolver {
         counterpart: YoutubeMusicWatchTrack
     ): Track {
         return copy(
+            streamUrl = "",
+            videoStreamUrl = "",
+            playbackManifest = null,
             videoUrl = "https://www.youtube.com/watch?v=${counterpart.videoId}",
             counterpartVideoId = counterpart.videoId,
             videoType = counterpart.videoType,
