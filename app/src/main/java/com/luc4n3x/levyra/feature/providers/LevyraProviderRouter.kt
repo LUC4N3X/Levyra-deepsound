@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -170,7 +171,12 @@ class CachedPlaybackProvider(
     override val priority: Int = 0
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
-        return resolver.cached(track, videoMode) ?: throw LevyraProviderMissException("Stream non presente in cache")
+        val resolved = resolver.cached(track, videoMode)
+            ?: throw LevyraProviderMissException("Stream non presente in cache")
+        if (videoMode && !resolved.hasVideoPlaybackPayload()) {
+            throw LevyraProviderMissException("Cache video priva di una traccia video")
+        }
+        return resolved
     }
 
     override suspend fun resolveForOffline(track: Track): Track {
@@ -185,7 +191,15 @@ class LevyraNativePlaybackProvider(
     override val priority: Int = 10
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
-        return resolver.resolve(track, videoMode)
+        val first = resolver.resolve(track, videoMode)
+        if (!videoMode || first.hasVideoPlaybackPayload()) return first
+
+        resolver.reportPlaybackFailure(first, true, "Sorgente video priva di una traccia video")
+        val retry = resolver.resolve(track.copy(streamUrl = "", videoStreamUrl = ""), true)
+        if (!retry.hasVideoPlaybackPayload()) {
+            throw LevyraProviderMissException("Il resolver non ha restituito una traccia video")
+        }
+        return retry
     }
 
     override suspend fun resolveForOffline(track: Track): Track {
@@ -251,7 +265,13 @@ class LevyraProviderRouter(
     }
 
     suspend fun resolve(track: Track, videoMode: Boolean = false): Track {
-        return executePlayback("playback", playbackTimeoutMs) { it.resolve(track, videoMode) }
+        return executePlayback("playback", playbackTimeoutMs) { provider ->
+            val result = provider.resolve(track, videoMode)
+            if (videoMode && !result.hasVideoPlaybackPayload()) {
+                throw LevyraProviderMissException("Provider ${provider.id} privo di una traccia video")
+            }
+            result
+        }
     }
 
     suspend fun resolveForOffline(track: Track): Track {
