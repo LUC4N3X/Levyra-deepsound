@@ -68,7 +68,7 @@ internal class YoutubeMusicOfficialVideoResolver(
             cache.remove(cacheKey, cached)
         }
 
-        val counterpart = runCatching {
+        val counterpart = runCatchingPreservingCancellation {
             val payload = JSONObject()
                 .put("videoId", sourceVideoId)
                 .put(
