@@ -27,6 +27,7 @@ Claude Code officially supports `.claude/CLAUDE.md` as the project instruction f
 │   ├── security.md
 │   └── testing-release.md
 └── skills/
+    ├── levyra-real-engineering/SKILL.md
     ├── levyra-compose/SKILL.md
     ├── levyra-database/SKILL.md
     ├── levyra-extractor/SKILL.md
@@ -44,7 +45,8 @@ Claude Code officially supports `.claude/CLAUDE.md` as the project instruction f
 - `permissions.allow` pre-approves the read-only git commands and the Gradle verification tasks from `CLAUDE.md`, so routine checks do not stop for a prompt. The git entries are deliberately narrow: `git branch` is allowed only as `--show-current` and `--list`, since a broader wildcard would also pre-approve `git branch -D`, `-M`, and `-f`, which mutate or delete refs.
 - `permissions.deny` blocks reads and writes of `local.properties`, keystores, and `.env` files. This is a guardrail, not a substitute for the release-safety rules in `CLAUDE.md`.
 - `hooks.SessionStart` runs `hooks/session-start.sh`; `hooks.UserPromptSubmit` runs `hooks/user-prompt-submit.sh`.
-- `extraKnownMarketplaces` and `enabledPlugins` opt this repository into three external skill marketplaces: [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Android and Compose), [`Kotlin/kotlin-agent-skills`](https://github.com/Kotlin/kotlin-agent-skills) (Kotlin), and [`multica-ai/andrej-karpathy-skills`](https://github.com/multica-ai/andrej-karpathy-skills) (general coding discipline). These are third-party repositories that Claude Code fetches on demand; they supplement the Levyra skills but never override the rules in `CLAUDE.md`. Remove the entries to opt out.
+- `extraKnownMarketplaces` opts this repository into three external skill marketplaces: [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Android and Compose), [`Kotlin/kotlin-agent-skills`](https://github.com/Kotlin/kotlin-agent-skills) (Kotlin), and [`multica-ai/andrej-karpathy-skills`](https://github.com/multica-ai/andrej-karpathy-skills) (general coding discipline).
+- `enabledPlugins` also project-enables `mattpocock-skills@claude-plugins-official`, using Claude Code's official marketplace. The upstream skills supplement Levyra; the local `levyra-real-engineering` bridge and repository rules decide when and how they are used.
 
 Personal overrides belong in `.claude/settings.local.json`, which is git-ignored.
 
@@ -74,7 +76,9 @@ Three loading mechanisms behave differently, and only two of them are automatic:
 | `rules/*.md` | Automatically, when a file matching the rule's `paths:` is in play |
 | `skills/*/SKILL.md` | Only the `description` is visible up front; the body loads when the skill is invoked |
 
-That third row is the gap. A description is a hint the model may or may not act on, so a skill could be skipped on exactly the request it was written for. This hook closes the gap: it matches each incoming request against the topics the skills cover and states, as an instruction, which ones to invoke before editing. Patterns cover Italian as well as English terms. Several skills can match at once — a player change that also touches Compose returns both.
+That third row is the gap. A description is a hint the model may or may not act on, so a skill could be skipped on exactly the request it was written for. This hook closes the gap: it matches each incoming request against the topics the skills cover and states, as an instruction, which ones to invoke before editing. Patterns cover Italian as well as English terms. Several skills can match at once — a non-trivial player feature can route both `levyra-real-engineering` and `levyra-player`.
+
+For `levyra-real-engineering`, the local bridge reads the canonical adapter under `.agents/skills/` and then invokes the exact Matt Pocock stage from the official plugin when available. Tiny unambiguous changes deliberately bypass the full clarify/spec/tickets pipeline.
 
 The hook stays silent when nothing matches, when the payload is unreadable, and when `python3` is absent, so an unrelated request costs nothing. It always exits 0.
 
@@ -85,7 +89,7 @@ It also stays silent on automated payloads — GitHub webhook activity and wrapp
 To see what a given request would route to:
 
 ```bash
-printf '{"prompt":"the queue skips a track after a notification"}' \
+printf '{"prompt":"design a new playback feature across multiple modules"}' \
   | ./.claude/hooks/user-prompt-submit.sh
 ```
 
@@ -95,6 +99,7 @@ Start Claude Code from the repository root. Use `/context` to confirm that `.cla
 
 Skills are invoked automatically via the routing table above. Invoke one by hand when you want it regardless of wording:
 
+- `/levyra-real-engineering`
 - `/levyra-player`
 - `/levyra-extractor`
 - `/levyra-motion-artwork`
@@ -104,9 +109,11 @@ Skills are invoked automatically via the routing table above. Invoke one by hand
 - `/levyra-pr-review`
 - `/levyra-release-check`
 
+The upstream plugin stages are namespaced by Claude Code. Prefer the local `/levyra-real-engineering` entry point for Levyra work so repository precedence, issue publication rules, and quality gates are applied before an upstream stage runs.
+
 Ask Claude to use `levyra-android-developer` for implementation work or `levyra-reviewer` for a read-only review.
 
-If this is the first time the `agents/` or `skills/` directory exists during an already-running Claude Code session, restart the session once so every entry is discovered.
+If this is the first time the `agents/` or `skills/` directory exists during an already-running Claude Code session, restart the session once so every entry is discovered. Reload plugins after Claude reports an upstream plugin update.
 
 ## Maintenance
 

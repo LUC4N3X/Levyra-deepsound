@@ -3,7 +3,8 @@ param(
     [switch] $DryRun,
     [switch] $InstallRtk,
     [switch] $Plugins,
-    [switch] $SkipHooks
+    [switch] $SkipHooks,
+    [switch] $SkipMattSkills
 )
 
 Set-StrictMode -Version Latest
@@ -12,6 +13,19 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $pluginManifest = Join-Path $repoRoot '.agents/config/codex-plugins.txt'
 $rtkGitRevision = 'b34be37caf3796b69a50952a28e60e32b5daad43'
+$mattSkillSource = 'mattpocock/skills'
+$mattSkills = @(
+    'setup-matt-pocock-skills',
+    'grill-with-docs',
+    'wayfinder',
+    'to-spec',
+    'to-tickets',
+    'implement',
+    'tdd',
+    'diagnosing-bugs',
+    'code-review',
+    'domain-modeling'
+)
 
 function Test-Command {
     param([Parameter(Mandatory)][string] $Name)
@@ -110,6 +124,24 @@ if (Test-RtkTokenKiller) {
     Invoke-SetupCommand 'Show the active RTK configuration' { rtk init --show }
 }
 
+if (-not $SkipMattSkills) {
+    if (-not (Test-Command 'codex')) {
+        Write-Output '[skip] Codex command not detected; Matt Pocock Codex skills were not installed'
+    }
+    elseif (-not (Test-Command 'npx')) {
+        Write-Warning 'Codex is installed but npx is unavailable. Matt Pocock skills bootstrap is blocked; install Node.js/npm or re-run with -SkipMattSkills.'
+    }
+    else {
+        Invoke-SetupCommand 'Install focused Matt Pocock engineering skills for Codex' {
+            $skillArgs = @('skills@latest', 'add', $mattSkillSource, '-g', '-a', 'codex', '-y')
+            foreach ($skill in $mattSkills) {
+                $skillArgs += @('-s', $skill)
+            }
+            & npx @skillArgs
+        }
+    }
+}
+
 if ($Plugins) {
     if (-not (Test-Path -LiteralPath $pluginManifest -PathType Leaf)) {
         throw "Plugin manifest not found: $pluginManifest"
@@ -148,7 +180,8 @@ if (-not $pythonCommand) {
 
 foreach ($validationScript in @(
     'scripts/validate_agent_config.py',
-    'scripts/validate_ai_efficiency.py'
+    'scripts/validate_ai_efficiency.py',
+    'scripts/validate_matt_skills.py'
 )) {
     Invoke-SetupCommand "Validate with $validationScript" {
         Push-Location $repoRoot
@@ -164,4 +197,6 @@ foreach ($validationScript in @(
 Write-Output ''
 Write-Output 'Setup complete.'
 Write-Output 'Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded.'
+Write-Output 'Claude Code will discover the project-enabled mattpocock-skills plugin through .claude/settings.json and may request normal marketplace trust/installation approval.'
+Write-Output 'Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md.'
 Write-Output 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'

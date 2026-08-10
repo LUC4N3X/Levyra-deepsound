@@ -5,17 +5,19 @@ DRY_RUN=0
 INSTALL_RTK=0
 INSTALL_PLUGINS=0
 SKIP_HOOKS=0
+SKIP_MATT_SKILLS=0
 
 usage() {
   cat <<'EOF'
 Usage: ./scripts/setup-ai.sh [options]
 
 Options:
-  --dry-run       Print planned actions without changing the machine
-  --install-rtk   Install RTK through Cargo when it is missing
-  --plugins       Install plugins listed in .agents/config/codex-plugins.txt
-  --skip-hooks    Do not initialize RTK instructions/hooks/integrations
-  -h, --help      Show this help
+  --dry-run           Print planned actions without changing the machine
+  --install-rtk       Install RTK through Cargo when it is missing
+  --plugins           Install plugins listed in .agents/config/codex-plugins.txt
+  --skip-hooks        Do not initialize RTK instructions/hooks/integrations
+  --skip-matt-skills  Do not install Matt Pocock engineering skills for Codex
+  -h, --help          Show this help
 EOF
 }
 
@@ -25,6 +27,7 @@ while [[ $# -gt 0 ]]; do
     --install-rtk) INSTALL_RTK=1 ;;
     --plugins) INSTALL_PLUGINS=1 ;;
     --skip-hooks) SKIP_HOOKS=1 ;;
+    --skip-matt-skills) SKIP_MATT_SKILLS=1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -35,6 +38,19 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 PLUGIN_MANIFEST="$REPO_ROOT/.agents/config/codex-plugins.txt"
 RTK_GIT_REVISION="b34be37caf3796b69a50952a28e60e32b5daad43"
+MATT_SKILL_SOURCE="mattpocock/skills"
+MATT_SKILLS=(
+  setup-matt-pocock-skills
+  grill-with-docs
+  wayfinder
+  to-spec
+  to-tickets
+  implement
+  tdd
+  diagnosing-bugs
+  code-review
+  domain-modeling
+)
 
 has_command() {
   command -v "$1" >/dev/null 2>&1
@@ -105,6 +121,20 @@ if is_token_killer_rtk; then
   run_step "Show the active RTK configuration" rtk init --show
 fi
 
+if [[ "$SKIP_MATT_SKILLS" -ne 1 ]]; then
+  if ! has_command codex; then
+    echo "[skip] Codex command not detected; Matt Pocock Codex skills were not installed"
+  elif ! has_command npx; then
+    echo "[warn] Codex is installed but npx is unavailable. Matt Pocock skills bootstrap is blocked; install Node.js/npm or re-run with --skip-matt-skills." >&2
+  else
+    matt_args=(skills@latest add "$MATT_SKILL_SOURCE" -g -a codex -y)
+    for skill in "${MATT_SKILLS[@]}"; do
+      matt_args+=(-s "$skill")
+    done
+    run_step "Install focused Matt Pocock engineering skills for Codex" npx "${matt_args[@]}"
+  fi
+fi
+
 if [[ "$INSTALL_PLUGINS" -eq 1 ]]; then
   if [[ ! -f "$PLUGIN_MANIFEST" ]]; then
     echo "Plugin manifest not found: $PLUGIN_MANIFEST" >&2
@@ -137,7 +167,8 @@ fi
 
 for validation_script in \
   scripts/validate_agent_config.py \
-  scripts/validate_ai_efficiency.py
+  scripts/validate_ai_efficiency.py \
+  scripts/validate_matt_skills.py
 do
   if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "[dry-run] Validate with $validation_script: (cd '$REPO_ROOT' && $PYTHON_COMMAND $validation_script)"
@@ -150,4 +181,6 @@ done
 echo
 echo "Setup complete."
 echo "Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded."
+echo "Claude Code will discover the project-enabled mattpocock-skills plugin through .claude/settings.json and may request normal marketplace trust/installation approval."
+echo "Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md."
 echo 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'

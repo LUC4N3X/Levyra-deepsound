@@ -33,6 +33,11 @@ if any(marker in prompt for marker in AUTOMATED_MARKERS):
 
 ROUTES = [
     (
+        "levyra-real-engineering",
+        "non-trivial requirements, architecture, or multi-step engineering",
+        r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets",
+    ),
+    (
         "levyra-player",
         "playback, queue, or MediaSession",
         r"player|playback|riproduz|queue|coda|media3|mediasession|android auto|notification|notifica|prefetch|gapless|crossfade|\bseek\b|\bskip\b|traccia|brano|audio mode|video mode",
@@ -84,10 +89,12 @@ for skill, topic in matched:
 lines += [
     "",
     "Invoke each matching skill with the Skill tool BEFORE reading widely or editing, "
-    "and follow its procedure. Do not wait to be asked. For security work, preserve "
-    "exact evidence and follow threat model, identification, safe validation, minimal "
-    "remediation, human review, and revalidation. If a skill turns out not to apply "
-    "once read, say so in one line and continue.",
+    "and follow its procedure. Do not wait to be asked. For real-engineering work, "
+    "use the Matt Pocock stage skill selected by the Levyra bridge when the plugin is "
+    "available, and skip the full ceremony for tiny unambiguous changes. For security "
+    "work, preserve exact evidence and follow threat model, identification, safe "
+    "validation, minimal remediation, human review, and revalidation. If a skill turns "
+    "out not to apply once read, say so in one line and continue.",
 ]
 
 print(json.dumps({
