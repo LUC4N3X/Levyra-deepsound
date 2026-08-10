@@ -81,6 +81,21 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
     )
 }
 
+internal fun officialYoutubeMusicVideoCandidate(
+    sourceVideoId: String,
+    playlist: YoutubeMusicWatchPlaylist
+): YoutubeMusicWatchTrack? {
+    val primary = playlist.tracks.firstOrNull { it.videoId == sourceVideoId }
+        ?: playlist.tracks.firstOrNull()
+    return sequenceOf(primary?.counterpart, primary)
+        .filterNotNull()
+        .firstOrNull { candidate ->
+            candidate.videoId.length == 11 &&
+                candidate.videoId.all { it.isLetterOrDigit() || it == '_' || it == '-' } &&
+                candidate.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)
+        }
+}
+
 class PlaybackResolver private constructor(private val context: Context) {
     companion object {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
@@ -105,6 +120,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val prefs = context.getSharedPreferences("levyra_stream_cache", Context.MODE_PRIVATE)
     private val clientHealthPrefs = context.getSharedPreferences("levyra_innertube_client_health", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
+    private val watchRepository = YoutubeMusicWatchRepository(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
@@ -243,7 +259,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.streamUrl.isNotBlank()) {
             if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            return if (streamStillFresh(track.streamUrl)) track else null
+            if (!streamStillFresh(track.streamUrl)) return null
+            if (isVideoMode && track.videoStreamUrl.isNotBlank() && !streamStillFresh(track.videoStreamUrl)) return null
+            return track
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
         val hit = streamCache[key] ?: return null
@@ -464,17 +482,25 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
-        if (track.streamUrl.isNotBlank()) {
-            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            if (streamStillFresh(track.streamUrl)) {
-                store(track, track, isVideoMode)
-                return track
-            }
-            return null
+        val reusableProvidedStream = track.streamUrl.isNotBlank() &&
+            !isPlaybackUrlBlocked(track.streamUrl) &&
+            (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
+            (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
+            streamStillFresh(track.streamUrl) &&
+            (!isVideoMode || track.videoStreamUrl.isBlank() || streamStillFresh(track.videoStreamUrl))
+        if (reusableProvidedStream) {
+            store(track, track, isVideoMode)
+            return track
         }
-        cached(track, isVideoMode)?.let { return it }
+
+        val cleanTrack = if (track.streamUrl.isNotBlank() || track.videoStreamUrl.isNotBlank()) {
+            track.copy(streamUrl = "", videoStreamUrl = "")
+        } else {
+            track
+        }
+        cached(cleanTrack, isVideoMode)?.let { return it }
         if (!hasInternetCapableNetwork()) return null
-        return runCatchingPreservingCancellation { resolve(track, isVideoMode) }.getOrNull()
+        return runCatchingPreservingCancellation { resolve(cleanTrack, isVideoMode) }.getOrNull()
     }
 
     private suspend fun resolveUncached(
@@ -484,9 +510,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         audioQuality: String = selectedAudioQuality
     ): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
+        val sourceTrack = if (isVideoMode) preferOfficialVideo(track) else track
 
-        restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
+        restorePersistentSource(sourceTrack, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
             store(track, restored, isVideoMode, audioQuality)
+            if (sourceTrack.videoUrl != track.videoUrl) store(sourceTrack, restored, isVideoMode, audioQuality)
             return@withContext restored
         }
 
@@ -496,7 +524,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val extractorJob = launch {
                     delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }
+                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(sourceTrack, audioQuality) }
                     result.onSuccess { winner.complete(it) }
                         .onFailure { error ->
                             errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
@@ -505,9 +533,9 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val innerTubeJob = launch {
                     delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
+                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(sourceTrack, errors, true, audioQuality) }.getOrNull()
                     if (stream != null) {
-                        winner.complete(track.withDirectStream(stream))
+                        winner.complete(sourceTrack.withDirectStream(stream))
                     }
                 }
                 launch {
@@ -521,7 +549,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
             if (resolved != null) {
                 store(track, resolved, isVideoMode, audioQuality)
-                persistResolvedSource(track, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)
+                if (sourceTrack.videoUrl != track.videoUrl) store(sourceTrack, resolved, isVideoMode, audioQuality)
+                persistResolvedSource(sourceTrack, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)
                 return@withContext resolved
             }
             val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
@@ -549,6 +578,32 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
+    }
+
+    private suspend fun preferOfficialVideo(track: Track): Track {
+        val sourceVideoId = extractVideoId(track.videoUrl)
+            .ifBlank { track.id.takeIf(youtubeVideoIdRegex::matches).orEmpty() }
+        if (sourceVideoId.isBlank()) return track
+        if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track
+
+        val knownCounterpart = track.counterpartVideoId.trim().takeIf(youtubeVideoIdRegex::matches)
+        if (knownCounterpart != null) {
+            return track.copy(
+                videoUrl = "https://www.youtube.com/watch?v=$knownCounterpart",
+                counterpartVideoId = knownCounterpart,
+                videoType = "MUSIC_VIDEO_TYPE_OMV"
+            )
+        }
+
+        val watch = runCatchingPreservingCancellation {
+            watchRepository.getWatchPlaylist(sourceVideoId, userPreferences.languageCode(), 1)
+        }.getOrNull() ?: return track
+        val official = officialYoutubeMusicVideoCandidate(sourceVideoId, watch) ?: return track
+        return track.copy(
+            videoUrl = "https://www.youtube.com/watch?v=${official.videoId}",
+            counterpartVideoId = official.videoId,
+            videoType = official.videoType
+        )
     }
 
     private suspend fun resolveAudioFast(
