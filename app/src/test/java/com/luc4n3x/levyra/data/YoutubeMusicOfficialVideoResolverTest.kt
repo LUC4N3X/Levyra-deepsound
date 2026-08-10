@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
+import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
+import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -105,6 +109,56 @@ class YoutubeMusicOfficialVideoResolverTest {
     }
 
     @Test
+    fun audioPlaybackSeedDropsVideoRuntimePayload() {
+        val dirtyVideo = track(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=video123456",
+            audioVideoId = "audio123456"
+        ).copy(
+            streamUrl = "https://rr.example/audio",
+            videoStreamUrl = "https://rr.example/video",
+            playbackManifest = videoManifest()
+        )
+
+        val audio = youtubeMusicAudioPlaybackSeed(dirtyVideo)!!
+
+        assertEquals("", audio.streamUrl)
+        assertEquals("", audio.videoStreamUrl)
+        assertNull(audio.playbackManifest)
+        assertEquals("audio123456", audio.audioVideoId)
+        assertEquals("https://www.youtube.com/watch?v=audio123456", audio.videoUrl)
+    }
+
+    @Test
+    fun catalogVideoFallbackRequiresAtvCounterpart() {
+        val atv = track(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=audio123456",
+            audioVideoId = "audio123456"
+        ).copy(
+            counterpartVideoId = "video123456",
+            videoType = "MUSIC_VIDEO_TYPE_ATV",
+            streamUrl = "https://rr.example/audio",
+            videoStreamUrl = "https://rr.example/video",
+            playbackManifest = videoManifest()
+        )
+
+        val trusted = youtubeMusicTrustedCatalogVideoFallback(atv)!!
+        assertEquals("https://www.youtube.com/watch?v=video123456", trusted.videoUrl)
+        assertEquals("video123456", trusted.counterpartVideoId)
+        assertEquals("audio123456", trusted.audioVideoId)
+        assertEquals("", trusted.streamUrl)
+        assertEquals("", trusted.videoStreamUrl)
+        assertNull(trusted.playbackManifest)
+
+        assertNull(
+            youtubeMusicTrustedCatalogVideoFallback(
+                atv.copy(videoType = "MUSIC_VIDEO_TYPE_OMV")
+            )
+        )
+    }
+
+    @Test
     fun audioPrimaryRequestAsksForPersistentAtvWrapper() {
         val payload = buildYoutubeMusicPairingPayload(
             sourceVideoId = "audio123456",
@@ -138,6 +192,30 @@ class YoutubeMusicOfficialVideoResolverTest {
         assertFalse(payload.has("isAudioOnly"))
         assertFalse(payload.has("watchEndpointMusicSupportedConfigs"))
     }
+
+    private fun videoManifest() = ResolvedPlaybackManifest(
+        sourceVideoId = "video123456",
+        provider = "test",
+        resolvedAtMs = 1L,
+        expiresAtMs = Long.MAX_VALUE,
+        durationMs = 180_000L,
+        selectedAudioUrl = "https://rr.example/audio",
+        selectedVideoUrl = "https://rr.example/video",
+        streams = listOf(
+            PlaybackStreamDescriptor(
+                url = "https://rr.example/audio",
+                kind = PlaybackStreamKind.AUDIO,
+                deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                selected = true
+            ),
+            PlaybackStreamDescriptor(
+                url = "https://rr.example/video",
+                kind = PlaybackStreamKind.VIDEO,
+                deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                selected = true
+            )
+        )
+    )
 
     private fun track(
         id: String,
