@@ -47,7 +47,7 @@ internal fun selectYoutubeMusicOfficialCounterpart(
 internal class YoutubeMusicOfficialVideoResolver(
     private val context: Context? = null
 ) {
-    private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
+    private val innertubeKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val client = LevyraHttpClientFactory.youtubePlayer()
     private val cache = ConcurrentHashMap<String, CachedCounterpart>()
 
@@ -56,7 +56,7 @@ internal class YoutubeMusicOfficialVideoResolver(
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): Track? = withContext(Dispatchers.IO) {
         val sourceVideoId = audioVideoId(track)
-        if (sourceVideoId.isBlank() || apiKey.isBlank()) return@withContext null
+        if (sourceVideoId.isBlank() || innertubeKey.isBlank()) return@withContext null
 
         val locale = LevyraContentLocales.forLanguage(languageCode)
         val cacheKey = "$sourceVideoId|${locale.gl.lowercase(Locale.ROOT)}"
@@ -88,7 +88,7 @@ internal class YoutubeMusicOfficialVideoResolver(
             val endpoint = "https://music.youtube.com/youtubei/v1/next"
                 .toHttpUrl()
                 .newBuilder()
-                .addQueryParameter("key", apiKey)
+                .addQueryParameter("key", innertubeKey)
                 .addQueryParameter("prettyPrint", "false")
                 .build()
             val request = Request.Builder()
