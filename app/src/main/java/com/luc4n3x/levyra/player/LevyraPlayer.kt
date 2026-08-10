@@ -23,6 +23,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+internal fun replacementStartPosition(
+    sameTrack: Boolean,
+    requestedPositionMs: Long,
+    activePositionMs: Long,
+    durationMs: Long
+): Long {
+    val requested = requestedPositionMs.coerceAtLeast(0L)
+    val active = activePositionMs.coerceAtLeast(0L)
+    val position = if (sameTrack) maxOf(requested, active) else requested
+    return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
+}
+
 @UnstableApi
 class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
@@ -163,8 +175,14 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         recoveryAttempts = 0
         applyPlaybackParameters(active)
-        if (loadedTrack?.id != track.id || loadedStreamIdentity != identity || loadedVideoMode != videoMode) {
-            replaceSource(track, 0L, videoMode, true)
+        val sameTrack = loadedTrack?.id == track.id
+        if (!sameTrack || loadedStreamIdentity != identity || loadedVideoMode != videoMode) {
+            replaceSource(
+                track = track,
+                positionMs = if (sameTrack) active.currentPosition.coerceAtLeast(0L) else 0L,
+                videoMode = videoMode,
+                playWhenReady = true
+            )
             return
         }
         active.playWhenReady = true
@@ -188,13 +206,20 @@ class LevyraPlayer(context: Context) {
         val recoveryReplacement = recoveryInFlight
         recoveryInFlight = false
         if (!recoveryReplacement) recoveryAttempts = 0
+        val sameTrack = loadedTrack?.id == track.id
+        val startPositionMs = replacementStartPosition(
+            sameTrack = sameTrack,
+            requestedPositionMs = positionMs,
+            activePositionMs = if (active.mediaItemCount > 0) active.currentPosition else 0L,
+            durationMs = track.durationMs
+        )
         loadedTrack = track
         loadedStreamIdentity = streamIdentity(track, videoMode)
         loadedVideoMode = videoMode
         PlaybackService.consumePreparedQueueNext(track.id)
         applyPlaybackParameters(active)
         active.playWhenReady = playWhenReady
-        active.setMediaItem(LevyraMediaItemFactory.build(track, videoMode), positionMs.coerceAtLeast(0L))
+        active.setMediaItem(LevyraMediaItemFactory.build(track, videoMode), startPositionMs)
         active.prepare()
         if (playWhenReady) active.play() else active.pause()
         startSponsorBlockMonitor(track)
