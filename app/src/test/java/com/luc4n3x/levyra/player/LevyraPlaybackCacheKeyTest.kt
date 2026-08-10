@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LevyraPlaybackCacheKeyTest {
@@ -28,6 +29,15 @@ class LevyraPlaybackCacheKeyTest {
         val second = track("https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/200/id/demo.m3u8")
 
         assertEquals(LevyraPlaybackCacheKey.stream(first), LevyraPlaybackCacheKey.stream(second))
+    }
+
+    @Test
+    fun nativeVideoUsesRotatedCacheNamespace() {
+        val track = track("https://rr.example/videoplayback?itag=140").copy(
+            videoStreamUrl = "https://rr.example/videoplayback?itag=137"
+        )
+
+        assertTrue(LevyraPlaybackCacheKey.video(track).contains(":video-v2:itag-137"))
     }
 
     private fun track(streamUrl: String): Track = Track(
