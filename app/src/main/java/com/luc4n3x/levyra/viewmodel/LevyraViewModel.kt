@@ -6894,7 +6894,12 @@ internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): T
     val fromIdUrl = youtubeVideoId(track.id).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val rawId = track.id.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val regular = sequenceOf(fromIdUrl, rawId, fromUrl).firstOrNull(String::isNotBlank).orEmpty()
-    val videoId = if (preferVideo) counterpart else regular.ifBlank { counterpart }
+    val currentIsOfficialVideo = track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)
+    val videoId = if (preferVideo) {
+        if (currentIsOfficialVideo) regular else counterpart.ifBlank { regular }
+    } else {
+        if (currentIsOfficialVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }
+    }
     if (videoId.isBlank()) return null
     val existingUrlId = youtubeVideoId(track.videoUrl)
     val videoUrl = track.videoUrl.takeIf { existingUrlId == videoId }

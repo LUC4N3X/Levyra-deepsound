@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -20,36 +22,139 @@ import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+
+internal const val MAX_EXTRACTOR_RESPONSE_BYTES = 8L * 1024L * 1024L
+
+internal data class NewPipeLocaleConfig(
+    val localization: Localization,
+    val contentCountry: ContentCountry
+)
+
+internal fun newPipeLocaleConfig(languageCode: String): NewPipeLocaleConfig {
+    val locale = LevyraContentLocales.forLanguage(languageCode)
+    return NewPipeLocaleConfig(
+        localization = Localization(locale.languageCode, locale.gl),
+        contentCountry = ContentCountry(locale.gl)
+    )
+}
+
+internal fun newPipeAcceptLanguage(localization: Localization): String {
+    val language = localization.languageCode
+    val country = localization.countryCode
+    val localized = if (country.isBlank()) {
+        language
+    } else {
+        "$language-$country,$language;q=0.9"
+    }
+    return if (language == "en") localized else "$localized,en-US;q=0.8,en;q=0.7"
+}
+
+internal fun readBoundedBody(
+    input: InputStream,
+    declaredLength: Long,
+    maxBytes: Long = MAX_EXTRACTOR_RESPONSE_BYTES
+): ByteArray {
+    if (declaredLength > maxBytes) {
+        throw IOException("NewPipe response exceeds $maxBytes byte limit")
+    }
+
+    val output = ByteArrayOutputStream(
+        declaredLength.takeIf { it in 1..maxBytes }?.toInt() ?: 8192
+    )
+    input.use {
+        val buffer = ByteArray(8192)
+        var total = 0L
+        while (true) {
+            val read = it.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > maxBytes) {
+                throw IOException("NewPipe response exceeds $maxBytes byte limit")
+            }
+            output.write(buffer, 0, read)
+        }
+    }
+    return output.toByteArray()
+}
 
 object NewPipeRuntime {
-    private val initialized = AtomicBoolean(false)
+    private val initLock = Any()
     private val providerInstalled = AtomicBoolean(false)
+    private val localeRequestGeneration = AtomicLong(0L)
+
+    @Volatile
+    private var initialized = false
 
     @Volatile
     private var applicationContext: Context? = null
 
+    @Volatile
+    private var localeConfig = newPipeLocaleConfig(LevyraLanguageCatalog.deviceDefault())
+
+    @Volatile
+    private var appliedLocaleKey = ""
+
+    internal fun attachContext(context: Context) {
+        applicationContext = context.applicationContext
+    }
+
     fun ensure(context: Context? = null) {
-        context?.applicationContext?.let { applicationContext = it }
+        context?.let(::attachContext)
 
-        if (initialized.compareAndSet(false, true)) {
-            NewPipe.init(OkHttpNewPipeDownloader(), Localization("it", "IT"), ContentCountry("IT"))
-        }
+        val localeRequestId = if (context != null) localeRequestGeneration.incrementAndGet() else 0L
+        val requestedLocale = if (context != null) currentLocaleConfig() else null
 
-        val appContext = applicationContext ?: return
-        if (providerInstalled.compareAndSet(false, true)) {
-            try {
-                NewPipe.setYoutubeSessionPoTokenProvider(
-                    LevyraYoutubeSessionPoTokenProvider(appContext)
+        if (context == null && initialized && providerInstalled.get()) return
+
+        synchronized(initLock) {
+            if (requestedLocale != null && localeRequestId == localeRequestGeneration.get()) {
+                localeConfig = requestedLocale
+            }
+
+            val activeLocale = localeConfig
+            val localeKey = localeKey(activeLocale)
+            if (!initialized) {
+                NewPipe.init(
+                    OkHttpNewPipeDownloader(),
+                    activeLocale.localization,
+                    activeLocale.contentCountry
                 )
-            } catch (error: Throwable) {
-                providerInstalled.set(false)
-                throw error
+                initialized = true
+                appliedLocaleKey = localeKey
+            } else if (appliedLocaleKey != localeKey) {
+                NewPipe.setupLocalization(activeLocale.localization, activeLocale.contentCountry)
+                appliedLocaleKey = localeKey
+            }
+
+            val appContext = applicationContext
+            if (appContext != null && !providerInstalled.get()) {
+                try {
+                    NewPipe.setYoutubeSessionPoTokenProvider(
+                        LevyraYoutubeSessionPoTokenProvider(appContext)
+                    )
+                    providerInstalled.set(true)
+                } catch (error: Throwable) {
+                    providerInstalled.set(false)
+                    throw error
+                }
             }
         }
     }
+
+    private fun currentLocaleConfig(): NewPipeLocaleConfig {
+        val languageCode = applicationContext
+            ?.let { LevyraPreferences(it).languageCode() }
+            ?: LevyraLanguageCatalog.deviceDefault()
+        return newPipeLocaleConfig(languageCode)
+    }
+
+    private fun localeKey(config: NewPipeLocaleConfig): String =
+        "${config.localization.languageCode}|${config.localization.countryCode}|${config.contentCountry.countryCode}"
 }
 
 internal fun watchPlaybackCancellation(cancelAction: () -> Unit): AutoCloseable {
@@ -69,10 +174,6 @@ internal fun watchPlaybackCancellation(cancelAction: () -> Unit): AutoCloseable 
 }
 
 private class OkHttpNewPipeDownloader : Downloader() {
-    companion object {
-        private const val MAX_EXTRACTOR_RESPONSE_BYTES = 8L * 1024L * 1024L
-    }
-
     private val client = LevyraHttpClientFactory.extractor().newBuilder()
         .followRedirects(true)
         .followSslRedirects(true)
@@ -235,18 +336,24 @@ private class OkHttpNewPipeDownloader : Downloader() {
             builder.header("Accept", "*/*")
         }
         if (headers["Accept-Language"].isNullOrBlank()) {
-            builder.header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+            builder.header(
+                "Accept-Language",
+                newPipeAcceptLanguage(request.localization() ?: NewPipe.getPreferredLocalization())
+            )
         }
 
         return builder.build()
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
-        val responseBytes = readBoundedBody(response.body)
-        val responseText = responseBytes.toString(StandardCharsets.UTF_8)
         if (response.code == 429) {
             throw IOException("YouTube ha limitato temporaneamente le richieste")
         }
+        val responseBytes = readBoundedBody(
+            response.body.byteStream(),
+            response.body.contentLength()
+        )
+        val responseText = responseBytes.toString(StandardCharsets.UTF_8)
         return Response(
             response.code,
             response.message,
@@ -255,31 +362,6 @@ private class OkHttpNewPipeDownloader : Downloader() {
             responseBytes,
             response.request.url.toString()
         )
-    }
-
-    private fun readBoundedBody(body: okhttp3.ResponseBody): ByteArray {
-        val declaredLength = body.contentLength()
-        if (declaredLength > MAX_EXTRACTOR_RESPONSE_BYTES) {
-            throw IOException("NewPipe response exceeds ${MAX_EXTRACTOR_RESPONSE_BYTES / 1024 / 1024} MiB limit")
-        }
-
-        val output = ByteArrayOutputStream(
-            declaredLength.takeIf { it in 1..MAX_EXTRACTOR_RESPONSE_BYTES }?.toInt() ?: 8192
-        )
-        body.byteStream().use { input ->
-            val buffer = ByteArray(8192)
-            var total = 0L
-            while (true) {
-                val read = input.read(buffer)
-                if (read < 0) break
-                total += read
-                if (total > MAX_EXTRACTOR_RESPONSE_BYTES) {
-                    throw IOException("NewPipe response exceeds ${MAX_EXTRACTOR_RESPONSE_BYTES / 1024 / 1024} MiB limit")
-                }
-                output.write(buffer, 0, read)
-            }
-        }
-        return output.toByteArray()
     }
 
     private fun Map<String, List<String>>.toOkHttpHeaders(): Headers {

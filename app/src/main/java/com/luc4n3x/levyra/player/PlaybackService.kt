@@ -50,6 +50,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.LevyraDashManifestStore
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
@@ -124,6 +125,8 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
         const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
         const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
+        const val EXTRA_PRIMARY_DASH_MANIFEST_KEY = "levyra.primaryDashManifestKey"
+        const val EXTRA_VIDEO_DASH_MANIFEST_KEY = "levyra.videoDashManifestKey"
         const val EXTRA_VIDEO_MODE = "levyra.videoMode"
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
@@ -1651,16 +1654,21 @@ private class LevyraMediaSourceFactory(
         val videoUrl = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL)
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL)
 
+        val primaryDashManifestKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST_KEY)
+            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST_KEY)
+
         if (videoUrl.isNullOrBlank()) {
-            return mediaSourceFor(mediaItem)
+            return mediaSourceFor(mediaItem, primaryDashManifestKey)
         }
 
         val videoCacheKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
         val videoMimeType = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_MIME_TYPE)
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_MIME_TYPE)
+        val videoDashManifestKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST_KEY)
+            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST_KEY)
 
-        val audioSource = mediaSourceFor(mediaItem)
+        val audioSource = mediaSourceFor(mediaItem, primaryDashManifestKey)
         val videoItem = MediaItem.Builder()
             .setUri(videoUrl)
             .apply {
@@ -1668,12 +1676,19 @@ private class LevyraMediaSourceFactory(
                 if (!videoMimeType.isNullOrBlank()) setMimeType(videoMimeType)
             }
             .build()
-        val videoSource = mediaSourceFor(videoItem)
+        val videoSource = mediaSourceFor(videoItem, videoDashManifestKey)
 
         return MergingMediaSource(true, false, videoSource, audioSource)
     }
 
-    private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {
+    private fun mediaSourceFor(mediaItem: MediaItem, inlineDashManifestKey: String? = null): MediaSource {
+        inlineDashManifestKey
+            ?.takeIf { it.isNotBlank() }
+            ?.let(LevyraDashManifestStore::get)
+            ?.takeIf { !it.dynamic }
+            ?.let { manifest ->
+                return DashMediaSource.Factory(dataSourceFactory).createMediaSource(manifest, mediaItem)
+            }
         val localUri = mediaItem.localConfiguration?.uri
         val scheme = localUri?.scheme.orEmpty().lowercase()
         if (scheme == "content" || scheme == "file") {
@@ -1683,7 +1698,8 @@ private class LevyraMediaSourceFactory(
         val uri = localUri?.toString().orEmpty()
         return when {
             isHlsManifestUri(uri) -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-            isDashManifestUri(uri) -> DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            mediaItem.localConfiguration?.mimeType.equals("application/dash+xml", ignoreCase = true) || isDashManifestUri(uri) ->
+                DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
             else -> ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         }
     }

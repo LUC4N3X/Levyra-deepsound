@@ -4,6 +4,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.luc4n3x.levyra.data.LevyraDashManifestStore
+import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.Track
 
 object LevyraMediaItemFactory {
@@ -16,6 +18,7 @@ object LevyraMediaItemFactory {
 
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
+        val primaryDashManifestKey = selectedDashManifestKey(track, streamUrl)
         val builder = MediaItem.Builder()
             .setUri(streamUrl)
             .setCustomCacheKey(
@@ -27,7 +30,11 @@ object LevyraMediaItemFactory {
             )
             .setMediaId(mediaId(track))
             .setMediaMetadata(metadata(track, videoMode))
-        mimeTypeFor(streamUrl, videoMode)?.let { builder.setMimeType(it) }
+        if (primaryDashManifestKey.isNotBlank()) {
+            builder.setMimeType("application/dash+xml")
+        } else {
+            mimeTypeFor(streamUrl, videoMode)?.let { builder.setMimeType(it) }
+        }
         return builder.build()
     }
 
@@ -65,10 +72,19 @@ object LevyraMediaItemFactory {
             putBoolean(PlaybackService.EXTRA_VIDEO_MODE, videoMode)
             track.youtubeLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_LOUDNESS_DB, it) }
             track.youtubePerceptualLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB, it) }
+            selectedDashManifestKey(track, track.streamUrl).takeIf(String::isNotBlank)?.let {
+                putString(PlaybackService.EXTRA_PRIMARY_DASH_MANIFEST_KEY, it)
+            }
             if (videoMode && track.videoStreamUrl.isNotBlank()) {
                 putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
                 putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
-                mimeTypeFor(track.videoStreamUrl, true)?.let { putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, it) }
+                val videoDashManifestKey = selectedDashManifestKey(track, track.videoStreamUrl)
+                if (videoDashManifestKey.isNotBlank()) {
+                    putString(PlaybackService.EXTRA_VIDEO_DASH_MANIFEST_KEY, videoDashManifestKey)
+                    putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, "application/dash+xml")
+                } else {
+                    mimeTypeFor(track.videoStreamUrl, true)?.let { putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, it) }
+                }
             }
         }
         return MediaMetadata.Builder()
@@ -80,6 +96,21 @@ object LevyraMediaItemFactory {
             .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
             .setExtras(extras)
             .build()
+    }
+
+    private fun selectedDashManifestKey(track: Track, url: String): String {
+        if (url.isBlank()) return ""
+        val content = track.playbackManifest?.streams
+            ?.firstOrNull { descriptor ->
+                descriptor.selected &&
+                    descriptor.url == url &&
+                    descriptor.deliveryMethod == PlaybackDeliveryMethod.DASH
+            }
+            ?.manifestContent
+            .orEmpty()
+        if (content.isBlank()) return ""
+        val key = LevyraDashManifestStore.keyFor(url, content)
+        return key.takeIf(LevyraDashManifestStore::contains).orEmpty()
     }
 
     private fun mediaId(track: Track): String {
