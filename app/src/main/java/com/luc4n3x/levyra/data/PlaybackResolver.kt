@@ -586,7 +586,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (sourceVideoId.isBlank()) return track
         if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track
 
-        val knownCounterpart = track.counterpartVideoId.trim().takeIf(youtubeVideoIdRegex::matches)
+        val currentType = track.videoType.uppercase(java.util.Locale.ROOT)
+        val currentIsVisual = currentType.contains("OMV") || currentType.contains("UGC") || currentType.contains("MUSIC_VIDEO")
+        val knownCounterpart = track.counterpartVideoId
+            .trim()
+            .takeIf(youtubeVideoIdRegex::matches)
+            ?.takeIf { it != sourceVideoId && !currentIsVisual }
         if (knownCounterpart != null) {
             return track.copy(
                 videoUrl = "https://www.youtube.com/watch?v=$knownCounterpart",
