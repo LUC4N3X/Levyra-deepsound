@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -83,6 +84,27 @@ class YoutubeMusicOfficialVideoResolverTest {
     }
 
     @Test
+    fun originalTrackIdWinsOverStaleVideoSearchSelection() {
+        val track = track(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=wrong123456"
+        )
+
+        assertEquals("audio123456", youtubeMusicAudioSourceId(track))
+    }
+
+    @Test
+    fun explicitAudioVideoIdWinsOverTrackAndVideoSelection() {
+        val track = track(
+            id = "other123456",
+            videoUrl = "https://www.youtube.com/watch?v=wrong123456",
+            audioVideoId = "audio123456"
+        )
+
+        assertEquals("audio123456", youtubeMusicAudioSourceId(track))
+    }
+
+    @Test
     fun audioPrimaryRequestAsksForPersistentAtvWrapper() {
         val payload = buildYoutubeMusicPairingPayload(
             sourceVideoId = "audio123456",
@@ -116,6 +138,31 @@ class YoutubeMusicOfficialVideoResolverTest {
         assertFalse(payload.has("isAudioOnly"))
         assertFalse(payload.has("watchEndpointMusicSupportedConfigs"))
     }
+
+    private fun track(
+        id: String,
+        videoUrl: String,
+        audioVideoId: String = ""
+    ) = Track(
+        id = id,
+        title = "Title",
+        artist = "Artist",
+        album = "Album",
+        durationMs = 180_000L,
+        streamUrl = "",
+        videoUrl = videoUrl,
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "YouTube Music",
+        moodTags = emptySet(),
+        energy = 0,
+        vocal = 0,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0,
+        audioVideoId = audioVideoId
+    )
 
     private fun watchTrack(
         videoId: String,
