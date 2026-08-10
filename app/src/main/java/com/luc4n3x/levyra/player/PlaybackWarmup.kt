@@ -19,6 +19,26 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+internal data class VideoWarmupPlan(
+    val cachePrimaryAsAudio: Boolean,
+    val probeUrl: String
+)
+
+internal fun videoWarmupPlan(track: Track): VideoWarmupPlan {
+    val splitVideo = track.videoStreamUrl.trim()
+    return if (splitVideo.isNotBlank()) {
+        VideoWarmupPlan(
+            cachePrimaryAsAudio = track.streamUrl.isNotBlank(),
+            probeUrl = splitVideo
+        )
+    } else {
+        VideoWarmupPlan(
+            cachePrimaryAsAudio = false,
+            probeUrl = track.streamUrl.trim()
+        )
+    }
+}
+
 @UnstableApi
 class PlaybackWarmup(context: Context) {
     private val appContext = context.applicationContext
@@ -31,12 +51,13 @@ class PlaybackWarmup(context: Context) {
     )
 
     suspend fun primeVideo(track: Track): Boolean = coroutineScope {
+        val plan = videoWarmupPlan(track)
         val jobs = buildList {
-            if (track.streamUrl.isNotBlank()) {
+            if (plan.cachePrimaryAsAudio) {
                 add(async { prime(track, VIDEO_AUDIO_PRIME_BYTES) })
             }
-            if (track.videoStreamUrl.isNotBlank()) {
-                add(async { probeVideoUrl(track.videoStreamUrl) })
+            if (plan.probeUrl.isNotBlank()) {
+                add(async { probeVideoUrl(plan.probeUrl) })
             }
         }
         if (jobs.isEmpty()) false else jobs.awaitAll().any { it }
@@ -89,11 +110,11 @@ class PlaybackWarmup(context: Context) {
         val lock = primeLocks.computeIfAbsent(cacheKey) { Mutex() }
         try {
             lock.withLock {
-                runCatching {
+                runCatchingPreservingCancellation {
                     val requestedBytes = bytes.coerceIn(MIN_PRIME_BYTES, MAX_PRIME_BYTES)
                     val cache = LevyraMediaCache.get(appContext)
                     if (cache.isCached(cacheKey, 0L, requestedBytes)) {
-                        return@runCatching true
+                        return@runCatchingPreservingCancellation true
                     }
                     val upstream = LevyraYoutubeDataSource.Factory(
                         PlaybackNetworkStack.warmupFactory(appContext)
