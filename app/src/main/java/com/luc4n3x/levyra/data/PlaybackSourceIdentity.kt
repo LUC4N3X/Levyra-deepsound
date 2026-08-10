@@ -7,15 +7,16 @@ import java.util.Locale
 
 object PlaybackSourceIdentity {
     private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
+    private const val VIDEO_IDENTITY_NAMESPACE = "youtube-video-v2"
     private val youtubeIdPattern = Regex(YOUTUBE_VIDEO_ID_PATTERN)
     private val youtubeUrlPattern = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
 
     fun canonicalKey(track: Track): String {
         val isrc = track.isrc.trim().lowercase(Locale.ROOT)
-        val sourceVideoId = sourceVideoId(track).lowercase(Locale.ROOT)
+        val youtubeIdentity = youtubeIdentityToken(track)
         if (isrc.isNotBlank()) {
-            return if (sourceVideoId.isNotBlank()) {
-                "isrc:$isrc|youtube:$sourceVideoId"
+            return if (youtubeIdentity.isNotBlank()) {
+                "isrc:$isrc|$youtubeIdentity"
             } else {
                 "isrc:$isrc"
             }
@@ -61,7 +62,7 @@ object PlaybackSourceIdentity {
         preferMp4Audio: Boolean = false
     ): String {
         val mode = when {
-            videoMode -> "video"
+            videoMode -> "video-v2"
             preferMp4Audio -> "audio-mp4"
             else -> "audio"
         }
@@ -69,10 +70,22 @@ object PlaybackSourceIdentity {
     }
 
     private fun recordingDiscriminator(track: Track): String {
-        sourceVideoId(track).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
+        youtubeIdentityToken(track).takeIf { it.isNotBlank() }?.let { return it }
         normalizeIdentifier(track.id).takeIf { it.isNotBlank() }?.let { return "id:$it" }
         normalizeIdentifier(track.counterpartVideoId).takeIf { it.isNotBlank() }?.let { return "counterpart:$it" }
         return "metadata-only"
+    }
+
+    private fun youtubeIdentityToken(track: Track): String {
+        val sourceId = sourceVideoId(track).lowercase(Locale.ROOT)
+        if (sourceId.isBlank()) return ""
+        val audioId = track.audioVideoId.trim().lowercase(Locale.ROOT)
+        val selectedVideoId = extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT)
+        val explicitVideoSelection = youtubeIdPattern.matches(audioId) &&
+            selectedVideoId.isNotBlank() &&
+            selectedVideoId != audioId
+        val namespace = if (explicitVideoSelection) VIDEO_IDENTITY_NAMESPACE else "youtube"
+        return "$namespace:$sourceId"
     }
 
     private fun isAudioSelection(track: Track): Boolean {
