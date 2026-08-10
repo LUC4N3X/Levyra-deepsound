@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackSourceIdentityTest {
@@ -33,7 +34,8 @@ class PlaybackSourceIdentityTest {
         )
         val officialVideo = audio.copy(
             videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
-            counterpartVideoId = "fcnDmrtj6Sk"
+            counterpartVideoId = "fcnDmrtj6Sk",
+            audioVideoId = "lFQdcPTTzSg"
         )
 
         assertNotEquals(
@@ -44,6 +46,7 @@ class PlaybackSourceIdentityTest {
             PlaybackSourceIdentity.matchKey(audio, videoMode = true, audioQuality = "High"),
             PlaybackSourceIdentity.matchKey(officialVideo, videoMode = true, audioQuality = "High")
         )
+        assertTrue(PlaybackSourceIdentity.canonicalKey(officialVideo).contains("youtube-video-v2"))
 
         val audioWithIsrc = audio.copy(isrc = "USQX92601234")
         val officialVideoWithIsrc = officialVideo.copy(isrc = "USQX92601234")
@@ -51,6 +54,13 @@ class PlaybackSourceIdentityTest {
             PlaybackSourceIdentity.canonicalKey(audioWithIsrc),
             PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc)
         )
+        assertTrue(PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc).contains("youtube-video-v2"))
+    }
+
+    @Test
+    fun videoPersistentMatchUsesStrictPairingNamespace() {
+        val key = PlaybackSourceIdentity.matchKey(track(), videoMode = true, audioQuality = "High")
+        assertTrue(key.contains("|video-v2|high"))
     }
 
     @Test
