@@ -1,0 +1,56 @@
+name: Refine official video lookup
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    if: github.event.pull_request.head.ref == 'agent/newpipe-runtime-hardening' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/newpipe-runtime-hardening
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Refine official counterpart trust
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt")
+          text = path.read_text()
+          old = '''        if (sourceVideoId.isBlank()) return track\n        if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track\n\n        val knownCounterpart = track.counterpartVideoId.trim().takeIf(youtubeVideoIdRegex::matches)\n        if (knownCounterpart != null) {'''
+          new = '''        if (sourceVideoId.isBlank()) return track\n        if (track.videoType.equals("MUSIC_VIDEO_TYPE_OMV", ignoreCase = true)) return track\n\n        val currentType = track.videoType.uppercase(java.util.Locale.ROOT)\n        val currentIsVisual = currentType.contains("OMV") || currentType.contains("UGC") || currentType.contains("MUSIC_VIDEO")\n        val knownCounterpart = track.counterpartVideoId\n            .trim()\n            .takeIf(youtubeVideoIdRegex::matches)\n            ?.takeIf { it != sourceVideoId && !currentIsVisual }\n        if (knownCounterpart != null) {'''
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one target, found {text.count(old)}")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Verify focused playback tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.player.LevyraPlayerTest' \
+            --tests 'com.luc4n3x.levyra.data.OfficialVideoCandidateTest'
+
+      - name: Commit refinement and remove helper workflow
+        shell: bash
+        run: |
+          rm .github/workflows/playback-official-refine.yml
+          git config user.name "Levyra Worker"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: verify official video counterparts"
+          git push origin HEAD:agent/newpipe-runtime-hardening
