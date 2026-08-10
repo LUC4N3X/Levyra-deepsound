@@ -12,7 +12,36 @@ class PlaybackHandoffTest {
                 sameTrack = true,
                 requestedPositionMs = 6_000L,
                 activePositionMs = 9_000L,
-                durationMs = 180_000L
+                durationMs = 180_000L,
+                allowBackwardActivePosition = true
+            )
+        )
+    }
+
+    @Test
+    fun modeSwitchRespectsBackwardSeekMadeWhileVideoResolves() {
+        assertEquals(
+            31_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 60_000L,
+                activePositionMs = 31_000L,
+                durationMs = 180_000L,
+                allowBackwardActivePosition = true
+            )
+        )
+    }
+
+    @Test
+    fun smallPositionDriftDoesNotJumpBackward() {
+        assertEquals(
+            60_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 60_000L,
+                activePositionMs = 59_400L,
+                durationMs = 180_000L,
+                allowBackwardActivePosition = true
             )
         )
     }
