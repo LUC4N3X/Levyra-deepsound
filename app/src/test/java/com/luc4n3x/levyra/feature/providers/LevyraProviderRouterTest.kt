@@ -95,6 +95,68 @@ class LevyraProviderRouterTest {
     }
 
     @Test
+    fun videoResolutionSkipsAudioOnlyProvider() = runBlocking {
+        val audioOnlyCalls = AtomicInteger(0)
+        val audioOnly = object : LevyraPlaybackProvider {
+            override val id: String = "audio_only"
+            override val priority: Int = 0
+
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                audioOnlyCalls.incrementAndGet()
+                return track.copy(streamUrl = "https://example.com/audio.m4a")
+            }
+
+            override suspend fun resolveForOffline(track: Track): Track = track
+        }
+        val video = object : LevyraPlaybackProvider {
+            override val id: String = "video"
+            override val priority: Int = 10
+
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                return track.copy(
+                    streamUrl = "https://example.com/audio.m4a",
+                    videoStreamUrl = "https://example.com/video.mp4"
+                )
+            }
+
+            override suspend fun resolveForOffline(track: Track): Track = track
+        }
+        val router = LevyraProviderRouter(
+            catalogProviders = emptyList(),
+            playbackProviders = listOf(audioOnly, video),
+            playbackTimeoutMs = 1_000L
+        )
+
+        val resolved = router.resolve(track(), videoMode = true)
+
+        assertEquals(1, audioOnlyCalls.get())
+        assertEquals("https://example.com/video.mp4", resolved.videoStreamUrl)
+    }
+
+    @Test
+    fun audioResolutionStillAcceptsAudioOnlyProvider() = runBlocking {
+        val provider = object : LevyraPlaybackProvider {
+            override val id: String = "audio"
+            override val priority: Int = 0
+
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                return track.copy(streamUrl = "https://example.com/audio.m4a")
+            }
+
+            override suspend fun resolveForOffline(track: Track): Track = track
+        }
+        val router = LevyraProviderRouter(
+            catalogProviders = emptyList(),
+            playbackProviders = listOf(provider),
+            playbackTimeoutMs = 1_000L
+        )
+
+        val resolved = router.resolve(track(), videoMode = false)
+
+        assertEquals("https://example.com/audio.m4a", resolved.streamUrl)
+    }
+
+    @Test
     fun catalogFallsBackAfterProviderFailure() = runBlocking {
         val failures = AtomicInteger(0)
         val primary = FakeCatalogProvider(
