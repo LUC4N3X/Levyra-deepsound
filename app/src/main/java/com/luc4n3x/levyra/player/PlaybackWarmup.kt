@@ -35,10 +35,52 @@ class PlaybackWarmup(context: Context) {
                 add(async { prime(track, VIDEO_AUDIO_PRIME_BYTES) })
             }
             if (track.videoStreamUrl.isNotBlank()) {
-                add(async { primeUrl(track.videoStreamUrl, LevyraPlaybackCacheKey.video(track), VIDEO_PRIME_BYTES) })
+                add(async { probeVideoUrl(track.videoStreamUrl) })
             }
         }
         if (jobs.isEmpty()) false else jobs.awaitAll().any { it }
+    }
+
+    private suspend fun probeVideoUrl(url: String): Boolean = withContext(Dispatchers.IO) {
+        if (url.isBlank()) return@withContext false
+        val lockKey = "video-probe:$url"
+        val lock = primeLocks.computeIfAbsent(lockKey) { Mutex() }
+        try {
+            lock.withLock {
+                runCatching {
+                    val source = LevyraYoutubeDataSource.Factory(
+                        PlaybackNetworkStack.warmupFactory(appContext)
+                            .setDefaultRequestProperties(
+                                mapOf(
+                                    "Accept" to "*/*",
+                                    "Accept-Encoding" to "identity"
+                                )
+                            )
+                    ).createDataSource()
+                    try {
+                        val dataSpec = DataSpec.Builder()
+                            .setUri(Uri.parse(url))
+                            .setPosition(0L)
+                            .setLength(VIDEO_PROBE_BYTES)
+                            .build()
+                        source.open(dataSpec)
+                        val buffer = ByteArray(VIDEO_PROBE_BUFFER_BYTES)
+                        var remaining = VIDEO_PROBE_BYTES
+                        while (remaining > 0L) {
+                            val read = source.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                            if (read <= 0) break
+                            remaining -= read
+                        }
+                        Timber.d("video warmup probed bytes=%d", VIDEO_PROBE_BYTES - remaining)
+                        true
+                    } finally {
+                        runCatching { source.close() }
+                    }
+                }.onFailure { Timber.d(it, "video warmup probe skipped") }.getOrDefault(false)
+            }
+        } finally {
+            primeLocks.remove(lockKey, lock)
+        }
     }
 
     private suspend fun primeUrl(url: String, cacheKey: String, bytes: Long): Boolean = withContext(Dispatchers.IO) {
@@ -90,7 +132,8 @@ class PlaybackWarmup(context: Context) {
         private const val MIN_PRIME_BYTES = 64L * 1024L
         private const val DEFAULT_PRIME_BYTES = 384L * 1024L
         private const val VIDEO_AUDIO_PRIME_BYTES = 256L * 1024L
-        private const val VIDEO_PRIME_BYTES = 1024L * 1024L
+        private const val VIDEO_PROBE_BYTES = 96L * 1024L
+        private const val VIDEO_PROBE_BUFFER_BYTES = 32 * 1024
         private const val MAX_PRIME_BYTES = 1536L * 1024L
         private const val PRIME_FRAGMENT_BYTES = 256L * 1024L
         private const val PRIME_BUFFER_BYTES = 128 * 1024
