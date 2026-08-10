@@ -23,15 +23,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+private const val MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS = 1_500L
+
 internal fun replacementStartPosition(
     sameTrack: Boolean,
     requestedPositionMs: Long,
     activePositionMs: Long,
-    durationMs: Long
+    durationMs: Long,
+    allowBackwardActivePosition: Boolean = false
 ): Long {
     val requested = requestedPositionMs.coerceAtLeast(0L)
     val active = activePositionMs.coerceAtLeast(0L)
-    val position = if (sameTrack) maxOf(requested, active) else requested
+    val position = when {
+        !sameTrack -> requested
+        allowBackwardActivePosition && active + MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS < requested -> active
+        else -> maxOf(requested, active)
+    }
     return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
 }
 
@@ -211,17 +218,23 @@ class LevyraPlayer(context: Context) {
             sameTrack = sameTrack,
             requestedPositionMs = positionMs,
             activePositionMs = if (active.mediaItemCount > 0) active.currentPosition else 0L,
-            durationMs = track.durationMs
+            durationMs = track.durationMs,
+            allowBackwardActivePosition = sameTrack && !recoveryReplacement
         )
+        val effectivePlayWhenReady = if (sameTrack && !recoveryReplacement && active.mediaItemCount > 0) {
+            active.playWhenReady
+        } else {
+            playWhenReady
+        }
         loadedTrack = track
         loadedStreamIdentity = streamIdentity(track, videoMode)
         loadedVideoMode = videoMode
         PlaybackService.consumePreparedQueueNext(track.id)
         applyPlaybackParameters(active)
-        active.playWhenReady = playWhenReady
+        active.playWhenReady = effectivePlayWhenReady
         active.setMediaItem(LevyraMediaItemFactory.build(track, videoMode), startPositionMs)
         active.prepare()
-        if (playWhenReady) active.play() else active.pause()
+        if (effectivePlayWhenReady) active.play() else active.pause()
         startSponsorBlockMonitor(track)
     }
 
