@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.feature.providers
 
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.YoutubeMusicOfficialVideoResolver
 import com.luc4n3x.levyra.data.YoutubeMusicPlaylistDetail
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.AlbumDetail
@@ -189,13 +190,19 @@ class LevyraNativePlaybackProvider(
 ) : LevyraPlaybackProvider {
     override val id: String = "levyra_native"
     override val priority: Int = 10
+    private val officialVideoResolver = YoutubeMusicOfficialVideoResolver()
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
-        val first = resolver.resolve(track, videoMode)
+        val sourceTrack = if (videoMode) {
+            officialVideoResolver.resolve(track) ?: track
+        } else {
+            track
+        }
+        val first = resolver.resolve(sourceTrack, videoMode)
         if (!videoMode || first.hasVideoPlaybackPayload()) return first
 
         resolver.reportPlaybackFailure(first, true, "Sorgente video priva di una traccia video")
-        val retry = resolver.resolve(track.copy(streamUrl = "", videoStreamUrl = ""), true)
+        val retry = resolver.resolve(sourceTrack.copy(streamUrl = "", videoStreamUrl = ""), true)
         if (!retry.hasVideoPlaybackPayload()) {
             throw LevyraProviderMissException("Il resolver non ha restituito una traccia video")
         }
