@@ -595,8 +595,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (knownCounterpart != null) {
             return track.copy(
                 videoUrl = "https://www.youtube.com/watch?v=$knownCounterpart",
-                counterpartVideoId = knownCounterpart,
-                videoType = "MUSIC_VIDEO_TYPE_OMV"
+                counterpartVideoId = knownCounterpart
             )
         }
 
@@ -606,8 +605,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val official = officialYoutubeMusicVideoCandidate(sourceVideoId, watch) ?: return track
         return track.copy(
             videoUrl = "https://www.youtube.com/watch?v=${official.videoId}",
-            counterpartVideoId = official.videoId,
-            videoType = official.videoType
+            counterpartVideoId = official.videoId
         )
     }
 
@@ -1450,20 +1448,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean,
         audioQuality: String
     ): DirectStream = withContext(Dispatchers.IO) {
+        val requestVideoId = extractVideoId(track.videoUrl).ifBlank { track.id }
         val session = if (profile.requiresPoToken) {
             playbackSecurity.currentSession()
         } else {
             playbackSecurity.cachedSession()
         }
-        val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(track.id, session) else null
+        val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(requestVideoId, session) else null
         val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
-            runCatchingPreservingCancellation { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(track.id) }.getOrNull()
+            runCatchingPreservingCancellation { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(requestVideoId) }.getOrNull()
         } else {
             null
         }
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(
-            videoId = track.id,
+            videoId = requestVideoId,
             profile = profile,
             visitorData = session.visitorData,
             playerPoToken = poTokens?.playerToken,
@@ -1475,7 +1474,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
-            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${track.id}" else track.videoUrl)
+            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${requestVideoId}" else track.videoUrl)
             .header("User-Agent", profile.userAgent)
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
@@ -1536,7 +1535,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             var bestAudioFormat: JSONObject? = null
             for ((format, _, label) in audioCandidates) {
                 val url = format.resolveFormatUrl(
-                    videoId = track.id,
+                    videoId = requestVideoId,
                     streamingPoToken = poTokens?.streamingToken,
                     transformThrottling = profile.clientName.startsWith("WEB")
                 )
@@ -1552,7 +1551,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until adaptiveFormats.length()) {
                         val format = adaptiveFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
+                        val url = format.resolveFormatUrl(requestVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1574,7 +1573,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until muxedFormats.length()) {
                         val format = muxedFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
+                        val url = format.resolveFormatUrl(requestVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1601,7 +1600,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val hlsUrl = if (selection == null) {
                     streamingData.optString("hlsManifestUrl")
                         .takeIf { it.isNotBlank() }
-                        ?.let { it.finalizeStreamingUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB")) }
+                        ?.let { it.finalizeStreamingUrl(requestVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB")) }
                         ?.takeIf { !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
                         .orEmpty()
                 } else {
@@ -1613,7 +1612,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 return@responseUse when {
                     selection?.candidate?.muxed == true -> {
                         val manifest = buildManifest(
-                            sourceVideoId = track.id,
+                            sourceVideoId = requestVideoId,
                             provider = "YouTube ${profile.label}",
                             durationMs = duration,
                             selectedAudioUrl = selection.candidate.url,
@@ -1634,7 +1633,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                     selection != null && bestAudioUrl.isNotBlank() -> {
                         val manifest = buildManifest(
-                            sourceVideoId = track.id,
+                            sourceVideoId = requestVideoId,
                             provider = "YouTube ${profile.label}",
                             durationMs = duration,
                             selectedAudioUrl = bestAudioUrl,
@@ -1658,7 +1657,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                     hlsUrl.isNotBlank() -> {
                         val manifest = buildManifest(
-                            sourceVideoId = track.id,
+                            sourceVideoId = requestVideoId,
                             provider = "YouTube HLS ${profile.label}",
                             durationMs = duration,
                             selectedAudioUrl = hlsUrl,
@@ -1686,7 +1685,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
             val manifest = buildManifest(
-                sourceVideoId = track.id,
+                sourceVideoId = requestVideoId,
                 provider = "YouTube ${profile.label}",
                 durationMs = duration,
                 selectedAudioUrl = bestAudioUrl,

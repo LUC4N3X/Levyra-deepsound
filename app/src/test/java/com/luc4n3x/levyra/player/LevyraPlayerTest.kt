@@ -82,6 +82,24 @@ class LevyraPlayerTest {
     }
 
     @Test
+    fun youtubePlayableTrackKeepsCanonicalAudioIdentityWithSelectedOfficialUrl() {
+        val hybrid = track(streamUrl = "").copy(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=video123456",
+            counterpartVideoId = "video123456",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+
+        val video = youtubePlayableTrack(hybrid, preferVideo = true)
+        val audio = youtubePlayableTrack(hybrid, preferVideo = false)
+
+        assertEquals("audio123456", video?.id)
+        assertEquals("https://www.youtube.com/watch?v=video123456", video?.videoUrl)
+        assertEquals("audio123456", audio?.id)
+        assertEquals("https://www.youtube.com/watch?v=audio123456", audio?.videoUrl)
+    }
+
+    @Test
     fun youtubePlayableTrackAllowsCanonicalVideoWhileOfficialLookupRuns() {
         val canonical = track(streamUrl = "").copy(counterpartVideoId = "")
 
