@@ -88,6 +88,24 @@ class YoutubeMusicOfficialVideoResolverTest {
     }
 
     @Test
+    fun pairedUgcVideoIsNotAcceptedAsOfficial() {
+        val sourceId = "audio123456"
+        val ugc = watchTrack(
+            videoId = "video123456",
+            title = "Song",
+            videoType = "MUSIC_VIDEO_TYPE_UGC"
+        )
+        val audio = watchTrack(
+            videoId = sourceId,
+            title = "Song",
+            videoType = "MUSIC_VIDEO_TYPE_ATV",
+            counterpart = ugc
+        )
+
+        assertNull(selectYoutubeMusicOfficialCounterpart(sourceId, listOf(audio)))
+    }
+
+    @Test
     fun originalTrackIdWinsOverStaleVideoSearchSelection() {
         val track = track(
             id = "audio123456",
@@ -127,35 +145,6 @@ class YoutubeMusicOfficialVideoResolverTest {
         assertNull(audio.playbackManifest)
         assertEquals("audio123456", audio.audioVideoId)
         assertEquals("https://www.youtube.com/watch?v=audio123456", audio.videoUrl)
-    }
-
-    @Test
-    fun catalogVideoFallbackRequiresAtvCounterpart() {
-        val atv = track(
-            id = "audio123456",
-            videoUrl = "https://www.youtube.com/watch?v=audio123456",
-            audioVideoId = "audio123456"
-        ).copy(
-            counterpartVideoId = "video123456",
-            videoType = "MUSIC_VIDEO_TYPE_ATV",
-            streamUrl = "https://rr.example/audio",
-            videoStreamUrl = "https://rr.example/video",
-            playbackManifest = videoManifest()
-        )
-
-        val trusted = youtubeMusicTrustedCatalogVideoFallback(atv)!!
-        assertEquals("https://www.youtube.com/watch?v=video123456", trusted.videoUrl)
-        assertEquals("video123456", trusted.counterpartVideoId)
-        assertEquals("audio123456", trusted.audioVideoId)
-        assertEquals("", trusted.streamUrl)
-        assertEquals("", trusted.videoStreamUrl)
-        assertNull(trusted.playbackManifest)
-
-        assertNull(
-            youtubeMusicTrustedCatalogVideoFallback(
-                atv.copy(videoType = "MUSIC_VIDEO_TYPE_OMV")
-            )
-        )
     }
 
     @Test
