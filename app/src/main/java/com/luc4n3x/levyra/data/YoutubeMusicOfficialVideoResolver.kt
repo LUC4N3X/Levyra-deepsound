@@ -40,6 +40,49 @@ internal fun selectYoutubeMusicOfficialCounterpart(
     }
 }
 
+internal fun buildYoutubeMusicPairingPayload(
+    sourceVideoId: String,
+    hl: String,
+    gl: String,
+    audioPrimary: Boolean
+): JSONObject {
+    val payload = JSONObject()
+        .put("videoId", sourceVideoId)
+        .put(
+            "context",
+            JSONObject()
+                .put(
+                    "client",
+                    JSONObject()
+                        .put("clientName", "WEB_REMIX")
+                        .put("clientVersion", "1.20260423.01.00")
+                        .put("hl", hl)
+                        .put("gl", gl)
+                        .put("platform", "DESKTOP")
+                )
+                .put("user", JSONObject())
+        )
+        .put("enablePersistentPlaylistPanel", true)
+        .put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
+        .put("playlistId", "RDAMVM$sourceVideoId")
+
+    if (audioPrimary) {
+        payload
+            .put("isAudioOnly", true)
+            .put(
+                "watchEndpointMusicSupportedConfigs",
+                JSONObject().put(
+                    "watchEndpointMusicConfig",
+                    JSONObject()
+                        .put("hasPersistentPlaylistPanel", true)
+                        .put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")
+                )
+            )
+    }
+
+    return payload
+}
+
 internal class YoutubeMusicOfficialVideoResolver {
     private val client = LevyraHttpClientFactory.youtubePlayer()
     private val cache = ConcurrentHashMap<String, CachedCounterpart>()
@@ -62,45 +105,52 @@ internal class YoutubeMusicOfficialVideoResolver {
         }
 
         val counterpart = runCatchingPreservingCancellation {
-            val payload = JSONObject()
-                .put("videoId", sourceVideoId)
-                .put(
-                    "context",
-                    JSONObject()
-                        .put(
-                            "client",
-                            JSONObject()
-                                .put("clientName", WEB_REMIX_CLIENT_NAME)
-                                .put("clientVersion", WEB_REMIX_CLIENT_VERSION)
-                                .put("hl", locale.hl)
-                                .put("gl", locale.gl)
-                                .put("platform", "DESKTOP")
-                        )
-                        .put("user", JSONObject())
-                )
-            val request = Request.Builder()
-                .url("https://music.youtube.com/youtubei/v1/next?prettyPrint=false")
-                .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .header("Accept", "application/json")
-                .header("Accept-Encoding", "br,gzip")
-                .header("X-Goog-Api-Format-Version", "1")
-                .header("X-Origin", YOUTUBE_MUSIC_ORIGIN)
-                .header("Referer", "$YOUTUBE_MUSIC_ORIGIN/")
-                .header("User-Agent", WEB_USER_AGENT)
-                .header("X-Youtube-Client-Name", WEB_REMIX_CLIENT_ID)
-                .header("X-Youtube-Client-Version", WEB_REMIX_CLIENT_VERSION)
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string().orEmpty()
-                if (!response.isSuccessful || responseBody.isBlank()) return@use null
-                val playlist = YoutubeMusicWatchParser.parseWatchPlaylist(JSONObject(responseBody))
-                selectYoutubeMusicOfficialCounterpart(sourceVideoId, playlist.tracks)
-            }
+            requestCounterpart(
+                sourceVideoId = sourceVideoId,
+                hl = locale.hl,
+                gl = locale.gl,
+                audioPrimary = true
+            ) ?: requestCounterpart(
+                sourceVideoId = sourceVideoId,
+                hl = locale.hl,
+                gl = locale.gl,
+                audioPrimary = false
+            )
         }.getOrNull() ?: return@withContext null
 
         remember(cacheKey, counterpart, now)
         track.withOfficialCounterpart(sourceVideoId, counterpart)
+    }
+
+    private fun requestCounterpart(
+        sourceVideoId: String,
+        hl: String,
+        gl: String,
+        audioPrimary: Boolean
+    ): YoutubeMusicWatchTrack? {
+        val request = Request.Builder()
+            .url("$YOUTUBE_MUSIC_ORIGIN/youtubei/v1/next?prettyPrint=false")
+            .post(
+                buildYoutubeMusicPairingPayload(sourceVideoId, hl, gl, audioPrimary)
+                    .toString()
+                    .toRequestBody(JSON_MEDIA_TYPE)
+            )
+            .header("Accept", "application/json")
+            .header("Accept-Encoding", "br,gzip")
+            .header("X-Goog-Api-Format-Version", "1")
+            .header("X-Origin", YOUTUBE_MUSIC_ORIGIN)
+            .header("Referer", "$YOUTUBE_MUSIC_ORIGIN/")
+            .header("User-Agent", WEB_USER_AGENT)
+            .header("X-Youtube-Client-Name", WEB_REMIX_CLIENT_ID)
+            .header("X-Youtube-Client-Version", WEB_REMIX_CLIENT_VERSION)
+            .build()
+
+        return client.newCall(request).execute().use { response ->
+            val responseBody = response.body?.string().orEmpty()
+            if (!response.isSuccessful || responseBody.isBlank()) return@use null
+            val playlist = YoutubeMusicWatchParser.parseWatchPlaylist(JSONObject(responseBody))
+            selectYoutubeMusicOfficialCounterpart(sourceVideoId, playlist.tracks)
+        }
     }
 
     private fun audioVideoId(track: Track): String {
@@ -144,7 +194,6 @@ internal class YoutubeMusicOfficialVideoResolver {
         private val YOUTUBE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private const val YOUTUBE_MUSIC_ORIGIN = "https://music.youtube.com"
-        private const val WEB_REMIX_CLIENT_NAME = "WEB_REMIX"
         private const val WEB_REMIX_CLIENT_ID = "67"
         private const val WEB_REMIX_CLIENT_VERSION = "1.20260423.01.00"
         private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
