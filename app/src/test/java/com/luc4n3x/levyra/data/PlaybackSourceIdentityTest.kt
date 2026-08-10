@@ -101,6 +101,17 @@ class PlaybackSourceIdentityTest {
         assertEquals("abcdefghijk", PlaybackSourceIdentity.extractYoutubeVideoId("https://youtu.be/abcdefghijk"))
     }
 
+    @Test
+    fun sourceVideoIdUsesSelectedOfficialUrlWithoutReplacingCanonicalId() {
+        val selected = track(
+            id = "catalog-recording-1",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
+        ).copy(audioVideoId = "lFQdcPTTzSg")
+
+        assertEquals("fcnDmrtj6Sk", PlaybackSourceIdentity.sourceVideoId(selected))
+        assertEquals("catalog-recording-1", selected.id)
+    }
+
     private fun track(
         id: String = "track-id",
         title: String = "Song Title",

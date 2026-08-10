@@ -386,11 +386,11 @@ internal object EditorialCatalogParser {
                 albumBrowseId = albumBrowseId,
                 artistBrowseIds = listOfNotNull(artistBrowseId.takeIf(String::isNotBlank)),
                 counterpartVideoId = youtubeOfficialVideoId,
-                videoType = when {
-                    youtubeOfficialVideoId.isNotBlank() -> "MUSIC_VIDEO_TYPE_OMV"
-                    youtubeAudioVideoId.isNotBlank() -> "MUSIC_VIDEO_TYPE_ATV"
-                    else -> ""
-                },
+                // videoType describes the identity in videoUrl. The official OMV is a
+                // counterpart, while the primary playback identity remains the ATV.
+                videoType = youtubeAudioVideoId.takeIf(String::isNotBlank)
+                    ?.let { "MUSIC_VIDEO_TYPE_ATV" }
+                    .orEmpty(),
                 metadataProvider = when {
                     releaseCollection && youtubePlaybackId.isNotBlank() -> "$EDITORIAL_RELEASE_SOURCE + YouTube Music"
                     releaseCollection -> EDITORIAL_RELEASE_SOURCE

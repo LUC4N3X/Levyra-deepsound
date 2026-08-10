@@ -29,6 +29,7 @@ object TrackJson {
         .put("artistBrowseIds", org.json.JSONArray(track.artistBrowseIds))
         .put("counterpartVideoId", track.counterpartVideoId)
         .put("videoType", track.videoType)
+        .put("audioVideoId", track.audioVideoId)
         .put("metadataProvider", track.metadataProvider)
         .put("metadataConfidence", track.metadataConfidence)
         .put("canonicalAlbumUrl", track.canonicalAlbumUrl)
@@ -69,6 +70,7 @@ object TrackJson {
             artistBrowseIds = json.optJSONArray("artistBrowseIds").toStringList(),
             counterpartVideoId = json.optString("counterpartVideoId"),
             videoType = json.optString("videoType"),
+            audioVideoId = json.optString("audioVideoId"),
             metadataProvider = json.optString("metadataProvider"),
             metadataConfidence = json.optInt("metadataConfidence").coerceIn(0, 100),
             canonicalAlbumUrl = json.optString("canonicalAlbumUrl"),

@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.isPlaybackCandidateCompatible
 import com.luc4n3x.levyra.viewmodel.playbackCandidateScore
+import com.luc4n3x.levyra.viewmodel.videoPlaybackCandidateScore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -35,5 +36,23 @@ class RecordingIdentityTest {
         val candidate = target.copy(id = "youtube", isrc = "USAAA2100001")
         assertFalse(isPlaybackCandidateCompatible(target, candidate))
         assertEquals(Int.MIN_VALUE, playbackCandidateScore(target, candidate))
+        assertEquals(
+            Int.MIN_VALUE,
+            videoPlaybackCandidateScore(target, candidate.copy(videoType = "MUSIC_VIDEO_TYPE_ATV"))
+        )
+    }
+
+    @Test
+    fun officialMusicVideoOutranksArtTrackForSameRecording() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "Catalog",
+            moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0,
+            accentStart = 0, accentEnd = 0, isrc = "ITB002000001"
+        )
+        val artTrack = target.copy(id = "audio123456", videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val officialVideo = target.copy(id = "video123456", videoType = "MUSIC_VIDEO_TYPE_OMV")
+
+        assertTrue(videoPlaybackCandidateScore(target, officialVideo) > videoPlaybackCandidateScore(target, artTrack))
     }
 }

@@ -37,6 +37,7 @@ class TrackPayloadCodecTest {
             artistBrowseIds = listOf("UC-ARTIST"),
             counterpartVideoId = "counterpart-1",
             videoType = "MUSIC_VIDEO_TYPE_ATV",
+            audioVideoId = "Audio123456",
             metadataProvider = "OfficialArtworkRepository",
             metadataConfidence = 96,
             canonicalAlbumUrl = "https://music.youtube.com/browse/MPRE-ALBUM",
@@ -58,6 +59,7 @@ class TrackPayloadCodecTest {
         assertEquals(track.artistBrowseIds, restored.artistBrowseIds)
         assertEquals(track.counterpartVideoId, restored.counterpartVideoId)
         assertEquals(track.videoType, restored.videoType)
+        assertEquals(track.audioVideoId, restored.audioVideoId)
         assertEquals(track.metadataProvider, restored.metadataProvider)
         assertEquals(track.metadataConfidence, restored.metadataConfidence)
         assertEquals(track.canonicalAlbumUrl, restored.canonicalAlbumUrl)
