@@ -5,7 +5,6 @@ import com.luc4n3x.levyra.data.YoutubeMusicOfficialVideoResolver
 import com.luc4n3x.levyra.data.YoutubeMusicPlaylistDetail
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.youtubeMusicAudioPlaybackSeed
-import com.luc4n3x.levyra.data.youtubeMusicTrustedCatalogVideoFallback
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
@@ -199,7 +198,6 @@ class LevyraNativePlaybackProvider(
             ?: track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
         val sourceTrack = if (videoMode) {
             officialVideoResolver.resolve(audioSeed)
-                ?: youtubeMusicTrustedCatalogVideoFallback(track)
                 ?: throw LevyraProviderMissException("Video ufficiale YouTube Music non disponibile")
         } else {
             audioSeed
