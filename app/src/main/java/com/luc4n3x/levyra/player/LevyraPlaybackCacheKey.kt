@@ -12,7 +12,7 @@ object LevyraPlaybackCacheKey {
 
     fun video(track: Track): String {
         val id = stableId(track)
-        return "levyra:$id:video:${variant(track.videoStreamUrl)}"
+        return "levyra:$id:video-v2:${variant(track.videoStreamUrl)}"
     }
 
     private fun stableId(track: Track): String = track.id.trim()
