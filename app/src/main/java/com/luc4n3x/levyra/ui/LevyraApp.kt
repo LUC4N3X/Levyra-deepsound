@@ -11882,7 +11882,7 @@ private fun PlayerScreen(
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
                         PlayerModeSwitch(
-                            isVideoMode = state.isVideoMode,
+                            isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
                             activeColor = primary,
                             activeColorTarget = primaryTarget,
                             onSong = viewModel::toggleVideoMode,
