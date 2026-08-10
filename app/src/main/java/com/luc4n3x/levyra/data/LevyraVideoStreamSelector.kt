@@ -43,6 +43,22 @@ internal fun conservativeVideoFallbackCandidates(
     return broadlySupported.ifEmpty { candidates }
 }
 
+internal fun stableAndroidVideoCandidates(
+    candidates: List<LevyraVideoCandidate>,
+    targetHeight: Int
+): List<LevyraVideoCandidate> {
+    if (candidates.isEmpty()) return emptyList()
+    val minimumHeight = minOf(targetHeight.coerceAtLeast(360), 720)
+    val avc = candidates.filter { candidate ->
+        val format = "${candidate.mimeType} ${candidate.codec}".lowercase()
+        val h264 = format.contains("avc1") || format.contains("h264") || format.contains("video/avc")
+        val mp4 = format.contains("video/mp4") || candidate.mimeType.isBlank()
+        val adequateHeight = candidate.height <= 0 || candidate.height >= minimumHeight
+        h264 && mp4 && adequateHeight
+    }
+    return avc.ifEmpty { candidates }
+}
+
 internal class LevyraVideoStreamSelector(context: Context) {
     private val appContext = context.applicationContext
     private val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -71,8 +87,10 @@ internal class LevyraVideoStreamSelector(context: Context) {
         } else {
             emptyList()
         }
-        val usableMuxed = compatibleCandidates(rawMuxed).ifEmpty { conservativeVideoFallbackCandidates(rawMuxed) }
-        val usableVideoOnly = compatibleCandidates(rawVideoOnly).ifEmpty { conservativeVideoFallbackCandidates(rawVideoOnly) }
+        val compatibleMuxed = compatibleCandidates(rawMuxed).ifEmpty { conservativeVideoFallbackCandidates(rawMuxed) }
+        val compatibleVideoOnly = compatibleCandidates(rawVideoOnly).ifEmpty { conservativeVideoFallbackCandidates(rawVideoOnly) }
+        val usableMuxed = stableAndroidVideoCandidates(compatibleMuxed, targetHeight)
+        val usableVideoOnly = stableAndroidVideoCandidates(compatibleVideoOnly, targetHeight)
         val bestMuxed = usableMuxed.maxByOrNull { score(it, targetHeight) }
         val bestVideoOnly = usableVideoOnly.maxByOrNull { score(it, targetHeight) }
         val chosen = when {
