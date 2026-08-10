@@ -11956,35 +11956,6 @@ private fun PlayerScreen(
                                 shape = RoundedCornerShape(artCorner)
                             )
                     )
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.72f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                        shape = CircleShape,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(18.dp)
-                            .zIndex(40f)
-                            .pressable(onClick = viewModel::toggleVideoMode)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.MusicNote,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(17.dp)
-                            )
-                            Text(
-                                text = strings.song,
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
                 } else {
                     PlayerArtworkCanvas(
                         track = activeTrack,

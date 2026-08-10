@@ -425,7 +425,7 @@ def build_commands(
             commands.append(
                 GateCommand(
                     "Run Desktop checks and assembly",
-                    (gradle_wrapper("desktop"), "check", "assemble"),
+                    (gradle_wrapper("desktop"), "-p", "desktop", "check", "assemble"),
                     timeout_seconds=3600,
                 )
             )

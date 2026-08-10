@@ -119,6 +119,19 @@ class AiQualityGateTest(unittest.TestCase):
         self.assertEqual([], blocked)
         self.assertNotIn("Run all Android unit tests", labels)
 
+    def test_full_desktop_profile_uses_desktop_project_directory(self) -> None:
+        commands, blocked = build_commands(
+            {"desktop/app/src/main/kotlin/example.kt"},
+            "full",
+            python="python",
+        )
+        desktop_command = next(
+            command for command in commands if command.label == "Run Desktop checks and assembly"
+        )
+
+        self.assertEqual([], blocked)
+        self.assertEqual(("-p", "desktop", "check", "assemble"), desktop_command.argv[-4:])
+
 
 if __name__ == "__main__":
     unittest.main()
