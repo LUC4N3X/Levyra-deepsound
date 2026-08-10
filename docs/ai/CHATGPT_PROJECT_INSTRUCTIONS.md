@@ -59,6 +59,11 @@ Use the most specific skill or combination of skills:
   criteria, validation and implementation handoff.
 - `levyra-openclaw-orchestrator`: dedicated OpenClaw workspace, explicit agent
   delegation, coding runtimes, review and evidence handoff.
+- `levyra-context-efficiency`: noisy command routing, focused context, and RTK
+  raw-output fallback.
+- `levyra-real-engineering`: non-trivial features, architectural changes,
+  unclear defects, and multi-step work that should separate clarification,
+  specification, ticketing, implementation, and review.
 - `levyra-player`: Android playback, queue, Media3, MediaSession, notification,
   Android Auto, prefetch, audio/video modes.
 - `levyra-extractor`: InnerTube, extraction, stream resolution, runtime
@@ -81,8 +86,9 @@ Use the most specific skill or combination of skills:
 - `levyra-engineering`: genuine cross-domain coordination when no specialized
   skill is sufficient by itself.
 
-Several skills may apply. Do not use a planning or coordinator skill to avoid
-reading a more precise domain skill.
+Several skills may apply. Do not use a planning, real-engineering, coordinator,
+context-efficiency, or security skill to avoid reading a more precise domain
+skill.
 
 ## Core product priorities
 
@@ -129,6 +135,22 @@ platform is changing.
   permissions, secrets, tokens, workflow trust boundaries, deep links and
   update downloads.
 
+## Require security review
+
+Load `levyra-security-review` before security-sensitive investigation or editing,
+including attacker-controlled input, URLs/redirects, SSRF, MIME and path
+handling, authentication/tokens/cookies/secrets, Android permissions/exported
+components, Desktop listener or IPC boundaries, workflow permissions, action
+pinning, dependencies/supply chain, artifact/update integrity, privacy, signing,
+checksums, and security-related pull requests.
+
+Follow the shared cycle documented in `docs/ai/CODEX_SECURITY.md`: threat model,
+identification, safe validation, minimal remediation, human review, and
+revalidation. Keep exact exploit/security evidence, hashes, signatures, secret
+scans, signing evidence, and incomplete failure diagnostics raw. A scanner or
+agent suspicion is not a confirmed vulnerability until repository evidence
+supports the concrete failure path.
+
 ## Scope discipline
 
 Do not silently broaden a request.
@@ -139,6 +161,40 @@ correctness. Explain that dependency before expanding scope.
 
 Do not change versions, signing, publication, workflow permissions, repository
 settings or store metadata unless explicitly requested.
+
+## Real-engineering workflow
+
+For non-trivial work, load
+`.agents/skills/levyra-real-engineering/SKILL.md` before broad investigation or
+implementation. It adapts the Matt Pocock workflow without creating a second
+project contract.
+
+Use only the stages the task actually needs:
+
+- genuine ambiguity -> `grill-with-docs` after inspecting the repository first;
+- several unresolved product/architecture decisions -> `wayfinder`;
+- settled intent -> `to-spec`;
+- work too large for one reviewable change -> `to-tickets`;
+- implementation -> `implement` plus `tdd` where deterministic tests are useful;
+- unclear defect -> `diagnosing-bugs` before patching;
+- final review -> `code-review` plus `levyra-pr-review`;
+- reusable vocabulary or a durable high-cost architectural decision only ->
+  `domain-modeling`/ADR work.
+
+Do not run the full pipeline for tiny, already-unambiguous changes. Do not ask
+the owner questions the repository can answer. Do not create GitHub issues just
+because a task was split into tickets. Prefer fresh context between independent
+tickets and carry forward the approved spec, exact ticket, durable decisions,
+and direct validation evidence rather than stale exploratory chatter.
+
+When the upstream `mattpocock/skills` body is directly available through the
+runtime, read the exact stage skill before using it instead of recreating the
+procedure from memory. If it is unavailable, the repository-native
+`levyra-real-engineering` adapter is the fallback. Levyra's `AGENTS.md`, current
+architecture, focused domain skills, tests, quality gates, and owner publication
+controls always take precedence.
+
+See `docs/ai/MATT_POCOCK_SKILLS.md` for runtime-specific setup.
 
 ## Analysis format
 
@@ -199,6 +255,10 @@ When implementation is requested, prepare a precise task containing:
 - focused tests, broader checks and manual validation;
 - required delivery format and publication authorization.
 
+For non-trivial work, include the applicable `levyra-real-engineering` stage and
+require the implementing runtime to load the exact upstream Matt Pocock stage
+skill when installed.
+
 Do not represent planning text as an applied patch. Distinguish recommendation,
 generated code, locally tested change, committed change, pushed branch, pull
 request, CI, review, merge and release.
@@ -243,6 +303,8 @@ AI documentation change:
 
 ```bash
 python3 scripts/validate_agent_config.py
+python3 scripts/validate_ai_efficiency.py
+python3 scripts/validate_matt_skills.py
 ```
 
 Use repository wrappers. Relevant full checks include:

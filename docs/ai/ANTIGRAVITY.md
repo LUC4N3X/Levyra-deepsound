@@ -41,6 +41,23 @@ Open `Levyra-deepsound/` itself, not only a nested module.
 
 Use the most specific matching Levyra skills. Multiple skills may apply.
 
+Antigravity automatically loads `levyra-real-engineering` for non-trivial
+features, architectural changes, unclear defects, and multi-step work where
+requirements and implementation need to be separated. That adapter chooses the
+lightest useful Matt Pocock stage: `grill-with-docs` for genuine ambiguity,
+`wayfinder` for a large unresolved decision map, `to-spec` once intent is
+settled, `to-tickets` only when one reviewable change is too large,
+`implement`/`tdd` for execution, and `code-review` plus Levyra review for the
+final diff. Tiny unambiguous fixes stay on Levyra's normal work method.
+
+The canonical adapter is
+`.agents/skills/levyra-real-engineering/SKILL.md`. It works even when the
+upstream package is not installed. When upstream Matt Pocock skills are also
+available to Antigravity, load the exact selected stage skill instead of
+reconstructing it from memory. `AGENTS.md`, current architecture, focused
+Levyra domain skills, tests, validation, and owner publication controls always
+remain higher priority.
+
 Antigravity automatically loads `levyra-context-efficiency` for verbose build,
 test, lint, log, search, dependency, Git/GitHub, CI, CodeRabbit, and setup work.
 It automatically loads `levyra-security-review` for:
@@ -89,17 +106,20 @@ Rerun the exact command raw whenever compact output is insufficient.
 1. Pull the latest branch and open the repository root.
 2. Start a new Agent conversation.
 3. Open the skills list or use `/skills`.
-4. Confirm both `levyra-context-efficiency` and `levyra-security-review` exist.
+4. Confirm `levyra-real-engineering`, `levyra-context-efficiency`, and
+   `levyra-security-review` exist.
 5. Ask the Agent to identify applicable root/path instructions and skills.
 6. Run:
 
 ```bash
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
+python3 scripts/validate_matt_skills.py
 ```
 
 The validators check the workspace bridge, skill frontmatter/inventory, RTK
-configuration, automatic security routing, and shared documentation.
+configuration, real-engineering routing, automatic security routing, and shared
+documentation.
 
 ## Rule activation
 
@@ -131,7 +151,7 @@ If skills do not appear:
 3. confirm each skill has YAML frontmatter with a non-empty `description`;
 4. keep `.agents/rules/levyra-workspace.md` active;
 5. start a new conversation;
-6. run both validators and fix every reported error.
+6. run all three validators and fix every reported error.
 
 Do not copy skills into `.gemini/skills/`. `.agents/skills/` is the canonical
 location shared by supported runtimes.
