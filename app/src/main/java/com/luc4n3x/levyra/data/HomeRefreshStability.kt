@@ -216,6 +216,7 @@ internal object HomeRefreshStability {
             artistBrowseIds = artworkMerged.artistBrowseIds.ifEmpty { previous.artistBrowseIds },
             counterpartVideoId = artworkMerged.counterpartVideoId.ifBlank { previous.counterpartVideoId },
             videoType = artworkMerged.videoType.ifBlank { previous.videoType },
+            audioVideoId = artworkMerged.audioVideoId.ifBlank { previous.audioVideoId },
             metadataProvider = if (preferPreviousMetadata) {
                 previous.metadataProvider.ifBlank { artworkMerged.metadataProvider }
             } else {
