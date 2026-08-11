@@ -40,13 +40,18 @@ object PlaybackSourceIdentity {
     }
 
     fun sourceVideoId(track: Track): String {
-        track.audioVideoId.trim()
-            .takeIf { youtubeIdPattern.matches(it) && isAudioSelection(track) }
-            ?.let { return it }
-        extractYoutubeVideoId(track.videoUrl).takeIf { it.isNotBlank() }?.let { return it }
-        track.id.trim().takeIf { youtubeIdPattern.matches(it) }?.let { return it }
-        track.counterpartVideoId.trim().takeIf { youtubeIdPattern.matches(it) }?.let { return it }
-        return ""
+        val audioId = track.audioVideoId.trim().takeIf(youtubeIdPattern::matches).orEmpty()
+        val selectedVideoId = extractYoutubeVideoId(track.videoUrl)
+        val originalTrackId = track.id.trim().takeIf(youtubeIdPattern::matches).orEmpty()
+        val videoType = track.videoType.uppercase(Locale.ROOT)
+        val confirmedVideoSelection = selectedVideoId.isNotBlank() &&
+            (videoType.contains("OMV") || videoType.contains("UGC"))
+
+        if (confirmedVideoSelection) return selectedVideoId
+        if (audioId.isNotBlank()) return audioId
+        if (originalTrackId.isNotBlank()) return originalTrackId
+        if (selectedVideoId.isNotBlank()) return selectedVideoId
+        return track.counterpartVideoId.trim().takeIf(youtubeIdPattern::matches).orEmpty()
     }
 
     fun extractYoutubeVideoId(value: String): String {
@@ -89,11 +94,6 @@ object PlaybackSourceIdentity {
         } else {
             "youtube:$sourceId"
         }
-    }
-
-    private fun isAudioSelection(track: Track): Boolean {
-        val selected = extractYoutubeVideoId(track.videoUrl)
-        return selected.isBlank() || selected == track.audioVideoId.trim()
     }
 
     private fun normalizeIdentifier(value: String): String {
