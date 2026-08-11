@@ -1,6 +1,6 @@
 ---
 name: levyra-real-engineering
-description: Route non-trivial Levyra engineering through the Matt Pocock real-engineering workflow: clarify ambiguous work, build shared domain language, create a spec, split large work into vertical tickets, implement with focused tests, then independently review. Use for features, architectural changes, unclear bugs, multi-step work, or requests that risk AI slop; skip the ceremony for tiny obvious edits.
+description: Route non-trivial Levyra engineering through the Matt Pocock real-engineering workflow. Use automatically for features, architectural changes, bugs, test/build failures, regressions, unexpected behavior, multi-step work, or requests that risk AI slop when root-cause investigation, specification, focused implementation, or independent review is useful; skip the ceremony for tiny obvious edits.
 ---
 
 # Levyra real-engineering workflow
