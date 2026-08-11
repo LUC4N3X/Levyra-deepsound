@@ -168,6 +168,7 @@ skills over the general coordinator.
 | Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
 | Secrets, URLs, redirects, SSRF, MIME, permissions, privacy, update integrity | `levyra-security-review` |
 | GitHub Actions, CI, F-Droid, configuration sync, artifacts, build/release automation | `levyra-ci-workflows` |
+| Builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy command output | `levyra-context-efficiency` |
 | Branch, commit, patch, or pull request review | `levyra-pr-review` |
 | Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
 | Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
