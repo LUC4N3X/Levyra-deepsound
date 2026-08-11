@@ -37,7 +37,7 @@ class LevyraPlaybackCacheKeyTest {
             videoStreamUrl = "https://rr.example/videoplayback?itag=137"
         )
 
-        assertTrue(LevyraPlaybackCacheKey.video(track).contains(":video-v4:itag-137"))
+        assertTrue(LevyraPlaybackCacheKey.video(track).contains(":video-v5:itag-137"))
     }
 
     private fun track(streamUrl: String): Track = Track(
