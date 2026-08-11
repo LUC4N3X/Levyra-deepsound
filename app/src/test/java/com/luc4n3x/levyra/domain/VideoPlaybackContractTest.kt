@@ -68,15 +68,29 @@ class VideoPlaybackContractTest {
     }
 
     @Test
-    fun verifiedSongVideoPairIsAccepted() {
-        rememberYoutubeMusicOfficialVideoPairing("audio222222", "video222222")
+    fun persistedOfficialSongVideoPairIsAcceptedWithoutProcessRegistry() {
         val track = track("https://media.example/audio.m4a").copy(
+            videoUrl = "https://www.youtube.com/watch?v=video222222",
             videoStreamUrl = "https://media.example/video.mp4",
             audioVideoId = "audio222222",
-            counterpartVideoId = "video222222"
+            counterpartVideoId = "video222222",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
         )
 
         assertTrue(track.hasVideoPlaybackPayload())
+    }
+
+    @Test
+    fun mismatchedSelectedVideoIsRejectedEvenWhenMarkedOmv() {
+        val track = track("https://media.example/audio.m4a").copy(
+            videoUrl = "https://www.youtube.com/watch?v=wrong222222",
+            videoStreamUrl = "https://media.example/video.mp4",
+            audioVideoId = "audio222222",
+            counterpartVideoId = "video222222",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertFalse(track.hasVideoPlaybackPayload())
     }
 
     private fun manifest(
