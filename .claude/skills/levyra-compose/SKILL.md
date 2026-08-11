@@ -1,15 +1,16 @@
 ---
 name: Levyra Compose Change
-description: Implements or reviews Levyra Compose screens, state projections, animation, lifecycle, accessibility, and localization changes.
+description: Automatically use for Levyra Compose screens, state projections, jank, scrolling, recomposition, Layout Inspector/Perfetto analysis, animation, lifecycle, accessibility, TalkBack/semantics, RTL, and localization changes.
 ---
 
-# Levyra Compose workflow
+# Levyra Compose bridge
 
-1. Read `.claude/rules/compose-ui.md` and the affected composable, state, ViewModel, theme, and string files.
-2. Keep I/O and orchestration outside composables.
-3. Minimize the state observed by each screen and preserve stable lazy-list keys.
-4. Use correctly keyed effects and deterministic cleanup for listeners, callbacks, players, receivers, and surfaces.
-5. Keep cached/real content visible during refresh and provide a non-animated fallback.
-6. Respect animation preference, lifecycle, low-RAM, battery/data saver, RTL, accessibility, and touch targets.
-7. Add/update localization entries instead of hardcoding user-facing text.
-8. Check recomposition scope and test long text, state restoration, rapid navigation, and background/foreground behavior when applicable.
+Read and follow the canonical workflow at:
+
+```text
+.agents/skills/levyra-compose/SKILL.md
+```
+
+That file owns Levyra-specific Compose performance diagnosis, accessibility checks, state/lifecycle rules, localization, validation, and architecture boundaries.
+
+Do not substitute generic Compose recipes for repository evidence. Root/path `AGENTS.md`, current architecture, the affected implementation, and direct profiling/runtime evidence remain authoritative.
