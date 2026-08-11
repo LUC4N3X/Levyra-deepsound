@@ -94,4 +94,39 @@ class RecordingIdentityTest {
 
         assertEquals("BXpFlt8VwDk", selected?.id)
     }
+
+    @Test
+    fun daDioAcceptsReportedOfficialVideoIdentity() {
+        val target = Track(
+            id = "audio123456",
+            title = "Da Dio",
+            artist = "Bresh",
+            album = "",
+            durationMs = 173_000L,
+            streamUrl = "",
+            videoUrl = "https://www.youtube.com/watch?v=audio123456",
+            thumbnailUrl = "",
+            largeThumbnailUrl = "",
+            source = "YouTube Music",
+            moodTags = emptySet(),
+            energy = 0,
+            vocal = 0,
+            replayScore = 0,
+            cacheScore = 0,
+            accentStart = 0,
+            accentEnd = 0,
+            videoType = "MUSIC_VIDEO_TYPE_ATV",
+            audioVideoId = "audio123456"
+        )
+        val official = target.copy(
+            id = "-ZwDJaZ2coY",
+            videoUrl = "https://www.youtube.com/watch?v=-ZwDJaZ2coY",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "-ZwDJaZ2coY",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official))?.id
+        )
+    }
 }

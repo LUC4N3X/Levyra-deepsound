@@ -13,6 +13,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,8 +21,57 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+
+private const val MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS = 1_500L
+private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 5_500L
+
+internal fun replacementStartPosition(
+    sameTrack: Boolean,
+    requestedPositionMs: Long,
+    activePositionMs: Long,
+    durationMs: Long,
+    allowBackwardActivePosition: Boolean = false
+): Long {
+    val requested = requestedPositionMs.coerceAtLeast(0L)
+    val active = activePositionMs.coerceAtLeast(0L)
+    val position = when {
+        !sameTrack -> requested
+        allowBackwardActivePosition && active + MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS < requested -> active
+        else -> maxOf(requested, active)
+    }
+    return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
+}
+
+internal fun isRecoverablePlaybackErrorCode(errorCode: Int): Boolean =
+    errorCode in 2000..2008 ||
+        errorCode in 3001..3004 ||
+        errorCode in 4001..4005
+
+internal fun shouldRunDelayedVideoRecovery(
+    expectedGeneration: Long,
+    currentGeneration: Long,
+    recoveryInFlight: Boolean,
+    recoveryAttempts: Int
+): Boolean =
+    expectedGeneration == currentGeneration && !recoveryInFlight && recoveryAttempts < 3
+
+internal fun shouldRunVideoFrameWatchdog(
+    videoMode: Boolean,
+    hasVideoPayload: Boolean,
+    renderedVideoFrame: Boolean,
+    surfaceAttached: Boolean,
+    playbackReady: Boolean,
+    playWhenReady: Boolean
+): Boolean =
+    videoMode &&
+        hasVideoPayload &&
+        !renderedVideoFrame &&
+        surfaceAttached &&
+        playbackReady &&
+        playWhenReady
 
 @UnstableApi
 class LevyraPlayer(context: Context) {
@@ -44,11 +94,49 @@ class LevyraPlayer(context: Context) {
     private var recoveryInFlight = false
     private var recoveryAttempts = 0
     private var recoveryResetJob: Job? = null
+    private var invalidVideoRecoveryJob: Job? = null
+    private var videoFrameWatchdogJob: Job? = null
+    private var playbackGeneration = 0L
+    private var observedServicePlayer: Player? = null
+    private var videoSurfaceAttached = false
+    private var renderedVideoFrame = false
     private var audioSettings = LevyraAudioSettings()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var sponsorJob: Job? = null
 
+    private val videoRenderListener = object : Player.Listener {
+        override fun onRenderedFirstFrame() {
+            renderedVideoFrame = true
+            videoFrameWatchdogJob?.cancel()
+            videoFrameWatchdogJob = null
+        }
+
+        override fun onSurfaceSizeChanged(width: Int, height: Int) {
+            videoSurfaceAttached = width > 0 && height > 0
+            if (videoSurfaceAttached) {
+                scheduleVideoFrameWatchdog()
+            } else {
+                videoFrameWatchdogJob?.cancel()
+                videoFrameWatchdogJob = null
+            }
+        }
+    }
+
     init {
+        scope.launch {
+            PlaybackService.activePlayerFlow.collect { servicePlayer ->
+                if (observedServicePlayer === servicePlayer) return@collect
+                observedServicePlayer?.removeListener(videoRenderListener)
+                observedServicePlayer = servicePlayer
+                renderedVideoFrame = false
+                videoSurfaceAttached = servicePlayer?.surfaceSize?.let { size ->
+                    size.width > 0 && size.height > 0
+                } == true
+                servicePlayer?.addListener(videoRenderListener)
+                if (videoSurfaceAttached) scheduleVideoFrameWatchdog()
+            }
+        }
+
         controllerFuture.addListener({
             val connected = runCatching { controllerFuture.get() }.getOrElse { error ->
                 onError?.invoke(error.message?.takeIf { it.isNotBlank() } ?: "Servizio di riproduzione non disponibile")
@@ -64,6 +152,10 @@ class LevyraPlayer(context: Context) {
                     loadedVideoMode = mediaItem.mediaMetadata.extras
                         ?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true
                     loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
+                    renderedVideoFrame = false
+                    refreshVideoSurfaceState()
+                    videoFrameWatchdogJob?.cancel()
+                    videoFrameWatchdogJob = null
                     startSponsorBlockMonitor(queueTrack)
                 }
 
@@ -74,6 +166,7 @@ class LevyraPlayer(context: Context) {
                             delay(5_000L)
                             if (connected.playbackState == Player.STATE_READY) recoveryAttempts = 0
                         }
+                        scheduleVideoFrameWatchdog()
                     }
                     if (playbackState != Player.STATE_ENDED) return
                     sponsorJob?.cancel()
@@ -83,6 +176,15 @@ class LevyraPlayer(context: Context) {
                         return
                     }
                     onCompletion?.invoke()
+                }
+
+                override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                    if (!playWhenReady) {
+                        videoFrameWatchdogJob?.cancel()
+                        videoFrameWatchdogJob = null
+                        return
+                    }
+                    if (connected.playbackState == Player.STATE_READY) scheduleVideoFrameWatchdog()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
@@ -105,6 +207,8 @@ class LevyraPlayer(context: Context) {
                         val playWhenReadyBeforeError = connected.playWhenReady
                         sponsorJob?.cancel()
                         sponsorJob = null
+                        videoFrameWatchdogJob?.cancel()
+                        videoFrameWatchdogJob = null
                         connected.pause()
                         onRecoverableStreamError?.invoke(
                             track,
@@ -153,6 +257,7 @@ class LevyraPlayer(context: Context) {
 
     fun play(track: Track, videoMode: Boolean = false) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
+        invalidateDelayedVideoRecovery()
         val identity = streamIdentity(track, videoMode)
         val active = controller
         if (active == null) {
@@ -163,13 +268,20 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         recoveryAttempts = 0
         applyPlaybackParameters(active)
-        if (loadedTrack?.id != track.id || loadedStreamIdentity != identity || loadedVideoMode != videoMode) {
-            replaceSource(track, 0L, videoMode, true)
+        val sameTrack = loadedTrack?.id == track.id
+        if (!sameTrack || loadedStreamIdentity != identity || loadedVideoMode != videoMode) {
+            replaceSource(
+                track = track,
+                positionMs = if (sameTrack) active.currentPosition.coerceAtLeast(0L) else 0L,
+                videoMode = videoMode,
+                playWhenReady = true
+            )
             return
         }
         active.playWhenReady = true
         active.play()
         startSponsorBlockMonitor(track)
+        scheduleVideoFrameWatchdog()
     }
 
     fun replaceSource(
@@ -179,28 +291,53 @@ class LevyraPlayer(context: Context) {
         playWhenReady: Boolean
     ) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
+        invalidateDelayedVideoRecovery()
         val active = controller
         if (active == null) {
             pendingPlayback = PendingPlayback(track, positionMs.coerceAtLeast(0L), videoMode, playWhenReady)
             return
         }
+        if (videoMode && !track.hasVideoPlaybackPayload()) {
+            scheduleInvalidVideoRecovery(track, positionMs, playWhenReady)
+            return
+        }
+
         ignoreEndedFromManualStop = false
         val recoveryReplacement = recoveryInFlight
         recoveryInFlight = false
         if (!recoveryReplacement) recoveryAttempts = 0
+        val sameTrack = loadedTrack?.id == track.id
+        val startPositionMs = replacementStartPosition(
+            sameTrack = sameTrack,
+            requestedPositionMs = positionMs,
+            activePositionMs = if (active.mediaItemCount > 0) active.currentPosition else 0L,
+            durationMs = track.durationMs,
+            allowBackwardActivePosition = sameTrack && !recoveryReplacement
+        )
+        val effectivePlayWhenReady = if (sameTrack && !recoveryReplacement && active.mediaItemCount > 0) {
+            active.playWhenReady
+        } else {
+            playWhenReady
+        }
         loadedTrack = track
         loadedStreamIdentity = streamIdentity(track, videoMode)
         loadedVideoMode = videoMode
+        renderedVideoFrame = false
+        refreshVideoSurfaceState()
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
         PlaybackService.consumePreparedQueueNext(track.id)
         applyPlaybackParameters(active)
-        active.playWhenReady = playWhenReady
-        active.setMediaItem(LevyraMediaItemFactory.build(track, videoMode), positionMs.coerceAtLeast(0L))
+        active.playWhenReady = effectivePlayWhenReady
+        active.setMediaItem(LevyraMediaItemFactory.build(track, videoMode), startPositionMs)
         active.prepare()
-        if (playWhenReady) active.play() else active.pause()
+        if (effectivePlayWhenReady) active.play() else active.pause()
         startSponsorBlockMonitor(track)
+        scheduleVideoFrameWatchdog()
     }
 
     fun failRecovery(message: String) {
+        invalidateDelayedVideoRecovery()
         recoveryInFlight = false
         recoveryAttempts = 0
         recoveryResetJob?.cancel()
@@ -212,10 +349,13 @@ class LevyraPlayer(context: Context) {
     }
 
     fun pause() {
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
         controller?.pause()
     }
 
     fun stop() {
+        invalidateDelayedVideoRecovery()
         ignoreEndedFromManualStop = true
         recoveryInFlight = false
         recoveryAttempts = 0
@@ -283,6 +423,9 @@ class LevyraPlayer(context: Context) {
 
     fun release() {
         PlaybackService.setUiRecoveryAvailable(false)
+        invalidateDelayedVideoRecovery()
+        observedServicePlayer?.removeListener(videoRenderListener)
+        observedServicePlayer = null
         sponsorJob?.cancel()
         sponsorJob = null
         recoveryResetJob?.cancel()
@@ -290,6 +433,106 @@ class LevyraPlayer(context: Context) {
         controller?.release()
         controller = null
         MediaController.releaseFuture(controllerFuture)
+    }
+
+    private fun scheduleInvalidVideoRecovery(track: Track, positionMs: Long, playWhenReady: Boolean) {
+        if (recoveryInFlight || recoveryAttempts >= 3) {
+            onError?.invoke("Sorgente video non valida")
+            return
+        }
+        val callback = onRecoverableStreamError ?: run {
+            onError?.invoke("Sorgente video non valida")
+            return
+        }
+        val generation = playbackGeneration
+        invalidVideoRecoveryJob?.cancel()
+        invalidVideoRecoveryJob = scope.launch {
+            delay(1L)
+            if (!shouldRunDelayedVideoRecovery(generation, playbackGeneration, recoveryInFlight, recoveryAttempts)) {
+                return@launch
+            }
+            recoveryInFlight = true
+            recoveryAttempts++
+            callback(
+                track,
+                positionMs.coerceAtLeast(0L),
+                true,
+                playWhenReady,
+                "Sorgente video priva di una traccia video"
+            )
+        }
+    }
+
+    private fun scheduleVideoFrameWatchdog() {
+        videoFrameWatchdogJob?.cancel()
+        val active = controller ?: return
+        val track = loadedTrack ?: return
+        val identity = loadedStreamIdentity ?: return
+        val generation = playbackGeneration
+        val surfaceAttached = refreshVideoSurfaceState()
+        if (
+            !shouldRunVideoFrameWatchdog(
+                videoMode = loadedVideoMode,
+                hasVideoPayload = track.hasVideoPlaybackPayload(),
+                renderedVideoFrame = renderedVideoFrame,
+                surfaceAttached = surfaceAttached,
+                playbackReady = active.playbackState == Player.STATE_READY,
+                playWhenReady = active.playWhenReady
+            )
+        ) {
+            return
+        }
+
+        videoFrameWatchdogJob = scope.launch {
+            delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
+            val current = controller ?: return@launch
+            if (generation != playbackGeneration) return@launch
+            if (!loadedVideoMode || loadedStreamIdentity != identity || loadedTrack?.id != track.id) return@launch
+            if (
+                !shouldRunVideoFrameWatchdog(
+                    videoMode = loadedVideoMode,
+                    hasVideoPayload = track.hasVideoPlaybackPayload(),
+                    renderedVideoFrame = renderedVideoFrame,
+                    surfaceAttached = refreshVideoSurfaceState(),
+                    playbackReady = current.playbackState == Player.STATE_READY,
+                    playWhenReady = current.playWhenReady
+                )
+            ) {
+                return@launch
+            }
+            if (recoveryInFlight || recoveryAttempts >= 3) return@launch
+            val callback = onRecoverableStreamError ?: return@launch
+
+            recoveryInFlight = true
+            recoveryAttempts++
+            val playWhenReadyBeforeRecovery = current.playWhenReady
+            sponsorJob?.cancel()
+            sponsorJob = null
+            current.pause()
+            callback(
+                track,
+                current.currentPosition.coerceAtLeast(0L),
+                true,
+                playWhenReadyBeforeRecovery,
+                "Decoder video senza fotogrammi renderizzati"
+            )
+        }
+    }
+
+    private fun invalidateDelayedVideoRecovery() {
+        playbackGeneration++
+        invalidVideoRecoveryJob?.cancel()
+        invalidVideoRecoveryJob = null
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
+    }
+
+    private fun refreshVideoSurfaceState(): Boolean {
+        val size = observedServicePlayer?.surfaceSize
+        if (size != null && size.width > 0 && size.height > 0) {
+            videoSurfaceAttached = true
+        }
+        return videoSurfaceAttached
     }
 
     private fun startSponsorBlockMonitor(track: Track) {
@@ -316,6 +559,12 @@ class LevyraPlayer(context: Context) {
         loadedTrack = null
         loadedStreamIdentity = null
         loadedVideoMode = false
+        renderedVideoFrame = false
+        videoSurfaceAttached = false
+        invalidVideoRecoveryJob?.cancel()
+        invalidVideoRecoveryJob = null
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
     }
 
     private fun streamIdentity(track: Track, videoMode: Boolean): String {
@@ -361,7 +610,7 @@ class LevyraPlayer(context: Context) {
             if (next === current) break
             current = next
         }
-        return error.errorCode in 2000..2008 || error.errorCode in 4001..4005
+        return isRecoverablePlaybackErrorCode(error.errorCode)
     }
 
     private fun cleanError(error: PlaybackException): String {

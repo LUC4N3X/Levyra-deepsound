@@ -1,0 +1,147 @@
+package com.luc4n3x.levyra.player
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PlaybackHandoffTest {
+    @Test
+    fun sameTrackUsesLatestActivePosition() {
+        assertEquals(
+            9_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 6_000L,
+                activePositionMs = 9_000L,
+                durationMs = 180_000L,
+                allowBackwardActivePosition = true
+            )
+        )
+    }
+
+    @Test
+    fun modeSwitchRespectsBackwardSeekMadeWhileVideoResolves() {
+        assertEquals(
+            31_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 60_000L,
+                activePositionMs = 31_000L,
+                durationMs = 180_000L,
+                allowBackwardActivePosition = true
+            )
+        )
+    }
+
+    @Test
+    fun smallPositionDriftDoesNotJumpBackward() {
+        assertEquals(
+            60_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 60_000L,
+                activePositionMs = 59_400L,
+                durationMs = 180_000L,
+                allowBackwardActivePosition = true
+            )
+        )
+    }
+
+    @Test
+    fun recoveryDoesNotMoveBehindRequestedPosition() {
+        assertEquals(
+            12_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 12_000L,
+                activePositionMs = 8_000L,
+                durationMs = 180_000L
+            )
+        )
+    }
+
+    @Test
+    fun differentTrackDoesNotInheritOldPosition() {
+        assertEquals(
+            0L,
+            replacementStartPosition(
+                sameTrack = false,
+                requestedPositionMs = 0L,
+                activePositionMs = 90_000L,
+                durationMs = 180_000L
+            )
+        )
+    }
+
+    @Test
+    fun handoffIsBoundedByResolvedDuration() {
+        assertEquals(
+            179_750L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 190_000L,
+                activePositionMs = 195_000L,
+                durationMs = 180_000L
+            )
+        )
+    }
+
+    @Test
+    fun malformedContainerAndManifestErrorsAreRecoverable() {
+        assertTrue(isRecoverablePlaybackErrorCode(3001))
+        assertTrue(isRecoverablePlaybackErrorCode(3002))
+        assertTrue(isRecoverablePlaybackErrorCode(3003))
+        assertTrue(isRecoverablePlaybackErrorCode(3004))
+    }
+
+    @Test
+    fun unrelatedPlaybackErrorsRemainFatal() {
+        assertFalse(isRecoverablePlaybackErrorCode(1001))
+        assertFalse(isRecoverablePlaybackErrorCode(5001))
+    }
+
+    @Test
+    fun delayedVideoRecoveryIsRejectedAfterPlaybackGenerationChanges() {
+        assertTrue(
+            shouldRunDelayedVideoRecovery(
+                expectedGeneration = 4L,
+                currentGeneration = 4L,
+                recoveryInFlight = false,
+                recoveryAttempts = 0
+            )
+        )
+        assertFalse(
+            shouldRunDelayedVideoRecovery(
+                expectedGeneration = 4L,
+                currentGeneration = 5L,
+                recoveryInFlight = false,
+                recoveryAttempts = 0
+            )
+        )
+    }
+
+    @Test
+    fun videoFrameWatchdogDoesNotRunWhilePaused() {
+        assertFalse(
+            shouldRunVideoFrameWatchdog(
+                videoMode = true,
+                hasVideoPayload = true,
+                renderedVideoFrame = false,
+                surfaceAttached = true,
+                playbackReady = true,
+                playWhenReady = false
+            )
+        )
+        assertTrue(
+            shouldRunVideoFrameWatchdog(
+                videoMode = true,
+                hasVideoPayload = true,
+                renderedVideoFrame = false,
+                surfaceAttached = true,
+                playbackReady = true,
+                playWhenReady = true
+            )
+        )
+    }
+}
