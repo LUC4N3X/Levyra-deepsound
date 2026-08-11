@@ -6,24 +6,24 @@ import org.junit.Test
 
 class YoutubeEngagementIdentityTest {
     @Test
-    fun exactVideoUrlWinsOverCatalogFallbacks() {
+    fun unconfirmedVideoUrlDoesNotOverrideYoutubeMusicSongIdentity() {
         val track = track(
             id = "aaaaaaaaaaa",
             videoUrl = "https://www.youtube.com/watch?v=bbbbbbbbbbb",
             counterpartVideoId = "ccccccccccc"
         )
 
-        assertEquals("bbbbbbbbbbb", youtubeEngagementVideoId(track))
+        assertEquals("aaaaaaaaaaa", youtubeEngagementVideoId(track))
     }
 
     @Test
-    fun officialVideoWinsWhileOriginalAudioIdentityIsPreserved() {
+    fun confirmedOfficialVideoWinsWhileOriginalAudioIdentityIsPreserved() {
         val track = track(
             id = "audio123456",
             videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
             counterpartVideoId = "fcnDmrtj6Sk",
             audioVideoId = "audio123456"
-        )
+        ).copy(videoType = "MUSIC_VIDEO_TYPE_OMV")
 
         assertEquals("fcnDmrtj6Sk", youtubeEngagementVideoId(track))
     }
