@@ -329,7 +329,7 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val videoPreference = when {
         YoutubeMusicVideoType.isOfficialVideo(type) -> 20_000
         YoutubeMusicVideoType.isArtTrack(type) -> -20_000
-        type.uppercase().contains("UGC") || type.uppercase().contains("MUSIC_VIDEO") -> 1_000
+        YoutubeMusicVideoType.isVideo(type) -> 1_000
         else -> 0
     }
     // A shared artist channel is structured proof of an official upload and outranks title text.
@@ -338,15 +338,35 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     return recordingScore + videoPreference + if (officialChannel) 6_000 else 0
 }
 
-internal fun selectPreferredVideoPlaybackCandidate(target: Track, candidates: List<Track>): Track? {
+internal fun videoCandidateId(candidate: Track): String =
+    youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
+
+/**
+ * YouTube Music's own song/video pairing is authoritative, so a candidate in [authoritativeIds]
+ * only loses to structurally stronger evidence such as an exact ISRC match. Without this a
+ * title-compatible official video of a *different* recording could replace the declared pairing.
+ */
+internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
+
+internal fun selectPreferredVideoPlaybackCandidate(
+    target: Track,
+    candidates: List<Track>,
+    authoritativeIds: Set<String> = emptySet()
+): Track? {
     return candidates.asSequence()
         .filter { candidate ->
-            val videoId = youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
-            YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoId) &&
-                !candidate.videoType.contains("ATV", ignoreCase = true)
+            YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoCandidateId(candidate)) &&
+                !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
         .filter { candidate -> isPlaybackCandidateCompatible(target, candidate) }
-        .maxByOrNull { candidate -> videoPlaybackCandidateScore(target, candidate) }
+        .maxByOrNull { candidate ->
+            val authority = if (videoCandidateId(candidate) in authoritativeIds) {
+                VIDEO_PAIRING_AUTHORITY_BONUS
+            } else {
+                0
+            }
+            videoPlaybackCandidateScore(target, candidate) + authority
+        }
 }
 
 internal fun playbackTextKey(value: String): String {
@@ -6659,9 +6679,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             related to search.await()
         }
 
-        // Rank every candidate together so a confirmed official video from search wins over a
-        // merely playable watch-playlist entry. Watch candidates come first and still win ties.
-        val selected = selectPreferredVideoPlaybackCandidate(track, watchCandidates + searchCandidates)
+        // Rank every candidate together so a confirmed official video from search can win, while
+        // YouTube Music's own pairing keeps authority unless the search hit proves a stronger
+        // identity (exact ISRC) rather than a merely title-compatible official video.
+        val authoritativeIds = watchCandidates.map(::videoCandidateId).filter { it.isNotBlank() }.toSet()
+        val selected = selectPreferredVideoPlaybackCandidate(
+            track,
+            watchCandidates + searchCandidates,
+            authoritativeIds
+        )
         if (selected != null) {
             verifiedVideoIdentityCache[cacheKey] = selected
             return track.withVerifiedVideoCandidate(selected, sourceId)

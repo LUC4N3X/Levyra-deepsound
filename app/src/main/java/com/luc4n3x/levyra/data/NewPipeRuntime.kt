@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,7 @@ object NewPipeRuntime {
     private var applicationContext: Context? = null
 
     @Volatile
-    private var requestedLanguage: String = ""
+    private var requestedLanguage: String = LevyraLanguageCatalog.deviceDefault()
 
     @Volatile
     private var appliedLanguage: String = ""
@@ -80,7 +81,7 @@ object NewPipeRuntime {
         }
     }
 
-    private fun applyRequestedLocalization() {
+    private fun applyRequestedLocalization() = synchronized(this) {
         val requested = requestedLanguage
         if (requested.isBlank() || requested == appliedLanguage) return
         val locale = LevyraContentLocales.forLanguage(requested)
