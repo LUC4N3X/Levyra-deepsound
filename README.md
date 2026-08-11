@@ -269,7 +269,7 @@ desktop:
 * Android Studio with Android Gradle Plugin 9.3.1 support
 * Java Development Kit (JDK) 17
 * Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 37`)
-* Gradle 9.6.1 through the repository Gradle Wrapper
+* Gradle 9.7.0 through the repository Gradle Wrapper
 
 ### Android build and install
 
@@ -339,7 +339,7 @@ levyraVersionName=2.3.19
 levyraVersionCode=2031900
 
 # Windows — desktop/version.properties
-levyraDesktopVersion=1.1.0
+levyraDesktopVersion=1.2.0
 ```
 
 Android publishes `v<version>` releases and remains the repository's **Latest** channel. Windows publishes immutable `desktop-v<version>` releases with MSI, EXE, portable ZIP and SHA-256 files. Increasing the Android version never starts or publishes the Desktop build, and increasing the Desktop version never modifies Android or F-Droid releases.
