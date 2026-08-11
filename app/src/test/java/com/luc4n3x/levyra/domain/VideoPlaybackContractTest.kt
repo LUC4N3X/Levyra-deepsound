@@ -56,6 +56,29 @@ class VideoPlaybackContractTest {
         assertTrue(track.hasVideoPlaybackPayload())
     }
 
+    @Test
+    fun unverifiedSongVideoPairIsRejected() {
+        val track = track("https://media.example/audio.m4a").copy(
+            videoStreamUrl = "https://media.example/video.mp4",
+            audioVideoId = "audio111111",
+            counterpartVideoId = "video111111"
+        )
+
+        assertFalse(track.hasVideoPlaybackPayload())
+    }
+
+    @Test
+    fun verifiedSongVideoPairIsAccepted() {
+        rememberYoutubeMusicOfficialVideoPairing("audio222222", "video222222")
+        val track = track("https://media.example/audio.m4a").copy(
+            videoStreamUrl = "https://media.example/video.mp4",
+            audioVideoId = "audio222222",
+            counterpartVideoId = "video222222"
+        )
+
+        assertTrue(track.hasVideoPlaybackPayload())
+    }
+
     private fun manifest(
         audioUrl: String,
         videoUrl: String,
