@@ -46,6 +46,10 @@ tasks.named<ProcessResources>("processResources") {
 kotlin {
     sourceSets.named("main") {
         kotlin.srcDir(rootProject.file("../app/src/main/java/com/luc4n3x/levyra/ui/i18n"))
+        kotlin.exclude(
+            "**/LevyraFeatureStrings.kt",
+            "**/PlaylistImportStatusStrings.kt"
+        )
     }
 }
 
