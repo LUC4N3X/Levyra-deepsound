@@ -81,6 +81,19 @@ class VideoPlaybackContractTest {
     }
 
     @Test
+    fun matchingCatalogCounterpartIsAcceptedWithoutOmvLabel() {
+        val track = track("https://media.example/audio.m4a").copy(
+            videoUrl = "https://www.youtube.com/watch?v=video333333",
+            videoStreamUrl = "https://media.example/video.mp4",
+            audioVideoId = "audio333333",
+            counterpartVideoId = "video333333",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+
+        assertTrue(track.hasVideoPlaybackPayload())
+    }
+
+    @Test
     fun mismatchedSelectedVideoIsRejectedEvenWhenMarkedOmv() {
         val track = track("https://media.example/audio.m4a").copy(
             videoUrl = "https://www.youtube.com/watch?v=wrong222222",
