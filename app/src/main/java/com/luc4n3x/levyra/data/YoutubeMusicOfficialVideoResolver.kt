@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.rememberYoutubeMusicOfficialVideoPairing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -180,6 +181,7 @@ internal class YoutubeMusicOfficialVideoResolver {
         sourceVideoId: String,
         counterpart: YoutubeMusicWatchTrack
     ): Track {
+        rememberYoutubeMusicOfficialVideoPairing(sourceVideoId, counterpart.videoId)
         return copy(
             streamUrl = "",
             videoStreamUrl = "",
