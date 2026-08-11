@@ -23,6 +23,14 @@ REQUIRED_FILES = (
     "docs/project/TASKS.md",
     ".agents/README.md",
     ".agents/rules/levyra-workspace.md",
+    ".claude/CLAUDE.md",
+    ".claude/hooks/user-prompt-submit.sh",
+    ".claude/skills/levyra-real-engineering/SKILL.md",
+    ".claude/skills/levyra-compose/SKILL.md",
+    ".claude/skills/levyra-ci-workflows/SKILL.md",
+    ".claude/skills/levyra-context-efficiency/SKILL.md",
+    ".claude/skills/levyra-release-check/SKILL.md",
+    ".claude/skills/levyra-pr-review/SKILL.md",
     "docs/ai/README.md",
     "docs/ai/WORKFLOW.md",
     "docs/ai/ANTIGRAVITY.md",
@@ -51,6 +59,25 @@ REFERENCE_FILES = (
 ANTIGRAVITY_RULE_PATH = ".agents/rules/levyra-workspace.md"
 ANTIGRAVITY_RULE_ROOT_REFERENCE = "@../../AGENTS.md"
 ANTIGRAVITY_SKILLS_PATH = ".agents/skills/"
+CLAUDE_INSTRUCTIONS_PATH = ".claude/CLAUDE.md"
+CLAUDE_ROUTER_PATH = ".claude/hooks/user-prompt-submit.sh"
+
+AUTOMATIC_ROUTED_SKILLS = (
+    "levyra-real-engineering",
+    "levyra-compose",
+    "levyra-ci-workflows",
+    "levyra-context-efficiency",
+    "levyra-pr-review",
+    "levyra-release-check",
+)
+
+CLAUDE_CANONICAL_BRIDGES = (
+    "levyra-real-engineering",
+    "levyra-compose",
+    "levyra-ci-workflows",
+    "levyra-context-efficiency",
+    "levyra-release-check",
+)
 
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SKILL_REFERENCE_RE = re.compile(r"`(levyra-[a-z0-9-]+)`")
@@ -89,6 +116,20 @@ def parse_front_matter(path: Path) -> dict[str, str]:
     return metadata
 
 
+def require_skill_references(
+    errors: list[str],
+    relative_path: str,
+    text: str,
+    skills: tuple[str, ...],
+    runtime: str,
+) -> None:
+    for skill in skills:
+        if skill not in text:
+            errors.append(
+                f"{relative_path}: missing {runtime} automatic route for {skill}"
+            )
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -116,6 +157,13 @@ def main() -> int:
                     f"{ANTIGRAVITY_RULE_PATH}: missing canonical root reference "
                     f"{ANTIGRAVITY_RULE_ROOT_REFERENCE!r}"
                 )
+            require_skill_references(
+                errors,
+                ANTIGRAVITY_RULE_PATH,
+                antigravity_rule,
+                AUTOMATIC_ROUTED_SKILLS,
+                "shared workspace",
+            )
 
     antigravity_guide_path = ROOT / "docs/ai/ANTIGRAVITY.md"
     if antigravity_guide_path.is_file():
@@ -132,6 +180,68 @@ def main() -> int:
                 errors.append(
                     "docs/ai/ANTIGRAVITY.md: missing workspace rule reference"
                 )
+
+    codex_instructions_path = ROOT / "AGENTS.md"
+    if codex_instructions_path.is_file():
+        try:
+            codex_instructions = codex_instructions_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"AGENTS.md: cannot read file: {exc}")
+        else:
+            require_skill_references(
+                errors,
+                "AGENTS.md",
+                codex_instructions,
+                AUTOMATIC_ROUTED_SKILLS,
+                "Codex",
+            )
+
+    claude_instructions_path = ROOT / CLAUDE_INSTRUCTIONS_PATH
+    if claude_instructions_path.is_file():
+        try:
+            claude_instructions = claude_instructions_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{CLAUDE_INSTRUCTIONS_PATH}: cannot read file: {exc}")
+        else:
+            require_skill_references(
+                errors,
+                CLAUDE_INSTRUCTIONS_PATH,
+                claude_instructions,
+                AUTOMATIC_ROUTED_SKILLS,
+                "Claude",
+            )
+
+    claude_router_path = ROOT / CLAUDE_ROUTER_PATH
+    if claude_router_path.is_file():
+        try:
+            claude_router = claude_router_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{CLAUDE_ROUTER_PATH}: cannot read file: {exc}")
+        else:
+            require_skill_references(
+                errors,
+                CLAUDE_ROUTER_PATH,
+                claude_router,
+                AUTOMATIC_ROUTED_SKILLS,
+                "Claude hook",
+            )
+
+    for skill in CLAUDE_CANONICAL_BRIDGES:
+        relative_path = f".claude/skills/{skill}/SKILL.md"
+        path = ROOT / relative_path
+        if not path.is_file():
+            continue
+        try:
+            bridge = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{relative_path}: cannot read file: {exc}")
+            continue
+
+        canonical_reference = f".agents/skills/{skill}/SKILL.md"
+        if canonical_reference not in bridge:
+            errors.append(
+                f"{relative_path}: missing canonical bridge to {canonical_reference}"
+            )
 
     skills_root = ROOT / ".agents" / "skills"
     skill_paths = sorted(skills_root.glob("*/SKILL.md"))
@@ -169,6 +279,10 @@ def main() -> int:
         if not description:
             errors.append(f"{relative_path}: missing front matter description")
 
+    missing_automatic_skills = sorted(set(AUTOMATIC_ROUTED_SKILLS) - actual_skills)
+    for name in missing_automatic_skills:
+        errors.append(f"automatic route points to missing native skill: {name}")
+
     referenced_skills: set[str] = set()
     for relative_path in REFERENCE_FILES:
         path = ROOT / relative_path
@@ -205,7 +319,8 @@ def main() -> int:
         f"{len(REQUIRED_FILES)} required files, "
         f"{len(actual_skills)} native skills, "
         f"{len(referenced_skills)} documented skill references, "
-        "Antigravity workspace bridge verified, "
+        f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, "
+        "Codex/Claude/Antigravity routing verified, "
         "no duplicate root planning files."
     )
     return 0

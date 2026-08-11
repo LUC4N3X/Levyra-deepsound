@@ -1,6 +1,6 @@
 ---
 name: levyra-real-engineering
-description: Use for non-trivial Levyra features, architectural changes, unclear bugs, multi-step work, or requests where requirements and implementation need to be separated before editing. Skip for tiny unambiguous fixes.
+description: Automatically use for non-trivial Levyra features, architecture, bugs, regressions, test/build failures, crashes, races, unexpected behavior, multi-step work, or requests needing root-cause investigation, specification, focused implementation, or independent review. Skip tiny unambiguous fixes.
 ---
 
 # Levyra real-engineering bridge

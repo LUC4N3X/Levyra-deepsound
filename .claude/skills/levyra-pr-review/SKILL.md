@@ -3,6 +3,7 @@ name: Levyra PR Review
 description: Reviews the current Levyra diff before merge and produces prioritized, actionable findings plus a validation summary.
 context: fork
 agent: levyra-reviewer
+background: false
 ---
 
 # PR review procedure

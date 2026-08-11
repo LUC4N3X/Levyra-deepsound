@@ -34,8 +34,8 @@ if any(marker in prompt for marker in AUTOMATED_MARKERS):
 ROUTES = [
     (
         "levyra-real-engineering",
-        "non-trivial requirements, architecture, or multi-step engineering",
-        r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets",
+        "non-trivial engineering, root-cause debugging, requirements, or architecture",
+        r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug",
     ),
     (
         "levyra-player",
@@ -54,13 +54,23 @@ ROUTES = [
     ),
     (
         "levyra-compose",
-        "Compose UI or state projection",
-        r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|animation|animazion|layout|accessibilit|localizzazion|localization|string resource",
+        "Compose UI, performance, accessibility, or state projection",
+        r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|animation|animazion|layout|jank|recomposition|ricompos|scroll|perfetto|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
     ),
     (
         "levyra-motion-artwork",
         "motion artwork",
         r"motion artwork|motion|artwork|copertin|cover art",
+    ),
+    (
+        "levyra-ci-workflows",
+        "CI, Gradle/Kotlin tooling, or build performance",
+        r"github actions|\bworkflow\b|\bci\b|fdroid|f-droid|\bgradle\b|\bagp\b|\bkotlin\b|\bksp\b|build performance|slow build|build lento|configuration cache|build cache|compile time|compilation time|build logic|gradle\.properties|artifact",
+    ),
+    (
+        "levyra-context-efficiency",
+        "noisy command output or broad repository diagnostics",
+        r"\bbuild\b|\bgradle\b|\btest\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup",
     ),
     (
         "levyra-security-review",
@@ -69,13 +79,13 @@ ROUTES = [
     ),
     (
         "levyra-pr-review",
-        "reviewing the current diff",
-        r"review|revision|pull request|\bpr\b|merge|\bdiff\b|before merging|prima di merg",
+        "reviewing a branch, commit, diff, or pull request",
+        r"review|revision|pull request|\bpr\b|merge|\bdiff\b|commit review|branch review|before merging|prima di merg",
     ),
     (
         "levyra-release-check",
-        "release or version safety",
-        r"release|rilasci|versionname|versioncode|\bversion\b|versione|\bapk\b|signing|firma|tag\b|publish|pubblic",
+        "runtime, pre-merge, or release validation",
+        r"release|rilasci|versionname|versioncode|\bversion\b|versione|\bapk\b|signing|firma|tag\b|publish|pubblic|emulator|emulatore|physical device|device test|test dispositivo|\badb\b|connectedcheck|smoke test|runtime verification|runtime validation|verifica runtime|pre.?merge",
     ),
 ]
 
@@ -83,18 +93,21 @@ matched = [(skill, topic) for skill, topic, pattern in ROUTES if re.search(patte
 if not matched:
     sys.exit(0)
 
-lines = ["Levyra skill routing - this request matches project skills:", ""]
+lines = ["Levyra automatic skill routing - this request matches project skills:", ""]
 for skill, topic in matched:
     lines.append("- %s -> invoke the %s skill" % (topic, skill))
 lines += [
     "",
-    "Invoke each matching skill with the Skill tool BEFORE reading widely or editing, "
-    "and follow its procedure. Do not wait to be asked. For real-engineering work, "
-    "use the Matt Pocock stage skill selected by the Levyra bridge when the plugin is "
-    "available, and skip the full ceremony for tiny unambiguous changes. For security "
-    "work, preserve exact evidence and follow threat model, identification, safe "
-    "validation, minimal remediation, human review, and revalidation. If a skill turns "
-    "out not to apply once read, say so in one line and continue.",
+    "Invoke every matching skill with the Skill tool BEFORE reading widely, editing, "
+    "or running large commands. Do not wait for the owner to name a skill or type a "
+    "slash command. For real-engineering bugs/failures, use the hypothesis-driven "
+    "debugging lane before stacking speculative fixes. For CI/build-performance work, "
+    "measure before changing configuration and remeasure the same path afterward. For "
+    "Compose performance/accessibility work, require direct evidence where applicable. "
+    "For emulator/device validation, prefer semantic UI targets over raw coordinates. "
+    "For security work, preserve exact evidence and follow threat model, identification, "
+    "safe validation, minimal remediation, human review, and revalidation. If a skill "
+    "turns out not to apply once read, say so in one line and continue.",
 ]
 
 print(json.dumps({
