@@ -171,9 +171,18 @@ class CachedPlaybackProvider(
 ) : LevyraPlaybackProvider {
     override val id: String = "playback_cache"
     override val priority: Int = 0
+    private val officialVideoResolver = YoutubeMusicOfficialVideoResolver()
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
-        val resolved = resolver.cached(track, videoMode)
+        val audioSeed = youtubeMusicAudioPlaybackSeed(track)
+            ?: track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+        val cacheSeed = if (videoMode) {
+            officialVideoResolver.resolve(audioSeed)
+                ?: throw LevyraProviderMissException("Video ufficiale YouTube Music non disponibile")
+        } else {
+            audioSeed
+        }
+        val resolved = resolver.cached(cacheSeed, videoMode)
             ?: throw LevyraProviderMissException("Stream non presente in cache")
         if (videoMode && !resolved.hasVideoPlaybackPayload()) {
             throw LevyraProviderMissException("Cache video priva di una traccia video")
@@ -182,7 +191,10 @@ class CachedPlaybackProvider(
     }
 
     override suspend fun resolveForOffline(track: Track): Track {
-        return resolver.cached(track, false) ?: throw LevyraProviderMissException("Stream offline non presente in cache")
+        val audioSeed = youtubeMusicAudioPlaybackSeed(track)
+            ?: track.copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+        return resolver.cached(audioSeed, false)
+            ?: throw LevyraProviderMissException("Stream offline non presente in cache")
     }
 }
 
