@@ -30,6 +30,7 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
@@ -99,6 +100,7 @@ import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
@@ -323,14 +325,17 @@ internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val recordingScore = playbackCandidateScore(target, candidate)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
-    val type = candidate.videoType.uppercase()
+    val type = candidate.videoType
     val videoPreference = when {
-        type.contains("OMV") || type.contains("OFFICIAL_MUSIC_VIDEO") -> 20_000
-        type.contains("ATV") -> -20_000
-        type.contains("UGC") || type.contains("MUSIC_VIDEO") -> 1_000
+        YoutubeMusicVideoType.isOfficialVideo(type) -> 20_000
+        YoutubeMusicVideoType.isArtTrack(type) -> -20_000
+        type.uppercase().contains("UGC") || type.uppercase().contains("MUSIC_VIDEO") -> 1_000
         else -> 0
     }
-    return recordingScore + videoPreference
+    // A shared artist channel is structured proof of an official upload and outranks title text.
+    val officialChannel = target.artistBrowseIds.isNotEmpty() &&
+        candidate.artistBrowseIds.any { it in target.artistBrowseIds }
+    return recordingScore + videoPreference + if (officialChannel) 6_000 else 0
 }
 
 internal fun selectPreferredVideoPlaybackCandidate(target: Track, candidates: List<Track>): Track? {
@@ -2677,6 +2682,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
+        NewPipeRuntime.setLanguage(languageCode)
         pendingHomeSectionsSnapshot.set(null)
         deferredHomeArtistsSnapshot.set(null)
         homeArtistsFingerprint = ""
@@ -6653,8 +6659,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             related to search.await()
         }
 
-        val selected = selectPreferredVideoPlaybackCandidate(track, watchCandidates)
-            ?: selectPreferredVideoPlaybackCandidate(track, searchCandidates)
+        // Rank every candidate together so a confirmed official video from search wins over a
+        // merely playable watch-playlist entry. Watch candidates come first and still win ties.
+        val selected = selectPreferredVideoPlaybackCandidate(track, watchCandidates + searchCandidates)
         if (selected != null) {
             verifiedVideoIdentityCache[cacheKey] = selected
             return track.withVerifiedVideoCandidate(selected, sourceId)
@@ -6677,7 +6684,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             thumbnailUrl = thumbnailUrl.ifBlank { seed.thumbnailUrl },
             largeThumbnailUrl = thumbnailUrl.ifBlank { seed.largeThumbnailUrl },
-            videoType = videoType
+            videoType = videoType,
+            artistBrowseIds = artists.map { artist -> artist.browseId }
+                .filter { it.isNotBlank() }
+                .ifEmpty { seed.artistBrowseIds }
         )
     }
 

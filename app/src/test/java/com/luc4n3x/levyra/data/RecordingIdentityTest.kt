@@ -96,6 +96,55 @@ class RecordingIdentityTest {
     }
 
     @Test
+    fun officialSourceMusicOutranksUserUploadedVideo() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "Catalog",
+            moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0,
+            accentStart = 0, accentEnd = 0
+        )
+        val fanUpload = target.copy(id = "ugc12345678", videoType = "MUSIC_VIDEO_TYPE_UGC")
+        val officialSource = target.copy(
+            id = "osm12345678",
+            videoType = "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC"
+        )
+
+        assertTrue(
+            videoPlaybackCandidateScore(target, officialSource) >
+                videoPlaybackCandidateScore(target, fanUpload)
+        )
+        assertEquals(
+            "osm12345678",
+            selectPreferredVideoPlaybackCandidate(target, listOf(fanUpload, officialSource))?.id
+        )
+    }
+
+    @Test
+    fun sharedArtistChannelOutranksAnUnrelatedChannelForTheSameVideoType() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "Catalog",
+            moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0,
+            accentStart = 0, accentEnd = 0, artistBrowseIds = listOf("UCofficialchannel1")
+        )
+        val otherChannel = target.copy(
+            id = "other123456",
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = listOf("UCsomeoneelse999")
+        )
+        val artistChannel = target.copy(
+            id = "artist123456",
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = listOf("UCofficialchannel1")
+        )
+
+        assertTrue(
+            videoPlaybackCandidateScore(target, artistChannel) >
+                videoPlaybackCandidateScore(target, otherChannel)
+        )
+    }
+
+    @Test
     fun daDioAcceptsReportedOfficialVideoIdentity() {
         val target = Track(
             id = "audio123456",
