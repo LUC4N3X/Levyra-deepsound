@@ -61,7 +61,7 @@ internal fun stableAndroidVideoCandidates(
 internal fun reliableVideoCandidate(
     muxed: LevyraVideoCandidate?,
     videoOnly: LevyraVideoCandidate?
-): LevyraVideoCandidate? = videoOnly ?: muxed
+): LevyraVideoCandidate? = muxed ?: videoOnly
 
 internal class LevyraVideoStreamSelector(context: Context) {
     private val appContext = context.applicationContext
@@ -104,7 +104,7 @@ internal class LevyraVideoStreamSelector(context: Context) {
             append(" · ")
             append(codecFamily(chosen))
             append(if (hardware) " HW" else " compat")
-            append(if (chosen.muxed) " · muxed fallback" else " · audio/video separati")
+            append(if (chosen.muxed) " · muxed stabile" else " · audio/video separati fallback")
         }
         return LevyraVideoSelection(chosen, targetHeight, hardware, reason)
     }
