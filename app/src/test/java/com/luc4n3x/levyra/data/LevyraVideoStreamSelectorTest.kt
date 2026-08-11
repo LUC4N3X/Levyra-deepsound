@@ -64,7 +64,7 @@ class LevyraVideoStreamSelectorTest {
     }
 
     @Test
-    fun reliableSelectionUsesSplitVideoBeforeMuxedFallback() {
+    fun reliableSelectionUsesMuxedBeforeSplitFallback() {
         val muxed = candidate(
             url = "https://media.example/muxed-720",
             mime = "video/mp4",
@@ -80,8 +80,8 @@ class LevyraVideoStreamSelectorTest {
             muxed = false
         )
 
-        assertEquals(split, reliableVideoCandidate(muxed, split))
-        assertEquals(muxed, reliableVideoCandidate(muxed, null))
+        assertEquals(muxed, reliableVideoCandidate(muxed, split))
+        assertEquals(split, reliableVideoCandidate(null, split))
     }
 
     private fun candidate(
