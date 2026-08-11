@@ -7,7 +7,7 @@ import java.util.Locale
 
 object PlaybackSourceIdentity {
     private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
-    private const val VIDEO_IDENTITY_NAMESPACE = "youtube-video-v2"
+    private const val VIDEO_IDENTITY_NAMESPACE = "youtube-video-v3"
     private val youtubeIdPattern = Regex(YOUTUBE_VIDEO_ID_PATTERN)
     private val youtubeUrlPattern = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
 
@@ -62,7 +62,7 @@ object PlaybackSourceIdentity {
         preferMp4Audio: Boolean = false
     ): String {
         val mode = when {
-            videoMode -> "video-v2"
+            videoMode -> "video-v3"
             preferMp4Audio -> "audio-mp4"
             else -> "audio"
         }
@@ -84,8 +84,11 @@ object PlaybackSourceIdentity {
         val explicitVideoSelection = youtubeIdPattern.matches(audioId) &&
             selectedVideoId.isNotBlank() &&
             selectedVideoId != audioId
-        val namespace = if (explicitVideoSelection) VIDEO_IDENTITY_NAMESPACE else "youtube"
-        return "$namespace:$sourceId"
+        return if (explicitVideoSelection) {
+            "$VIDEO_IDENTITY_NAMESPACE:$audioId"
+        } else {
+            "youtube:$sourceId"
+        }
     }
 
     private fun isAudioSelection(track: Track): Boolean {
