@@ -1,6 +1,6 @@
 ---
 name: levyra-ci-workflows
-description: Implement, debug, or review Levyra GitHub Actions, CI checks, Android and Desktop builds, artifact handling, release automation, F-Droid, configuration sync, permissions, workflow security, and Kotlin/Gradle/AGP build-tooling compatibility.
+description: Automatically use for Levyra GitHub Actions, CI, F-Droid, Gradle/AGP/Kotlin/KSP compatibility, build performance, configuration/build cache, artifacts, release automation, workflow security, or configuration-sync work.
 ---
 
 # Levyra CI and workflow workflow
