@@ -8,7 +8,6 @@ import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YoutubeMusicOfficialVideoResolverTest {
@@ -170,38 +169,24 @@ class YoutubeMusicOfficialVideoResolverTest {
     }
 
     @Test
-    fun audioPrimaryRequestAsksForPersistentAtvWrapper() {
+    fun pairingRequestUsesOnlyTheOriginalYoutubeMusicVideoEndpoint() {
         val payload = buildYoutubeMusicPairingPayload(
             sourceVideoId = "audio123456",
             hl = "it",
-            gl = "IT",
-            audioPrimary = true
+            gl = "IT"
         )
 
-        assertTrue(payload.getBoolean("enablePersistentPlaylistPanel"))
-        assertTrue(payload.getBoolean("isAudioOnly"))
-        assertEquals("RDAMVMaudio123456", payload.getString("playlistId"))
-        assertEquals(
-            "MUSIC_VIDEO_TYPE_ATV",
-            payload.getJSONObject("watchEndpointMusicSupportedConfigs")
-                .getJSONObject("watchEndpointMusicConfig")
-                .getString("musicVideoType")
-        )
-    }
-
-    @Test
-    fun neutralRequestKeepsTheRadioContextWithoutForcingAtv() {
-        val payload = buildYoutubeMusicPairingPayload(
-            sourceVideoId = "audio123456",
-            hl = "it",
-            gl = "IT",
-            audioPrimary = false
-        )
-
-        assertTrue(payload.getBoolean("enablePersistentPlaylistPanel"))
-        assertEquals("RDAMVMaudio123456", payload.getString("playlistId"))
+        assertEquals("audio123456", payload.getString("videoId"))
+        assertFalse(payload.has("playlistId"))
         assertFalse(payload.has("isAudioOnly"))
         assertFalse(payload.has("watchEndpointMusicSupportedConfigs"))
+        assertFalse(payload.has("enablePersistentPlaylistPanel"))
+        assertEquals(
+            "WEB_REMIX",
+            payload.getJSONObject("context")
+                .getJSONObject("client")
+                .getString("clientName")
+        )
     }
 
     private fun videoManifest() = ResolvedPlaybackManifest(
