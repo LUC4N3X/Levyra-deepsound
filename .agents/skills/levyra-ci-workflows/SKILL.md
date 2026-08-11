@@ -46,6 +46,20 @@ Levyra-specific rules:
 
 These guardrails intentionally take the useful AGP 9 compatibility checks from JetBrains' Kotlin agent skill while keeping Levyra's existing architecture authoritative.
 
+## Gradle build-performance work
+
+Treat build-speed changes as performance engineering, not a bag of `gradle.properties` toggles.
+
+1. Measure a representative baseline first, including the build mode that is actually slow (clean, incremental, CI, Android, or Desktop).
+2. Determine whether the time is dominated by configuration, dependency resolution, compilation/processing, execution, packaging, or cache misses before choosing a fix.
+3. Inspect existing configuration-cache/build-cache behavior, task inputs/outputs, eager task creation, configuration-time I/O, KSP work, repository resolution, and JDK/toolchain consistency before adding new infrastructure.
+4. Apply one material optimization at a time, rerun the same measured path, and keep the change only when the evidence shows an improvement without weakening correctness or reproducibility.
+5. Prefer lazy Gradle APIs and Providers when they solve a demonstrated configuration-time problem; do not rewrite working build logic solely to match a generic optimization checklist.
+6. Do not add remote caches, Develocity/Build Scan publishing, third-party analytics, new CI services, or data-uploading plugins merely for diagnostics. Any external upload or persistent service requires an explicit task plus privacy, credential, supply-chain, and maintenance review.
+7. Do not skip tests/lint in CI to make a timing number look better unless the repository already has a safe path-based job design that preserves the mandatory quality gate.
+
+Record the before/after command, environment-relevant differences, and timing or task evidence when claiming a build-performance improvement. SimpMusic's Gradle performance skill is useful here for its baseline -> isolate phase -> one change -> remeasure discipline; its generic flags and services are not Levyra defaults.
+
 ## Validation
 
-Validate YAML structure, expressions, event filters, permissions, matrix behavior, shell quoting, paths, conditions, output propagation, artifact retention, and secret availability. Compare the workflow with the corresponding local Gradle command. For build-tooling changes, also verify the affected plugin graph, wrapper/version compatibility, and the narrowest relevant Android or Desktop build task. Report job-log evidence, checks not reproducible locally, and any manual release verification still required.
+Validate YAML structure, expressions, event filters, permissions, matrix behavior, shell quoting, paths, conditions, output propagation, artifact retention, and secret availability. Compare the workflow with the corresponding local Gradle command. For build-tooling changes, also verify the affected plugin graph, wrapper/version compatibility, and the narrowest relevant Android or Desktop build task. For performance changes, rerun the same representative build used for the baseline and report measured evidence rather than an assumed speedup. Report job-log evidence, checks not reproducible locally, and any manual release verification still required.
