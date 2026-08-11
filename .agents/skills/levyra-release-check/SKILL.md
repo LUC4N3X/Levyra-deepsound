@@ -33,6 +33,20 @@ Never update one platform's version merely because the other platform is releasi
 - verify package names, filenames, checksums, update metadata, release tags, and expected output paths;
 - distinguish CI evidence, local evidence, emulator/device evidence, and unperformed checks.
 
+## Android emulator and device evidence
+
+When an Android change needs runtime verification, prefer semantic, reproducible interaction over screen-coordinate automation.
+
+- Confirm `adb`, the intended SDK/JDK, the connected target, and the exact app/build variant before testing.
+- If more than one device or emulator is connected, select the serial explicitly; never assume the first target is correct.
+- Separate build, install, launch, interaction, log inspection, and final-state evidence so a successful earlier step is not mistaken for end-to-end success.
+- Prefer UI hierarchy, resource IDs, visible text, and accessibility/content descriptions for navigation and assertions. Use raw coordinates only when no stable semantic target exists, and record that limitation.
+- Capture focused logcat for the app/process around the reproduction window. Compact repetitive success noise when useful, but keep complete failure, crash, stacktrace, security, and exact-reproduction evidence available raw.
+- For playback changes, verify the exact affected path (song/audio mode, native-video mode, queue transition, background/foreground, notification, or other relevant behavior) rather than treating a successful app launch as playback validation.
+- Emulator success does not prove physical-device, Android Auto, notification, Bluetooth/media-key, battery, OEM, or hardware-decoder behavior. Report each category separately.
+
+This adopts the strongest idea from SimpMusic's Android emulator workflow: semantic navigation and structured evidence instead of brittle pixel automation, without vendoring its helper scripts into Levyra.
+
 ## Reporting
 
 List every command/check with its result. A blocked or skipped check is not a pass. Report manual playback, Android Auto, notification, PiP, Windows installer, update, protocol, media-key, and native VLC checks as unverified unless actually performed.
