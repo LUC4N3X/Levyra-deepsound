@@ -338,6 +338,13 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     return recordingScore + videoPreference + if (officialChannel) 6_000 else 0
 }
 
+/**
+ * Clears every stream artifact of the previous mode. Keeping the old [Track.playbackManifest] would
+ * carry the other mode's stream descriptors into the new resolution and its cache entry.
+ */
+internal fun Track.forModeResolution(): Track =
+    copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+
 internal fun videoCandidateId(candidate: Track): String =
     youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
 
@@ -1721,7 +1728,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         modeSwitchJob = viewModelScope.launch {
             try {
                 val selectedSource = if (targetMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
-                val baseTrack = selectedSource?.copy(streamUrl = "", videoStreamUrl = "")
+                val baseTrack = selectedSource?.forModeResolution()
                     ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
                 val resolved = withContext(Dispatchers.IO) {
                     resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)
@@ -1791,8 +1798,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     youtubePlayableTrack(failedTrack)
                 }
-                val baseTrack = selectedSource?.copy(streamUrl = "", videoStreamUrl = "")
-                    ?: failedTrack.copy(streamUrl = "", videoStreamUrl = "")
+                val baseTrack = selectedSource?.forModeResolution()
+                    ?: failedTrack.forModeResolution()
                 val resolved = withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) }
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
@@ -1835,7 +1842,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         alternateModePrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             val targetVideoMode = !activeVideoMode
             val selectedSource = if (targetVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
-            val cleanTrack = selectedSource?.copy(streamUrl = "", videoStreamUrl = "")
+            val cleanTrack = selectedSource?.forModeResolution()
                 ?: return@launch
             val resolved = resolver.prefetch(cleanTrack, targetVideoMode) ?: return@launch
             if (targetVideoMode) {
@@ -6995,7 +7002,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
-        private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 3_000L
+        // Native-video mode is an explicit user request, so the authoritative YouTube Music lookup
+        // gets a real budget. At 3s both InnerTube calls routinely timed out on mobile networks,
+        // leaving no candidate at all and silently falling back to the catalog counterpart. The two
+        // lookups run in parallel, so this bounds added latency rather than doubling it.
+        private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 9_000L
         private const val VERIFIED_VIDEO_IDENTITY_CACHE_SIZE = 64
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
