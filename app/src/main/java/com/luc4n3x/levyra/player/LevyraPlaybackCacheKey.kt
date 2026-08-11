@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.domain.Track
 
 object LevyraPlaybackCacheKey {
@@ -11,8 +12,11 @@ object LevyraPlaybackCacheKey {
     }
 
     fun video(track: Track): String {
-        val id = stableId(track)
-        return "levyra:$id:video:${variant(track.videoStreamUrl)}"
+        val id = PlaybackSourceIdentity.sourceVideoId(track)
+            .ifBlank { stableId(track) }
+            .replace(':', '_')
+        val url = track.videoStreamUrl.ifBlank { track.streamUrl }
+        return "levyra:$id:video-v5:${variant(url)}"
     }
 
     private fun stableId(track: Track): String = track.id.trim()

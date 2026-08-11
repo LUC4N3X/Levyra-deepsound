@@ -113,6 +113,7 @@ boundaries.
 | `levyra-pr-review` | Evidence-based branch, commit, patch, and pull-request review |
 | `levyra-release-check` | Pre-merge and pre-release validation |
 | `levyra-engineering` | Genuine cross-domain coordination |
+| `levyra-real-engineering` | Non-trivial engineering workflow for ambiguity, specs, focused implementation, tests, and review |
 
 Load every matching focused skill. Coordinator, real-engineering,
 context-efficiency, and security skills do not replace the applicable

@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -170,11 +171,13 @@ class CachedPlaybackProvider(
     override val priority: Int = 0
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
-        return resolver.cached(track, videoMode) ?: throw LevyraProviderMissException("Stream non presente in cache")
+        return resolver.cached(track, videoMode)
+            ?: throw LevyraProviderMissException("Stream non presente in cache")
     }
 
     override suspend fun resolveForOffline(track: Track): Track {
-        return resolver.cached(track, false) ?: throw LevyraProviderMissException("Stream offline non presente in cache")
+        return resolver.cached(track, false)
+            ?: throw LevyraProviderMissException("Stream offline non presente in cache")
     }
 }
 
@@ -251,7 +254,13 @@ class LevyraProviderRouter(
     }
 
     suspend fun resolve(track: Track, videoMode: Boolean = false): Track {
-        return executePlayback("playback", playbackTimeoutMs) { it.resolve(track, videoMode) }
+        return executePlayback("playback", playbackTimeoutMs) { provider ->
+            val result = provider.resolve(track, videoMode)
+            if (videoMode && !result.hasVideoPlaybackPayload()) {
+                throw LevyraProviderMissException("Provider ${provider.id} privo di una traccia video")
+            }
+            result
+        }
     }
 
     suspend fun resolveForOffline(track: Track): Track {
