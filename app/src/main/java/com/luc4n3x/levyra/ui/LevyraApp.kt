@@ -5949,10 +5949,10 @@ private fun HomeScreen(
                     HomeMusicVideoShelf(
                         title = strings.video,
                         tracks = homeVideoTracks,
-                        currentId = state.currentTrack?.id,
+                        currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
                         isPlaying = state.isPlaying,
                         isResolving = state.isResolving,
-                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
+                        onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
                         onToggleCurrent = viewModel::togglePlay
                     )
                 }
