@@ -35,7 +35,8 @@ class PlaybackSourceIdentityTest {
         val officialVideo = audio.copy(
             videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
             counterpartVideoId = "fcnDmrtj6Sk",
-            audioVideoId = "lFQdcPTTzSg"
+            audioVideoId = "lFQdcPTTzSg",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
         )
 
         assertNotEquals(
@@ -63,7 +64,10 @@ class PlaybackSourceIdentityTest {
             title = "Dai Dai",
             artist = "Shakira, Burna Boy",
             videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
-        ).copy(audioVideoId = "lFQdcPTTzSg")
+        ).copy(
+            audioVideoId = "lFQdcPTTzSg",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
         val staleSearchCandidate = official.copy(
             videoUrl = "https://www.youtube.com/watch?v=wrong123456",
             counterpartVideoId = "wrong123456"
@@ -84,7 +88,7 @@ class PlaybackSourceIdentityTest {
         val upper = track(
             id = "recording-1",
             videoUrl = "https://www.youtube.com/watch?v=AbCdEfGhIjK"
-        )
+        ).copy(videoType = "MUSIC_VIDEO_TYPE_OMV")
         val lower = upper.copy(
             videoUrl = "https://www.youtube.com/watch?v=abCdEfGhIjK"
         )
