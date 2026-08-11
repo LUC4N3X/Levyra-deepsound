@@ -83,13 +83,13 @@ internal fun buildYoutubeMusicPairingPayload(
             .put("user", JSONObject())
     )
 
-internal fun youtubeMusicPairingEndpoint(apiKey: String): String {
-    require(apiKey.isNotBlank()) { "YouTube Innertube API key assente" }
-    return "$YOUTUBE_MUSIC_ORIGIN/youtubei/v1/next?key=$apiKey&prettyPrint=false"
+internal fun youtubeMusicPairingEndpoint(key: String): String {
+    require(key.isNotBlank()) { "YouTube Innertube API key assente" }
+    return "$YOUTUBE_MUSIC_ORIGIN/youtubei/v1/next?key=$key&prettyPrint=false"
 }
 
 internal class YoutubeMusicOfficialVideoResolver {
-    private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
+    private val innertubeKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val client = LevyraHttpClientFactory.youtubePlayer()
 
     suspend fun resolve(
@@ -125,7 +125,7 @@ internal class YoutubeMusicOfficialVideoResolver {
         gl: String
     ): YoutubeMusicWatchTrack? {
         val requestBuilder = Request.Builder()
-            .url(youtubeMusicPairingEndpoint(apiKey))
+            .url(youtubeMusicPairingEndpoint(innertubeKey))
             .post(
                 buildYoutubeMusicPairingPayload(sourceVideoId, hl, gl)
                     .toString()
