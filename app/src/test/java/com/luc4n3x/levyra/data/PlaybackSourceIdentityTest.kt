@@ -53,7 +53,30 @@ class PlaybackSourceIdentityTest {
             PlaybackSourceIdentity.canonicalKey(audioWithIsrc),
             PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc)
         )
-        assertTrue(PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc).contains("youtube-video-v2"))
+        assertTrue(PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc).contains("youtube-video-v3:lFQdcPTTzSg"))
+    }
+
+    @Test
+    fun differentVideoCandidatesForSameSongShareTheVideoCacheIdentity() {
+        val official = track(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
+        ).copy(audioVideoId = "lFQdcPTTzSg")
+        val staleSearchCandidate = official.copy(
+            videoUrl = "https://www.youtube.com/watch?v=wrong123456",
+            counterpartVideoId = "wrong123456"
+        )
+
+        assertEquals(
+            PlaybackSourceIdentity.canonicalKey(official),
+            PlaybackSourceIdentity.canonicalKey(staleSearchCandidate)
+        )
+        assertEquals(
+            PlaybackSourceIdentity.matchKey(official, videoMode = true, audioQuality = "High"),
+            PlaybackSourceIdentity.matchKey(staleSearchCandidate, videoMode = true, audioQuality = "High")
+        )
     }
 
     @Test
@@ -79,7 +102,7 @@ class PlaybackSourceIdentityTest {
     @Test
     fun videoPersistentMatchUsesStrictPairingNamespace() {
         val key = PlaybackSourceIdentity.matchKey(track(), videoMode = true, audioQuality = "High")
-        assertTrue(key.contains("|video-v2|high"))
+        assertTrue(key.contains("|video-v3|high"))
     }
 
     @Test
