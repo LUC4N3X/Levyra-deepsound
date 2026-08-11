@@ -47,6 +47,32 @@ contract. Before investigating, editing, reviewing, or running commands:
 17. keep implementation, validation, review, publication, merge, and release as
     separate states.
 
+## Automatic task-to-skill routing
+
+Codex, Antigravity, OpenCode, OpenClaw, and any other compatible runtime using
+this workspace must select matching skills from the task itself. Never require
+the owner to name a skill, type a slash command, or remind the agent to use one.
+Load multiple skills when several rows apply.
+
+- bugs, regressions, test/build failures, races, crashes, or unexpected behavior
+  that need investigation -> `levyra-real-engineering` plus the affected domain
+  skill; use its hypothesis-driven debugging lane before speculative fixes;
+- Compose jank, scrolling, recomposition, state projection, Layout Inspector,
+  Perfetto, accessibility, TalkBack, semantics, touch targets, RTL, or UI work ->
+  `levyra-compose`;
+- GitHub Actions, CI, F-Droid, Gradle, AGP, Kotlin, KSP, configuration/build
+  cache, build speed, artifacts, or workflow automation ->
+  `levyra-ci-workflows`; also load `levyra-context-efficiency` when command
+  output is expected to be noisy;
+- emulator/device smoke tests, `adb` runtime verification, pre-merge evidence,
+  signing, APK/package checks, or release validation -> `levyra-release-check`;
+- branch, commit, diff, or pull-request review -> `levyra-pr-review` plus any
+  matching domain/security skill.
+
+These automatic routes activate the repository-local workflows that incorporate
+curated practices from the reviewed external skill sources. External packages
+are not required at runtime for these Levyra-native behaviors.
+
 For real-engineering work, follow
 `../../.agents/skills/levyra-real-engineering/SKILL.md`. When the upstream Matt
 Pocock package is available, load the exact stage skill selected by that adapter
