@@ -64,45 +64,23 @@ internal fun youtubeMusicAudioPlaybackSeed(track: Track): Track? {
 internal fun buildYoutubeMusicPairingPayload(
     sourceVideoId: String,
     hl: String,
-    gl: String,
-    audioPrimary: Boolean
-): JSONObject {
-    val payload = JSONObject()
-        .put("videoId", sourceVideoId)
-        .put(
-            "context",
-            JSONObject()
-                .put(
-                    "client",
-                    JSONObject()
-                        .put("clientName", "WEB_REMIX")
-                        .put("clientVersion", "1.20260423.01.00")
-                        .put("hl", hl)
-                        .put("gl", gl)
-                        .put("platform", "DESKTOP")
-                )
-                .put("user", JSONObject())
-        )
-        .put("enablePersistentPlaylistPanel", true)
-        .put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
-        .put("playlistId", "RDAMVM$sourceVideoId")
-
-    if (audioPrimary) {
-        payload
-            .put("isAudioOnly", true)
+    gl: String
+): JSONObject = JSONObject()
+    .put("videoId", sourceVideoId)
+    .put(
+        "context",
+        JSONObject()
             .put(
-                "watchEndpointMusicSupportedConfigs",
-                JSONObject().put(
-                    "watchEndpointMusicConfig",
-                    JSONObject()
-                        .put("hasPersistentPlaylistPanel", true)
-                        .put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")
-                )
+                "client",
+                JSONObject()
+                    .put("clientName", "WEB_REMIX")
+                    .put("clientVersion", "1.20260423.01.00")
+                    .put("hl", hl)
+                    .put("gl", gl)
+                    .put("platform", "DESKTOP")
             )
-    }
-
-    return payload
-}
+            .put("user", JSONObject())
+    )
 
 internal class YoutubeMusicOfficialVideoResolver {
     private val client = LevyraHttpClientFactory.youtubePlayer()
@@ -128,13 +106,7 @@ internal class YoutubeMusicOfficialVideoResolver {
             requestCounterpart(
                 sourceVideoId = sourceVideoId,
                 hl = locale.hl,
-                gl = locale.gl,
-                audioPrimary = true
-            ) ?: requestCounterpart(
-                sourceVideoId = sourceVideoId,
-                hl = locale.hl,
-                gl = locale.gl,
-                audioPrimary = false
+                gl = locale.gl
             )
         }.getOrNull() ?: return@withContext null
 
@@ -145,13 +117,12 @@ internal class YoutubeMusicOfficialVideoResolver {
     private fun requestCounterpart(
         sourceVideoId: String,
         hl: String,
-        gl: String,
-        audioPrimary: Boolean
+        gl: String
     ): YoutubeMusicWatchTrack? {
         val request = Request.Builder()
             .url("$YOUTUBE_MUSIC_ORIGIN/youtubei/v1/next?prettyPrint=false")
             .post(
-                buildYoutubeMusicPairingPayload(sourceVideoId, hl, gl, audioPrimary)
+                buildYoutubeMusicPairingPayload(sourceVideoId, hl, gl)
                     .toString()
                     .toRequestBody(JSON_MEDIA_TYPE)
             )
