@@ -193,6 +193,10 @@ internal fun shouldStartPlaybackPaused(
     activeRequestId: Long
 ): Boolean = request.id == activeRequestId && request.startPaused
 
+internal fun LevyraUiState.withExplicitPlaybackMode(videoMode: Boolean): LevyraUiState =
+    if (isVideoMode == videoMode && pendingVideoMode == null) this
+    else copy(isVideoMode = videoMode, pendingVideoMode = null)
+
 internal fun prioritizeNewReleasesForUser(
     releases: List<AlbumHit>,
     preferredArtists: List<String>,
@@ -4544,6 +4548,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         queueEngine.replace(list, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
         queueIndex = index
         startResolve(list.getOrElse(index) { track })
+    }
+
+    fun playAudioFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        if (list.isEmpty()) return
+        _state.update { current -> current.withExplicitPlaybackMode(videoMode = false) }
+        playFrom(list, track, loopOnCompletion)
+    }
+
+    fun playVideoFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        if (list.isEmpty()) return
+        _state.update { current -> current.withExplicitPlaybackMode(videoMode = true) }
+        playFrom(list, track, loopOnCompletion)
     }
 
     fun beginSamplesPlayback() {
