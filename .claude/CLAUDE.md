@@ -56,22 +56,24 @@ Release tasks require the inputs documented in `app/build.gradle.kts` and mirror
  
 ## Specialized guidance
  
-Rules under `.claude/rules/` load automatically from their `paths:` frontmatter. Skills do not load themselves. Invoke the matching skill with the Skill tool **before reading widely or editing**, without waiting to be asked.
+Rules under `.claude/rules/` load automatically from their `paths:` frontmatter. Skills do not load themselves. Invoke every matching skill with the Skill tool **automatically before reading widely, editing, or running a large command**, without waiting for the owner to name the skill or type a slash command.
 
 | The task touches | Invoke |
 | --- | --- |
-| Non-trivial feature, architectural change, unclear defect, specification/ticket split, or multi-step engineering | `levyra-real-engineering` |
+| Non-trivial feature, architecture, bug/regression, test/build failure, unexpected behavior, specification/ticket split, or multi-step engineering | `levyra-real-engineering` |
 | Playback, queue, Media3, MediaSession, notification, Android Auto, prefetch, audio/video mode | `levyra-player` |
 | InnerTube, extractor, stream resolution, player-config sync, tokens, network fallback | `levyra-extractor` |
 | Room entities, DAOs, migrations, schema, caches, stores, backup | `levyra-database` |
-| Compose screens, state projections, animation, lifecycle, accessibility, localization | `levyra-compose` |
+| Compose screens, state projections, jank/scrolling/recomposition, Layout Inspector/Perfetto, animation, lifecycle, accessibility/TalkBack/semantics, RTL, localization | `levyra-compose` |
 | Decorative motion artwork | `levyra-motion-artwork` |
+| GitHub Actions, CI, F-Droid, Gradle/AGP/Kotlin/KSP, build performance/cache, artifacts, or workflow automation | `levyra-ci-workflows` |
+| Builds, tests, lint, logs, broad searches, dependencies, Git/GitHub, CI, CodeRabbit, setup, or other noisy command output | `levyra-context-efficiency` |
 | Secrets, remote URLs, redirects, SSRF, MIME confusion, permissions, privacy, workflow exposure | `levyra-security-review` |
-| Reviewing the current diff before merge | `levyra-pr-review` |
-| Pre-merge or pre-release validation, `levyraVersionName`/`levyraVersionCode`, signing, APK output | `levyra-release-check` |
+| Reviewing a branch, commit, diff, or pull request | `levyra-pr-review` |
+| Emulator/device runtime verification, pre-merge/pre-release validation, `levyraVersionName`/`levyraVersionCode`, signing, APK/package output | `levyra-release-check` |
 
-When several rows match, invoke each of them. A player change that also touches the extractor is both. If a skill turns out not to apply once read, say so in one line and continue rather than silently skipping it.
+When several rows match, invoke each of them. A slow Gradle build normally uses both `levyra-ci-workflows` and `levyra-context-efficiency`; a playback bug uses `levyra-real-engineering` plus `levyra-player`; a Compose jank issue uses `levyra-real-engineering` plus `levyra-compose`; a PR review uses `levyra-pr-review` plus all affected domain/security skills. If a skill turns out not to apply once read, say so in one line and continue rather than silently skipping it.
 
-`levyra-real-engineering` is a thin bridge to the canonical adapter under `.agents/skills/`. Use only the stages needed: clarify genuine ambiguity, resolve a large decision map when necessary, write a spec only after intent is settled, split oversized work into reviewable tickets, implement one ticket at a time, and finish with independent review. Skip this ceremony for tiny, already-unambiguous changes. When the project-enabled `mattpocock-skills` plugin is available, invoke the exact upstream stage named by the bridge instead of paraphrasing it from memory. Levyra's architecture, focused domain skills, tests, quality gates, and publication rules always win on conflicts.
+`levyra-real-engineering` is a thin bridge to the canonical adapter under `.agents/skills/`. Use only the stages needed: clarify genuine ambiguity, resolve a large decision map when necessary, write a spec only after intent is settled, split oversized work into reviewable tickets, implement one ticket at a time, and finish with independent review. Skip this ceremony for tiny, already-unambiguous changes. For bugs, regressions, test/build failures, races, crashes, and unexpected behavior, use its hypothesis-driven debugging lane before stacking speculative fixes. When the project-enabled `mattpocock-skills` plugin is available, invoke the exact upstream stage named by the bridge instead of paraphrasing it from memory. Levyra's architecture, focused domain skills, tests, quality gates, and publication rules always win on conflicts.
 
 A `UserPromptSubmit` hook restates the matching rows for each request, so this table is enforced rather than merely documented. The table remains authoritative if that hook is unavailable.

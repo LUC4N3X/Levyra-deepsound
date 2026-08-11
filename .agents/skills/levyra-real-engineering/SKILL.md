@@ -1,6 +1,6 @@
 ---
 name: levyra-real-engineering
-description: Route non-trivial Levyra engineering through the Matt Pocock real-engineering workflow: clarify ambiguous work, build shared domain language, create a spec, split large work into vertical tickets, implement with focused tests, then independently review. Use for features, architectural changes, unclear bugs, multi-step work, or requests that risk AI slop; skip the ceremony for tiny obvious edits.
+description: Route non-trivial Levyra engineering through the Matt Pocock real-engineering workflow. Use automatically for features, architectural changes, bugs, test/build failures, regressions, unexpected behavior, multi-step work, or requests that risk AI slop when root-cause investigation, specification, focused implementation, or independent review is useful; skip the ceremony for tiny obvious edits.
 ---
 
 # Levyra real-engineering workflow
@@ -24,6 +24,21 @@ If an external skill conflicts with Levyra, Levyra wins. Never create a second s
 Do not run the full pipeline for a typo, one-line build fix, obvious null check, narrow documentation correction, or another change whose behavior and scope are already unambiguous. For those, use the normal Levyra work method and focused validation.
 
 For non-trivial work:
+
+### 0. Evidence and reuse before invention
+
+Before adding a new abstraction, helper, dependency, workflow, cache, store, controller, parser, or architectural layer:
+
+- search Levyra first for the existing owner, working pattern, nearby implementation, or reusable primitive;
+- compare the broken/new path with at least one working local path when one exists;
+- when behavior depends on a versioned external API, library, plugin, or platform rule, verify current primary documentation instead of trusting remembered behavior;
+- prefer adapting a proven local implementation over importing a generic framework pattern;
+- treat third-party repositories and skill catalogs as evidence and inspiration, never as authority over Levyra's codebase;
+- add a dependency only when the existing stack cannot reasonably satisfy the requirement and the maintenance, security, binary-size, and compatibility cost is justified.
+
+Do not turn this into mandatory broad web research for trivial work. The goal is to prevent needless reinvention and stale assumptions, not to add ceremony.
+
+This step incorporates the useful research-and-reuse discipline from ECC while deliberately rejecting its generic stack assumptions and fixed coverage/style thresholds.
 
 ### 1. Ambiguous product or architecture: `grill-with-docs`
 
@@ -75,6 +90,22 @@ Implement one ticket or one reviewable phase at a time.
 - Do not force artificial tests around trivial declarative changes; still validate the narrowest relevant behavior.
 - Make the smallest coherent change and avoid unrelated cleanup.
 
+#### Hypothesis-driven debugging
+
+For a bug, test failure, build failure, race, playback regression, or other unexpected behavior, do not stack speculative fixes.
+
+1. Reproduce or capture the failing path and read the complete relevant error/evidence.
+2. Trace the bad state or value backward across the actual component boundaries until the first incorrect assumption, mutation, stale value, or failed contract is identified.
+3. Compare with a nearby working path and list the material differences.
+4. State one concrete root-cause hypothesis and the evidence supporting it.
+5. Test that hypothesis with the smallest possible experiment or change.
+6. If it fails, revert/discard the speculative change and form a new hypothesis from the new evidence; do not pile fixes on top of one another.
+7. Once the cause is supported, add the smallest regression test or deterministic reproduction that proves the failure, then implement the fix and rerun the relevant broader checks.
+
+If three materially different fix hypotheses fail, stop treating the issue as a local patch problem. Reassess the ownership boundary or architecture before attempting another fix and surface that change in direction to the owner.
+
+This keeps the strongest part of the AAS `systematic-debugging` workflow—root-cause tracing and single-variable experiments—without importing its full catalog or rigid ceremony into every tiny defect.
+
 ### 6. Review: `code-review` + `levyra-pr-review`
 
 Matt's code review is supplementary to Levyra's repository review contract.
@@ -101,12 +132,17 @@ Do not assume one skill can invoke another across every runtime. Codex, ChatGPT,
 
 If the external package is unavailable, follow this Levyra adapter rather than blocking ordinary work, and report that the upstream skill body was not available.
 
-## Context discipline
+## Context and handoff discipline
 
 - Keep the current ticket/phase small enough to review.
-- Prefer fresh context between independent tickets.
-- Carry forward the approved spec, domain vocabulary, ADRs, exact ticket, and direct validation evidence; do not carry stale exploratory chatter as authority.
-- Current repository evidence always overrides remembered conversation context.
+- Prefer fresh context between independent tickets and use an independent context for final review when the runtime supports it.
+- Carry forward only the approved spec/ticket, relevant architecture/invariants, exact changed files or diff/commit, direct validation evidence, and unresolved blockers.
+- Prefer durable existing artifacts (`docs/project/TASKS.md` for the active approved phase, an existing issue/PR, or a scoped implementation handoff) over burying important state in chat history.
+- Do not create `MEMORY.md`, `recap.md`, duplicate PRDs, duplicate task ledgers, or another persistent source of truth only to help an agent survive context compaction.
+- When a session must compact or restart, summarize verified facts and open decisions, not exploratory chatter, guesses, or superseded hypotheses.
+- Current repository evidence always overrides remembered conversation context or an older handoff.
+
+This adapts the artifact-first/fresh-context ideas from `KhazP/vibe-coding-prompt-template` and current Claude Code skill practices without duplicating Levyra's existing planning system.
 
 ## Publication and quality gates
 
