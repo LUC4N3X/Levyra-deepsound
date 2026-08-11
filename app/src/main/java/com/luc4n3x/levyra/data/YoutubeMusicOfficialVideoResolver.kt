@@ -28,7 +28,7 @@ internal fun selectYoutubeMusicOfficialCounterpart(
             if (track.counterpart?.videoId == source) add(track)
         }
     }.firstOrNull { candidate ->
-        candidate.videoId.isNotBlank() &&
+        YOUTUBE_MUSIC_VIDEO_ID.matches(candidate.videoId) &&
             candidate.videoId != source &&
             candidate.videoType.contains("OMV", ignoreCase = true)
     }
@@ -154,7 +154,6 @@ internal class YoutubeMusicOfficialVideoResolver {
                     .toRequestBody(JSON_MEDIA_TYPE)
             )
             .header("Accept", "application/json")
-            .header("Accept-Encoding", "br,gzip")
             .header("X-Goog-Api-Format-Version", "1")
             .header("X-Origin", YOUTUBE_MUSIC_ORIGIN)
             .header("Referer", "$YOUTUBE_MUSIC_ORIGIN/")
@@ -164,8 +163,13 @@ internal class YoutubeMusicOfficialVideoResolver {
             .build()
 
         return client.newCall(request).execute().use { response ->
-            val responseBody = response.body?.string().orEmpty()
-            if (!response.isSuccessful || responseBody.isBlank()) return@use null
+            if (!response.isSuccessful) return@use null
+            val body = response.body ?: return@use null
+            val declaredLength = body.contentLength()
+            if (declaredLength > YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES) return@use null
+            val responseBody = readUtf8Bounded(body.byteStream(), YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES)
+                ?.takeIf { it.isNotBlank() }
+                ?: return@use null
             val playlist = YoutubeMusicWatchParser.parseWatchPlaylist(JSONObject(responseBody))
             selectYoutubeMusicOfficialCounterpart(sourceVideoId, playlist.tracks)
         }
@@ -208,6 +212,7 @@ internal class YoutubeMusicOfficialVideoResolver {
         private const val WEB_REMIX_CLIENT_ID = "67"
         private const val WEB_REMIX_CLIENT_VERSION = "1.20260423.01.00"
         private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+        private const val YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES = 4L * 1024L * 1024L
         private const val CACHE_TTL_MS = 20L * 60L * 1000L
         private const val CACHE_MAX_ENTRIES = 96
     }
