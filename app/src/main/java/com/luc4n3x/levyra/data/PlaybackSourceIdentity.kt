@@ -77,10 +77,10 @@ object PlaybackSourceIdentity {
     }
 
     private fun youtubeIdentityToken(track: Track): String {
-        val sourceId = sourceVideoId(track).lowercase(Locale.ROOT)
+        val sourceId = sourceVideoId(track)
         if (sourceId.isBlank()) return ""
-        val audioId = track.audioVideoId.trim().lowercase(Locale.ROOT)
-        val selectedVideoId = extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT)
+        val audioId = track.audioVideoId.trim()
+        val selectedVideoId = extractYoutubeVideoId(track.videoUrl)
         val explicitVideoSelection = youtubeIdPattern.matches(audioId) &&
             selectedVideoId.isNotBlank() &&
             selectedVideoId != audioId
