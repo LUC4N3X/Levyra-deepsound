@@ -1,10 +1,11 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.domain.rememberYoutubeMusicOfficialVideoPairing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -82,7 +83,13 @@ internal fun buildYoutubeMusicPairingPayload(
             .put("user", JSONObject())
     )
 
+internal fun youtubeMusicPairingEndpoint(apiKey: String): String {
+    require(apiKey.isNotBlank()) { "YouTube Innertube API key assente" }
+    return "$YOUTUBE_MUSIC_ORIGIN/youtubei/v1/next?key=$apiKey&prettyPrint=false"
+}
+
 internal class YoutubeMusicOfficialVideoResolver {
+    private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val client = LevyraHttpClientFactory.youtubePlayer()
 
     suspend fun resolve(
@@ -102,13 +109,11 @@ internal class YoutubeMusicOfficialVideoResolver {
             officialCounterpartCache.remove(cacheKey, cached)
         }
 
-        val counterpart = runCatchingPreservingCancellation {
-            requestCounterpart(
-                sourceVideoId = sourceVideoId,
-                hl = locale.hl,
-                gl = locale.gl
-            )
-        }.getOrNull() ?: return@withContext null
+        val counterpart = requestCounterpart(
+            sourceVideoId = sourceVideoId,
+            hl = locale.hl,
+            gl = locale.gl
+        ) ?: return@withContext null
 
         remember(cacheKey, counterpart, now)
         track.withOfficialCounterpart(sourceVideoId, counterpart)
@@ -119,30 +124,36 @@ internal class YoutubeMusicOfficialVideoResolver {
         hl: String,
         gl: String
     ): YoutubeMusicWatchTrack? {
-        val request = Request.Builder()
-            .url("$YOUTUBE_MUSIC_ORIGIN/youtubei/v1/next?prettyPrint=false")
+        val requestBuilder = Request.Builder()
+            .url(youtubeMusicPairingEndpoint(apiKey))
             .post(
                 buildYoutubeMusicPairingPayload(sourceVideoId, hl, gl)
                     .toString()
                     .toRequestBody(JSON_MEDIA_TYPE)
             )
             .header("Accept", "application/json")
-            .header("X-Goog-Api-Format-Version", "1")
+            .header("Origin", YOUTUBE_MUSIC_ORIGIN)
             .header("X-Origin", YOUTUBE_MUSIC_ORIGIN)
+            .header("X-Goog-Api-Format-Version", "1")
             .header("Referer", "$YOUTUBE_MUSIC_ORIGIN/")
             .header("User-Agent", WEB_USER_AGENT)
             .header("X-Youtube-Client-Name", WEB_REMIX_CLIENT_ID)
             .header("X-Youtube-Client-Version", WEB_REMIX_CLIENT_VERSION)
-            .build()
+        GoogleApiKeyHeaders.applyTo(requestBuilder, null)
 
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@use null
-            val body = response.body ?: return@use null
-            val declaredLength = body.contentLength()
-            if (declaredLength > YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES) return@use null
-            val responseBody = readUtf8Bounded(body.byteStream(), YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES)
-                ?.takeIf { it.isNotBlank() }
-                ?: return@use null
+        return client.newCall(requestBuilder.build()).execute().use { response ->
+            val body = response.body
+            val declaredLength = body?.contentLength() ?: 0L
+            if (declaredLength > YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES) {
+                throw YoutubeMusicRequestException("next", response.code, "response too large")
+            }
+            val responseBody = body
+                ?.let { readUtf8Bounded(it.byteStream(), YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES) }
+                .orEmpty()
+            if (!response.isSuccessful) {
+                throw YoutubeMusicRequestException("next", response.code, responseBody.take(512))
+            }
+            if (responseBody.isBlank()) return@use null
             val playlist = YoutubeMusicWatchParser.parseWatchPlaylist(JSONObject(responseBody))
             selectYoutubeMusicOfficialCounterpart(sourceVideoId, playlist.tracks)
         }
@@ -152,7 +163,6 @@ internal class YoutubeMusicOfficialVideoResolver {
         sourceVideoId: String,
         counterpart: YoutubeMusicWatchTrack
     ): Track {
-        rememberYoutubeMusicOfficialVideoPairing(sourceVideoId, counterpart.videoId)
         return copy(
             streamUrl = "",
             videoStreamUrl = "",
@@ -182,7 +192,6 @@ internal class YoutubeMusicOfficialVideoResolver {
 
     private companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
-        private const val YOUTUBE_MUSIC_ORIGIN = "https://music.youtube.com"
         private const val WEB_REMIX_CLIENT_ID = "67"
         private const val WEB_REMIX_CLIENT_VERSION = "1.20260423.01.00"
         private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
@@ -192,3 +201,5 @@ internal class YoutubeMusicOfficialVideoResolver {
         private val officialCounterpartCache = ConcurrentHashMap<String, CachedCounterpart>()
     }
 }
+
+private const val YOUTUBE_MUSIC_ORIGIN = "https://music.youtube.com"
