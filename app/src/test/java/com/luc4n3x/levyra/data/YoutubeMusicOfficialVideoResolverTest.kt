@@ -153,7 +153,9 @@ class YoutubeMusicOfficialVideoResolverTest {
         ).copy(
             streamUrl = "https://rr.example/audio",
             videoStreamUrl = "https://rr.example/video",
-            playbackManifest = videoManifest()
+            playbackManifest = videoManifest(),
+            counterpartVideoId = "video123456",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
         )
 
         val audio = youtubeMusicAudioPlaybackSeed(dirtyVideo)!!
@@ -163,6 +165,8 @@ class YoutubeMusicOfficialVideoResolverTest {
         assertNull(audio.playbackManifest)
         assertEquals("audio123456", audio.audioVideoId)
         assertEquals("https://www.youtube.com/watch?v=audio123456", audio.videoUrl)
+        assertEquals("", audio.counterpartVideoId)
+        assertEquals("MUSIC_VIDEO_TYPE_ATV", audio.videoType)
     }
 
     @Test
