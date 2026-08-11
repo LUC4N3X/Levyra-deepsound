@@ -1,6 +1,6 @@
 ---
 name: levyra-release-check
-description: Validate Levyra before merge or release, including Android and Desktop versions, signing, builds, packaging, artifacts, checksums, workflows, secrets, and truthful manual verification.
+description: Automatically use for Levyra pre-merge/pre-release validation, Android emulator or physical-device runtime verification, versions, signing, builds, packaging, artifacts, checksums, workflows, secrets, and truthful manual evidence.
 ---
 
 # Levyra release validation workflow
