@@ -100,4 +100,48 @@ class PlaybackHandoffTest {
         assertFalse(isRecoverablePlaybackErrorCode(1001))
         assertFalse(isRecoverablePlaybackErrorCode(5001))
     }
+
+    @Test
+    fun delayedVideoRecoveryIsRejectedAfterPlaybackGenerationChanges() {
+        assertTrue(
+            shouldRunDelayedVideoRecovery(
+                expectedGeneration = 4L,
+                currentGeneration = 4L,
+                recoveryInFlight = false,
+                recoveryAttempts = 0
+            )
+        )
+        assertFalse(
+            shouldRunDelayedVideoRecovery(
+                expectedGeneration = 4L,
+                currentGeneration = 5L,
+                recoveryInFlight = false,
+                recoveryAttempts = 0
+            )
+        )
+    }
+
+    @Test
+    fun videoFrameWatchdogDoesNotRunWhilePaused() {
+        assertFalse(
+            shouldRunVideoFrameWatchdog(
+                videoMode = true,
+                hasVideoPayload = true,
+                renderedVideoFrame = false,
+                surfaceAttached = true,
+                playbackReady = true,
+                playWhenReady = false
+            )
+        )
+        assertTrue(
+            shouldRunVideoFrameWatchdog(
+                videoMode = true,
+                hasVideoPayload = true,
+                renderedVideoFrame = false,
+                surfaceAttached = true,
+                playbackReady = true,
+                playWhenReady = true
+            )
+        )
+    }
 }
