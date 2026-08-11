@@ -7,7 +7,6 @@ internal fun Track.hasVerifiedYoutubeMusicVideoPairing(): Boolean {
     val audio = audioVideoId.trim()
     val video = counterpartVideoId.trim()
     if (!YOUTUBE_VIDEO_ID.matches(audio) || !YOUTUBE_VIDEO_ID.matches(video) || audio == video) return true
-    if (!videoType.contains("OMV", ignoreCase = true)) return false
 
     val selectedVideo = YOUTUBE_VIDEO_URL
         .find(videoUrl.trim())
