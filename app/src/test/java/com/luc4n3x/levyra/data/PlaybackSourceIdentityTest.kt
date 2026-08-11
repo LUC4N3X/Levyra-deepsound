@@ -158,7 +158,10 @@ class PlaybackSourceIdentityTest {
         val selected = track(
             id = "catalog-recording-1",
             videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
-        ).copy(audioVideoId = "lFQdcPTTzSg")
+        ).copy(
+            audioVideoId = "lFQdcPTTzSg",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
 
         assertEquals("fcnDmrtj6Sk", PlaybackSourceIdentity.sourceVideoId(selected))
         assertEquals("catalog-recording-1", selected.id)
@@ -173,6 +176,34 @@ class PlaybackSourceIdentityTest {
 
         assertEquals("lFQdcPTTzSg", PlaybackSourceIdentity.sourceVideoId(audio))
         assertEquals("catalog-recording-1", audio.id)
+    }
+
+    @Test
+    fun sourceVideoIdUsesOriginalYoutubeSongIdBeforeStaleCatalogVideo() {
+        val audio = track(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            videoUrl = "https://www.youtube.com/watch?v=wrong123456"
+        ).copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+
+        assertEquals("lFQdcPTTzSg", PlaybackSourceIdentity.sourceVideoId(audio))
+    }
+
+    @Test
+    fun sourceVideoIdKeepsConfirmedOmvSelectedForEngagement() {
+        val video = track(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
+        ).copy(
+            audioVideoId = "lFQdcPTTzSg",
+            counterpartVideoId = "fcnDmrtj6Sk",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals("fcnDmrtj6Sk", PlaybackSourceIdentity.sourceVideoId(video))
     }
 
     private fun track(
