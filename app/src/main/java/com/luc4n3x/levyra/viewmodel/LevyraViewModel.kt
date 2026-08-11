@@ -30,6 +30,7 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
@@ -99,6 +100,7 @@ import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
@@ -323,25 +325,55 @@ internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val recordingScore = playbackCandidateScore(target, candidate)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
-    val type = candidate.videoType.uppercase()
+    val type = candidate.videoType
     val videoPreference = when {
-        type.contains("OMV") || type.contains("OFFICIAL_MUSIC_VIDEO") -> 20_000
-        type.contains("ATV") -> -20_000
-        type.contains("UGC") || type.contains("MUSIC_VIDEO") -> 1_000
+        YoutubeMusicVideoType.isOfficialVideo(type) -> 20_000
+        YoutubeMusicVideoType.isArtTrack(type) -> -20_000
+        YoutubeMusicVideoType.isVideo(type) -> 1_000
         else -> 0
     }
-    return recordingScore + videoPreference
+    // A shared artist channel is structured proof of an official upload and outranks title text.
+    val officialChannel = target.artistBrowseIds.isNotEmpty() &&
+        candidate.artistBrowseIds.any { it in target.artistBrowseIds }
+    return recordingScore + videoPreference + if (officialChannel) 6_000 else 0
 }
 
-internal fun selectPreferredVideoPlaybackCandidate(target: Track, candidates: List<Track>): Track? {
+/**
+ * Clears every stream artifact of the previous mode. Keeping the old [Track.playbackManifest] would
+ * carry the other mode's stream descriptors into the new resolution and its cache entry.
+ */
+internal fun Track.forModeResolution(): Track =
+    copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
+
+internal fun videoCandidateId(candidate: Track): String =
+    youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
+
+/**
+ * YouTube Music's own song/video pairing is authoritative, so a candidate in [authoritativeIds]
+ * only loses to structurally stronger evidence such as an exact ISRC match. Without this a
+ * title-compatible official video of a *different* recording could replace the declared pairing.
+ */
+internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
+
+internal fun selectPreferredVideoPlaybackCandidate(
+    target: Track,
+    candidates: List<Track>,
+    authoritativeIds: Set<String> = emptySet()
+): Track? {
     return candidates.asSequence()
         .filter { candidate ->
-            val videoId = youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
-            YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoId) &&
-                !candidate.videoType.contains("ATV", ignoreCase = true)
+            YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoCandidateId(candidate)) &&
+                !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
         .filter { candidate -> isPlaybackCandidateCompatible(target, candidate) }
-        .maxByOrNull { candidate -> videoPlaybackCandidateScore(target, candidate) }
+        .maxByOrNull { candidate ->
+            val authority = if (videoCandidateId(candidate) in authoritativeIds) {
+                VIDEO_PAIRING_AUTHORITY_BONUS
+            } else {
+                0
+            }
+            videoPlaybackCandidateScore(target, candidate) + authority
+        }
 }
 
 internal fun playbackTextKey(value: String): String {
@@ -1696,7 +1728,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         modeSwitchJob = viewModelScope.launch {
             try {
                 val selectedSource = if (targetMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
-                val baseTrack = selectedSource?.copy(streamUrl = "", videoStreamUrl = "")
+                val baseTrack = selectedSource?.forModeResolution()
                     ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
                 val resolved = withContext(Dispatchers.IO) {
                     resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)
@@ -1766,8 +1798,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     youtubePlayableTrack(failedTrack)
                 }
-                val baseTrack = selectedSource?.copy(streamUrl = "", videoStreamUrl = "")
-                    ?: failedTrack.copy(streamUrl = "", videoStreamUrl = "")
+                val baseTrack = selectedSource?.forModeResolution()
+                    ?: failedTrack.forModeResolution()
                 val resolved = withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) }
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
@@ -1810,7 +1842,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         alternateModePrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             val targetVideoMode = !activeVideoMode
             val selectedSource = if (targetVideoMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
-            val cleanTrack = selectedSource?.copy(streamUrl = "", videoStreamUrl = "")
+            val cleanTrack = selectedSource?.forModeResolution()
                 ?: return@launch
             val resolved = resolver.prefetch(cleanTrack, targetVideoMode) ?: return@launch
             if (targetVideoMode) {
@@ -2677,6 +2709,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
+        NewPipeRuntime.setLanguage(languageCode)
         pendingHomeSectionsSnapshot.set(null)
         deferredHomeArtistsSnapshot.set(null)
         homeArtistsFingerprint = ""
@@ -6653,8 +6686,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             related to search.await()
         }
 
-        val selected = selectPreferredVideoPlaybackCandidate(track, watchCandidates)
-            ?: selectPreferredVideoPlaybackCandidate(track, searchCandidates)
+        // Rank every candidate together so a confirmed official video from search can win, while
+        // YouTube Music's own pairing keeps authority unless the search hit proves a stronger
+        // identity (exact ISRC) rather than a merely title-compatible official video.
+        val authoritativeIds = watchCandidates.map(::videoCandidateId).filter { it.isNotBlank() }.toSet()
+        val selected = selectPreferredVideoPlaybackCandidate(
+            track,
+            watchCandidates + searchCandidates,
+            authoritativeIds
+        )
         if (selected != null) {
             verifiedVideoIdentityCache[cacheKey] = selected
             return track.withVerifiedVideoCandidate(selected, sourceId)
@@ -6677,7 +6717,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             thumbnailUrl = thumbnailUrl.ifBlank { seed.thumbnailUrl },
             largeThumbnailUrl = thumbnailUrl.ifBlank { seed.largeThumbnailUrl },
-            videoType = videoType
+            videoType = videoType,
+            artistBrowseIds = artists.map { artist -> artist.browseId }
+                .filter { it.isNotBlank() }
+                .ifEmpty { seed.artistBrowseIds }
         )
     }
 
@@ -6959,7 +7002,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
-        private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 3_000L
+        // Native-video mode is an explicit user request, so the authoritative YouTube Music lookup
+        // gets a real budget. At 3s both InnerTube calls routinely timed out on mobile networks,
+        // leaving no candidate at all and silently falling back to the catalog counterpart. The two
+        // lookups run in parallel, so this bounds added latency rather than doubling it.
+        private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 9_000L
         private const val VERIFIED_VIDEO_IDENTITY_CACHE_SIZE = 64
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2

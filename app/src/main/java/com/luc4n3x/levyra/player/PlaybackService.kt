@@ -17,6 +17,7 @@ import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -1681,12 +1682,25 @@ private class LevyraMediaSourceFactory(
             return ProgressiveMediaSource.Factory(localDataSourceFactory).createMediaSource(localItem)
         }
         val uri = localUri?.toString().orEmpty()
+        // The declared MIME type wins over URL shape: a YouTube HLS audio manifest whose URL does
+        // not look like a playlist would otherwise reach the progressive extractor, which fails on
+        // the #EXTM3U header instead of playing.
+        val mimeType = mediaItem.localConfiguration?.mimeType.orEmpty()
         return when {
-            isHlsManifestUri(uri) -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-            isDashManifestUri(uri) -> DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            isHlsMimeType(mimeType) || isHlsManifestUri(uri) ->
+                HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            isDashMimeType(mimeType) || isDashManifestUri(uri) ->
+                DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
             else -> ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         }
     }
+
+    private fun isHlsMimeType(mimeType: String): Boolean =
+        mimeType.equals(MimeTypes.APPLICATION_M3U8, ignoreCase = true) ||
+            mimeType.equals("application/vnd.apple.mpegurl", ignoreCase = true)
+
+    private fun isDashMimeType(mimeType: String): Boolean =
+        mimeType.equals(MimeTypes.APPLICATION_MPD, ignoreCase = true)
 
     private fun isHlsManifestUri(uri: String): Boolean {
         val clean = uri.substringBefore('#').lowercase()
