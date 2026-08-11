@@ -44,6 +44,7 @@ if [ -f local.properties ]; then
 fi
 
 sdk_root=""
+sdk_platform=""
 sdk_partial=""
 for candidate in "${candidates[@]}"; do
   if [ -z "$candidate" ] || [ ! -d "$candidate" ]; then
@@ -51,19 +52,36 @@ for candidate in "${candidates[@]}"; do
   fi
 
   missing=""
+  found_platform=""
   if [ -n "$compile_sdk" ]; then
-    if [ ! -f "$candidate/platforms/android-$compile_sdk/android.jar" ]; then
-      missing="platforms;android-$compile_sdk"
+    # Recent SDK Manager releases store the base minor SDK as android-<api>.0
+    # (for example API 37 as android-37.0), while older installations may still
+    # use android-<api>. Accept both, but do not treat a later minor SDK such as
+    # android-37.1 as satisfying compileSdk = 37.
+    for platform_path in \
+      "$candidate/platforms/android-$compile_sdk" \
+      "$candidate/platforms/android-$compile_sdk.0"; do
+      if [ -f "$platform_path/android.jar" ]; then
+        found_platform="${platform_path##*/}"
+        break
+      fi
+    done
+    if [ -z "$found_platform" ]; then
+      missing="platforms;android-$compile_sdk (or platforms;android-$compile_sdk.0)"
     fi
   elif ! compgen -G "$candidate/platforms/android-*/android.jar" >/dev/null 2>&1; then
     missing="an android-<compileSdk> platform"
   fi
-  if ! compgen -G "$candidate/build-tools/*/aapt2" >/dev/null 2>&1; then
+
+  # Build-tools binaries are extensionless on Unix and use .exe on Windows.
+  if ! compgen -G "$candidate/build-tools/*/aapt2" >/dev/null 2>&1 && \
+     ! compgen -G "$candidate/build-tools/*/aapt2.exe" >/dev/null 2>&1; then
     missing="${missing:+$missing and }build-tools"
   fi
 
   if [ -z "$missing" ]; then
     sdk_root="$candidate"
+    sdk_platform="$found_platform"
     break
   fi
   if [ -z "$sdk_partial" ]; then
@@ -73,7 +91,7 @@ done
 
 sdk_unusable_advice="Do not attempt them, and do not report them as passing or as skipped-by-choice: say the Android SDK is unusable in this environment and that CI (.github/workflows/pr-check.yml) is the authority."
 if [ -n "$sdk_root" ]; then
-  lines+=("Android SDK: $sdk_root, with platform android-${compile_sdk:-unknown} and build-tools present. ':app:' Gradle tasks should configure. That is a precondition, not a result: still run the task and report only what actually ran.")
+  lines+=("Android SDK: $sdk_root, with platform ${sdk_platform:-android-${compile_sdk:-unknown}} and build-tools present. ':app:' Gradle tasks should configure. That is a precondition, not a result: still run the task and report only what actually ran.")
 elif [ -n "$sdk_partial" ]; then
   lines+=("Android SDK: incomplete - $sdk_partial. Every ':app:' Gradle task (testDebugUnitTest, lintRelease, assembleRelease) still fails at configuration time until those packages are installed via sdkmanager. $sdk_unusable_advice")
 else
