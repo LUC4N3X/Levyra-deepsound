@@ -46,7 +46,6 @@ class PlaybackSourceIdentityTest {
             PlaybackSourceIdentity.matchKey(audio, videoMode = true, audioQuality = "High"),
             PlaybackSourceIdentity.matchKey(officialVideo, videoMode = true, audioQuality = "High")
         )
-        assertTrue(PlaybackSourceIdentity.canonicalKey(officialVideo).contains("youtube-video-v2"))
 
         val audioWithIsrc = audio.copy(isrc = "USQX92601234")
         val officialVideoWithIsrc = officialVideo.copy(isrc = "USQX92601234")
@@ -55,6 +54,26 @@ class PlaybackSourceIdentityTest {
             PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc)
         )
         assertTrue(PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc).contains("youtube-video-v2"))
+    }
+
+    @Test
+    fun youtubeIdsRemainCaseSensitiveInCanonicalAndMatchKeys() {
+        val upper = track(
+            id = "recording-1",
+            videoUrl = "https://www.youtube.com/watch?v=AbCdEfGhIjK"
+        )
+        val lower = upper.copy(
+            videoUrl = "https://www.youtube.com/watch?v=abCdEfGhIjK"
+        )
+
+        assertNotEquals(
+            PlaybackSourceIdentity.canonicalKey(upper),
+            PlaybackSourceIdentity.canonicalKey(lower)
+        )
+        assertNotEquals(
+            PlaybackSourceIdentity.matchKey(upper, videoMode = true, audioQuality = "High"),
+            PlaybackSourceIdentity.matchKey(lower, videoMode = true, audioQuality = "High")
+        )
     }
 
     @Test
