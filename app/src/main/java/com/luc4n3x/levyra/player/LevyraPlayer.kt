@@ -50,6 +50,29 @@ internal fun isRecoverablePlaybackErrorCode(errorCode: Int): Boolean =
         errorCode in 3001..3004 ||
         errorCode in 4001..4005
 
+internal fun shouldRunDelayedVideoRecovery(
+    expectedGeneration: Long,
+    currentGeneration: Long,
+    recoveryInFlight: Boolean,
+    recoveryAttempts: Int
+): Boolean =
+    expectedGeneration == currentGeneration && !recoveryInFlight && recoveryAttempts < 3
+
+internal fun shouldRunVideoFrameWatchdog(
+    videoMode: Boolean,
+    hasVideoPayload: Boolean,
+    renderedVideoFrame: Boolean,
+    surfaceAttached: Boolean,
+    playbackReady: Boolean,
+    playWhenReady: Boolean
+): Boolean =
+    videoMode &&
+        hasVideoPayload &&
+        !renderedVideoFrame &&
+        surfaceAttached &&
+        playbackReady &&
+        playWhenReady
+
 @UnstableApi
 class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
@@ -71,7 +94,9 @@ class LevyraPlayer(context: Context) {
     private var recoveryInFlight = false
     private var recoveryAttempts = 0
     private var recoveryResetJob: Job? = null
+    private var invalidVideoRecoveryJob: Job? = null
     private var videoFrameWatchdogJob: Job? = null
+    private var playbackGeneration = 0L
     private var observedServicePlayer: Player? = null
     private var videoSurfaceAttached = false
     private var renderedVideoFrame = false
@@ -153,6 +178,15 @@ class LevyraPlayer(context: Context) {
                     onCompletion?.invoke()
                 }
 
+                override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                    if (!playWhenReady) {
+                        videoFrameWatchdogJob?.cancel()
+                        videoFrameWatchdogJob = null
+                        return
+                    }
+                    if (connected.playbackState == Player.STATE_READY) scheduleVideoFrameWatchdog()
+                }
+
                 override fun onPlayerError(error: PlaybackException) {
                     if (ignoreEndedFromManualStop || connected.mediaItemCount == 0) return
                     val track = loadedTrack ?: return
@@ -223,6 +257,7 @@ class LevyraPlayer(context: Context) {
 
     fun play(track: Track, videoMode: Boolean = false) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
+        invalidateDelayedVideoRecovery()
         val identity = streamIdentity(track, videoMode)
         val active = controller
         if (active == null) {
@@ -246,6 +281,7 @@ class LevyraPlayer(context: Context) {
         active.playWhenReady = true
         active.play()
         startSponsorBlockMonitor(track)
+        scheduleVideoFrameWatchdog()
     }
 
     fun replaceSource(
@@ -255,6 +291,7 @@ class LevyraPlayer(context: Context) {
         playWhenReady: Boolean
     ) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
+        invalidateDelayedVideoRecovery()
         val active = controller
         if (active == null) {
             pendingPlayback = PendingPlayback(track, positionMs.coerceAtLeast(0L), videoMode, playWhenReady)
@@ -300,11 +337,10 @@ class LevyraPlayer(context: Context) {
     }
 
     fun failRecovery(message: String) {
+        invalidateDelayedVideoRecovery()
         recoveryInFlight = false
         recoveryAttempts = 0
         recoveryResetJob?.cancel()
-        videoFrameWatchdogJob?.cancel()
-        videoFrameWatchdogJob = null
         sponsorJob?.cancel()
         sponsorJob = null
         clearLoadedState()
@@ -313,16 +349,17 @@ class LevyraPlayer(context: Context) {
     }
 
     fun pause() {
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
         controller?.pause()
     }
 
     fun stop() {
+        invalidateDelayedVideoRecovery()
         ignoreEndedFromManualStop = true
         recoveryInFlight = false
         recoveryAttempts = 0
         recoveryResetJob?.cancel()
-        videoFrameWatchdogJob?.cancel()
-        videoFrameWatchdogJob = null
         sponsorJob?.cancel()
         sponsorJob = null
         clearLoadedState()
@@ -386,8 +423,7 @@ class LevyraPlayer(context: Context) {
 
     fun release() {
         PlaybackService.setUiRecoveryAvailable(false)
-        videoFrameWatchdogJob?.cancel()
-        videoFrameWatchdogJob = null
+        invalidateDelayedVideoRecovery()
         observedServicePlayer?.removeListener(videoRenderListener)
         observedServicePlayer = null
         sponsorJob?.cancel()
@@ -408,9 +444,13 @@ class LevyraPlayer(context: Context) {
             onError?.invoke("Sorgente video non valida")
             return
         }
-        scope.launch {
+        val generation = playbackGeneration
+        invalidVideoRecoveryJob?.cancel()
+        invalidVideoRecoveryJob = scope.launch {
             delay(1L)
-            if (recoveryInFlight || recoveryAttempts >= 3) return@launch
+            if (!shouldRunDelayedVideoRecovery(generation, playbackGeneration, recoveryInFlight, recoveryAttempts)) {
+                return@launch
+            }
             recoveryInFlight = true
             recoveryAttempts++
             callback(
@@ -425,33 +465,66 @@ class LevyraPlayer(context: Context) {
 
     private fun scheduleVideoFrameWatchdog() {
         videoFrameWatchdogJob?.cancel()
+        val active = controller ?: return
         val track = loadedTrack ?: return
         val identity = loadedStreamIdentity ?: return
-        if (!loadedVideoMode || !track.hasVideoPlaybackPayload() || renderedVideoFrame) return
-        if (!refreshVideoSurfaceState()) return
+        val generation = playbackGeneration
+        val surfaceAttached = refreshVideoSurfaceState()
+        if (
+            !shouldRunVideoFrameWatchdog(
+                videoMode = loadedVideoMode,
+                hasVideoPayload = track.hasVideoPlaybackPayload(),
+                renderedVideoFrame = renderedVideoFrame,
+                surfaceAttached = surfaceAttached,
+                playbackReady = active.playbackState == Player.STATE_READY,
+                playWhenReady = active.playWhenReady
+            )
+        ) {
+            return
+        }
 
         videoFrameWatchdogJob = scope.launch {
             delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
-            val active = controller ?: return@launch
+            val current = controller ?: return@launch
+            if (generation != playbackGeneration) return@launch
             if (!loadedVideoMode || loadedStreamIdentity != identity || loadedTrack?.id != track.id) return@launch
-            if (!refreshVideoSurfaceState() || renderedVideoFrame || active.playbackState != Player.STATE_READY) return@launch
+            if (
+                !shouldRunVideoFrameWatchdog(
+                    videoMode = loadedVideoMode,
+                    hasVideoPayload = track.hasVideoPlaybackPayload(),
+                    renderedVideoFrame = renderedVideoFrame,
+                    surfaceAttached = refreshVideoSurfaceState(),
+                    playbackReady = current.playbackState == Player.STATE_READY,
+                    playWhenReady = current.playWhenReady
+                )
+            ) {
+                return@launch
+            }
             if (recoveryInFlight || recoveryAttempts >= 3) return@launch
             val callback = onRecoverableStreamError ?: return@launch
 
             recoveryInFlight = true
             recoveryAttempts++
-            val playWhenReadyBeforeRecovery = active.playWhenReady
+            val playWhenReadyBeforeRecovery = current.playWhenReady
             sponsorJob?.cancel()
             sponsorJob = null
-            active.pause()
+            current.pause()
             callback(
                 track,
-                active.currentPosition.coerceAtLeast(0L),
+                current.currentPosition.coerceAtLeast(0L),
                 true,
                 playWhenReadyBeforeRecovery,
                 "Decoder video senza fotogrammi renderizzati"
             )
         }
+    }
+
+    private fun invalidateDelayedVideoRecovery() {
+        playbackGeneration++
+        invalidVideoRecoveryJob?.cancel()
+        invalidVideoRecoveryJob = null
+        videoFrameWatchdogJob?.cancel()
+        videoFrameWatchdogJob = null
     }
 
     private fun refreshVideoSurfaceState(): Boolean {
@@ -488,6 +561,8 @@ class LevyraPlayer(context: Context) {
         loadedVideoMode = false
         renderedVideoFrame = false
         videoSurfaceAttached = false
+        invalidVideoRecoveryJob?.cancel()
+        invalidVideoRecoveryJob = null
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
     }
