@@ -109,10 +109,19 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun refreshHomeArtists() = root.refreshHomeArtists()
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
-        if (root.state.value.currentTrack?.id == track.id) {
+        val current = root.state.value
+        if (!current.isVideoMode && current.currentTrack?.id == track.id) {
             root.togglePlay()
         } else {
-            root.playFrom(list, track, loopOnCompletion)
+            root.playAudioFrom(list, track, loopOnCompletion)
+        }
+    }
+    fun playVideoFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        val current = root.state.value
+        if (current.isVideoMode && current.currentTrack?.id == track.id) {
+            root.togglePlay()
+        } else {
+            root.playVideoFrom(list, track, loopOnCompletion)
         }
     }
     fun searchNow() = root.searchNow()
@@ -751,6 +760,7 @@ private data class HomeProjection(
     val isLoadingHome: Boolean,
     val isPlaying: Boolean,
     val isResolving: Boolean,
+    val isVideoMode: Boolean,
     val languageCode: String,
     val moods: List<Mood>,
     val personalOrbitTracks: List<Track>,
@@ -787,6 +797,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     isLoadingHome = state.isLoadingHome,
     isPlaying = state.isPlaying,
     isResolving = state.isResolving,
+    isVideoMode = state.isVideoMode,
     languageCode = state.languageCode,
     moods = state.moods,
     personalOrbitTracks = state.personalOrbitTracks,
