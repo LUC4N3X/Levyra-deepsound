@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
@@ -43,9 +44,13 @@ object PlaybackSourceIdentity {
         val audioId = track.audioVideoId.trim().takeIf(youtubeIdPattern::matches).orEmpty()
         val selectedVideoId = extractYoutubeVideoId(track.videoUrl)
         val originalTrackId = track.id.trim().takeIf(youtubeIdPattern::matches).orEmpty()
-        val videoType = track.videoType.uppercase(Locale.ROOT)
+        // An explicit audio/video pairing is authoritative even when YouTube reports an art-track
+        // or empty musicVideoType, otherwise a selected official video silently resolves as audio.
+        val pairedVideoSelection = audioId.isNotBlank() &&
+            selectedVideoId != audioId &&
+            selectedVideoId == track.counterpartVideoId.trim()
         val confirmedVideoSelection = selectedVideoId.isNotBlank() &&
-            (videoType.contains("OMV") || videoType.contains("UGC"))
+            (YoutubeMusicVideoType.isVideo(track.videoType) || pairedVideoSelection)
 
         if (confirmedVideoSelection) return selectedVideoId
         if (audioId.isNotBlank()) return audioId

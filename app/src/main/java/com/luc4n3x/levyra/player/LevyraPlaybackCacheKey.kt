@@ -7,8 +7,13 @@ object LevyraPlaybackCacheKey {
     private val itagPattern = Regex("(?:[?&]|%26)itag(?:=|%3D)(\\d+)", RegexOption.IGNORE_CASE)
 
     fun stream(track: Track): String {
-        val id = stableId(track)
-        return "levyra:$id:stream:${variant(track.streamUrl)}"
+        // Keyed on the resolved source, not the catalog id: in native-video mode the audio stream
+        // belongs to the official video, so a catalog-id key collided with the art track whenever
+        // both used the same itag and Media3 replayed one recording's bytes for the other.
+        val id = PlaybackSourceIdentity.sourceVideoId(track)
+            .ifBlank { stableId(track) }
+            .replace(':', '_')
+        return "levyra:$id:stream-v2:${variant(track.streamUrl)}"
     }
 
     fun video(track: Track): String {

@@ -96,6 +96,139 @@ class RecordingIdentityTest {
     }
 
     @Test
+    fun officialSourceMusicOutranksUserUploadedVideo() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "Catalog",
+            moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0,
+            accentStart = 0, accentEnd = 0
+        )
+        val fanUpload = target.copy(id = "ugc12345678", videoType = "MUSIC_VIDEO_TYPE_UGC")
+        val officialSource = target.copy(
+            id = "osm12345678",
+            videoType = "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC"
+        )
+
+        assertTrue(
+            videoPlaybackCandidateScore(target, officialSource) >
+                videoPlaybackCandidateScore(target, fanUpload)
+        )
+        assertEquals(
+            "osm12345678",
+            selectPreferredVideoPlaybackCandidate(target, listOf(fanUpload, officialSource))?.id
+        )
+    }
+
+    @Test
+    fun sharedArtistChannelOutranksAnUnrelatedChannelForTheSameVideoType() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "Catalog",
+            moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0,
+            accentStart = 0, accentEnd = 0, artistBrowseIds = listOf("UCofficialchannel1")
+        )
+        val otherChannel = target.copy(
+            id = "other123456",
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = listOf("UCsomeoneelse999")
+        )
+        val artistChannel = target.copy(
+            id = "artist123456",
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = listOf("UCofficialchannel1")
+        )
+
+        assertTrue(
+            videoPlaybackCandidateScore(target, artistChannel) >
+                videoPlaybackCandidateScore(target, otherChannel)
+        )
+    }
+
+    @Test
+    fun authoritativePairingSurvivesAnOfficialVideoOfAnotherRecording() {
+        val target = Track(
+            id = "catalog", title = "Song Tonight", artist = "Artist", album = "Album",
+            durationMs = 180_000, streamUrl = "", videoUrl = "", thumbnailUrl = "",
+            largeThumbnailUrl = "", source = "Catalog", moodTags = emptySet(), energy = 0, vocal = 0,
+            replayScore = 0, cacheScore = 0, accentStart = 0, accentEnd = 0
+        )
+        val pairedLyricVideo = target.copy(
+            id = "pairedvid01",
+            videoUrl = "https://www.youtube.com/watch?v=pairedvid01",
+            videoType = "MUSIC_VIDEO_TYPE_UGC"
+        )
+        val otherSingleOfficial = target.copy(
+            id = "othersing01",
+            title = "Song Tonight Forever",
+            videoUrl = "https://www.youtube.com/watch?v=othersing01",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        val selected = selectPreferredVideoPlaybackCandidate(
+            target,
+            listOf(pairedLyricVideo, otherSingleOfficial),
+            setOf("pairedvid01")
+        )
+
+        assertEquals("pairedvid01", selected?.id)
+    }
+
+    @Test
+    fun exactIsrcOfficialVideoStillDisplacesTheAuthoritativePairing() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "",
+            source = "Catalog", moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0,
+            cacheScore = 0, accentStart = 0, accentEnd = 0, isrc = "ITB002000001"
+        )
+        val pairedLyricVideo = target.copy(
+            id = "pairedvid01",
+            videoUrl = "https://www.youtube.com/watch?v=pairedvid01",
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            isrc = ""
+        )
+        val sameRecordingOfficial = target.copy(
+            id = "officialvid",
+            videoUrl = "https://www.youtube.com/watch?v=officialvid",
+            videoType = "MUSIC_VIDEO_TYPE_OMV",
+            isrc = "ITB002000001"
+        )
+
+        val selected = selectPreferredVideoPlaybackCandidate(
+            target,
+            listOf(pairedLyricVideo, sameRecordingOfficial),
+            setOf("pairedvid01")
+        )
+
+        assertEquals("officialvid", selected?.id)
+    }
+
+    @Test
+    fun equallyScoredCandidatesKeepTheFirstListedWatchEntry() {
+        val target = Track(
+            id = "catalog", title = "Song", artist = "Artist", album = "Album", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "",
+            source = "Catalog", moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0,
+            cacheScore = 0, accentStart = 0, accentEnd = 0
+        )
+        val watchEntry = target.copy(
+            id = "watchvideo1",
+            videoUrl = "https://www.youtube.com/watch?v=watchvideo1",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val searchEntry = target.copy(
+            id = "searchvideo",
+            videoUrl = "https://www.youtube.com/watch?v=searchvideo",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "watchvideo1",
+            selectPreferredVideoPlaybackCandidate(target, listOf(watchEntry, searchEntry))?.id
+        )
+    }
+
+    @Test
     fun daDioAcceptsReportedOfficialVideoIdentity() {
         val target = Track(
             id = "audio123456",

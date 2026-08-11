@@ -40,6 +40,25 @@ class LevyraPlaybackCacheKeyTest {
         assertTrue(LevyraPlaybackCacheKey.video(track).contains(":video-v5:itag-137"))
     }
 
+    @Test
+    fun artTrackAudioAndOfficialVideoAudioNeverShareAStreamKey() {
+        val songMode = track("https://rr.example/videoplayback?itag=140").copy(
+            audioVideoId = "lFQdcPTTzSg",
+            videoUrl = "https://www.youtube.com/watch?v=lFQdcPTTzSg"
+        )
+        val videoMode = songMode.copy(
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            counterpartVideoId = "fcnDmrtj6Sk",
+            videoType = "MUSIC_VIDEO_TYPE_OMV",
+            videoStreamUrl = "https://rr.example/videoplayback?itag=137"
+        )
+
+        assertNotEquals(
+            LevyraPlaybackCacheKey.stream(songMode),
+            LevyraPlaybackCacheKey.stream(videoMode)
+        )
+    }
+
     private fun track(streamUrl: String): Track = Track(
         id = "video-id",
         title = "Title",

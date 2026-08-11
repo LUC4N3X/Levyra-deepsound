@@ -214,6 +214,48 @@ class PlaybackSourceIdentityTest {
         assertEquals("fcnDmrtj6Sk", PlaybackSourceIdentity.sourceVideoId(video))
     }
 
+    @Test
+    fun sourceVideoIdKeepsOfficialSourceMusicSelection() {
+        val video = track(
+            id = "catalog-recording-1",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
+        ).copy(
+            audioVideoId = "lFQdcPTTzSg",
+            counterpartVideoId = "fcnDmrtj6Sk",
+            videoType = "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC"
+        )
+
+        assertEquals("fcnDmrtj6Sk", PlaybackSourceIdentity.sourceVideoId(video))
+    }
+
+    @Test
+    fun sourceVideoIdKeepsCounterpartSelectedForAnArtTrackInVideoMode() {
+        val artTrackWithSelectedVideo = track(
+            id = "catalog-recording-1",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk"
+        ).copy(
+            audioVideoId = "lFQdcPTTzSg",
+            counterpartVideoId = "fcnDmrtj6Sk",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+
+        assertEquals("fcnDmrtj6Sk", PlaybackSourceIdentity.sourceVideoId(artTrackWithSelectedVideo))
+    }
+
+    @Test
+    fun sourceVideoIdKeepsAudioIdentityWhenSongModeReusesTheSameId() {
+        val songMode = track(
+            id = "catalog-recording-1",
+            videoUrl = "https://www.youtube.com/watch?v=lFQdcPTTzSg"
+        ).copy(
+            audioVideoId = "lFQdcPTTzSg",
+            counterpartVideoId = "fcnDmrtj6Sk",
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+
+        assertEquals("lFQdcPTTzSg", PlaybackSourceIdentity.sourceVideoId(songMode))
+    }
+
     private fun track(
         id: String = "track-id",
         title: String = "Song Title",

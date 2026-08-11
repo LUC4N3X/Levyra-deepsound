@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -31,12 +33,40 @@ object NewPipeRuntime {
     @Volatile
     private var applicationContext: Context? = null
 
+    @Volatile
+    private var requestedLanguage: String = LevyraLanguageCatalog.deviceDefault()
+
+    @Volatile
+    private var appliedLanguage: String = ""
+
+    /**
+     * Publishes the language the user selected in Levyra. The value is pushed instead of read here
+     * so extraction never blocks on the preferences DataStore during playback.
+     */
+    fun setLanguage(languageCode: String) {
+        val locale = LevyraContentLocales.forLanguage(languageCode)
+        requestedLanguage = locale.languageCode
+        if (initialized.get()) applyRequestedLocalization()
+    }
+
     fun ensure(context: Context? = null) {
         context?.applicationContext?.let { applicationContext = it }
 
         if (initialized.compareAndSet(false, true)) {
-            NewPipe.init(OkHttpNewPipeDownloader(), Localization("it", "IT"), ContentCountry("IT"))
+            val locale = LevyraContentLocales.forLanguage(requestedLanguage)
+            try {
+                NewPipe.init(
+                    OkHttpNewPipeDownloader(),
+                    Localization(locale.hl, locale.gl),
+                    ContentCountry(locale.gl)
+                )
+                appliedLanguage = locale.languageCode
+            } catch (error: Throwable) {
+                initialized.set(false)
+                throw error
+            }
         }
+        applyRequestedLocalization()
 
         val appContext = applicationContext ?: return
         if (providerInstalled.compareAndSet(false, true)) {
@@ -49,6 +79,14 @@ object NewPipeRuntime {
                 throw error
             }
         }
+    }
+
+    private fun applyRequestedLocalization() = synchronized(this) {
+        val requested = requestedLanguage
+        if (requested.isBlank() || requested == appliedLanguage) return
+        val locale = LevyraContentLocales.forLanguage(requested)
+        NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
+        appliedLanguage = locale.languageCode
     }
 }
 
