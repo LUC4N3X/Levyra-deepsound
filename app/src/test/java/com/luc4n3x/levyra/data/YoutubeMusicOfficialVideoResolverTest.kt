@@ -106,6 +106,24 @@ class YoutubeMusicOfficialVideoResolverTest {
     }
 
     @Test
+    fun malformedOmvCounterpartIsRejected() {
+        val sourceId = "audio123456"
+        val malformed = watchTrack(
+            videoId = "short",
+            title = "Song",
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val audio = watchTrack(
+            videoId = sourceId,
+            title = "Song",
+            videoType = "MUSIC_VIDEO_TYPE_ATV",
+            counterpart = malformed
+        )
+
+        assertNull(selectYoutubeMusicOfficialCounterpart(sourceId, listOf(audio)))
+    }
+
+    @Test
     fun originalTrackIdWinsOverStaleVideoSearchSelection() {
         val track = track(
             id = "audio123456",
