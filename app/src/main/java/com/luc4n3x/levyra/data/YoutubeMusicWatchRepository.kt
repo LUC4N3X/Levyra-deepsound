@@ -58,6 +58,15 @@ data class YoutubeMusicWatchPlaylist(
     val shuffled: Boolean = false
 )
 
+internal fun YoutubeMusicWatchPlaylist.hasRequestedCounterpart(videoId: String): Boolean {
+    val requested = videoId.trim()
+    if (requested.isBlank()) return false
+    return tracks.any { track ->
+        track.videoId == requested && track.counterpart?.videoId?.isNotBlank() == true ||
+            track.counterpart?.videoId == requested
+    }
+}
+
 enum class YoutubeMusicRelatedType {
     Song,
     Video,
@@ -162,6 +171,21 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
         val parsedInitial = cachedPlaylist ?: YoutubeMusicWatchParser.parseWatchPlaylist(
             post("next", requestBody, languageCode, mobile = false)
         ).copy(radio = radio, shuffled = shuffle)
+        val shortPairingLookup = cleanVideoId.isNotBlank() &&
+            cleanPlaylistId.isBlank() &&
+            !radio &&
+            !shuffle &&
+            boundedLimit <= 3
+        if (shortPairingLookup && parsedInitial.hasRequestedCounterpart(cleanVideoId)) {
+            val paired = parsedInitial.copy(
+                playlistId = parsedInitial.playlistId.ifBlank { effectivePlaylistId },
+                radio = false,
+                shuffled = false
+            )
+            putCached(watchCache, cacheKey, paired, WATCH_CACHE_MAX_ENTRIES)
+            return@withContext paired.copy(tracks = paired.tracks.take(boundedLimit))
+        }
+
         var parsed = parsedInitial
         val tracks = LinkedHashMap<String, YoutubeMusicWatchTrack>()
         parsed.tracks.forEach { track -> tracks.putIfAbsent(track.videoId, track) }
