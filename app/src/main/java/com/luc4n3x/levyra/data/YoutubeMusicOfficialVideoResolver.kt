@@ -54,6 +54,8 @@ internal fun youtubeMusicAudioPlaybackSeed(track: Track): Track? {
         videoStreamUrl = "",
         playbackManifest = null,
         videoUrl = "https://www.youtube.com/watch?v=$sourceVideoId",
+        counterpartVideoId = "",
+        videoType = "MUSIC_VIDEO_TYPE_ATV",
         audioVideoId = sourceVideoId
     )
 }
@@ -103,7 +105,6 @@ internal fun buildYoutubeMusicPairingPayload(
 
 internal class YoutubeMusicOfficialVideoResolver {
     private val client = LevyraHttpClientFactory.youtubePlayer()
-    private val cache = ConcurrentHashMap<String, CachedCounterpart>()
 
     suspend fun resolve(
         track: Track,
@@ -115,11 +116,11 @@ internal class YoutubeMusicOfficialVideoResolver {
         val locale = LevyraContentLocales.forLanguage(languageCode)
         val cacheKey = "$sourceVideoId|${locale.gl.lowercase(Locale.ROOT)}"
         val now = System.currentTimeMillis()
-        cache[cacheKey]?.let { cached ->
+        officialCounterpartCache[cacheKey]?.let { cached ->
             if (cached.expiresAtMs > now) {
                 return@withContext track.withOfficialCounterpart(sourceVideoId, cached.counterpart)
             }
-            cache.remove(cacheKey, cached)
+            officialCounterpartCache.remove(cacheKey, cached)
         }
 
         val counterpart = runCatchingPreservingCancellation {
@@ -191,14 +192,14 @@ internal class YoutubeMusicOfficialVideoResolver {
     }
 
     private fun remember(key: String, counterpart: YoutubeMusicWatchTrack, now: Long) {
-        cache[key] = CachedCounterpart(counterpart, now + CACHE_TTL_MS)
-        if (cache.size <= CACHE_MAX_ENTRIES) return
+        officialCounterpartCache[key] = CachedCounterpart(counterpart, now + CACHE_TTL_MS)
+        if (officialCounterpartCache.size <= CACHE_MAX_ENTRIES) return
 
-        cache.keys.toList().forEach { candidateKey ->
-            val cached = cache[candidateKey] ?: return@forEach
-            if (cached.expiresAtMs <= now) cache.remove(candidateKey, cached)
+        officialCounterpartCache.keys.toList().forEach { candidateKey ->
+            val cached = officialCounterpartCache[candidateKey] ?: return@forEach
+            if (cached.expiresAtMs <= now) officialCounterpartCache.remove(candidateKey, cached)
         }
-        if (cache.size > CACHE_MAX_ENTRIES) cache.clear()
+        if (officialCounterpartCache.size > CACHE_MAX_ENTRIES) officialCounterpartCache.clear()
     }
 
     private data class CachedCounterpart(
@@ -215,5 +216,6 @@ internal class YoutubeMusicOfficialVideoResolver {
         private const val YOUTUBE_MUSIC_PAIRING_MAX_RESPONSE_BYTES = 4L * 1024L * 1024L
         private const val CACHE_TTL_MS = 20L * 60L * 1000L
         private const val CACHE_MAX_ENTRIES = 96
+        private val officialCounterpartCache = ConcurrentHashMap<String, CachedCounterpart>()
     }
 }
