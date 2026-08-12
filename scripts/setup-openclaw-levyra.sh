@@ -185,6 +185,45 @@ configure_evidence_agent() {
   set_agent_json "$agent" tools.elevated.enabled false
 }
 
+merge_primary_delegation_tools() {
+  local agent="$1"
+  local index
+  local current_allow
+  local current_deny
+  local merged_allow
+  local merged_deny
+  index="$(agent_index "$agent")"
+  current_allow="$(openclaw config get "agents.list[$index].tools.alsoAllow" --json 2>/dev/null || printf '[]')"
+  current_deny="$(openclaw config get "agents.list[$index].tools.deny" --json 2>/dev/null || printf '[]')"
+  merged_allow="$(printf '%s' "$current_allow" | python3 -c '
+import json, sys
+raw = sys.stdin.read().strip()
+try:
+    value = json.loads(raw)
+except Exception:
+    value = []
+if not isinstance(value, list):
+    value = []
+for tool in ("sessions_spawn", "sessions_yield", "subagents"):
+    if tool not in value:
+        value.append(tool)
+print(json.dumps(value))
+')"
+  merged_deny="$(printf '%s' "$current_deny" | python3 -c '
+import json, sys
+raw = sys.stdin.read().strip()
+try:
+    value = json.loads(raw)
+except Exception:
+    value = []
+if not isinstance(value, list):
+    value = []
+print(json.dumps([tool for tool in value if tool != "subagents"]))
+')"
+  openclaw config set "agents.list[$index].tools.alsoAllow" "$merged_allow" --strict-json
+  openclaw config set "agents.list[$index].tools.deny" "$merged_deny" --strict-json
+}
+
 merge_primary_subagents() {
   local agent="$1"
   local index
@@ -340,6 +379,7 @@ configure_agent_skills levyra-reviewer "${REVIEW_SKILLS[@]}"
 configure_agent_skills levyra-ci "${CI_SKILLS[@]}"
 configure_evidence_agent levyra-reviewer
 configure_evidence_agent levyra-ci
+merge_primary_delegation_tools "$PRIMARY_AGENT"
 merge_primary_subagents "$PRIMARY_AGENT"
 
 if [[ "$ENABLE_ACTIVE_MEMORY" == "1" ]]; then
