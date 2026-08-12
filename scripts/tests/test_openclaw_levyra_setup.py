@@ -34,6 +34,21 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         for command in ("git push", "gh pr merge", "gh release create"):
             self.assertNotIn(command, setup)
 
+    def test_primary_agent_can_delegate_without_overwriting_existing_tool_policy(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "merge_primary_delegation_tools",
+            'agents.list[$index].tools.alsoAllow',
+            'agents.list[$index].tools.deny',
+            '"sessions_spawn", "sessions_yield", "subagents"',
+            'tool != "subagents"',
+        ):
+            self.assertIn(term, setup)
+
+        self.assertIn('current_allow="$(openclaw config get', setup)
+        self.assertIn('current_deny="$(openclaw config get', setup)
+
     def test_openclaw_2026_7_uses_supported_agents_and_memory_schema(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
 
