@@ -22,11 +22,13 @@ preparing work for Codex, Claude Code, or OpenClaw:
 3. Read `docs/project/SPEC.md`, the relevant `docs/project/ROADMAP.md` track,
    and the active phase in `docs/project/TASKS.md`.
 4. Select and read every matching native skill under `.agents/skills/`.
-5. Read `docs/ARCHITECTURE.md` and the relevant platform documentation.
-6. Inspect the current implementation and nearby tests.
-7. Read matching detailed playbooks under `.claude/skills/` and
+5. Read `docs/ai/AI_ENGINEERING_GUARDRAILS.md` before production-code
+   implementation or broad review.
+6. Read `docs/ARCHITECTURE.md` and the relevant platform documentation.
+7. Inspect the current implementation and nearby tests.
+8. Read matching detailed playbooks under `.claude/skills/` and
    `.claude/rules/` when referenced by the native skill.
-8. Inspect build files and GitHub workflows for CI, signing, packaging,
+9. Inspect build files and GitHub workflows for CI, signing, packaging,
    configuration sync, versioning, artifacts, or releases.
 
 Prefer current repository evidence over previous chat memory, old branches,
@@ -34,6 +36,12 @@ stale comments, stale task status, or remembered implementations. When access is
 incomplete, separate verified facts from assumptions and state exactly what
 could not be inspected. Surface conflicts between specification, roadmap,
 tasks, architecture, and code before recommending implementation.
+
+Apply the shared AI guardrails automatically: state material assumptions and
+tradeoffs, inspect repository evidence before asking questions it can answer,
+prefer a simpler implementation when it satisfies the same acceptance criteria,
+avoid speculative configurability/abstractions, make surgical edits, and define
+`step -> verification` success criteria for non-trivial work.
 
 ## Planning responsibilities
 
@@ -73,14 +81,20 @@ Use the most specific skill or combination of skills:
 - `levyra-compose`: Android Compose UI, state, navigation, animation, lifecycle,
   accessibility, RTL and localization.
 - `levyra-android-performance`: Android jank, frame misses, latency, startup,
-  Perfetto/System Trace, CPU/thread state, blocking, memory, I/O, power, and
-  measured runtime-performance investigations. Load it automatically together
-  with the affected domain skill such as `levyra-compose` or `levyra-player`.
+  Perfetto/System Trace, CPU/thread state, graphics, Binder/IPC, blocking,
+  memory, I/O, power, and measured runtime-performance investigations. Load it
+  automatically together with the affected domain skill such as
+  `levyra-compose` or `levyra-player`.
 - `levyra-r8-proguard`: R8, Proguard, minification, resource shrinking,
   keep/consumer rules, release-only shrinker crashes, mapping/missing classes,
   reflection/serialization/JNI shrinker issues, and measured APK-size work.
   Load `levyra-release-check` for minified runtime validation and
   `levyra-ci-workflows` when build tooling changes.
+- `levyra-android-intent-security`: Android Intent, deep-link, PendingIntent,
+  exported activity/service/receiver/provider, nested Intent, `onNewIntent`, URI
+  grant, FileProvider/ContentProvider, caller/signature verification, and Android
+  component-boundary work. Load it automatically together with
+  `levyra-security-review` and the affected Android domain skill.
 - `levyra-design-taste`: visual redesign, UI polish, hierarchy, spacing,
   typography, color, shape, motion, screenshot/reference work, and requests to
   make Levyra more premium, modern, distinctive, cohesive, or less AI-generated.
@@ -101,14 +115,17 @@ Use the most specific skill or combination of skills:
   skill is sufficient by itself.
 
 Several skills may apply. Do not use a planning, real-engineering, coordinator,
-context-efficiency, design-taste, Android-performance, R8/Proguard, or security
-skill to avoid reading a more precise domain skill. For visual product work,
-`levyra-design-taste` is a supplementary quality layer: current architecture,
-platform UI guidance, accessibility, localization, lifecycle, performance and
-product behavior always win over decorative novelty. For runtime-performance
-work, measured trace/benchmark evidence wins over intuition. For shrinker work,
-release correctness and the actual runtime lookup mechanism win over rule-count
-or file-size heuristics.
+context-efficiency, design-taste, Android-performance, R8/Proguard,
+Android-Intent-security, or general security skill to avoid reading a more
+precise domain skill. For visual product work, `levyra-design-taste` is a
+supplementary quality layer: current architecture, platform UI guidance,
+accessibility, localization, lifecycle, performance and product behavior always
+win over decorative novelty. For runtime-performance work, measured
+trace/benchmark evidence wins over intuition. For shrinker work, release
+correctness and the actual runtime lookup mechanism win over rule-count or
+file-size heuristics. For Android component-boundary work, a generic exported or
+mutable pattern is not a confirmed vulnerability without a reachable
+attacker-controlled path.
 
 ## Core product priorities
 
@@ -135,9 +152,12 @@ platform is changing.
 
 - Trace the actual current path before identifying a root cause.
 - State which existing behavior must remain unchanged.
+- State material assumptions and unresolved tradeoffs before they become code.
+- Prefer the simplest existing-owner/reuse path that satisfies the requirement.
 - Prefer the smallest coherent change compatible with current architecture.
 - Avoid speculative refactors, parallel infrastructure, unrelated cleanup,
   dependency churn and version upgrades.
+- Do not add flexibility/configurability for hypothetical future callers.
 - Keep blocking network, database, parsing, decoding, file, metadata and native
   work off UI threads.
 - Reuse existing clients, stores, caches, scopes, queues, lifecycle owners,
@@ -154,12 +174,17 @@ platform is changing.
 - Require security review for provider-controlled URLs, redirects, MIME,
   permissions, secrets, tokens, workflow trust boundaries, deep links and
   update downloads.
+- For Android Intent/deep-link/PendingIntent/exported-component work, load both
+  `levyra-android-intent-security` and `levyra-security-review` automatically.
 - For Android performance conclusions, require direct evidence from the narrowest
-  useful tool and distinguish debug-only behavior from release-like behavior.
+  useful tool, validate Perfetto schemas/queries instead of guessing them, and
+  distinguish debug-only behavior from release-like behavior.
 - For R8/Proguard changes, inspect actual consumer rules/reflection/JNI/
   serialization mechanisms, prefer official analyzer evidence when available,
   and validate the affected minified release path instead of adding blanket
   keep rules or disabling shrinking.
+- For non-trivial implementation, define what verifies each step and loop on the
+  failed hypothesis/requirement instead of stacking speculative fixes.
 
 ## Require security review
 
@@ -169,6 +194,13 @@ handling, authentication/tokens/cookies/secrets, Android permissions/exported
 components, Desktop listener or IPC boundaries, workflow permissions, action
 pinning, dependencies/supply chain, artifact/update integrity, privacy, signing,
 checksums, and security-related pull requests.
+
+For Android Intent/deep-link/PendingIntent/exported-component/provider/caller
+boundaries, additionally load `levyra-android-intent-security`. Apply the same
+validation to cold-start and `onNewIntent` paths, default PendingIntents to
+immutable unless mutability is required by the feature, constrain mutable tokens
+to explicit trusted targets, and do not forward nested attacker-controlled
+Intents without explicit sanitization/allowlisting.
 
 Follow the shared cycle documented in `docs/ai/CODEX_SECURITY.md`: threat model,
 identification, safe validation, minimal remediation, human review, and
@@ -276,6 +308,7 @@ When implementation is requested, prepare a precise task containing:
 - relevant implementation, tests and detailed playbooks;
 - verified current behavior and probable root cause;
 - behavior that must remain unchanged;
+- material assumptions/tradeoffs and the simpler alternative considered;
 - exact scope boundaries and prohibited changes;
 - expected modules/files;
 - focused tests, broader checks and manual validation;
@@ -382,6 +415,7 @@ For completed technical work report:
 - exact files changed;
 - concise description of each change;
 - behavior preserved;
+- material assumptions/tradeoffs when relevant;
 - tests/checks run with results;
 - checks skipped or blocked and why;
 - remaining risks and manual validation;
