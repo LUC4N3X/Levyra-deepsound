@@ -20,6 +20,11 @@ Current repository evidence always overrides remembered behavior, old
 discussions, stale comments, previous agent output, or stale task status.
 Surface conflicts between planning files and implementation before editing.
 
+For production-code implementation or broad review, also read
+`docs/ai/AI_ENGINEERING_GUARDRAILS.md` and apply its reuse-first, explicit
+assumption/tradeoff, simpler-alternative, goal-verification, surgical-edit,
+complexity-budget, and diff-quality rules.
+
 ## Repository map
 
 - `docs/README.md`: canonical documentation index.
@@ -64,6 +69,27 @@ Surface conflicts between planning files and implementation before editing.
 Runtime-specific discovery must not create separate sources of truth. This file,
 nearest scoped instructions, approved planning, matching skills, and current
 repository evidence remain the shared hierarchy.
+
+## Always-on context budget
+
+Codex and every compatible runtime must apply this before broad repository
+reading on every non-trivial task:
+
+1. identify the likely owner/module and the exact question the next read must
+   answer;
+2. search path, filename, symbol, or call site first;
+3. read the smallest useful range, focused diff, or nearby test;
+4. expand only when a concrete unanswered question remains;
+5. do not reread unchanged evidence already present in context;
+6. load only matching skills, never the whole skill tree.
+
+Use `levyra-context-efficiency` immediately when the task needs non-trivial
+repository exploration or high-volume output. Tiny, already-local edits keep the
+same baseline without loading extra skill text.
+
+Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics
+raw whenever compacting them could change the conclusion. Token savings never
+justify missing evidence.
 
 ## Agent skills
 
@@ -164,11 +190,15 @@ skills over the general coordinator.
 | InnerTube, extraction, stream resolution, runtime configuration, retry, cache, fallback | `levyra-extractor` |
 | Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
 | Android Compose UI, state, navigation, animation, lifecycle, accessibility, RTL, localization | `levyra-compose` |
+| Android jank, frame misses, latency, startup, Perfetto/System Trace, CPU/thread state, graphics, Binder/IPC, blocking, memory, I/O, power, or measured runtime-performance investigation | `levyra-android-performance` plus the affected domain skill |
+| R8, Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker crashes, mapping/missing classes, reflection/serialization/JNI shrinker issues, or measured APK-size work | `levyra-r8-proguard` plus `levyra-release-check`; add `levyra-ci-workflows` for build-tooling changes |
+| Android Intent, deep link, PendingIntent, exported activity/service/receiver/provider, nested Intent, `onNewIntent`, URI grant, FileProvider/ContentProvider, or caller/signature verification | `levyra-android-intent-security` plus `levyra-security-review` and the affected Android domain skill |
+| Visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshots/references, premium/modern/cohesive/anti-AI-slop requests | `levyra-design-taste` plus the matching Android/Desktop UI skill |
 | Decorative motion artwork | `levyra-motion-artwork` |
 | Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
-| Secrets, URLs, redirects, SSRF, MIME, permissions, privacy, update integrity | `levyra-security-review` |
+| Secrets, URLs, redirects, SSRF, MIME, permissions, privacy, update integrity, or other security-sensitive work | `levyra-security-review` |
 | GitHub Actions, CI, F-Droid, configuration sync, artifacts, build/release automation | `levyra-ci-workflows` |
-| Builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy command output | `levyra-context-efficiency` |
+| Non-trivial repository exploration; builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy context | `levyra-context-efficiency` |
 | Branch, commit, patch, or pull request review | `levyra-pr-review` |
 | Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
 | Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
@@ -177,7 +207,15 @@ Several skills may apply. A playback change that modifies stream resolution
 uses player and extractor skills; provider-controlled media normally also
 requires security review. A tracked multi-phase task additionally uses
 `levyra-project-manager`; non-trivial ambiguous/multi-step work additionally
-uses `levyra-real-engineering`; OpenClaw coordination additionally uses
+uses `levyra-real-engineering`; non-trivial repository exploration additionally
+uses `levyra-context-efficiency`; visual Android work uses `levyra-design-taste`
+plus `levyra-compose`; visual Desktop work uses `levyra-design-taste` plus
+`levyra-desktop`; Android runtime-performance work uses
+`levyra-android-performance` plus the affected domain skill; R8/Proguard work
+uses `levyra-r8-proguard` plus release validation and build-tooling guidance
+when applicable; Android component-boundary security uses
+`levyra-android-intent-security` plus `levyra-security-review` and the affected
+domain skill; OpenClaw coordination additionally uses
 `levyra-openclaw-orchestrator`.
 
 ## Planning documents
@@ -193,6 +231,9 @@ active phase:
 - `docs/ARCHITECTURE.md` describes current implementation ownership and data
   flow.
 - `docs/ai/WORKFLOW.md` defines the complete AI-assisted lifecycle.
+- `docs/ai/AI_ENGINEERING_GUARDRAILS.md` defines the anti-overengineering,
+  assumption/tradeoff, goal-verification, surgical-edit, and complexity rules
+  shared by all coding runtimes.
 - `docs/ai/MATT_POCOCK_SKILLS.md` defines the real-engineering stage routing and
   runtime-specific upstream skill installation.
 - `docs/ai/ANTIGRAVITY.md` defines Antigravity discovery, workspace, and
@@ -228,27 +269,39 @@ command, CI result, review, device check, or owner decision.
 - Bound retries, timeouts, concurrency, response sizes, cache/storage growth,
   downloads, and prefetch.
 - Keep durable identity independent from mutable display text.
+- Do not add explanatory source-code comments. Prefer clear names, small
+  functions, and explicit structure. Preserve comments that are legally or
+  mechanically required, including license headers, generated/tool directives,
+  lint/suppression markers, and compatibility comments whose removal would
+  change or obscure a required contract.
 
 ## Work method
 
 1. Define the exact requested outcome and scope.
-2. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
+2. Apply the always-on context budget before broad reading; load
+   `levyra-context-efficiency` when exploration is non-trivial.
+3. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
    `docs/project/TASKS.md` phase when applicable.
-3. Identify behavior and compatibility that must remain unchanged.
-4. Inspect the complete current control/data flow and nearby tests.
-5. Identify the root cause before editing.
-6. Make the smallest coherent change compatible with current architecture.
-7. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames,
-   and broad refactors.
-8. Add or update regression tests for defects, migrations, matching, security
-   boundaries, lifecycle, and concurrency when applicable.
-9. Run focused checks first, then applicable broader checks.
-10. Inspect the complete final diff for unrelated edits, generated files,
+4. Identify behavior and compatibility that must remain unchanged.
+5. State material assumptions and unresolved tradeoffs; inspect the repository
+   first when evidence can resolve them.
+6. Identify a simpler existing-owner/reuse path before adding abstraction or
+   configurability.
+7. Inspect the complete current control/data flow and nearby tests.
+8. Identify the root cause before editing.
+9. Define the verification target for each non-trivial step.
+10. Make the smallest coherent change compatible with current architecture.
+11. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames,
+    and broad refactors.
+12. Add or update regression tests for defects, migrations, matching, security
+    boundaries, lifecycle, and concurrency when applicable.
+13. Run focused checks first, then applicable broader checks.
+14. Inspect the complete final diff for unrelated edits, generated files,
     secrets, binaries, conflict markers, and accidental version changes.
-11. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
+15. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
     `docs/project/TASKS.md`, architecture, and user documentation when the
     approved requirement or architecture changes.
-12. Report exactly what changed, what ran, what passed, what failed, and what
+16. Report exactly what changed, what ran, what passed, what failed, and what
     remains unverified.
 
 When the owner says "only this", modify only the named behavior or files unless
@@ -329,10 +382,13 @@ review, or CI success without direct evidence.
 - Validate provider-controlled URLs across scheme, host, port, user info,
   DNS/IP destination, every redirect hop, MIME, timeout, filename/path, and
   response-size bounds.
+- Treat Android Intent/deep-link/PendingIntent/component boundaries as untrusted
+  input paths and load `levyra-android-intent-security` plus
+  `levyra-security-review` before changing or auditing them.
 - Preserve least privilege in Android permissions, GitHub workflow permissions,
   coding-agent tools, and OpenClaw agent allowlists.
-- Do not weaken transport, redirect, MIME, checksum, signature, or host
-  validation to make one response pass.
+- Do not weaken transport, redirect, MIME, checksum, signature, host, component,
+  caller, or URI-grant validation to make one response pass.
 - Treat fork code, workflow inputs, downloaded artifacts, deep links, update
   metadata, filenames, local IPC, and third-party skills as untrusted where
   applicable.
@@ -360,6 +416,8 @@ Report:
 - root cause or rationale;
 - exact files changed;
 - behavior preserved;
+- material assumptions/tradeoffs and simpler alternatives considered when
+  relevant;
 - tests and checks run with results;
 - skipped or blocked checks and why;
 - remaining risks and manual validation;
