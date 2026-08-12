@@ -12,6 +12,7 @@ REPO_URL="${LEVYRA_REPO_URL:-https://github.com/LUC4N3X/Levyra-deepsound.git}"
 AUDIT_CRON="${LEVYRA_OPENCLAW_AUDIT_CRON:-0 8,20 * * *}"
 AUDIT_TZ="${LEVYRA_OPENCLAW_AUDIT_TZ:-Europe/Rome}"
 ENABLE_DREAMING="${LEVYRA_OPENCLAW_ENABLE_DREAMING:-1}"
+ENABLE_ACTIVE_MEMORY="${LEVYRA_OPENCLAW_ENABLE_ACTIVE_MEMORY:-1}"
 INSTALL_CRON="${LEVYRA_OPENCLAW_INSTALL_CRON:-1}"
 
 require_command() {
@@ -100,6 +101,28 @@ configure_evidence_agent() {
   openclaw config set "agents.entries.$agent.tools.exec.mode" '"auto"' --strict-json
   openclaw config set "agents.entries.$agent.tools.exec.strictInlineEval" true --strict-json
   openclaw config set "agents.entries.$agent.tools.elevated.enabled" false --strict-json
+}
+
+merge_primary_subagents() {
+  local agent="$1"
+  local current
+  local merged
+  current="$(openclaw config get "agents.entries.$agent.subagents.allowAgents" --json 2>/dev/null || printf '[]')"
+  merged="$(printf '%s' "$current" | python3 -c '
+import json, sys
+raw = sys.stdin.read().strip()
+try:
+    value = json.loads(raw)
+except Exception:
+    value = []
+if not isinstance(value, list):
+    value = []
+for agent in ("levyra-reviewer", "levyra-ci"):
+    if agent not in value:
+        value.append(agent)
+print(json.dumps(value))
+')"
+  openclaw config set "agents.entries.$agent.subagents.allowAgents" "$merged" --strict-json
 }
 
 ensure_agent() {
@@ -245,7 +268,18 @@ configure_agent_skills levyra-reviewer "${REVIEW_SKILLS[@]}"
 configure_agent_skills levyra-ci "${CI_SKILLS[@]}"
 configure_evidence_agent levyra-reviewer
 configure_evidence_agent levyra-ci
-openclaw config set "agents.entries.$PRIMARY_AGENT.subagents.allowAgents" '["levyra-reviewer","levyra-ci"]' --strict-json
+merge_primary_subagents "$PRIMARY_AGENT"
+
+if [[ "$ENABLE_ACTIVE_MEMORY" == "1" ]]; then
+  openclaw config set "agents.entries.$PRIMARY_AGENT.memory.search.rememberAcrossConversations" true --strict-json
+  openclaw config set plugins.entries.active-memory.enabled true --strict-json
+  openclaw config set plugins.entries.active-memory.config.enabled true --strict-json
+  openclaw config set plugins.entries.active-memory.config.mode '"escalate"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.queryMode '"recent"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.promptStyle '"precision-heavy"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.maxSummaryChars 240 --strict-json
+  openclaw config set plugins.entries.active-memory.config.persistTranscripts false --strict-json
+fi
 
 if [[ "$ENABLE_DREAMING" == "1" ]]; then
   openclaw config set plugins.entries.memory-core.config.dreaming.enabled true --strict-json
@@ -257,6 +291,7 @@ fi
 
 openclaw config validate
 openclaw doctor
+openclaw memory status --agent "$PRIMARY_AGENT" --index
 openclaw gateway status --require-rpc
 openclaw agents list --bindings
 openclaw cron list --agent levyra-ci
