@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import levyra_editorial.youtube_music as youtube_music
 from levyra_editorial.youtube_music import (
     YOUTUBE_MUSIC_SONG_SEARCH_PARAMS,
     YoutubeMusicWebClient,
@@ -15,74 +16,6 @@ def _art_track(video_id: str, album: str, duration_ms: int = 224_000) -> dict:
         "album": album,
         "durationMs": duration_ms,
         "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
-    }
-
-
-def _renderer(video_id: str, album: str) -> dict:
-    return {
-        "musicResponsiveListItemRenderer": {
-            "playlistItemData": {"videoId": video_id},
-            "flexColumns": [
-                {
-                    "musicResponsiveListItemFlexColumnRenderer": {
-                        "text": {"runs": [{"text": "Dai Dai"}]}
-                    }
-                },
-                {
-                    "musicResponsiveListItemFlexColumnRenderer": {
-                        "text": {
-                            "runs": [
-                                {
-                                    "text": "Shakira",
-                                    "navigationEndpoint": {
-                                        "browseEndpoint": {"browseId": "UCShakira001"}
-                                    },
-                                },
-                                {"text": ", "},
-                                {
-                                    "text": "Burna Boy",
-                                    "navigationEndpoint": {
-                                        "browseEndpoint": {"browseId": "UCBurnaBoy01"}
-                                    },
-                                },
-                                {"text": " • "},
-                                {
-                                    "text": album,
-                                    "navigationEndpoint": {
-                                        "browseEndpoint": {"browseId": "MPREb_album01"}
-                                    },
-                                },
-                            ]
-                        }
-                    }
-                },
-            ],
-            "fixedColumns": [
-                {
-                    "musicResponsiveListItemFixedColumnRenderer": {
-                        "text": {"runs": [{"text": "3:44"}]}
-                    }
-                }
-            ],
-            "overlay": {
-                "musicItemThumbnailOverlayRenderer": {
-                    "content": {
-                        "musicPlayButtonRenderer": {
-                            "playNavigationEndpoint": {
-                                "watchEndpoint": {
-                                    "videoId": video_id,
-                                    "watchEndpointMusicSupportedConfigs": {
-                                        "watchEndpointMusicConfig": {
-                                            "musicVideoType": "MUSIC_VIDEO_TYPE_ATV"
-                                        }
-                                    },
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-        }
     }
 
 
@@ -116,19 +49,19 @@ def test_mapping_keeps_abstaining_when_near_tied_art_tracks_differ_in_duration()
 
 
 def test_resolve_uses_song_filter_and_keeps_first_equivalent_publication(monkeypatch) -> None:
+    candidates = [
+        _art_track("lFQdcPTTzSg", "Dai Dai"),
+        _art_track("2uT4_w0M_4o", "Official FIFA World Cup 2026 Album (Bonus Edition)"),
+    ]
     client = YoutubeMusicWebClient("SAPISID=abcdefghijklmnopqrstuvwxyz123456", workers=1)
     searches: list[tuple[str, str | None]] = []
 
     def fake_search(query: str, params: str | None = None):
         searches.append((query, params))
-        return {
-            "contents": [
-                _renderer("lFQdcPTTzSg", "Dai Dai"),
-                _renderer("2uT4_w0M_4o", "Official FIFA World Cup 2026 Album (Bonus Edition)"),
-            ]
-        }
+        return {}
 
     monkeypatch.setattr(client, "_search", fake_search)
+    monkeypatch.setattr(youtube_music, "parse_search_candidates", lambda _payload: candidates)
     monkeypatch.setattr(
         client,
         "_resolve_official_video",
