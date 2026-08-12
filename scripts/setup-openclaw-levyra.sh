@@ -84,6 +84,26 @@ Read and follow \`repo/.agents/skills/$skill/SKILL.md\` as the canonical workflo
 EOF
 }
 
+ensure_primary_overlay() {
+  local path="$PRIMARY_WORKSPACE/AGENTS.md"
+  local heading="## Levyra multi-agent profile"
+  touch "$path"
+  if ! grep -Fq "$heading" "$path"; then
+    cat >> "$path" <<'EOF'
+
+## Levyra multi-agent profile
+
+For every Levyra engineering task, work inside `./repo`, read `repo/AGENTS.md` and the nearest scoped instructions, then use the matching repository-native skills. Apply the context budget before broad reading: search first, read bounded evidence, expand only for a concrete unresolved question, and never trade away exact failure/security/release evidence for token savings.
+
+Use `levyra-openclaw-orchestrator` for the execution lifecycle. Keep implementation in the primary Levyra worker. Before presenting code as final, run the repository `code-review` stage. Delegate a fresh bounded latest-diff review to `levyra-reviewer`, and delegate CI/PR/log diagnosis to `levyra-ci`. Fix actionable findings and revalidate before final handoff.
+
+Do not send full chat history or repeated repository context to specialist agents. Send only the objective, invariants, latest diff/SHA, focused surrounding evidence, checks already run, unresolved risks, and the exact question the specialist must answer.
+
+Long-term memory stores only durable verified decisions, recurring engineering lessons, and explicit owner preferences. Current repository evidence always overrides memory. Never put secrets, credentials, transient branch heads, current PR state, or CI status into durable memory.
+EOF
+  fi
+}
+
 configure_agent_skills() {
   local agent="$1"
   shift
@@ -146,7 +166,7 @@ print("yes" if any(isinstance(item, dict) and item.get("name") == "Levyra CI aud
 ')"
   if [[ "$exists" == "no" ]]; then
     openclaw cron create "$AUDIT_CRON" \
-      "Audit Levyra without publishing changes. Refresh the local evidence checkout, inspect open PRs, required CI, unresolved review threads and stale branches. Report only actionable state changes with exact PR/SHA/check evidence. Do not edit source code, commit, push, merge, release, change settings or expose secrets." \
+      "Audit Levyra without publishing changes. Repository is ./repo. Read repo/AGENTS.md and repo/.github/AGENTS.md, refresh the local evidence checkout, then inspect open PRs, required CI, unresolved review threads and stale branches. Report only actionable state changes with exact PR/SHA/check evidence. Do not edit source code, commit, push, merge, release, change settings or expose secrets." \
       --name "$name" \
       --agent "$agent" \
       --tz "$AUDIT_TZ" \
@@ -171,6 +191,7 @@ if ! has_agent "$PRIMARY_AGENT"; then
   openclaw agents add "$PRIMARY_AGENT" --workspace "$PRIMARY_WORKSPACE" --non-interactive
 fi
 
+ensure_primary_overlay
 if [[ ! -f "$PRIMARY_WORKSPACE/MEMORY.md" ]]; then
   write_workspace_file "$PRIMARY_WORKSPACE/MEMORY.md" \
     "# Durable Levyra Memory" \
@@ -291,7 +312,7 @@ fi
 
 openclaw config validate
 openclaw doctor
-openclaw memory status --agent "$PRIMARY_AGENT" --index
+openclaw memory status --agent "$PRIMARY_AGENT"
 openclaw gateway status --require-rpc
 openclaw agents list --bindings
 openclaw cron list --agent levyra-ci
