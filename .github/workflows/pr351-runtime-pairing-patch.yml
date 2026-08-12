@@ -33,20 +33,19 @@ jobs:
           text = text.replace(old_entry, new_entry, 1)
 
           old_helper_anchor = "private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex(\"^[A-Za-z0-9_-]{11}$\")\n\ninternal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {\n"
-          new_helper_anchor = """private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
-
-internal fun verifiedCounterpartVideoTrack(track: Track): Track? {
-    val audioId = track.audioVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val videoId = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    if (audioId.isBlank() || videoId.isBlank() || audioId == videoId) return null
-    return track.copy(
-        videoUrl = "https://www.youtube.com/watch?v=$videoId",
-        audioVideoId = audioId,
-    )
-}
-
-internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {
-"""
+          new_helper_anchor = (
+              "private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex(\"^[A-Za-z0-9_-]{11}$\")\n\n"
+              "internal fun verifiedCounterpartVideoTrack(track: Track): Track? {\n"
+              "    val audioId = track.audioVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()\n"
+              "    val videoId = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()\n"
+              "    if (audioId.isBlank() || videoId.isBlank() || audioId == videoId) return null\n"
+              "    return track.copy(\n"
+              "        videoUrl = \"https://www.youtube.com/watch?v=$videoId\",\n"
+              "        audioVideoId = audioId,\n"
+              "    )\n"
+              "}\n\n"
+              "internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {\n"
+          )
           if text.count(old_helper_anchor) != 1:
               raise SystemExit(f"expected one youtubePlayableTrack anchor, found {text.count(old_helper_anchor)}")
           text = text.replace(old_helper_anchor, new_helper_anchor, 1)
