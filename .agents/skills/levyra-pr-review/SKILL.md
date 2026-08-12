@@ -12,6 +12,17 @@ description: Review a Levyra branch, commit, patch, or pull request for correctn
 3. Inspect the complete diff, surrounding implementation, tests, build files, workflows, and current review discussion.
 4. Ignore comments that no longer apply to the current head revision.
 
+## Commit and branch review evidence
+
+A review does not require a pull request. When the handoff names a commit or branch:
+
+1. Work from the reviewer agent's own `./repo` checkout, not a parent agent's relative path or inherited working directory.
+2. Fetch remote refs as needed and resolve the exact requested SHA before reviewing it.
+3. For a normal commit, inspect the complete patch from its parent to the requested SHA plus the surrounding implementation and tests. For a root commit or explicitly supplied patch, use the available complete patch representation instead of assuming a parent exists.
+4. Use local Git evidence such as `git show <sha>` and `git diff <sha>^ <sha>` when there is no PR. A missing PR association is never by itself a reason to mark the review blocked.
+5. If a PR is supplied, verify that its current head still matches the requested SHA before using PR comments or checks as current evidence.
+6. If the requested SHA cannot be resolved even after a bounded fetch, report that exact failure and the fetch/ref evidence. Do not replace it with a generic `diff not verified` conclusion.
+
 ## Review priorities
 
 Check, as applicable:
