@@ -156,7 +156,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
 
     private fun newestUsableRealSnapshot(now: Long): CatalogSnapshot? {
         val newest = newestUsableCatalogSnapshot(
-            now = now,
+            now,
             memorySnapshot,
             readStoredSnapshot(now),
         )
