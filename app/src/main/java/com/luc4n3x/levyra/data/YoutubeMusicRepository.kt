@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.primaryArtistSegment
+import com.luc4n3x.levyra.domain.parseCompactViewCount
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -2307,7 +2308,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             source = "YouTube Music",
             albumBrowseId = albumReference.second,
             artistBrowseIds = artistReferences.map { it.browseId },
-            videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty()
+            videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
+            youtubeViewCount = tokens.asSequence()
+                .map(::parseCompactViewCount)
+                .firstOrNull { it >= 0L }
+                ?: -1L
         )
     }
 
@@ -2406,6 +2411,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         artistBrowseIds: List<String> = emptyList(),
         counterpartVideoId: String = "",
         videoType: String = "",
+        youtubeViewCount: Long = -1L,
         trackNumber: Int = 0,
         discNumber: Int = 0
     ): Track {
@@ -2446,6 +2452,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             artistBrowseIds = artistBrowseIds,
             counterpartVideoId = counterpartVideoId,
             videoType = videoType,
+            youtubeViewCount = youtubeViewCount,
             trackNumber = trackNumber,
             discNumber = discNumber
         )
