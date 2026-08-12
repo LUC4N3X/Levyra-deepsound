@@ -38,81 +38,68 @@ Before adding a new abstraction, helper, dependency, workflow, cache, store, con
 
 Do not turn this into mandatory broad web research for trivial work. The goal is to prevent needless reinvention and stale assumptions, not to add ceremony.
 
-This step incorporates the useful research-and-reuse discipline from ECC while deliberately rejecting its generic stack assumptions and fixed coverage/style thresholds.
-
 ### 1. Ambiguous product or architecture: `grill-with-docs`
 
-Use when the requested behavior, trade-offs, ownership, compatibility, or user-visible outcome is genuinely unclear.
+Use when requested behavior, trade-offs, ownership, compatibility, or user-visible outcome is genuinely unclear.
 
 - Inspect the repository first and answer codebase questions from evidence instead of asking the owner.
 - Ask only decisions that cannot be resolved from the repository.
-- Maintain shared vocabulary in the project's domain context only when a term is genuinely reusable.
+- Maintain shared vocabulary only when genuinely reusable.
 - Record an ADR only for a durable architectural decision with a real trade-off and meaningful reversal cost.
-- Stop grilling once the implementation contract is clear.
+- Stop once the implementation contract is clear.
 
 ### 2. Large unknown problem: `wayfinder`
 
-Use before spec work when there are several unresolved architectural or product decisions and prematurely writing a spec would encode guesses.
-
-Resolve the decision map first, then return to the normal pipeline.
+Use before spec work when several product/architecture decisions remain unresolved. Resolve the decision map before writing a spec.
 
 ### 3. Settled intent: `to-spec`
 
-Convert the resolved conversation and repository evidence into an implementation-ready specification.
-
-A Levyra spec must state:
-
-- desired behavior and non-goals;
-- existing behavior that must remain unchanged;
-- architecture ownership and reuse points;
-- security, lifecycle, persistence, concurrency, localization, and compatibility implications when relevant;
-- acceptance criteria;
-- focused automated validation and required manual checks.
+A Levyra spec states desired behavior/non-goals, preserved behavior, architecture ownership/reuse, relevant security/lifecycle/persistence/concurrency/localization/compatibility implications, acceptance criteria, and focused/manual validation.
 
 Do not invent requirements that the owner did not approve.
 
 ### 4. Work too large for one reviewable change: `to-tickets`
 
-Split the spec into independently reviewable vertical slices, not horizontal layer tasks.
-
-Each ticket must be self-contained enough for a fresh agent context and include scope, preserved behavior, dependencies, acceptance criteria, relevant files/owners, and validation. Prefer a few coherent tickets over dozens of micro-tasks.
-
-Creating GitHub issues is a publication action: do it only when the owner explicitly asks for issues/tickets to be published. Otherwise keep the decomposition in the current handoff or approved planning files.
+Split into independently reviewable vertical slices. Each ticket carries scope, preserved behavior, dependencies, acceptance criteria, relevant owners/files, and validation. Publishing GitHub issues still requires explicit owner authorization.
 
 ### 5. Implementation: `implement` + `tdd`
 
 Implement one ticket or one reviewable phase at a time.
 
-- Start from a fresh context when moving to a new independent ticket when practical.
-- Read the applicable Levyra domain skills before editing.
-- For defects, establish a concrete failing path first; use `diagnosing-bugs` when the root cause is unclear.
-- Prefer red -> green -> refactor for logic that can be covered deterministically.
-- Do not force artificial tests around trivial declarative changes; still validate the narrowest relevant behavior.
+- Start from a fresh context for a new independent ticket when practical.
+- Read applicable Levyra domain skills before editing.
+- For defects, establish a concrete failing path first; use `diagnosing-bugs` when root cause is unclear.
+- Prefer red -> green -> refactor where deterministic tests are useful.
+- Do not force artificial tests around trivial declarative changes.
 - Make the smallest coherent change and avoid unrelated cleanup.
 
 #### Hypothesis-driven debugging
 
-For a bug, test failure, build failure, race, playback regression, or other unexpected behavior, do not stack speculative fixes.
+1. Reproduce/capture the failing path and complete relevant evidence.
+2. Trace the bad state/value backward to the first failed assumption or contract.
+3. Compare with a nearby working path when available.
+4. State one concrete root-cause hypothesis and supporting evidence.
+5. Test it with the smallest experiment/change.
+6. If it fails, discard the speculative change and form a new hypothesis.
+7. Once supported, add the smallest deterministic regression evidence, fix, and rerun relevant broader checks.
 
-1. Reproduce or capture the failing path and read the complete relevant error/evidence.
-2. Trace the bad state or value backward across the actual component boundaries until the first incorrect assumption, mutation, stale value, or failed contract is identified.
-3. Compare with a nearby working path and list the material differences.
-4. State one concrete root-cause hypothesis and the evidence supporting it.
-5. Test that hypothesis with the smallest possible experiment or change.
-6. If it fails, revert/discard the speculative change and form a new hypothesis from the new evidence; do not pile fixes on top of one another.
-7. Once the cause is supported, add the smallest regression test or deterministic reproduction that proves the failure, then implement the fix and rerun the relevant broader checks.
+After three materially different failed hypotheses, reassess the ownership boundary instead of stacking more guesses.
 
-If three materially different fix hypotheses fail, stop treating the issue as a local patch problem. Reassess the ownership boundary or architecture before attempting another fix and surface that change in direction to the owner.
+### 6. Mandatory pre-delivery review: `code-review`
 
-This keeps the strongest part of the AAS `systematic-debugging` workflow—root-cause tracing and single-variable experiments—without importing its full catalog or rigid ceremony into every tiny defect.
+Every code-bearing task has a final review gate. After drafting or applying the code, but before presenting it as the solution, handing it off, committing it, or calling implementation complete:
 
-### 6. Review: `code-review` + `levyra-pr-review`
+1. run the exact upstream `code-review` skill when the runtime provides it;
+2. otherwise run the equivalent `code-review` stage through this Levyra adapter;
+3. review the actual final diff/code, not the plan or intended patch;
+4. check correctness, regression risk, architecture fit, tests, security, lifecycle/concurrency, performance, duplication, speculative abstraction, and unrelated churn;
+5. fix actionable findings before delivery, then review the corrected final diff again when the fix changed behavior materially.
 
-Matt's code review is supplementary to Levyra's repository review contract.
+For Claude Code, invoke `/code-review` or the installed `code-review` skill before code delivery. Codex, ChatGPT, Antigravity, and compatible runtimes must explicitly invoke/load the `code-review` stage even if their UI has no slash command.
 
-Review correctness, regression risk, tests, architecture fit, security, concurrency/lifecycle, performance, and code smells. A smell is a judgment signal, not proof of a defect. Levyra's documented architecture and invariants override generic style advice.
+Do not run this gate before code exists merely to satisfy the name. The purpose is to prevent unreviewed generated code from leaving the implementation loop.
 
-Use a fresh reviewer context/model when practical. Every actionable finding needs a concrete failure path or maintainability consequence and the smallest compatible fix.
+Use `levyra-pr-review` additionally for branch/commit/PR review. Matt's code review supplements Levyra's repository review contract; it does not replace tests or the quality gate.
 
 ## External skill availability
 
@@ -135,18 +122,13 @@ If the external package is unavailable, follow this Levyra adapter rather than b
 ## Context and handoff discipline
 
 - Keep the current ticket/phase small enough to review.
-- Prefer fresh context between independent tickets and use an independent context for final review when the runtime supports it.
+- Prefer fresh context between independent tickets and an independent context for final review when supported.
 - Carry forward only the approved spec/ticket, relevant architecture/invariants, exact changed files or diff/commit, direct validation evidence, and unresolved blockers.
-- Prefer durable existing artifacts (`docs/project/TASKS.md` for the active approved phase, an existing issue/PR, or a scoped implementation handoff) over burying important state in chat history.
-- Do not create `MEMORY.md`, `recap.md`, duplicate PRDs, duplicate task ledgers, or another persistent source of truth only to help an agent survive context compaction.
-- When a session must compact or restart, summarize verified facts and open decisions, not exploratory chatter, guesses, or superseded hypotheses.
-- Current repository evidence always overrides remembered conversation context or an older handoff.
-
-This adapts the artifact-first/fresh-context ideas from `KhazP/vibe-coding-prompt-template` and current Claude Code skill practices without duplicating Levyra's existing planning system.
+- Prefer durable existing artifacts over duplicate memory/recap documents.
+- When a session must compact/restart, summarize verified facts and open decisions, not exploratory chatter or superseded hypotheses.
+- Current repository evidence overrides remembered conversation context or older handoffs.
 
 ## Publication and quality gates
-
-Matt's workflow never grants repository publication permission.
 
 Before commit:
 

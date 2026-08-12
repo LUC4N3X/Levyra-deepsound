@@ -8,6 +8,8 @@ Levyra Desktop is a Windows client built with Kotlin/JVM and Compose Multiplatfo
 
 Before editing, read `desktop/README.md` and load `.agents/skills/levyra-desktop/SKILL.md` plus any additional matching security, extractor, CI, review, or release skill.
 
+For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshot/reference recreation, or request to make the Desktop UI more premium, modern, distinctive, cohesive, or less AI-generated, automatically load `levyra-design-taste` together with `levyra-desktop` before editing. The design-taste skill supplements Desktop engineering rules; it never overrides accessibility, performance, lifecycle, localization, product behavior, or architecture.
+
 ## Module boundaries
 
 - `core/` remains pure Kotlin/JVM and must not depend on Compose or native VLC APIs.
@@ -15,6 +17,8 @@ Before editing, read `desktop/README.md` and load `.agents/skills/levyra-desktop
 - `app/` owns dependency wiring, windows, Compose UI, lifecycle, onboarding, updates, protocol handling, and packaging.
 - Reuse the shared extractor and localization catalog; do not fork Android logic or translations into divergent copies.
 - Preserve one source of truth for playback shared by the main window, tray/background behavior, and mini player.
+- Treat existing UI as a redesign by default: preserve behavior, navigation, keyboard/focus semantics and state ownership, then improve hierarchy, rhythm and visual consistency before adding decorative effects.
+- Reuse Levyra theme tokens and existing components before introducing one-off colors, radii, spacing values, visual primitives or dependencies.
 
 ## Reliability and persistence
 
@@ -44,4 +48,4 @@ Use the Desktop wrapper from `desktop/` and run focused tests first, followed by
 
 On Windows use `gradlew.bat`.
 
-Treat MSI/EXE packaging, installer upgrade, protocol registration, tray behavior, media keys, single-instance forwarding, auto-update, and real libvlc playback as manual/native checks unless directly verified.
+Treat MSI/EXE packaging, installer upgrade, protocol registration, tray behavior, media keys, single-instance forwarding, auto-update, real libvlc playback, visual polish, keyboard/focus behavior, and measured UI-performance claims as manual/native checks unless directly verified.
