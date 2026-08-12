@@ -18,12 +18,14 @@ import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.channel.ChannelTabInfo
 import org.schabi.newpipe.extractor.search.SearchInfo
+import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
 internal const val YOUTUBE_SHORTS_SOURCE = "YouTube Shorts"
 private const val MAX_SHORT_QUERIES = 4
 private const val MAX_SHORT_CHANNELS = 4
+private const val MAX_SHORT_CHANNEL_LOOKUPS = 2
 private const val SHORTS_SEARCH_CONCURRENCY = 4
 private const val SHORTS_CHANNEL_CONCURRENCY = 4
 private const val SHORTS_PER_QUERY = 8
@@ -66,20 +68,24 @@ internal class YoutubeShortsRepository(private val context: Context) {
 
         val queries = youtubeShortQueries(seeds, preferredArtists, languageCode)
             .take(MAX_SHORT_QUERIES)
+        val channelLookupQueries = youtubeShortChannelLookupQueries(seeds, preferredArtists)
         val directChannelUrls = youtubeShortChannelUrls(seeds, preferredChannelIds)
-        val (directChannelResults, searchResults) = coroutineScope {
+        val (directChannelResults, searchResults, channelLookupResults) = coroutineScope {
             val channels = async { runChannelDiscovery(directChannelUrls) }
             val searches = async { runSearchDiscovery(queries) }
-            channels.await() to searches.await()
+            val channelLookups = async { runChannelLookupDiscovery(channelLookupQueries) }
+            Triple(channels.await(), searches.await(), channelLookups.await())
         }
         val successfulSearches = searchResults.filterIsInstance<ShortsSourceResult.Success>()
-        val discoveredChannelUrls = successfulSearches
-            .asSequence()
-            .flatMap { result -> result.discovery.channelUrls.asSequence() }
-            .filterNot { channelUrl -> channelUrl in directChannelUrls }
-            .distinct()
-            .take((MAX_SHORT_CHANNELS - directChannelUrls.size).coerceAtLeast(0))
-            .toList()
+        val successfulChannelLookups = channelLookupResults.filterIsInstance<ShortsSourceResult.Success>()
+        val discoveredChannelUrls = youtubeShortDiscoveredChannelUrls(
+            directChannelUrls = directChannelUrls,
+            discoveredChannelUrls = buildList {
+                successfulChannelLookups.forEach { result -> addAll(result.discovery.channelUrls) }
+                successfulSearches.forEach { result -> addAll(result.discovery.channelUrls) }
+            },
+            limit = MAX_SHORT_CHANNELS
+        )
         val discoveredChannelResults = runChannelDiscovery(discoveredChannelUrls)
         val channelResults = directChannelResults + discoveredChannelResults
         val successfulChannels = channelResults.filterIsInstance<ShortsSourceResult.Success>()
@@ -91,8 +97,9 @@ internal class YoutubeShortsRepository(private val context: Context) {
 
         YoutubeShortsFeedResult(
             tracks = tracks,
-            completedQueries = successfulSearches.size + successfulChannels.size,
+            completedQueries = successfulSearches.size + successfulChannelLookups.size + successfulChannels.size,
             failedQueries = searchResults.count { it is ShortsSourceResult.Failure } +
+                channelLookupResults.count { it is ShortsSourceResult.Failure } +
                 channelResults.count { it is ShortsSourceResult.Failure }
         )
     }
@@ -125,6 +132,20 @@ internal class YoutubeShortsRepository(private val context: Context) {
                 async {
                     semaphore.withPermit {
                         safely { searchShorts(query, SHORTS_PER_QUERY) }
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+
+    private suspend fun runChannelLookupDiscovery(queries: List<String>): List<ShortsSourceResult> {
+        if (queries.isEmpty()) return emptyList()
+        return coroutineScope {
+            val semaphore = Semaphore(MAX_SHORT_CHANNEL_LOOKUPS)
+            queries.map { query ->
+                async {
+                    semaphore.withPermit {
+                        safely { searchArtistChannels(query) }
                     }
                 }
             }.awaitAll()
@@ -181,6 +202,31 @@ internal class YoutubeShortsRepository(private val context: Context) {
                     }
                 }.distinct()
                 ShortsDiscovery(tracks = tracks, channelUrls = channelUrls)
+            }
+        }
+    }
+
+    private suspend fun searchArtistChannels(query: String): ShortsDiscovery {
+        return withShortsSearchTimeout {
+            runInterruptible(Dispatchers.IO) {
+                NewPipeRuntime.ensure(context)
+                val service = ServiceList.YouTube
+                val factory = service.searchQHFactory
+                val channelFilter = factory.availableContentFilter
+                    .filterGroups
+                    .asSequence()
+                    .flatMap { group -> group.filterItems.asSequence() }
+                    .firstOrNull { filter -> filter.name == YoutubeSearchQueryHandlerFactory.CHANNELS }
+                    ?: return@runInterruptible ShortsDiscovery()
+                val handler = factory.fromQuery(query, listOf(channelFilter), emptyList())
+                val info = SearchInfo.getInfo(service, handler)
+                val channelUrls = info.relatedItems
+                    .filterIsInstance<ChannelInfoItem>()
+                    .asSequence()
+                    .mapNotNull { item -> canonicalYoutubeChannelUrl(item.url) }
+                    .take(2)
+                    .toList()
+                ShortsDiscovery(channelUrls = channelUrls)
             }
         }
     }
@@ -271,6 +317,33 @@ internal fun isYoutubeShortCandidate(
 
 internal fun isYoutubeShortsTabCandidate(durationSeconds: Long): Boolean {
     return durationSeconds <= 0L || durationSeconds <= MAX_SHORT_DURATION_SECONDS
+}
+
+internal fun youtubeShortChannelLookupQueries(
+    seeds: List<Track>,
+    preferredArtists: List<String>
+): List<String> {
+    return (preferredArtists.asSequence() + seeds.asSequence().map { track -> track.artist })
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .distinctBy { artist -> artist.lowercase(Locale.ROOT) }
+        .take(MAX_SHORT_CHANNEL_LOOKUPS)
+        .toList()
+}
+
+internal fun youtubeShortDiscoveredChannelUrls(
+    directChannelUrls: List<String>,
+    discoveredChannelUrls: List<String>,
+    limit: Int = MAX_SHORT_CHANNELS
+): List<String> {
+    if (limit <= 0) return emptyList()
+    val direct = directChannelUrls.toSet()
+    return discoveredChannelUrls
+        .asSequence()
+        .filterNot { channelUrl -> channelUrl in direct }
+        .distinct()
+        .take(limit)
+        .toList()
 }
 
 internal fun youtubeShortQueries(
