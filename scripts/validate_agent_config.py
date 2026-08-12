@@ -100,6 +100,11 @@ CLAUDE_CANONICAL_BRIDGES = (
 
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SKILL_REFERENCE_RE = re.compile(r"`(levyra-[a-z0-9-]+)`")
+DOCUMENTED_AGENT_IDS = {
+    "levyra-ci",
+    "levyra-reviewer",
+    "levyra-worker",
+}
 
 
 def read_text(relative_path: str) -> str:
@@ -133,6 +138,13 @@ def parse_front_matter(path: Path) -> dict[str, str]:
         metadata[key.strip()] = value.strip()
 
     return metadata
+
+
+def missing_skill_references(
+    referenced_skills: set[str],
+    actual_skills: set[str],
+) -> list[str]:
+    return sorted(referenced_skills - actual_skills - DOCUMENTED_AGENT_IDS)
 
 
 def require_skill_references(
@@ -410,7 +422,7 @@ def main() -> int:
         except (OSError, UnicodeError) as exc:
             errors.append(f"{relative_path}: cannot read file: {exc}")
 
-    missing_skills = sorted(referenced_skills - actual_skills)
+    missing_skills = missing_skill_references(referenced_skills, actual_skills)
     for name in missing_skills:
         errors.append(f"documented skill does not exist: {name}")
 
