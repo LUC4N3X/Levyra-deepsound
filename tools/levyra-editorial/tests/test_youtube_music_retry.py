@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from levyra_editorial.youtube_music import YoutubeMusicWebClient
+from levyra_editorial.youtube_music import (
+    YOUTUBE_MUSIC_SONG_SEARCH_PARAMS,
+    YoutubeMusicWebClient,
+)
 
 
 def _dai_dai_art_track_payload() -> dict:
@@ -65,13 +68,15 @@ def _dai_dai_art_track_payload() -> dict:
     }
 
 
-def test_resolve_retries_punctuation_free_audio_query_before_official_video(monkeypatch) -> None:
+def test_resolve_uses_song_filter_before_official_video(monkeypatch) -> None:
     client = YoutubeMusicWebClient("SAPISID=abcdefghijklmnopqrstuvwxyz123456", workers=1)
-    queries: list[str] = []
+    searches: list[tuple[str, str | None]] = []
 
-    def fake_search(query: str):
-        queries.append(query)
-        return {} if len(queries) == 1 else _dai_dai_art_track_payload()
+    def fake_search(query: str, params: str | None = None):
+        searches.append((query, params))
+        if params != YOUTUBE_MUSIC_SONG_SEARCH_PARAMS:
+            return {}
+        return _dai_dai_art_track_payload()
 
     monkeypatch.setattr(client, "_search", fake_search)
     monkeypatch.setattr(
@@ -88,7 +93,9 @@ def test_resolve_retries_punctuation_free_audio_query_before_official_video(monk
     finally:
         client.close()
 
-    assert queries == ["Dai Dai Shakira, Burna Boy", "Dai Dai Shakira Burna Boy"]
+    assert searches == [
+        ("Dai Dai Shakira, Burna Boy", YOUTUBE_MUSIC_SONG_SEARCH_PARAMS)
+    ]
     assert result is not None
     assert result["audioVideoId"] == "lFQdcPTTzSg"
     assert result["videoId"] == "fcnDmrtj6Sk"
