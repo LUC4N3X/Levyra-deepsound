@@ -75,6 +75,20 @@ reference, not a runtime dependency.
 - Do not hide architectural duplication behind compatibility wrappers unless a
   real compatibility boundary requires them.
 
+## Source-code comment discipline
+
+New source code should be self-explanatory. Do not add explanatory comments,
+AI-style narration, step labels, restatements of obvious code, commented-out
+alternatives, or TODO prose merely to explain generated implementation.
+
+Prefer clear names, small functions, explicit types/state, and straightforward
+control flow. Preserve or add a comment only when it is legally or mechanically
+required, such as a license header, generated/tool directive, lint/suppression
+marker, or a compatibility/protocol contract whose meaning cannot safely live in
+the code itself.
+
+Do not delete an existing required comment just to satisfy this rule.
+
 ## Scope and complexity budget
 
 One pull request should normally have one primary engineering outcome.
@@ -160,6 +174,32 @@ by a correctness dependency of that outcome.
 - If the implementation grows far beyond the expected footprint, stop and ask
   whether the design can be simplified before normalizing the larger diff.
 
+## Mandatory pre-delivery code review
+
+Every code-bearing task must pass a final code-review gate after code exists and
+before that code is presented as the solution, handed to another runtime,
+committed, or described as implementation-complete.
+
+- **Claude Code:** invoke `/code-review` when that command is available, otherwise
+  invoke the installed `code-review` skill/stage.
+- **Codex:** explicitly load/run the `code-review` stage through
+  `levyra-real-engineering` or the installed upstream skill before delivery.
+- **ChatGPT:** run the `code-review` stage on the actual generated/applied code or
+  diff before presenting code as final.
+- **Google Antigravity:** explicitly load/run the `code-review` stage through the
+  Levyra adapter or available skill before delivery.
+
+Review the final code/diff, not the plan. Check correctness, regression risk,
+architecture ownership, tests, security, lifecycle/concurrency, performance,
+duplication, speculative abstractions, source-code comment discipline, and
+unrelated churn. Fix actionable findings before delivery; if a fix materially
+changes behavior, review the corrected final diff again.
+
+This gate also applies to small code edits, but small edits need only a focused
+review of the actual change. Do not invoke a full review before code exists just
+to satisfy the rule. `levyra-pr-review` remains additional for branch/commit/PR
+review and does not replace this pre-delivery gate.
+
 ## Diff quality gate
 
 Before commit, push, or PR publication, inspect the complete diff and answer:
@@ -244,6 +284,7 @@ For every substantial AI-assisted implementation, report:
 - verification target for each non-trivial step;
 - diff size/statistics when available;
 - focused and broader validation performed;
+- pre-delivery `code-review` result;
 - blocked or unverified checks;
 - remaining risk;
 - publication state.
