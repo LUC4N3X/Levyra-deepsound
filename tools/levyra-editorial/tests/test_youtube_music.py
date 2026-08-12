@@ -393,7 +393,7 @@ def test_resolve_skips_web_video_query_when_audio_identity_is_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = YoutubeMusicWebClient("SAPISID=abcdefghijklmnopqrstuvwxyz123456")
-    monkeypatch.setattr(client, "_search", lambda _query: {})
+    monkeypatch.setattr(client, "_search", lambda _query, params=None: {})
     calls = 0
 
     def official_video(_title: str, _artist: str, _duration_ms: int) -> dict[str, object]:
@@ -472,4 +472,3 @@ def test_official_video_still_rejects_unrequested_live_variant() -> None:
         ],
     )
     assert mapping is None
-
