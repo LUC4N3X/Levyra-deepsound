@@ -33,6 +33,30 @@ Before editing production code:
 Do not start from a blank-slate design when Levyra already has an owner for the
 behavior.
 
+## Assumptions, tradeoffs, and simpler alternatives
+
+Do not silently convert uncertainty into implementation.
+
+- State material assumptions before coding when they can change behavior,
+  compatibility, architecture, security, persistence, performance, or scope.
+- If current repository evidence can resolve an uncertainty, inspect it before
+  asking the owner to repeat information or choosing an interpretation.
+- When two materially different interpretations remain, surface the tradeoff and
+  use the least surprising interpretation only when existing requirements make
+  it clear. Otherwise request the missing owner decision before broadening scope.
+- If a simpler implementation satisfies the same acceptance criteria, prefer it
+  and explain why the extra abstraction or configurability is unnecessary.
+- Push back on speculative flexibility, future-proofing, compatibility layers,
+  or defensive branches that have no current caller, requirement, or realistic
+  failure mode.
+- Do not hide uncertainty behind confident prose. Separate verified facts,
+  assumptions, hypotheses, and owner decisions.
+
+These rules adapt the useful anti-overengineering discipline from the
+MIT-licensed `multica-ai/andrej-karpathy-skills` project. Levyra's repository
+rules and current evidence remain authoritative; the external project is a
+reference, not a runtime dependency.
+
 ## Architecture-first rules
 
 - Reuse before creating.
@@ -79,6 +103,29 @@ normal review for correctness and accidental churn.
 The thresholds above are review triggers, not permission to generate code up to
 the limit.
 
+## Goal-driven execution
+
+Convert implementation requests into verifiable outcomes before editing.
+
+For each non-trivial step, state the result that would prove it succeeded and use
+that result to decide whether to continue, revise, or stop. Examples:
+
+- a bug fix -> reproduce the failure or define the exact failing path, apply the
+  smallest correction, then rerun the same reproduction or focused regression
+  test;
+- validation -> define invalid and valid cases, then prove both outcomes;
+- refactoring -> establish behavior/tests before the refactor and verify the same
+  contract afterward;
+- performance work -> record a representative baseline, change one material
+  variable, then remeasure the same path;
+- security remediation -> reproduce the safe failure path, patch the root cause,
+  then revalidate that exact boundary.
+
+A multi-step plan should therefore be a sequence of `step -> verification`, not
+an activity checklist such as "inspect, code, test" with no success criterion.
+Do not keep stacking speculative fixes after the verification target has failed;
+return to the hypothesis or requirement instead.
+
 ## Large features and feature parity
 
 Do not implement broad "feature parity", "improve everything", or "make it like
@@ -96,6 +143,22 @@ For large work:
 
 External projects are references, not architectures to copy wholesale. Import
 ideas selectively and adapt them to Levyra's existing ownership model.
+
+## Surgical-edit discipline
+
+Every changed production line should be explainable by the requested outcome or
+by a correctness dependency of that outcome.
+
+- Match the existing style and ownership model instead of rewriting adjacent
+  code into the agent's preferred style.
+- Do not refactor, rename, reformat, reorder, or delete unrelated code while
+  touching a nearby file.
+- Remove imports, variables, helpers, or branches made obsolete by the current
+  change, but do not turn that cleanup into a pre-existing dead-code sweep.
+- Mention unrelated problems separately instead of silently folding their fixes
+  into the active patch.
+- If the implementation grows far beyond the expected footprint, stop and ask
+  whether the design can be simplified before normalizing the larger diff.
 
 ## Diff quality gate
 
@@ -177,6 +240,8 @@ For every substantial AI-assisted implementation, report:
 - architecture owner reused or changed;
 - exact production files changed;
 - new abstractions introduced and why each is necessary;
+- material assumptions or unresolved tradeoffs;
+- verification target for each non-trivial step;
 - diff size/statistics when available;
 - focused and broader validation performed;
 - blocked or unverified checks;
