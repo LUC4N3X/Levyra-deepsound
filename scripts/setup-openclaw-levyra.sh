@@ -38,6 +38,22 @@ has_agent() {
   agent_ids | grep -Fxq "$1"
 }
 
+agent_index() {
+  local agent="$1"
+  openclaw config get agents.list --json | python3 -c '
+import json, sys
+agent = sys.argv[1]
+value = json.load(sys.stdin)
+if isinstance(value, dict):
+    value = value.get("list", value.get("agents", value.get("items", [])))
+for index, item in enumerate(value if isinstance(value, list) else []):
+    if isinstance(item, dict) and item.get("id") == agent:
+        print(index)
+        raise SystemExit(0)
+raise SystemExit(1)
+' "$agent"
+}
+
 choose_primary_agent() {
   if [[ -n "${LEVYRA_OPENCLAW_AGENT:-}" ]]; then
     printf '%s\n' "$LEVYRA_OPENCLAW_AGENT"
@@ -95,7 +111,7 @@ ensure_primary_overlay() {
 
 For every Levyra engineering task, work inside `./repo`, read `repo/AGENTS.md` and the nearest scoped instructions, then use the matching repository-native skills. Apply the context budget before broad reading: search first, read bounded evidence, expand only for a concrete unresolved question, and never trade away exact failure/security/release evidence for token savings.
 
-Use `levyra-openclaw-orchestrator` for the execution lifecycle. Keep implementation in the primary Levyra worker. Before presenting code as final, run the repository `code-review` stage. Delegate a fresh bounded latest-diff review to `levyra-reviewer`, and delegate CI/PR/log diagnosis to `levyra-ci`. Fix actionable findings and revalidate before final handoff.
+Use `levyra-openclaw-orchestrator` for the execution lifecycle. Keep implementation in the primary Levyra worker. Before presenting code as final, run the repository `code-review` stage. Delegate a fresh bounded latest-diff review to the Levyra reviewer agent, and delegate CI/PR/log diagnosis to the Levyra CI agent. Fix actionable findings and revalidate before final handoff.
 
 Do not send full chat history or repeated repository context to specialist agents. Send only the objective, invariants, latest diff/SHA, focused surrounding evidence, checks already run, unresolved risks, and the exact question the specialist must answer.
 
@@ -104,30 +120,49 @@ EOF
   fi
 }
 
+ensure_agent() {
+  local agent="$1"
+  local workspace="$2"
+  if ! has_agent "$agent"; then
+    openclaw agents add "$agent" --workspace "$workspace" --non-interactive
+  fi
+}
+
+set_agent_json() {
+  local agent="$1"
+  local suffix="$2"
+  local value="$3"
+  local index
+  index="$(agent_index "$agent")"
+  openclaw config set "agents.list[$index].$suffix" "$value" --strict-json
+}
+
 configure_agent_skills() {
   local agent="$1"
   shift
   local json
   json="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1:]))' "$@")"
-  openclaw config set "agents.entries.$agent.skills" "$json" --strict-json
+  set_agent_json "$agent" skills "$json"
 }
 
 configure_evidence_agent() {
   local agent="$1"
-  openclaw config set "agents.entries.$agent.tools.allow" '["read","exec","process"]' --strict-json
-  openclaw config set "agents.entries.$agent.tools.deny" '["write","edit","apply_patch","browser","gateway"]' --strict-json
-  openclaw config set "agents.entries.$agent.tools.fs.workspaceOnly" true --strict-json
-  openclaw config set "agents.entries.$agent.tools.exec.host" '"gateway"' --strict-json
-  openclaw config set "agents.entries.$agent.tools.exec.mode" '"auto"' --strict-json
-  openclaw config set "agents.entries.$agent.tools.exec.strictInlineEval" true --strict-json
-  openclaw config set "agents.entries.$agent.tools.elevated.enabled" false --strict-json
+  set_agent_json "$agent" tools.allow '["read","exec","process"]'
+  set_agent_json "$agent" tools.deny '["write","edit","apply_patch","browser","gateway","cron"]'
+  set_agent_json "$agent" tools.fs.workspaceOnly true
+  set_agent_json "$agent" tools.exec.host '"gateway"'
+  set_agent_json "$agent" tools.exec.mode '"auto"'
+  set_agent_json "$agent" tools.exec.strictInlineEval true
+  set_agent_json "$agent" tools.elevated.enabled false
 }
 
 merge_primary_subagents() {
   local agent="$1"
+  local index
   local current
   local merged
-  current="$(openclaw config get "agents.entries.$agent.subagents.allowAgents" --json 2>/dev/null || printf '[]')"
+  index="$(agent_index "$agent")"
+  current="$(openclaw config get "agents.list[$index].subagents.allowAgents" --json 2>/dev/null || printf '[]')"
   merged="$(printf '%s' "$current" | python3 -c '
 import json, sys
 raw = sys.stdin.read().strip()
@@ -142,37 +177,51 @@ for agent in ("levyra-reviewer", "levyra-ci"):
         value.append(agent)
 print(json.dumps(value))
 ')"
-  openclaw config set "agents.entries.$agent.subagents.allowAgents" "$merged" --strict-json
+  openclaw config set "agents.list[$index].subagents.allowAgents" "$merged" --strict-json
+  openclaw config set "agents.list[$index].subagents.requireAgentId" true --strict-json
+  openclaw config set "agents.list[$index].subagents.delegationMode" '"prefer"' --strict-json
 }
 
-ensure_agent() {
+configure_primary_memory() {
   local agent="$1"
-  local workspace="$2"
-  if ! has_agent "$agent"; then
-    openclaw agents add "$agent" --workspace "$workspace" --non-interactive
-  fi
+  local index
+  index="$(agent_index "$agent")"
+  openclaw config set "agents.list[$index].memorySearch.rememberAcrossConversations" true --strict-json
+  openclaw config set plugins.entries.active-memory.enabled true --strict-json
+  openclaw config set plugins.entries.active-memory.config.enabled true --strict-json
+  openclaw config set plugins.entries.active-memory.config.mode '"escalate"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.queryMode '"recent"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.promptStyle '"precision-heavy"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.maxSummaryChars 240 --strict-json
+  openclaw config set plugins.entries.active-memory.config.persistTranscripts false --strict-json
 }
 
 ensure_cron() {
   local agent="$1"
   local name="Levyra CI audit"
-  local exists
-  exists="$(openclaw cron list --all --json | python3 -c '
+  local listing
+  if ! listing="$(openclaw cron list --all --json 2>/dev/null)"; then
+    echo "[warn] Cron inspection unavailable with the current Gateway scope; skipping Levyra CI audit registration." >&2
+    return 0
+  fi
+  if printf '%s' "$listing" | python3 -c '
 import json, sys
 value = json.load(sys.stdin)
 if isinstance(value, dict):
     value = value.get("jobs", value.get("items", []))
-print("yes" if any(isinstance(item, dict) and item.get("name") == "Levyra CI audit" for item in value if isinstance(value, list)) else "no")
-')"
-  if [[ "$exists" == "no" ]]; then
-    openclaw cron create "$AUDIT_CRON" \
+raise SystemExit(0 if any(isinstance(item, dict) and item.get("name") == "Levyra CI audit" for item in value if isinstance(value, list)) else 1)
+'; then
+    return 0
+  fi
+  if ! openclaw cron create "$AUDIT_CRON" \
       "Audit Levyra without publishing changes. Repository is ./repo. Read repo/AGENTS.md and repo/.github/AGENTS.md, refresh the local evidence checkout, then inspect open PRs, required CI, unresolved review threads and stale branches. Report only actionable state changes with exact PR/SHA/check evidence. Do not edit source code, commit, push, merge, release, change settings or expose secrets." \
       --name "$name" \
       --agent "$agent" \
       --tz "$AUDIT_TZ" \
       --session isolated \
       --light-context \
-      --no-deliver
+      --no-deliver; then
+    echo "[warn] Levyra CI audit was not registered; the current Gateway client may lack operator.admin scope." >&2
   fi
 }
 
@@ -187,9 +236,9 @@ if [[ ! -d "$PRIMARY_REPO/.git" ]]; then
 fi
 
 PRIMARY_AGENT="$(choose_primary_agent)"
-if ! has_agent "$PRIMARY_AGENT"; then
-  openclaw agents add "$PRIMARY_AGENT" --workspace "$PRIMARY_WORKSPACE" --non-interactive
-fi
+ensure_agent "$PRIMARY_AGENT" "$PRIMARY_WORKSPACE"
+ensure_agent levyra-reviewer "$REVIEW_WORKSPACE"
+ensure_agent levyra-ci "$CI_WORKSPACE"
 
 ensure_primary_overlay
 if [[ ! -f "$PRIMARY_WORKSPACE/MEMORY.md" ]]; then
@@ -213,66 +262,34 @@ write_workspace_file "$REVIEW_WORKSPACE/AGENTS.md" \
   "" \
   "Operate only as an independent reviewer for ./repo. Read repo/AGENTS.md, the nearest scoped AGENTS.md files, repo/docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills before judging code." \
   "" \
-  "You may refresh or fetch the private evidence checkout and inspect remote PR refs, but do not edit source code, implement fixes, create commits, push, merge, release, change repository settings or dismiss findings. Return severity, confidence, exact location, triggering scenario, consequence, smallest compatible fix and missing regression coverage. Preserve raw evidence for security, release, R8, Perfetto and exact failures." \
-  "" \
-  "Use a compact context budget: diff first, then bounded surrounding code, then expand only for a concrete unresolved question. Do not reread unchanged evidence."
-write_workspace_file "$REVIEW_WORKSPACE/TOOLS.md" \
-  "# Tools" \
-  "" \
-  "Repository: ./repo" \
-  "Use Git/GitHub inspection, focused searches and non-publishing validation. Host exec uses OpenClaw auto-review; elevated tools stay disabled."
-if [[ ! -f "$REVIEW_WORKSPACE/MEMORY.md" ]]; then
-  write_workspace_file "$REVIEW_WORKSPACE/MEMORY.md" \
-    "# Durable Review Memory" \
-    "" \
-    "Store only stable, verified Levyra review lessons and recurring failure patterns. Never store secrets, credentials, transient PR state, branch heads or CI status here."
-fi
-mkdir -p "$REVIEW_WORKSPACE/memory"
-
+  "You may refresh or fetch the evidence checkout and inspect remote PR refs, but do not edit source code, implement fixes, create commits, push, merge, release, change repository settings or dismiss findings. Return severity, confidence, exact location, triggering scenario, consequence, smallest compatible fix and missing regression coverage."
 write_workspace_file "$CI_WORKSPACE/AGENTS.md" \
   "# Levyra CI" \
   "" \
   "Operate only as the CI, PR-state and validation evidence agent for ./repo. Read repo/AGENTS.md, repo/.github/AGENTS.md, repo/docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills." \
   "" \
-  "You may refresh or fetch the private evidence checkout and inspect GitHub state. Inspect exact failing steps, logs, review state and reproducible validation evidence. Do not edit source code, commit, push, merge, release, change workflows, secrets or repository settings. Separate current evidence from stale runs." \
-  "" \
-  "Use a compact context budget: SHA/PR/check first, failing step next, bounded raw logs only where they determine the conclusion."
-write_workspace_file "$CI_WORKSPACE/TOOLS.md" \
-  "# Tools" \
-  "" \
-  "Repository: ./repo" \
-  "Use gh, git and focused validation without publishing changes. Host exec uses OpenClaw auto-review; elevated tools stay disabled. Keep exact failure output raw."
-if [[ ! -f "$CI_WORKSPACE/MEMORY.md" ]]; then
-  write_workspace_file "$CI_WORKSPACE/MEMORY.md" \
-    "# Durable CI Memory" \
-    "" \
-    "Store only stable, verified CI/release diagnostics and recurring infrastructure lessons. Never store secrets, credentials, transient run state, branch heads or current PR status here."
-fi
-mkdir -p "$CI_WORKSPACE/memory"
+  "Inspect exact failing steps, logs, review state and reproducible validation evidence. Do not edit source code, commit, push, merge, release, change workflows, secrets or repository settings. Separate current evidence from stale runs."
+
+for workspace in "$REVIEW_WORKSPACE" "$CI_WORKSPACE"; do
+  if [[ ! -f "$workspace/MEMORY.md" ]]; then
+    write_workspace_file "$workspace/MEMORY.md" \
+      "# Durable Levyra Evidence Memory" \
+      "" \
+      "Store only stable, verified recurring engineering lessons. Never store secrets, credentials, branch heads, current PR state or CI status here."
+  fi
+  mkdir -p "$workspace/memory"
+done
 
 REVIEW_SKILLS=(
-  levyra-pr-review
-  levyra-security-review
-  levyra-release-check
-  levyra-context-efficiency
-  levyra-real-engineering
-  levyra-player
-  levyra-extractor
-  levyra-database
-  levyra-compose
-  levyra-android-performance
-  levyra-r8-proguard
-  levyra-android-intent-security
-  levyra-design-taste
-  levyra-desktop
-  levyra-ci-workflows
+  levyra-pr-review levyra-security-review levyra-release-check
+  levyra-context-efficiency levyra-real-engineering levyra-player
+  levyra-extractor levyra-database levyra-compose levyra-android-performance
+  levyra-r8-proguard levyra-android-intent-security levyra-design-taste
+  levyra-desktop levyra-ci-workflows
 )
 CI_SKILLS=(
-  levyra-ci-workflows
-  levyra-release-check
-  levyra-pr-review
-  levyra-security-review
-  levyra-context-efficiency
+  levyra-ci-workflows levyra-release-check levyra-pr-review
+  levyra-security-review levyra-context-efficiency
 )
 
 for skill in "${REVIEW_SKILLS[@]}"; do
@@ -282,9 +299,6 @@ for skill in "${CI_SKILLS[@]}"; do
   write_skill_bridge "$CI_WORKSPACE" "$skill"
 done
 
-ensure_agent levyra-reviewer "$REVIEW_WORKSPACE"
-ensure_agent levyra-ci "$CI_WORKSPACE"
-
 configure_agent_skills levyra-reviewer "${REVIEW_SKILLS[@]}"
 configure_agent_skills levyra-ci "${CI_SKILLS[@]}"
 configure_evidence_agent levyra-reviewer
@@ -292,17 +306,11 @@ configure_evidence_agent levyra-ci
 merge_primary_subagents "$PRIMARY_AGENT"
 
 if [[ "$ENABLE_ACTIVE_MEMORY" == "1" ]]; then
-  openclaw config set "agents.entries.$PRIMARY_AGENT.memory.search.rememberAcrossConversations" true --strict-json
-  openclaw config set plugins.entries.active-memory.enabled true --strict-json
-  openclaw config set plugins.entries.active-memory.config.enabled true --strict-json
-  openclaw config set plugins.entries.active-memory.config.mode '"escalate"' --strict-json
-  openclaw config set plugins.entries.active-memory.config.queryMode '"recent"' --strict-json
-  openclaw config set plugins.entries.active-memory.config.promptStyle '"precision-heavy"' --strict-json
-  openclaw config set plugins.entries.active-memory.config.maxSummaryChars 240 --strict-json
-  openclaw config set plugins.entries.active-memory.config.persistTranscripts false --strict-json
+  configure_primary_memory "$PRIMARY_AGENT"
 fi
 
 if [[ "$ENABLE_DREAMING" == "1" ]]; then
+  openclaw config set plugins.entries.memory-core.enabled true --strict-json
   openclaw config set plugins.entries.memory-core.config.dreaming.enabled true --strict-json
 fi
 
@@ -315,7 +323,9 @@ openclaw doctor
 openclaw memory status --agent "$PRIMARY_AGENT"
 openclaw gateway status --require-rpc
 openclaw agents list --bindings
-openclaw cron list --agent levyra-ci
+if [[ "$INSTALL_CRON" == "1" ]]; then
+  openclaw cron list --agent levyra-ci || true
+fi
 
 echo "OpenClaw Levyra profile ready."
 echo "Primary: $PRIMARY_AGENT"
