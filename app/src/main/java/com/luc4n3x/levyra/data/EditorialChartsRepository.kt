@@ -132,10 +132,21 @@ internal class EditorialChartsRepository private constructor(context: Context) {
 
             val remote = fetchRemoteSnapshot()
             if (remote != null) {
-                persist(remote.rawJson)
-                memorySnapshot = remote
-                lastRefreshFailureAt = 0L
-                remote
+                val newest = newestUsableCatalogSnapshot(
+                    System.currentTimeMillis(),
+                    realSnapshot,
+                    remote,
+                )
+                if (newest === remote) {
+                    persist(remote.rawJson)
+                    memorySnapshot = remote
+                    lastRefreshFailureAt = 0L
+                    remote
+                } else {
+                    memorySnapshot = realSnapshot
+                    lastRefreshFailureAt = System.currentTimeMillis()
+                    realSnapshot
+                }
             } else {
                 lastRefreshFailureAt = System.currentTimeMillis()
                 realSnapshot
