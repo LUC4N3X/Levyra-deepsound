@@ -165,6 +165,33 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
+    fun channelLookupQueriesPreferFollowedArtistsAndStayBounded() {
+        val queries = youtubeShortChannelLookupQueries(
+            seeds = listOf(
+                track(artist = "Artista ascoltato"),
+                track(artist = "Secondo artista ascoltato")
+            ),
+            preferredArtists = listOf("Artista seguito", "Artista seguito", "Secondo seguito")
+        )
+
+        assertEquals(listOf("Artista seguito", "Secondo seguito"), queries)
+    }
+
+    @Test
+    fun discoveredChannelsRemainAvailableWhenDirectBudgetIsFull() {
+        val directChannels = listOf("direct-1", "direct-2", "direct-3", "direct-4")
+        val fallbackChannel = "https://www.youtube.com/channel/UCfallback12345678901234"
+
+        val discovered = youtubeShortDiscoveredChannelUrls(
+            directChannelUrls = directChannels,
+            discoveredChannelUrls = listOf(directChannels.first(), fallbackChannel, fallbackChannel),
+            limit = 4
+        )
+
+        assertEquals(listOf(fallbackChannel), discovered)
+    }
+
+    @Test
     fun artistBrowseIdsAndFollowedChannelIdsBecomeDirectChannelUrls() {
         val track = track(artistBrowseIds = listOf("UC1234567890123456789012"))
 
