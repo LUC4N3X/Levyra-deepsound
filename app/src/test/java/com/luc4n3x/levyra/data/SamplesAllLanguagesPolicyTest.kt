@@ -5,9 +5,9 @@ import org.junit.Test
 
 class SamplesAllLanguagesPolicyTest {
     @Test
-    fun everySupportedLanguageProducesLocalizedYoutubeMusicQueries() {
+    fun everySupportedLanguageProducesLocalizedShortQueries() {
         val representativeTokens = mapOf(
-            "it" to "italian",
+            "it" to "italiana",
             "nl" to "Nederland",
             "pl" to "polsk",
             "el" to "ελλην",
@@ -20,7 +20,7 @@ class SamplesAllLanguagesPolicyTest {
         )
 
         representativeTokens.forEach { (language, token) ->
-            val queries = youtubeMusicSampleQueries(emptyList(), emptyList(), language)
+            val queries = youtubeShortQueries(emptyList(), emptyList(), language)
             assertTrue("Missing local query for $language", queries.any { it.contains(token, ignoreCase = true) })
         }
     }
