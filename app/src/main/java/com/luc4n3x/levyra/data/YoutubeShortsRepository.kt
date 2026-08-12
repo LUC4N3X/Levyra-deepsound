@@ -336,7 +336,7 @@ private fun localizedShortQueries(languageCode: String): List<String> {
         "it" -> listOf("shorts musica italiana", "canzoni del momento #shorts", "nuove hit italiane #shorts", "musica virale #shorts")
         "es" -> listOf("shorts música española", "canciones del momento #shorts", "éxitos latinos #shorts", "música viral #shorts")
         "fr" -> listOf("shorts musique française", "chansons du moment #shorts", "nouveaux tubes #shorts", "musique virale #shorts")
-        "de" -> listOf("shorts deutsche musik", "songs des moments #shorts", "neue hits #shorts", "virale musik #shorts")
+        "de" -> listOf("shorts deutsche musik", "aktuelle deutsche songs #shorts", "neue hits #shorts", "virale musik #shorts")
         "pt" -> listOf("shorts música brasileira", "músicas do momento #shorts", "novos sucessos #shorts", "música viral #shorts")
         "nl" -> listOf("shorts Nederlandse muziek", "Nederlandse hits #shorts", "nieuwe muziek Nederland #shorts", "virale muziek #shorts")
         "pl" -> listOf("shorts polska muzyka", "polskie hity #shorts", "nowa polska muzyka #shorts", "viral muzyka #shorts")
