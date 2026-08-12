@@ -259,14 +259,46 @@ internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     return maxOf(safeCurrent, safeIncoming)
 }
 
+private val PLAYBACK_TITLE_PRODUCTION_MARKER = Regex(
+    """[(\[][^)\]]*\b(official|ufficiale|oficial|lyric|lyrics|testo|audio|video|visualizer|visualiser|clip)\b[^)\]]*[)\]]""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_TITLE_FEATURE_GROUP = Regex(
+    """[(\[]\s*(feat|ft|featuring|con|with)\b\.?[^)\]]*[)\]]""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_TITLE_FEATURE_TAIL = Regex(
+    """\s(feat|ft|featuring)\b\.?\s.*$""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_TITLE_TRAILING_MARKER = Regex(
+    """\s[-–|]\s(official\s+)?(music\s+)?(video|audio|lyrics?\s+video)\s*$""",
+    RegexOption.IGNORE_CASE
+)
+
+/**
+ * The title reduced to the recording it names. YouTube Music's art track carries the featuring
+ * credits while the artist's upload carries the production marker, so comparing raw titles rejects
+ * "Baby (Official Video)" as incompatible with "Baby (feat. J Balvin)" and leaves native-video mode
+ * choosing whatever fan upload happens to repeat the credits.
+ */
+internal fun playbackTitleKey(title: String): String {
+    val core = title
+        .replace(PLAYBACK_TITLE_PRODUCTION_MARKER, " ")
+        .replace(PLAYBACK_TITLE_FEATURE_GROUP, " ")
+        .replace(PLAYBACK_TITLE_FEATURE_TAIL, " ")
+        .replace(PLAYBACK_TITLE_TRAILING_MARKER, " ")
+    return playbackTextKey(core).ifBlank { playbackTextKey(title) }
+}
+
 internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boolean {
     when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
         RecordingIdentityMatch.Exact -> return true
         RecordingIdentityMatch.Conflict -> return false
         RecordingIdentityMatch.Unknown -> Unit
     }
-    val targetTitle = playbackTextKey(target.title)
-    val candidateTitle = playbackTextKey(candidate.title)
+    val targetTitle = playbackTitleKey(target.title)
+    val candidateTitle = playbackTitleKey(candidate.title)
     if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
 
     val targetTitleTokens = playbackTokens(targetTitle)
@@ -330,6 +362,14 @@ internal fun playbackCandidateScore(
     return score
 }
 
+private val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
+    """[(\[]\s*(official\s+|full\s+)?(audio|lyrics?\s+video|lyrics?|testo|visualizer|visualiser)\s*[)\]]""" +
+        """|\bofficial\s+audio\b|\baudio\s+ufficiale\b""",
+    RegexOption.IGNORE_CASE
+)
+
+internal const val VIDEO_AUDIO_ONLY_PENALTY = 10_000
+
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     // An official music video routinely runs longer than the audio recording (intro, outro,
     // dialogue), while an audio-length re-upload matches it to the second. Rewarding duration
@@ -347,7 +387,14 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     // A shared artist channel is structured proof of an official upload and outranks title text.
     val officialChannel = target.artistBrowseIds.isNotEmpty() &&
         candidate.artistBrowseIds.any { it in target.artistBrowseIds }
-    return recordingScore + videoPreference + if (officialChannel) 6_000 else 0
+    // An artist channel hosts the official video next to an audio or lyric upload of the same
+    // recording, both typed OMV. Only the marker in the title separates them, and the audio upload
+    // is often the more watched of the two. The penalty stays below the official-type bonus so an
+    // audio-only official upload still beats a user video when it is all the artist published.
+    val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
+    return recordingScore + videoPreference +
+        (if (officialChannel) 6_000 else 0) -
+        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0)
 }
 
 /**

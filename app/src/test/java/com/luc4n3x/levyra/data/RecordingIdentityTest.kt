@@ -355,6 +355,107 @@ class RecordingIdentityTest {
         )
     }
 
+    @Test
+    fun featuringCreditsDoNotHideTheOfficialVideo() {
+        // Measured against the YouTube Music video search for "Sfera Ebbasta Baby": the art track
+        // is titled "Baby (feat. J Balvin)" and the official upload "Baby (Official Video)", so raw
+        // title comparison rejected the official video and left a 791-view fan upload winning.
+        val target = artistTrack(
+            id = "tlmoVWfCejI",
+            title = "Baby (feat. J Balvin)",
+            artist = "Sfera Ebbasta",
+            durationMs = 194_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val official = target.copy(
+            id = "1RpKdCl2uN4",
+            title = "Baby (Official Video)",
+            artist = "J Balvin & Sfera Ebbasta",
+            videoUrl = "https://www.youtube.com/watch?v=1RpKdCl2uN4",
+            durationMs = 201_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val fanUpload = target.copy(
+            id = "fZL9IYLAPHE",
+            title = "Sfera Ebbasta - Baby (Feat J Balvin)",
+            artist = "Actis",
+            videoUrl = "https://www.youtube.com/watch?v=fZL9IYLAPHE",
+            durationMs = 191_000L,
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = emptyList()
+        )
+
+        assertTrue(isPlaybackCandidateCompatible(target, official))
+        assertEquals(
+            "1RpKdCl2uN4",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official, fanUpload))?.id
+        )
+    }
+
+    @Test
+    fun audioUploadOnTheArtistChannelLosesToTheOfficialVideo() {
+        // Both are MUSIC_VIDEO_TYPE_OMV on Tame Impala's channel and the audio upload is the more
+        // watched of the two, so only the title marker separates them.
+        val target = artistTrack(
+            id = "PvM79DJ2PmM",
+            title = "The Less I Know The Better",
+            artist = "Tame Impala",
+            durationMs = 217_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val audioUpload = target.copy(
+            id = "2SUwOgmvzK4",
+            title = "The Less I Know The Better (Audio)",
+            videoUrl = "https://www.youtube.com/watch?v=2SUwOgmvzK4",
+            durationMs = 218_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val official = target.copy(
+            id = "sBzrzS1Ag_g",
+            title = "The Less I Know The Better (Official Video)",
+            videoUrl = "https://www.youtube.com/watch?v=sBzrzS1Ag_g",
+            durationMs = 343_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "sBzrzS1Ag_g",
+            selectPreferredVideoPlaybackCandidate(target, listOf(audioUpload, official))?.id
+        )
+    }
+
+    @Test
+    fun audioOnlyOfficialUploadStillBeatsAUserVideo() {
+        val target = artistTrack(
+            id = "4D7u5KF7SP8",
+            title = "Get Lucky (feat. Pharrell Williams and Nile Rodgers)",
+            artist = "Daft Punk",
+            durationMs = 370_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val officialAudio = target.copy(
+            id = "5NV6Rdv1a3I",
+            title = "Get Lucky (Official Audio) (feat. Nile Rodgers)",
+            videoUrl = "https://www.youtube.com/watch?v=5NV6Rdv1a3I",
+            durationMs = 249_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val reUpload = target.copy(
+            id = "CCHdMIEGaaM",
+            title = "Daft Punk - Get Lucky (Official Video) feat. Pharrell Williams",
+            artist = "convar HUN",
+            videoUrl = "https://www.youtube.com/watch?v=CCHdMIEGaaM",
+            durationMs = 248_000L,
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = emptyList()
+        )
+
+        assertEquals(
+            "5NV6Rdv1a3I",
+            selectPreferredVideoPlaybackCandidate(target, listOf(officialAudio, reUpload))?.id
+        )
+    }
+
     private fun artistTrack(
         id: String,
         title: String,
