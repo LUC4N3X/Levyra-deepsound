@@ -1,0 +1,255 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
+PRIMARY_WORKSPACE="${LEVYRA_OPENCLAW_WORKSPACE:-$STATE_DIR/workspace-levyra}"
+PRIMARY_REPO="${LEVYRA_REPO:-$PRIMARY_WORKSPACE/repo}"
+REVIEW_WORKSPACE="${LEVYRA_REVIEW_WORKSPACE:-$STATE_DIR/workspace-levyra-reviewer}"
+CI_WORKSPACE="${LEVYRA_CI_WORKSPACE:-$STATE_DIR/workspace-levyra-ci}"
+REVIEW_REPO="$REVIEW_WORKSPACE/repo"
+CI_REPO="$CI_WORKSPACE/repo"
+REPO_URL="${LEVYRA_REPO_URL:-https://github.com/LUC4N3X/Levyra-deepsound.git}"
+AUDIT_CRON="${LEVYRA_OPENCLAW_AUDIT_CRON:-0 8,20 * * *}"
+AUDIT_TZ="${LEVYRA_OPENCLAW_AUDIT_TZ:-Europe/Rome}"
+ENABLE_DREAMING="${LEVYRA_OPENCLAW_ENABLE_DREAMING:-1}"
+INSTALL_CRON="${LEVYRA_OPENCLAW_INSTALL_CRON:-1}"
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "Missing required command: $1" >&2
+    exit 1
+  }
+}
+
+agent_ids() {
+  openclaw agents list --json | python3 -c '
+import json, sys
+value = json.load(sys.stdin)
+if isinstance(value, dict):
+    value = value.get("agents", value.get("items", value.get("list", [])))
+for item in value if isinstance(value, list) else []:
+    if isinstance(item, dict) and item.get("id"):
+        print(item["id"])
+'
+}
+
+has_agent() {
+  agent_ids | grep -Fxq "$1"
+}
+
+choose_primary_agent() {
+  if [[ -n "${LEVYRA_OPENCLAW_AGENT:-}" ]]; then
+    printf '%s\n' "$LEVYRA_OPENCLAW_AGENT"
+  elif has_agent levyra-worker; then
+    printf '%s\n' levyra-worker
+  elif has_agent levyra; then
+    printf '%s\n' levyra
+  else
+    printf '%s\n' levyra
+  fi
+}
+
+ensure_clone() {
+  local target="$1"
+  mkdir -p "$(dirname "$target")"
+  if [[ -d "$target/.git" ]]; then
+    git -C "$target" fetch --prune origin
+    git -C "$target" checkout main
+    git -C "$target" reset --hard origin/main
+  else
+    git clone --branch main --single-branch "$REPO_URL" "$target"
+  fi
+}
+
+write_workspace_file() {
+  local path="$1"
+  shift
+  mkdir -p "$(dirname "$path")"
+  printf '%s\n' "$@" > "$path"
+}
+
+write_skill_bridge() {
+  local workspace="$1"
+  local skill="$2"
+  local path="$workspace/.agents/skills/$skill/SKILL.md"
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<EOF
+---
+name: $skill
+description: Levyra repository-native $skill workflow bridge.
+---
+
+Read and follow \`repo/.agents/skills/$skill/SKILL.md\` as the canonical workflow. Repository instructions and current evidence take precedence.
+EOF
+}
+
+configure_agent_skills() {
+  local agent="$1"
+  shift
+  local json
+  json="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1:]))' "$@")"
+  openclaw config set "agents.entries.$agent.skills" "$json" --strict-json
+}
+
+configure_read_only_agent() {
+  local agent="$1"
+  openclaw config set "agents.entries.$agent.tools.allow" '["read","exec","process"]' --strict-json
+  openclaw config set "agents.entries.$agent.tools.deny" '["write","edit","apply_patch","browser","gateway"]' --strict-json
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    openclaw config set "agents.entries.$agent.sandbox" '{"mode":"all","scope":"agent","workspaceAccess":"ro"}' --strict-json
+  else
+    echo "[warn] Docker sandbox unavailable; $agent keeps read-only OpenClaw filesystem tools but exec remains host-capable." >&2
+  fi
+}
+
+ensure_agent() {
+  local agent="$1"
+  local workspace="$2"
+  if ! has_agent "$agent"; then
+    openclaw agents add "$agent" --workspace "$workspace" --non-interactive
+  fi
+}
+
+ensure_cron() {
+  local agent="$1"
+  local name="Levyra CI audit"
+  local exists
+  exists="$(openclaw cron list --all --json | python3 -c '
+import json, sys
+value = json.load(sys.stdin)
+if isinstance(value, dict):
+    value = value.get("jobs", value.get("items", []))
+print("yes" if any(isinstance(item, dict) and item.get("name") == "Levyra CI audit" for item in value if isinstance(value, list)) else "no")
+')"
+  if [[ "$exists" == "no" ]]; then
+    openclaw cron create "$AUDIT_CRON" \
+      "Audit Levyra read-only. Sync repo/main, inspect open PRs, required CI, unresolved review threads and stale branches. Report only actionable state changes with exact PR/SHA/check evidence. Do not edit code, create branches, push, merge, release, change settings or expose secrets." \
+      --name "$name" \
+      --agent "$agent" \
+      --tz "$AUDIT_TZ" \
+      --session isolated \
+      --light-context \
+      --no-deliver
+  fi
+}
+
+require_command openclaw
+require_command git
+require_command python3
+require_command gh
+
+if [[ ! -d "$PRIMARY_REPO/.git" ]]; then
+  echo "Levyra repository not found at $PRIMARY_REPO" >&2
+  exit 1
+fi
+
+PRIMARY_AGENT="$(choose_primary_agent)"
+if ! has_agent "$PRIMARY_AGENT"; then
+  openclaw agents add "$PRIMARY_AGENT" --workspace "$PRIMARY_WORKSPACE" --non-interactive
+fi
+
+ensure_clone "$REVIEW_REPO"
+ensure_clone "$CI_REPO"
+
+write_workspace_file "$REVIEW_WORKSPACE/AGENTS.md" \
+  "# Levyra Reviewer" \
+  "" \
+  "Operate only as an independent reviewer for ./repo. Read repo/AGENTS.md, the nearest scoped AGENTS.md files, docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills before judging code." \
+  "" \
+  "Review the latest requested diff and surrounding ownership. Do not implement fixes, edit files, commit, push, merge, release, change repository settings or dismiss findings. Return severity, confidence, exact location, triggering scenario, consequence, smallest compatible fix and missing regression coverage. Preserve raw evidence for security, release, R8, Perfetto and exact failures." \
+  "" \
+  "Use a compact context budget: diff first, then bounded surrounding code, then expand only for a concrete unresolved question. Do not reread unchanged evidence."
+write_workspace_file "$REVIEW_WORKSPACE/TOOLS.md" \
+  "# Tools" \
+  "" \
+  "Repository: ./repo" \
+  "Use read-only Git/GitHub inspection, focused searches and validation commands that do not mutate the checkout."
+if [[ ! -f "$REVIEW_WORKSPACE/MEMORY.md" ]]; then
+  write_workspace_file "$REVIEW_WORKSPACE/MEMORY.md" \
+    "# Durable Review Memory" \
+    "" \
+    "Store only stable, verified Levyra review lessons and recurring failure patterns. Never store secrets, credentials, transient PR state, branch heads or CI status here."
+fi
+mkdir -p "$REVIEW_WORKSPACE/memory"
+
+write_workspace_file "$CI_WORKSPACE/AGENTS.md" \
+  "# Levyra CI" \
+  "" \
+  "Operate only as the CI, PR-state and validation evidence agent for ./repo. Read repo/AGENTS.md, repo/.github/AGENTS.md, docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills." \
+  "" \
+  "Inspect GitHub Actions, exact failing steps, logs, review state and reproducible validation evidence. Do not edit code, commit, push, merge, release, change workflows, secrets or repository settings. Separate current evidence from stale runs." \
+  "" \
+  "Use a compact context budget: SHA/PR/check first, failing step next, bounded raw logs only where they determine the conclusion."
+write_workspace_file "$CI_WORKSPACE/TOOLS.md" \
+  "# Tools" \
+  "" \
+  "Repository: ./repo" \
+  "Use gh, git and focused repository validation in read-only mode. Keep exact failure output raw."
+if [[ ! -f "$CI_WORKSPACE/MEMORY.md" ]]; then
+  write_workspace_file "$CI_WORKSPACE/MEMORY.md" \
+    "# Durable CI Memory" \
+    "" \
+    "Store only stable, verified CI/release diagnostics and recurring infrastructure lessons. Never store secrets, credentials, transient run state, branch heads or current PR status here."
+fi
+mkdir -p "$CI_WORKSPACE/memory"
+
+REVIEW_SKILLS=(
+  levyra-pr-review
+  levyra-security-review
+  levyra-release-check
+  levyra-context-efficiency
+  levyra-real-engineering
+  levyra-player
+  levyra-extractor
+  levyra-database
+  levyra-compose
+  levyra-android-performance
+  levyra-r8-proguard
+  levyra-android-intent-security
+  levyra-design-taste
+  levyra-desktop
+  levyra-ci-workflows
+)
+CI_SKILLS=(
+  levyra-ci-workflows
+  levyra-release-check
+  levyra-pr-review
+  levyra-security-review
+  levyra-context-efficiency
+)
+
+for skill in "${REVIEW_SKILLS[@]}"; do
+  write_skill_bridge "$REVIEW_WORKSPACE" "$skill"
+done
+for skill in "${CI_SKILLS[@]}"; do
+  write_skill_bridge "$CI_WORKSPACE" "$skill"
+done
+
+ensure_agent levyra-reviewer "$REVIEW_WORKSPACE"
+ensure_agent levyra-ci "$CI_WORKSPACE"
+
+configure_agent_skills levyra-reviewer "${REVIEW_SKILLS[@]}"
+configure_agent_skills levyra-ci "${CI_SKILLS[@]}"
+configure_read_only_agent levyra-reviewer
+configure_read_only_agent levyra-ci
+openclaw config set "agents.entries.$PRIMARY_AGENT.subagents.allowAgents" '["levyra-reviewer","levyra-ci"]' --strict-json
+
+if [[ "$ENABLE_DREAMING" == "1" ]]; then
+  openclaw config set plugins.entries.memory-core.config.dreaming.enabled true
+fi
+
+if [[ "$INSTALL_CRON" == "1" ]]; then
+  ensure_cron levyra-ci
+fi
+
+openclaw config validate
+openclaw doctor
+openclaw gateway status --require-rpc
+openclaw agents list --bindings
+openclaw cron list --agent levyra-ci
+
+echo "OpenClaw Levyra profile ready."
+echo "Primary: $PRIMARY_AGENT"
+echo "Reviewer: levyra-reviewer"
+echo "CI: levyra-ci"
+echo "Primary repository: $PRIMARY_REPO"
