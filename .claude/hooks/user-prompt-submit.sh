@@ -109,6 +109,7 @@ matched = [(skill, topic) for skill, topic, pattern in ROUTES if re.search(patte
 lines = [
     "Levyra context budget: search/path/symbol first; read bounded ranges; expand only on a concrete need; do not reread unchanged evidence.",
     "Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics raw when compression could change the conclusion.",
+    "Before delivering code, invoke /code-review when available (otherwise the code-review stage), fix actionable findings, then deliver the reviewed final code/diff.",
 ]
 
 if matched:
