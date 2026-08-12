@@ -523,7 +523,7 @@ def _best_unambiguous(
         return None
     if len(ranked) > 1 and best[0] - ranked[1][0] < 7:
         best_kind = str(best[1].get("musicVideoType") or "").upper()
-        second_kind = str(ranked[1].get("musicVideoType") or "").upper()
+        second_kind = str(ranked[1][1].get("musicVideoType") or "").upper()
         if not (best_kind.endswith("_OMV") and not second_kind.endswith("_OMV")):
             return None
     return best
