@@ -5,7 +5,6 @@ import android.util.AtomicFile
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -59,10 +58,16 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         .addInterceptor(BrotliInterceptor)
         .cache(Cache(File(appContext.cacheDir, HTTP_CACHE_DIRECTORY), HTTP_CACHE_BYTES))
         .build()
-    private val bundledPreviewSnapshot: CatalogSnapshot? = readBundledPreviewSnapshot()
 
     @Volatile
-    private var memorySnapshot: CatalogSnapshot? = bundledPreviewSnapshot
+    private var bundledPreviewSnapshot: CatalogSnapshot? = null
+
+    private val bundledPreviewDeferred: Deferred<CatalogSnapshot?> = scope.async {
+        readBundledPreviewSnapshot().also { bundledPreviewSnapshot = it }
+    }
+
+    @Volatile
+    private var memorySnapshot: CatalogSnapshot? = null
 
     @Volatile
     private var refreshDeferred: Deferred<CatalogSnapshot?>? = null
@@ -71,7 +76,6 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     private var lastRefreshFailureAt: Long = 0L
 
     fun warm() {
-        if (bundledPreviewSnapshot?.isUsable(System.currentTimeMillis()) == true) return
         refreshAsync()
     }
 
@@ -116,16 +120,16 @@ internal class EditorialChartsRepository private constructor(context: Context) {
 
     private fun refreshAsync(): Deferred<CatalogSnapshot?> = synchronized(refreshGuard) {
         refreshDeferred?.takeIf { it.isActive }?.let { return@synchronized it }
-        val now = System.currentTimeMillis()
-        bundledPreviewSnapshot?.takeIf { it.isUsable(now) }?.let {
-            memorySnapshot = it
-            return@synchronized CompletableDeferred(it)
-        }
-        if (now - lastRefreshFailureAt in 0 until REFRESH_RETRY_TTL_MS) {
-            return@synchronized CompletableDeferred(usableSnapshot(now))
-        }
         scope.async {
-            val stored = usableSnapshot(System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            val realSnapshot = newestUsableRealSnapshot(now)
+            if (realSnapshot == null) {
+                usablePreviewSnapshot(now)?.let { return@async it }
+            }
+            if (now - lastRefreshFailureAt in 0 until REFRESH_RETRY_TTL_MS) {
+                return@async realSnapshot
+            }
+
             val remote = fetchRemoteSnapshot()
             if (remote != null) {
                 persist(remote.rawJson)
@@ -134,7 +138,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
                 remote
             } else {
                 lastRefreshFailureAt = System.currentTimeMillis()
-                stored
+                realSnapshot
             }
         }.also { created ->
             refreshDeferred = created
@@ -146,18 +150,23 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         }
     }
 
-    private fun usableSnapshot(now: Long): CatalogSnapshot? {
-        bundledPreviewSnapshot?.takeIf { it.isUsable(now) }?.let { preview ->
-            memorySnapshot = preview
-            return preview
-        }
-        memorySnapshot?.let { cached ->
-            if (cached.isUsable(now)) return cached
-            memorySnapshot = null
-        }
-        val stored = readStoredSnapshot(now) ?: return null
-        memorySnapshot = stored
-        return stored
+    private suspend fun usableSnapshot(now: Long): CatalogSnapshot? {
+        return newestUsableRealSnapshot(now) ?: usablePreviewSnapshot(now)
+    }
+
+    private fun newestUsableRealSnapshot(now: Long): CatalogSnapshot? {
+        val newest = newestUsableCatalogSnapshot(
+            now = now,
+            memorySnapshot,
+            readStoredSnapshot(now),
+        )
+        memorySnapshot = newest
+        return newest
+    }
+
+    private suspend fun usablePreviewSnapshot(now: Long): CatalogSnapshot? {
+        val preview = bundledPreviewSnapshot ?: bundledPreviewDeferred.await()
+        return preview?.takeIf { it.isUsable(now) }
     }
 
     private fun readBundledPreviewSnapshot(): CatalogSnapshot? {
@@ -298,6 +307,14 @@ internal data class CatalogSnapshot(
         const val MAX_FUTURE_SKEW_MS = 10L * 60L * 1000L
     }
 }
+
+internal fun newestUsableCatalogSnapshot(
+    now: Long,
+    vararg snapshots: CatalogSnapshot?,
+): CatalogSnapshot? = snapshots.asSequence()
+    .filterNotNull()
+    .filter { it.isUsable(now) }
+    .maxByOrNull { it.generatedAtMs }
 
 internal object EditorialCatalogParser {
     fun parse(body: String, loadedAt: Long): CatalogSnapshot? {
