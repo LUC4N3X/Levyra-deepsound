@@ -3,8 +3,8 @@
 Levyra keeps one repository-native instruction and skill tree for Codex, Claude
 Code, ChatGPT Projects, Google Antigravity, OpenCode, OpenClaw, and compatible
 coding agents. The same project rules, domain skills, context-efficiency policy,
-real-engineering workflow, and evidence-based security workflow apply across
-runtimes.
+real-engineering workflow, design-taste quality layer, and evidence-based
+security workflow apply across runtimes.
 
 ## Configuration hierarchy
 
@@ -37,8 +37,9 @@ validation, human review, or owner decisions.
 Codex reads root and path-specific `AGENTS.md` files and discovers matching
 skills under `.agents/skills/`. High-output work matches
 `levyra-context-efficiency`; non-trivial ambiguous or multi-step engineering
-matches `levyra-real-engineering`; security-sensitive work matches
-`levyra-security-review`.
+matches `levyra-real-engineering`; visual redesign/polish work matches
+`levyra-design-taste` together with the matching platform UI skill;
+security-sensitive work matches `levyra-security-review`.
 
 The setup scripts automatically install the focused Matt Pocock engineering
 skills for Codex when both `codex` and `npx` are detected. Use
@@ -65,16 +66,18 @@ Claude Code uses `.claude/CLAUDE.md`, path rules, skills, and the
 marketplace. The local `levyra-real-engineering` bridge selects the appropriate
 upstream stage without letting it override Levyra.
 
-The hook routes security, vulnerability, secrets, trust-boundary, dependency,
-update-integrity, and privacy work to `levyra-security-review` before editing.
-Claude follows the same closed-loop security method documented in
-`docs/ai/CODEX_SECURITY.md`.
+The hook routes visual redesign/polish work to `levyra-design-taste` together
+with the matching platform UI skill, and routes security, vulnerability,
+secrets, trust-boundary, dependency, update-integrity, and privacy work to
+`levyra-security-review` before editing. Claude follows the same closed-loop
+security method documented in `docs/ai/CODEX_SECURITY.md`.
 
 ### ChatGPT Project
 
 Copy `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` into the Levyra Project
 instructions and connect the repository. Those instructions require ChatGPT to
-load `levyra-real-engineering` for non-trivial work and
+load `levyra-real-engineering` for non-trivial work, `levyra-design-taste` for
+visual redesign/polish together with the relevant platform skill, and
 `levyra-security-review` for security-sensitive analysis, and to distinguish
 suspected findings, validated findings, proposed patches, applied patches, CI,
 and publication state.
@@ -83,9 +86,11 @@ and publication state.
 
 Antigravity reads `.agents/rules/levyra-workspace.md` and exposes skills under
 `.agents/skills/`. The workspace rule routes non-trivial work through
-`levyra-real-engineering`, security work through `levyra-security-review`, keeps
-exact security evidence raw, and applies the same threat-model and revalidation
-workflow. No parallel `.gemini/skills/` tree is required.
+`levyra-real-engineering`, visual redesign/polish through `levyra-design-taste`
+plus the relevant platform skill, security work through
+`levyra-security-review`, keeps exact security evidence raw, and applies the
+same threat-model and revalidation workflow. No parallel `.gemini/skills/` tree
+is required.
 
 ### OpenCode and OpenClaw
 
@@ -106,6 +111,7 @@ boundaries.
 | `levyra-extractor` | InnerTube, extraction, stream resolution, fallback, retry, and cache |
 | `levyra-database` | Room, migrations, stores, backup, and persistent user data |
 | `levyra-compose` | Compose UI, state, navigation, accessibility, RTL, and localization |
+| `levyra-design-taste` | Cross-runtime visual hierarchy, redesign/polish, anti-AI-slop discipline, token reuse, motion intent, and visual pre-flight review |
 | `levyra-motion-artwork` | Decorative motion artwork and muted playback boundaries |
 | `levyra-desktop` | Windows Desktop, libvlc, downloads, mini player, updates, and packaging |
 | `levyra-security-review` | Cross-runtime threat modeling, vulnerability validation, minimal remediation, privacy, supply chain, and revalidation |
@@ -116,8 +122,8 @@ boundaries.
 | `levyra-real-engineering` | Non-trivial engineering workflow for ambiguity, specs, focused implementation, tests, and review |
 
 Load every matching focused skill. Coordinator, real-engineering,
-context-efficiency, and security skills do not replace the applicable
-product-domain skill.
+context-efficiency, design-taste, and security skills do not replace the
+applicable product-domain skill.
 
 ## Automatic routing
 
@@ -128,6 +134,13 @@ tiny, already-unambiguous changes. See `docs/ai/MATT_POCOCK_SKILLS.md`.
 
 Load `levyra-context-efficiency` for verbose builds, tests, lint, logs, searches,
 dependencies, Git/GitHub, CI, CodeRabbit, and setup work.
+
+Load `levyra-design-taste` for visual redesign, UI polish, hierarchy, spacing,
+typography, color, shape, motion, screenshots/references, or requests to make
+Levyra more premium, modern, distinctive, cohesive, or less AI-generated. Pair
+it with `levyra-compose` on Android or `levyra-desktop` on Desktop. It is a
+quality layer, not a second design system, and never overrides accessibility,
+performance, lifecycle, localization, current architecture, or product behavior.
 
 Load `levyra-security-review` for vulnerability scans, attacker-controlled
 input, trust-boundary changes, authentication, tokens, cookies, signing,
@@ -194,7 +207,7 @@ python3 scripts/validate_matt_skills.py
 ```
 
 The validators check shared discovery, skill inventory, RTK TOML, setup
-behavior, real-engineering integration, cross-runtime security routing,
+behavior, real-engineering integration, cross-runtime design/security routing,
 dependency review, plugin scope, and absence of unapproved local-model profiles.
 
 ## Maintenance rules
@@ -204,6 +217,8 @@ dependency review, plugin scope, and absence of unapproved local-model profiles.
   files may be thin routing bridges only.
 - Keep `levyra-real-engineering` as a routing adapter, not a copied fork of the
   external skill package.
+- Keep `levyra-design-taste` as a compact native product-UI adaptation, not a
+  vendored copy of a web-focused external skill.
 - Keep RTK as an output layer, never validation authority.
 - Keep security findings evidence-based and revalidate every remediation.
 - Keep the pinned RTK bootstrap and focused Matt integration narrow; every other
