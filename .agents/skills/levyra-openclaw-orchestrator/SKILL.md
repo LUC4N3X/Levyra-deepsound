@@ -82,6 +82,10 @@ Every coding-runtime task must state:
 - required delivery evidence;
 - whether branch, commit, push, or draft PR creation is authorized.
 
+For `levyra-reviewer` and `levyra-ci`, every handoff must also include the exact target SHA and must tell the specialist to use its own workspace `./repo` checkout. Parent-agent relative paths and `spawnedCwd` are context only; they are never the specialist's evidence root. The specialist may fetch refs in its own checkout to resolve the requested SHA, but it must remain read-only.
+
+A reviewer handoff must not assume a PR exists. A CI handoff must not assume GitHub Actions evidence is PR-scoped: when given a SHA, the CI agent must query Actions by that exact SHA and include push-triggered runs before concluding that CI is absent or unverifiable.
+
 Keep the contract compact. Link or name canonical repository files instead of
 copying large instruction blocks into the handoff.
 
@@ -93,11 +97,11 @@ copying large instruction blocks into the handoff.
 4. Run applicable repository gates.
 5. Before code is presented as final, run the required `code-review` stage.
 6. Delegate independent latest-diff review to `levyra-reviewer` with a fresh,
-   bounded handoff.
+   bounded handoff that includes the exact target SHA and its own-checkout rule.
 7. Return actionable findings to the implementation runtime and re-run affected
    checks after every material change.
-8. Delegate CI, PR-state, and log diagnosis to `levyra-ci`; do not pollute the
-   implementation context with broad CI output.
+8. Delegate CI, PR-state, and log diagnosis to `levyra-ci` with the exact target
+   SHA; do not pollute the implementation context with broad CI output.
 9. Publish only to an authorized branch/PR or directly to an explicitly
    authorized target.
 10. Return exact status to the coordinator and owner.
@@ -115,17 +119,19 @@ repository publication controls.
 ### `levyra-reviewer`
 
 Independent and read-only by default. It reviews the latest requested diff and
-surrounding ownership. It reports severity, confidence, exact location,
-triggering scenario, consequence, smallest compatible fix, and missing
-regression coverage. It does not implement its own findings or certify stale
-commits.
+surrounding ownership from its own `./repo` checkout. A PR is optional: commit
+reviews must resolve the requested SHA and reconstruct the local patch when no
+PR exists. It reports severity, confidence, exact location, triggering scenario,
+consequence, smallest compatible fix, and missing regression coverage. It does
+not implement its own findings or certify stale commits.
 
 ### `levyra-ci`
 
 Read-only by default. It inspects PR/SHA state, required checks, Actions jobs,
-exact failing steps, logs, review state, and reproducible validation evidence.
-It separates stale runs from current-head evidence and returns only actionable
-state changes.
+exact failing steps, logs, review state, and reproducible validation evidence
+from its own `./repo` checkout. For a SHA, it checks Actions runs keyed by exact
+`head_sha`, including push runs, before reporting that CI is absent. It separates
+stale runs from current-head evidence and returns only actionable state changes.
 
 ## Tool policy
 
