@@ -164,6 +164,8 @@ skills over the general coordinator.
 | InnerTube, extraction, stream resolution, runtime configuration, retry, cache, fallback | `levyra-extractor` |
 | Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
 | Android Compose UI, state, navigation, animation, lifecycle, accessibility, RTL, localization | `levyra-compose` |
+| Android jank, frame misses, latency, startup, Perfetto/System Trace, CPU/thread state, blocking, memory, I/O, power, or measured runtime-performance investigation | `levyra-android-performance` plus the affected domain skill |
+| R8, Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker crashes, mapping/missing classes, reflection/serialization/JNI shrinker issues, or measured APK-size work | `levyra-r8-proguard` plus `levyra-release-check`; add `levyra-ci-workflows` for build-tooling changes |
 | Visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshots/references, premium/modern/cohesive/anti-AI-slop requests | `levyra-design-taste` plus the matching Android/Desktop UI skill |
 | Decorative motion artwork | `levyra-motion-artwork` |
 | Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
@@ -180,7 +182,10 @@ requires security review. A tracked multi-phase task additionally uses
 `levyra-project-manager`; non-trivial ambiguous/multi-step work additionally
 uses `levyra-real-engineering`; visual Android work uses `levyra-design-taste`
 plus `levyra-compose`; visual Desktop work uses `levyra-design-taste` plus
-`levyra-desktop`; OpenClaw coordination additionally uses
+`levyra-desktop`; Android runtime-performance work uses
+`levyra-android-performance` plus the affected domain skill; R8/Proguard work
+uses `levyra-r8-proguard` plus release validation and build-tooling guidance
+when applicable; OpenClaw coordination additionally uses
 `levyra-openclaw-orchestrator`.
 
 ## Planning documents
