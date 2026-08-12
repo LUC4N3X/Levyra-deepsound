@@ -262,4 +262,125 @@ class RecordingIdentityTest {
             selectPreferredVideoPlaybackCandidate(target, listOf(official))?.id
         )
     }
+
+    @Test
+    fun daDioPrefersTheOfficialVideoOverTheAudioLengthReUpload() {
+        // Measured against the YouTube Music video search for "Da Dio Bresh": the official upload
+        // and the re-uploads share title, artist, artist browse ids and MUSIC_VIDEO_TYPE_OMV, and
+        // the re-upload is the one that matches the audio duration to the second.
+        val target = artistTrack(
+            id = "0Jp_YOOEovg",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 174_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val official = target.copy(
+            id = "-ZwDJaZ2coY",
+            videoUrl = "https://www.youtube.com/watch?v=-ZwDJaZ2coY",
+            durationMs = 179_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val audioLengthReUpload = target.copy(
+            id = "XxSIyhr_bFc",
+            videoUrl = "https://www.youtube.com/watch?v=XxSIyhr_bFc",
+            durationMs = 174_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "-ZwDJaZ2coY",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official, audioLengthReUpload))?.id
+        )
+    }
+
+    @Test
+    fun daiDaiPrefersTheOfficialVideoOverTheAudioLengthReUpload() {
+        val target = artistTrack(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira e Burna Boy",
+            durationMs = 224_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val official = target.copy(
+            id = "fcnDmrtj6Sk",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            durationMs = 241_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val audioLengthReUpload = target.copy(
+            id = "0QZYJRnv-rA",
+            title = "Dai dai",
+            videoUrl = "https://www.youtube.com/watch?v=0QZYJRnv-rA",
+            durationMs = 224_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "fcnDmrtj6Sk",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official, audioLengthReUpload))?.id
+        )
+    }
+
+    @Test
+    fun videoScoringIgnoresAudioDurationProximity() {
+        val target = artistTrack(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira e Burna Boy",
+            durationMs = 224_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val longerOfficial = target.copy(
+            id = "fcnDmrtj6Sk",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            durationMs = 241_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val exactLengthOfficial = longerOfficial.copy(
+            id = "0QZYJRnv-rA",
+            videoUrl = "https://www.youtube.com/watch?v=0QZYJRnv-rA",
+            durationMs = 224_000L
+        )
+
+        assertEquals(
+            videoPlaybackCandidateScore(target, exactLengthOfficial),
+            videoPlaybackCandidateScore(target, longerOfficial)
+        )
+        // The song-mode ranking still trusts duration proximity: only video mode must not.
+        assertTrue(
+            playbackCandidateScore(target, exactLengthOfficial) >
+                playbackCandidateScore(target, longerOfficial)
+        )
+    }
+
+    private fun artistTrack(
+        id: String,
+        title: String,
+        artist: String,
+        durationMs: Long,
+        videoType: String
+    ): Track = Track(
+        id = id,
+        title = title,
+        artist = artist,
+        album = "",
+        durationMs = durationMs,
+        streamUrl = "",
+        videoUrl = "https://www.youtube.com/watch?v=$id",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "YouTube Music",
+        moodTags = emptySet(),
+        energy = 0,
+        vocal = 0,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0,
+        videoType = videoType,
+        audioVideoId = id,
+        artistBrowseIds = listOf("UCo6JijJGA3IvIiPsawDK3Ww")
+    )
 }
