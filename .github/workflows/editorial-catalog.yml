@@ -84,6 +84,45 @@ jobs:
           if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
             echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; testing Spotify-only fallback"
           fi
+      - name: Diagnose Dai Dai YouTube Music identity
+        if: env.LEVYRA_EDITORIAL_YTM_COOKIE != ''
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from levyra_editorial.youtube_music import (
+              YOUTUBE_MUSIC_SONG_SEARCH_PARAMS,
+              YoutubeMusicWebClient,
+              _audio_candidate_score,
+              parse_search_candidates,
+          )
+
+          title = "Dai Dai"
+          artist = "Shakira, Burna Boy"
+          duration_ms = 223_448
+          client = YoutubeMusicWebClient(os.environ["LEVYRA_EDITORIAL_YTM_COOKIE"], workers=1)
+          try:
+              for label, params in (
+                  ("mixed", None),
+                  ("songs", YOUTUBE_MUSIC_SONG_SEARCH_PARAMS),
+              ):
+                  candidates = parse_search_candidates(client._search(f"{title} {artist}", params=params))
+                  safe = [
+                      {
+                          "videoId": candidate.get("videoId"),
+                          "title": candidate.get("title"),
+                          "artist": candidate.get("artist"),
+                          "album": candidate.get("album"),
+                          "durationMs": candidate.get("durationMs"),
+                          "musicVideoType": candidate.get("musicVideoType"),
+                          "audioScore": _audio_candidate_score(title, artist, duration_ms, candidate),
+                      }
+                      for candidate in candidates
+                  ]
+                  print(f"DAI_DAI_{label.upper()}=" + json.dumps(safe, ensure_ascii=True, sort_keys=True))
+          finally:
+              client.close()
+          PY
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
