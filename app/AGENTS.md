@@ -10,11 +10,11 @@ Before editing, load every matching native skill under `.agents/skills/` and the
 
 For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshot/reference recreation, or request to make the Android UI more premium, modern, distinctive, cohesive, or less AI-generated, automatically load both `levyra-compose` and `levyra-design-taste` before editing. The design-taste skill supplements Compose engineering rules; it never overrides accessibility, performance, lifecycle, localization, product behavior, or architecture.
 
-For Android jank, frame misses, latency, startup, Perfetto/System Trace, CPU/thread-state, blocking, memory, I/O, power, or other measured runtime-performance work, automatically load `levyra-android-performance` together with the affected domain skill. Do not turn a debug-only trace or a long slice into a release-performance conclusion without direct evidence.
+For Android jank, frame misses, latency, startup, Perfetto/System Trace, CPU/thread-state, graphics, Binder/IPC, blocking, memory, I/O, power, or other measured runtime-performance work, automatically load `levyra-android-performance` together with the affected domain skill. Validate Perfetto schemas/queries rather than guessing them, and do not turn a debug-only trace or a long slice into a release-performance conclusion without direct evidence.
 
 For R8, Proguard, minification, resource shrinking, keep/consumer rules, mapping files, missing classes, reflection/serialization/JNI shrinker issues, APK-size work, or a failure that appears only in a minified release build, automatically load `levyra-r8-proguard` and `levyra-release-check`; also load `levyra-ci-workflows` when build tooling/configuration changes.
 
-For Android Intent/deep-link/PendingIntent/component boundary work, automatically load `levyra-security-review`. This includes exported activities/services/receivers/providers, incoming/nested Intents, URI grants, mutable PendingIntents, FileProvider/ContentProvider exposure, signature permissions, `onNewIntent`, and caller identity/permission checks.
+For Android Intent/deep-link/PendingIntent/component-boundary work, automatically load both `levyra-android-intent-security` and `levyra-security-review`, plus the affected Android domain skill. This includes exported activities/services/receivers/providers, incoming or nested Intents, URI grants, mutable PendingIntents, FileProvider/ContentProvider exposure, signature permissions, `onNewIntent`, and caller identity/permission checks.
 
 ## Architecture boundaries
 
@@ -40,13 +40,14 @@ For Android Intent/deep-link/PendingIntent/component boundary work, automaticall
 
 ## Android component security
 
-- Prefer explicit intents for internal component launches. Treat incoming implicit/deep-link data and nested intents as untrusted.
-- Do not launch or forward an attacker-controlled nested Intent without allowlisting/sanitizing the allowed target/action/data/extras and rejecting unsafe URI permission grants.
+- Prefer explicit intents for internal component launches. Treat incoming implicit/deep-link data and nested Intents as untrusted.
+- Do not launch or forward an attacker-controlled nested Intent without allowlisting or sanitizing the allowed target, action, data, type, categories, extras, and flags; reject unsafe URI permission grants.
 - Default PendingIntents to immutable. If mutability is genuinely required, bind the base Intent to an explicit trusted component/package and keep the mutable surface minimal.
+- Preserve PendingIntent request-code/update semantics so a hardening change does not accidentally alias unrelated notification/media actions.
 - Keep internal activities/services/receivers/providers non-exported unless external access is part of the feature contract; protect exported privileged components with the narrowest suitable permission/caller validation.
-- Apply the same validation to `onNewIntent`/warm-reuse paths as initial intent handling.
+- Apply the same validation to `onNewIntent` and other warm-reuse paths as initial intent handling.
 - For providers and URI sharing, grant only the access actually required and preserve existing FileProvider/ContentProvider authority boundaries.
-- A build passing does not prove an exported-component or intent boundary safe; require a concrete trust-boundary review and regression verification for security changes.
+- A build passing does not prove an exported-component or intent boundary safe; require a concrete attacker-controlled path, trust-boundary review, negative test where practical, and revalidation after remediation.
 
 ## Persistence and compatibility
 
@@ -66,4 +67,4 @@ For Android Intent/deep-link/PendingIntent/component boundary work, automaticall
 
 Start with focused unit tests for the affected class or feature. Then run applicable checks from the root `AGENTS.md`.
 
-Manual playback, notification, Android Auto, PiP, emulator, device, background restriction, OEM behavior, visual polish, TalkBack, intent/deep-link security, and measured UI-performance claims remain unverified unless directly tested and reported with evidence.
+Manual playback, notification, Android Auto, PiP, emulator, device, background restriction, OEM behavior, visual polish, TalkBack, Intent/deep-link/component security, and measured UI-performance claims remain unverified unless directly tested and reported with evidence.
