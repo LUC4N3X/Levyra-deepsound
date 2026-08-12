@@ -58,6 +58,31 @@ class EditorialCatalogParserTest {
     }
 
     @Test
+    fun newestUsableSnapshotWinsRegardlessOfCandidateOrder() {
+        val now = Instant.parse("2026-08-12T10:00:00Z").toEpochMilli()
+        val older = CatalogSnapshot(
+            byMarket = emptyMap(),
+            releaseByMarket = emptyMap(),
+            generatedAtMs = now - 2 * 60 * 60 * 1000L,
+            loadedAt = 0L,
+            rawJson = "older",
+        )
+        val newer = older.copy(
+            generatedAtMs = now - 60 * 60 * 1000L,
+            rawJson = "newer",
+        )
+        val stale = older.copy(
+            generatedAtMs = now - 72 * 60 * 60 * 1000L,
+            rawJson = "stale",
+        )
+
+        assertEquals(newer, newestUsableCatalogSnapshot(now, newer, older))
+        assertEquals(newer, newestUsableCatalogSnapshot(now, older, newer))
+        assertEquals(older, newestUsableCatalogSnapshot(now, stale, older))
+        assertNull(newestUsableCatalogSnapshot(now, stale, null))
+    }
+
+    @Test
     fun refusesVideoOnlyOrLowConfidenceMappings() {
         val videoOnly = EditorialCatalogParser.parse(
             catalog(
