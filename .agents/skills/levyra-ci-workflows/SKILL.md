@@ -12,6 +12,19 @@ description: Automatically use for Levyra GitHub Actions, CI, F-Droid, Gradle/AG
 3. Inspect every workflow, reusable action, script, build file, secret/input contract, artifact path, and trigger affected by the change.
 4. Inspect recent failing job logs when the task is a CI failure; do not infer a root cause from the check title alone.
 
+## Exact SHA and Actions evidence
+
+When the task names a commit SHA, treat that SHA as the evidence key even when it has no pull request.
+
+1. Work from the specialist agent's own `./repo` checkout, not a parent agent's relative path or inherited working directory.
+2. Fetch remote evidence as needed and verify that the requested SHA resolves in the local checkout before drawing conclusions.
+3. Query GitHub Actions by the exact `head_sha` and include push-triggered, pull-request-triggered, and manually triggered runs that belong to that SHA.
+4. Do not treat an empty commit-status surface, missing PR association, or empty PR-only run query as proof that CI does not exist. Cross-check the Actions runs surface for the SHA before reporting `no CI` or `not verifiable`.
+5. Distinguish `no run exists`, `run queued`, `run in progress`, `run completed`, `run cancelled`, and `run failed`. Report workflow name, run id when available, event, exact SHA, and conclusion.
+6. If a delegated handoff contains both a PR and SHA, verify the PR head still equals the supplied SHA before using PR-scoped evidence.
+
+For GitHub CLI inspection, prefer a SHA-filtered run query such as `gh run list --repo LUC4N3X/Levyra-deepsound --commit <sha>` or the GitHub Actions runs API filtered by `head_sha`. Use PR-scoped queries only when the task is explicitly PR-scoped.
+
 ## Guardrails
 
 - Keep workflow permissions at least privilege and explicit where practical.
