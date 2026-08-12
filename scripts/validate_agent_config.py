@@ -41,6 +41,7 @@ REQUIRED_FILES = (
     ".claude/skills/levyra-pr-review/SKILL.md",
     "docs/ai/README.md",
     "docs/ai/WORKFLOW.md",
+    "docs/ai/AI_ENGINEERING_GUARDRAILS.md",
     "docs/ai/ANTIGRAVITY.md",
     "docs/ai/OPENCLAW.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
@@ -70,6 +71,7 @@ ANTIGRAVITY_SKILLS_PATH = ".agents/skills/"
 CLAUDE_INSTRUCTIONS_PATH = ".claude/CLAUDE.md"
 CLAUDE_ROUTER_PATH = ".claude/hooks/user-prompt-submit.sh"
 CHATGPT_INSTRUCTIONS_PATH = "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md"
+GUARDRAILS_PATH = "docs/ai/AI_ENGINEERING_GUARDRAILS.md"
 
 AUTOMATIC_ROUTED_SKILLS = (
     "levyra-real-engineering",
@@ -147,6 +149,18 @@ def require_skill_references(
             )
 
 
+def require_terms(
+    errors: list[str],
+    relative_path: str,
+    text: str,
+    terms: tuple[str, ...],
+    label: str,
+) -> None:
+    for term in terms:
+        if term not in text:
+            errors.append(f"{relative_path}: missing {label}: {term}")
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -181,6 +195,13 @@ def main() -> int:
                 AUTOMATIC_ROUTED_SKILLS,
                 "shared workspace",
             )
+            require_terms(
+                errors,
+                ANTIGRAVITY_RULE_PATH,
+                antigravity_rule,
+                ("AI_ENGINEERING_GUARDRAILS.md", "levyra-context-efficiency"),
+                "Antigravity shared guardrail/context route",
+            )
 
     antigravity_guide_path = ROOT / "docs/ai/ANTIGRAVITY.md"
     if antigravity_guide_path.is_file():
@@ -212,6 +233,18 @@ def main() -> int:
                 AUTOMATIC_ROUTED_SKILLS,
                 "Codex",
             )
+            require_terms(
+                errors,
+                "AGENTS.md",
+                codex_instructions,
+                (
+                    "Always-on context budget",
+                    "levyra-context-efficiency",
+                    "AI_ENGINEERING_GUARDRAILS.md",
+                    "Do not add explanatory source-code comments",
+                ),
+                "Codex context/code-quality contract",
+            )
 
     chatgpt_instructions_path = ROOT / CHATGPT_INSTRUCTIONS_PATH
     if chatgpt_instructions_path.is_file():
@@ -226,6 +259,13 @@ def main() -> int:
                 chatgpt_instructions,
                 AUTOMATIC_ROUTED_SKILLS,
                 "ChatGPT",
+            )
+            require_terms(
+                errors,
+                CHATGPT_INSTRUCTIONS_PATH,
+                chatgpt_instructions,
+                ("AI_ENGINEERING_GUARDRAILS.md", "code-review"),
+                "ChatGPT shared guardrail/review route",
             )
 
     claude_instructions_path = ROOT / CLAUDE_INSTRUCTIONS_PATH
@@ -242,6 +282,19 @@ def main() -> int:
                 AUTOMATIC_ROUTED_SKILLS,
                 "Claude",
             )
+            require_terms(
+                errors,
+                CLAUDE_INSTRUCTIONS_PATH,
+                claude_instructions,
+                (
+                    "Immediate context budget",
+                    "AI_ENGINEERING_GUARDRAILS.md",
+                    "levyra-context-efficiency",
+                    "/code-review",
+                    "Do not add explanatory source-code comments",
+                ),
+                "Claude immediate context/review contract",
+            )
 
     claude_router_path = ROOT / CLAUDE_ROUTER_PATH
     if claude_router_path.is_file():
@@ -256,6 +309,36 @@ def main() -> int:
                 claude_router,
                 AUTOMATIC_ROUTED_SKILLS,
                 "Claude hook",
+            )
+            require_terms(
+                errors,
+                CLAUDE_ROUTER_PATH,
+                claude_router,
+                ("Levyra context budget", "code-review"),
+                "Claude hook context/review reminder",
+            )
+
+    guardrails_path = ROOT / GUARDRAILS_PATH
+    if guardrails_path.is_file():
+        try:
+            guardrails = guardrails_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{GUARDRAILS_PATH}: cannot read file: {exc}")
+        else:
+            require_terms(
+                errors,
+                GUARDRAILS_PATH,
+                guardrails,
+                (
+                    "Source-code comment discipline",
+                    "Mandatory pre-delivery code review",
+                    "/code-review",
+                    "Claude Code",
+                    "Codex",
+                    "ChatGPT",
+                    "Google Antigravity",
+                ),
+                "cross-runtime pre-delivery review contract",
             )
 
     for skill in CLAUDE_CANONICAL_BRIDGES:
@@ -352,7 +435,7 @@ def main() -> int:
         f"{len(actual_skills)} native skills, "
         f"{len(referenced_skills)} documented skill references, "
         f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, "
-        "Codex/ChatGPT/Claude/Antigravity routing verified, "
+        "Codex/ChatGPT/Claude/Antigravity context budget and pre-delivery review verified, "
         "no duplicate root planning files."
     )
     return 0
