@@ -148,6 +148,19 @@ if ! has_agent "$PRIMARY_AGENT"; then
   openclaw agents add "$PRIMARY_AGENT" --workspace "$PRIMARY_WORKSPACE" --non-interactive
 fi
 
+if [[ ! -f "$PRIMARY_WORKSPACE/MEMORY.md" ]]; then
+  write_workspace_file "$PRIMARY_WORKSPACE/MEMORY.md" \
+    "# Durable Levyra Memory" \
+    "" \
+    "Store only stable, verified Levyra architecture decisions, recurring engineering lessons and explicit owner preferences. Never store secrets, credentials, transient PR state, branch heads or CI status here. Current repository evidence always wins."
+fi
+mkdir -p "$PRIMARY_WORKSPACE/memory"
+for skill_path in "$PRIMARY_REPO"/.agents/skills/*/SKILL.md; do
+  [[ -f "$skill_path" ]] || continue
+  skill="$(basename "$(dirname "$skill_path")")"
+  write_skill_bridge "$PRIMARY_WORKSPACE" "$skill"
+done
+
 ensure_clone "$REVIEW_REPO"
 ensure_clone "$CI_REPO"
 
@@ -235,7 +248,7 @@ configure_read_only_agent levyra-ci
 openclaw config set "agents.entries.$PRIMARY_AGENT.subagents.allowAgents" '["levyra-reviewer","levyra-ci"]' --strict-json
 
 if [[ "$ENABLE_DREAMING" == "1" ]]; then
-  openclaw config set plugins.entries.memory-core.config.dreaming.enabled true
+  openclaw config set plugins.entries.memory-core.config.dreaming.enabled true --strict-json
 fi
 
 if [[ "$INSTALL_CRON" == "1" ]]; then
