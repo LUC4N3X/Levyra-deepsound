@@ -2,6 +2,8 @@
 set -euo pipefail
 
 STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
+CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$STATE_DIR/openclaw.json}"
+CONFIG_BACKUP_PATH="$CONFIG_PATH.bak"
 PRIMARY_WORKSPACE="${LEVYRA_OPENCLAW_WORKSPACE:-$STATE_DIR/workspace-levyra}"
 PRIMARY_REPO="${LEVYRA_REPO:-$PRIMARY_WORKSPACE/repo}"
 REVIEW_WORKSPACE="${LEVYRA_REVIEW_WORKSPACE:-$STATE_DIR/workspace-levyra-reviewer}"
@@ -20,6 +22,33 @@ require_command() {
     echo "Missing required command: $1" >&2
     exit 1
   }
+}
+
+recover_invalid_config() {
+  if openclaw config validate >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "[warn] Active OpenClaw config is invalid: $CONFIG_PATH" >&2
+  if [[ ! -f "$CONFIG_BACKUP_PATH" ]]; then
+    echo "[blocked] No OpenClaw config backup found at $CONFIG_BACKUP_PATH" >&2
+    echo "Restore a known-good config before rerunning this bootstrap." >&2
+    exit 1
+  fi
+
+  if ! OPENCLAW_CONFIG_PATH="$CONFIG_BACKUP_PATH" openclaw config validate >/dev/null 2>&1; then
+    echo "[blocked] OpenClaw backup config is also invalid: $CONFIG_BACKUP_PATH" >&2
+    echo "Restore a known-good config before rerunning this bootstrap." >&2
+    exit 1
+  fi
+
+  local invalid_copy
+  invalid_copy="$CONFIG_PATH.invalid-$(date +%Y%m%d-%H%M%S)"
+  cp -p "$CONFIG_PATH" "$invalid_copy"
+  cp -p "$CONFIG_BACKUP_PATH" "$CONFIG_PATH"
+  echo "[recovered] Restored the last valid OpenClaw config backup."
+  echo "[recovered] Preserved the invalid config at $invalid_copy"
+  openclaw config validate
 }
 
 agent_ids() {
@@ -229,6 +258,7 @@ require_command openclaw
 require_command git
 require_command python3
 require_command gh
+recover_invalid_config
 
 if [[ ! -d "$PRIMARY_REPO/.git" ]]; then
   echo "Levyra repository not found at $PRIMARY_REPO" >&2
