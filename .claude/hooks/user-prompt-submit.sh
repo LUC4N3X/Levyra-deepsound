@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Levyra UserPromptSubmit hook.
-# Routes real user requests to matching project skills before broad reading or
-# editing. The hook must never break a session: it always exits 0 and prints
-# valid JSON or nothing.
-
 set -uo pipefail
 
 payload="$(cat 2>/dev/null || true)"
@@ -34,7 +29,7 @@ if any(marker in prompt for marker in AUTOMATED_MARKERS):
 ROUTES = [
     (
         "levyra-real-engineering",
-        "non-trivial engineering, root-cause debugging, requirements, or architecture",
+        "non-trivial engineering, debugging, requirements, or architecture",
         r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug",
     ),
     (
@@ -58,6 +53,26 @@ ROUTES = [
         r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|animation|animazion|layout|jank|recomposition|ricompos|scroll|perfetto|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
     ),
     (
+        "levyra-android-performance",
+        "Android runtime profiling or measured performance",
+        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android",
+    ),
+    (
+        "levyra-r8-proguard",
+        "R8, Proguard, minification, shrinking, or release-only behavior",
+        r"\br8\b|proguard|minif|shrink resources|resource shrink|resource shrinking|keep rule|consumer rule|mapping\.txt|missing rules|missing class|missing classes|release.?only.*(?:crash|fail)|crash.*release|apk size|aab size|obfuscat|shrinker|dontwarn|keepattributes|javascriptinterface|jni.*(?:keep|shrink)|reflection.*(?:keep|shrink)|serialization.*(?:keep|shrink)",
+    ),
+    (
+        "levyra-android-intent-security",
+        "Android Intent, PendingIntent, deep-link, or component security",
+        r"pendingintent|pending intent|onnewintent|nested intent|intent redirection|intent redirect|intent sanitizer|intentsanitizer|android:exported|exported (?:activity|service|receiver|provider|component)|attivit[aà] esportat|servizio esportat|receiver esportat|provider esportat|mutable pendingintent|immutable pendingintent|flag_mutable|flag_immutable|uri grant|granturipermission|grant uri|fileprovider|contentprovider|signature permission|binder caller|callinguid|caller verification|deep.?link.*(?:intent|security|exported|permission)|intent.*(?:security|sicurezz|exported|permission|forward|redirect|nested)|component boundary|component-boundary",
+    ),
+    (
+        "levyra-design-taste",
+        "visual design, redesign, polish, hierarchy, or anti-AI-slop UI",
+        r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|screenshot|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|pi[uù] bella|pi[uù] professionale|(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b).{0,40}\b(?:premium|modern|clean|cinematic|less generic)\b|\b(?:premium|modern|clean|cinematic|less generic)\b.{0,40}(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b)|^\s*(?:premium|modern|clean|cinematic|less generic)\s*[.!?]*\s*$|premium (?:ui|design|grafica)|modern (?:ui|design|grafica)|cinematic (?:ui|design)|cohesive (?:ui|design)|coerent.*(?:ui|grafica|design)|distinctive (?:ui|design)|less ai.*(?:ui|design)|anti.?ai.?slop|glassmorphism|bento",
+    ),
+    (
         "levyra-motion-artwork",
         "motion artwork",
         r"motion artwork|motion|artwork|copertin|cover art",
@@ -69,13 +84,13 @@ ROUTES = [
     ),
     (
         "levyra-context-efficiency",
-        "noisy command output or broad repository diagnostics",
-        r"\bbuild\b|\bgradle\b|\btest\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup",
+        "repository exploration or high-volume context",
+        r"\bbuild\b|\bgradle\b|\btest\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup|analy[sz]|analizz|investigat|indag|inspect|esamina|repository|\brepo\b|codebase|root cause|causa radice|implement|refactor|riprogett|find.*(?:class|function|file)|trova.*(?:classe|funzione|file)",
     ),
     (
         "levyra-security-review",
         "security, privacy, trust-boundary, or supply-chain review",
-        r"security|sicurezz|secret|segret|credential|cookie|auth|ssrf|redirect|permission|permess|privacy|\bmime\b|keystore|vulnerab|exploit|threat model|trust boundary|attack surface|dependency|dipendenz|supply.?chain|workflow permission|action pin|signature|checksum|integrity|update security|deep.?link|path traversal|injection|cve|token leak|data leak",
+        r"security|sicurezz|secret|segret|credential|cookie|auth|ssrf|redirect|permission|permess|privacy|\bmime\b|keystore|vulnerab|exploit|threat model|trust boundary|attack surface|dependency|dipendenz|supply.?chain|workflow permission|action pin|signature|checksum|integrity|update security|deep.?link|pendingintent|pending intent|onnewintent|android:exported|fileprovider|contentprovider|uri grant|path traversal|injection|cve|token leak|data leak",
     ),
     (
         "levyra-pr-review",
@@ -90,25 +105,35 @@ ROUTES = [
 ]
 
 matched = [(skill, topic) for skill, topic, pattern in ROUTES if re.search(pattern, prompt)]
-if not matched:
-    sys.exit(0)
+matched_skills = {skill for skill, _ in matched}
+companions = []
+if "levyra-compose" in matched_skills and "levyra-android-performance" in matched_skills:
+    companions.append(("levyra-real-engineering", "non-trivial Compose performance debugging"))
+if "levyra-r8-proguard" in matched_skills:
+    companions.append(("levyra-release-check", "minified release validation"))
+if "levyra-android-intent-security" in matched_skills:
+    companions.append(("levyra-security-review", "Android component-boundary security review"))
+for skill, topic in companions:
+    if skill not in matched_skills:
+        matched.append((skill, topic))
+        matched_skills.add(skill)
 
-lines = ["Levyra automatic skill routing - this request matches project skills:", ""]
-for skill, topic in matched:
-    lines.append("- %s -> invoke the %s skill" % (topic, skill))
-lines += [
-    "",
-    "Invoke every matching skill with the Skill tool BEFORE reading widely, editing, "
-    "or running large commands. Do not wait for the owner to name a skill or type a "
-    "slash command. For real-engineering bugs/failures, use the hypothesis-driven "
-    "debugging lane before stacking speculative fixes. For CI/build-performance work, "
-    "measure before changing configuration and remeasure the same path afterward. For "
-    "Compose performance/accessibility work, require direct evidence where applicable. "
-    "For emulator/device validation, prefer semantic UI targets over raw coordinates. "
-    "For security work, preserve exact evidence and follow threat model, identification, "
-    "safe validation, minimal remediation, human review, and revalidation. If a skill "
-    "turns out not to apply once read, say so in one line and continue.",
+lines = [
+    "Levyra context budget: search/path/symbol first; read bounded ranges; expand only on a concrete need; do not reread unchanged evidence.",
+    "Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics raw when compression could change the conclusion.",
+    "Before delivering code, invoke /code-review when available (otherwise the code-review stage), fix actionable findings, then deliver the reviewed final code/diff.",
 ]
+
+if matched:
+    lines += ["", "Matching skills:"]
+    for skill, topic in matched:
+        lines.append("- %s -> %s" % (topic, skill))
+    lines += [
+        "",
+        "Invoke matching skills before broad reading/editing. Apply AI_ENGINEERING_GUARDRAILS.md. "
+        "Use the smallest verified change. New source code should be self-explanatory: add no "
+        "explanatory comments; preserve only required license/tooling/suppression comments.",
+    ]
 
 print(json.dumps({
     "hookSpecificOutput": {
