@@ -9,6 +9,7 @@ from scripts.ai_quality_gate import (
     gradle_wrapper,
     scan_added_lines,
 )
+from scripts.validate_agent_config import DOCUMENTED_AGENT_IDS
 
 
 class AiQualityGateTest(unittest.TestCase):
@@ -94,6 +95,12 @@ class AiQualityGateTest(unittest.TestCase):
         )
 
         self.assertEqual(2, len(findings))
+
+    def test_openclaw_agent_ids_are_not_native_skill_requirements(self) -> None:
+        self.assertEqual(
+            {"levyra-ci", "levyra-reviewer", "levyra-worker"},
+            DOCUMENTED_AGENT_IDS,
+        )
 
     def test_full_android_profile_adds_tests_lint_and_compile(self) -> None:
         commands, blocked = build_commands(
