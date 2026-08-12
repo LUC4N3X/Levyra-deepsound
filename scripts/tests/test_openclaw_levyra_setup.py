@@ -34,15 +34,28 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         for command in ("git push", "gh pr merge", "gh release create"):
             self.assertNotIn(command, setup)
 
-    def test_openclaw_2026_7_uses_agents_list_schema(self) -> None:
+    def test_openclaw_2026_7_uses_supported_agents_and_memory_schema(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
 
-        self.assertIn("openclaw config get agents.list --json", setup)
-        self.assertIn('agents.list[$index].$suffix', setup)
-        self.assertIn('agents.list[$index].subagents.allowAgents', setup)
-        self.assertIn('agents.list[$index].memorySearch.rememberAcrossConversations', setup)
-        self.assertNotIn("agents.entries.$", setup)
-        self.assertNotIn("memory.search.rememberAcrossConversations", setup)
+        for term in (
+            "openclaw config get agents.list --json",
+            'agents.list[$index].$suffix',
+            'agents.list[$index].subagents.allowAgents',
+            'agents.list[$index].memorySearch.sources',
+            'agents.list[$index].memorySearch.experimental.sessionMemory',
+            "plugins.entries.active-memory.config.agents",
+            "plugins.entries.active-memory.config.allowedChatTypes",
+        ):
+            self.assertIn(term, setup)
+
+        for unsupported in (
+            "agents.entries.$",
+            "memory.search.rememberAcrossConversations",
+            "memorySearch.rememberAcrossConversations",
+            "active-memory.config.mode",
+            "escalate",
+        ):
+            self.assertNotIn(unsupported, setup)
 
     def test_invalid_config_recovers_only_from_valid_backup(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
@@ -73,17 +86,21 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         self.assertIn("## Levyra multi-agent profile", setup)
         self.assertIn("levyra-openclaw-orchestrator", setup)
 
-    def test_active_memory_is_targeted_through_primary_agent_recall(self) -> None:
+    def test_active_memory_targets_primary_with_bounded_session_recall(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
 
         for term in (
-            "memorySearch.rememberAcrossConversations",
+            "memorySearch.enabled",
+            "memorySearch.sources",
+            "memorySearch.experimental.sessionMemory",
             "plugins.entries.active-memory.enabled",
-            "plugins.entries.active-memory.config.mode",
+            "plugins.entries.active-memory.config.enabled",
+            "plugins.entries.active-memory.config.agents",
+            "plugins.entries.active-memory.config.allowedChatTypes",
             "plugins.entries.active-memory.config.queryMode",
             "plugins.entries.active-memory.config.promptStyle",
+            "plugins.entries.active-memory.config.timeoutMs",
             "plugins.entries.active-memory.config.persistTranscripts false",
-            "escalate",
             "recent",
             "precision-heavy",
         ):
