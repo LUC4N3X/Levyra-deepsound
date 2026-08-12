@@ -164,6 +164,7 @@ skills over the general coordinator.
 | InnerTube, extraction, stream resolution, runtime configuration, retry, cache, fallback | `levyra-extractor` |
 | Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
 | Android Compose UI, state, navigation, animation, lifecycle, accessibility, RTL, localization | `levyra-compose` |
+| Visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshots/references, premium/modern/cohesive/anti-AI-slop requests | `levyra-design-taste` plus the matching Android/Desktop UI skill |
 | Decorative motion artwork | `levyra-motion-artwork` |
 | Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
 | Secrets, URLs, redirects, SSRF, MIME, permissions, privacy, update integrity | `levyra-security-review` |
@@ -177,7 +178,9 @@ Several skills may apply. A playback change that modifies stream resolution
 uses player and extractor skills; provider-controlled media normally also
 requires security review. A tracked multi-phase task additionally uses
 `levyra-project-manager`; non-trivial ambiguous/multi-step work additionally
-uses `levyra-real-engineering`; OpenClaw coordination additionally uses
+uses `levyra-real-engineering`; visual Android work uses `levyra-design-taste`
+plus `levyra-compose`; visual Desktop work uses `levyra-design-taste` plus
+`levyra-desktop`; OpenClaw coordination additionally uses
 `levyra-openclaw-orchestrator`.
 
 ## Planning documents
