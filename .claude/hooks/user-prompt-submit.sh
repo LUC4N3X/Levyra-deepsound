@@ -58,6 +58,11 @@ ROUTES = [
         r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|animation|animazion|layout|jank|recomposition|ricompos|scroll|perfetto|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
     ),
     (
+        "levyra-design-taste",
+        "visual design, redesign, polish, hierarchy, or anti-AI-slop UI",
+        r"redesign|riprogett|visual|grafica|design|polish|gerarchia|hierarchy|spacing|spaziatur|typograph|tipograf|colou?r|colori|shape|forme|radius|motion|animazion|screenshot|reference|riferiment|pi[uù] bella|pi[uù] professionale|premium|modern|cinematic|cohesive|coerent|distinctive|less ai|anti.?ai.?slop|glassmorphism|bento",
+    ),
+    (
         "levyra-motion-artwork",
         "motion artwork",
         r"motion artwork|motion|artwork|copertin|cover art",
@@ -104,10 +109,12 @@ lines += [
     "debugging lane before stacking speculative fixes. For CI/build-performance work, "
     "measure before changing configuration and remeasure the same path afterward. For "
     "Compose performance/accessibility work, require direct evidence where applicable. "
-    "For emulator/device validation, prefer semantic UI targets over raw coordinates. "
-    "For security work, preserve exact evidence and follow threat model, identification, "
-    "safe validation, minimal remediation, human review, and revalidation. If a skill "
-    "turns out not to apply once read, say so in one line and continue.",
+    "For visual redesign/polish work, load levyra-design-taste together with the matching "
+    "platform UI skill and preserve product behavior, accessibility and performance over "
+    "decorative novelty. For emulator/device validation, prefer semantic UI targets over "
+    "raw coordinates. For security work, preserve exact evidence and follow threat model, "
+    "identification, safe validation, minimal remediation, human review, and revalidation. "
+    "If a skill turns out not to apply once read, say so in one line and continue.",
 ]
 
 print(json.dumps({
