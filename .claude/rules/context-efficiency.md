@@ -1,24 +1,29 @@
-# Context-efficient command execution
+# Context-efficient execution
 
-Use `.agents/skills/levyra-context-efficiency/SKILL.md` as the canonical Levyra
-procedure for command-output efficiency.
+Apply this baseline immediately to every real Levyra coding task, before broad
+repository reading or noisy commands:
 
-Automatically apply it when work involves builds, tests, lint, logs, broad
+- search/symbol/path first;
+- read the smallest useful range or focused diff;
+- expand only to answer a concrete unresolved question;
+- do not reread unchanged evidence already in context;
+- load only matching skills, never the whole skill tree;
+- keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics
+  raw when compression could change the conclusion.
+
+For non-trivial repository exploration, builds, tests, lint, logs, broad
 searches, dependencies, Git/GitHub, CI, CodeRabbit, adb, setup, or other
-high-volume shell output.
+high-volume work, invoke `levyra-context-efficiency` and follow
+`.agents/skills/levyra-context-efficiency/SKILL.md` as the canonical procedure.
 
-When `rtk` is available, prefer its supported compact wrappers. Keep short or
-exact-output commands raw. Rerun the exact command raw whenever filtered output
-is incomplete, a failure cannot be diagnosed, or security/signing/checksum/
-release evidence must remain complete. Verify exit status and final
-success/failure markers; compact output is not validation authority.
+When RTK is available, prefer its supported compact wrappers for repetitive
+success-heavy output. Rerun the exact command raw if compact output is
+incomplete, ambiguous, or insufficient to diagnose a failure. Verify exit
+status and final success/failure markers; compact output is not validation
+authority.
 
-Project-specific filters live in `.rtk/filters.toml`. Setup and measurement are
-documented in `docs/ai/RTK.md` and automated by `scripts/setup-ai.ps1` and
-`scripts/setup-ai.sh`.
+Project filters live in `.rtk/filters.toml`; setup and measurement are in
+`docs/ai/RTK.md` and `scripts/setup-ai.ps1` / `scripts/setup-ai.sh`.
 
-Follow the owner-authorized automatic RTK bootstrap in root `AGENTS.md` when
-the pinned official RTK build is unavailable or is the wrong `rtk` project.
-Do not install other executables or plugins without explicit owner
-authorization. Do not infer permission to commit, push, open a pull request,
-merge, tag, publish, or release.
+Do not install another always-on compression proxy. Do not infer permission to
+commit, push, open/merge a PR, tag, publish, or release.

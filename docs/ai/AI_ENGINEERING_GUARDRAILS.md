@@ -33,6 +33,30 @@ Before editing production code:
 Do not start from a blank-slate design when Levyra already has an owner for the
 behavior.
 
+## Assumptions, tradeoffs, and simpler alternatives
+
+Do not silently convert uncertainty into implementation.
+
+- State material assumptions before coding when they can change behavior,
+  compatibility, architecture, security, persistence, performance, or scope.
+- If current repository evidence can resolve an uncertainty, inspect it before
+  asking the owner to repeat information or choosing an interpretation.
+- When two materially different interpretations remain, surface the tradeoff and
+  use the least surprising interpretation only when existing requirements make
+  it clear. Otherwise request the missing owner decision before broadening scope.
+- If a simpler implementation satisfies the same acceptance criteria, prefer it
+  and explain why the extra abstraction or configurability is unnecessary.
+- Push back on speculative flexibility, future-proofing, compatibility layers,
+  or defensive branches that have no current caller, requirement, or realistic
+  failure mode.
+- Do not hide uncertainty behind confident prose. Separate verified facts,
+  assumptions, hypotheses, and owner decisions.
+
+These rules adapt the useful anti-overengineering discipline from the
+MIT-licensed `multica-ai/andrej-karpathy-skills` project. Levyra's repository
+rules and current evidence remain authoritative; the external project is a
+reference, not a runtime dependency.
+
 ## Architecture-first rules
 
 - Reuse before creating.
@@ -50,6 +74,20 @@ behavior.
   replaces it instead of keeping both implementations alive.
 - Do not hide architectural duplication behind compatibility wrappers unless a
   real compatibility boundary requires them.
+
+## Source-code comment discipline
+
+New source code should be self-explanatory. Do not add explanatory comments,
+AI-style narration, step labels, restatements of obvious code, commented-out
+alternatives, or TODO prose merely to explain generated implementation.
+
+Prefer clear names, small functions, explicit types/state, and straightforward
+control flow. Preserve or add a comment only when it is legally or mechanically
+required, such as a license header, generated/tool directive, lint/suppression
+marker, or a compatibility/protocol contract whose meaning cannot safely live in
+the code itself.
+
+Do not delete an existing required comment just to satisfy this rule.
 
 ## Scope and complexity budget
 
@@ -79,6 +117,29 @@ normal review for correctness and accidental churn.
 The thresholds above are review triggers, not permission to generate code up to
 the limit.
 
+## Goal-driven execution
+
+Convert implementation requests into verifiable outcomes before editing.
+
+For each non-trivial step, state the result that would prove it succeeded and use
+that result to decide whether to continue, revise, or stop. Examples:
+
+- a bug fix -> reproduce the failure or define the exact failing path, apply the
+  smallest correction, then rerun the same reproduction or focused regression
+  test;
+- validation -> define invalid and valid cases, then prove both outcomes;
+- refactoring -> establish behavior/tests before the refactor and verify the same
+  contract afterward;
+- performance work -> record a representative baseline, change one material
+  variable, then remeasure the same path;
+- security remediation -> reproduce the safe failure path, patch the root cause,
+  then revalidate that exact boundary.
+
+A multi-step plan should therefore be a sequence of `step -> verification`, not
+an activity checklist such as "inspect, code, test" with no success criterion.
+Do not keep stacking speculative fixes after the verification target has failed;
+return to the hypothesis or requirement instead.
+
 ## Large features and feature parity
 
 Do not implement broad "feature parity", "improve everything", or "make it like
@@ -96,6 +157,48 @@ For large work:
 
 External projects are references, not architectures to copy wholesale. Import
 ideas selectively and adapt them to Levyra's existing ownership model.
+
+## Surgical-edit discipline
+
+Every changed production line should be explainable by the requested outcome or
+by a correctness dependency of that outcome.
+
+- Match the existing style and ownership model instead of rewriting adjacent
+  code into the agent's preferred style.
+- Do not refactor, rename, reformat, reorder, or delete unrelated code while
+  touching a nearby file.
+- Remove imports, variables, helpers, or branches made obsolete by the current
+  change, but do not turn that cleanup into a pre-existing dead-code sweep.
+- Mention unrelated problems separately instead of silently folding their fixes
+  into the active patch.
+- If the implementation grows far beyond the expected footprint, stop and ask
+  whether the design can be simplified before normalizing the larger diff.
+
+## Mandatory pre-delivery code review
+
+Every code-bearing task must pass a final code-review gate after code exists and
+before that code is presented as the solution, handed to another runtime,
+committed, or described as implementation-complete.
+
+- **Claude Code:** invoke `/code-review` when that command is available, otherwise
+  invoke the installed `code-review` skill/stage.
+- **Codex:** explicitly load/run the `code-review` stage through
+  `levyra-real-engineering` or the installed upstream skill before delivery.
+- **ChatGPT:** run the `code-review` stage on the actual generated/applied code or
+  diff before presenting code as final.
+- **Google Antigravity:** explicitly load/run the `code-review` stage through the
+  Levyra adapter or available skill before delivery.
+
+Review the final code/diff, not the plan. Check correctness, regression risk,
+architecture ownership, tests, security, lifecycle/concurrency, performance,
+duplication, speculative abstractions, source-code comment discipline, and
+unrelated churn. Fix actionable findings before delivery; if a fix materially
+changes behavior, review the corrected final diff again.
+
+This gate also applies to small code edits, but small edits need only a focused
+review of the actual change. Do not invoke a full review before code exists just
+to satisfy the rule. `levyra-pr-review` remains additional for branch/commit/PR
+review and does not replace this pre-delivery gate.
 
 ## Diff quality gate
 
@@ -177,8 +280,11 @@ For every substantial AI-assisted implementation, report:
 - architecture owner reused or changed;
 - exact production files changed;
 - new abstractions introduced and why each is necessary;
+- material assumptions or unresolved tradeoffs;
+- verification target for each non-trivial step;
 - diff size/statistics when available;
 - focused and broader validation performed;
+- pre-delivery `code-review` result;
 - blocked or unverified checks;
 - remaining risk;
 - publication state.
