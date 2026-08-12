@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.viewmodel
 
-import com.luc4n3x.levyra.data.YOUTUBE_MUSIC_SAMPLES_SOURCE
 import com.luc4n3x.levyra.data.YOUTUBE_SHORTS_SOURCE
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
@@ -38,15 +37,15 @@ class SamplesPlaybackSelectionTest {
     }
 
     @Test
-    fun officialYoutubeMusicVideoIsAcceptedAsSample() {
-        val sample = track(
+    fun officialYoutubeMusicVideoIsNotPlayableAsAShort() {
+        val musicVideo = track(
             id = "musicvideo1",
-            source = YOUTUBE_MUSIC_SAMPLES_SOURCE,
+            source = "YouTube Music",
             videoUrl = "https://www.youtube.com/watch?v=musicvideo1",
             videoType = "MUSIC_VIDEO_TYPE_OMV"
         )
 
-        assertEquals(sample, selectYoutubeShortSample(listOf(sample), sample))
+        assertNull(selectYoutubeShortSample(listOf(musicVideo), musicVideo))
     }
 
     private fun track(
