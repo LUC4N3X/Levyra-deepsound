@@ -27,6 +27,7 @@ DEFAULT_USER_AGENT = (
 COOKIE_NAME = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 DURATION = re.compile(r"\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b")
+YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
 PENALTY_TERMS = {
     "karaoke",
     "cover",
@@ -522,7 +523,7 @@ def _best_unambiguous(
         return None
     if len(ranked) > 1 and best[0] - ranked[1][0] < 7:
         best_kind = str(best[1].get("musicVideoType") or "").upper()
-        second_kind = str(ranked[1][1].get("musicVideoType") or "").upper()
+        second_kind = str(ranked[1].get("musicVideoType") or "").upper()
         if not (best_kind.endswith("_OMV") and not second_kind.endswith("_OMV")):
             return None
     return best
@@ -831,7 +832,7 @@ class YoutubeMusicWebClient:
                 self._bootstrap_failed = True
                 raise
 
-    def _search(self, query: str) -> Mapping[str, Any]:
+    def _search(self, query: str, params: str | None = None) -> Mapping[str, Any]:
         self._bootstrap()
         headers = {
             "Cookie": self._cookie,
@@ -858,6 +859,8 @@ class YoutubeMusicWebClient:
             },
             "query": query,
         }
+        if params:
+            payload["params"] = params
         response = self._session.post(
             SEARCH_URL,
             params={"key": self._api_key, "prettyPrint": "false"},
@@ -959,10 +962,12 @@ class YoutubeMusicWebClient:
                 self._cache[cache_key] = None
             return None
 
-        primary_query = f"{title} {artist}".strip()
         audio_result: dict[str, Any] | None = None
         try:
-            payload = self._search(primary_query)
+            payload = self._search(
+                f"{title} {artist}",
+                params=YOUTUBE_MUSIC_SONG_SEARCH_PARAMS,
+            )
             audio_result = select_youtube_music_mapping(
                 title,
                 artist,
@@ -971,27 +976,6 @@ class YoutubeMusicWebClient:
             )
         except (requests.RequestException, ValueError, YoutubeMusicError) as error:
             LOGGER.warning("Central YouTube Music audio query skipped: %s", type(error).__name__)
-
-        normalized_query = " ".join(re.sub(r"[^\w\s]+", " ", primary_query).split())
-        if (
-            audio_result is None
-            and normalized_query
-            and normalized_query != primary_query
-            and self._reserve_request()
-        ):
-            try:
-                payload = self._search(normalized_query)
-                audio_result = select_youtube_music_mapping(
-                    title,
-                    artist,
-                    duration_ms,
-                    parse_search_candidates(payload),
-                )
-            except (requests.RequestException, ValueError, YoutubeMusicError) as error:
-                LOGGER.warning(
-                    "Central YouTube Music normalized audio query skipped: %s",
-                    type(error).__name__,
-                )
 
         verified_audio = combine_verified_youtube_mapping(audio_result, None)
         official_video: dict[str, Any] | None = None
