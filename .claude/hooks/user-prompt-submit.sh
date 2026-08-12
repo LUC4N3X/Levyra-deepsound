@@ -60,7 +60,7 @@ ROUTES = [
     (
         "levyra-design-taste",
         "visual design, redesign, polish, hierarchy, or anti-AI-slop UI",
-        r"redesign|riprogett|visual|grafica|design|polish|gerarchia|hierarchy|spacing|spaziatur|typograph|tipograf|colou?r|colori|shape|forme|radius|motion|animazion|screenshot|reference|riferiment|pi[uù] bella|pi[uù] professionale|premium|modern|cinematic|cohesive|coerent|distinctive|less ai|anti.?ai.?slop|glassmorphism|bento",
+        r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|screenshot|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|pi[uù] bella|pi[uù] professionale|premium (?:ui|design|grafica)|modern (?:ui|design|grafica)|cinematic (?:ui|design)|cohesive (?:ui|design)|coerent.*(?:ui|grafica|design)|distinctive (?:ui|design)|less ai.*(?:ui|design)|anti.?ai.?slop|glassmorphism|bento",
     ),
     (
         "levyra-motion-artwork",
