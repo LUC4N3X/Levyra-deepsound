@@ -8,6 +8,8 @@ The Android application is built with Kotlin, Jetpack Compose, AndroidX Media3, 
 
 Before editing, load every matching native skill under `.agents/skills/` and the referenced domain procedure/rules under `.claude/`.
 
+For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshot/reference recreation, or request to make the Android UI more premium, modern, distinctive, cohesive, or less AI-generated, automatically load both `levyra-compose` and `levyra-design-taste` before editing. The design-taste skill supplements Compose engineering rules; it never overrides accessibility, performance, lifecycle, localization, product behavior, or architecture.
+
 ## Architecture boundaries
 
 - Preserve unidirectional data flow from user intent through ViewModel/controller and repository/player operations into immutable UI state.
@@ -24,6 +26,8 @@ Before editing, load every matching native skill under `.agents/skills/` and the
 - Use stable keys for lazy content and correctly keyed effects with deterministic cleanup.
 - Add every user-facing string to the localization system and verify long text, RTL, font scaling, accessibility, and restoration.
 - Preserve cached or real content during refresh when safe; avoid blank loading regressions.
+- Treat existing UI as a redesign by default: preserve behavior, navigation, gestures and state ownership, then improve hierarchy, rhythm and visual consistency before adding decorative effects.
+- Reuse Levyra theme tokens and existing components before introducing one-off colors, radii, spacing values, visual primitives or dependencies.
 
 ## Persistence and compatibility
 
@@ -42,4 +46,4 @@ Before editing, load every matching native skill under `.agents/skills/` and the
 
 Start with focused unit tests for the affected class or feature. Then run applicable checks from the root `AGENTS.md`.
 
-Manual playback, notification, Android Auto, PiP, emulator, device, background restriction, and OEM behavior remain unverified unless directly tested and reported with evidence.
+Manual playback, notification, Android Auto, PiP, emulator, device, background restriction, OEM behavior, visual polish, TalkBack, and measured UI-performance claims remain unverified unless directly tested and reported with evidence.
