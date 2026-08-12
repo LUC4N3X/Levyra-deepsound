@@ -38,24 +38,6 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
-    fun shortSearchFallbackRejectsUnverifiedBoundedVideos() {
-        assertFalse(
-            isYoutubeShortSearchFallbackCandidate(
-                isShortFormContent = false,
-                url = "https://www.youtube.com/watch?v=abcdefghijk",
-                durationSeconds = 90L
-            )
-        )
-        assertTrue(
-            isYoutubeShortSearchFallbackCandidate(
-                isShortFormContent = false,
-                url = "https://www.youtube.com/shorts/abcdefghijk",
-                durationSeconds = 90L
-            )
-        )
-    }
-
-    @Test
     fun canonicalShortsUrlsAreAcceptedAsFallback() {
         assertTrue(
             isYoutubeShortCandidate(
@@ -130,6 +112,19 @@ class YoutubeShortsRepositoryTest {
         assertTrue(isYoutubeShortTrack(track(videoUrl = "https://www.youtube.com/shorts/abcdefghijk")))
         assertTrue(isYoutubeShortTrack(track(videoType = "SHORTS")))
         assertFalse(isYoutubeShortTrack(track()))
+    }
+
+    @Test
+    fun fullMusicVideosNeverQualifyAsShorts() {
+        assertFalse(
+            isYoutubeShortTrack(
+                track(
+                    source = "YouTube Music Samples",
+                    videoUrl = "https://www.youtube.com/watch?v=abcdefghijk",
+                    videoType = "MUSIC_VIDEO_TYPE_OMV"
+                )
+            )
+        )
     }
 
     @Test
