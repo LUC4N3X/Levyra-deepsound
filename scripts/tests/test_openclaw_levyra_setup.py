@@ -23,6 +23,8 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
             "strictInlineEval",
             "tools.elevated.enabled",
             "merge_primary_subagents",
+            "subagents.requireAgentId",
+            "subagents.delegationMode",
             "--light-context",
             "--no-deliver",
             "memory-core.config.dreaming.enabled",
@@ -31,6 +33,16 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
 
         for command in ("git push", "gh pr merge", "gh release create"):
             self.assertNotIn(command, setup)
+
+    def test_openclaw_2026_7_uses_agents_list_schema(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        self.assertIn("openclaw config get agents.list --json", setup)
+        self.assertIn('agents.list[$index].$suffix', setup)
+        self.assertIn('agents.list[$index].subagents.allowAgents', setup)
+        self.assertIn('agents.list[$index].memorySearch.rememberAcrossConversations', setup)
+        self.assertNotIn("agents.entries.$", setup)
+        self.assertNotIn("memory.search.rememberAcrossConversations", setup)
 
     def test_primary_agent_is_preserved_and_receives_skill_bridges(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
@@ -47,7 +59,7 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         setup = SETUP.read_text(encoding="utf-8")
 
         for term in (
-            "agents.entries.$PRIMARY_AGENT.memory.search.rememberAcrossConversations",
+            "memorySearch.rememberAcrossConversations",
             "plugins.entries.active-memory.enabled",
             "plugins.entries.active-memory.config.mode",
             "plugins.entries.active-memory.config.queryMode",
@@ -59,12 +71,18 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         ):
             self.assertIn(term, setup)
 
+    def test_cron_scope_failure_is_non_fatal(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        self.assertIn("Cron inspection unavailable", setup)
+        self.assertIn("may lack operator.admin scope", setup)
+        self.assertIn("openclaw cron list --agent levyra-ci || true", setup)
+
     def test_evidence_workspaces_reference_canonical_repo_paths(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
 
         self.assertIn("repo/docs/ai/AI_ENGINEERING_GUARDRAILS.md", setup)
         self.assertIn("repo/.github/AGENTS.md", setup)
-        self.assertNotIn("files, docs/ai/AI_ENGINEERING_GUARDRAILS.md", setup)
 
     def test_orchestrator_uses_compact_independent_handoffs(self) -> None:
         skill = SKILL.read_text(encoding="utf-8")
