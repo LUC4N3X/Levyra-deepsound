@@ -9,6 +9,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.linkhandler.ChannelTabs
 
 class YoutubeShortsRepositoryTest {
     private companion object {
@@ -184,6 +186,17 @@ class YoutubeShortsRepositoryTest {
             canonicalYoutubeChannelUrl("UCabcdefghijklmnopqrstuv")
         )
         assertEquals(null, canonicalYoutubeChannelUrl("MPLA-not-a-channel"))
+    }
+
+    @Test
+    fun shortsChannelUrlsBuildShortsTabHandlers() {
+        listOf(
+            "https://www.youtube.com/@artist",
+            "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv"
+        ).forEach { channelUrl ->
+            val handler = ServiceList.YouTube.channelTabLHFactory.fromUrl("$channelUrl/shorts")
+            assertEquals(ChannelTabs.SHORTS, handler.contentFilters.single().name)
+        }
     }
 
     @Test
