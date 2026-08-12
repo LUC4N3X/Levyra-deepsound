@@ -23,10 +23,12 @@ REQUIRED_FILES = (
     "docs/project/TASKS.md",
     ".agents/README.md",
     ".agents/rules/levyra-workspace.md",
+    ".agents/skills/levyra-design-taste/SKILL.md",
     ".claude/CLAUDE.md",
     ".claude/hooks/user-prompt-submit.sh",
     ".claude/skills/levyra-real-engineering/SKILL.md",
     ".claude/skills/levyra-compose/SKILL.md",
+    ".claude/skills/levyra-design-taste/SKILL.md",
     ".claude/skills/levyra-ci-workflows/SKILL.md",
     ".claude/skills/levyra-context-efficiency/SKILL.md",
     ".claude/skills/levyra-release-check/SKILL.md",
@@ -61,10 +63,12 @@ ANTIGRAVITY_RULE_ROOT_REFERENCE = "@../../AGENTS.md"
 ANTIGRAVITY_SKILLS_PATH = ".agents/skills/"
 CLAUDE_INSTRUCTIONS_PATH = ".claude/CLAUDE.md"
 CLAUDE_ROUTER_PATH = ".claude/hooks/user-prompt-submit.sh"
+CHATGPT_INSTRUCTIONS_PATH = "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md"
 
 AUTOMATIC_ROUTED_SKILLS = (
     "levyra-real-engineering",
     "levyra-compose",
+    "levyra-design-taste",
     "levyra-ci-workflows",
     "levyra-context-efficiency",
     "levyra-pr-review",
@@ -74,6 +78,7 @@ AUTOMATIC_ROUTED_SKILLS = (
 CLAUDE_CANONICAL_BRIDGES = (
     "levyra-real-engineering",
     "levyra-compose",
+    "levyra-design-taste",
     "levyra-ci-workflows",
     "levyra-context-efficiency",
     "levyra-release-check",
@@ -194,6 +199,21 @@ def main() -> int:
                 codex_instructions,
                 AUTOMATIC_ROUTED_SKILLS,
                 "Codex",
+            )
+
+    chatgpt_instructions_path = ROOT / CHATGPT_INSTRUCTIONS_PATH
+    if chatgpt_instructions_path.is_file():
+        try:
+            chatgpt_instructions = chatgpt_instructions_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{CHATGPT_INSTRUCTIONS_PATH}: cannot read file: {exc}")
+        else:
+            require_skill_references(
+                errors,
+                CHATGPT_INSTRUCTIONS_PATH,
+                chatgpt_instructions,
+                AUTOMATIC_ROUTED_SKILLS,
+                "ChatGPT",
             )
 
     claude_instructions_path = ROOT / CLAUDE_INSTRUCTIONS_PATH
@@ -320,7 +340,7 @@ def main() -> int:
         f"{len(actual_skills)} native skills, "
         f"{len(referenced_skills)} documented skill references, "
         f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, "
-        "Codex/Claude/Antigravity routing verified, "
+        "Codex/ChatGPT/Claude/Antigravity routing verified, "
         "no duplicate root planning files."
     )
     return 0
