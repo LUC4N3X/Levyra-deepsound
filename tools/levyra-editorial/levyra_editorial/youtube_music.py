@@ -183,7 +183,6 @@ def _video_id_from(value: Any) -> str:
     return ""
 
 
-
 def _playback_identity_from(value: Any) -> tuple[str, str]:
     playlist_id = ""
     typed: list[tuple[str, str]] = []
@@ -203,10 +202,10 @@ def _playback_identity_from(value: Any) -> tuple[str, str]:
         supported = watch.get("watchEndpointMusicSupportedConfigs")
         config = supported.get("watchEndpointMusicConfig") if isinstance(supported, Mapping) else None
         video_type = (
-    str(config.get("musicVideoType") or "").strip().upper()
-    if isinstance(config, Mapping)
-    else ""
-)
+            str(config.get("musicVideoType") or "").strip().upper()
+            if isinstance(config, Mapping)
+            else ""
+        )
         if video_type:
             typed.append((candidate, video_type))
         else:
@@ -352,7 +351,6 @@ def score_candidate(
     if any(term in blob for term in PENALTY_TERMS) and not any(term in target_blob for term in PENALTY_TERMS):
         score -= 28
     return score
-
 
 
 OFFICIAL_ANNOTATION = re.compile(
@@ -510,6 +508,29 @@ def _official_video_candidate_score(
     return min(100, round(35 + artist_score * 25 + duration_score + kind_score + official_title_score))
 
 
+def _same_audio_recording_candidate(
+    left: Mapping[str, Any],
+    right: Mapping[str, Any],
+) -> bool:
+    left_kind = str(left.get("musicVideoType") or "").upper()
+    right_kind = str(right.get("musicVideoType") or "").upper()
+    if not left_kind.endswith("_ATV") or not right_kind.endswith("_ATV"):
+        return False
+    if _recording_title_key(str(left.get("title") or "")) != _recording_title_key(
+        str(right.get("title") or "")
+    ):
+        return False
+    if _text_key(str(left.get("artist") or "")) != _text_key(str(right.get("artist") or "")):
+        return False
+    left_duration = left.get("durationMs")
+    right_duration = right.get("durationMs")
+    if not isinstance(left_duration, int) or left_duration <= 0:
+        return False
+    if not isinstance(right_duration, int) or right_duration <= 0:
+        return False
+    return abs(left_duration - right_duration) <= 3_000
+
+
 def _best_unambiguous(
     ranked: list[tuple[int, Mapping[str, Any]]],
     *,
@@ -521,11 +542,16 @@ def _best_unambiguous(
     best = ranked[0]
     if best[0] < minimum:
         return None
-    if len(ranked) > 1 and best[0] - ranked[1][0] < 7:
-        best_kind = str(best[1].get("musicVideoType") or "").upper()
-        second_kind = str(ranked[1][1].get("musicVideoType") or "").upper()
-        if not (best_kind.endswith("_OMV") and not second_kind.endswith("_OMV")):
-            return None
+    best_kind = str(best[1].get("musicVideoType") or "").upper()
+    for challenger_score, challenger in ranked[1:]:
+        if best[0] - challenger_score >= 7:
+            break
+        if _same_audio_recording_candidate(best[1], challenger):
+            continue
+        challenger_kind = str(challenger.get("musicVideoType") or "").upper()
+        if best_kind.endswith("_OMV") and not challenger_kind.endswith("_OMV"):
+            continue
+        return None
     return best
 
 
@@ -560,7 +586,6 @@ def select_youtube_music_mapping(
         if value:
             output[key] = value
     return output
-
 
 
 def parse_youtube_web_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
