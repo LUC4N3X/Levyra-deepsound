@@ -115,8 +115,11 @@ When using `trace_processor`, treat SQL correctness as part of the evidence.
 - Prefer standard interval helpers or properly partitioned `SPAN_JOIN` when
   combining interval sets. Materialize intermediate tables where Perfetto
   requires it.
-- Use exact matching with `=` and substring matching with `GLOB`; avoid `LIKE`
-  when Perfetto guidance or wildcard semantics make it unsafe or misleading.
+- Use `=` for exact matching. `GLOB` is case-sensitive and uses `*` and `?`, so
+  substring matching should look like `GLOB '*needle*'`. `LIKE` uses `%` and `_`
+  and is ASCII-case-insensitive by default; use it only when those wildcard or
+  case semantics are intended. Verify the installed schema/query behavior before
+  relying on either operator in evidence.
 - Use `EXTRACT_ARG` for structured args rather than parsing display strings.
 - Prefix columns with aliases in non-trivial joins so query meaning remains
   reviewable.
