@@ -59,9 +59,10 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         .addInterceptor(BrotliInterceptor)
         .cache(Cache(File(appContext.cacheDir, HTTP_CACHE_DIRECTORY), HTTP_CACHE_BYTES))
         .build()
+    private val bundledPreviewSnapshot: CatalogSnapshot? = readBundledPreviewSnapshot()
 
     @Volatile
-    private var memorySnapshot: CatalogSnapshot? = null
+    private var memorySnapshot: CatalogSnapshot? = bundledPreviewSnapshot
 
     @Volatile
     private var refreshDeferred: Deferred<CatalogSnapshot?>? = null
@@ -70,6 +71,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     private var lastRefreshFailureAt: Long = 0L
 
     fun warm() {
+        if (bundledPreviewSnapshot?.isUsable(System.currentTimeMillis()) == true) return
         refreshAsync()
     }
 
@@ -115,6 +117,10 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     private fun refreshAsync(): Deferred<CatalogSnapshot?> = synchronized(refreshGuard) {
         refreshDeferred?.takeIf { it.isActive }?.let { return@synchronized it }
         val now = System.currentTimeMillis()
+        bundledPreviewSnapshot?.takeIf { it.isUsable(now) }?.let {
+            memorySnapshot = it
+            return@synchronized CompletableDeferred(it)
+        }
         if (now - lastRefreshFailureAt in 0 until REFRESH_RETRY_TTL_MS) {
             return@synchronized CompletableDeferred(usableSnapshot(now))
         }
@@ -141,6 +147,10 @@ internal class EditorialChartsRepository private constructor(context: Context) {
     }
 
     private fun usableSnapshot(now: Long): CatalogSnapshot? {
+        bundledPreviewSnapshot?.takeIf { it.isUsable(now) }?.let { preview ->
+            memorySnapshot = preview
+            return preview
+        }
         memorySnapshot?.let { cached ->
             if (cached.isUsable(now)) return cached
             memorySnapshot = null
@@ -148,6 +158,17 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         val stored = readStoredSnapshot(now) ?: return null
         memorySnapshot = stored
         return stored
+    }
+
+    private fun readBundledPreviewSnapshot(): CatalogSnapshot? {
+        val bytes = runCatching {
+            appContext.assets.open(PR_PREVIEW_ASSET_PATH).use { it.readBounded(MAX_CATALOG_BYTES) }
+        }.getOrNull() ?: return null
+        if (bytes.isEmpty()) return null
+        return EditorialCatalogParser.parse(
+            body = bytes.toString(StandardCharsets.UTF_8),
+            loadedAt = System.currentTimeMillis(),
+        )
     }
 
     private suspend fun fetchRemoteSnapshot(): CatalogSnapshot? =
@@ -237,6 +258,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         private const val HTTP_CACHE_BYTES = 4L * 1024L * 1024L
         private const val REFRESH_RETRY_TTL_MS = 5L * 60L * 1000L
         private const val MAX_CATALOG_BYTES = 2 * 1024 * 1024
+        private const val PR_PREVIEW_ASSET_PATH = "editorial/catalog-preview.json"
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"
     }
