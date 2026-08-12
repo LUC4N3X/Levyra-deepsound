@@ -1,6 +1,6 @@
 ---
 name: levyra-openclaw-orchestrator
-description: Coordinate Levyra work through OpenClaw using a dedicated repository workspace, explicit agent delegation, project planning under docs/project/, domain skills, coding runtimes, independent review, evidence collection, and owner-controlled publication.
+description: Coordinate Levyra work through OpenClaw using a dedicated repository workspace, compact delegation, specialized review and CI agents, project-native skills, evidence collection, durable memory, and owner-controlled publication.
 ---
 
 # Levyra OpenClaw orchestration workflow
@@ -10,21 +10,61 @@ description: Coordinate Levyra work through OpenClaw using a dedicated repositor
 OpenClaw coordinates bounded work. It does not replace Levyra requirements,
 domain skills, coding runtimes, CI, independent review, or owner approval.
 
-Use a dedicated `levyra` agent whose workspace is the real Levyra checkout.
-Delegate with an explicit target agent and repository working directory.
+Use the existing Levyra worker as the primary implementation/orchestration agent.
+Use `levyra-reviewer` for independent review and `levyra-ci` for CI, PR-state,
+logs, and validation evidence. Do not add more agents unless a repeated workload
+has a distinct context, permission, or evidence boundary that these three cannot
+cover cleanly.
+
+## Context economy
+
+Apply `levyra-context-efficiency` before delegation.
+
+- Primary work keeps requirements, current architecture, root cause, changed
+  files, and focused validation.
+- Reviewer handoff contains the requested outcome, latest diff or commit, the
+  smallest relevant surrounding code, invariants, and known test evidence.
+- CI handoff contains PR/SHA, required checks, failing job/step, and only the log
+  ranges that determine the conclusion.
+- Do not send full chat history, repeated repository orientation, successful
+  repetitive logs, or unchanged files to another agent.
+- Expand context only when the receiving agent identifies a concrete unanswered
+  question.
+- Keep security, signing, R8, Perfetto, release, protocol, and exact failure
+  evidence raw whenever compression could change the conclusion.
+
+A fresh specialized agent with a compact verified handoff is preferred over
+carrying a long exploratory session into review or CI diagnosis.
+
+## Memory policy
+
+Memory is evidence, not a second source of truth.
+
+Promote only durable, verified information such as recurring failure patterns,
+stable architecture ownership, validated diagnostic techniques, and explicit
+owner preferences. Keep transient branch heads, current PR state, CI status,
+temporary hypotheses, generated logs, secrets, credentials, signing material,
+and release tokens out of long-term memory.
+
+Use dated memory for current work and `MEMORY.md` only for durable knowledge.
+OpenClaw Dreaming may consolidate memory, but every promoted project fact remains
+subordinate to current repository evidence.
 
 ## Before delegation
 
 1. Read root and applicable nested `AGENTS.md`.
-2. Read `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and
-   `docs/project/TASKS.md`.
-3. Load `levyra-project-manager` and every matching domain skill.
+2. Read only the relevant sections of `docs/project/SPEC.md`,
+   `docs/project/ROADMAP.md`, and `docs/project/TASKS.md`.
+3. Load `levyra-project-manager`, `levyra-context-efficiency`, and every matching
+   domain skill required by the task.
 4. Inspect current branch, worktree, open pull request, review state, and
    validation evidence.
 5. Confirm the exact outcome, scope boundary, and publication authorization in
    the current owner request.
+6. Stop discovery when enough verified evidence exists to implement or review
+   the requested outcome.
 
-Do not reuse stale branch, PR, review, or CI assumptions.
+Do not reuse stale branch, PR, review, CI, model-summary, or memory assumptions.
 
 ## Delegated task contract
 
@@ -42,32 +82,75 @@ Every coding-runtime task must state:
 - required delivery evidence;
 - whether branch, commit, push, or draft PR creation is authorized.
 
+Keep the contract compact. Link or name canonical repository files instead of
+copying large instruction blocks into the handoff.
+
 ## Execution sequence
 
-1. Delegate orientation or planning to the `levyra` agent.
+1. Use the existing Levyra worker for orientation and implementation.
 2. Use one coding runtime for one reviewable implementation phase.
 3. Run focused checks and inspect the diff.
 4. Run applicable repository gates.
-5. Delegate independent latest-commit review to a fresh reviewer.
-6. Return actionable findings to the implementation runtime.
-7. Re-run affected checks after every change.
-8. Publish only to a dedicated branch and draft PR when authorized.
-9. Return exact status to the coordinator and owner.
-10. Stop before merge, tag, release, store upload, or repository-setting changes
+5. Before code is presented as final, run the required `code-review` stage.
+6. Delegate independent latest-diff review to `levyra-reviewer` with a fresh,
+   bounded handoff.
+7. Return actionable findings to the implementation runtime and re-run affected
+   checks after every material change.
+8. Delegate CI, PR-state, and log diagnosis to `levyra-ci`; do not pollute the
+   implementation context with broad CI output.
+9. Publish only to an authorized branch/PR or directly to an explicitly
+   authorized target.
+10. Return exact status to the coordinator and owner.
+11. Stop before merge, tag, release, store upload, or repository-setting changes
     unless separately authorized for that exact action.
+
+## Specialized agents
+
+### Primary Levyra worker
+
+Owns implementation and orchestration. It may edit only within the requested
+scope and may delegate review/CI work. It must never ask another agent to bypass
+repository publication controls.
+
+### `levyra-reviewer`
+
+Independent and read-only by default. It reviews the latest requested diff and
+surrounding ownership. It reports severity, confidence, exact location,
+triggering scenario, consequence, smallest compatible fix, and missing
+regression coverage. It does not implement its own findings or certify stale
+commits.
+
+### `levyra-ci`
+
+Read-only by default. It inspects PR/SHA state, required checks, Actions jobs,
+exact failing steps, logs, review state, and reproducible validation evidence.
+It separates stale runs from current-head evidence and returns only actionable
+state changes.
 
 ## Tool policy
 
-The Levyra agent may use repository, command, Git, build/test, GitHub PR, review,
-and CI tools needed for the current task.
+The primary Levyra worker may use repository, command, Git, build/test, GitHub
+PR, review, and CI tools needed for the current authorized task.
+
+`levyra-reviewer` and `levyra-ci` should use read-only filesystem policies and
+agent-scoped read-only sandboxes when the VPS supports them. They may use shell
+commands only for inspection and non-mutating validation.
 
 Keep personal messaging, email, calendar, unrelated browser accounts,
 system-wide administration, release credentials, signing material, and
-repository settings outside the Levyra agent unless the owner explicitly
-requires and authorizes a narrowly scoped action.
+repository settings outside Levyra agents unless the owner explicitly requires
+and authorizes a narrowly scoped action.
 
-Prefer separate agents for research and system administration. Do not use a
-wildcard target allowlist when a narrow list is sufficient.
+## Recurring audit
+
+A twice-daily `levyra-ci` audit may inspect open PRs, required CI, unresolved
+review threads, and stale branches. Use isolated `light-context` runs so routine
+monitoring does not load the full workspace memory. The audit is read-only and
+must not edit code, create branches, push, merge, release, or change settings.
+
+Use `scripts/setup-openclaw-levyra.sh` to provision or refresh this profile on
+the OpenClaw VPS. The script preserves an existing `levyra-worker` or `levyra`
+primary agent and adds only the specialized reviewer and CI agents.
 
 ## Review rules
 
@@ -94,7 +177,7 @@ Use these states precisely:
 - merged;
 - released.
 
-Never collapse several states into "done".
+Never collapse several states into `done`.
 
 ## Final handoff
 
