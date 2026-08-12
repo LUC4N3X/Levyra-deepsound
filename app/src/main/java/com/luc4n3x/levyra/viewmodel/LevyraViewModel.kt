@@ -6654,6 +6654,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun preferredVideoPlaybackTrack(track: Track): Track? {
+        verifiedCounterpartVideoTrack(track)?.let { return it }
         val sourceId = PlaybackSourceIdentity.sourceVideoId(track)
         val cacheKey = track.audioVideoId.trim()
             .takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
@@ -7082,6 +7083,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 internal fun playbackIdentity(track: Track): String = LevyraPersonalOrbit.identityKey(track)
 
 private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
+
+internal fun verifiedCounterpartVideoTrack(track: Track): Track? {
+    val audioId = track.audioVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
+    val videoId = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
+    if (audioId.isBlank() || videoId.isBlank() || audioId == videoId) return null
+    return track.copy(
+        videoUrl = "https://www.youtube.com/watch?v=$videoId",
+        audioVideoId = audioId,
+    )
+}
 
 internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {
     val counterpart = track.counterpartVideoId.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
