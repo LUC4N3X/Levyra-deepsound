@@ -72,6 +72,15 @@ Use the most specific skill or combination of skills:
   persistent personal data.
 - `levyra-compose`: Android Compose UI, state, navigation, animation, lifecycle,
   accessibility, RTL and localization.
+- `levyra-android-performance`: Android jank, frame misses, latency, startup,
+  Perfetto/System Trace, CPU/thread state, blocking, memory, I/O, power, and
+  measured runtime-performance investigations. Load it automatically together
+  with the affected domain skill such as `levyra-compose` or `levyra-player`.
+- `levyra-r8-proguard`: R8, Proguard, minification, resource shrinking,
+  keep/consumer rules, release-only shrinker crashes, mapping/missing classes,
+  reflection/serialization/JNI shrinker issues, and measured APK-size work.
+  Load `levyra-release-check` for minified runtime validation and
+  `levyra-ci-workflows` when build tooling changes.
 - `levyra-design-taste`: visual redesign, UI polish, hierarchy, spacing,
   typography, color, shape, motion, screenshot/reference work, and requests to
   make Levyra more premium, modern, distinctive, cohesive, or less AI-generated.
@@ -92,11 +101,14 @@ Use the most specific skill or combination of skills:
   skill is sufficient by itself.
 
 Several skills may apply. Do not use a planning, real-engineering, coordinator,
-context-efficiency, design-taste, or security skill to avoid reading a more
-precise domain skill. For visual product work, `levyra-design-taste` is a
-supplementary quality layer: current architecture, platform UI guidance,
-accessibility, localization, lifecycle, performance and product behavior always
-win over decorative novelty.
+context-efficiency, design-taste, Android-performance, R8/Proguard, or security
+skill to avoid reading a more precise domain skill. For visual product work,
+`levyra-design-taste` is a supplementary quality layer: current architecture,
+platform UI guidance, accessibility, localization, lifecycle, performance and
+product behavior always win over decorative novelty. For runtime-performance
+work, measured trace/benchmark evidence wins over intuition. For shrinker work,
+release correctness and the actual runtime lookup mechanism win over rule-count
+or file-size heuristics.
 
 ## Core product priorities
 
@@ -142,6 +154,12 @@ platform is changing.
 - Require security review for provider-controlled URLs, redirects, MIME,
   permissions, secrets, tokens, workflow trust boundaries, deep links and
   update downloads.
+- For Android performance conclusions, require direct evidence from the narrowest
+  useful tool and distinguish debug-only behavior from release-like behavior.
+- For R8/Proguard changes, inspect actual consumer rules/reflection/JNI/
+  serialization mechanisms, prefer official analyzer evidence when available,
+  and validate the affected minified release path instead of adding blanket
+  keep rules or disabling shrinking.
 
 ## Require security review
 
