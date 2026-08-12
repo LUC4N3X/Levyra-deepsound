@@ -29,8 +29,8 @@ private const val SHORTS_CHANNEL_CONCURRENCY = 4
 private const val SHORTS_PER_QUERY = 8
 private const val SHORTS_PER_CHANNEL = 8
 private const val MAX_SHORT_DURATION_SECONDS = 180L
-private const val SHORTS_SEARCH_TIMEOUT_MS = 5_500L
-private const val SHORTS_CHANNEL_TIMEOUT_MS = 6_500L
+private const val SHORTS_SEARCH_TIMEOUT_MS = 12_000L
+private const val SHORTS_CHANNEL_TIMEOUT_MS = 15_000L
 private const val YOUTUBE_FRONTEND = "https://www.youtube.com"
 private val YOUTUBE_CHANNEL_HOSTS = setOf("youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com")
 private val YOUTUBE_CHANNEL_PATH_PREFIXES = setOf("channel", "c", "user")
@@ -196,7 +196,7 @@ internal class YoutubeShortsRepository(private val context: Context) {
                 val tracks = tabInfo.relatedItems
                     .asSequence()
                     .filterIsInstance<StreamInfoItem>()
-                    .filter(::isShortCandidate)
+                    .filter { item -> isYoutubeShortsTabCandidate(item.duration) }
                     .mapNotNull(::shortTrack)
                     .distinctBy { track -> track.id }
                     .take(limit)
@@ -266,6 +266,10 @@ internal fun isYoutubeShortCandidate(
 ): Boolean {
     val verifiedShort = isShortFormContent || url.contains("/shorts/", ignoreCase = true)
     if (!verifiedShort) return false
+    return durationSeconds <= 0L || durationSeconds <= MAX_SHORT_DURATION_SECONDS
+}
+
+internal fun isYoutubeShortsTabCandidate(durationSeconds: Long): Boolean {
     return durationSeconds <= 0L || durationSeconds <= MAX_SHORT_DURATION_SECONDS
 }
 
