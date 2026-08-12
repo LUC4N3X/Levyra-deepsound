@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.AlbumHit
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -152,6 +153,46 @@ class YoutubeMusicSearchRendererTest {
         requireNotNull(track)
         assertEquals("Coldplay", track.artist)
         assertEquals(listOf("UC_COLDPLAY"), track.artistBrowseIds)
+    }
+
+    @Test
+    fun `carousel item keeps every collaborating artist`() {
+        val track = repository.parseCarouselItem(
+            carouselItem(
+                artistRun("Coldplay", "UC_COLDPLAY"),
+                textRun(" & "),
+                artistRun("BTS", "UC_BTS")
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals("Coldplay, BTS", track.artist)
+        assertEquals(listOf("UC_COLDPLAY", "UC_BTS"), track.artistBrowseIds)
+    }
+
+    @Test
+    fun `album track keeps every collaborating artist`() {
+        val track = repository.parseAlbumTrackRenderer(
+            renderer(
+                line("O"),
+                packedLine(
+                    artistRun("Coldplay", "UC_COLDPLAY"),
+                    textRun(" & "),
+                    artistRun("BTS", "UC_BTS")
+                )
+            ),
+            album = AlbumHit(
+                title = "My Universe",
+                artist = "Coldplay",
+                year = "2021",
+                thumbnailUrl = "https://levyra.test/album.jpg",
+                query = "Coldplay My Universe"
+            )
+        )
+
+        requireNotNull(track)
+        assertEquals("Coldplay, BTS", track.artist)
+        assertEquals(listOf("UC_COLDPLAY", "UC_BTS"), track.artistBrowseIds)
     }
 
     private fun renderer(vararg flexLines: JSONObject): JSONObject = JSONObject()

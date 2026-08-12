@@ -1576,7 +1576,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
     }
 
-    private fun parseAlbumTrackRenderer(renderer: JSONObject, album: AlbumHit): Track? {
+    internal fun parseAlbumTrackRenderer(renderer: JSONObject, album: AlbumHit): Track? {
         val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
             .ifBlank { extractPrimaryMusicVideoId(renderer) }
         if (videoId.isBlank()) return null
