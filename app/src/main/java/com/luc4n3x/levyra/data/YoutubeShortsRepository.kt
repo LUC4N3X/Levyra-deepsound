@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.schabi.newpipe.extractor.ServiceList
-import org.schabi.newpipe.extractor.channel.ChannelInfo
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
+import org.schabi.newpipe.extractor.channel.ChannelTabInfo
 import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
@@ -189,9 +189,11 @@ internal class YoutubeShortsRepository(private val context: Context) {
         return withTimeout(SHORTS_CHANNEL_TIMEOUT_MS) {
             runInterruptible(Dispatchers.IO) {
                 NewPipeRuntime.ensure(context)
+                val service = ServiceList.YouTube
                 val shortsUrl = channelUrl.trimEnd('/') + "/shorts"
-                val channelInfo = ChannelInfo.getInfo(shortsUrl)
-                val tracks = channelInfo.relatedItems
+                val handler = service.channelTabLHFactory.fromUrl(shortsUrl)
+                val tabInfo = ChannelTabInfo.getInfo(service, handler)
+                val tracks = tabInfo.relatedItems
                     .asSequence()
                     .filterIsInstance<StreamInfoItem>()
                     .filter(::isShortCandidate)
