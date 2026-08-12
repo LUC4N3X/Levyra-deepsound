@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.parseCompactViewCount
+import com.luc4n3x.levyra.domain.videoViewCountBonus
 import com.luc4n3x.levyra.viewmodel.isPlaybackCandidateCompatible
 import com.luc4n3x.levyra.viewmodel.playbackCandidateScore
 import com.luc4n3x.levyra.viewmodel.selectPreferredVideoPlaybackCandidate
@@ -453,6 +455,97 @@ class RecordingIdentityTest {
         assertEquals(
             "5NV6Rdv1a3I",
             selectPreferredVideoPlaybackCandidate(target, listOf(officialAudio, reUpload))?.id
+        )
+    }
+
+    @Test
+    fun compactViewCountsAreReadInEveryPublishedLabelShape() {
+        assertEquals(772_000_000L, parseCompactViewCount("772 Mln di visualizzazioni"))
+        assertEquals(772_000_000L, parseCompactViewCount("772M views"))
+        assertEquals(2_600_000L, parseCompactViewCount("2,6 Mln di visualizzazioni"))
+        assertEquals(2_600_000L, parseCompactViewCount("2.6M views"))
+        assertEquals(74_000L, parseCompactViewCount("74K views"))
+        assertEquals(772_000_000L, parseCompactViewCount("772 Mio. Aufrufe"))
+        assertEquals(1_200L, parseCompactViewCount("1,2 mil visualizações"))
+        assertEquals(791L, parseCompactViewCount("791 visualizzazioni"))
+        // A duration, a bare year and an empty label are not counts.
+        assertEquals(-1L, parseCompactViewCount("4:01"))
+        assertEquals(-1L, parseCompactViewCount("2023"))
+        assertEquals(-1L, parseCompactViewCount(""))
+    }
+
+    @Test
+    fun viewCountBonusStaysBelowTheArtistChannelSignal() {
+        assertEquals(0, videoViewCountBonus(-1L))
+        assertEquals(0, videoViewCountBonus(0L))
+        assertTrue(videoViewCountBonus(772_000_000L) > videoViewCountBonus(2_600_000L))
+        assertTrue(videoViewCountBonus(Long.MAX_VALUE) < 6_000)
+    }
+
+    @Test
+    fun viewCountSeparatesTheOfficialVideoFromReUploadsOnTheSameChannel() {
+        // The Top 50 entry for "Dai Dai" reaches playback without a YouTube Music mapping, so it
+        // carries no browse ids and no pairing. Three candidates then share type, channel, artist
+        // and title, and the official upload is not the first one returned.
+        val target = artistTrack(
+            id = "levyra-4500512f5aa38edfe312",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            durationMs = 223_448L,
+            videoType = ""
+        ).copy(artistBrowseIds = emptyList())
+        val reUpload = target.copy(
+            id = "ux255_NUR2o",
+            title = "Dai dai",
+            artist = "Shakira e Burna Boy",
+            videoUrl = "https://www.youtube.com/watch?v=ux255_NUR2o",
+            durationMs = 220_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV",
+            youtubeViewCount = 2_600_000L
+        )
+        val official = reUpload.copy(
+            id = "fcnDmrtj6Sk",
+            title = "Dai Dai",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            durationMs = 241_000L,
+            youtubeViewCount = 772_000_000L
+        )
+
+        assertEquals(
+            "fcnDmrtj6Sk",
+            selectPreferredVideoPlaybackCandidate(target, listOf(reUpload, official))?.id
+        )
+    }
+
+    @Test
+    fun viewCountNeverPromotesAnAudioUploadOverTheOfficialVideo() {
+        // SZA's "Kill Bill (Official Audio)" outruns the official video on views.
+        val target = artistTrack(
+            id = "AdEKgwUqPKI",
+            title = "Kill Bill",
+            artist = "SZA",
+            durationMs = 154_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val officialAudio = target.copy(
+            id = "SQnc1QibapQ",
+            title = "Kill Bill (Official Audio)",
+            videoUrl = "https://www.youtube.com/watch?v=SQnc1QibapQ",
+            durationMs = 156_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV",
+            youtubeViewCount = 167_000_000L
+        )
+        val official = officialAudio.copy(
+            id = "MSRcC626prw",
+            title = "Kill Bill (Official Video)",
+            videoUrl = "https://www.youtube.com/watch?v=MSRcC626prw",
+            durationMs = 276_000L,
+            youtubeViewCount = 142_000_000L
+        )
+
+        assertEquals(
+            "MSRcC626prw",
+            selectPreferredVideoPlaybackCandidate(target, listOf(officialAudio, official))?.id
         )
     }
 

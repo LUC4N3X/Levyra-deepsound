@@ -104,6 +104,7 @@ import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.domain.videoViewCountBonus
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
 import com.luc4n3x.levyra.feature.providers.CachedPlaybackProvider
@@ -394,7 +395,8 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
     return recordingScore + videoPreference +
         (if (officialChannel) 6_000 else 0) -
-        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0)
+        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) +
+        videoViewCountBonus(candidate.youtubeViewCount)
 }
 
 /**
