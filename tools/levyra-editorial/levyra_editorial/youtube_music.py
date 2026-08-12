@@ -959,9 +959,10 @@ class YoutubeMusicWebClient:
                 self._cache[cache_key] = None
             return None
 
+        primary_query = f"{title} {artist}".strip()
         audio_result: dict[str, Any] | None = None
         try:
-            payload = self._search(f"{title} {artist}")
+            payload = self._search(primary_query)
             audio_result = select_youtube_music_mapping(
                 title,
                 artist,
@@ -970,6 +971,27 @@ class YoutubeMusicWebClient:
             )
         except (requests.RequestException, ValueError, YoutubeMusicError) as error:
             LOGGER.warning("Central YouTube Music audio query skipped: %s", type(error).__name__)
+
+        normalized_query = " ".join(re.sub(r"[^\w\s]+", " ", primary_query).split())
+        if (
+            audio_result is None
+            and normalized_query
+            and normalized_query != primary_query
+            and self._reserve_request()
+        ):
+            try:
+                payload = self._search(normalized_query)
+                audio_result = select_youtube_music_mapping(
+                    title,
+                    artist,
+                    duration_ms,
+                    parse_search_candidates(payload),
+                )
+            except (requests.RequestException, ValueError, YoutubeMusicError) as error:
+                LOGGER.warning(
+                    "Central YouTube Music normalized audio query skipped: %s",
+                    type(error).__name__,
+                )
 
         verified_audio = combine_verified_youtube_mapping(audio_result, None)
         official_video: dict[str, Any] | None = None
