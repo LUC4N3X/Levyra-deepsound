@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Levyra UserPromptSubmit hook.
-# Routes real user requests to matching project skills before broad reading or
-# editing. The hook must never break a session: it always exits 0 and prints
-# valid JSON or nothing.
-
 set -uo pipefail
 
 payload="$(cat 2>/dev/null || true)"
@@ -34,7 +29,7 @@ if any(marker in prompt for marker in AUTOMATED_MARKERS):
 ROUTES = [
     (
         "levyra-real-engineering",
-        "non-trivial engineering, root-cause debugging, requirements, or architecture",
+        "non-trivial engineering, debugging, requirements, or architecture",
         r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug",
     ),
     (
@@ -64,12 +59,12 @@ ROUTES = [
     ),
     (
         "levyra-r8-proguard",
-        "R8, Proguard, minification, shrinking, or release-only shrinker behavior",
+        "R8, Proguard, minification, shrinking, or release-only behavior",
         r"\br8\b|proguard|minif|shrink resources|resource shrink|resource shrinking|keep rule|consumer rule|mapping\.txt|missing rules|missing class|missing classes|release.?only.*(?:crash|fail)|crash.*release|apk size|aab size|obfuscat|shrinker|dontwarn|keepattributes|javascriptinterface|jni.*(?:keep|shrink)|reflection.*(?:keep|shrink)|serialization.*(?:keep|shrink)",
     ),
     (
         "levyra-android-intent-security",
-        "Android Intent, PendingIntent, deep-link, or component-boundary security",
+        "Android Intent, PendingIntent, deep-link, or component security",
         r"pendingintent|pending intent|onnewintent|nested intent|intent redirection|intent redirect|intent sanitizer|intentsanitizer|android:exported|exported (?:activity|service|receiver|provider|component)|attivit[aà] esportat|servizio esportat|receiver esportat|provider esportat|mutable pendingintent|immutable pendingintent|flag_mutable|flag_immutable|uri grant|granturipermission|grant uri|fileprovider|contentprovider|signature permission|binder caller|callinguid|caller verification|deep.?link.*(?:intent|security|exported|permission)|intent.*(?:security|sicurezz|exported|permission|forward|redirect|nested)|component boundary|component-boundary",
     ),
     (
@@ -89,8 +84,8 @@ ROUTES = [
     ),
     (
         "levyra-context-efficiency",
-        "noisy command output or broad repository diagnostics",
-        r"\bbuild\b|\bgradle\b|\btest\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup",
+        "repository exploration or high-volume context",
+        r"\bbuild\b|\bgradle\b|\btest\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup|analy[sz]|analizz|investigat|indag|inspect|esamina|repository|\brepo\b|codebase|root cause|causa radice|implement|refactor|riprogett|find.*(?:class|function|file)|trova.*(?:classe|funzione|file)",
     ),
     (
         "levyra-security-review",
@@ -110,40 +105,22 @@ ROUTES = [
 ]
 
 matched = [(skill, topic) for skill, topic, pattern in ROUTES if re.search(pattern, prompt)]
-if not matched:
-    sys.exit(0)
 
-lines = ["Levyra automatic skill routing - this request matches project skills:", ""]
-for skill, topic in matched:
-    lines.append("- %s -> invoke the %s skill" % (topic, skill))
-lines += [
-    "",
-    "Invoke every matching skill with the Skill tool BEFORE reading widely, editing, "
-    "or running large commands. Do not wait for the owner to name a skill or type a "
-    "slash command. Read docs/ai/AI_ENGINEERING_GUARDRAILS.md before production-code "
-    "implementation or broad review; state material assumptions/tradeoffs, prefer the "
-    "simplest existing-owner path, make surgical changes, and define step-to-verification "
-    "success criteria. For real-engineering bugs/failures, use the hypothesis-driven "
-    "debugging lane before stacking speculative fixes. For CI/build-performance work, "
-    "measure before changing configuration and remeasure the same path afterward. For "
-    "Android runtime performance, use levyra-android-performance, validate Perfetto "
-    "schema/module/query assumptions, and keep trace/thread/frame evidence separate from "
-    "hypotheses. For R8/Proguard/minification work, use levyra-r8-proguard, prefer "
-    "quantitative analyzer evidence when available, and validate the affected release/"
-    "minified runtime path instead of adding blanket keep rules or disabling shrinking. "
-    "For Android Intent/PendingIntent/deep-link/component-boundary work, use "
-    "levyra-android-intent-security together with levyra-security-review and the affected "
-    "domain skill; treat incoming/nested Intents, URI grants, tokens, and caller identity "
-    "as untrusted until verified, and do not label an exposure pattern a vulnerability "
-    "without a reachable attacker-controlled path. For Compose performance/accessibility "
-    "work, require direct evidence where applicable. For visual redesign/polish work, "
-    "load levyra-design-taste together with the matching platform UI skill and preserve "
-    "product behavior, accessibility and performance over decorative novelty. For "
-    "emulator/device validation, prefer semantic UI targets over raw coordinates. For "
-    "security work, preserve exact evidence and follow threat model, identification, safe "
-    "validation, minimal remediation, human review, and revalidation. If a skill turns "
-    "out not to apply once read, say so in one line and continue.",
+lines = [
+    "Levyra context budget: search/path/symbol first; read bounded ranges; expand only on a concrete need; do not reread unchanged evidence.",
+    "Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics raw when compression could change the conclusion.",
 ]
+
+if matched:
+    lines += ["", "Matching skills:"]
+    for skill, topic in matched:
+        lines.append("- %s -> %s" % (topic, skill))
+    lines += [
+        "",
+        "Invoke matching skills before broad reading/editing. Apply AI_ENGINEERING_GUARDRAILS.md. "
+        "Use the smallest verified change. New source code should be self-explanatory: add no "
+        "explanatory comments; preserve only required license/tooling/suppression comments.",
+    ]
 
 print(json.dumps({
     "hookSpecificOutput": {
