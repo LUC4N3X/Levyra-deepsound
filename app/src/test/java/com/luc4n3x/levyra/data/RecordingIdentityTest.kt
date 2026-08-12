@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.parseCompactViewCount
+import com.luc4n3x.levyra.domain.videoViewCountBonus
 import com.luc4n3x.levyra.viewmodel.isPlaybackCandidateCompatible
 import com.luc4n3x.levyra.viewmodel.playbackCandidateScore
 import com.luc4n3x.levyra.viewmodel.selectPreferredVideoPlaybackCandidate
@@ -262,4 +264,303 @@ class RecordingIdentityTest {
             selectPreferredVideoPlaybackCandidate(target, listOf(official))?.id
         )
     }
+
+    @Test
+    fun daDioPrefersTheOfficialVideoOverTheAudioLengthReUpload() {
+        val target = artistTrack(
+            id = "0Jp_YOOEovg",
+            title = "Da Dio",
+            artist = "Bresh",
+            durationMs = 174_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val official = target.copy(
+            id = "-ZwDJaZ2coY",
+            videoUrl = "https://www.youtube.com/watch?v=-ZwDJaZ2coY",
+            durationMs = 179_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val audioLengthReUpload = target.copy(
+            id = "XxSIyhr_bFc",
+            videoUrl = "https://www.youtube.com/watch?v=XxSIyhr_bFc",
+            durationMs = 174_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "-ZwDJaZ2coY",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official, audioLengthReUpload))?.id
+        )
+    }
+
+    @Test
+    fun daiDaiPrefersTheOfficialVideoOverTheAudioLengthReUpload() {
+        val target = artistTrack(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira e Burna Boy",
+            durationMs = 224_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val official = target.copy(
+            id = "fcnDmrtj6Sk",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            durationMs = 241_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val audioLengthReUpload = target.copy(
+            id = "0QZYJRnv-rA",
+            title = "Dai dai",
+            videoUrl = "https://www.youtube.com/watch?v=0QZYJRnv-rA",
+            durationMs = 224_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "fcnDmrtj6Sk",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official, audioLengthReUpload))?.id
+        )
+    }
+
+    @Test
+    fun videoScoringIgnoresAudioDurationProximity() {
+        val target = artistTrack(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira e Burna Boy",
+            durationMs = 224_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val longerOfficial = target.copy(
+            id = "fcnDmrtj6Sk",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            durationMs = 241_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val exactLengthOfficial = longerOfficial.copy(
+            id = "0QZYJRnv-rA",
+            videoUrl = "https://www.youtube.com/watch?v=0QZYJRnv-rA",
+            durationMs = 224_000L
+        )
+
+        assertEquals(
+            videoPlaybackCandidateScore(target, exactLengthOfficial),
+            videoPlaybackCandidateScore(target, longerOfficial)
+        )
+        assertTrue(
+            playbackCandidateScore(target, exactLengthOfficial) >
+                playbackCandidateScore(target, longerOfficial)
+        )
+    }
+
+    @Test
+    fun featuringCreditsDoNotHideTheOfficialVideo() {
+        val target = artistTrack(
+            id = "tlmoVWfCejI",
+            title = "Baby (feat. J Balvin)",
+            artist = "Sfera Ebbasta",
+            durationMs = 194_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val official = target.copy(
+            id = "1RpKdCl2uN4",
+            title = "Baby (Official Video)",
+            artist = "J Balvin & Sfera Ebbasta",
+            videoUrl = "https://www.youtube.com/watch?v=1RpKdCl2uN4",
+            durationMs = 201_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val fanUpload = target.copy(
+            id = "fZL9IYLAPHE",
+            title = "Sfera Ebbasta - Baby (Feat J Balvin)",
+            artist = "Actis",
+            videoUrl = "https://www.youtube.com/watch?v=fZL9IYLAPHE",
+            durationMs = 191_000L,
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = emptyList()
+        )
+
+        assertTrue(isPlaybackCandidateCompatible(target, official))
+        assertEquals(
+            "1RpKdCl2uN4",
+            selectPreferredVideoPlaybackCandidate(target, listOf(official, fanUpload))?.id
+        )
+    }
+
+    @Test
+    fun audioUploadOnTheArtistChannelLosesToTheOfficialVideo() {
+        val target = artistTrack(
+            id = "PvM79DJ2PmM",
+            title = "The Less I Know The Better",
+            artist = "Tame Impala",
+            durationMs = 217_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val audioUpload = target.copy(
+            id = "2SUwOgmvzK4",
+            title = "The Less I Know The Better (Audio)",
+            videoUrl = "https://www.youtube.com/watch?v=2SUwOgmvzK4",
+            durationMs = 218_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val official = target.copy(
+            id = "sBzrzS1Ag_g",
+            title = "The Less I Know The Better (Official Video)",
+            videoUrl = "https://www.youtube.com/watch?v=sBzrzS1Ag_g",
+            durationMs = 343_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertEquals(
+            "sBzrzS1Ag_g",
+            selectPreferredVideoPlaybackCandidate(target, listOf(audioUpload, official))?.id
+        )
+    }
+
+    @Test
+    fun audioOnlyOfficialUploadStillBeatsAUserVideo() {
+        val target = artistTrack(
+            id = "4D7u5KF7SP8",
+            title = "Get Lucky (feat. Pharrell Williams and Nile Rodgers)",
+            artist = "Daft Punk",
+            durationMs = 370_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val officialAudio = target.copy(
+            id = "5NV6Rdv1a3I",
+            title = "Get Lucky (Official Audio) (feat. Nile Rodgers)",
+            videoUrl = "https://www.youtube.com/watch?v=5NV6Rdv1a3I",
+            durationMs = 249_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val reUpload = target.copy(
+            id = "CCHdMIEGaaM",
+            title = "Daft Punk - Get Lucky (Official Video) feat. Pharrell Williams",
+            artist = "convar HUN",
+            videoUrl = "https://www.youtube.com/watch?v=CCHdMIEGaaM",
+            durationMs = 248_000L,
+            videoType = "MUSIC_VIDEO_TYPE_UGC",
+            artistBrowseIds = emptyList()
+        )
+
+        assertEquals(
+            "5NV6Rdv1a3I",
+            selectPreferredVideoPlaybackCandidate(target, listOf(officialAudio, reUpload))?.id
+        )
+    }
+
+    @Test
+    fun compactViewCountsAreReadInEveryPublishedLabelShape() {
+        assertEquals(772_000_000L, parseCompactViewCount("772 Mln di visualizzazioni"))
+        assertEquals(772_000_000L, parseCompactViewCount("772M views"))
+        assertEquals(2_600_000L, parseCompactViewCount("2,6 Mln di visualizzazioni"))
+        assertEquals(2_600_000L, parseCompactViewCount("2.6M views"))
+        assertEquals(74_000L, parseCompactViewCount("74K views"))
+        assertEquals(772_000_000L, parseCompactViewCount("772 Mio. Aufrufe"))
+        assertEquals(1_200L, parseCompactViewCount("1,2 mil visualizações"))
+        assertEquals(791L, parseCompactViewCount("791 visualizzazioni"))
+        assertEquals(-1L, parseCompactViewCount("4:01"))
+        assertEquals(-1L, parseCompactViewCount("2023"))
+        assertEquals(-1L, parseCompactViewCount(""))
+    }
+
+    @Test
+    fun viewCountBonusStaysBelowTheArtistChannelSignal() {
+        assertEquals(0, videoViewCountBonus(-1L))
+        assertEquals(0, videoViewCountBonus(0L))
+        assertTrue(videoViewCountBonus(772_000_000L) > videoViewCountBonus(2_600_000L))
+        assertTrue(videoViewCountBonus(Long.MAX_VALUE) < 6_000)
+    }
+
+    @Test
+    fun viewCountSeparatesTheOfficialVideoFromReUploadsOnTheSameChannel() {
+        val target = artistTrack(
+            id = "levyra-4500512f5aa38edfe312",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            durationMs = 223_448L,
+            videoType = ""
+        ).copy(artistBrowseIds = emptyList())
+        val reUpload = target.copy(
+            id = "ux255_NUR2o",
+            title = "Dai dai",
+            artist = "Shakira e Burna Boy",
+            videoUrl = "https://www.youtube.com/watch?v=ux255_NUR2o",
+            durationMs = 220_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV",
+            youtubeViewCount = 2_600_000L
+        )
+        val official = reUpload.copy(
+            id = "fcnDmrtj6Sk",
+            title = "Dai Dai",
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            durationMs = 241_000L,
+            youtubeViewCount = 772_000_000L
+        )
+
+        assertEquals(
+            "fcnDmrtj6Sk",
+            selectPreferredVideoPlaybackCandidate(target, listOf(reUpload, official))?.id
+        )
+    }
+
+    @Test
+    fun viewCountNeverPromotesAnAudioUploadOverTheOfficialVideo() {
+        val target = artistTrack(
+            id = "AdEKgwUqPKI",
+            title = "Kill Bill",
+            artist = "SZA",
+            durationMs = 154_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val officialAudio = target.copy(
+            id = "SQnc1QibapQ",
+            title = "Kill Bill (Official Audio)",
+            videoUrl = "https://www.youtube.com/watch?v=SQnc1QibapQ",
+            durationMs = 156_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV",
+            youtubeViewCount = 167_000_000L
+        )
+        val official = officialAudio.copy(
+            id = "MSRcC626prw",
+            title = "Kill Bill (Official Video)",
+            videoUrl = "https://www.youtube.com/watch?v=MSRcC626prw",
+            durationMs = 276_000L,
+            youtubeViewCount = 142_000_000L
+        )
+
+        assertEquals(
+            "MSRcC626prw",
+            selectPreferredVideoPlaybackCandidate(target, listOf(officialAudio, official))?.id
+        )
+    }
+
+    private fun artistTrack(
+        id: String,
+        title: String,
+        artist: String,
+        durationMs: Long,
+        videoType: String
+    ): Track = Track(
+        id = id,
+        title = title,
+        artist = artist,
+        album = "",
+        durationMs = durationMs,
+        streamUrl = "",
+        videoUrl = "https://www.youtube.com/watch?v=$id",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "YouTube Music",
+        moodTags = emptySet(),
+        energy = 0,
+        vocal = 0,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0,
+        videoType = videoType,
+        audioVideoId = id,
+        artistBrowseIds = listOf("UCo6JijJGA3IvIiPsawDK3Ww")
+    )
 }
