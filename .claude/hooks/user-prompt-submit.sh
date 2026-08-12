@@ -58,6 +58,16 @@ ROUTES = [
         r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|animation|animazion|layout|jank|recomposition|ricompos|scroll|perfetto|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
     ),
     (
+        "levyra-android-performance",
+        "Android runtime profiling or measured performance",
+        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|lock contention|memory pressure|allocat|i/o stall|io stall|power trace|battery trace|runtime performance|performance runtime|profiling android",
+    ),
+    (
+        "levyra-r8-proguard",
+        "R8, Proguard, minification, shrinking, or release-only shrinker behavior",
+        r"\br8\b|proguard|minif|shrink resources|resource shrink|resource shrinking|keep rule|consumer rule|mapping\.txt|missing rules|missing class|missing classes|release.?only.*(?:crash|fail)|crash.*release|apk size|aab size|obfuscat|shrinker|dontwarn|keepattributes|javascriptinterface|jni.*(?:keep|shrink)|reflection.*(?:keep|shrink)|serialization.*(?:keep|shrink)",
+    ),
+    (
         "levyra-design-taste",
         "visual design, redesign, polish, hierarchy, or anti-AI-slop UI",
         r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|screenshot|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|pi[uù] bella|pi[uù] professionale|premium (?:ui|design|grafica)|modern (?:ui|design|grafica)|cinematic (?:ui|design)|cohesive (?:ui|design)|coerent.*(?:ui|grafica|design)|distinctive (?:ui|design)|less ai.*(?:ui|design)|anti.?ai.?slop|glassmorphism|bento",
@@ -108,13 +118,18 @@ lines += [
     "slash command. For real-engineering bugs/failures, use the hypothesis-driven "
     "debugging lane before stacking speculative fixes. For CI/build-performance work, "
     "measure before changing configuration and remeasure the same path afterward. For "
-    "Compose performance/accessibility work, require direct evidence where applicable. "
-    "For visual redesign/polish work, load levyra-design-taste together with the matching "
-    "platform UI skill and preserve product behavior, accessibility and performance over "
-    "decorative novelty. For emulator/device validation, prefer semantic UI targets over "
-    "raw coordinates. For security work, preserve exact evidence and follow threat model, "
-    "identification, safe validation, minimal remediation, human review, and revalidation. "
-    "If a skill turns out not to apply once read, say so in one line and continue.",
+    "Android runtime performance, use levyra-android-performance and keep trace/thread "
+    "evidence separate from hypotheses. For R8/Proguard/minification work, use "
+    "levyra-r8-proguard, prefer quantitative analyzer evidence when available, and "
+    "validate the affected release/minified runtime path instead of adding blanket keep "
+    "rules or disabling shrinking. For Compose performance/accessibility work, require "
+    "direct evidence where applicable. For visual redesign/polish work, load "
+    "levyra-design-taste together with the matching platform UI skill and preserve "
+    "product behavior, accessibility and performance over decorative novelty. For "
+    "emulator/device validation, prefer semantic UI targets over raw coordinates. For "
+    "security work, preserve exact evidence and follow threat model, identification, safe "
+    "validation, minimal remediation, human review, and revalidation. If a skill turns "
+    "out not to apply once read, say so in one line and continue.",
 ]
 
 print(json.dumps({
