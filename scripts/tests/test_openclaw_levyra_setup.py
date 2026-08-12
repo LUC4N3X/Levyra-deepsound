@@ -19,10 +19,10 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         for term in (
             "levyra-reviewer",
             "levyra-ci",
-            "agents.entries.$PRIMARY_AGENT.subagents.allowAgents",
             "tools.exec.mode",
             "strictInlineEval",
             "tools.elevated.enabled",
+            "merge_primary_subagents",
             "--light-context",
             "--no-deliver",
             "memory-core.config.dreaming.enabled",
@@ -40,6 +40,21 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         self.assertIn("LEVYRA_OPENCLAW_AGENT", setup)
         self.assertIn('"$PRIMARY_REPO"/.agents/skills/*/SKILL.md', setup)
         self.assertIn('"$PRIMARY_WORKSPACE/MEMORY.md"', setup)
+        self.assertIn("## Levyra multi-agent profile", setup)
+        self.assertIn("levyra-openclaw-orchestrator", setup)
+
+    def test_active_memory_is_targeted_through_primary_agent_recall(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'agents.entries.$PRIMARY_AGENT.memory.search.rememberAcrossConversations',
+            setup,
+        )
+        self.assertIn("plugins.entries.active-memory.enabled", setup)
+        self.assertIn('active-memory.config.mode\" \'\"escalate\"\'', setup)
+        self.assertIn('active-memory.config.queryMode\" \'\"recent\"\'', setup)
+        self.assertIn('active-memory.config.promptStyle\" \'\"precision-heavy\"\'', setup)
+        self.assertIn("active-memory.config.persistTranscripts false", setup)
 
     def test_evidence_workspaces_reference_canonical_repo_paths(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
