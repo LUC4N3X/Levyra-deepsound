@@ -9,6 +9,11 @@ class YoutubeMusicSearchRendererTest {
     private val repository = YoutubeMusicRepository()
 
     @Test
+    fun videoDiscoveryUsesYoutubeMusicVideoFilter() {
+        assertEquals("EgWKAQIQAWoMEA4QChADEAQQCRAF", YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS)
+    }
+
+    @Test
     fun `play count is not used as artist or album`() {
         val track = repository.parseMusicRenderer(
             renderer(
@@ -92,7 +97,7 @@ class YoutubeMusicSearchRendererTest {
         )
 
         requireNotNull(track)
-        assertEquals("Coldplay", track.artist)
+        assertEquals("Coldplay, BTS", track.artist)
         assertEquals("My Universe", track.album)
         assertEquals(listOf("UC_COLDPLAY", "UC_BTS"), track.artistBrowseIds)
     }
