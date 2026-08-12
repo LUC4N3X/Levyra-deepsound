@@ -33,9 +33,9 @@ bash scripts/setup-openclaw-levyra.sh
 
 The bootstrap is idempotent. By default it:
 
-- preserves an existing `levyra-worker` or `levyra` primary agent;
+- preserves an existing levyra-worker or levyra primary agent;
 - uses the existing `workspace-levyra/repo` checkout;
-- creates `levyra-reviewer` and `levyra-ci` only when missing;
+- creates levyra-reviewer and levyra-ci only when missing;
 - creates separate evidence workspaces/checkouts for the two specialists;
 - exposes the current repository-native `levyra-*` skills through thin workspace
   bridges instead of copying their full contents;
@@ -45,7 +45,7 @@ The bootstrap is idempotent. By default it:
 - enables bounded cross-conversation recall for the primary Levyra agent;
 - enables Active Memory in `escalate` mode with recent, precision-heavy recall;
 - enables memory-core Dreaming unless disabled through the environment;
-- adds a twice-daily read-only `levyra-ci` audit when no audit with the same name
+- adds a twice-daily read-only levyra-ci audit when no audit with the same name
   already exists;
 - validates OpenClaw configuration, doctor status, memory status, Gateway RPC,
   agent bindings, and the CI audit registration.
@@ -78,17 +78,35 @@ Levyra task it should:
 5. implement the smallest verified change;
 6. run focused validation and applicable repository gates;
 7. run the required `code-review` stage before presenting code as final;
-8. delegate a fresh bounded review to `levyra-reviewer`;
-9. delegate CI/PR/log diagnosis to `levyra-ci` instead of filling the
+8. delegate a fresh bounded review to levyra-reviewer;
+9. delegate CI/PR/log diagnosis to levyra-ci instead of filling the
    implementation session with broad logs;
 10. fix actionable findings and revalidate before handoff.
 
 The bootstrap preserves any existing sub-agent allowlist and adds the two Levyra
 specialists rather than replacing unrelated authorized targets.
 
-## `levyra-reviewer`
+## Mandatory quality gates
 
-`levyra-reviewer` is an independent evidence agent. It may refresh its private
+For implementation work, OpenClaw must preserve Levyra's repository quality-gate
+contract. Run the fast gate before commit or equivalent handoff:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile fast
+```
+
+Run the full gate before publication when publication is authorized:
+
+```bash
+python3 scripts/ai_quality_gate.py --profile full
+```
+
+Do not report a gate as passed from memory or from an older commit. Use current
+command or CI evidence.
+
+## levyra-reviewer
+
+levyra-reviewer is an independent evidence agent. It may refresh its private
 checkout and inspect remote PR refs, but it does not implement its own findings,
 edit production source, commit, push, merge, release, or change repository
 settings.
@@ -105,9 +123,9 @@ Every finding should include:
 Review context should start with the latest diff/commit and only the surrounding
 ownership needed to decide correctness.
 
-## `levyra-ci`
+## levyra-ci
 
-`levyra-ci` owns current-head evidence for:
+levyra-ci owns current-head evidence for:
 
 - open PR state;
 - required GitHub Actions checks;
@@ -168,7 +186,7 @@ memory.
 
 ## Recurring audit
 
-The default audit runs through `levyra-ci` twice daily using an isolated
+The default audit runs through levyra-ci twice daily using an isolated
 `light-context` session. The audit prompt explicitly points to `./repo` and the
 canonical repository instructions because lightweight cron runs intentionally do
 not inject the normal full workspace bootstrap context.
@@ -218,8 +236,8 @@ openclaw agents list --bindings
 openclaw cron list --agent levyra-ci
 ```
 
-If the primary agent is named `levyra` rather than `levyra-worker`, use that ID
-for the memory command. `scripts/setup-openclaw-levyra.sh` detects the correct
+If the primary agent is named levyra rather than levyra-worker, use that ID for
+the memory command. `scripts/setup-openclaw-levyra.sh` detects the correct
 primary ID automatically.
 
 The final handoff from OpenClaw must distinguish `planned`, `edited`, `locally
