@@ -70,7 +70,7 @@ ROUTES = [
     (
         "levyra-design-taste",
         "visual design, redesign, polish, hierarchy, or anti-AI-slop UI",
-        r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|screenshot|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|pi[uù] bella|pi[uù] professionale|premium (?:ui|design|grafica)|modern (?:ui|design|grafica)|cinematic (?:ui|design)|cohesive (?:ui|design)|coerent.*(?:ui|grafica|design)|distinctive (?:ui|design)|less ai.*(?:ui|design)|anti.?ai.?slop|glassmorphism|bento",
+        r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|screenshot|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|pi[uù] bella|pi[uù] professionale|(?:screen|schermat|ui|design|grafica|interfaccia|layout|player|home|now playing).{0,40}\b(?:premium|modern|clean|cinematic|less generic)\b|\b(?:premium|modern|clean|cinematic|less generic)\b.{0,40}(?:screen|schermat|ui|design|grafica|interfaccia|layout|player|home|now playing)|^\s*(?:premium|modern|clean|cinematic|less generic)\s*[.!?]*\s*$|premium (?:ui|design|grafica)|modern (?:ui|design|grafica)|cinematic (?:ui|design)|cohesive (?:ui|design)|coerent.*(?:ui|grafica|design)|distinctive (?:ui|design)|less ai.*(?:ui|design)|anti.?ai.?slop|glassmorphism|bento",
     ),
     (
         "levyra-motion-artwork",
@@ -105,6 +105,18 @@ ROUTES = [
 ]
 
 matched = [(skill, topic) for skill, topic, pattern in ROUTES if re.search(pattern, prompt)]
+matched_skills = {skill for skill, _ in matched}
+companions = []
+if "levyra-compose" in matched_skills and "levyra-android-performance" in matched_skills:
+    companions.append(("levyra-real-engineering", "non-trivial Compose performance debugging"))
+if "levyra-r8-proguard" in matched_skills:
+    companions.append(("levyra-release-check", "minified release validation"))
+if "levyra-android-intent-security" in matched_skills:
+    companions.append(("levyra-security-review", "Android component-boundary security review"))
+for skill, topic in companions:
+    if skill not in matched_skills:
+        matched.append((skill, topic))
+        matched_skills.add(skill)
 
 lines = [
     "Levyra context budget: search/path/symbol first; read bounded ranges; expand only on a concrete need; do not reread unchanged evidence.",
