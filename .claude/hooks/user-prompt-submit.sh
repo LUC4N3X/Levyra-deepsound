@@ -60,12 +60,17 @@ ROUTES = [
     (
         "levyra-android-performance",
         "Android runtime profiling or measured performance",
-        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|lock contention|memory pressure|allocat|i/o stall|io stall|power trace|battery trace|runtime performance|performance runtime|profiling android",
+        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android",
     ),
     (
         "levyra-r8-proguard",
         "R8, Proguard, minification, shrinking, or release-only shrinker behavior",
         r"\br8\b|proguard|minif|shrink resources|resource shrink|resource shrinking|keep rule|consumer rule|mapping\.txt|missing rules|missing class|missing classes|release.?only.*(?:crash|fail)|crash.*release|apk size|aab size|obfuscat|shrinker|dontwarn|keepattributes|javascriptinterface|jni.*(?:keep|shrink)|reflection.*(?:keep|shrink)|serialization.*(?:keep|shrink)",
+    ),
+    (
+        "levyra-android-intent-security",
+        "Android Intent, PendingIntent, deep-link, or component-boundary security",
+        r"pendingintent|pending intent|onnewintent|nested intent|intent redirection|intent redirect|intent sanitizer|intentsanitizer|android:exported|exported (?:activity|service|receiver|provider|component)|attivit[aà] esportat|servizio esportat|receiver esportat|provider esportat|mutable pendingintent|immutable pendingintent|flag_mutable|flag_immutable|uri grant|granturipermission|grant uri|fileprovider|contentprovider|signature permission|binder caller|callinguid|caller verification|deep.?link.*(?:intent|security|exported|permission)|intent.*(?:security|sicurezz|exported|permission|forward|redirect|nested)|component boundary|component-boundary",
     ),
     (
         "levyra-design-taste",
@@ -90,7 +95,7 @@ ROUTES = [
     (
         "levyra-security-review",
         "security, privacy, trust-boundary, or supply-chain review",
-        r"security|sicurezz|secret|segret|credential|cookie|auth|ssrf|redirect|permission|permess|privacy|\bmime\b|keystore|vulnerab|exploit|threat model|trust boundary|attack surface|dependency|dipendenz|supply.?chain|workflow permission|action pin|signature|checksum|integrity|update security|deep.?link|path traversal|injection|cve|token leak|data leak",
+        r"security|sicurezz|secret|segret|credential|cookie|auth|ssrf|redirect|permission|permess|privacy|\bmime\b|keystore|vulnerab|exploit|threat model|trust boundary|attack surface|dependency|dipendenz|supply.?chain|workflow permission|action pin|signature|checksum|integrity|update security|deep.?link|pendingintent|pending intent|onnewintent|android:exported|fileprovider|contentprovider|uri grant|path traversal|injection|cve|token leak|data leak",
     ),
     (
         "levyra-pr-review",
@@ -115,16 +120,24 @@ lines += [
     "",
     "Invoke every matching skill with the Skill tool BEFORE reading widely, editing, "
     "or running large commands. Do not wait for the owner to name a skill or type a "
-    "slash command. For real-engineering bugs/failures, use the hypothesis-driven "
+    "slash command. Read docs/ai/AI_ENGINEERING_GUARDRAILS.md before production-code "
+    "implementation or broad review; state material assumptions/tradeoffs, prefer the "
+    "simplest existing-owner path, make surgical changes, and define step-to-verification "
+    "success criteria. For real-engineering bugs/failures, use the hypothesis-driven "
     "debugging lane before stacking speculative fixes. For CI/build-performance work, "
     "measure before changing configuration and remeasure the same path afterward. For "
-    "Android runtime performance, use levyra-android-performance and keep trace/thread "
-    "evidence separate from hypotheses. For R8/Proguard/minification work, use "
-    "levyra-r8-proguard, prefer quantitative analyzer evidence when available, and "
-    "validate the affected release/minified runtime path instead of adding blanket keep "
-    "rules or disabling shrinking. For Compose performance/accessibility work, require "
-    "direct evidence where applicable. For visual redesign/polish work, load "
-    "levyra-design-taste together with the matching platform UI skill and preserve "
+    "Android runtime performance, use levyra-android-performance, validate Perfetto "
+    "schema/module/query assumptions, and keep trace/thread/frame evidence separate from "
+    "hypotheses. For R8/Proguard/minification work, use levyra-r8-proguard, prefer "
+    "quantitative analyzer evidence when available, and validate the affected release/"
+    "minified runtime path instead of adding blanket keep rules or disabling shrinking. "
+    "For Android Intent/PendingIntent/deep-link/component-boundary work, use "
+    "levyra-android-intent-security together with levyra-security-review and the affected "
+    "domain skill; treat incoming/nested Intents, URI grants, tokens, and caller identity "
+    "as untrusted until verified, and do not label an exposure pattern a vulnerability "
+    "without a reachable attacker-controlled path. For Compose performance/accessibility "
+    "work, require direct evidence where applicable. For visual redesign/polish work, "
+    "load levyra-design-taste together with the matching platform UI skill and preserve "
     "product behavior, accessibility and performance over decorative novelty. For "
     "emulator/device validation, prefer semantic UI targets over raw coordinates. For "
     "security work, preserve exact evidence and follow threat model, identification, safe "
