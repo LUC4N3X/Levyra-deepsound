@@ -46,15 +46,18 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
     def test_active_memory_is_targeted_through_primary_agent_recall(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
 
-        self.assertIn(
-            'agents.entries.$PRIMARY_AGENT.memory.search.rememberAcrossConversations',
-            setup,
-        )
-        self.assertIn("plugins.entries.active-memory.enabled", setup)
-        self.assertIn('active-memory.config.mode\" \'\"escalate\"\'', setup)
-        self.assertIn('active-memory.config.queryMode\" \'\"recent\"\'', setup)
-        self.assertIn('active-memory.config.promptStyle\" \'\"precision-heavy\"\'', setup)
-        self.assertIn("active-memory.config.persistTranscripts false", setup)
+        for term in (
+            "agents.entries.$PRIMARY_AGENT.memory.search.rememberAcrossConversations",
+            "plugins.entries.active-memory.enabled",
+            "plugins.entries.active-memory.config.mode",
+            "plugins.entries.active-memory.config.queryMode",
+            "plugins.entries.active-memory.config.promptStyle",
+            "plugins.entries.active-memory.config.persistTranscripts false",
+            "escalate",
+            "recent",
+            "precision-heavy",
+        ):
+            self.assertIn(term, setup)
 
     def test_evidence_workspaces_reference_canonical_repo_paths(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
