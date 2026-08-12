@@ -44,6 +44,24 @@ class OpenClawLevyraSetupTest(unittest.TestCase):
         self.assertNotIn("agents.entries.$", setup)
         self.assertNotIn("memory.search.rememberAcrossConversations", setup)
 
+    def test_invalid_config_recovers_only_from_valid_backup(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "recover_invalid_config",
+            "OPENCLAW_CONFIG_PATH=\"$CONFIG_BACKUP_PATH\" openclaw config validate",
+            "openclaw.json",
+            ".invalid-$(date +%Y%m%d-%H%M%S)",
+            "Restored the last valid OpenClaw config backup",
+            "OpenClaw backup config is also invalid",
+        ):
+            self.assertIn(term, setup)
+
+        self.assertLess(
+            setup.index("recover_invalid_config\n"),
+            setup.index('PRIMARY_AGENT="$(choose_primary_agent)"'),
+        )
+
     def test_primary_agent_is_preserved_and_receives_skill_bridges(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
 
