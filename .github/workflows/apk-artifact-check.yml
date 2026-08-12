@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 60
     env:
       YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
       LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
       LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
@@ -30,12 +32,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Setup Python
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
 
       - name: Setup Android SDK
         shell: bash
@@ -79,6 +91,48 @@ jobs:
             echo "SOURCE_REF=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           } >> "${GITHUB_ENV}"
 
+      - name: Build Pull Request Editorial Preview
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
+            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; building Spotify-only fallback metadata"
+          fi
+
+          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+          mkdir -p build/editorial-preview
+          timeout --foreground 360s levyra-editorial \
+            --config tools/levyra-editorial/config.json \
+            --output build/editorial-preview/catalog.json
+          levyra-editorial --validate build/editorial-preview/catalog.json
+          test "$(jq '.collections | length' build/editorial-preview/catalog.json)" -ge 26
+
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial-preview/catalog.json >/dev/null; then
+            echo "::error::Catalog contains private source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); ((.isrc | type) != "string" or (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not)))' build/editorial-preview/catalog.json >/dev/null; then
+            echo "::error::Catalog contains an invalid ISRC"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial-preview/catalog.json; then
+            echo "::error::Catalog contains credential-related material"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial-preview/catalog.json >/dev/null; then
+            echo "::error::Catalog contains an unapproved artwork host"
+            exit 1
+          fi
+
+          mkdir -p app/src/main/assets/editorial artifacts
+          cp build/editorial-preview/catalog.json app/src/main/assets/editorial/catalog-preview.json
+          EDITORIAL_PREVIEW_SHA="$(sha256sum app/src/main/assets/editorial/catalog-preview.json | cut -d ' ' -f 1)"
+          test -n "${EDITORIAL_PREVIEW_SHA}"
+          echo "EDITORIAL_PREVIEW_SHA=${EDITORIAL_PREVIEW_SHA}" >> "${GITHUB_ENV}"
+          printf '%s  %s\n' "${EDITORIAL_PREVIEW_SHA}" "catalog-preview.json" > artifacts/editorial-preview.sha256
+
       - name: Prepare Release Signing
         shell: bash
         env:
@@ -120,6 +174,15 @@ jobs:
           printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}'"
           printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+
+          if [ -n "${EDITORIAL_PREVIEW_SHA:-}" ]; then
+            unzip -p "${APK}" assets/editorial/catalog-preview.json > artifacts/editorial-preview.json
+            test -s artifacts/editorial-preview.json
+            EMBEDDED_PREVIEW_SHA="$(sha256sum artifacts/editorial-preview.json | cut -d ' ' -f 1)"
+            test "${EMBEDDED_PREVIEW_SHA}" = "${EDITORIAL_PREVIEW_SHA}"
+            levyra-editorial --validate artifacts/editorial-preview.json
+          fi
+
           cp "${APK}" "artifacts/LEVYRA-${VERSION}.apk"
           sha256sum "artifacts/LEVYRA-${VERSION}.apk" > "artifacts/LEVYRA-${VERSION}.apk.sha256"
           {
@@ -130,6 +193,7 @@ jobs:
             echo "commit=${GITHUB_SHA}"
             echo "branch=${SOURCE_REF}"
             echo "sizeBytes=${SIZE_BYTES}"
+            echo "editorialPreviewSha=${EDITORIAL_PREVIEW_SHA:-none}"
             echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } > artifacts/build-info.txt
           if [ -f app/build/outputs/mapping/release/mapping.txt ]; then
