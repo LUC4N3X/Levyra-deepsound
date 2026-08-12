@@ -104,6 +104,7 @@ import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.domain.videoViewCountBonus
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
 import com.luc4n3x.levyra.feature.providers.CachedPlaybackProvider
@@ -259,14 +260,40 @@ internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     return maxOf(safeCurrent, safeIncoming)
 }
 
+private val PLAYBACK_TITLE_PRODUCTION_MARKER = Regex(
+    """[(\[][^)\]]*\b(official|ufficiale|oficial|lyric|lyrics|testo|audio|video|visualizer|visualiser|clip)\b[^)\]]*[)\]]""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_TITLE_FEATURE_GROUP = Regex(
+    """[(\[]\s*(feat|ft|featuring|con|with)\b\.?[^)\]]*[)\]]""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_TITLE_FEATURE_TAIL = Regex(
+    """\s(feat|ft|featuring)\b\.?\s.*$""",
+    RegexOption.IGNORE_CASE
+)
+private val PLAYBACK_TITLE_TRAILING_MARKER = Regex(
+    """\s[-–|]\s(official\s+)?(music\s+)?(video|audio|lyrics?\s+video)\s*$""",
+    RegexOption.IGNORE_CASE
+)
+
+internal fun playbackTitleKey(title: String): String {
+    val core = title
+        .replace(PLAYBACK_TITLE_PRODUCTION_MARKER, " ")
+        .replace(PLAYBACK_TITLE_FEATURE_GROUP, " ")
+        .replace(PLAYBACK_TITLE_FEATURE_TAIL, " ")
+        .replace(PLAYBACK_TITLE_TRAILING_MARKER, " ")
+    return playbackTextKey(core).ifBlank { playbackTextKey(title) }
+}
+
 internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boolean {
     when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
         RecordingIdentityMatch.Exact -> return true
         RecordingIdentityMatch.Conflict -> return false
         RecordingIdentityMatch.Unknown -> Unit
     }
-    val targetTitle = playbackTextKey(target.title)
-    val candidateTitle = playbackTextKey(candidate.title)
+    val targetTitle = playbackTitleKey(target.title)
+    val candidateTitle = playbackTitleKey(candidate.title)
     if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
 
     val targetTitleTokens = playbackTokens(targetTitle)
@@ -287,7 +314,11 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
     return artistMatches >= requiredMatches
 }
 
-internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
+internal fun playbackCandidateScore(
+    target: Track,
+    candidate: Track,
+    rewardDurationMatch: Boolean = true
+): Int {
     when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
         RecordingIdentityMatch.Exact -> return 10_000
         RecordingIdentityMatch.Conflict -> return Int.MIN_VALUE
@@ -317,13 +348,25 @@ internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
     if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
     if (candidate.durationMs > 0L && target.durationMs > 0L) {
         val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
-        if (delta <= 5_000L) score += 30 else if (delta > 35_000L) score -= 25
+        if (delta <= 5_000L) {
+            if (rewardDurationMatch) score += 30
+        } else if (delta > 35_000L) {
+            score -= 25
+        }
     }
     return score
 }
 
+private val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
+    """[(\[]\s*(official\s+|full\s+)?(audio|lyrics?\s+video|lyrics?|testo|visualizer|visualiser)\s*[)\]]""" +
+        """|\bofficial\s+audio\b|\baudio\s+ufficiale\b""",
+    RegexOption.IGNORE_CASE
+)
+
+internal const val VIDEO_AUDIO_ONLY_PENALTY = 10_000
+
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
-    val recordingScore = playbackCandidateScore(target, candidate)
+    val recordingScore = playbackCandidateScore(target, candidate, rewardDurationMatch = false)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
     val type = candidate.videoType
     val videoPreference = when {
@@ -335,7 +378,11 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     // A shared artist channel is structured proof of an official upload and outranks title text.
     val officialChannel = target.artistBrowseIds.isNotEmpty() &&
         candidate.artistBrowseIds.any { it in target.artistBrowseIds }
-    return recordingScore + videoPreference + if (officialChannel) 6_000 else 0
+    val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
+    return recordingScore + videoPreference +
+        (if (officialChannel) 6_000 else 0) -
+        (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) +
+        videoViewCountBonus(candidate.youtubeViewCount)
 }
 
 /**
@@ -355,25 +402,29 @@ internal fun videoCandidateId(candidate: Track): String =
  */
 internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
 
+internal const val VIDEO_PROVIDER_RANK_STEP = 200
+
 internal fun selectPreferredVideoPlaybackCandidate(
     target: Track,
     candidates: List<Track>,
     authoritativeIds: Set<String> = emptySet()
 ): Track? {
     return candidates.asSequence()
-        .filter { candidate ->
+        .mapIndexed { rank, candidate -> rank to candidate }
+        .filter { (_, candidate) ->
             YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoCandidateId(candidate)) &&
                 !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
-        .filter { candidate -> isPlaybackCandidateCompatible(target, candidate) }
-        .maxByOrNull { candidate ->
+        .filter { (_, candidate) -> isPlaybackCandidateCompatible(target, candidate) }
+        .maxByOrNull { (rank, candidate) ->
             val authority = if (videoCandidateId(candidate) in authoritativeIds) {
                 VIDEO_PAIRING_AUTHORITY_BONUS
             } else {
                 0
             }
-            videoPlaybackCandidateScore(target, candidate) + authority
+            videoPlaybackCandidateScore(target, candidate) + authority - rank * VIDEO_PROVIDER_RANK_STEP
         }
+        ?.second
 }
 
 internal fun playbackTextKey(value: String): String {
