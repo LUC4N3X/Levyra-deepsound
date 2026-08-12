@@ -81,6 +81,18 @@ object NewPipeRuntime {
         }
     }
 
+    /**
+     * `Accept-Language` for extractor requests. NewPipe builds its request headers from the
+     * extractor's own localization and never emits this header, so the downloader has to supply it
+     * from the language the user selected instead of pinning one language for every user.
+     */
+    fun acceptLanguageHeader(): String {
+        val locale = LevyraContentLocales.forLanguage(appliedLanguage.ifBlank { requestedLanguage })
+        val english = locale.hl.equals("en", ignoreCase = true)
+        return "${locale.hl}-${locale.gl},${locale.hl};q=0.9" +
+            if (english) "" else ",en-US;q=0.8,en;q=0.7"
+    }
+
     private fun applyRequestedLocalization() = synchronized(this) {
         val requested = requestedLanguage
         if (requested.isBlank() || requested == appliedLanguage) return
@@ -273,7 +285,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
             builder.header("Accept", "*/*")
         }
         if (headers["Accept-Language"].isNullOrBlank()) {
-            builder.header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+            builder.header("Accept-Language", NewPipeRuntime.acceptLanguageHeader())
         }
 
         return builder.build()
