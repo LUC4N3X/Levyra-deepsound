@@ -214,13 +214,20 @@ print(json.dumps(value))
 configure_primary_memory() {
   local agent="$1"
   local index
+  local agent_json
   index="$(agent_index "$agent")"
-  openclaw config set "agents.list[$index].memorySearch.rememberAcrossConversations" true --strict-json
+  agent_json="$(python3 -c 'import json, sys; print(json.dumps([sys.argv[1]]))' "$agent")"
+
+  openclaw config set "agents.list[$index].memorySearch.enabled" true --strict-json
+  openclaw config set "agents.list[$index].memorySearch.sources" '["memory","sessions"]' --strict-json
+  openclaw config set "agents.list[$index].memorySearch.experimental.sessionMemory" true --strict-json
   openclaw config set plugins.entries.active-memory.enabled true --strict-json
   openclaw config set plugins.entries.active-memory.config.enabled true --strict-json
-  openclaw config set plugins.entries.active-memory.config.mode '"escalate"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.agents "$agent_json" --strict-json
+  openclaw config set plugins.entries.active-memory.config.allowedChatTypes '["direct"]' --strict-json
   openclaw config set plugins.entries.active-memory.config.queryMode '"recent"' --strict-json
   openclaw config set plugins.entries.active-memory.config.promptStyle '"precision-heavy"' --strict-json
+  openclaw config set plugins.entries.active-memory.config.timeoutMs 15000 --strict-json
   openclaw config set plugins.entries.active-memory.config.maxSummaryChars 240 --strict-json
   openclaw config set plugins.entries.active-memory.config.persistTranscripts false --strict-json
 }
