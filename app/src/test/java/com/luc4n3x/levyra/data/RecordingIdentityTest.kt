@@ -267,9 +267,6 @@ class RecordingIdentityTest {
 
     @Test
     fun daDioPrefersTheOfficialVideoOverTheAudioLengthReUpload() {
-        // Measured against the YouTube Music video search for "Da Dio Bresh": the official upload
-        // and the re-uploads share title, artist, artist browse ids and MUSIC_VIDEO_TYPE_OMV, and
-        // the re-upload is the one that matches the audio duration to the second.
         val target = artistTrack(
             id = "0Jp_YOOEovg",
             title = "Da Dio",
@@ -350,7 +347,6 @@ class RecordingIdentityTest {
             videoPlaybackCandidateScore(target, exactLengthOfficial),
             videoPlaybackCandidateScore(target, longerOfficial)
         )
-        // The song-mode ranking still trusts duration proximity: only video mode must not.
         assertTrue(
             playbackCandidateScore(target, exactLengthOfficial) >
                 playbackCandidateScore(target, longerOfficial)
@@ -359,9 +355,6 @@ class RecordingIdentityTest {
 
     @Test
     fun featuringCreditsDoNotHideTheOfficialVideo() {
-        // Measured against the YouTube Music video search for "Sfera Ebbasta Baby": the art track
-        // is titled "Baby (feat. J Balvin)" and the official upload "Baby (Official Video)", so raw
-        // title comparison rejected the official video and left a 791-view fan upload winning.
         val target = artistTrack(
             id = "tlmoVWfCejI",
             title = "Baby (feat. J Balvin)",
@@ -396,8 +389,6 @@ class RecordingIdentityTest {
 
     @Test
     fun audioUploadOnTheArtistChannelLosesToTheOfficialVideo() {
-        // Both are MUSIC_VIDEO_TYPE_OMV on Tame Impala's channel and the audio upload is the more
-        // watched of the two, so only the title marker separates them.
         val target = artistTrack(
             id = "PvM79DJ2PmM",
             title = "The Less I Know The Better",
@@ -468,7 +459,6 @@ class RecordingIdentityTest {
         assertEquals(772_000_000L, parseCompactViewCount("772 Mio. Aufrufe"))
         assertEquals(1_200L, parseCompactViewCount("1,2 mil visualizações"))
         assertEquals(791L, parseCompactViewCount("791 visualizzazioni"))
-        // A duration, a bare year and an empty label are not counts.
         assertEquals(-1L, parseCompactViewCount("4:01"))
         assertEquals(-1L, parseCompactViewCount("2023"))
         assertEquals(-1L, parseCompactViewCount(""))
@@ -484,9 +474,6 @@ class RecordingIdentityTest {
 
     @Test
     fun viewCountSeparatesTheOfficialVideoFromReUploadsOnTheSameChannel() {
-        // The Top 50 entry for "Dai Dai" reaches playback without a YouTube Music mapping, so it
-        // carries no browse ids and no pairing. Three candidates then share type, channel, artist
-        // and title, and the official upload is not the first one returned.
         val target = artistTrack(
             id = "levyra-4500512f5aa38edfe312",
             title = "Dai Dai",
@@ -519,7 +506,6 @@ class RecordingIdentityTest {
 
     @Test
     fun viewCountNeverPromotesAnAudioUploadOverTheOfficialVideo() {
-        // SZA's "Kill Bill (Official Audio)" outruns the official video on views.
         val target = artistTrack(
             id = "AdEKgwUqPKI",
             title = "Kill Bill",

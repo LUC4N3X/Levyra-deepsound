@@ -277,12 +277,6 @@ private val PLAYBACK_TITLE_TRAILING_MARKER = Regex(
     RegexOption.IGNORE_CASE
 )
 
-/**
- * The title reduced to the recording it names. YouTube Music's art track carries the featuring
- * credits while the artist's upload carries the production marker, so comparing raw titles rejects
- * "Baby (Official Video)" as incompatible with "Baby (feat. J Balvin)" and leaves native-video mode
- * choosing whatever fan upload happens to repeat the credits.
- */
 internal fun playbackTitleKey(title: String): String {
     val core = title
         .replace(PLAYBACK_TITLE_PRODUCTION_MARKER, " ")
@@ -372,10 +366,6 @@ private val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
 internal const val VIDEO_AUDIO_ONLY_PENALTY = 10_000
 
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
-    // An official music video routinely runs longer than the audio recording (intro, outro,
-    // dialogue), while an audio-length re-upload matches it to the second. Rewarding duration
-    // proximity therefore elects the re-upload over the official video, so only the
-    // wildly-different-content penalty survives here.
     val recordingScore = playbackCandidateScore(target, candidate, rewardDurationMatch = false)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
     val type = candidate.videoType
@@ -388,10 +378,6 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
     // A shared artist channel is structured proof of an official upload and outranks title text.
     val officialChannel = target.artistBrowseIds.isNotEmpty() &&
         candidate.artistBrowseIds.any { it in target.artistBrowseIds }
-    // An artist channel hosts the official video next to an audio or lyric upload of the same
-    // recording, both typed OMV. Only the marker in the title separates them, and the audio upload
-    // is often the more watched of the two. The penalty stays below the official-type bonus so an
-    // audio-only official upload still beats a user video when it is all the artist published.
     val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
     return recordingScore + videoPreference +
         (if (officialChannel) 6_000 else 0) -
@@ -416,14 +402,6 @@ internal fun videoCandidateId(candidate: Track): String =
  */
 internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
 
-/**
- * Weight of the provider's own ordering. An artist channel usually hosts the official video next to
- * shorter re-uploads of the same recording that share its title, artist, browse ids and
- * `musicVideoType`, so no local text or duration comparison can separate them; YouTube Music's
- * ranking can, and returns the official upload first. The step therefore has to outweigh the text
- * score deltas ([playbackCandidateScore] stays under 300) while staying far below the
- * [VIDEO_PAIRING_AUTHORITY_BONUS], official-type and artist-channel signals.
- */
 internal const val VIDEO_PROVIDER_RANK_STEP = 200
 
 internal fun selectPreferredVideoPlaybackCandidate(

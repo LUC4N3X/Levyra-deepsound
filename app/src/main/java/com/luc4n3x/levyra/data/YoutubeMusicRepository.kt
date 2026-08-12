@@ -2309,9 +2309,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             albumBrowseId = albumReference.second,
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
-            // The view count is published only as a localized label, and which subtitle token
-            // carries it moves with the language. Take the first token that parses as a count;
-            // parseCompactViewCount rejects durations and bare years.
             youtubeViewCount = tokens.asSequence()
                 .map(::parseCompactViewCount)
                 .firstOrNull { it >= 0L }

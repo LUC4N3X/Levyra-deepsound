@@ -30,11 +30,6 @@ internal object YoutubeMusicVideoType {
 private val COMPACT_COUNT_LEADING_NUMBER = Regex("""^[0-9][0-9.,  ]*""")
 private val COMPACT_COUNT_DURATION = Regex("""^[0-9]+(:[0-9]{2})+$""")
 
-/**
- * Compact view-count multipliers as YouTube Music writes them per language. Matching is exact so
- * Spanish and Portuguese "mil" (thousand) never collides with Portuguese "mi" or English "M"
- * (million). An unlisted token leaves the plain number, which under-rates rather than over-rates.
- */
 private val COMPACT_COUNT_MULTIPLIERS = mapOf(
     "k" to 1_000L, "tys" to 1_000L, "tis" to 1_000L, "mil" to 1_000L, "тыс" to 1_000L, "тис" to 1_000L,
     "m" to 1_000_000L, "mi" to 1_000_000L, "mln" to 1_000_000L, "mio" to 1_000_000L, "млн" to 1_000_000L,
@@ -44,12 +39,6 @@ private val COMPACT_COUNT_MULTIPLIERS = mapOf(
     "億" to 100_000_000L, "亿" to 100_000_000L, "억" to 100_000_000L
 )
 
-/**
- * Reads a YouTube Music view-count label such as "772 Mln di visualizzazioni", "772M views" or
- * "7,7億 回視聴". InnerTube publishes no numeric view count in this renderer, only the localized
- * label, so the count has to be recovered from it. Returns `-1` when the label is not a count, so
- * an unparsed value never becomes a misleading zero.
- */
 internal fun parseCompactViewCount(label: String): Long {
     val text = label.trim()
     if (text.isEmpty() || COMPACT_COUNT_DURATION.matches(text)) return -1L
@@ -63,7 +52,6 @@ internal fun parseCompactViewCount(label: String): Long {
     val multiplier = COMPACT_COUNT_MULTIPLIERS[magnitude]
 
     return if (multiplier == null) {
-        // No magnitude token: the separators group digits, they are not a decimal point.
         numberPart.filter(Char::isDigit).toLongOrNull() ?: -1L
     } else {
         val scalar = numberPart.replace(',', '.').filterNot(Char::isWhitespace)
@@ -74,13 +62,6 @@ internal fun parseCompactViewCount(label: String): Long {
 
 internal const val VIDEO_VIEW_COUNT_STEP = 500
 
-/**
- * Order of magnitude of [views] as a bounded ranking bonus. The canonical upload of a recording
- * outruns its re-uploads by two or three orders of magnitude while sharing their title, artist,
- * browse ids and `musicVideoType`, so this is the only local signal that separates them. It is
- * deliberately coarse and capped below the artist-channel bonus, so it breaks ties without ever
- * outvoting the official-type, artist-channel or pairing-authority evidence.
- */
 internal fun videoViewCountBonus(views: Long): Int {
     if (views <= 0L) return 0
     var digits = 0
