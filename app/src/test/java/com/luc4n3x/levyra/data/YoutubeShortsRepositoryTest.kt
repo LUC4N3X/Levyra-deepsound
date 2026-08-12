@@ -69,6 +69,13 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
+    fun shortsTabOriginAcceptsUnknownOrBoundedDuration() {
+        assertTrue(isYoutubeShortsTabCandidate(0L))
+        assertTrue(isYoutubeShortsTabCandidate(180L))
+        assertFalse(isYoutubeShortsTabCandidate(181L))
+    }
+
+    @Test
     fun longOrOrdinaryVideosAreRejected() {
         assertFalse(
             isYoutubeShortCandidate(
