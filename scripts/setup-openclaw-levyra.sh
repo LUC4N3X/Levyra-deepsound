@@ -91,15 +91,15 @@ configure_agent_skills() {
   openclaw config set "agents.entries.$agent.skills" "$json" --strict-json
 }
 
-configure_read_only_agent() {
+configure_evidence_agent() {
   local agent="$1"
   openclaw config set "agents.entries.$agent.tools.allow" '["read","exec","process"]' --strict-json
   openclaw config set "agents.entries.$agent.tools.deny" '["write","edit","apply_patch","browser","gateway"]' --strict-json
-  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    openclaw config set "agents.entries.$agent.sandbox" '{"mode":"all","scope":"agent","workspaceAccess":"ro"}' --strict-json
-  else
-    echo "[warn] Docker sandbox unavailable; $agent keeps read-only OpenClaw filesystem tools but exec remains host-capable." >&2
-  fi
+  openclaw config set "agents.entries.$agent.tools.fs.workspaceOnly" true --strict-json
+  openclaw config set "agents.entries.$agent.tools.exec.host" '"gateway"' --strict-json
+  openclaw config set "agents.entries.$agent.tools.exec.mode" '"auto"' --strict-json
+  openclaw config set "agents.entries.$agent.tools.exec.strictInlineEval" true --strict-json
+  openclaw config set "agents.entries.$agent.tools.elevated.enabled" false --strict-json
 }
 
 ensure_agent() {
@@ -123,7 +123,7 @@ print("yes" if any(isinstance(item, dict) and item.get("name") == "Levyra CI aud
 ')"
   if [[ "$exists" == "no" ]]; then
     openclaw cron create "$AUDIT_CRON" \
-      "Audit Levyra read-only. Sync repo/main, inspect open PRs, required CI, unresolved review threads and stale branches. Report only actionable state changes with exact PR/SHA/check evidence. Do not edit code, create branches, push, merge, release, change settings or expose secrets." \
+      "Audit Levyra without publishing changes. Refresh the local evidence checkout, inspect open PRs, required CI, unresolved review threads and stale branches. Report only actionable state changes with exact PR/SHA/check evidence. Do not edit source code, commit, push, merge, release, change settings or expose secrets." \
       --name "$name" \
       --agent "$agent" \
       --tz "$AUDIT_TZ" \
@@ -167,16 +167,16 @@ ensure_clone "$CI_REPO"
 write_workspace_file "$REVIEW_WORKSPACE/AGENTS.md" \
   "# Levyra Reviewer" \
   "" \
-  "Operate only as an independent reviewer for ./repo. Read repo/AGENTS.md, the nearest scoped AGENTS.md files, docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills before judging code." \
+  "Operate only as an independent reviewer for ./repo. Read repo/AGENTS.md, the nearest scoped AGENTS.md files, repo/docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills before judging code." \
   "" \
-  "Review the latest requested diff and surrounding ownership. Do not implement fixes, edit files, commit, push, merge, release, change repository settings or dismiss findings. Return severity, confidence, exact location, triggering scenario, consequence, smallest compatible fix and missing regression coverage. Preserve raw evidence for security, release, R8, Perfetto and exact failures." \
+  "You may refresh or fetch the private evidence checkout and inspect remote PR refs, but do not edit source code, implement fixes, create commits, push, merge, release, change repository settings or dismiss findings. Return severity, confidence, exact location, triggering scenario, consequence, smallest compatible fix and missing regression coverage. Preserve raw evidence for security, release, R8, Perfetto and exact failures." \
   "" \
   "Use a compact context budget: diff first, then bounded surrounding code, then expand only for a concrete unresolved question. Do not reread unchanged evidence."
 write_workspace_file "$REVIEW_WORKSPACE/TOOLS.md" \
   "# Tools" \
   "" \
   "Repository: ./repo" \
-  "Use read-only Git/GitHub inspection, focused searches and validation commands that do not mutate the checkout."
+  "Use Git/GitHub inspection, focused searches and non-publishing validation. Host exec uses OpenClaw auto-review; elevated tools stay disabled."
 if [[ ! -f "$REVIEW_WORKSPACE/MEMORY.md" ]]; then
   write_workspace_file "$REVIEW_WORKSPACE/MEMORY.md" \
     "# Durable Review Memory" \
@@ -188,16 +188,16 @@ mkdir -p "$REVIEW_WORKSPACE/memory"
 write_workspace_file "$CI_WORKSPACE/AGENTS.md" \
   "# Levyra CI" \
   "" \
-  "Operate only as the CI, PR-state and validation evidence agent for ./repo. Read repo/AGENTS.md, repo/.github/AGENTS.md, docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills." \
+  "Operate only as the CI, PR-state and validation evidence agent for ./repo. Read repo/AGENTS.md, repo/.github/AGENTS.md, repo/docs/ai/AI_ENGINEERING_GUARDRAILS.md and matching repo/.agents/skills." \
   "" \
-  "Inspect GitHub Actions, exact failing steps, logs, review state and reproducible validation evidence. Do not edit code, commit, push, merge, release, change workflows, secrets or repository settings. Separate current evidence from stale runs." \
+  "You may refresh or fetch the private evidence checkout and inspect GitHub state. Inspect exact failing steps, logs, review state and reproducible validation evidence. Do not edit source code, commit, push, merge, release, change workflows, secrets or repository settings. Separate current evidence from stale runs." \
   "" \
   "Use a compact context budget: SHA/PR/check first, failing step next, bounded raw logs only where they determine the conclusion."
 write_workspace_file "$CI_WORKSPACE/TOOLS.md" \
   "# Tools" \
   "" \
   "Repository: ./repo" \
-  "Use gh, git and focused repository validation in read-only mode. Keep exact failure output raw."
+  "Use gh, git and focused validation without publishing changes. Host exec uses OpenClaw auto-review; elevated tools stay disabled. Keep exact failure output raw."
 if [[ ! -f "$CI_WORKSPACE/MEMORY.md" ]]; then
   write_workspace_file "$CI_WORKSPACE/MEMORY.md" \
     "# Durable CI Memory" \
@@ -243,8 +243,8 @@ ensure_agent levyra-ci "$CI_WORKSPACE"
 
 configure_agent_skills levyra-reviewer "${REVIEW_SKILLS[@]}"
 configure_agent_skills levyra-ci "${CI_SKILLS[@]}"
-configure_read_only_agent levyra-reviewer
-configure_read_only_agent levyra-ci
+configure_evidence_agent levyra-reviewer
+configure_evidence_agent levyra-ci
 openclaw config set "agents.entries.$PRIMARY_AGENT.subagents.allowAgents" '["levyra-reviewer","levyra-ci"]' --strict-json
 
 if [[ "$ENABLE_DREAMING" == "1" ]]; then
