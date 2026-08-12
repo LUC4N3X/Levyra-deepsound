@@ -9,6 +9,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.linkhandler.ChannelTabs
 
 class YoutubeShortsRepositoryTest {
     private companion object {
@@ -33,24 +35,6 @@ class YoutubeShortsRepositoryTest {
                 isShortFormContent = true,
                 url = "https://www.youtube.com/watch?v=abcdefghijk",
                 durationSeconds = 0L
-            )
-        )
-    }
-
-    @Test
-    fun shortSearchFallbackRejectsUnverifiedBoundedVideos() {
-        assertFalse(
-            isYoutubeShortSearchFallbackCandidate(
-                isShortFormContent = false,
-                url = "https://www.youtube.com/watch?v=abcdefghijk",
-                durationSeconds = 90L
-            )
-        )
-        assertTrue(
-            isYoutubeShortSearchFallbackCandidate(
-                isShortFormContent = false,
-                url = "https://www.youtube.com/shorts/abcdefghijk",
-                durationSeconds = 90L
             )
         )
     }
@@ -82,6 +66,13 @@ class YoutubeShortsRepositoryTest {
                 durationSeconds = 181L
             )
         )
+    }
+
+    @Test
+    fun shortsTabOriginAcceptsUnknownOrBoundedDuration() {
+        assertTrue(isYoutubeShortsTabCandidate(0L))
+        assertTrue(isYoutubeShortsTabCandidate(180L))
+        assertFalse(isYoutubeShortsTabCandidate(181L))
     }
 
     @Test
@@ -133,6 +124,19 @@ class YoutubeShortsRepositoryTest {
     }
 
     @Test
+    fun fullMusicVideosNeverQualifyAsShorts() {
+        assertFalse(
+            isYoutubeShortTrack(
+                track(
+                    source = "YouTube Music Samples",
+                    videoUrl = "https://www.youtube.com/watch?v=abcdefghijk",
+                    videoType = "MUSIC_VIDEO_TYPE_OMV"
+                )
+            )
+        )
+    }
+
+    @Test
     fun followedArtistsAndLanguageDriveQueriesBeforeGenericFallbacks() {
         val queries = youtubeShortQueries(
             seeds = listOf(track(title = "Brano", artist = "Artista ascoltato")),
@@ -158,6 +162,33 @@ class YoutubeShortsRepositoryTest {
         assertTrue(queries.isNotEmpty())
         assertEquals("shorts musica italiana", queries.first())
         assertTrue(queries.contains("musica virale #shorts"))
+    }
+
+    @Test
+    fun channelLookupQueriesPreferFollowedArtistsAndStayBounded() {
+        val queries = youtubeShortChannelLookupQueries(
+            seeds = listOf(
+                track(artist = "Artista ascoltato"),
+                track(artist = "Secondo artista ascoltato")
+            ),
+            preferredArtists = listOf("Artista seguito", "Artista seguito", "Secondo seguito")
+        )
+
+        assertEquals(listOf("Artista seguito", "Secondo seguito"), queries)
+    }
+
+    @Test
+    fun discoveredChannelsRemainAvailableWhenDirectBudgetIsFull() {
+        val directChannels = listOf("direct-1", "direct-2", "direct-3", "direct-4")
+        val fallbackChannel = "https://www.youtube.com/channel/UCfallback12345678901234"
+
+        val discovered = youtubeShortDiscoveredChannelUrls(
+            directChannelUrls = directChannels,
+            discoveredChannelUrls = listOf(directChannels.first(), fallbackChannel, fallbackChannel),
+            limit = 4
+        )
+
+        assertEquals(listOf(fallbackChannel), discovered)
     }
 
     @Test
@@ -189,6 +220,17 @@ class YoutubeShortsRepositoryTest {
             canonicalYoutubeChannelUrl("UCabcdefghijklmnopqrstuv")
         )
         assertEquals(null, canonicalYoutubeChannelUrl("MPLA-not-a-channel"))
+    }
+
+    @Test
+    fun shortsChannelUrlsBuildShortsTabHandlers() {
+        listOf(
+            "https://www.youtube.com/@artist",
+            "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv"
+        ).forEach { channelUrl ->
+            val handler = ServiceList.YouTube.channelTabLHFactory.fromUrl("$channelUrl/shorts")
+            assertEquals(ChannelTabs.SHORTS, handler.contentFilters.single().name)
+        }
     }
 
     @Test

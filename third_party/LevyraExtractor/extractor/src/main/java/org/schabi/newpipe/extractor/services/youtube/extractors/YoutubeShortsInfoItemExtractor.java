@@ -3,17 +3,22 @@ package org.schabi.newpipe.extractor.services.youtube.extractors;
 import com.grack.nanojson.JsonObject;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.localization.DateWrapper;
+import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeStreamLinkHandlerFactory;
 import org.schabi.newpipe.extractor.stream.StreamInfoItemExtractor;
 import org.schabi.newpipe.extractor.stream.StreamType;
 import org.schabi.newpipe.extractor.utils.Utils;
 
 import javax.annotation.Nullable;
 
+import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
+
 public class YoutubeShortsInfoItemExtractor implements StreamInfoItemExtractor {
     public JsonObject item;
+
     public YoutubeShortsInfoItemExtractor(JsonObject item) {
         this.item = item;
     }
+
     @Override
     public String getName() throws ParsingException {
         return item.getObject("overlayMetadata").getObject("primaryText").getString("content");
@@ -21,8 +26,33 @@ public class YoutubeShortsInfoItemExtractor implements StreamInfoItemExtractor {
 
     @Override
     public String getUrl() throws ParsingException {
-        return "https://youtube.com" + item.getObject("onTap").getObject("innertubeCommand")
-                .getObject("commandMetadata").getObject("webCommandMetadata").getString("url");
+        String videoId = item.getObject("onTap")
+                .getObject("innertubeCommand")
+                .getObject("reelWatchEndpoint")
+                .getString("videoId");
+
+        if (isNullOrEmpty(videoId)) {
+            videoId = item.getObject("inlinePlayerData")
+                    .getObject("onVisible")
+                    .getObject("innertubeCommand")
+                    .getObject("watchEndpoint")
+                    .getString("videoId");
+        }
+
+        if (!isNullOrEmpty(videoId)) {
+            return YoutubeStreamLinkHandlerFactory.getInstance().getUrl(videoId);
+        }
+
+        final String relativeUrl = item.getObject("onTap")
+                .getObject("innertubeCommand")
+                .getObject("commandMetadata")
+                .getObject("webCommandMetadata")
+                .getString("url");
+        if (!isNullOrEmpty(relativeUrl)) {
+            return "https://youtube.com" + relativeUrl;
+        }
+
+        throw new ParsingException("Could not get Shorts video ID");
     }
 
     @Override
@@ -51,10 +81,18 @@ public class YoutubeShortsInfoItemExtractor implements StreamInfoItemExtractor {
     @Override
     public long getViewCount() throws ParsingException {
         try {
-            return Utils.mixedNumberWordToLong(item.getObject("overlayMetadata").getObject("secondaryText").getString("content").split(" view")[0]);
+            return Utils.mixedNumberWordToLong(item.getObject("overlayMetadata")
+                    .getObject("secondaryText")
+                    .getString("content")
+                    .split(" view")[0]);
         } catch (Exception e) {
             return -1;
         }
+    }
+
+    @Override
+    public boolean isShortFormContent() {
+        return true;
     }
 
     @Override

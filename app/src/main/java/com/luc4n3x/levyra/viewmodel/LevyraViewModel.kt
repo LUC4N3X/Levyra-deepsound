@@ -45,7 +45,6 @@ import com.luc4n3x.levyra.data.YoutubeShortsRepository
 import com.luc4n3x.levyra.data.YoutubeShortsCache
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
 import com.luc4n3x.levyra.data.youtubeShortsRetryDelayMs
-import com.luc4n3x.levyra.data.youtubeMusicSamplePreviewStartMs
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
@@ -308,6 +307,9 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
 
     val targetArtistTokens = playbackArtistTokens(target.artist)
     if (targetArtistTokens.isEmpty()) return true
+    if (target.artistBrowseIds.isNotEmpty() && candidate.artistBrowseIds.any { it in target.artistBrowseIds }) {
+        return true
+    }
     val candidateArtistTokens = playbackArtistTokens("${candidate.artist} ${candidate.title}").toSet()
     val artistMatches = targetArtistTokens.count { it in candidateArtistTokens }
     val requiredMatches = maxOf(1, (targetArtistTokens.size + 1) / 2)
@@ -4689,7 +4691,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!currentState.isPlaying) togglePlay()
             return
         }
-        pendingSeekMs = youtubeMusicSamplePreviewStartMs(selected)
+        pendingSeekMs = 0L
         startResolve(selected)
     }
 
@@ -5098,22 +5100,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         input: SamplesDiscoveryInput,
         languageCode: String
     ): List<Track>? {
-        val youtubeMusicSamples = try {
-            repository.musicSamples(
-                seeds = input.seeds,
-                preferredArtists = input.preferredArtists,
-                languageCode = languageCode,
-                limit = EXPLORE_SHORTS_FEED_LIMIT
-            )
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "YouTube Music Samples feed failed for %s", languageCode)
-            emptyList()
-        }
-        if (youtubeMusicSamples.isNotEmpty()) return youtubeMusicSamples
-
-        val fallbackFeed = try {
+        val feed = try {
             shortsRepository.feed(
                 seeds = input.seeds,
                 languageCode = languageCode,
@@ -5124,13 +5111,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
-            Timber.w(error, "NewPipe Shorts fallback failed for %s", languageCode)
+            Timber.w(error, "YouTube Shorts feed failed for %s", languageCode)
             null
         }
-        if (fallbackFeed == null || !fallbackFeed.isConclusive || fallbackFeed.tracks.isEmpty()) {
-            return null
-        }
-        return fallbackFeed.tracks
+        if (feed == null || !feed.isConclusive || feed.tracks.isEmpty()) return null
+        return feed.tracks
     }
 
     private fun registerShortsFeedFailure(languageCode: String) {
@@ -6769,9 +6754,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             thumbnailUrl = thumbnailUrl.ifBlank { seed.thumbnailUrl },
             largeThumbnailUrl = thumbnailUrl.ifBlank { seed.largeThumbnailUrl },
             videoType = videoType,
-            artistBrowseIds = artists.map { artist -> artist.browseId }
-                .filter { it.isNotBlank() }
-                .ifEmpty { seed.artistBrowseIds }
+            artistBrowseIds = artists.map { artist -> artist.browseId }.filter { it.isNotBlank() }
         )
     }
 

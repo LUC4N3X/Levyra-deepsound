@@ -250,14 +250,7 @@ private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
 private const val ALBUM_RESULTS_PER_SEED = 8
 private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
-internal const val YOUTUBE_MUSIC_SAMPLES_SOURCE = "YouTube Music Samples"
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
-private const val YOUTUBE_MUSIC_SAMPLE_QUERY_LIMIT = 8
-private const val YOUTUBE_MUSIC_SAMPLE_ARTIST_QUERY_LIMIT = 3
-private const val YOUTUBE_MUSIC_SAMPLE_SONG_QUERY_LIMIT = 2
-private const val YOUTUBE_MUSIC_SAMPLE_LOCALIZED_QUERY_LIMIT = 3
-private const val YOUTUBE_MUSIC_SAMPLE_QUERY_CONCURRENCY = 4
-private const val YOUTUBE_MUSIC_SAMPLE_RESULTS_PER_QUERY = 8
 private const val YOUTUBE_MUSIC_NEW_RELEASE_FALLBACK_LIMIT = 4
 private const val YOUTUBE_MUSIC_ARTIST_CONTAINS_MIN_LENGTH = 4
 
@@ -275,87 +268,6 @@ private data class RankedYoutubeMusicRelease(
     val score: Int,
     val bucket: Int
 )
-
-internal fun youtubeMusicSampleQueries(
-    seeds: List<Track>,
-    preferredArtists: List<String>,
-    languageCode: String
-): List<String> {
-    val artists = (preferredArtists.asSequence() + seeds.asSequence().map { it.artist })
-        .map(String::trim)
-        .filter(String::isNotBlank)
-        .distinctBy { it.lowercase(Locale.ROOT) }
-        .take(YOUTUBE_MUSIC_SAMPLE_ARTIST_QUERY_LIMIT)
-        .map { "$it official music video" }
-        .toList()
-    val songs = seeds.asSequence()
-        .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-        .distinctBy { "${it.artist.lowercase(Locale.ROOT)}|${it.title.lowercase(Locale.ROOT)}" }
-        .take(YOUTUBE_MUSIC_SAMPLE_SONG_QUERY_LIMIT)
-        .map { "${it.artist} ${it.title} music video" }
-        .toList()
-    val localized = when (LevyraLanguageCatalog.normalize(languageCode)) {
-        "en" -> listOf("new music videos in USA", "songs popular in USA music video", "new English music videos")
-        "it" -> listOf("nuovi video musicali italiani", "hit italiane del momento video", "video musicali popolari in Italia")
-        "es" -> listOf("nuevos videos musicales españoles", "éxitos latinos del momento video", "videos musicales populares en España")
-        "fr" -> listOf("nouveaux clips musicaux français", "tubes français du moment clip", "clips populaires en France")
-        "de" -> listOf("neue deutsche musikvideos", "aktuelle deutsche hits musikvideo", "beliebte musikvideos in Deutschland")
-        "pt" -> listOf("novos videoclipes brasileiros", "sucessos brasileiros do momento vídeo", "videoclipes populares no Brasil")
-        "nl" -> listOf("nieuwe Nederlandse muziekvideo's", "Nederlandse hits van nu video", "populaire muziekvideo's Nederland")
-        "pl" -> listOf("nowe polskie teledyski", "polskie hity teraz teledysk", "popularne teledyski Polska")
-        "ro" -> listOf("videoclipuri muzicale românești noi", "hituri românești videoclip", "videoclipuri populare România")
-        "el" -> listOf("νέα ελληνικά μουσικά βίντεο", "ελληνικές επιτυχίες βίντεο", "δημοφιλή μουσικά βίντεο Ελλάδα")
-        "sv" -> listOf("nya svenska musikvideor", "svenska hits just nu video", "populära musikvideor Sverige")
-        "da" -> listOf("nye danske musikvideoer", "danske hits lige nu video", "populære musikvideoer Danmark")
-        "cs" -> listOf("nové české videoklipy", "české hity právě teď video", "populární videoklipy Česko")
-        "uk" -> listOf("нові українські музичні відео", "українські хіти зараз відео", "популярні кліпи Україна")
-        "ru" -> listOf("новые русские музыкальные видео", "русские хиты сейчас видео", "популярные клипы Россия")
-        "tr" -> listOf("yeni Türk müzik videoları", "güncel Türkçe hitler video", "Türkiye popüler müzik videoları")
-        "ar" -> listOf("فيديوهات موسيقية عربية جديدة", "أغاني عربية رائجة فيديو", "فيديوهات موسيقية رائجة عربياً")
-        "zh" -> listOf("华语新歌音乐视频", "热门华语歌曲 MV", "华语流行音乐视频")
-        "ja" -> listOf("日本 新着 ミュージックビデオ", "日本 人気曲 公式MV", "J-POP 話題 ミュージックビデオ")
-        "ko" -> listOf("한국 신곡 뮤직비디오", "한국 인기곡 공식 뮤직비디오", "K-POP 인기 뮤직비디오")
-        "hi" -> listOf("नए हिंदी म्यूजिक वीडियो", "भारत के लोकप्रिय गाने वीडियो", "बॉलीवुड नए गाने वीडियो")
-        "id" -> listOf("video musik Indonesia terbaru", "lagu Indonesia populer video", "video musik viral Indonesia")
-        "vi" -> listOf("video nhạc Việt mới", "bài hát Việt thịnh hành video", "video âm nhạc phổ biến Việt Nam")
-        "th" -> listOf("มิวสิกวิดีโอไทยใหม่", "เพลงไทยยอดนิยมวิดีโอ", "มิวสิกวิดีโอยอดนิยมประเทศไทย")
-        "fil" -> listOf("bagong Filipino music videos", "OPM hits ngayon video", "sikat na music videos Pilipinas")
-        "he" -> listOf("קליפים ישראליים חדשים", "להיטים ישראליים עכשיו וידאו", "קליפים פופולריים בישראל")
-        else -> listOf("new music videos in my country", "songs popular in my region music video", "local music video hits")
-    }.take(YOUTUBE_MUSIC_SAMPLE_LOCALIZED_QUERY_LIMIT)
-    val personalized = artists + songs
-    return buildList {
-        repeat(maxOf(personalized.size, localized.size)) { index ->
-            personalized.getOrNull(index)?.let { add(it) }
-            localized.getOrNull(index)?.let { add(it) }
-        }
-    }
-        .map(String::trim)
-        .filter(String::isNotBlank)
-        .distinctBy { it.lowercase(Locale.ROOT) }
-        .take(YOUTUBE_MUSIC_SAMPLE_QUERY_LIMIT)
-}
-
-internal fun interleaveYoutubeMusicSampleResults(
-    groups: List<List<Track>>,
-    limit: Int
-): List<Track> {
-    if (limit <= 0 || groups.isEmpty()) return emptyList()
-    val result = LinkedHashMap<String, Track>()
-    var row = 0
-    while (result.size < limit) {
-        var found = false
-        groups.forEach { group ->
-            val track = group.getOrNull(row) ?: return@forEach
-            found = true
-            val key = track.id.ifBlank { "${track.title.lowercase(Locale.ROOT)}|${track.artist.lowercase(Locale.ROOT)}" }
-            result.putIfAbsent(key, track)
-        }
-        if (!found) break
-        row++
-    }
-    return result.values.take(limit)
-}
 
 internal fun rankYoutubeMusicNewReleases(
     releases: List<AlbumHit>,
@@ -439,14 +351,6 @@ private fun matchingArtistSignalIndex(artist: String, signals: List<String>): In
             else -> artist.contains(signal) || signal.contains(artist)
         }
     }
-}
-
-internal fun youtubeMusicSamplePreviewStartMs(track: Track): Long {
-    if (!track.source.equals(YOUTUBE_MUSIC_SAMPLES_SOURCE, ignoreCase = true)) return 0L
-    val duration = track.durationMs
-    if (duration <= 75_000L) return 0L
-    val latestSafeStart = (duration - 45_000L).coerceAtLeast(0L)
-    return (duration / 3L).coerceIn(0L, latestSafeStart)
 }
 
 class YoutubeMusicRepository(private val context: Context? = null) {
@@ -792,58 +696,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    suspend fun musicSamples(
-        seeds: List<Track>,
-        preferredArtists: List<String>,
-        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
-        limit: Int = 24
-    ): List<Track> = withContext(Dispatchers.IO) {
-        val boundedLimit = limit.coerceIn(1, 40)
-        val queries = youtubeMusicSampleQueries(seeds, preferredArtists, languageCode)
-        val limiter = Semaphore(YOUTUBE_MUSIC_SAMPLE_QUERY_CONCURRENCY)
-        val queryGroups = coroutineScope {
-            queries.map { query ->
-                async {
-                    limiter.withPermit {
-                        try {
-                            searchMusicVideoSamples(
-                                query = query,
-                                languageCode = languageCode,
-                                limit = YOUTUBE_MUSIC_SAMPLE_RESULTS_PER_QUERY
-                            )
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (_: Throwable) {
-                            emptyList()
-                        }
-                    }
-                }
-            }.awaitAll()
-        }
-        val personalizedAndLocal = interleaveYoutubeMusicSampleResults(queryGroups, boundedLimit)
-        val exploreVideos = try {
-            explore(languageCode).newVideos
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
-            emptyList()
-        }
-        val nativeVideos = exploreVideos.mapNotNull(::asYoutubeMusicSample)
-        (personalizedAndLocal + nativeVideos)
-            .distinctBy { it.id }
-            .take(boundedLimit)
-    }
-
-    private fun searchMusicVideoSamples(
-        query: String,
-        languageCode: String,
-        limit: Int
-    ): List<Track> {
-        return searchMusicVideoTracks(query, languageCode, limit)
-            .filter(::isVisualYoutubeMusicVideo)
-            .mapNotNull(::asYoutubeMusicSample)
-    }
-
     private fun searchMusicVideoTracks(
         query: String,
         languageCode: String,
@@ -861,31 +713,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .toList()
     }
 
-    private fun isVisualYoutubeMusicVideo(track: Track): Boolean {
-        if (!isPotentialYoutubeMusicVideo(track)) return false
-        val type = track.videoType.uppercase(Locale.ROOT)
-        return type.contains("OMV") || type.contains("UGC") || type.contains("MUSIC_VIDEO")
-    }
-
     private fun isPotentialYoutubeMusicVideo(track: Track): Boolean {
         if (track.id.length != 11 || track.videoUrl.isBlank()) return false
         if (track.title.isBlank() || track.artist.isBlank()) return false
         val type = track.videoType.uppercase(Locale.ROOT)
         return !type.contains("ATV") && !type.contains("PODCAST")
-    }
-
-    private fun asYoutubeMusicSample(track: Track): Track? {
-        if (track.id.length != 11 || track.title.isBlank() || track.artist.isBlank()) return null
-        val type = track.videoType.uppercase(Locale.ROOT)
-        if (type.contains("ATV") || type.contains("PODCAST")) return null
-        if (track.videoUrl.isBlank() && track.id.isBlank()) return null
-        return track.copy(
-            videoUrl = track.videoUrl.ifBlank { "https://www.youtube.com/watch?v=${track.id}" },
-            source = YOUTUBE_MUSIC_SAMPLES_SOURCE,
-            moodTags = track.moodTags + setOf("samples", "music-video"),
-            counterpartVideoId = track.counterpartVideoId.ifBlank { track.id },
-            videoType = track.videoType.ifBlank { "MUSIC_VIDEO_TYPE_OMV" }
-        )
     }
 
     suspend fun newMusicVideos(
@@ -1744,7 +1576,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
     }
 
-    private fun parseAlbumTrackRenderer(renderer: JSONObject, album: AlbumHit): Track? {
+    internal fun parseAlbumTrackRenderer(renderer: JSONObject, album: AlbumHit): Track? {
         val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
             .ifBlank { extractPrimaryMusicVideoId(renderer) }
         if (videoId.isBlank()) return null
@@ -1753,13 +1585,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         if (isAlbumLabel(title)) return null
         val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }
         val fallbackArtist = selectAlbumTrackArtist(tokens, album.artist)
-        val artist = extractYoutubeMusicArtistReference(renderer, fallbackArtist)
-            ?.name
-            .orEmpty()
-            .cleanAlbumArtistLabel()
-            .ifBlank { fallbackArtist }
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, fallbackArtist)
+        val artist = artistReferences.creditLabel(fallbackArtist)
         val thumbnail = album.thumbnailUrl.ifBlank { findBestThumbnail(renderer) }
-        val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
         val trackNumber = renderer.optJSONArray("fixedColumns")
             ?.optJSONObject(0)
             ?.optJSONObject("musicResponsiveListItemFixedColumnRenderer")
@@ -1805,6 +1633,15 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val name: String,
         val browseId: String
     )
+
+    private fun List<YoutubeMusicArtistReference>.creditLabel(fallback: String): String {
+        return asSequence()
+            .map { reference -> reference.name.cleanAlbumArtistLabel().trim() }
+            .filter(String::isNotBlank)
+            .distinct()
+            .joinToString(", ")
+            .ifBlank { fallback }
+    }
 
     internal fun extractYoutubeMusicArtistReferences(
         value: Any?,
@@ -2135,10 +1972,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
         val fallbackArtist = tokens.firstOrNull(::isPlausibleSearchMetadataLabel) ?: "YouTube Music"
         val artistReferences = extractYoutubeMusicArtistReferences(two, fallbackArtist)
-        val artist = artistReferences.firstOrNull()?.name
-            ?.cleanAlbumArtistLabel()
-            ?.takeIf(String::isNotBlank)
-            ?: fallbackArtist
+        val artist = artistReferences.creditLabel(fallbackArtist)
         val thumbnail = findBestThumbnail(two)
         return buildTrack(
             id = videoId,
@@ -2279,10 +2113,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .firstOrNull(::isPlausibleSearchMetadataLabel)
             ?: "YouTube Music"
         val artistReferences = extractYoutubeMusicArtistReferences(renderer, fallbackArtist)
-        val artist = artistReferences.firstOrNull()?.name
-            ?.cleanAlbumArtistLabel()
-            ?.takeIf(String::isNotBlank)
-            ?: fallbackArtist
+        val artist = artistReferences.creditLabel(fallbackArtist)
         val albumReference = extractYoutubeMusicAlbumReference(renderer)
         val album = albumReference.first
             .takeIf { label ->

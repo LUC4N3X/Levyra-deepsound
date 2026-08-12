@@ -535,6 +535,82 @@ class RecordingIdentityTest {
         )
     }
 
+    @Test
+    fun chartCollaborationReachesTheOfficialVideoWithoutAnyYoutubeIdentity() {
+        val chartEntry = artistTrack(
+            id = "chart-daidai",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            durationMs = 223_448L,
+            videoType = ""
+        ).copy(videoUrl = "", audioVideoId = "", artistBrowseIds = emptyList())
+        val official = artistTrack(
+            id = "fcnDmrtj6Sk",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            durationMs = 241_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        ).copy(youtubeViewCount = 774_000_000L)
+        val fanUpload = artistTrack(
+            id = "cu0SrLCiFqk",
+            title = "DAI DAI FIFA WORLD CUP 2026 Shakira, Burna Boy",
+            artist = "Godvin Robin",
+            durationMs = 68_000L,
+            videoType = "MUSIC_VIDEO_TYPE_UGC"
+        ).copy(artistBrowseIds = emptyList(), youtubeViewCount = 1_600_000L)
+
+        assertTrue(isPlaybackCandidateCompatible(chartEntry, official))
+        assertEquals(
+            "fcnDmrtj6Sk",
+            selectPreferredVideoPlaybackCandidate(chartEntry, listOf(official, fanUpload))?.id
+        )
+    }
+
+    @Test
+    fun aTruncatedCreditIsRejectedWhileTheFullCollaborationCreditIsAccepted() {
+        val chartEntry = artistTrack(
+            id = "chart-collab",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            durationMs = 200_000L,
+            videoType = ""
+        ).copy(videoUrl = "", audioVideoId = "", artistBrowseIds = emptyList())
+        val truncatedCredit = artistTrack(
+            id = "aaaaaaaaaaa",
+            title = "Dai Dai",
+            artist = "Shakira",
+            durationMs = 210_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+        val fullCredit = truncatedCredit.copy(artist = "Shakira, Burna Boy")
+
+        assertFalse(isPlaybackCandidateCompatible(chartEntry, truncatedCredit))
+        assertTrue(isPlaybackCandidateCompatible(chartEntry, fullCredit))
+    }
+
+    @Test
+    fun aSharedArtistChannelSatisfiesTheArtistGate() {
+        val target = artistTrack(
+            id = "PvM79DJ2PmM",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            durationMs = 200_000L,
+            videoType = "MUSIC_VIDEO_TYPE_ATV"
+        )
+        val truncatedCredit = artistTrack(
+            id = "aaaaaaaaaaa",
+            title = "Dai Dai",
+            artist = "Shakira",
+            durationMs = 210_000L,
+            videoType = "MUSIC_VIDEO_TYPE_OMV"
+        )
+
+        assertTrue(isPlaybackCandidateCompatible(target, truncatedCredit))
+        assertFalse(
+            isPlaybackCandidateCompatible(target, truncatedCredit.copy(artistBrowseIds = listOf("UC_OTHER")))
+        )
+    }
+
     private fun artistTrack(
         id: String,
         title: String,
