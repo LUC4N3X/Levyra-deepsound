@@ -1,180 +1,197 @@
 # OpenClaw Integration for Levyra
 
-## Recommended role
+## Role
 
-Use OpenClaw as the **orchestrator and status layer** for Levyra, not as an
-unrestricted all-purpose developer.
+Use OpenClaw as Levyra's persistent orchestration, memory, review, and status
+layer. Keep implementation grounded in the repository and keep publication under
+explicit owner control.
 
-The safest useful split is:
-
-```text
-main
-└── levyra
-    ├── planning and repository orientation
-    ├── Codex/Claude/OpenCode implementation delegation
-    ├── focused validation
-    ├── independent review delegation
-    └── branch and pull-request status returned to main
-```
-
-The `levyra` agent should have the Levyra repository as its workspace. That lets
-the agent discover the root and nested `AGENTS.md` files and the project-native
-skills under `.agents/skills/`.
-
-Keep general research, publishing, email, calendar, messaging, and system
-administration in separate agents. A coding agent does not need access to all of
-them.
-
-## Workspace setup
-
-Create or bind a dedicated agent to the real repository checkout:
-
-```powershell
-openclaw agents add levyra `
-  --workspace "C:\\path\\to\\Levyra-deepsound"
-```
-
-Use the real local path. Do not point the Levyra agent at a copy that cannot
-build, access Git metadata, or reproduce the owner's branch state.
-
-After configuration, verify:
-
-```powershell
-openclaw agents list --bindings
-openclaw gateway status --require-rpc
-```
-
-The agent workspace should contain:
+The default Levyra profile has three roles:
 
 ```text
-AGENTS.md
-docs/project/SPEC.md
-docs/project/ROADMAP.md
-docs/project/TASKS.md
-.agents/skills/
-app/
-desktop/
-.github/
-docs/
+primary Levyra worker
+├── implementation and orchestration
+├── levyra-reviewer
+│   └── independent latest-diff review
+└── levyra-ci
+    └── PR, CI, logs and validation evidence
 ```
 
-## Delegation policy
+Do not add another agent unless a repeated workload has a distinct context,
+permission, or evidence boundary that these three roles cannot cover cleanly.
+More agents are not automatically more capable; unnecessary delegation costs
+context and coordination.
 
-The coordinator should target the Levyra agent explicitly rather than relying on
-implicit agent selection.
+## VPS bootstrap
 
-Example intent:
+For the existing Linux/OpenClaw installation, run from the Levyra checkout:
+
+```bash
+git pull --ff-only origin main
+bash scripts/setup-openclaw-levyra.sh
+```
+
+The bootstrap is idempotent. By default it:
+
+- preserves an existing `levyra-worker` or `levyra` primary agent;
+- uses the existing `workspace-levyra/repo` checkout;
+- creates `levyra-reviewer` and `levyra-ci` only when missing;
+- creates separate evidence workspaces/checkouts for the two specialists;
+- exposes the current repository-native `levyra-*` skills through thin workspace
+  bridges instead of copying their full contents;
+- adds a small always-on Levyra orchestration block to the primary workspace
+  `AGENTS.md` without replacing existing instructions;
+- creates `MEMORY.md` only when a workspace does not already have one;
+- enables bounded cross-conversation recall for the primary Levyra agent;
+- enables Active Memory in `escalate` mode with recent, precision-heavy recall;
+- enables memory-core Dreaming unless disabled through the environment;
+- adds a twice-daily read-only `levyra-ci` audit when no audit with the same name
+  already exists;
+- validates OpenClaw configuration, doctor status, memory status, Gateway RPC,
+  agent bindings, and the CI audit registration.
+
+Environment overrides:
 
 ```text
-Use the levyra agent in the Levyra repository. Read AGENTS.md,
-docs/project/SPEC.md, docs/project/ROADMAP.md, docs/project/TASKS.md, and the
-matching native skills. Inspect the real code and tests. Implement only the
-approved phase, run focused checks, review the final diff, and return branch,
-commit, checks, blockers, and PR state. Do not merge, tag, publish, release, or
-change repository settings.
+LEVYRA_OPENCLAW_AGENT
+LEVYRA_OPENCLAW_WORKSPACE
+LEVYRA_REPO
+LEVYRA_REVIEW_WORKSPACE
+LEVYRA_CI_WORKSPACE
+LEVYRA_REPO_URL
+LEVYRA_OPENCLAW_AUDIT_CRON
+LEVYRA_OPENCLAW_AUDIT_TZ
+LEVYRA_OPENCLAW_ENABLE_ACTIVE_MEMORY
+LEVYRA_OPENCLAW_ENABLE_DREAMING
+LEVYRA_OPENCLAW_INSTALL_CRON
 ```
 
-Configure the main agent with an explicit allowlist that includes `levyra`.
-Avoid `["*"]` unless every configured target is intentionally trusted. Keep
-explicit agent selection required so a task cannot silently run under the wrong
-profile.
+## Primary Levyra worker
 
-The exact JSON keys can vary with the installed OpenClaw release; validate the
-configuration with:
+The primary worker owns implementation and orchestration. For every non-trivial
+Levyra task it should:
 
-```powershell
-openclaw doctor
-openclaw gateway status --require-rpc
-```
+1. work inside `repo/`;
+2. read root and nearest scoped `AGENTS.md` files;
+3. apply the context budget before broad repository reading;
+4. load the matching repository-native skills;
+5. implement the smallest verified change;
+6. run focused validation and applicable repository gates;
+7. run the required `code-review` stage before presenting code as final;
+8. delegate a fresh bounded review to `levyra-reviewer`;
+9. delegate CI/PR/log diagnosis to `levyra-ci` instead of filling the
+   implementation session with broad logs;
+10. fix actionable findings and revalidate before handoff.
 
-## Native versus external coding runtime
+The bootstrap preserves any existing sub-agent allowlist and adds the two Levyra
+specialists rather than replacing unrelated authorized targets.
 
-A native OpenClaw sub-agent is useful for:
+## `levyra-reviewer`
 
-- reading repository instructions;
-- planning and task decomposition;
-- locating files and tests;
-- collecting CI or review state;
-- coordinating a sequence of bounded steps.
+`levyra-reviewer` is an independent evidence agent. It may refresh its private
+checkout and inspect remote PR refs, but it does not implement its own findings,
+edit production source, commit, push, merge, release, or change repository
+settings.
 
-For substantial implementation, use a configured coding runtime that can work
-inside the repository and return concrete file and command evidence. Depending
-on the installed setup, that may be Codex, Claude Code, OpenCode, or another ACP
-runtime.
+Every finding should include:
 
-The selected runtime must still obey Levyra's repository instructions. A more
-powerful runtime does not gain permission to broaden scope, push, merge, or
-release.
+- severity and confidence;
+- exact location;
+- triggering scenario;
+- consequence;
+- smallest compatible fix;
+- missing regression coverage.
+
+Review context should start with the latest diff/commit and only the surrounding
+ownership needed to decide correctness.
+
+## `levyra-ci`
+
+`levyra-ci` owns current-head evidence for:
+
+- open PR state;
+- required GitHub Actions checks;
+- failing jobs and exact steps;
+- bounded raw failure logs;
+- unresolved review threads;
+- stale branches and superseded runs;
+- reproducible validation status.
+
+It does not edit source, commit, push, merge, release, change workflows, alter
+secrets, or change repository settings.
+
+Both evidence agents deny OpenClaw filesystem write/edit/apply-patch tools,
+restrict filesystem tools to their workspace, disable elevated tools, and use
+Gateway host execution in OpenClaw `auto` mode with strict inline-eval review.
+This preserves access to the VPS Git/`gh` environment while keeping shell misses
+behind OpenClaw's native execution reviewer.
+
+## Context budget
+
+Do not send full conversations between agents.
+
+The primary worker should hand off only:
+
+- objective and acceptance criteria;
+- invariants that must remain unchanged;
+- current branch/PR/SHA when relevant;
+- latest diff or changed files;
+- smallest useful surrounding code/evidence;
+- checks already run and exact failures;
+- unresolved risks;
+- the exact question the specialist must answer.
+
+Reviewer and CI agents expand context only for a concrete unanswered question.
+Keep security, signing, release, R8, Perfetto, protocol, and exact failure
+evidence raw whenever compression could alter the conclusion.
+
+## Memory
+
+Memory is evidence support, not a second source of truth.
+
+Long-term memory may retain:
+
+- stable verified architecture ownership;
+- recurring engineering failure patterns;
+- validated diagnostic techniques;
+- durable owner preferences and explicit workflow decisions.
+
+Do not retain secrets, credentials, signing material, transient branch heads,
+current PR state, current CI state, temporary hypotheses, or generated logs in
+long-term memory.
+
+The primary worker uses bounded cross-conversation recall. Active Memory runs in
+`escalate` mode so the extra recall path is spent on relevant past-context
+questions rather than every ordinary turn. Dreaming may consolidate durable
+signals into `MEMORY.md`; current repository evidence always wins over promoted
+memory.
+
+## Recurring audit
+
+The default audit runs through `levyra-ci` twice daily using an isolated
+`light-context` session. The audit prompt explicitly points to `./repo` and the
+canonical repository instructions because lightweight cron runs intentionally do
+not inject the normal full workspace bootstrap context.
+
+It is evidence-only: no source edits, commits, branches, pushes, merges,
+releases, settings changes, or secret access.
 
 ## Skill visibility
 
-Keep Levyra-specific skills in the repository:
+Canonical Levyra skills stay in:
 
 ```text
-.agents/skills/levyra-player/
-.agents/skills/levyra-extractor/
-.agents/skills/levyra-database/
-.agents/skills/levyra-compose/
-.agents/skills/levyra-motion-artwork/
-.agents/skills/levyra-desktop/
-.agents/skills/levyra-security-review/
-.agents/skills/levyra-ci-workflows/
-.agents/skills/levyra-pr-review/
-.agents/skills/levyra-release-check/
-.agents/skills/levyra-project-manager/
-.agents/skills/levyra-openclaw-orchestrator/
-.agents/skills/levyra-engineering/
+repo/.agents/skills/
 ```
 
-Do not install project-specific Levyra skills globally unless every agent should
-see them. Do not grant the `levyra` agent unrelated high-impact skills merely
-because they are available globally.
-
-## Recommended execution pattern
-
-1. `main` receives the owner's request.
-2. `main` delegates to `levyra` with the repository path and explicit outcome.
-3. `levyra` reads `docs/project/` planning files and loads domain skills.
-4. A coding runtime performs one focused implementation phase.
-5. Focused tests and applicable broader checks run.
-6. A fresh reviewer inspects the latest diff.
-7. Actionable findings return to the implementation runtime.
-8. Validation repeats after changes.
-9. The implementation runtime runs
-   `python3 scripts/ai_quality_gate.py --profile fast` before commit and
-   `python3 scripts/ai_quality_gate.py --profile full` before publication.
-10. A branch and draft pull request are created only when the owner authorized
-   publication.
-11. `levyra` returns evidence to `main`; merge and release remain owner actions.
-
-## Tool boundaries
-
-Recommended for the Levyra agent:
-
-- repository read/search;
-- bounded command execution in the repository;
-- Git status, diff, branch, commit, and pull-request operations when authorized;
-- build/test tools required by the project;
-- GitHub PR, review, and CI inspection.
-
-Keep denied or separated unless a task explicitly needs them:
-
-- email, calendar, contacts, and personal messaging;
-- unrestricted browser sessions containing private accounts;
-- password stores and unrelated home directories;
-- system-wide package removal or destructive administration;
-- release credentials and signing material;
-- direct merge, tag, release, store upload, or repository-setting changes.
-
-Use sandboxing and narrow allowlists where practical. Skills teach a workflow;
-they are not a security boundary by themselves.
+The VPS bootstrap creates thin workspace bridges that point back to these files.
+Never fork the full skill text into OpenClaw workspace memory. The repository
+remains the single source of truth and newly added `levyra-*` skills become
+visible after the bootstrap is refreshed.
 
 ## Publication rules
 
-OpenClaw may coordinate a branch and draft pull request only when the current
-owner request explicitly authorizes it.
-
-It must never infer permission to:
+OpenClaw must never infer permission to:
 
 - push directly to `main`;
 - merge a pull request;
@@ -182,50 +199,30 @@ It must never infer permission to:
 - change Android or Desktop versions;
 - tag or publish a release;
 - upload store metadata;
-- alter repository settings or secrets.
+- alter repository settings, workflows, secrets, or signing material.
 
-The final handoff must distinguish:
+A current explicit owner instruction may authorize a specific branch, commit,
+push, PR, or direct-main action. That authorization does not imply merge,
+release, or repository-setting permission.
 
-```text
-planned
-edited
-locally validated
-committed
-pushed
-pull request opened
-CI passed
-reviewed
-merged
-released
+## Verification
+
+After bootstrap, verify:
+
+```bash
+openclaw config validate
+openclaw doctor
+openclaw memory status --agent levyra-worker
+openclaw gateway status --require-rpc
+openclaw agents list --bindings
+openclaw cron list --agent levyra-ci
 ```
 
-Only states backed by direct evidence may be reported.
+If the primary agent is named `levyra` rather than `levyra-worker`, use that ID
+for the memory command. `scripts/setup-openclaw-levyra.sh` detects the correct
+primary ID automatically.
 
-## Useful recurring automation
-
-After the GitHub tools and notification channel are deliberately configured,
-OpenClaw can perform low-risk recurring work such as:
-
-- summarize new actionable review comments on an open PR;
-- report when required CI reaches a final state;
-- surface a stale branch or unresolved review thread;
-- prepare a daily summary of open Levyra PRs without modifying them.
-
-Do not enable automatic code changes, merges, releases, or broad issue-driven
-execution as the first automation. Start read-only, observe the output, then
-grant the minimum additional capability required.
-
-## Verification checklist
-
-- `levyra` resolves to the intended repository workspace.
-- The root `AGENTS.md`, `docs/project/` planning files, and matching native skills
-  are visible.
-- `openclaw doctor` reports a valid configuration.
-- `agents_list` or equivalent discovery shows the intended target agents.
-- Delegated tasks use explicit `agentId`.
-- The coding runtime executes in the repository checkout.
-- Unrelated personal and administrative tools are absent.
-- Branch and PR actions require explicit owner authorization.
-- Merge, tag, release, and settings changes remain blocked unless explicitly
-  authorized for the exact action.
-- The agent returns exact checks, blockers, branch, commit, and PR state.
+The final handoff from OpenClaw must distinguish `planned`, `edited`, `locally
+validated`, `committed`, `pushed`, `pull request opened`, `CI passed`,
+`independently reviewed`, `merged`, and `released`. Only states backed by direct
+evidence may be reported.
