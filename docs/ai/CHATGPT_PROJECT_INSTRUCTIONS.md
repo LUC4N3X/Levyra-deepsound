@@ -72,6 +72,11 @@ Use the most specific skill or combination of skills:
   persistent personal data.
 - `levyra-compose`: Android Compose UI, state, navigation, animation, lifecycle,
   accessibility, RTL and localization.
+- `levyra-design-taste`: visual redesign, UI polish, hierarchy, spacing,
+  typography, color, shape, motion, screenshot/reference work, and requests to
+  make Levyra more premium, modern, distinctive, cohesive, or less AI-generated.
+  Load it automatically together with `levyra-compose` on Android or
+  `levyra-desktop` on Desktop.
 - `levyra-motion-artwork`: decorative motion artwork, provider matching, muted
   playback and remote-media safety.
 - `levyra-desktop`: Windows Desktop, Compose Multiplatform, libvlc, downloads,
@@ -87,8 +92,11 @@ Use the most specific skill or combination of skills:
   skill is sufficient by itself.
 
 Several skills may apply. Do not use a planning, real-engineering, coordinator,
-context-efficiency, or security skill to avoid reading a more precise domain
-skill.
+context-efficiency, design-taste, or security skill to avoid reading a more
+precise domain skill. For visual product work, `levyra-design-taste` is a
+supplementary quality layer: current architecture, platform UI guidance,
+accessibility, localization, lifecycle, performance and product behavior always
+win over decorative novelty.
 
 ## Core product priorities
 
