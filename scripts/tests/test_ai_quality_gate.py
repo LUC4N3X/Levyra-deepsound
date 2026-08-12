@@ -9,7 +9,7 @@ from scripts.ai_quality_gate import (
     gradle_wrapper,
     scan_added_lines,
 )
-from scripts.validate_agent_config import DOCUMENTED_AGENT_IDS
+from scripts.validate_agent_config import missing_skill_references
 
 
 class AiQualityGateTest(unittest.TestCase):
@@ -98,8 +98,17 @@ class AiQualityGateTest(unittest.TestCase):
 
     def test_openclaw_agent_ids_are_not_native_skill_requirements(self) -> None:
         self.assertEqual(
-            {"levyra-ci", "levyra-reviewer", "levyra-worker"},
-            DOCUMENTED_AGENT_IDS,
+            [],
+            missing_skill_references(
+                {"levyra-ci", "levyra-reviewer", "levyra-worker"},
+                set(),
+            ),
+        )
+
+    def test_unknown_documented_skill_still_fails_validation(self) -> None:
+        self.assertEqual(
+            ["levyra-missing-skill"],
+            missing_skill_references({"levyra-missing-skill"}, set()),
         )
 
     def test_full_android_profile_adds_tests_lint_and_compile(self) -> None:

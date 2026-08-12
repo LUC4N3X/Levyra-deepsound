@@ -140,6 +140,13 @@ def parse_front_matter(path: Path) -> dict[str, str]:
     return metadata
 
 
+def missing_skill_references(
+    referenced_skills: set[str],
+    actual_skills: set[str],
+) -> list[str]:
+    return sorted(referenced_skills - actual_skills - DOCUMENTED_AGENT_IDS)
+
+
 def require_skill_references(
     errors: list[str],
     relative_path: str,
@@ -415,9 +422,7 @@ def main() -> int:
         except (OSError, UnicodeError) as exc:
             errors.append(f"{relative_path}: cannot read file: {exc}")
 
-    missing_skills = sorted(
-        referenced_skills - actual_skills - DOCUMENTED_AGENT_IDS
-    )
+    missing_skills = missing_skill_references(referenced_skills, actual_skills)
     for name in missing_skills:
         errors.append(f"documented skill does not exist: {name}")
 
