@@ -287,7 +287,11 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
     return artistMatches >= requiredMatches
 }
 
-internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
+internal fun playbackCandidateScore(
+    target: Track,
+    candidate: Track,
+    rewardDurationMatch: Boolean = true
+): Int {
     when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
         RecordingIdentityMatch.Exact -> return 10_000
         RecordingIdentityMatch.Conflict -> return Int.MIN_VALUE
@@ -317,13 +321,21 @@ internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
     if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
     if (candidate.durationMs > 0L && target.durationMs > 0L) {
         val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
-        if (delta <= 5_000L) score += 30 else if (delta > 35_000L) score -= 25
+        if (delta <= 5_000L) {
+            if (rewardDurationMatch) score += 30
+        } else if (delta > 35_000L) {
+            score -= 25
+        }
     }
     return score
 }
 
 internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
-    val recordingScore = playbackCandidateScore(target, candidate)
+    // An official music video routinely runs longer than the audio recording (intro, outro,
+    // dialogue), while an audio-length re-upload matches it to the second. Rewarding duration
+    // proximity therefore elects the re-upload over the official video, so only the
+    // wildly-different-content penalty survives here.
+    val recordingScore = playbackCandidateScore(target, candidate, rewardDurationMatch = false)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
     val type = candidate.videoType
     val videoPreference = when {
@@ -355,25 +367,37 @@ internal fun videoCandidateId(candidate: Track): String =
  */
 internal const val VIDEO_PAIRING_AUTHORITY_BONUS = 20_000
 
+/**
+ * Weight of the provider's own ordering. An artist channel usually hosts the official video next to
+ * shorter re-uploads of the same recording that share its title, artist, browse ids and
+ * `musicVideoType`, so no local text or duration comparison can separate them; YouTube Music's
+ * ranking can, and returns the official upload first. The step therefore has to outweigh the text
+ * score deltas ([playbackCandidateScore] stays under 300) while staying far below the
+ * [VIDEO_PAIRING_AUTHORITY_BONUS], official-type and artist-channel signals.
+ */
+internal const val VIDEO_PROVIDER_RANK_STEP = 200
+
 internal fun selectPreferredVideoPlaybackCandidate(
     target: Track,
     candidates: List<Track>,
     authoritativeIds: Set<String> = emptySet()
 ): Track? {
     return candidates.asSequence()
-        .filter { candidate ->
+        .mapIndexed { rank, candidate -> rank to candidate }
+        .filter { (_, candidate) ->
             YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoCandidateId(candidate)) &&
                 !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
-        .filter { candidate -> isPlaybackCandidateCompatible(target, candidate) }
-        .maxByOrNull { candidate ->
+        .filter { (_, candidate) -> isPlaybackCandidateCompatible(target, candidate) }
+        .maxByOrNull { (rank, candidate) ->
             val authority = if (videoCandidateId(candidate) in authoritativeIds) {
                 VIDEO_PAIRING_AUTHORITY_BONUS
             } else {
                 0
             }
-            videoPlaybackCandidateScore(target, candidate) + authority
+            videoPlaybackCandidateScore(target, candidate) + authority - rank * VIDEO_PROVIDER_RANK_STEP
         }
+        ?.second
 }
 
 internal fun playbackTextKey(value: String): String {
