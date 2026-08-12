@@ -21,6 +21,7 @@ Before editing a workflow, load `.agents/skills/levyra-ci-workflows/SKILL.md` an
 - Make success, no-change, skipped, cancelled, and failure outcomes semantically distinct.
 - Keep caches deterministic and prevent untrusted executable output from crossing trust boundaries.
 - Review third-party actions for provenance and supply-chain impact before adding or upgrading them.
+- Keep CodeRabbit repository-specific preferences in CodeRabbit Repository Settings instead of adding `.coderabbit.yaml` to the Levyra root. Only add a repository YAML if the owner explicitly asks for file-based CodeRabbit configuration and accepts that CodeRabbit requires it at repository root.
 
 ## Release safety
 
