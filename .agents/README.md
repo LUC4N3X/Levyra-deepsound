@@ -4,7 +4,8 @@ Levyra keeps one repository-native instruction and skill tree for Codex, Claude
 Code, ChatGPT Projects, Google Antigravity, OpenCode, OpenClaw, and compatible
 coding agents. The same project rules, domain skills, context-efficiency policy,
 real-engineering workflow, design-taste quality layer, Android performance/R8
-workflows, and evidence-based security workflow apply across runtimes.
+workflows, Android Intent security workflow, and evidence-based security review
+apply across runtimes.
 
 ## Configuration hierarchy
 
@@ -40,7 +41,9 @@ skills under `.agents/skills/`. High-output work matches
 matches `levyra-real-engineering`; visual redesign/polish work matches
 `levyra-design-taste` together with the matching platform UI skill; Android
 runtime profiling matches `levyra-android-performance`; R8/Proguard/minification
-work matches `levyra-r8-proguard`; security-sensitive work matches
+work matches `levyra-r8-proguard`; Intent/PendingIntent/component-boundary work
+matches `levyra-android-intent-security` together with
+`levyra-security-review`; other security-sensitive work matches
 `levyra-security-review`.
 
 The setup scripts automatically install the focused Matt Pocock engineering
@@ -71,10 +74,11 @@ upstream stage without letting it override Levyra.
 The hook routes visual redesign/polish work to `levyra-design-taste` together
 with the matching platform UI skill, Android runtime profiling to
 `levyra-android-performance`, R8/Proguard/minification work to
-`levyra-r8-proguard`, and security, vulnerability, secrets, trust-boundary,
-dependency, update-integrity, and privacy work to `levyra-security-review`
-before editing. Claude follows the same closed-loop security method documented
-in `docs/ai/CODEX_SECURITY.md`.
+`levyra-r8-proguard`, Android Intent/PendingIntent/exported-component work to
+`levyra-android-intent-security` plus `levyra-security-review`, and other
+security, vulnerability, secrets, trust-boundary, dependency, update-integrity,
+and privacy work to `levyra-security-review` before editing. Claude follows the
+same closed-loop security method documented in `docs/ai/CODEX_SECURITY.md`.
 
 ### ChatGPT Project
 
@@ -83,10 +87,11 @@ instructions and connect the repository. Those instructions require ChatGPT to
 load `levyra-real-engineering` for non-trivial work, `levyra-design-taste` for
 visual redesign/polish together with the relevant platform skill,
 `levyra-android-performance` for Android runtime profiling,
-`levyra-r8-proguard` for R8/Proguard/minification work, and
-`levyra-security-review` for security-sensitive analysis, and to distinguish
-suspected findings, validated findings, proposed patches, applied patches, CI,
-and publication state.
+`levyra-r8-proguard` for R8/Proguard/minification work,
+`levyra-android-intent-security` plus `levyra-security-review` for Android
+Intent/PendingIntent/component-boundary work, and `levyra-security-review` for
+other security-sensitive analysis. ChatGPT must distinguish suspected findings,
+validated findings, proposed patches, applied patches, CI, and publication state.
 
 ### Google Antigravity
 
@@ -95,9 +100,11 @@ Antigravity reads `.agents/rules/levyra-workspace.md` and exposes skills under
 `levyra-real-engineering`, visual redesign/polish through `levyra-design-taste`
 plus the relevant platform skill, Android runtime profiling through
 `levyra-android-performance`, R8/Proguard/minification through
-`levyra-r8-proguard`, security work through `levyra-security-review`, keeps
-exact security evidence raw, and applies the same threat-model and revalidation
-workflow. No parallel `.gemini/skills/` tree is required.
+`levyra-r8-proguard`, Android component-boundary security through
+`levyra-android-intent-security` plus `levyra-security-review`, and other
+security work through `levyra-security-review`. It keeps exact security evidence
+raw and applies the same threat-model and revalidation workflow. No parallel
+`.gemini/skills/` tree is required.
 
 ### OpenCode and OpenClaw
 
@@ -119,8 +126,9 @@ boundaries.
 | `levyra-database` | Room, migrations, stores, backup, and persistent user data |
 | `levyra-compose` | Compose UI, state, navigation, accessibility, RTL, and localization |
 | `levyra-design-taste` | Cross-runtime visual hierarchy, redesign/polish, anti-AI-slop discipline, token reuse, motion intent, and visual pre-flight review |
-| `levyra-android-performance` | Android Perfetto/System Trace, jank, latency, startup, CPU/thread state, blocking, memory, I/O, power, and measured runtime bottlenecks |
+| `levyra-android-performance` | Android Perfetto/System Trace, jank, latency, startup, CPU/thread state, graphics, Binder, blocking, memory, I/O, power, and measured runtime bottlenecks |
 | `levyra-r8-proguard` | R8/Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker failures, mapping evidence, and measured APK-size work |
+| `levyra-android-intent-security` | Android Intents, PendingIntents, deep links, exported components, receivers/services/providers, URI grants, FileProvider, and caller verification |
 | `levyra-motion-artwork` | Decorative motion artwork and muted playback boundaries |
 | `levyra-desktop` | Windows Desktop, libvlc, downloads, mini player, updates, and packaging |
 | `levyra-security-review` | Cross-runtime threat modeling, vulnerability validation, minimal remediation, privacy, supply chain, and revalidation |
@@ -130,8 +138,8 @@ boundaries.
 | `levyra-engineering` | Genuine cross-domain coordination |
 
 Load every matching focused skill. Coordinator, real-engineering,
-context-efficiency, design-taste, performance, shrinker, and security skills do
-not replace the applicable product-domain skill.
+context-efficiency, design-taste, performance, shrinker, Android Intent security,
+and general security skills do not replace the applicable product-domain skill.
 
 ## Automatic routing
 
@@ -151,16 +159,23 @@ quality layer, not a second design system, and never overrides accessibility,
 performance, lifecycle, localization, current architecture, or product behavior.
 
 Load `levyra-android-performance` for Android jank, frame misses, latency,
-startup, Perfetto/System Trace, CPU scheduling/thread states, blocking, memory,
-I/O, power, or any runtime-performance conclusion that should be measured rather
-than guessed. Pair it with `levyra-compose`, `levyra-player`, or another affected
-domain skill as appropriate.
+startup, Perfetto/System Trace, CPU scheduling/thread states, graphics, Binder,
+blocking, memory, I/O, power, or any runtime-performance conclusion that should
+be measured rather than guessed. Pair it with `levyra-compose`, `levyra-player`,
+or another affected domain skill as appropriate.
 
 Load `levyra-r8-proguard` for R8/Proguard, minification, resource shrinking,
 keep rules, consumer rules, release-only crashes after shrinking, reflection,
 serialization/JNI shrinking issues, mapping files, missing classes, or measured
 APK-size optimization. Pair it with `levyra-ci-workflows` for toolchain changes
 and `levyra-release-check` for release/minified runtime validation.
+
+Load `levyra-android-intent-security` for Android Intent/deep-link/PendingIntent
+handling, exported activities/services/receivers/providers, nested Intent
+forwarding, `onNewIntent`, mutable PendingIntents, URI grants, FileProvider,
+ContentProvider, signature/caller verification, or component-boundary audits.
+Always pair it with `levyra-security-review` and the affected Android domain
+skill.
 
 Load `levyra-security-review` for vulnerability scans, attacker-controlled
 input, trust-boundary changes, authentication, tokens, cookies, signing,
@@ -227,9 +242,9 @@ python3 scripts/validate_matt_skills.py
 ```
 
 The validators check shared discovery, skill inventory, RTK TOML, setup
-behavior, real-engineering integration, cross-runtime design/performance/R8/security
-routing, dependency review, plugin scope, and absence of unapproved local-model
-profiles.
+behavior, real-engineering integration, cross-runtime
+design/performance/R8/Intent-security/general-security routing, dependency
+review, plugin scope, and absence of unapproved local-model profiles.
 
 ## Maintenance rules
 
@@ -240,11 +255,14 @@ profiles.
   external skill package.
 - Keep `levyra-design-taste` as a compact native product-UI adaptation, not a
   vendored copy of a web-focused external skill.
-- Keep `levyra-android-performance` evidence-first and focused on Android runtime
-  profiling; do not turn trace suspicions into measured conclusions.
+- Keep `levyra-android-performance` evidence-first and focused on measured
+  Android runtime profiling; validate Perfetto schemas/queries instead of
+  guessing them.
 - Keep `levyra-r8-proguard` focused on the current toolchain and actual runtime
   mechanisms; do not accumulate blanket keep rules or disable shrinking to make
   a failure disappear.
+- Keep `levyra-android-intent-security` focused on real Android component trust
+  boundaries and reachable attack paths; do not copy generic sample contracts.
 - Keep RTK as an output layer, never validation authority.
 - Keep security findings evidence-based and revalidate every remediation.
 - Keep the pinned RTK bootstrap and focused Matt integration narrow; every other
