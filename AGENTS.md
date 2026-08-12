@@ -70,6 +70,27 @@ Runtime-specific discovery must not create separate sources of truth. This file,
 nearest scoped instructions, approved planning, matching skills, and current
 repository evidence remain the shared hierarchy.
 
+## Always-on context budget
+
+Codex and every compatible runtime must apply this before broad repository
+reading on every non-trivial task:
+
+1. identify the likely owner/module and the exact question the next read must
+   answer;
+2. search path, filename, symbol, or call site first;
+3. read the smallest useful range, focused diff, or nearby test;
+4. expand only when a concrete unanswered question remains;
+5. do not reread unchanged evidence already present in context;
+6. load only matching skills, never the whole skill tree.
+
+Use `levyra-context-efficiency` immediately when the task needs non-trivial
+repository exploration or high-volume output. Tiny, already-local edits keep the
+same baseline without loading extra skill text.
+
+Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics
+raw whenever compacting them could change the conclusion. Token savings never
+justify missing evidence.
+
 ## Agent skills
 
 ### Issue tracker
@@ -177,7 +198,7 @@ skills over the general coordinator.
 | Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
 | Secrets, URLs, redirects, SSRF, MIME, permissions, privacy, update integrity, or other security-sensitive work | `levyra-security-review` |
 | GitHub Actions, CI, F-Droid, configuration sync, artifacts, build/release automation | `levyra-ci-workflows` |
-| Builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy command output | `levyra-context-efficiency` |
+| Non-trivial repository exploration; builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy context | `levyra-context-efficiency` |
 | Branch, commit, patch, or pull request review | `levyra-pr-review` |
 | Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
 | Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
@@ -186,7 +207,8 @@ Several skills may apply. A playback change that modifies stream resolution
 uses player and extractor skills; provider-controlled media normally also
 requires security review. A tracked multi-phase task additionally uses
 `levyra-project-manager`; non-trivial ambiguous/multi-step work additionally
-uses `levyra-real-engineering`; visual Android work uses `levyra-design-taste`
+uses `levyra-real-engineering`; non-trivial repository exploration additionally
+uses `levyra-context-efficiency`; visual Android work uses `levyra-design-taste`
 plus `levyra-compose`; visual Desktop work uses `levyra-design-taste` plus
 `levyra-desktop`; Android runtime-performance work uses
 `levyra-android-performance` plus the affected domain skill; R8/Proguard work
@@ -247,32 +269,39 @@ command, CI result, review, device check, or owner decision.
 - Bound retries, timeouts, concurrency, response sizes, cache/storage growth,
   downloads, and prefetch.
 - Keep durable identity independent from mutable display text.
+- Do not add explanatory source-code comments. Prefer clear names, small
+  functions, and explicit structure. Preserve comments that are legally or
+  mechanically required, including license headers, generated/tool directives,
+  lint/suppression markers, and compatibility comments whose removal would
+  change or obscure a required contract.
 
 ## Work method
 
 1. Define the exact requested outcome and scope.
-2. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
+2. Apply the always-on context budget before broad reading; load
+   `levyra-context-efficiency` when exploration is non-trivial.
+3. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
    `docs/project/TASKS.md` phase when applicable.
-3. Identify behavior and compatibility that must remain unchanged.
-4. State material assumptions and unresolved tradeoffs; inspect the repository
+4. Identify behavior and compatibility that must remain unchanged.
+5. State material assumptions and unresolved tradeoffs; inspect the repository
    first when evidence can resolve them.
-5. Identify a simpler existing-owner/reuse path before adding abstraction or
+6. Identify a simpler existing-owner/reuse path before adding abstraction or
    configurability.
-6. Inspect the complete current control/data flow and nearby tests.
-7. Identify the root cause before editing.
-8. Define the verification target for each non-trivial step.
-9. Make the smallest coherent change compatible with current architecture.
-10. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames,
+7. Inspect the complete current control/data flow and nearby tests.
+8. Identify the root cause before editing.
+9. Define the verification target for each non-trivial step.
+10. Make the smallest coherent change compatible with current architecture.
+11. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames,
     and broad refactors.
-11. Add or update regression tests for defects, migrations, matching, security
+12. Add or update regression tests for defects, migrations, matching, security
     boundaries, lifecycle, and concurrency when applicable.
-12. Run focused checks first, then applicable broader checks.
-13. Inspect the complete final diff for unrelated edits, generated files,
+13. Run focused checks first, then applicable broader checks.
+14. Inspect the complete final diff for unrelated edits, generated files,
     secrets, binaries, conflict markers, and accidental version changes.
-14. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
+15. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
     `docs/project/TASKS.md`, architecture, and user documentation when the
     approved requirement or architecture changes.
-15. Report exactly what changed, what ran, what passed, what failed, and what
+16. Report exactly what changed, what ran, what passed, what failed, and what
     remains unverified.
 
 When the owner says "only this", modify only the named behavior or files unless
