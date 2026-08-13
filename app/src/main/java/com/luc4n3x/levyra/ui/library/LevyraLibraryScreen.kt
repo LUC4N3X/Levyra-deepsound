@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -562,7 +563,7 @@ internal fun LevyraLibraryScreen(
                                 downloadProgress = null,
                                 secondaryDetail = listOf(
                                     item.download.mimeType.substringAfter('/').uppercase(Locale.ROOT),
-                                    formatBytes(item.download.sizeBytes)
+                                    strings.formatLibraryBytes(item.download.sizeBytes)
                                 ).filter(String::isNotBlank).joinToString(" · "),
                                 onClick = {
                                     if (selectionActive) selectedKeys = selectedKeys.toggle(key)

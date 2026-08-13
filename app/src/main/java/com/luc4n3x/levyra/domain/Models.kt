@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.domain
 
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import java.util.Locale
 import kotlin.math.absoluteValue
 
 data class Track(
@@ -114,17 +113,8 @@ object ChartsCatalog {
 
     fun region(id: String): ChartRegion = regions.firstOrNull { it.id == id } ?: regions.first()
 
-    fun defaultRegionForLanguage(
-        languageCode: String,
-        deviceCountry: String = Locale.getDefault().country
-    ): ChartRegion {
-        val normalizedCountry = deviceCountry.trim().lowercase(Locale.ROOT)
-        val deviceRegion = regions.firstOrNull { candidate ->
-            candidate.country.equals(normalizedCountry, ignoreCase = true) ||
-                candidate.id.equals(normalizedCountry, ignoreCase = true)
-        }
-        return deviceRegion ?: region(LevyraContentLocales.forLanguage(languageCode).chartRegionId)
-    }
+    fun defaultRegionForLanguage(languageCode: String): ChartRegion =
+        region(LevyraContentLocales.forLanguage(languageCode).chartRegionId)
 }
 
 enum class LyricVocalRole {

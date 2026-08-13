@@ -68,6 +68,7 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -629,7 +630,7 @@ internal fun LibraryListeningDashboard(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = formatListeningTime(pulse.totalListenMs),
+                            text = strings.formatLibraryDuration(pulse.totalListenMs),
                             color = LevyraText,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Black,
@@ -798,10 +799,3 @@ private fun LibraryWeekChart(pulse: ListeningPulse, locale: Locale) {
     }
 }
 
-private fun formatListeningTime(totalMs: Long): String {
-    val totalMinutes = (totalMs / 60_000L).coerceAtLeast(0L)
-    if (totalMinutes < 60L) return "$totalMinutes min"
-    val hours = totalMinutes / 60L
-    val minutes = totalMinutes % 60L
-    return if (minutes == 0L) "${hours}h" else "${hours}h ${minutes}m"
-}

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.i18n
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,4 +44,11 @@ class LibraryLocalizationRegressionTest {
         assertTrue(content.contains("LocalLevyraStrings.current"))
         assertTrue(content.contains("formatTrackCount"))
     }
+    @Test
+    fun libraryValueFormattersFollowSelectedLocale() {
+        val strings = LevyraStrings.forCode("it")
+        assertEquals("1 h 30 min", strings.formatLibraryDuration(90L * 60_000L))
+        assertEquals("1,5 GB", strings.formatLibraryBytes((1.5 * 1024 * 1024 * 1024).toLong()))
+    }
+
 }

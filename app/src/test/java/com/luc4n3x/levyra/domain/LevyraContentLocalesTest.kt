@@ -34,19 +34,15 @@ class LevyraContentLocalesTest {
         LevyraLanguageCatalog.languages.forEach { language ->
             val locale = LevyraContentLocales.forLanguage(language.code)
             assertTrue("Missing chart region for ${language.code}: ${locale.chartRegionId}", locale.chartRegionId in regionIds)
-            assertEquals(
-                locale.chartRegionId,
-                ChartsCatalog.defaultRegionForLanguage(language.code, deviceCountry = "").id
-            )
+            assertEquals(locale.chartRegionId, ChartsCatalog.defaultRegionForLanguage(language.code).id)
         }
     }
 
     @Test
-    fun supportedDeviceRegionIsIndependentFromUiLanguage() {
-        assertEquals("pt", ChartsCatalog.defaultRegionForLanguage("en", "PT").id)
-        assertEquals("br", ChartsCatalog.defaultRegionForLanguage("pt", "BR").id)
-        assertEquals("jp", ChartsCatalog.defaultRegionForLanguage("fr", "JP").id)
-        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("ja", "IT").id)
+    fun initialChartRegionFollowsUiLanguage() {
+        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it").id)
+        assertEquals("pt", ChartsCatalog.defaultRegionForLanguage("pt").id)
+        assertEquals(LevyraContentLocales.forLanguage("ja").chartRegionId, ChartsCatalog.defaultRegionForLanguage("ja").id)
     }
 
     @Test
