@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +69,8 @@ import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
+import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -73,7 +78,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
-import java.util.Locale
 
 @Composable
 internal fun LibraryStorageCard(
@@ -109,7 +113,7 @@ internal fun LibraryStorageCard(
                     )
                     Text(
                         listOf(
-                            formatBytes(bytes),
+                            strings.formatLibraryBytes(bytes),
                             strings.formatDownloadedTrackCount(count),
                             activeCount.takeIf { it > 0 }?.let { "$it ${strings.activeIndicator}" }.orEmpty()
                         ).filter(String::isNotBlank).joinToString(" · "),
@@ -315,22 +319,27 @@ internal fun AddTracksToPlaylistDialog(
                         Spacer(Modifier.width(7.dp))
                         Text(strings.createNewPlaylist)
                     }
-                    playlists.take(12).forEach { playlist ->
-                        Surface(
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onAdd(playlist.id) })
-                        ) {
-                            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
-                                Spacer(Modifier.width(10.dp))
-                                Text(
-                                    playlist.name,
-                                    color = LevyraText,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        items(playlists, key = { it.id }) { playlist ->
+                            Surface(
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onAdd(playlist.id) })
+                            ) {
+                                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        playlist.name,
+                                        color = LevyraText,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }
@@ -410,7 +419,7 @@ internal fun PlaylistDetailHeader(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${strings.formatTrackCount(playlist.size)} · ${formatDuration(durationMs)}",
+                    "${strings.formatTrackCount(playlist.size)} · ${strings.formatLibraryDuration(durationMs)}",
                     color = LevyraMuted,
                     fontSize = 12.sp
                 )
@@ -529,6 +538,7 @@ internal fun LibraryNowPlayingDock(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalLevyraStrings.current
     Surface(
         color = LevyraPanel.copy(alpha = 0.98f),
         shape = RoundedCornerShape(22.dp),
@@ -559,7 +569,7 @@ internal fun LibraryNowPlayingDock(
             IconButton(onClick = onToggle) {
                 Icon(
                     if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = null,
+                    contentDescription = if (isPlaying) strings.pause else strings.play,
                     tint = LevyraCyan
                 )
             }
@@ -608,21 +618,4 @@ internal fun downloadProgressFor(track: Track, state: LevyraUiState): Int? {
             task.state in setOf("QUEUED", "RUNNING", "RETRYING", "PAUSED")
     }?.let { return it.progress.coerceIn(0, 100) }
     return state.downloadProgressByTrackId[track.id]
-}
-
-internal fun formatDuration(durationMs: Long): String {
-    val totalMinutes = durationMs.coerceAtLeast(0L) / 60_000L
-    val hours = totalMinutes / 60L
-    val minutes = totalMinutes % 60L
-    return if (hours > 0L) "${hours}h ${minutes}m" else "${minutes}m"
-}
-
-internal fun formatBytes(bytes: Long): String {
-    val safe = bytes.coerceAtLeast(0L).toDouble()
-    return when {
-        safe >= 1024.0 * 1024.0 * 1024.0 -> String.format(Locale.ROOT, "%.1f GB", safe / (1024.0 * 1024.0 * 1024.0))
-        safe >= 1024.0 * 1024.0 -> String.format(Locale.ROOT, "%.0f MB", safe / (1024.0 * 1024.0))
-        safe >= 1024.0 -> String.format(Locale.ROOT, "%.0f KB", safe / 1024.0)
-        else -> "${safe.toLong()} B"
-    }
 }
