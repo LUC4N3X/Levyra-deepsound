@@ -562,6 +562,10 @@ class PlaybackService : MediaLibraryService() {
                 } else {
                     commands.remove(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
                 }
+                commands.remove(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS)
+                commands.remove(androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                commands.remove(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT)
+                commands.remove(androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
                 if (canSkipToPreviousTrack()) {
                     commands.addAll(
                         androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS,
@@ -579,9 +583,9 @@ class PlaybackService : MediaLibraryService() {
 
             override fun isCommandAvailable(command: Int): Boolean = availableCommands.contains(command)
 
-            override fun hasNextMediaItem(): Boolean = canSkipToNextTrack() || super.hasNextMediaItem()
+            override fun hasNextMediaItem(): Boolean = canSkipToNextTrack()
 
-            override fun hasPreviousMediaItem(): Boolean = canSkipToPreviousTrack() || super.hasPreviousMediaItem()
+            override fun hasPreviousMediaItem(): Boolean = canSkipToPreviousTrack()
 
             override fun seekToNext() = skipQueue(forward = true, respectRepeatOne = false)
 
