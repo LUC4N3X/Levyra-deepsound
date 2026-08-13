@@ -43,38 +43,54 @@ The Levyra bootstrap uses claude-mem's current native integrations for:
 - Codex CLI: native hooks/plugin marketplace plus MCP search;
 - Google Antigravity: hooks plus MCP search.
 
-Run the explicit one-time bootstrap from the repository root:
+The repository owner gives standing authorization for these runtimes to install
+the pinned package automatically only when prior-session context is materially
+useful and claude-mem memory tools are not already available. The agent must not
+ask the owner to type the setup command first.
+
+Automatic-on-need flow:
+
+```text
+memory is useful
+→ memory tools already available? use them
+→ otherwise run one pinned local setup attempt
+→ retry focused memory discovery/search
+→ if unavailable or unhealthy, continue without memory
+```
+
+Do not repeatedly reinstall during one task. A failed memory setup is reported,
+but normal Levyra work continues. Persistent memory must never become a
+prerequisite for builds, tests, code review, or repository work.
+
+The dedicated setup scripts are:
 
 Windows:
-
-```powershell
-.\scripts\setup-ai.ps1 -ClaudeMem
-```
-
-Linux/macOS:
-
-```bash
-./scripts/setup-ai.sh --claude-mem
-```
-
-The dedicated scripts can also be run directly:
 
 ```powershell
 .\scripts\setup-claude-mem.ps1
 ```
 
+Linux/macOS/WSL:
+
 ```bash
 ./scripts/setup-claude-mem.sh
+```
+
+The broader AI setup can still force the same integration manually for repair,
+machine provisioning, or diagnostics:
+
+```powershell
+.\scripts\setup-ai.ps1 -ClaudeMem
+```
+
+```bash
+./scripts/setup-ai.sh --claude-mem
 ```
 
 The setup detects installed supported runtimes and configures only those it
 finds. It uses the pinned claude-mem package, Claude subscription authentication
 for the compression worker, Haiku for the memory-compression workload, disables
 claude-mem anonymous telemetry, starts the local worker, and runs `doctor`.
-
-A failed memory setup is reported, but the parent Levyra AI setup continues.
-Persistent memory must never become a prerequisite for builds, tests, code
-review, or normal repository work.
 
 ## Windows fail-open guard
 
