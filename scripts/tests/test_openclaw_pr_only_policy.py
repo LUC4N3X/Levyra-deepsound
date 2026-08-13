@@ -125,6 +125,28 @@ class OpenClawPrOnlyPolicyTest(unittest.TestCase):
         self.assertIn("ensure_allowlist_pattern levyra-reviewer", setup)
         self.assertIn("ensure_allowlist_pattern levyra-ci", setup)
 
+    def test_spawned_evidence_agents_receive_absolute_role_paths(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+
+        for term in (
+            "upsert_policy()",
+            "Levyra specialist evidence paths",
+            "require the absolute wrapper \\`$REVIEW_EVIDENCE\\`",
+            "require the absolute wrapper \\`$CI_EVIDENCE\\`",
+            "spawnedCwd",
+            "do not invoke \\`./bin/levyra-evidence\\`",
+        ):
+            self.assertIn(term, setup)
+
+        self.assertIn(
+            'upsert_policy "$REVIEW_WORKSPACE/AGENTS.md" "## Levyra evidence command policy"',
+            setup,
+        )
+        self.assertIn(
+            'upsert_policy "$CI_WORKSPACE/AGENTS.md" "## Levyra evidence command policy"',
+            setup,
+        )
+
     def test_worker_has_no_merge_release_or_direct_main_publication_command(self) -> None:
         worker = WORKER.read_text(encoding="utf-8")
 
