@@ -1,0 +1,19 @@
+{
+  "description": "Levyra project lifecycle hooks for automatic owner-authorized tooling bootstrap.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "^(startup|resume)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/ensure-rtk.sh\" --quiet >/dev/null 2>&1 || true'",
+            "commandWindows": "powershell -NoProfile -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/ensure-rtk.ps1') -Quiet *> $null; exit 0\"",
+            "timeout": 600,
+            "statusMessage": "Preparing Levyra RTK"
+          }
+        ]
+      }
+    ]
+  }
+}
