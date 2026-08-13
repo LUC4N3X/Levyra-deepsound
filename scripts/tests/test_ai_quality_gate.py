@@ -111,6 +111,17 @@ class AiQualityGateTest(unittest.TestCase):
             missing_skill_references({"levyra-missing-skill"}, set()),
         )
 
+    def test_fast_gate_includes_persistent_memory_validation(self) -> None:
+        commands, blocked = build_commands(
+            {"AGENTS.md"},
+            "fast",
+            python="python",
+        )
+        labels = {command.label for command in commands}
+
+        self.assertEqual([], blocked)
+        self.assertIn("Validate claude-mem integration", labels)
+
     def test_full_android_profile_adds_tests_lint_and_compile(self) -> None:
         commands, blocked = build_commands(
             {"app/src/main/java/example.kt"},
