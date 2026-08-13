@@ -3,6 +3,7 @@ param(
     [switch] $DryRun,
     [switch] $InstallRtk,
     [switch] $Plugins,
+    [switch] $ClaudeMem,
     [switch] $SkipHooks,
     [switch] $SkipMattSkills
 )
@@ -63,6 +64,27 @@ function Invoke-SetupCommand {
 
 Write-Output "Levyra AI efficiency setup"
 Write-Output "Repository: $repoRoot"
+
+if ($ClaudeMem) {
+    $claudeMemSetup = Join-Path $PSScriptRoot 'setup-claude-mem.ps1'
+    if (-not (Test-Path -LiteralPath $claudeMemSetup -PathType Leaf)) {
+        Write-Warning "claude-mem setup script not found: $claudeMemSetup"
+    }
+    else {
+        try {
+            if ($DryRun) {
+                & $claudeMemSetup -DryRun
+            }
+            else {
+                & $claudeMemSetup
+            }
+        }
+        catch {
+            Write-Warning "claude-mem setup did not complete: $($_.Exception.Message)"
+            Write-Warning 'Continuing Levyra AI setup without persistent memory.'
+        }
+    }
+}
 
 if (-not (Test-RtkTokenKiller)) {
     if (-not $InstallRtk) {
@@ -181,7 +203,8 @@ if (-not $pythonCommand) {
 foreach ($validationScript in @(
     'scripts/validate_agent_config.py',
     'scripts/validate_ai_efficiency.py',
-    'scripts/validate_matt_skills.py'
+    'scripts/validate_matt_skills.py',
+    'scripts/validate_claude_mem.py'
 )) {
     Invoke-SetupCommand "Validate with $validationScript" {
         Push-Location $repoRoot
@@ -198,5 +221,7 @@ Write-Output ''
 Write-Output 'Setup complete.'
 Write-Output 'Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded.'
 Write-Output 'Claude Code will discover the project-enabled mattpocock-skills plugin through .claude/settings.json and may request normal marketplace trust/installation approval.'
+Write-Output 'Use -ClaudeMem once when you explicitly want the pinned claude-mem integration for detected Claude Code, Codex CLI, and Antigravity runtimes.'
+Write-Output 'ChatGPT uses claude-mem only when a compatible MCP app is connected; see docs/ai/CLAUDE_MEM.md.'
 Write-Output 'Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md.'
 Write-Output 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'
