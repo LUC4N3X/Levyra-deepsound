@@ -3,21 +3,22 @@
 ## Goal
 
 Levyra uses RTK as a command-output compression layer for supported coding
-agents. Repository
-instructions and skills decide what to inspect, validate, preserve, and review;
-RTK only reduces repetitive terminal output before it reaches agent context.
+agents. Repository instructions and skills decide what to inspect, validate,
+preserve, and review; RTK only reduces repetitive terminal output before it
+reaches agent context.
 
 The integration:
 
 - keeps root/path `AGENTS.md` files as the source of truth;
-- exposes `levyra-context-efficiency` and `levyra-security-review` to supported
+- exposes `levyra-context-efficiency` and security/domain skills to supported
   runtimes;
 - adds project filters in `.rtk/filters.toml`;
-- detects installed Codex, Claude Code, OpenCode, and Antigravity integrations;
-- automatically bootstraps the pinned official RTK build for coding agents;
-- keeps every other executable and plugin installation opt-in;
-- excludes Ollama and other local-model profiles;
-- keeps exact security, signing, checksum, and release evidence raw.
+- automatically ensures the pinned official RTK build for Claude Code and Codex
+  when a Levyra session starts;
+- keeps a fallback instruction-driven ensure path for compatible runtimes;
+- never weakens sandbox or approval controls to make tooling bootstrap succeed;
+- keeps exact security, signing, checksum, release, and decisive diagnostic
+  evidence raw.
 
 ## What RTK changes
 
@@ -29,37 +30,73 @@ RTK is not test authority. Always verify exit status and final success/failure
 markers. Rerun the exact original command raw whenever compact output is
 incomplete or ambiguous.
 
-## Runtime behavior
+## Pinned automatic ensure
 
-### Codex
-
-Codex uses an **instruction-based Codex setup**. Running:
+Levyra pins the official `rtk-ai/rtk` revision:
 
 ```text
-rtk init -g --codex
+b34be37caf3796b69a50952a28e60e32b5daad43
 ```
 
-installs guidance that teaches Codex when to invoke RTK. It does not install a
-transparent native shell-rewrite hook. Codex follows those instructions and
-selects RTK commands explicitly.
+The idempotent ensure scripts are:
+
+```text
+Windows PowerShell: scripts/ensure-rtk.ps1 -Quiet
+Bash/WSL/Linux/macOS: ./scripts/ensure-rtk.sh --quiet
+```
+
+Each script first verifies raw `rtk --version` and `rtk gain`. If both succeed,
+nothing is installed. If they fail and Cargo is available, the script installs
+the pinned `rtk-ai/rtk` revision with `cargo install --git ... --rev ... --force`
+and verifies it again.
+
+If Cargo is unavailable, installation fails, or post-install verification fails,
+the ensure script returns a failure and the agent continues with raw commands.
+The bootstrap must not fall back to an unverified download or broader machine
+permissions.
+
+## Runtime behavior
 
 ### Claude Code
 
-Claude Code supports an RTK hook initialized by the setup scripts when the
-`claude` command is present. Claude also receives repository-specific routing
-through `.claude/rules/context-efficiency.md` and its prompt-submission hook.
+`.claude/settings.json` registers a `SessionStart` hook for `startup|resume`.
+`.claude/hooks/session-start.sh` invokes `scripts/ensure-rtk.sh --quiet` before
+normal work and injects a short environment note telling Claude whether RTK is
+ready. The hook remains fail-open: an RTK bootstrap failure does not block the
+Claude session.
+
+Claude also receives repository-specific routing through `.claude/CLAUDE.md`,
+`.claude/rules/context-efficiency.md`, and the prompt-submission hook.
+
+### Codex
+
+`.codex/hooks.json` registers a project-local `SessionStart` hook for
+`startup|resume` with separate Unix and Windows commands. It resolves the Git
+root, runs the appropriate `scripts/ensure-rtk.*` helper, and exits successfully
+even when RTK cannot be installed so Codex can continue raw.
+
+Codex requires a one-time trust review for a new or changed non-managed
+project-local command hook. This is a Codex security boundary, not a Levyra
+setup step to bypass. Once the exact hook is trusted, future Levyra
+startup/resume sessions run it automatically.
+
+Root `AGENTS.md` and `.agents/rules/levyra-workspace.md` retain the same ensure
+instruction as a fallback for runtimes or sessions where project hooks are
+unavailable or disabled.
 
 ### Google Antigravity
 
-The setup scripts initialize RTK's repository-local Antigravity integration.
-Antigravity reads `.agents/rules/levyra-workspace.md` and the shared skills under
-`.agents/skills/`.
+Antigravity reads `.agents/rules/levyra-workspace.md` and shared skills under
+`.agents/skills/`. On a shell-capable non-trivial task it runs the platform
+ensure script automatically before noisy work. The broader setup scripts can
+also initialize RTK's repository-local Antigravity integration.
 
 ### OpenCode and compatible runtimes
 
-When `opencode` is detected, the setup scripts initialize its supported RTK
-integration. Every runtime must still follow Levyra's root/path instructions,
-domain skills, validation, review, and publication boundaries.
+Compatible shell-capable runtimes follow root `AGENTS.md` and
+`levyra-context-efficiency`: ensure RTK once when needed, then use it selectively.
+The broader setup scripts still initialize supported RTK integrations for
+runtimes they detect.
 
 ## Security routing across runtimes
 
@@ -81,8 +118,7 @@ threat model
 
 Codex Security may be enabled through its official setup and used alongside the
 same repository-native skill. It is intentionally documented separately in
-`docs/ai/CODEX_SECURITY.md`; the setup scripts do not invent or install an
-unverified plugin identifier.
+`docs/ai/CODEX_SECURITY.md`.
 
 ## Automatic repository discovery
 
@@ -92,34 +128,30 @@ app/AGENTS.md
 desktop/AGENTS.md
 .github/AGENTS.md
 docs/AGENTS.md
+.codex/hooks.json
 .agents/rules/levyra-workspace.md
 .agents/skills/levyra-context-efficiency/SKILL.md
 .agents/skills/levyra-security-review/SKILL.md
+.claude/CLAUDE.md
+.claude/settings.json
+.claude/hooks/session-start.sh
 .claude/rules/context-efficiency.md
-.claude/rules/security.md
 .rtk/filters.toml
+scripts/ensure-rtk.ps1
+scripts/ensure-rtk.sh
 ```
 
 Restart the coding agent or begin a new conversation after pulling changes to
-instructions, rules, skills, hooks, or plugins.
+instructions, rules, skills, hooks, or plugins. Codex may request trust review
+when a project-local command hook is new or its definition changes.
 
-## Automatic agent bootstrap
+## Broader setup and repair
 
-Root `AGENTS.md` gives supported coding agents standing permission to verify
-RTK before their first noisy shell task. Agents run `rtk --version` and
-`rtk gain` raw. If RTK is missing, or if another project named `rtk` is on the
-path, the agent runs the platform setup script with `-InstallRtk` or
-`--install-rtk`.
+The automatic session ensure is the normal path for RTK. The broader setup
+scripts remain useful for provisioning, repairing integrations, plugin setup,
+or validating the complete AI environment.
 
-The scripts install `rtk-ai/rtk` from commit
-`b34be37caf3796b69a50952a28e60e32b5daad43`, the revision published for the
-official `v0.45.0` release, through Cargo, verify that `rtk gain` is available,
-and configure only detected supported runtimes. They do not silently install
-plugins. If Cargo is unavailable or the install fails, the agent reports the
-blocked bootstrap and continues with raw commands; it must not fall back to an
-unverified download.
-
-## Windows setup
+Windows:
 
 ```powershell
 .\scripts\setup-ai.ps1 -DryRun
@@ -128,18 +160,9 @@ unverified download.
 .\scripts\setup-ai.ps1 -InstallRtk -Plugins
 ```
 
-The script detects and validates the correct RTK, installs the pinned revision
-when an agent invokes the authorized install flag, configures supported
-runtimes, installs verified `.agents/config/codex-plugins.txt` entries when
-requested, and runs both repository validators.
-
-Missing Python blocks validation and returns a nonzero exit status. Setup is not
-reported complete when required validation cannot run.
-
-## Linux and macOS setup
+Linux/macOS/WSL:
 
 ```bash
-chmod +x scripts/setup-ai.sh
 ./scripts/setup-ai.sh --dry-run
 ./scripts/setup-ai.sh
 ./scripts/setup-ai.sh --install-rtk
@@ -147,6 +170,7 @@ chmod +x scripts/setup-ai.sh
 ```
 
 Use `--skip-hooks` or `-SkipHooks` when only validation/plugin setup is needed.
+Missing required validation tooling is a blocked setup, not a pass.
 
 ## Verified plugin manifest
 
@@ -190,19 +214,14 @@ sha256sum <artifact>
 certutil -hashfile <artifact> SHA256
 ```
 
-Security scans and reproductions also remain raw.
+Security scans and decisive reproductions also remain raw.
 
 ## Project-local filters
 
-`.rtk/filters.toml` adds handling for:
-
-- `scripts/validate_agent_config.py`;
-- local CodeRabbit review output;
-- bounded `adb logcat` output;
-- direct and interpreter-prefixed setup-script runs.
-
-Gradle, Git, GitHub CLI, common tests, lint, Docker, searches, and standard logs
-continue to use RTK's built-in handlers.
+`.rtk/filters.toml` adds handling for repository-specific agent validators,
+CodeRabbit review output, bounded `adb logcat`, and setup-script runs. Gradle,
+Git, GitHub CLI, common tests, lint, Docker, searches, and standard logs continue
+to use RTK's built-in handlers.
 
 ## Measuring real savings
 
@@ -220,26 +239,32 @@ to diagnose failures correctly.
 
 ## Failure recovery
 
-1. Rerun the exact command without RTK when output is incomplete.
-2. Add stacktrace or debug detail only when needed.
-3. Verify the original exit status and success/failure marker.
-4. Do not treat empty filtered output as a passing check.
-5. Keep raw security and release evidence in the final report.
+1. If automatic ensure fails, continue raw and report it once.
+2. Rerun the exact command without RTK when compact output is incomplete.
+3. Add stacktrace or debug detail only when needed.
+4. Verify original exit status and success/failure markers.
+5. Never treat empty filtered output as proof of success.
+6. Keep raw security and release evidence in the final report.
 
 ## Validation
 
 ```bash
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
+python3 scripts/validate_codex_hooks.py
+python3 scripts/ai_quality_gate.py --profile fast
 ```
 
-The second validator parses `.rtk/filters.toml` as TOML, tests documented setup
-command matching, verifies fail-closed setup behavior, cross-runtime security
-routing, dependency-review configuration, plugin scope, and the absence of
-unapproved local-model profiles.
+The AI quality gate also runs repository script tests that protect the Codex
+hook contract and persistent-memory integration. PowerShell and Bash syntax are
+checked when those files are part of the changed set and the required shell is
+available in the validation environment.
 
 ## Attribution
 
-The workflow is inspired by `ChrisTitusTech/titus-ai`. RTK is developed by
-`rtk-ai/rtk` and distributed under Apache-2.0. Levyra keeps its own project-
-specific instructions, security boundaries, domain skills, and validation.
+The workflow incorporates selected ideas from `ChrisTitusTech/titus-ai`, notably
+portable scoped agent configuration, deterministic validation, readiness review,
+and conservative tool bootstrap. Levyra keeps its own project-specific
+architecture, least-privilege boundaries, skills, planning hierarchy, and
+quality gates. RTK is developed by `rtk-ai/rtk` and distributed under
+Apache-2.0.
