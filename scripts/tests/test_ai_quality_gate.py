@@ -10,6 +10,7 @@ from scripts.ai_quality_gate import (
     scan_added_lines,
 )
 from scripts.validate_agent_config import missing_skill_references
+from scripts.validate_codex_hooks import main as validate_codex_hooks
 
 
 class AiQualityGateTest(unittest.TestCase):
@@ -121,6 +122,9 @@ class AiQualityGateTest(unittest.TestCase):
 
         self.assertEqual([], blocked)
         self.assertIn("Validate claude-mem integration", labels)
+
+    def test_codex_startup_hook_contract_is_valid(self) -> None:
+        self.assertEqual(0, validate_codex_hooks())
 
     def test_full_android_profile_adds_tests_lint_and_compile(self) -> None:
         commands, blocked = build_commands(
