@@ -15,7 +15,8 @@ The integration:
 - adds project filters in `.rtk/filters.toml`;
 - automatically ensures the pinned official RTK build for Claude Code and Codex
   when a Levyra session starts;
-- keeps a fallback instruction-driven ensure path for compatible runtimes;
+- keeps the earlier instruction-based Codex setup as a fallback when lifecycle
+  hooks are unavailable or disabled;
 - never weakens sandbox or approval controls to make tooling bootstrap succeed;
 - keeps exact security, signing, checksum, release, and decisive diagnostic
   evidence raw.
@@ -80,9 +81,11 @@ project-local command hook. This is a Codex security boundary, not a Levyra
 setup step to bypass. Once the exact hook is trusted, future Levyra
 startup/resume sessions run it automatically.
 
-Root `AGENTS.md` and `.agents/rules/levyra-workspace.md` retain the same ensure
-instruction as a fallback for runtimes or sessions where project hooks are
-unavailable or disabled.
+The previous **instruction-based Codex setup** remains a deliberate fallback:
+root `AGENTS.md` and `.agents/rules/levyra-workspace.md` still tell Codex to run
+the ensure helper before noisy work if project hooks are unavailable, disabled,
+or not yet trusted. The broader setup scripts may also initialize RTK guidance
+with `rtk init -g --codex`.
 
 ### Google Antigravity
 
