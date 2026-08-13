@@ -6833,7 +6833,6 @@ private fun HomeQuickPicksShelf(
     val columns = remember(tracks) {
         tracks
             .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(HomeSectionLayoutPolicy.TRACK_GRID_CAPACITY)
             .chunked(2)
     }
     val density = LocalDensity.current
@@ -16161,36 +16160,38 @@ private fun AlbumArtworkCard(
                         )
                 )
             }
-            Surface(
-                color = Color.Black.copy(alpha = 0.30f),
-                border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.10f)),
-                shape = RoundedCornerShape(999.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(10.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+            if (meta.isNotBlank()) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.30f),
+                    border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.10f)),
+                    shape = RoundedCornerShape(999.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(10.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .background(
-                                if (isCurrent) accentStart else Color.White.copy(alpha = 0.72f),
-                                CircleShape
-                            )
-                    )
-                    Text(
-                        text = meta,
-                        color = Color.White.copy(alpha = 0.86f),
-                        fontSize = 10.5.sp,
-                        lineHeight = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    if (isCurrent) accentStart else Color.White.copy(alpha = 0.72f),
+                                    CircleShape
+                                )
+                        )
+                        Text(
+                            text = meta,
+                            color = Color.White.copy(alpha = 0.86f),
+                            fontSize = 10.5.sp,
+                            lineHeight = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
