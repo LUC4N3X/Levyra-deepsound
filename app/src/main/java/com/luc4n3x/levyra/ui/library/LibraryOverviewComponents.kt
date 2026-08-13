@@ -798,4 +798,3 @@ private fun LibraryWeekChart(pulse: ListeningPulse, locale: Locale) {
         }
     }
 }
-
