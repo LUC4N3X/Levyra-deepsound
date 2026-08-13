@@ -141,6 +141,37 @@ append_policy() {
   fi
 }
 
+upsert_policy() {
+  local path="$1"
+  local heading="$2"
+  shift 2
+  python3 - "$path" "$heading" "$@" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+heading = sys.argv[2]
+body = list(sys.argv[3:])
+text = path.read_text(encoding="utf-8") if path.exists() else ""
+lines = text.splitlines()
+section = [heading, "", *body]
+start = next((index for index, line in enumerate(lines) if line == heading), None)
+if start is None:
+    if lines and lines[-1] != "":
+        lines.append("")
+    lines.extend(section)
+else:
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        if lines[index].startswith("## "):
+            end = index
+            break
+    lines[start:end] = section + ([""] if end < len(lines) else [])
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+PY
+}
+
 require_command openclaw
 require_command python3
 require_command git
@@ -181,12 +212,19 @@ append_policy "$PRIMARY_WORKSPACE/AGENTS.md" "## Levyra PR-only publication poli
   "The only publication path is: work branch -> commit -> push that branch -> open a Pull Request against main." \
   "Never push directly to main/master, merge a PR, create a tag or release, deploy, or bypass the wrapper with raw Git/GitHub shell commands."
 
-append_policy "$REVIEW_WORKSPACE/AGENTS.md" "## Levyra evidence command policy" \
-  "Use \`./bin/levyra-evidence\` for Git and GitHub evidence, including show/diff/fetch and exact-SHA Actions queries." \
+upsert_policy "$PRIMARY_WORKSPACE/AGENTS.md" "## Levyra specialist evidence paths" \
+  "When delegating to levyra-reviewer, require the absolute wrapper \`$REVIEW_EVIDENCE\`; do not hand the child \`./bin/levyra-evidence\`." \
+  "When delegating to levyra-ci, require the absolute wrapper \`$CI_EVIDENCE\`; do not hand the child \`./bin/levyra-evidence\`." \
+  "A spawned specialist may inherit the requester working directory, so relative wrapper paths are not valid evidence roots."
+
+upsert_policy "$REVIEW_WORKSPACE/AGENTS.md" "## Levyra evidence command policy" \
+  "Use \`$REVIEW_EVIDENCE\` for Git and GitHub evidence, including show/diff/fetch and exact-SHA Actions queries." \
+  "Use that absolute wrapper path even when spawnedCwd points at the requester workspace; do not invoke \`./bin/levyra-evidence\`." \
   "Do not use raw Git or gh commands and do not modify the checkout beyond fetch metadata."
 
-append_policy "$CI_WORKSPACE/AGENTS.md" "## Levyra evidence command policy" \
-  "Use \`./bin/levyra-evidence\` for Git and GitHub evidence, especially \`actions-sha <sha>\` or \`run-list <sha>\` before concluding that CI is absent." \
+upsert_policy "$CI_WORKSPACE/AGENTS.md" "## Levyra evidence command policy" \
+  "Use \`$CI_EVIDENCE\` for Git and GitHub evidence, especially \`actions-sha <sha>\` or \`run-list <sha>\` before concluding that CI is absent." \
+  "Use that absolute wrapper path even when spawnedCwd points at the requester workspace; do not invoke \`./bin/levyra-evidence\`." \
   "Do not use raw Git or gh commands and do not modify source, workflows, or repository state."
 
 openclaw config validate
