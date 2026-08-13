@@ -84,8 +84,9 @@ reading on every non-trivial task:
 6. load only matching skills, never the whole skill tree.
 
 Use `levyra-context-efficiency` immediately when the task needs non-trivial
-repository exploration or high-volume output. Tiny, already-local edits keep the
-same baseline without loading extra skill text.
+repository exploration, useful cross-session continuity, or high-volume output.
+Tiny, already-local edits keep the same baseline without loading extra skill
+text.
 
 Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics
 raw whenever compacting them could change the conclusion. Token savings never
@@ -109,25 +110,58 @@ reusable term or durable architectural decision actually warrants it. See
 
 ## RTK agent bootstrap
 
-The repository owner authorizes supported coding agents to bootstrap only the
-official `rtk-ai/rtk` command-output tool when working in this repository.
-Before the first noisy shell task in a session:
+The repository owner gives standing authorization to supported shell-capable
+coding agents to bootstrap the pinned official `rtk-ai/rtk` command-output tool
+when working in this repository. The bootstrap is automatic and idempotent.
 
-1. run `rtk --version` and `rtk gain` without RTK wrapping;
-2. if either command fails, run `scripts/setup-ai.ps1 -InstallRtk` on Windows or
-   `./scripts/setup-ai.sh --install-rtk` on Linux/macOS;
-3. let the setup script install the pinned RTK revision through Cargo and initialize
-   integrations only for detected supported agents;
-4. if Cargo is unavailable or installation fails, report the blocked bootstrap
-   once and continue with raw commands instead of downloading an unverified
-   executable or weakening validation.
+At the start of the first non-trivial shell-capable task in a session, without
+asking the owner to run setup manually:
 
-This standing authorization applies to the pinned `rtk-ai/rtk` bootstrap and
-the focused Matt Pocock skill bootstrap documented below. Other plugins,
-executables, unrestricted sandboxing, approval bypasses, commit, push, pull
-request, merge, tag, release, and repository settings still require their normal
-explicit authorization. Keep security, signing, checksum, secret, and exact
-reproduction evidence raw.
+1. on Windows PowerShell run `scripts/ensure-rtk.ps1 -Quiet`;
+2. on Bash, WSL, Linux, or macOS run `./scripts/ensure-rtk.sh --quiet`;
+3. let the ensure script verify raw `rtk --version` and `rtk gain` and install
+   only the pinned RTK revision through Cargo when those checks fail;
+4. if Cargo is unavailable, installation fails, or verification still fails,
+   report the blocked bootstrap once and continue with raw commands instead of
+   downloading an unverified executable, weakening sandboxing, or weakening
+   validation.
+
+The broader manual setup remains available through
+`scripts/setup-ai.ps1 -InstallRtk` or `./scripts/setup-ai.sh --install-rtk` for
+repair or explicit environment setup. Do not reinstall RTK repeatedly once the
+raw readiness checks pass.
+
+## Persistent agent memory bootstrap
+
+The repository owner also gives standing authorization to the pinned
+`thedotmack/claude-mem` integration defined in `docs/ai/CLAUDE_MEM.md` for
+Claude Code, Codex CLI, and Google Antigravity.
+
+Use it automatically only when prior-session context can materially reduce
+repeated investigation or restore continuity. When the runtime already exposes
+claude-mem memory tools, query them directly with progressive disclosure. When
+a local shell-capable supported runtime needs that context but the memory tools
+are absent, it may run one automatic pinned setup attempt through
+`scripts/setup-claude-mem.ps1` on Windows or `./scripts/setup-claude-mem.sh` on
+Bash/WSL/Linux/macOS, then retry the focused lookup.
+
+If setup, worker health, or MCP discovery fails, continue without memory. Never
+block implementation, review, tests, or answers waiting for memory; never enable
+cloud sync or experimental semantic injection implicitly; never store secrets,
+keystores, `.env`, cookies, tokens, signing material, private URLs, or
+`local.properties` as project memory. Current repository evidence always
+outranks stored observations.
+
+ChatGPT uses claude-mem only when a compatible MCP app is actually connected and
+the memory tools are available. Repository configuration alone must never be
+represented as a successful ChatGPT-to-local-worker connection.
+
+This standing authorization applies to the pinned RTK bootstrap, the pinned
+claude-mem integration, and the focused Matt Pocock skill bootstrap documented
+below. Other plugins, executables, unrestricted sandboxing, approval bypasses,
+commit, push, pull request, merge, tag, release, deployment, external messages,
+and repository settings still require their normal explicit authorization. Keep
+security, signing, checksum, secret, and exact reproduction evidence raw.
 
 ## Matt Pocock skills bootstrap
 
@@ -234,6 +268,8 @@ active phase:
 - `docs/ai/AI_ENGINEERING_GUARDRAILS.md` defines the anti-overengineering,
   assumption/tradeoff, goal-verification, surgical-edit, and complexity rules
   shared by all coding runtimes.
+- `docs/ai/CLAUDE_MEM.md` defines the optional persistent-memory integration,
+  privacy boundary, automatic-on-need bootstrap, and fail-open behavior.
 - `docs/ai/MATT_POCOCK_SKILLS.md` defines the real-engineering stage routing and
   runtime-specific upstream skill installation.
 - `docs/ai/ANTIGRAVITY.md` defines Antigravity discovery, workspace, and
@@ -269,6 +305,13 @@ command, CI result, review, device check, or owner decision.
 - Bound retries, timeouts, concurrency, response sizes, cache/storage growth,
   downloads, and prefetch.
 - Keep durable identity independent from mutable display text.
+- Treat user-provided screenshots and direct runtime observations as acceptance
+  evidence. Reconcile visible failures even when automated checks are green.
+- Match the requested action mode. `inspect`, `review`, `diagnose`, and `report`
+  authorize investigation and reporting, not implementation. `fix`, `update`,
+  `address`, and `implement` authorize the requested change and relevant
+  validation, but never imply publication, merge, release, deployment, or an
+  external message.
 - Do not add explanatory source-code comments. Prefer clear names, small
   functions, and explicit structure. Preserve comments that are legally or
   mechanically required, including license headers, generated/tool directives,
@@ -277,31 +320,42 @@ command, CI result, review, device check, or owner decision.
 
 ## Work method
 
-1. Define the exact requested outcome and scope.
-2. Apply the always-on context budget before broad reading; load
-   `levyra-context-efficiency` when exploration is non-trivial.
-3. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
+For non-trivial implementation use `Plan -> Execute -> Verify`: make the smallest
+evidence-based plan, implement one coherent slice, verify its success criterion,
+and only then expand. Do not insert a ceremonial approval pause unless the owner
+explicitly reserved one.
+
+1. Define the exact requested outcome, action mode, and scope.
+2. At the start of a non-trivial shell-capable task, ensure the pinned RTK
+   bootstrap automatically; continue raw if it is unavailable.
+3. Apply the always-on context budget before broad reading; load
+   `levyra-context-efficiency` when exploration or cross-session continuity is
+   non-trivial.
+4. When prior-session context materially matters, use focused claude-mem
+   retrieval if available or the one-attempt owner-authorized bootstrap if it is
+   not; verify every remembered conclusion against the current repository.
+5. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active
    `docs/project/TASKS.md` phase when applicable.
-4. Identify behavior and compatibility that must remain unchanged.
-5. State material assumptions and unresolved tradeoffs; inspect the repository
+6. Identify behavior and compatibility that must remain unchanged.
+7. State material assumptions and unresolved tradeoffs; inspect the repository
    first when evidence can resolve them.
-6. Identify a simpler existing-owner/reuse path before adding abstraction or
+8. Identify a simpler existing-owner/reuse path before adding abstraction or
    configurability.
-7. Inspect the complete current control/data flow and nearby tests.
-8. Identify the root cause before editing.
-9. Define the verification target for each non-trivial step.
-10. Make the smallest coherent change compatible with current architecture.
-11. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames,
+9. Inspect the complete current control/data flow and nearby tests.
+10. Identify the root cause before editing.
+11. Define the verification target for each non-trivial step.
+12. Make the smallest coherent change compatible with current architecture.
+13. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames,
     and broad refactors.
-12. Add or update regression tests for defects, migrations, matching, security
+14. Add or update regression tests for defects, migrations, matching, security
     boundaries, lifecycle, and concurrency when applicable.
-13. Run focused checks first, then applicable broader checks.
-14. Inspect the complete final diff for unrelated edits, generated files,
+15. Run focused checks first, then applicable broader checks.
+16. Inspect the complete final diff for unrelated edits, generated files,
     secrets, binaries, conflict markers, and accidental version changes.
-15. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
+17. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
     `docs/project/TASKS.md`, architecture, and user documentation when the
     approved requirement or architecture changes.
-16. Report exactly what changed, what ran, what passed, what failed, and what
+18. Report exactly what changed, what ran, what passed, what failed, and what
     remains unverified.
 
 When the owner says "only this", modify only the named behavior or files unless
@@ -346,6 +400,7 @@ Agent configuration checks from the repository root:
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
 python3 scripts/validate_matt_skills.py
+python3 scripts/validate_claude_mem.py
 ```
 
 Android checks from the repository root:
