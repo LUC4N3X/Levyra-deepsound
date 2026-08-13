@@ -195,6 +195,51 @@ class YoutubeMusicSearchRendererTest {
         assertEquals(listOf("UC_COLDPLAY", "UC_BTS"), track.artistBrowseIds)
     }
 
+    @Test
+    fun `album parser ignores related rows outside track shelf`() {
+        val album = AlbumHit(
+            title = "Exact Album",
+            artist = "Exact Artist",
+            year = "2026",
+            thumbnailUrl = "https://levyra.test/exact-album.jpg",
+            query = "Exact Album Exact Artist",
+            browseId = "MPRE_EXACT_ALBUM"
+        )
+        val albumRenderer = renderer(
+            line("First Song"),
+            artistLine("Exact Artist", "UC_EXACT")
+        )
+        val unrelatedRenderer = renderer(
+            line("Unrelated Result"),
+            artistLine("Other Artist", "UC_OTHER")
+        ).put("playlistItemData", JSONObject().put("videoId", "different01"))
+        val root = JSONObject()
+            .put(
+                "primary",
+                JSONObject().put(
+                    "musicShelfRenderer",
+                    JSONObject().put(
+                        "contents",
+                        JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", albumRenderer))
+                    )
+                )
+            )
+            .put(
+                "related",
+                JSONObject().put(
+                    "musicCarouselShelfRenderer",
+                    JSONObject().put(
+                        "contents",
+                        JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", unrelatedRenderer))
+                    )
+                )
+            )
+
+        val tracks = repository.parseAlbumTracks(root, album)
+
+        assertEquals(listOf("First Song"), tracks.map { it.title })
+    }
+
     private fun renderer(vararg flexLines: JSONObject): JSONObject = JSONObject()
         .put("playlistItemData", JSONObject().put("videoId", "2nd73lyvq4w"))
         .put("flexColumns", JSONArray(flexLines.toList()))
