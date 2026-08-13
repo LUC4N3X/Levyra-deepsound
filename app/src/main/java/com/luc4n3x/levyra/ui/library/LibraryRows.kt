@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatar
 import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
@@ -140,7 +141,7 @@ internal fun LibraryTrackRow(
                 IconButton(onClick = onFavorite) {
                     Icon(
                         if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = null,
+                        contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
                         tint = if (isFavorite) LevyraPink else LevyraMuted,
                         modifier = Modifier.size(20.dp)
                     )
@@ -193,7 +194,7 @@ internal fun LibraryPlaylistRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${strings.formatTrackCount(playlist.size)} · ${formatDuration(playlist.tracks.sumOf { it.durationMs })}",
+                    "${strings.formatTrackCount(playlist.size)} · ${strings.formatLibraryDuration(playlist.tracks.sumOf { it.durationMs })}",
                     color = LevyraMuted,
                     fontSize = 11.sp
                 )
