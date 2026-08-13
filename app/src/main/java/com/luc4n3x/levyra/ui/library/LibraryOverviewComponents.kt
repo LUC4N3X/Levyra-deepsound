@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Favorite
@@ -424,7 +426,7 @@ private fun SmartCollectionHero(style: SmartCollectionStyle, countLabel: String,
             }
         }
         IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd)) {
-            Icon(androidx.compose.material.icons.rounded.Close, contentDescription = null, tint = LevyraMuted)
+            Icon(Icons.Rounded.Close, contentDescription = null, tint = LevyraMuted)
         }
     }
 }
