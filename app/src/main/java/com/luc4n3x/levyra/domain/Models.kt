@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.domain
 
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 data class Track(
@@ -86,6 +87,7 @@ object ChartsCatalog {
         ChartRegion("es", "España", "🇪🇸", "es"),
         ChartRegion("fr", "France", "🇫🇷", "fr"),
         ChartRegion("de", "Deutschland", "🇩🇪", "de"),
+        ChartRegion("pt", "Portugal", "🇵🇹", "pt"),
         ChartRegion("br", "Brasil", "🇧🇷", "br"),
         ChartRegion("mx", "México", "🇲🇽", "mx"),
         ChartRegion("nl", "Nederland", "🇳🇱", "nl"),
@@ -112,9 +114,16 @@ object ChartsCatalog {
 
     fun region(id: String): ChartRegion = regions.firstOrNull { it.id == id } ?: regions.first()
 
-    fun defaultRegionForLanguage(languageCode: String): ChartRegion {
-        val locale = LevyraContentLocales.forLanguage(languageCode)
-        return region(locale.chartRegionId)
+    fun defaultRegionForLanguage(
+        languageCode: String,
+        deviceCountry: String = Locale.getDefault().country
+    ): ChartRegion {
+        val normalizedCountry = deviceCountry.trim().lowercase(Locale.ROOT)
+        val deviceRegion = regions.firstOrNull { candidate ->
+            candidate.country.equals(normalizedCountry, ignoreCase = true) ||
+                candidate.id.equals(normalizedCountry, ignoreCase = true)
+        }
+        return deviceRegion ?: region(LevyraContentLocales.forLanguage(languageCode).chartRegionId)
     }
 }
 
@@ -225,15 +234,20 @@ object ExploreCatalog {
         val newReleaseQuery = "${locale.homeQueries.firstOrNull().orEmpty()} new releases 2026".trim()
         val rapQuery = locale.queryForTaste("rap")
         val popQuery = locale.queryForTaste("pop")
-        val partyQuery = locale.queryForTaste("party")
         val electroQuery = locale.queryForTaste("electro")
         val rnbQuery = locale.queryForTaste("rnb")
         val rockQuery = locale.queryForTaste("rock")
         val chillQuery = locale.queryForTaste("chill")
         val latinoQuery = when (locale.languageCode) {
             "es" -> "reggaeton latino música latina nueva 2026"
-            "pt" -> "funk brasileiro latino hits 2026"
+            "pt" -> "música latina novos êxitos 2026"
             else -> "latin music new hits 2026"
+        }
+        val jpopQuery = when (locale.languageCode) {
+            "ja" -> "アニメ J-POP 2026"
+            "zh" -> "动漫 J-POP 2026"
+            "ko" -> "애니메이션 J-POP 2026"
+            else -> "anime j-pop music 2026"
         }
         return listOf(
             ExploreZone(NEW_RELEASES_ZONE_ID, strings.exploreNewReleases, "🌊", newReleaseQuery, 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
@@ -245,7 +259,7 @@ object ExploreCatalog {
             ExploreZone("rock-alt", strings.exploreRockAlt, "🦑", rockQuery, 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
             ExploreZone("latino", strings.exploreLatino, "🔥", latinoQuery, 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
             ExploreZone("lofi-chill", strings.exploreLofiChill, "🫧", chillQuery, 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
-            ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", partyQuery, 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
+            ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", jpopQuery, 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
         )
     }
 
