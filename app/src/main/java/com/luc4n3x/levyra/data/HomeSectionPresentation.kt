@@ -7,6 +7,7 @@ enum class HomeSectionPresentation {
 }
 
 internal object HomeSectionLayoutPolicy {
+    const val TRACK_GRID_CAPACITY = 64
     const val ARTWORK_GRID_CAPACITY = 12
 
     private const val TRACK_GRID_MINIMUM_TRACKS = 8
@@ -16,7 +17,7 @@ internal object HomeSectionLayoutPolicy {
     fun presentationFor(position: Int, trackCount: Int): HomeSectionPresentation {
         if (position < 0) return HomeSectionPresentation.ArtworkRow
         return when (position % ROTATION) {
-            1, 3 -> if (trackCount >= TRACK_GRID_MINIMUM_TRACKS) {
+            1, 3 -> if (trackCount in TRACK_GRID_MINIMUM_TRACKS..TRACK_GRID_CAPACITY) {
                 HomeSectionPresentation.TrackGrid
             } else {
                 HomeSectionPresentation.ArtworkRow
