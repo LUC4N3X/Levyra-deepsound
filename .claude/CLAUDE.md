@@ -4,6 +4,19 @@ Use root `AGENTS.md` as the repository contract and
 `docs/ai/AI_ENGINEERING_GUARDRAILS.md` as the shared implementation guardrail.
 Apply nearer path-specific `AGENTS.md` files for files in scope.
 
+## Automatic project tooling
+
+The repository owner authorizes the pinned `rtk-ai/rtk` bootstrap for Levyra.
+The `SessionStart` hook checks RTK automatically and installs the pinned build
+when it is missing and Cargo is available. Do not ask the owner to run this
+manually. If the hook reports that bootstrap is blocked, continue with raw
+commands and report the limitation once.
+
+When a task genuinely depends on prior-session context and claude-mem tools are
+not available, load `levyra-context-efficiency` and follow its owner-authorized,
+one-attempt automatic claude-mem bootstrap. Memory failure must never block the
+task.
+
 ## Immediate context budget
 
 Apply before broad reading on every real coding task:
@@ -31,6 +44,14 @@ baseline without loading extra skill text.
   concurrency, persistence, and compatibility semantics.
 - State material assumptions/tradeoffs, prefer the simplest compatible path,
   and define `step -> verification` for non-trivial work.
+- For non-trivial implementation, use `Plan -> Execute -> Verify`: make a brief
+  evidence-based plan, implement one coherent slice, verify it before expanding.
+  Do not stop for approval unless the owner reserved a checkpoint.
+- Match the requested action mode. `inspect`, `review`, `diagnose`, and `report`
+  authorize investigation only; `fix`, `update`, `address`, and `implement`
+  authorize the requested code change and validation, but never publication.
+- Treat screenshots and direct runtime observations as acceptance evidence that
+  must be reconciled even when automated checks are green.
 - Make surgical changes; avoid unrelated cleanup, speculative abstractions,
   dependency churn, or version changes.
 - Do not add explanatory source-code comments. Prefer clear names, small

@@ -42,15 +42,18 @@ Also load the matching product, security, performance, CI, or release skill.
 
 For shell work:
 
-1. verify the expected RTK with raw `rtk --version` and `rtk gain` before the
-   first noisy command in a session;
-2. if unavailable, follow the owner-authorized bootstrap in root `AGENTS.md`:
-   `scripts/setup-ai.ps1 -InstallRtk` on Windows or
-   `./scripts/setup-ai.sh --install-rtk` on Linux/macOS;
-3. if bootstrap is blocked, report it once and continue raw;
-4. prefer supported RTK wrappers for noisy success-heavy output;
-5. keep short commands and exact-output checks raw;
-6. if RTK hides a root cause, truncates required evidence, rejects a command, or
+1. before the first noisy command, automatically ensure the expected RTK without
+   asking the owner: run `scripts/ensure-rtk.ps1 -Quiet` in Windows PowerShell or
+   `./scripts/ensure-rtk.sh --quiet` in Bash/WSL/Linux/macOS;
+2. the ensure script validates raw `rtk --version` and `rtk gain` and installs
+   only the owner-authorized pinned `rtk-ai/rtk` revision when needed;
+3. if Cargo is unavailable or installation fails, report the bootstrap limit
+   once and continue raw instead of weakening sandboxing or validation;
+4. the older manual bootstrap remains available through
+   `scripts/setup-ai.ps1 -InstallRtk` or `./scripts/setup-ai.sh --install-rtk`;
+5. prefer supported RTK wrappers for noisy success-heavy output;
+6. keep short commands and exact-output checks raw;
+7. if RTK hides a root cause, truncates required evidence, rejects a command, or
    makes exit status/success ambiguous, rerun the exact command raw.
 
 Useful routes include:
@@ -121,6 +124,19 @@ only after the compact result index identifies a relevant item.
 Useful triggers include continuation requests, repeated bugs/CI failures,
 earlier rejected approaches, prior architectural decisions, and work that would
 otherwise require reconstructing a previous investigation.
+
+If a local shell-capable Claude Code, Codex CLI, or Antigravity runtime needs
+that prior-session context but claude-mem tools are absent, the owner authorizes
+one automatic attempt to run the pinned dedicated setup:
+
+```text
+Windows: scripts/setup-claude-mem.ps1
+Bash/WSL/Linux/macOS: ./scripts/setup-claude-mem.sh
+```
+
+Do not ask the owner to type the setup command. Do not repeatedly reinstall in
+the same task. If setup, worker health, or MCP discovery remains unavailable,
+continue without claude-mem.
 
 Memory is never authoritative. `AGENTS.md`, current code, approved planning,
 tests, CI, device/runtime evidence, and direct owner decisions outrank stored
@@ -217,20 +233,23 @@ reasoning, generated output, and memory retrieval are separate costs.
 
 ## Setup and safety
 
-RTK setup is documented in `docs/ai/RTK.md` and automated by
-`scripts/setup-ai.ps1` / `scripts/setup-ai.sh`.
+RTK setup is documented in `docs/ai/RTK.md`. Automatic session/task bootstrap
+uses `scripts/ensure-rtk.ps1` or `scripts/ensure-rtk.sh`; the broader manual setup
+remains available through `scripts/setup-ai.ps1` / `scripts/setup-ai.sh`.
 
-claude-mem setup is explicitly opt-in through
-`scripts/setup-ai.ps1 -ClaudeMem` or `./scripts/setup-ai.sh --claude-mem`. This
-preserves the repository rule that third-party plugin installation requires
-owner authorization while still making memory use automatic once installed.
+The owner also authorizes the pinned claude-mem integration to bootstrap
+automatically only when prior-session memory is materially useful and the local
+runtime does not already expose its memory tools. Manual forcing remains
+available through `scripts/setup-ai.ps1 -ClaudeMem` or
+`./scripts/setup-ai.sh --claude-mem`.
 
 - Do not enable unrestricted sandboxing, global `danger-full-access`, or silent
   approval bypasses.
 - Do not expose or filter away secrets, signing material, tokens, cookies,
   private URLs, keystores, or local properties.
 - Do not install other executables/plugins without explicit owner authorization;
-  the pinned RTK bootstrap is the standing exception defined by `AGENTS.md`.
+  the pinned RTK and claude-mem bootstraps are the standing exceptions defined
+  by the repository owner.
 - Do not let compact context or persistent memory replace tests, CI, review, or
   device validation.
 - Never infer permission to commit, push, open/merge a PR, tag, or release.
