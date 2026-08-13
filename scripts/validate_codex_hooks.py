@@ -43,41 +43,45 @@ def main() -> int:
                     )
                 else:
                     handlers = matching_group.get("hooks")
-                    command_handler = next(
-                        (
-                            handler
-                            for handler in handlers
-                            if isinstance(handlers, list)
-                            and isinstance(handler, dict)
-                            and handler.get("type") == "command"
-                        ),
-                        None,
-                    )
-                    if command_handler is None:
-                        errors.append("Codex SessionStart must contain a command hook")
+                    if not isinstance(handlers, list):
+                        errors.append("Codex SessionStart hooks must be a list")
                     else:
-                        command = command_handler.get("command", "")
-                        command_windows = command_handler.get("commandWindows", "")
-                        for term in (
-                            "git rev-parse --show-toplevel",
-                            "scripts/ensure-rtk.sh",
-                            "|| true",
-                        ):
-                            if term not in command:
+                        command_handler = next(
+                            (
+                                handler
+                                for handler in handlers
+                                if isinstance(handler, dict)
+                                and handler.get("type") == "command"
+                            ),
+                            None,
+                        )
+                        if command_handler is None:
+                            errors.append("Codex SessionStart must contain a command hook")
+                        else:
+                            command = command_handler.get("command", "")
+                            command_windows = command_handler.get("commandWindows", "")
+                            for term in (
+                                "git rev-parse --show-toplevel",
+                                "scripts/ensure-rtk.sh",
+                                "|| true",
+                            ):
+                                if term not in command:
+                                    errors.append(
+                                        f"Codex Unix SessionStart command is missing {term!r}"
+                                    )
+                            for term in (
+                                "git rev-parse --show-toplevel",
+                                "scripts/ensure-rtk.ps1",
+                                "exit 0",
+                            ):
+                                if term not in command_windows:
+                                    errors.append(
+                                        f"Codex Windows SessionStart command is missing {term!r}"
+                                    )
+                            if command_handler.get("timeout") != 600:
                                 errors.append(
-                                    f"Codex Unix SessionStart command is missing {term!r}"
+                                    "Codex RTK bootstrap hook timeout must be 600 seconds"
                                 )
-                        for term in (
-                            "git rev-parse --show-toplevel",
-                            "scripts/ensure-rtk.ps1",
-                            "exit 0",
-                        ):
-                            if term not in command_windows:
-                                errors.append(
-                                    f"Codex Windows SessionStart command is missing {term!r}"
-                                )
-                        if command_handler.get("timeout") != 600:
-                            errors.append("Codex RTK bootstrap hook timeout must be 600 seconds")
 
     for relative_path in ("scripts/ensure-rtk.sh", "scripts/ensure-rtk.ps1"):
         path = ROOT / relative_path
