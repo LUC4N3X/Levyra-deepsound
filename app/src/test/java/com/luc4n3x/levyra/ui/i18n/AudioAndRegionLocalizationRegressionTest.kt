@@ -28,6 +28,8 @@ class AudioAndRegionLocalizationRegressionTest {
     @Test
     fun portugueseDiscoveryDefaultsToPortugal() {
         val locale = LevyraContentLocales.forLanguage("pt-PT")
+        val quickSearches = LevyraContentLocales.quickSearches("pt-PT")
+        val artists = LevyraContentLocales.artistSuggestions("pt-PT")
 
         assertEquals("pt", locale.chartRegionId)
         assertEquals("pt", locale.chartCountry)
@@ -35,6 +37,9 @@ class AudioAndRegionLocalizationRegressionTest {
         assertTrue(locale.localSectionTitle.contains("Portugal", ignoreCase = true))
         assertTrue(locale.homeQueries.any { it.contains("Portugal", ignoreCase = true) })
         assertFalse(locale.homeQueries.any { it.contains("Brasil", ignoreCase = true) })
+        assertTrue(quickSearches.any { it.contains("Portugal", ignoreCase = true) })
+        assertFalse(quickSearches.any { it.contains("Brasil", ignoreCase = true) })
+        assertTrue(artists.contains("Dillaz"))
     }
 
     @Test
