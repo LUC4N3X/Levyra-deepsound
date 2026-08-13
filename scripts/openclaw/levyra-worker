@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_SLUG="LUC4N3X/Levyra-deepsound"
+BASE_BRANCH="main"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EVIDENCE="$SCRIPT_DIR/levyra-evidence"
+
+fail() {
+  echo "[blocked] $*" >&2
+  exit 2
+}
+
+resolve_repo() {
+  local candidate
+  for candidate in \
+    "${LEVYRA_REPO:-}" \
+    "$SCRIPT_DIR/../repo" \
+    "$PWD/repo" \
+    "$PWD"; do
+    [[ -n "$candidate" ]] || continue
+    if [[ -d "$candidate/.git" ]]; then
+      (cd "$candidate" && pwd -P)
+      return 0
+    fi
+  done
+  fail "Levyra repository checkout not found"
+}
+
+current_branch() {
+  git -C "$REPO" symbolic-ref --quiet --short HEAD || true
+}
+
+validate_work_branch_name() {
+  local branch="$1"
+  [[ -n "$branch" ]] || fail "branch name is required"
+  git check-ref-format --branch "$branch" >/dev/null 2>&1 || fail "invalid branch name: $branch"
+  case "$branch" in
+    main|master)
+      fail "direct work on protected branch '$branch' is not allowed"
+      ;;
+  esac
+}
+
+require_work_branch() {
+  local branch
+  branch="$(current_branch)"
+  [[ -n "$branch" ]] || fail "detached HEAD is not a publishable work branch"
+  validate_work_branch_name "$branch"
+  printf '%s\n' "$branch"
+}
+
+validate_gradle_args() {
+  local arg lowered
+  for arg in "$@"; do
+    lowered="${arg,,}"
+    case "$lowered" in
+      *publish*|*upload*|*deploy*|*promote*)
+        fail "Gradle publication/deployment task is not allowed: $arg"
+        ;;
+    esac
+  done
+}
+
+usage() {
+  cat <<'EOF'
+Usage: levyra-worker <command> [args]
+
+Read/evidence commands:
+  status | fetch | rev-parse <ref> | show <ref> | diff <base> <head> | log [ref] [count]
+  actions-sha <sha> | run-list <sha> | run-view <id> | job-log <id>
+  pr-view <number> | pr-diff <number> | pr-comments <number>
+
+Work branch commands:
+  start <branch>
+  stage [path ...]
+  remove <path ...>
+  move <source> <destination>
+  restore <path ...>
+  commit <message>
+  push
+  pr-open <title> <body>
+  pr-status
+
+Validation commands:
+  quality <fast|full>
+  python-tests
+  gradle <args ...>
+  search <fixed-string> [path]
+
+This wrapper never pushes main/master, merges PRs, creates releases, tags,
+or exposes unrestricted gh/git shell access.
+EOF
+}
+
+REPO="$(resolve_repo)"
+COMMAND="${1:-}"
+shift || true
+
+case "$COMMAND" in
+  status|fetch|rev-parse|show|diff|log|actions-sha|run-list|run-view|job-log|pr-view|pr-diff|pr-comments)
+    [[ -x "$EVIDENCE" ]] || fail "read-only evidence wrapper not installed next to levyra-worker"
+    exec "$EVIDENCE" "$COMMAND" "$@"
+    ;;
+  start)
+    [[ $# -eq 1 ]] || fail "start requires one branch name"
+    branch="$1"
+    validate_work_branch_name "$branch"
+    git -C "$REPO" fetch --prune origin "$BASE_BRANCH"
+    if git -C "$REPO" show-ref --verify --quiet "refs/heads/$branch"; then
+      git -C "$REPO" switch "$branch"
+    elif git -C "$REPO" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+      git -C "$REPO" switch --track -c "$branch" "origin/$branch"
+    else
+      git -C "$REPO" switch -c "$branch" "origin/$BASE_BRANCH"
+    fi
+    ;;
+  stage)
+    require_work_branch >/dev/null
+    if [[ $# -eq 0 ]]; then
+      git -C "$REPO" add -A
+    else
+      git -C "$REPO" add -- "$@"
+    fi
+    ;;
+  remove)
+    require_work_branch >/dev/null
+    [[ $# -ge 1 ]] || fail "remove requires at least one path"
+    git -C "$REPO" rm -- "$@"
+    ;;
+  move)
+    require_work_branch >/dev/null
+    [[ $# -eq 2 ]] || fail "move requires source and destination"
+    git -C "$REPO" mv -- "$1" "$2"
+    ;;
+  restore)
+    require_work_branch >/dev/null
+    [[ $# -ge 1 ]] || fail "restore requires at least one path"
+    git -C "$REPO" restore -- "$@"
+    ;;
+  commit)
+    require_work_branch >/dev/null
+    [[ $# -ge 1 ]] || fail "commit requires a message"
+    message="$*"
+    git -C "$REPO" commit -m "$message"
+    ;;
+  push)
+    branch="$(require_work_branch)"
+    git -C "$REPO" push --set-upstream origin "HEAD:refs/heads/$branch"
+    ;;
+  pr-open)
+    branch="$(require_work_branch)"
+    [[ $# -eq 2 ]] || fail "pr-open requires title and body"
+    title="$1"
+    body="$2"
+    existing="$(gh pr list --repo "$REPO_SLUG" --base "$BASE_BRANCH" --head "$branch" --state open --json url --jq '.[0].url // empty')"
+    if [[ -n "$existing" ]]; then
+      printf '%s\n' "$existing"
+      exit 0
+    fi
+    gh pr create \
+      --repo "$REPO_SLUG" \
+      --base "$BASE_BRANCH" \
+      --head "$branch" \
+      --title "$title" \
+      --body "$body"
+    ;;
+  pr-status)
+    branch="$(require_work_branch)"
+    gh pr view "$branch" \
+      --repo "$REPO_SLUG" \
+      --json number,title,state,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,reviewDecision,statusCheckRollup,url
+    ;;
+  quality)
+    require_work_branch >/dev/null
+    [[ $# -eq 1 ]] || fail "quality requires fast or full"
+    case "$1" in
+      fast|full)
+        (cd "$REPO" && python3 scripts/ai_quality_gate.py --profile "$1")
+        ;;
+      *)
+        fail "quality profile must be fast or full"
+        ;;
+    esac
+    ;;
+  python-tests)
+    require_work_branch >/dev/null
+    [[ $# -eq 0 ]] || fail "python-tests takes no arguments"
+    (cd "$REPO" && python3 -m unittest discover -s scripts/tests)
+    ;;
+  gradle)
+    require_work_branch >/dev/null
+    [[ $# -ge 1 ]] || fail "gradle requires at least one task or option"
+    validate_gradle_args "$@"
+    (cd "$REPO" && ./gradlew "$@")
+    ;;
+  search)
+    [[ $# -ge 1 && $# -le 2 ]] || fail "search requires a fixed string and optional path"
+    pattern="$1"
+    path="${2:-.}"
+    (cd "$REPO" && rg --line-number --fixed-strings -- "$pattern" "$path")
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    fail "unsupported worker command: ${COMMAND:-<empty>}"
+    ;;
+esac
