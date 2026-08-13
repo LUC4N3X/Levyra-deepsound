@@ -871,58 +871,70 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     suspend fun albumDetail(album: AlbumHit, languageCode: String = LevyraLanguageCatalog.deviceDefault()): AlbumDetail = withContext(Dispatchers.IO) {
-        val resolved = resolveAlbumHit(album, languageCode)
-        val root = resolved.browseId.takeIf { it.isNotBlank() }?.let { requestMusicBrowseRoot(languageCode, it) }
-        val headerAlbum = root?.let { parseAlbumHeader(it, resolved) } ?: resolved
-        val cover = headerAlbum.thumbnailUrl.ifBlank { resolved.thumbnailUrl }
-        val tracks = root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
-        val fallbackTracks = if (tracks.isEmpty()) {
-            searchInnerTube("${headerAlbum.title} ${headerAlbum.artist}", 24, languageCode)
-                .map { track ->
-                    track.copy(
-                        album = headerAlbum.title,
-                        thumbnailUrl = cover.ifBlank { track.thumbnailUrl },
-                        largeThumbnailUrl = cover.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
-                    )
-                }
-        } else {
+    val resolved = resolveAlbumHit(album, languageCode)
+    val root = resolved.browseId.takeIf { it.isNotBlank() }?.let { requestMusicBrowseRoot(languageCode, it) }
+    val headerAlbum = root?.let { parseAlbumHeader(it, resolved) } ?: resolved
+    val cover = headerAlbum.thumbnailUrl.ifBlank { resolved.thumbnailUrl }
+    val canonicalAudioPlaylistId = sequenceOf(
+        root?.let(::extractAudioPlaylistId).orEmpty(),
+        headerAlbum.audioPlaylistId,
+        resolved.audioPlaylistId,
+        album.audioPlaylistId
+    )
+        .map { it.trim().removePrefix("VL") }
+        .firstOrNull { it.startsWith("OLA") }
+        .orEmpty()
+    val playlistTracks = if (canonicalAudioPlaylistId.isNotBlank()) {
+        try {
+            playlist(canonicalAudioPlaylistId, languageCode, 60)?.tracks.orEmpty()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
             emptyList()
         }
-        val finalTracks = (tracks + fallbackTracks)
-            .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
-            .take(60)
-        val finalArtist = headerAlbum.artist.cleanAlbumArtistLabel()
-            .ifBlank { finalTracks.firstNotNullOfOrNull { it.artist.cleanAlbumArtistLabel().takeIf(String::isNotBlank) }.orEmpty() }
-            .ifBlank { resolved.artist.cleanAlbumArtistLabel() }
-        val finalAlbum = headerAlbum.copy(
-            artist = finalArtist,
-            thumbnailUrl = cover,
-            query = "${headerAlbum.title} $finalArtist".trim(),
-            browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
-            audioPlaylistId = root?.let { extractAudioPlaylistId(it) }.orEmpty().ifBlank { headerAlbum.audioPlaylistId },
-            explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
-        )
-        val enrichedTracks = finalTracks.map { track ->
-            track.copy(
-                album = finalAlbum.title,
-                albumBrowseId = finalAlbum.browseId,
-                year = track.year.ifBlank { finalAlbum.year },
-                explicit = track.explicit || finalAlbum.explicit,
-                thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
-            )
-        }
-        enrichedTracks.forEach { memory[it.id] = it }
-        val description = root?.let { parseAlbumDescription(it) }.orEmpty()
-        AlbumDetail(
-            album = finalAlbum,
-            description = description,
-            tracks = enrichedTracks,
-            otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
-            trackCount = enrichedTracks.size,
-            durationMs = enrichedTracks.sumOf { it.durationMs }
+    } else {
+        emptyList()
+    }
+    val shelfTracks = if (playlistTracks.isEmpty()) {
+        root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
+    } else {
+        emptyList()
+    }
+    val finalTracks = (if (playlistTracks.isNotEmpty()) playlistTracks else shelfTracks)
+        .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
+        .take(60)
+    val finalArtist = headerAlbum.artist.cleanAlbumArtistLabel()
+        .ifBlank { finalTracks.firstNotNullOfOrNull { it.artist.cleanAlbumArtistLabel().takeIf(String::isNotBlank) }.orEmpty() }
+        .ifBlank { resolved.artist.cleanAlbumArtistLabel() }
+    val finalAlbum = headerAlbum.copy(
+        artist = finalArtist,
+        thumbnailUrl = cover,
+        query = "${headerAlbum.title} $finalArtist".trim(),
+        browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
+        audioPlaylistId = canonicalAudioPlaylistId,
+        explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
+    )
+    val enrichedTracks = finalTracks.map { track ->
+        track.copy(
+            album = finalAlbum.title,
+            albumBrowseId = finalAlbum.browseId,
+            year = track.year.ifBlank { finalAlbum.year },
+            explicit = track.explicit || finalAlbum.explicit,
+            thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
+            largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
         )
     }
+    enrichedTracks.forEach { memory[it.id] = it }
+    val description = root?.let { parseAlbumDescription(it) }.orEmpty()
+    AlbumDetail(
+        album = finalAlbum,
+        description = description,
+        tracks = enrichedTracks,
+        otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
+        trackCount = enrichedTracks.size,
+        durationMs = enrichedTracks.sumOf { it.durationMs }
+    )
+}
 
     suspend fun resolveAlbumDescription(
         detail: AlbumDetail,
@@ -1536,12 +1548,27 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun extractAudioPlaylistId(root: JSONObject): String {
+    val headers = mutableListOf<JSONObject>()
+    collectObjectsByKey(root, "musicDetailHeaderRenderer", headers)
+    collectObjectsByKey(root, "musicResponsiveHeaderRenderer", headers)
+
+    fun playlistIds(value: Any?): List<String> {
         val endpoints = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "watchEndpoint", endpoints)
-        return endpoints.firstNotNullOfOrNull { endpoint ->
-            endpoint.optString("playlistId").takeIf { value -> value.startsWith("OLA") || value.startsWith("PL") }
-        }.orEmpty()
+        collectObjectsByKey(value, "watchEndpoint", endpoints)
+        return endpoints.asSequence()
+            .map { endpoint -> endpoint.optString("playlistId").trim().removePrefix("VL") }
+            .filter { playlistId -> playlistId.startsWith("OLA") }
+            .distinct()
+            .toList()
     }
+
+    headers.asSequence()
+        .flatMap { header -> playlistIds(header).asSequence() }
+        .firstOrNull()
+        ?.let { return it }
+
+    return playlistIds(root).singleOrNull().orEmpty()
+}
 
     private fun parseOtherAlbumVersions(root: JSONObject, current: AlbumHit): List<AlbumHit> {
         val cards = mutableListOf<JSONObject>()
@@ -1569,12 +1596,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return ""
     }
 
-    private fun parseAlbumTracks(root: JSONObject, album: AlbumHit): List<Track> {
-        val renderers = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
-        return renderers.mapNotNull { renderer -> parseAlbumTrackRenderer(renderer, album) }
-            .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
-    }
+    internal fun parseAlbumTracks(root: JSONObject, album: AlbumHit): List<Track> {
+    return YoutubeMusicPlaylistPageParser.renderers(root)
+        .mapNotNull { renderer -> parseAlbumTrackRenderer(renderer, album) }
+        .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
+}
 
     internal fun parseAlbumTrackRenderer(renderer: JSONObject, album: AlbumHit): Track? {
         val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
