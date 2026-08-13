@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Se conectează la player</string>
     <string name="car_now_playing">Se redă acum</string>
     <string name="car_queue">Coadă</string>
+    <string name="notification_shuffle">Aleatoriu</string>
+    <string name="notification_favorite">Favorit</string>
 </resources>

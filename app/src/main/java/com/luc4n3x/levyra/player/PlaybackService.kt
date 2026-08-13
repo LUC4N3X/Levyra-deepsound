@@ -130,8 +130,6 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
         const val ACTION_GET_PLATFORM_TOKEN = "levyra.media.GET_PLATFORM_TOKEN"
         const val KEY_PLATFORM_TOKEN = "levyra.media.PLATFORM_TOKEN"
-        private const val ACTION_QUEUE_PREVIOUS = "levyra.queue.previous"
-        private const val ACTION_QUEUE_NEXT = "levyra.queue.next"
         private const val PLAYBACK_STATE_PREFS = "levyra.playback.service.state"
         private const val KEY_PLAYBACK_EXPECTED = "playbackExpected"
         private const val KEY_PLAYBACK_HEARTBEAT_AT = "playbackHeartbeatAt"
@@ -218,8 +216,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val queuePreviousCommand by lazy { SessionCommand(ACTION_QUEUE_PREVIOUS, Bundle.EMPTY) }
-    private val queueNextCommand by lazy { SessionCommand(ACTION_QUEUE_NEXT, Bundle.EMPTY) }
+    private val queueCommandListeners = HashMap<Player.Listener, Player.Listener>()
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
@@ -376,20 +373,12 @@ class PlaybackService : MediaLibraryService() {
         }
 
         val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-            .setDisplayName("Casuale")
+            .setDisplayName(getString(com.luc4n3x.levyra.R.string.notification_shuffle))
             .setSessionCommand(queueShuffleCommand)
             .setCustomIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
             .build()
-        val queuePreviousButton = CommandButton.Builder(CommandButton.ICON_PREVIOUS)
-            .setDisplayName("Precedente")
-            .setSessionCommand(queuePreviousCommand)
-            .build()
-        val queueNextButton = CommandButton.Builder(CommandButton.ICON_NEXT)
-            .setDisplayName("Successivo")
-            .setSessionCommand(queueNextCommand)
-            .build()
         val queueLikeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-            .setDisplayName("Mi piace")
+            .setDisplayName(getString(com.luc4n3x.levyra.R.string.notification_favorite))
             .setSessionCommand(queueLikeCommand)
             .setCustomIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_like)
             .build()
@@ -402,8 +391,6 @@ class PlaybackService : MediaLibraryService() {
                 val commandBuilder = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                     .buildUpon()
                     .add(queueShuffleCommand)
-                    .add(queuePreviousCommand)
-                    .add(queueNextCommand)
                     .add(queueLikeCommand)
                 if (controller.packageName == packageName) {
                     commandBuilder.add(platformTokenCommand)
@@ -467,14 +454,6 @@ class PlaybackService : MediaLibraryService() {
                             }
                             Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, extras))
                         }
-                    }
-                    ACTION_QUEUE_PREVIOUS -> {
-                        skipQueue(forward = false, respectRepeatOne = false)
-                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                    }
-                    ACTION_QUEUE_NEXT -> {
-                        skipQueue(forward = true, respectRepeatOne = false)
-                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     "levyra.queue.shuffle" -> {
                         queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
@@ -584,13 +563,48 @@ class PlaybackService : MediaLibraryService() {
                 } else {
                     commands.remove(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
                 }
+                if (canSkipToPreviousTrack()) {
+                    commands.addAll(
+                        androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS,
+                        androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
+                    )
+                }
+                if (canSkipToNextTrack()) {
+                    commands.addAll(
+                        androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT,
+                        androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM
+                    )
+                }
                 return commands.build()
             }
+
+            override fun isCommandAvailable(command: Int): Boolean = availableCommands.contains(command)
+
+            override fun addListener(listener: androidx.media3.common.Player.Listener) {
+                super.addListener(queueCommandListeners.getOrPut(listener) { QueueCommandListener(this, listener) })
+            }
+
+            override fun removeListener(listener: androidx.media3.common.Player.Listener) {
+                super.removeListener(queueCommandListeners.remove(listener) ?: listener)
+            }
+
+            override fun hasNextMediaItem(): Boolean = canSkipToNextTrack() || super.hasNextMediaItem()
+
+            override fun hasPreviousMediaItem(): Boolean = canSkipToPreviousTrack() || super.hasPreviousMediaItem()
+
+            override fun seekToNext() = skipQueue(forward = true, respectRepeatOne = false)
+
+            override fun seekToNextMediaItem() = skipQueue(forward = true, respectRepeatOne = false)
+
+            override fun seekToPrevious() = skipQueue(forward = false, respectRepeatOne = false)
+
+            override fun seekToPreviousMediaItem() =
+                skipQueue(forward = false, respectRepeatOne = false, allowRewind = false)
         }
 
         mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, callback)
             .setSessionActivity(sessionActivity)
-            .setMediaButtonPreferences(ImmutableList.of(queueShuffleButton, queuePreviousButton, queueNextButton, queueLikeButton))
+            .setMediaButtonPreferences(ImmutableList.of(queueShuffleButton, queueLikeButton))
             .build()
 
         val notificationProvider = DefaultMediaNotificationProvider(this)
@@ -605,13 +619,29 @@ class PlaybackService : MediaLibraryService() {
         return START_STICKY
     }
 
-    private fun skipQueue(forward: Boolean, respectRepeatOne: Boolean, autoAdvance: Boolean = false) {
+    private fun canSkipToPreviousTrack(): Boolean = queueEngine.state.value.currentTrack != null
+
+    private fun canSkipToNextTrack(): Boolean {
+        val snapshot = queueEngine.state.value
+        if (snapshot.currentTrack == null) return false
+        return snapshot.currentIndex < snapshot.tracks.lastIndex ||
+            snapshot.shuffleEnabled ||
+            snapshot.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off ||
+            snapshot.radioEnabled
+    }
+
+    private fun skipQueue(
+        forward: Boolean,
+        respectRepeatOne: Boolean,
+        autoAdvance: Boolean = false,
+        allowRewind: Boolean = true
+    ) {
         cancelQueueTransition()
         queueSkipJob?.cancel()
         servicePrefetchJob?.cancel()
         queueSkipJob = serviceScope.launch {
             val player = activePlayer ?: return@launch
-            if (rewindInsteadOfSkip(player, forward)) return@launch
+            if (allowRewind && rewindInsteadOfSkip(player, forward)) return@launch
             val target = withContext(Dispatchers.IO) {
                 selectSkipTarget(forward, respectRepeatOne)
             } ?: return@launch
@@ -1719,5 +1749,15 @@ private class LevyraMediaSourceFactory(
         return path.endsWith(".mpd") ||
             clean.contains("mime=application%2fdash+xml") ||
             clean.contains("mime=application/dash+xml")
+    }
+}
+
+@UnstableApi
+private class QueueCommandListener(
+    private val player: Player,
+    private val delegate: Player.Listener
+) : Player.Listener by delegate {
+    override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
+        delegate.onAvailableCommandsChanged(player.availableCommands)
     }
 }

@@ -12,4 +12,6 @@
     <string name="car_connecting_player">กำลังเชื่อมต่อกับเครื่องเล่น</string>
     <string name="car_now_playing">กำลังเล่น</string>
     <string name="car_queue">คิว</string>
+    <string name="notification_shuffle">สุ่มเพลง</string>
+    <string name="notification_favorite">รายการโปรด</string>
 </resources>

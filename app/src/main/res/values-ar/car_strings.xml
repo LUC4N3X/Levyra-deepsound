@@ -12,4 +12,6 @@
     <string name="car_connecting_player">جارٍ الاتصال بالمشغّل</string>
     <string name="car_now_playing">قيد التشغيل الآن</string>
     <string name="car_queue">قائمة الانتظار</string>
+    <string name="notification_shuffle">عشوائي</string>
+    <string name="notification_favorite">المفضلة</string>
 </resources>
