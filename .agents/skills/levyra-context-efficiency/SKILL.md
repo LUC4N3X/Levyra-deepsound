@@ -1,6 +1,6 @@
 ---
 name: levyra-context-efficiency
-description: Automatically use at the start of any non-trivial Levyra engineering task that needs repository exploration, and for builds, tests, lint, logs, broad searches, dependency output, Git/GitHub inspection, CI diagnostics, agent setup, or other high-volume work. Reduce token waste through progressive context discovery and RTK while preserving raw evidence whenever compression could change a diagnosis.
+description: Automatically use at the start of any non-trivial Levyra engineering task that needs repository exploration, cross-session memory, and for builds, tests, lint, logs, broad searches, dependency output, Git/GitHub inspection, CI diagnostics, agent setup, or other high-volume work. Reduce token waste through progressive context discovery, optional claude-mem retrieval, and RTK while preserving raw evidence whenever compression could change a diagnosis.
 ---
 
 # Levyra context-efficiency workflow
@@ -8,11 +8,13 @@ description: Automatically use at the start of any non-trivial Levyra engineerin
 ## Purpose
 
 Reduce tokens by sending agents less irrelevant context, not by making technical
-work less precise. This skill controls discovery and command-output volume; it
-does not replace the affected Levyra domain skill or validation.
+work less precise. This skill controls discovery, persistent-memory retrieval,
+and command-output volume; it does not replace the affected Levyra domain skill
+or validation.
 
-Use it automatically before broad repository reading on any non-trivial task.
-Tiny, already-local edits do not need ceremony beyond the baseline below.
+Use it automatically before broad repository reading on any non-trivial task and
+when a task depends on useful context from an earlier session. Tiny,
+already-local edits do not need ceremony beyond the baseline below.
 
 ## Always-on context budget
 
@@ -34,9 +36,9 @@ change correctness, read it.
 
 ## Automatic routing
 
-Load this skill immediately when a task needs repository exploration or is
-likely to produce repeated/high-volume output. Also load the matching product,
-security, performance, CI, or release skill.
+Load this skill immediately when a task needs repository exploration, useful
+cross-session continuity, or is likely to produce repeated/high-volume output.
+Also load the matching product, security, performance, CI, or release skill.
 
 For shell work:
 
@@ -78,6 +80,7 @@ Use this order unless the task already provides a narrower starting point:
 ```text
 root / nearest AGENTS
 → matching skill(s)
+→ optional focused claude-mem lookup when prior-session context matters
 → focused search / symbol / filename
 → bounded source or test range
 → local control/data-flow expansion
@@ -95,6 +98,49 @@ Rules:
 - when several searches return the same evidence, stop collecting duplicates;
 - use a fresh narrow search instead of scrolling an unrelated giant file;
 - current repository evidence beats remembered summaries.
+
+## Persistent session memory
+
+Levyra uses `thedotmack/claude-mem` only as an optional retrieval layer. Read
+`docs/ai/CLAUDE_MEM.md` before installing, repairing, changing, or depending on
+that integration.
+
+When the runtime exposes claude-mem memory/MCP tools and the task depends on
+previous work, use them automatically with progressive disclosure:
+
+```text
+search
+→ timeline when chronological context matters
+→ get_observations for only the relevant IDs
+→ verify the result against the current repository
+```
+
+Prefer project-scoped and narrowly worded searches. Fetch detailed observations
+only after the compact result index identifies a relevant item.
+
+Useful triggers include continuation requests, repeated bugs/CI failures,
+earlier rejected approaches, prior architectural decisions, and work that would
+otherwise require reconstructing a previous investigation.
+
+Memory is never authoritative. `AGENTS.md`, current code, approved planning,
+tests, CI, device/runtime evidence, and direct owner decisions outrank stored
+observations. If memory is stale or conflicts with current evidence, discard the
+memory conclusion and follow the current source of truth.
+
+Fail open:
+
+- if the worker or MCP tools are unavailable, unhealthy, slow, or unsupported,
+  continue without memory;
+- never block a build, edit, review, test, or answer waiting for claude-mem;
+- do not claim a memory lookup happened when the runtime did not expose the
+  tools;
+- do not enable cloud sync or experimental semantic injection implicitly;
+- never store or retrieve secrets, keystores, `.env`, cookies, tokens, signing
+  material, private URLs, or `local.properties` as project memory.
+
+For ChatGPT specifically, use claude-mem only when a compatible MCP app is
+actually connected. Repository configuration alone cannot make ChatGPT reach a
+local claude-mem worker.
 
 ## Context checkpoints for long work
 
@@ -142,6 +188,8 @@ Do not compact or summarize away the deciding evidence for:
 
 - Do not add another global compression proxy or always-on third-party token
   layer when RTK plus focused discovery already handles the problem.
+- claude-mem is a focused cross-session retrieval layer, not a replacement for
+  RTK and not an excuse to inject large histories into every prompt.
 - Do not trade correctness for a smaller context window.
 - Do not repeat long repository instructions inside every skill; reference the
   canonical owner instead.
@@ -165,12 +213,17 @@ rtk session
 
 RTK estimates command-output savings only. Do not equate that number with total
 model-billing savings; instructions, skill bodies, conversation history,
-reasoning, and generated output are separate costs.
+reasoning, generated output, and memory retrieval are separate costs.
 
 ## Setup and safety
 
-Setup is documented in `docs/ai/RTK.md` and automated by
+RTK setup is documented in `docs/ai/RTK.md` and automated by
 `scripts/setup-ai.ps1` / `scripts/setup-ai.sh`.
+
+claude-mem setup is explicitly opt-in through
+`scripts/setup-ai.ps1 -ClaudeMem` or `./scripts/setup-ai.sh --claude-mem`. This
+preserves the repository rule that third-party plugin installation requires
+owner authorization while still making memory use automatic once installed.
 
 - Do not enable unrestricted sandboxing, global `danger-full-access`, or silent
   approval bypasses.
@@ -178,7 +231,8 @@ Setup is documented in `docs/ai/RTK.md` and automated by
   private URLs, keystores, or local properties.
 - Do not install other executables/plugins without explicit owner authorization;
   the pinned RTK bootstrap is the standing exception defined by `AGENTS.md`.
-- Do not let compact context replace tests, CI, review, or device validation.
+- Do not let compact context or persistent memory replace tests, CI, review, or
+  device validation.
 - Never infer permission to commit, push, open/merge a PR, tag, or release.
 
 ## Validation
@@ -186,6 +240,7 @@ Setup is documented in `docs/ai/RTK.md` and automated by
 After changing this workflow or its routing, run:
 
 ```text
+python3 scripts/validate_claude_mem.py
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
 ```
@@ -193,10 +248,11 @@ python3 scripts/validate_ai_efficiency.py
 On Windows:
 
 ```text
+py scripts/validate_claude_mem.py
 py scripts/validate_agent_config.py
 py scripts/validate_ai_efficiency.py
 ```
 
-Final reporting must say which context/commands were compacted, which evidence
-was intentionally kept raw, which commands were rerun raw, exact validation
-results, and remaining diagnostic risk.
+Final reporting must say which memory/context/commands were used or compacted,
+which evidence was intentionally kept raw, which commands were rerun raw, exact
+validation results, and remaining diagnostic risk.
