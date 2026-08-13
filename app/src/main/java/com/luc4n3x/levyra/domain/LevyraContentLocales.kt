@@ -25,7 +25,7 @@ object LevyraContentLocales {
             "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "éxitos España", "reggaeton latino", "conducir de noche", "gym bass")
             "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "top hits France", "rap français", "conduite de nuit", "gym bass")
             "de" -> listOf("Apache 207", "RAF Camora", "Luciano", "Ayliva", "top hits Deutschland", "deutschrap", "night drive", "gym bass")
-            "pt" -> listOf("Anitta", "Matuê", "Luísa Sonza", "Veigh", "top hits Brasil", "funk brasileiro", "dirigir à noite", "gym bass")
+            "pt" -> listOf("Dillaz", "Bárbara Bandeira", "Diogo Piçarra", "BISPO", "hits Portugal", "rap português", "condução noturna", "música de treino")
             "nl" -> listOf("Frenna", "Suzan & Freek", "Antoon", "Boef", "Nederlandse hits", "nederlandse rap", "night drive", "gym bass")
             "pl" -> listOf("sanah", "Taco Hemingway", "Dawid Podsiadło", "Quebonafide", "polskie hity", "polski rap", "night drive", "gym bass")
             "ro" -> listOf("Inna", "The Motans", "Delia", "Carla's Dreams", "hituri România", "rap românesc", "night drive", "gym bass")
@@ -56,7 +56,7 @@ object LevyraContentLocales {
             "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "Feid", "Karol G", "Rauw Alejandro", "Myke Towers", "Mora", "Bizarrap")
             "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "Tiakola", "SDM", "Zola", "Dadju", "SCH", "Jul")
             "de" -> listOf("Apache 207", "RAF Camora", "Luciano", "Ayliva", "Ufo361", "Shirin David", "Kontra K", "Nina Chuba", "Ski Aggu", "Bonez MC")
-            "pt" -> listOf("Anitta", "Matuê", "Luísa Sonza", "Veigh", "Luan Santana", "Henrique & Juliano", "MC Ryan SP", "WIU", "Marília Mendonça", "Jorge & Mateus")
+            "pt" -> listOf("Dillaz", "Bárbara Bandeira", "Diogo Piçarra", "BISPO", "Carolina Deslandes", "Slow J", "Nena", "Plutónio", "Mizzy Miles", "Wet Bed Gang")
             "nl" -> listOf("Frenna", "Suzan & Freek", "Antoon", "Boef", "Roxy Dekker", "Maan", "Ronnie Flex", "Broederliefde", "S10", "Snelle")
             "pl" -> listOf("sanah", "Taco Hemingway", "Dawid Podsiadło", "Quebonafide", "PRO8L3M", "Mata", "Daria Zawiałow", "Kizo", "Oki", "Bambi")
             "ro" -> listOf("Inna", "The Motans", "Delia", "Carla's Dreams", "Irina Rimes", "Smiley", "Andra", "M.G.L.", "Theo Rose", "Ian")
@@ -298,37 +298,37 @@ object LevyraContentLocales {
             )
             "pt" -> locale(
                 languageCode = "pt",
-                hl = "pt",
-                gl = "BR",
-                chartRegionId = "br",
-                chartCountry = "br",
+                hl = "pt-PT",
+                gl = "PT",
+                chartRegionId = "pt",
+                chartCountry = "pt",
                 quick = "Escolhas rápidas",
-                local = "Brasil na sua órbita",
+                local = "Portugal na tua órbita",
                 energy = "Energia imediata",
-                homeQueries = listOf("top hits Brasil 2026", "funk brasileiro 2026", "sertanejo 2026", "pop brasileiro 2026"),
+                homeQueries = listOf("hits Portugal 2026", "rap português 2026", "pop português 2026", "música portuguesa 2026"),
                 tasteQueries = mapOf(
-                    "hits" to "top hits Brasil 2026",
-                    "rap" to "rap trap brasileiro 2026",
-                    "italiana" to "música brasileira 2026",
-                    "pop" to "pop brasileiro 2026",
-                    "gym" to "música academia funk workout",
-                    "chill" to "música chill brasileira relax",
+                    "hits" to "hits Portugal 2026",
+                    "rap" to "rap trap português 2026",
+                    "italiana" to "música portuguesa 2026",
+                    "pop" to "pop português 2026",
+                    "gym" to "música treino rap português",
+                    "chill" to "música portuguesa chill relax",
                     "focus" to "música para foco concentração",
-                    "sad" to "músicas tristes brasileiras",
-                    "party" to "festa funk dance hits 2026",
-                    "rock" to "rock brasileiro hits",
-                    "electro" to "música eletrônica edm 2026",
-                    "rnb" to "rnb soul brasil hits"
+                    "sad" to "músicas portuguesas tristes",
+                    "party" to "festa dance hits Portugal 2026",
+                    "rock" to "rock português hits",
+                    "electro" to "música eletrónica edm 2026",
+                    "rnb" to "rnb soul Portugal hits"
                 ),
                 moodQueries = mapOf(
-                    "hits" to "top hits Brasil 2026",
-                    "gym" to "música academia funk workout hype",
-                    "chill" to "música chill brasileira relax",
+                    "hits" to "hits Portugal 2026",
+                    "gym" to "música treino rap português hype",
+                    "chill" to "música portuguesa chill relax",
                     "focus" to "música foco concentração",
-                    "italia" to "música brasileira 2026",
-                    "party" to "festa funk dance hits 2026",
-                    "drive" to "música para dirigir à noite brasil",
-                    "sad" to "músicas tristes brasileiras"
+                    "italia" to "música portuguesa 2026",
+                    "party" to "festa dance hits Portugal 2026",
+                    "drive" to "música para conduzir à noite Portugal",
+                    "sad" to "músicas portuguesas tristes"
                 )
             )
             "nl" -> compact(

@@ -2767,7 +2767,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         deferredHomeArtistsSnapshot.set(null)
         homeArtistsFingerprint = ""
         homeArtistsJob?.cancel()
-        val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(languageCode)
+        val selectedChartRegion = ChartsCatalog.regions
+            .firstOrNull { it.id == _state.value.selectedChartId }
+            ?: ChartsCatalog.defaultRegionForLanguage(languageCode)
         val localizedMoods = moodEngine.moodsForLanguage(languageCode)
         val selectedMood = localizedMoods.firstOrNull { it.id == _state.value.selectedMood?.id } ?: localizedMoods.firstOrNull()
         val homeSections = LevyraStartupCatalog.repairHomeSections(
@@ -2776,10 +2778,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         val homeTracks = homeSections.flatMap { it.tracks }.distinctBy { it.id }
         val chartTracks = LevyraStartupCatalog.repairTracks(
-            preferences.loadChartTracks(languageCode, defaultChartRegion.id),
+            preferences.loadChartTracks(languageCode, selectedChartRegion.id),
             languageCode
         )
-        val chartCacheKey = chartsCacheKey(languageCode, defaultChartRegion.id)
+        val chartCacheKey = chartsCacheKey(languageCode, selectedChartRegion.id)
         if (chartTracks.isEmpty()) {
             chartsByRegion.remove(chartCacheKey)
             chartsFreshAt.remove(chartCacheKey)
@@ -2836,7 +2838,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 moods = localizedMoods,
                 tastes = moodEngine.tastesForLanguage(languageCode),
                 selectedMood = selectedMood,
-                selectedChartId = defaultChartRegion.id,
+                selectedChartId = selectedChartRegion.id,
                 homeSections = homeSections,
                 homeAlbums = instantAlbums,
                 homeArtists = localizedCachedArtists,
@@ -2865,7 +2867,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         persistHomeSnapshot()
         if (refreshRemote) {
             loadHomeFeed()
-            loadCharts(defaultChartRegion.id)
+            loadCharts(selectedChartRegion.id)
         }
         warmChartRegionMemoryCache()
     }
