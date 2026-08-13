@@ -120,8 +120,7 @@ jobs:
                   .firstOrNull()
                   ?.let { return it }
 
-              val rootIds = playlistIds(root)
-              return rootIds.singleOrNull().orEmpty()
+              return playlistIds(root).singleOrNull().orEmpty()
           }
           ''' + text[end:]
 
@@ -150,36 +149,43 @@ jobs:
                       query = "Exact Album Exact Artist",
                       browseId = "MPRE_EXACT_ALBUM"
                   )
-                  val albumShelf = JSONObject().put(
-                      "contents",
-                      JSONArray()
-                          .put(JSONObject().put("musicResponsiveListItemRenderer", rendererWithId("albumtrack1", line("First Album Track"), artistLine("Exact Artist", "UC_EXACT"))))
-                          .put(JSONObject().put("musicResponsiveListItemRenderer", rendererWithId("albumtrack2", line("Second Album Track"), artistLine("Exact Artist", "UC_EXACT"))))
+                  val albumRenderer = renderer(
+                      line("First Song"),
+                      artistLine("Exact Artist", "UC_EXACT")
                   )
-                  val relatedShelf = JSONObject().put(
-                      "contents",
-                      JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", rendererWithId("wrongtrack01", line("Unrelated Result"), artistLine("Other Artist", "UC_OTHER"))))
-                  )
+                  val unrelatedRenderer = renderer(
+                      line("Unrelated Result"),
+                      artistLine("Other Artist", "UC_OTHER")
+                  ).put("playlistItemData", JSONObject().put("videoId", "different01"))
                   val root = JSONObject()
-                      .put("primary", JSONObject().put("musicShelfRenderer", albumShelf))
-                      .put("related", JSONObject().put("musicCarouselShelfRenderer", relatedShelf))
+                      .put(
+                          "primary",
+                          JSONObject().put(
+                              "musicShelfRenderer",
+                              JSONObject().put(
+                                  "contents",
+                                  JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", albumRenderer))
+                              )
+                          )
+                      )
+                      .put(
+                          "related",
+                          JSONObject().put(
+                              "musicCarouselShelfRenderer",
+                              JSONObject().put(
+                                  "contents",
+                                  JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", unrelatedRenderer))
+                              )
+                          )
+                      )
 
                   val tracks = repository.parseAlbumTracks(root, album)
 
-                  assertEquals(listOf("First Album Track", "Second Album Track"), tracks.map { it.title })
+                  assertEquals(listOf("First Song"), tracks.map { it.title })
               }
 
           '''
           text = text.replace(marker, regression + marker, 1)
-          helper_start = text.index(marker)
-          helper_end = text.index('\n\n    private fun carouselItem', helper_start)
-          text = text[:helper_start] + '''    private fun renderer(vararg flexLines: JSONObject): JSONObject =
-              rendererWithId("2nd73lyvq4w", *flexLines)
-
-              private fun rendererWithId(videoId: String, vararg flexLines: JSONObject): JSONObject = JSONObject()
-                  .put("playlistItemData", JSONObject().put("videoId", videoId))
-                  .put("flexColumns", JSONArray(flexLines.toList()))
-          ''' + text[helper_end:]
           tests.write_text(text, encoding='utf-8')
           PY
 
