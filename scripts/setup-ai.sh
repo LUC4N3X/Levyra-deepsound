@@ -4,6 +4,7 @@ set -euo pipefail
 DRY_RUN=0
 INSTALL_RTK=0
 INSTALL_PLUGINS=0
+INSTALL_CLAUDE_MEM=0
 SKIP_HOOKS=0
 SKIP_MATT_SKILLS=0
 
@@ -15,6 +16,7 @@ Options:
   --dry-run           Print planned actions without changing the machine
   --install-rtk       Install RTK through Cargo when it is missing
   --plugins           Install plugins listed in .agents/config/codex-plugins.txt
+  --claude-mem        Explicitly install pinned claude-mem for detected supported runtimes
   --skip-hooks        Do not initialize RTK instructions/hooks/integrations
   --skip-matt-skills  Do not install Matt Pocock engineering skills for Codex
   -h, --help          Show this help
@@ -26,6 +28,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run) DRY_RUN=1 ;;
     --install-rtk) INSTALL_RTK=1 ;;
     --plugins) INSTALL_PLUGINS=1 ;;
+    --claude-mem) INSTALL_CLAUDE_MEM=1 ;;
     --skip-hooks) SKIP_HOOKS=1 ;;
     --skip-matt-skills) SKIP_MATT_SKILLS=1 ;;
     -h|--help) usage; exit 0 ;;
@@ -75,6 +78,16 @@ run_step() {
 
 echo "Levyra AI efficiency setup"
 echo "Repository: $REPO_ROOT"
+
+if [[ "$INSTALL_CLAUDE_MEM" -eq 1 ]]; then
+  claude_mem_args=()
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    claude_mem_args+=(--dry-run)
+  fi
+  if ! "$SCRIPT_DIR/setup-claude-mem.sh" "${claude_mem_args[@]}"; then
+    echo "[warn] claude-mem setup did not complete; continuing Levyra AI setup without persistent memory." >&2
+  fi
+fi
 
 if ! is_token_killer_rtk; then
   if [[ "$INSTALL_RTK" -ne 1 ]]; then
@@ -168,7 +181,8 @@ fi
 for validation_script in \
   scripts/validate_agent_config.py \
   scripts/validate_ai_efficiency.py \
-  scripts/validate_matt_skills.py
+  scripts/validate_matt_skills.py \
+  scripts/validate_claude_mem.py
 do
   if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "[dry-run] Validate with $validation_script: (cd '$REPO_ROOT' && $PYTHON_COMMAND $validation_script)"
@@ -182,5 +196,7 @@ echo
 echo "Setup complete."
 echo "Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded."
 echo "Claude Code will discover the project-enabled mattpocock-skills plugin through .claude/settings.json and may request normal marketplace trust/installation approval."
+echo "Use --claude-mem once when you explicitly want the pinned claude-mem integration for detected Claude Code, Codex CLI, and Antigravity runtimes."
+echo "ChatGPT uses claude-mem only when a compatible MCP app is connected; see docs/ai/CLAUDE_MEM.md."
 echo "Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md."
 echo 'Use `rtk gain` and `rtk discover --all --since 7` to measure real command-output savings.'
