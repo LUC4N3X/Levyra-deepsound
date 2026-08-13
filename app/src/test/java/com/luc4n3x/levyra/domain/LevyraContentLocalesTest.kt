@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.domain
 
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -27,7 +28,6 @@ class LevyraContentLocalesTest {
             }
     }
 
-
     @Test
     fun everySupportedLanguageResolvesToAnExplicitChartRegion() {
         val regionIds = ChartsCatalog.regions.map { it.id }.toSet()
@@ -35,6 +35,25 @@ class LevyraContentLocalesTest {
             val locale = LevyraContentLocales.forLanguage(language.code)
             assertTrue("Missing chart region for ${language.code}: ${locale.chartRegionId}", locale.chartRegionId in regionIds)
             assertEquals(locale.chartRegionId, ChartsCatalog.defaultRegionForLanguage(language.code).id)
+        }
+    }
+
+    @Test
+    fun initialChartRegionFollowsUiLanguage() {
+        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it").id)
+        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it-IT").id)
+        assertEquals("pt", ChartsCatalog.defaultRegionForLanguage("pt").id)
+        assertEquals(LevyraContentLocales.forLanguage("ja").chartRegionId, ChartsCatalog.defaultRegionForLanguage("ja").id)
+    }
+
+    @Test
+    fun animeJpopExploreZoneDoesNotReusePartyQuery() {
+        listOf("en", "ja", "zh", "ko").forEach { code ->
+            val strings = LevyraStrings.forCode(code)
+            val locale = LevyraContentLocales.forLanguage(code)
+            val zone = ExploreCatalog.getZones(strings).first { it.id == "anime-jpop" }
+            assertFalse("Anime/J-pop should not reuse party query for $code", zone.query == locale.queryForTaste("party"))
+            assertTrue("Anime/J-pop query should remain explicit for $code", zone.query.contains("J-POP", ignoreCase = true))
         }
     }
 
