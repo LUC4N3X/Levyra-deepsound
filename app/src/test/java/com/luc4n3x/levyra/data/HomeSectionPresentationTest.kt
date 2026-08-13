@@ -47,7 +47,15 @@ class HomeSectionPresentationTest {
     }
 
     @Test
-    fun `sections longer than a dense presentation can show stay scrollable`() {
+    fun `long sections keep the dense track presentation within its bound`() {
+        assertEquals(
+            HomeSectionPresentation.TrackGrid,
+            HomeSectionLayoutPolicy.presentationFor(position = 1, trackCount = 20)
+        )
+        assertEquals(
+            HomeSectionPresentation.TrackGrid,
+            HomeSectionLayoutPolicy.presentationFor(position = 3, trackCount = 40)
+        )
         assertEquals(
             HomeSectionPresentation.TrackGrid,
             HomeSectionLayoutPolicy.presentationFor(
@@ -60,13 +68,6 @@ class HomeSectionPresentationTest {
             HomeSectionLayoutPolicy.presentationFor(
                 position = 1,
                 trackCount = HomeSectionLayoutPolicy.TRACK_GRID_CAPACITY + 1
-            )
-        )
-        assertEquals(
-            HomeSectionPresentation.ArtworkGrid,
-            HomeSectionLayoutPolicy.presentationFor(
-                position = 2,
-                trackCount = HomeSectionLayoutPolicy.ARTWORK_GRID_CAPACITY
             )
         )
         assertEquals(
