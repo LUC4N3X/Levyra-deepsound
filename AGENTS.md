@@ -156,12 +156,13 @@ ChatGPT uses claude-mem only when a compatible MCP app is actually connected and
 the memory tools are available. Repository configuration alone must never be
 represented as a successful ChatGPT-to-local-worker connection.
 
-This standing authorization applies to the pinned RTK bootstrap, the pinned
-claude-mem integration, and the focused Matt Pocock skill bootstrap documented
-below. Other plugins, executables, unrestricted sandboxing, approval bypasses,
-commit, push, pull request, merge, tag, release, deployment, external messages,
-and repository settings still require their normal explicit authorization. Keep
-security, signing, checksum, secret, and exact reproduction evidence raw.
+This standing authorization applies to the pinned `rtk-ai/rtk` bootstrap, the
+pinned claude-mem integration, and the focused Matt Pocock skill bootstrap
+documented below. Other plugins, executables, unrestricted sandboxing, approval
+bypasses, commit, push, pull request, merge, tag, release, deployment, external
+messages, and repository settings still require their normal explicit
+authorization. Keep security, signing, checksum, secret, and exact reproduction
+evidence raw.
 
 ## Matt Pocock skills bootstrap
 
