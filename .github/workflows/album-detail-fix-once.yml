@@ -1,0 +1,276 @@
+name: Apply album detail fix once
+
+on:
+  push:
+    branches:
+      - feat/home-experience-redesign
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/home-experience-redesign
+          fetch-depth: 0
+
+      - name: Apply scoped album fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          repo = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt')
+          text = repo.read_text(encoding='utf-8')
+
+          start = text.index('    suspend fun albumDetail(')
+          end = text.index('\n    suspend fun resolveAlbumDescription(', start)
+          new_album_detail = '''    suspend fun albumDetail(album: AlbumHit, languageCode: String = LevyraLanguageCatalog.deviceDefault()): AlbumDetail = withContext(Dispatchers.IO) {
+              val resolved = resolveAlbumHit(album, languageCode)
+              val root = resolved.browseId.takeIf { it.isNotBlank() }?.let { requestMusicBrowseRoot(languageCode, it) }
+              val headerAlbum = root?.let { parseAlbumHeader(it, resolved) } ?: resolved
+              val cover = headerAlbum.thumbnailUrl.ifBlank { resolved.thumbnailUrl }
+              val canonicalAudioPlaylistId = sequenceOf(
+                  root?.let(::extractAudioPlaylistId).orEmpty(),
+                  headerAlbum.audioPlaylistId,
+                  resolved.audioPlaylistId,
+                  album.audioPlaylistId
+              )
+                  .map { it.trim().removePrefix("VL") }
+                  .firstOrNull { it.startsWith("OLA") }
+                  .orEmpty()
+              val playlistTracks = if (canonicalAudioPlaylistId.isNotBlank()) {
+                  try {
+                      playlist(canonicalAudioPlaylistId, languageCode, 60)?.tracks.orEmpty()
+                  } catch (error: CancellationException) {
+                      throw error
+                  } catch (_: Throwable) {
+                      emptyList()
+                  }
+              } else {
+                  emptyList()
+              }
+              val shelfTracks = if (playlistTracks.isEmpty()) {
+                  root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
+              } else {
+                  emptyList()
+              }
+              val finalTracks = (if (playlistTracks.isNotEmpty()) playlistTracks else shelfTracks)
+                  .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
+                  .take(60)
+              val finalArtist = headerAlbum.artist.cleanAlbumArtistLabel()
+                  .ifBlank { finalTracks.firstNotNullOfOrNull { it.artist.cleanAlbumArtistLabel().takeIf(String::isNotBlank) }.orEmpty() }
+                  .ifBlank { resolved.artist.cleanAlbumArtistLabel() }
+              val finalAlbum = headerAlbum.copy(
+                  artist = finalArtist,
+                  thumbnailUrl = cover,
+                  query = "${headerAlbum.title} $finalArtist".trim(),
+                  browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
+                  audioPlaylistId = canonicalAudioPlaylistId,
+                  explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
+              )
+              val enrichedTracks = finalTracks.map { track ->
+                  track.copy(
+                      album = finalAlbum.title,
+                      albumBrowseId = finalAlbum.browseId,
+                      year = track.year.ifBlank { finalAlbum.year },
+                      explicit = track.explicit || finalAlbum.explicit,
+                      thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                      largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
+                  )
+              }
+              enrichedTracks.forEach { memory[it.id] = it }
+              val description = root?.let { parseAlbumDescription(it) }.orEmpty()
+              AlbumDetail(
+                  album = finalAlbum,
+                  description = description,
+                  tracks = enrichedTracks,
+                  otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
+                  trackCount = enrichedTracks.size,
+                  durationMs = enrichedTracks.sumOf { it.durationMs }
+              )
+          }
+          '''
+          text = text[:start] + new_album_detail + text[end:]
+
+          start = text.index('    private fun extractAudioPlaylistId(')
+          end = text.index('\n    private fun parseOtherAlbumVersions(', start)
+          new_extract = '''    private fun extractAudioPlaylistId(root: JSONObject): String {
+              val endpoints = mutableListOf<JSONObject>()
+              collectObjectsByKey(root, "watchEndpoint", endpoints)
+              return endpoints.asSequence()
+                  .map { endpoint -> endpoint.optString("playlistId").trim().removePrefix("VL") }
+                  .firstOrNull { playlistId -> playlistId.startsWith("OLA") }
+                  .orEmpty()
+          }
+          '''
+          text = text[:start] + new_extract + text[end:]
+
+          start = text.index('    private fun parseAlbumTracks(')
+          end = text.index('\n    internal fun parseAlbumTrackRenderer(', start)
+          new_parser = '''    internal fun parseAlbumTracks(root: JSONObject, album: AlbumHit): List<Track> {
+              return YoutubeMusicPlaylistPageParser.renderers(root)
+                  .mapNotNull { renderer -> parseAlbumTrackRenderer(renderer, album) }
+                  .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
+          }
+          '''
+          text = text[:start] + new_parser + text[end:]
+          repo.write_text(text, encoding='utf-8')
+
+          tests = Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicSearchRendererTest.kt')
+          text = tests.read_text(encoding='utf-8')
+          marker = '    private fun renderer(vararg flexLines: JSONObject): JSONObject = JSONObject()\n'
+          if text.count(marker) != 1:
+              raise SystemExit('Unexpected renderer helper shape')
+          regression = '''    @Test
+              fun `album parser ignores related rows outside track shelf`() {
+                  val album = AlbumHit(
+                      title = "Exact Album",
+                      artist = "Exact Artist",
+                      year = "2026",
+                      thumbnailUrl = "https://levyra.test/exact-album.jpg",
+                      query = "Exact Album Exact Artist",
+                      browseId = "MPRE_EXACT_ALBUM"
+                  )
+                  val albumShelf = JSONObject().put(
+                      "contents",
+                      JSONArray()
+                          .put(
+                              JSONObject().put(
+                                  "musicResponsiveListItemRenderer",
+                                  rendererWithId("album-track-1", line("First Album Track"), artistLine("Exact Artist", "UC_EXACT"))
+                              )
+                          )
+                          .put(
+                              JSONObject().put(
+                                  "musicResponsiveListItemRenderer",
+                                  rendererWithId("album-track-2", line("Second Album Track"), artistLine("Exact Artist", "UC_EXACT"))
+                              )
+                          )
+                  )
+                  val relatedShelf = JSONObject().put(
+                      "contents",
+                      JSONArray().put(
+                          JSONObject().put(
+                              "musicResponsiveListItemRenderer",
+                              rendererWithId("not-on-album", line("Unrelated Result"), artistLine("Other Artist", "UC_OTHER"))
+                          )
+                      )
+                  )
+                  val root = JSONObject()
+                      .put("primary", JSONObject().put("musicShelfRenderer", albumShelf))
+                      .put("related", JSONObject().put("musicCarouselShelfRenderer", relatedShelf))
+
+                  val tracks = repository.parseAlbumTracks(root, album)
+
+                  assertEquals(listOf("First Album Track", "Second Album Track"), tracks.map { it.title })
+              }
+
+          '''
+          text = text.replace(marker, regression + marker, 1)
+          old_helper = '''    private fun renderer(vararg flexLines: JSONObject): JSONObject = JSONObject()
+              .put("playlistItemData", JSONObject().put("videoId", "2nd73lyvq4w"))
+              .put("flexColumns", JSONArray(flexLines.toList()))
+          '''
+          new_helper = '''    private fun renderer(vararg flexLines: JSONObject): JSONObject =
+              rendererWithId("2nd73lyvq4w", *flexLines)
+
+              private fun rendererWithId(videoId: String, vararg flexLines: JSONObject): JSONObject = JSONObject()
+                  .put("playlistItemData", JSONObject().put("videoId", videoId))
+                  .put("flexColumns", JSONArray(flexLines.toList()))
+          '''
+          if text.count(old_helper) != 1:
+              raise SystemExit('Unexpected renderer helper body')
+          text = text.replace(old_helper, new_helper, 1)
+          tests.write_text(text, encoding='utf-8')
+
+          app = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = app.read_text(encoding='utf-8')
+
+          def replace_once(source: str, old: str, new: str, label: str) -> str:
+              if source.count(old) != 1:
+                  raise SystemExit(f'Unexpected {label} shape: {source.count(old)} matches')
+              return source.replace(old, new, 1)
+
+          text = replace_once(
+              text,
+              '                    onOpenPlayer = viewModel::openPlayerScreen,\n                    onClose = viewModel::closeAlbum',
+              '                    onOpenPlayer = viewModel::openPlayerScreen,\n                    onClosePlayer = viewModel::closePlayer,\n                    onClose = viewModel::closeAlbum',
+              'AlbumOverlay root call'
+          )
+          text = replace_once(
+              text,
+              '    onOpenTrackArtist: (Track) -> Unit,\n    onOpenPlayer: () -> Unit,\n    onClose: () -> Unit',
+              '    onOpenTrackArtist: (Track) -> Unit,\n    onOpenPlayer: () -> Unit,\n    onClosePlayer: () -> Unit,\n    onClose: () -> Unit',
+              'AlbumOverlay signature'
+          )
+          text = replace_once(
+              text,
+              '                onToggle = onTogglePlayback,\n                onOpenPlayer = onOpenPlayer,\n                modifier = Modifier',
+              '                onToggle = onTogglePlayback,\n                onOpenPlayer = onOpenPlayer,\n                onClosePlayer = onClosePlayer,\n                modifier = Modifier',
+              'album dock call'
+          )
+
+          dock_start = text.index('private fun AlbumNowPlayingDock(')
+          dock_end = text.index('\n@Composable\nprivate fun LinearMiniLoading', dock_start)
+          dock = text[dock_start:dock_end]
+          dock = replace_once(
+              dock,
+              '    onToggle: () -> Unit,\n    onOpenPlayer: () -> Unit,\n    modifier: Modifier = Modifier',
+              '    onToggle: () -> Unit,\n    onOpenPlayer: () -> Unit,\n    onClosePlayer: () -> Unit,\n    modifier: Modifier = Modifier',
+              'album dock signature'
+          )
+          toggle = '''                MiniPlayerToggleButton(
+                      isPlaying = isPlaying,
+                      isResolving = isResolving,
+                      buttonColor = if (LevyraIsLight) LevyraBlack else Color.White,
+                      animated = animated,
+                      onToggle = onToggle
+                  )'''
+          controls = '''                IconButton(
+                      onClick = onClosePlayer,
+                      modifier = Modifier.size(40.dp)
+                  ) {
+                      Icon(
+                          Icons.Rounded.Close,
+                          contentDescription = LocalLevyraStrings.current.close,
+                          tint = LevyraMuted,
+                          modifier = Modifier.size(20.dp)
+                      )
+                  }
+                  MiniPlayerToggleButton(
+                      isPlaying = isPlaying,
+                      isResolving = isResolving,
+                      buttonColor = if (LevyraIsLight) LevyraBlack else Color.White,
+                      animated = animated,
+                      onToggle = onToggle
+                  )'''
+          dock = replace_once(dock, toggle, controls, 'album dock controls')
+          text = text[:dock_start] + dock + text[dock_end:]
+          app.write_text(text, encoding='utf-8')
+          PY
+
+          git diff --check
+          git diff -- app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicSearchRendererTest.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+
+      - name: Commit scoped fix and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/album-detail-fix-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicSearchRendererTest.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            .github/workflows/album-detail-fix-once.yml
+          git commit -m "fix(album): use authoritative tracklists"
+          git push origin HEAD:feat/home-experience-redesign
