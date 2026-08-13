@@ -41,6 +41,7 @@ class LevyraContentLocalesTest {
     @Test
     fun initialChartRegionFollowsUiLanguage() {
         assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it").id)
+        assertEquals("it", ChartsCatalog.defaultRegionForLanguage("it-IT").id)
         assertEquals("pt", ChartsCatalog.defaultRegionForLanguage("pt").id)
         assertEquals(LevyraContentLocales.forLanguage("ja").chartRegionId, ChartsCatalog.defaultRegionForLanguage("ja").id)
     }
