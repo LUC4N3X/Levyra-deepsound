@@ -110,6 +110,21 @@ class OpenClawPrOnlyPolicyTest(unittest.TestCase):
         ):
             self.assertIn(term, setup)
 
+    def test_codex_evidence_agents_use_auto_exec_with_wrapper_allowlists(self) -> None:
+        setup = SETUP.read_text(encoding="utf-8")
+        primary_block = setup.split("configure_primary_exec()", 1)[1].split(
+            "configure_evidence_exec()", 1
+        )[0]
+        evidence_block = setup.split("configure_evidence_exec()", 1)[1].split(
+            "append_policy()", 1
+        )[0]
+
+        self.assertIn("tools.exec.mode '\"allowlist\"'", primary_block)
+        self.assertIn("tools.exec.mode '\"auto\"'", evidence_block)
+        self.assertNotIn("tools.exec.mode '\"allowlist\"'", evidence_block)
+        self.assertIn("ensure_allowlist_pattern levyra-reviewer", setup)
+        self.assertIn("ensure_allowlist_pattern levyra-ci", setup)
+
     def test_worker_has_no_merge_release_or_direct_main_publication_command(self) -> None:
         worker = WORKER.read_text(encoding="utf-8")
 
