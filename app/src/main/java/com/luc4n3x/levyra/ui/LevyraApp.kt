@@ -265,7 +265,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -6836,9 +6836,11 @@ private fun HomeQuickPicksShelf(
             .take(HomeSectionLayoutPolicy.TRACK_GRID_CAPACITY)
             .chunked(2)
     }
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val columnWidth = remember(screenWidthDp) {
-        (screenWidthDp.dp - HomeHorizontalInset - HOME_DENSE_SHELF_PEEK)
+    val density = LocalDensity.current
+    val containerWidthPx = LocalWindowInfo.current.containerSize.width
+    val columnWidth = remember(containerWidthPx, density) {
+        val availableWidth = with(density) { containerWidthPx.toDp() }
+        (availableWidth - HomeHorizontalInset - HOME_DENSE_SHELF_PEEK)
             .coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, HOME_DENSE_SHELF_MAX_WIDTH)
     }
 
