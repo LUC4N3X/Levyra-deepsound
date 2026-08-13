@@ -124,7 +124,7 @@ configure_evidence_exec() {
   set_agent_json "$agent" tools.allow '["read","exec","process"]'
   set_agent_json "$agent" tools.deny '["write","edit","apply_patch","browser","gateway","cron"]'
   set_agent_json "$agent" tools.exec.host '"gateway"'
-  set_agent_json "$agent" tools.exec.mode '"allowlist"'
+  set_agent_json "$agent" tools.exec.mode '"auto"'
   set_agent_json "$agent" tools.exec.strictInlineEval true
   set_agent_json "$agent" tools.fs.workspaceOnly true
   set_agent_json "$agent" tools.elevated.enabled false
