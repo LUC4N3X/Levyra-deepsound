@@ -2,6 +2,25 @@
 
 @../../AGENTS.md
 
+## Automatic local tooling
+
+For shell-capable work in this repository, ensure the owner-authorized pinned
+RTK build before the first noisy command without asking the owner to run setup:
+
+- Windows PowerShell: `./scripts/ensure-rtk.ps1 -Quiet`;
+- Bash/WSL/Linux/macOS: `./scripts/ensure-rtk.sh --quiet`.
+
+The scripts are idempotent: they only install `rtk-ai/rtk` when `rtk --version`
+and `rtk gain` do not prove the expected tool is ready. If Cargo is unavailable
+or installation fails, continue with raw commands and report the limitation
+once. Never weaken sandboxing or approval controls to make RTK install.
+
+When prior-session context is materially useful and claude-mem tools are absent,
+Codex and Antigravity are owner-authorized to run the pinned dedicated
+claude-mem setup once automatically, then retry the focused memory lookup. If
+setup or health checks fail, continue without memory. See
+`../../docs/ai/CLAUDE_MEM.md`.
+
 Treat the repository-root `AGENTS.md` as Levyra's authoritative operating
 contract. Before investigating, editing, reviewing, or running commands:
 
@@ -72,6 +91,20 @@ Codex, Antigravity, OpenCode, OpenClaw, and any other compatible runtime using
 this workspace must select matching skills from the task itself. Never require
 the owner to name a skill, type a slash command, or remind the agent to use one.
 Load multiple skills when several rows apply.
+
+For non-trivial implementation, follow `Plan -> Execute -> Verify`: form the
+smallest evidence-based plan, implement one coherent slice, and validate its
+success criterion before expanding. Do not insert a plan-approval pause unless
+the owner explicitly reserved one.
+
+Match the requested action mode. `inspect`, `review`, `diagnose`, and `report`
+authorize investigation and reporting, not implementation. `fix`, `update`,
+`address`, and `implement` authorize the requested code change and its
+validation. Commit, push, PR, merge, release, deployment, and other publication
+remain separate owner-controlled actions.
+
+Treat user-provided screenshots and direct runtime observations as acceptance
+evidence. Reconcile visible failures even if automated checks are green.
 
 - bugs, regressions, test/build failures, races, crashes, or unexpected behavior
   that need investigation -> `levyra-real-engineering` plus the affected domain
