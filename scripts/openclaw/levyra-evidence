@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_SLUG="LUC4N3X/Levyra-deepsound"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+fail() {
+  echo "[blocked] $*" >&2
+  exit 2
+}
+
+resolve_repo() {
+  local candidate
+  for candidate in \
+    "${LEVYRA_REPO:-}" \
+    "$SCRIPT_DIR/../repo" \
+    "$PWD/repo" \
+    "$PWD"; do
+    [[ -n "$candidate" ]] || continue
+    if [[ -d "$candidate/.git" ]]; then
+      (cd "$candidate" && pwd -P)
+      return 0
+    fi
+  done
+  fail "Levyra repository checkout not found"
+}
+
+validate_ref() {
+  local ref="$1"
+  [[ "$ref" =~ ^[A-Za-z0-9][A-Za-z0-9._/@:+~^-]*$ ]] || fail "invalid git ref: $ref"
+}
+
+validate_number() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9]+$ ]] || fail "expected a numeric id"
+}
+
+usage() {
+  cat <<'EOF'
+Usage: levyra-evidence <command> [args]
+
+Git evidence:
+  status
+  fetch
+  rev-parse <ref>
+  show <ref>
+  diff <base> <head>
+  log [ref] [count]
+
+GitHub evidence:
+  actions-sha <sha>
+  run-list <sha>
+  run-view <run-id>
+  job-log <job-id>
+  pr-view <number>
+  pr-diff <number>
+  pr-comments <number>
+EOF
+}
+
+REPO="$(resolve_repo)"
+COMMAND="${1:-}"
+shift || true
+
+case "$COMMAND" in
+  status)
+    git -C "$REPO" status --short --branch
+    ;;
+  fetch)
+    git -C "$REPO" fetch --prune origin
+    ;;
+  rev-parse)
+    [[ $# -eq 1 ]] || fail "rev-parse requires exactly one ref"
+    validate_ref "$1"
+    git -C "$REPO" rev-parse --verify "$1^{commit}"
+    ;;
+  show)
+    [[ $# -eq 1 ]] || fail "show requires exactly one ref"
+    validate_ref "$1"
+    git -C "$REPO" show --format=fuller --stat --patch "$1" --
+    ;;
+  diff)
+    [[ $# -eq 2 ]] || fail "diff requires base and head refs"
+    validate_ref "$1"
+    validate_ref "$2"
+    git -C "$REPO" diff --stat --patch "$1" "$2" --
+    ;;
+  log)
+    ref="${1:-HEAD}"
+    count="${2:-30}"
+    [[ $# -le 2 ]] || fail "log accepts at most ref and count"
+    validate_ref "$ref"
+    validate_number "$count"
+    git -C "$REPO" log --oneline --decorate -n "$count" "$ref"
+    ;;
+  actions-sha)
+    [[ $# -eq 1 ]] || fail "actions-sha requires one SHA"
+    validate_ref "$1"
+    gh api --method GET "repos/$REPO_SLUG/actions/runs" -f head_sha="$1" -f per_page=100
+    ;;
+  run-list)
+    [[ $# -eq 1 ]] || fail "run-list requires one SHA"
+    validate_ref "$1"
+    gh run list \
+      --repo "$REPO_SLUG" \
+      --commit "$1" \
+      --limit 100 \
+      --json databaseId,name,event,headSha,status,conclusion,createdAt,updatedAt,url
+    ;;
+  run-view)
+    [[ $# -eq 1 ]] || fail "run-view requires one run id"
+    validate_number "$1"
+    gh run view "$1" \
+      --repo "$REPO_SLUG" \
+      --json databaseId,name,event,headSha,status,conclusion,jobs,url
+    ;;
+  job-log)
+    [[ $# -eq 1 ]] || fail "job-log requires one job id"
+    validate_number "$1"
+    gh run view --repo "$REPO_SLUG" --job "$1" --log
+    ;;
+  pr-view)
+    [[ $# -eq 1 ]] || fail "pr-view requires one PR number"
+    validate_number "$1"
+    gh pr view "$1" \
+      --repo "$REPO_SLUG" \
+      --json number,title,state,isDraft,headRefName,headRefOid,baseRefName,mergeStateStatus,reviewDecision,statusCheckRollup,url
+    ;;
+  pr-diff)
+    [[ $# -eq 1 ]] || fail "pr-diff requires one PR number"
+    validate_number "$1"
+    gh pr diff "$1" --repo "$REPO_SLUG"
+    ;;
+  pr-comments)
+    [[ $# -eq 1 ]] || fail "pr-comments requires one PR number"
+    validate_number "$1"
+    gh pr view "$1" --repo "$REPO_SLUG" --comments
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    fail "unsupported evidence command: ${COMMAND:-<empty>}"
+    ;;
+esac
