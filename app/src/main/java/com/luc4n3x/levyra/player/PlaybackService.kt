@@ -216,7 +216,6 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val queueCommandListeners = HashMap<Player.Listener, Player.Listener>()
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
@@ -579,14 +578,6 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun isCommandAvailable(command: Int): Boolean = availableCommands.contains(command)
-
-            override fun addListener(listener: androidx.media3.common.Player.Listener) {
-                super.addListener(queueCommandListeners.getOrPut(listener) { QueueCommandListener(this, listener) })
-            }
-
-            override fun removeListener(listener: androidx.media3.common.Player.Listener) {
-                super.removeListener(queueCommandListeners.remove(listener) ?: listener)
-            }
 
             override fun hasNextMediaItem(): Boolean = canSkipToNextTrack() || super.hasNextMediaItem()
 
@@ -1749,15 +1740,5 @@ private class LevyraMediaSourceFactory(
         return path.endsWith(".mpd") ||
             clean.contains("mime=application%2fdash+xml") ||
             clean.contains("mime=application/dash+xml")
-    }
-}
-
-@UnstableApi
-private class QueueCommandListener(
-    private val player: Player,
-    private val delegate: Player.Listener
-) : Player.Listener by delegate {
-    override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
-        delegate.onAvailableCommandsChanged(player.availableCommands)
     }
 }
