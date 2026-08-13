@@ -1,15 +1,4 @@
 #!/usr/bin/env bash
-# Levyra SessionStart hook.
-#
-# Reports which build and test commands can actually run in this environment so
-# Claude never promises a Gradle result it cannot produce. CLAUDE.md tells Claude
-# to run `./gradlew :app:testDebugUnitTest`, `:app:lintRelease`, and
-# `assembleRelease`; all three need an Android SDK, which cloud and CI containers
-# frequently lack.
-#
-# The hook must never break a session: it always exits 0 and always prints valid
-# JSON on stdout.
-
 set -uo pipefail
 
 fallback_json='{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Levyra environment probe unavailable. Verify the toolchain before claiming any build or test result."}}'
@@ -22,20 +11,25 @@ fi
 
 lines=()
 
-# --- JDK ---------------------------------------------------------------------
+rtk_note=""
+if [ -x scripts/ensure-rtk.sh ]; then
+  if scripts/ensure-rtk.sh --quiet >/dev/null 2>&1; then
+    rtk_note="RTK: pinned Levyra build is installed and ready. Use it selectively for noisy commands."
+  else
+    rtk_note="RTK: automatic bootstrap was unavailable or failed. Continue with raw commands; do not block the session or claim RTK was used."
+  fi
+else
+  rtk_note="RTK: scripts/ensure-rtk.sh is missing. Continue raw and report the repository tooling mismatch."
+fi
+lines+=("$rtk_note")
+
 if command -v java >/dev/null 2>&1; then
-  # Skip the JAVA_TOOL_OPTIONS banner some environments print before the version.
   java_version="$(java -version 2>&1 | sed -n 's/.*version "\([^"]*\)".*/\1/p' | head -1)"
   lines+=("JDK: ${java_version:-unknown}")
 else
   lines+=("JDK: not found - no Gradle build can run.")
 fi
 
-# --- Android SDK -------------------------------------------------------------
-# A 'platforms' directory alone proves nothing: a partial or stale SDK can be
-# present while the platform the app compiles against is missing, and Gradle
-# still fails at configuration time. Require the compileSdk platform itself,
-# read from the build file so this does not drift when compileSdk is bumped.
 compile_sdk="$(sed -n 's/^[[:space:]]*compileSdk[[:space:]]*=[[:space:]]*\([0-9]\{1,\}\).*/\1/p' app/build.gradle.kts 2>/dev/null | head -1)"
 
 candidates=("${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "/usr/lib/android-sdk" "/opt/android-sdk")
@@ -54,10 +48,6 @@ for candidate in "${candidates[@]}"; do
   missing=""
   found_platform=""
   if [ -n "$compile_sdk" ]; then
-    # Recent SDK Manager releases store the base minor SDK as android-<api>.0
-    # (for example API 37 as android-37.0), while older installations may still
-    # use android-<api>. Accept both, but do not treat a later minor SDK such as
-    # android-37.1 as satisfying compileSdk = 37.
     for platform_path in \
       "$candidate/platforms/android-$compile_sdk" \
       "$candidate/platforms/android-$compile_sdk.0"; do
@@ -73,7 +63,6 @@ for candidate in "${candidates[@]}"; do
     missing="an android-<compileSdk> platform"
   fi
 
-  # Build-tools binaries are extensionless on Unix and use .exe on Windows.
   if ! compgen -G "$candidate/build-tools/*/aapt2" >/dev/null 2>&1 && \
      ! compgen -G "$candidate/build-tools/*/aapt2.exe" >/dev/null 2>&1; then
     missing="${missing:+$missing and }build-tools"
@@ -98,19 +87,16 @@ else
   lines+=("Android SDK: NOT AVAILABLE. Every ':app:' Gradle task (testDebugUnitTest, lintRelease, assembleRelease) will fail at configuration time. $sdk_unusable_advice")
 fi
 
-# --- Desktop build -----------------------------------------------------------
 if [ -x desktop/gradlew ]; then
   if command -v java >/dev/null 2>&1; then
     lines+=("Desktop: ./desktop/gradlew is JVM-only and does not need the Android SDK. Use 'cd desktop && ./gradlew --no-daemon check' for desktop changes.")
   fi
 fi
 
-# --- Release signing inputs --------------------------------------------------
 if [ -f local.properties ]; then
   lines+=("local.properties exists. Never read, echo, or commit it; see local.properties.example for the key names only.")
 fi
 
-# --- Repository state --------------------------------------------------------
 if branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"; then
   changed="$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
   lines+=("Git: on '$branch' with $changed uncommitted path(s).")
