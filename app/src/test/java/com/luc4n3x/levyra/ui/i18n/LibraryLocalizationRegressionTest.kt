@@ -43,12 +43,13 @@ class LibraryLocalizationRegressionTest {
 
         assertTrue(content.contains("LocalLevyraStrings.current"))
         assertTrue(content.contains("formatTrackCount"))
+        assertFalse(content.contains("formatListeningTime("))
     }
+
     @Test
     fun libraryValueFormattersFollowSelectedLocale() {
         val strings = LevyraStrings.forCode("it")
         assertEquals("1 h 30 min", strings.formatLibraryDuration(90L * 60_000L))
         assertEquals("1,5 GB", strings.formatLibraryBytes((1.5 * 1024 * 1024 * 1024).toLong()))
     }
-
 }
