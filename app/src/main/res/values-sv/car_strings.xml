@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Ansluter till spelaren</string>
     <string name="car_now_playing">Spelas nu</string>
     <string name="car_queue">Kö</string>
+    <string name="notification_shuffle">Blanda</string>
+    <string name="notification_favorite">Favorit</string>
 </resources>

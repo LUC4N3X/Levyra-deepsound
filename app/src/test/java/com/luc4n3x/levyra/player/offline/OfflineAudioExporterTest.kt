@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.player.offline
 
 import kotlinx.coroutines.runBlocking
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -26,6 +27,24 @@ class OfflineAudioExporterTest {
         assertFalse(isMp4AudioSource("video/mp4", "https://example.com/track.m4a"))
         assertFalse(isMp4AudioSource("video/mp4", "https://example.com/clip.mp4"))
         assertFalse(isMp4AudioSource("audio/webm", "https://example.com/track.m4a"))
+    }
+
+    @Test
+    fun incompatibleOfflineSourceErrorsAreDetectedWithoutRetryingTheSameUrl() {
+        assertTrue(isUnsupportedOfflineAudioSource(IOException("Offline export requires an M4A audio source")))
+        assertTrue(isUnsupportedOfflineAudioSource(IOException("Offline export received a non-audio MP4 source")))
+    }
+
+    @Test
+    fun incompatibleOfflineSourceDetectionWalksTheCauseChain() {
+        val error = IOException("download failed", IOException("Offline export requires an M4A audio source"))
+
+        assertTrue(isUnsupportedOfflineAudioSource(error))
+    }
+
+    @Test
+    fun transientDownloadErrorsAreNotClassifiedAsIncompatibleSources() {
+        assertFalse(isUnsupportedOfflineAudioSource(IOException("timeout while reading stream")))
     }
 
     @Test

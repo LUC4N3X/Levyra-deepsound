@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Připojování k přehrávači</string>
     <string name="car_now_playing">Právě hraje</string>
     <string name="car_queue">Fronta</string>
+    <string name="notification_shuffle">Náhodně</string>
+    <string name="notification_favorite">Oblíbené</string>
 </resources>

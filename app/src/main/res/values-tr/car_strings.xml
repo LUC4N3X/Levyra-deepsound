@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Oynatıcıya bağlanılıyor</string>
     <string name="car_now_playing">Şimdi çalıyor</string>
     <string name="car_queue">Sıra</string>
+    <string name="notification_shuffle">Karışık</string>
+    <string name="notification_favorite">Favori</string>
 </resources>

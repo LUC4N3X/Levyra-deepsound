@@ -12,4 +12,6 @@
     <string name="car_connecting_player">מתחבר לנגן</string>
     <string name="car_now_playing">מתנגן כעת</string>
     <string name="car_queue">תור</string>
+    <string name="notification_shuffle">אקראי</string>
+    <string name="notification_favorite">מועדף</string>
 </resources>

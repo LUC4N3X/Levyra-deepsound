@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Łączenie z odtwarzaczem</string>
     <string name="car_now_playing">Teraz odtwarzane</string>
     <string name="car_queue">Kolejka</string>
+    <string name="notification_shuffle">Losowo</string>
+    <string name="notification_favorite">Ulubione</string>
 </resources>

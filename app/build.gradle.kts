@@ -75,7 +75,7 @@ if (isReleaseTaskRequested() && !isFdroidBuild && !releaseSigningAvailable) {
 fun normalizedVersionName(value: String): String {
     val clean = value.trim().removePrefix("v").removePrefix("V")
     val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
-    return match ?: clean.ifBlank { "2.3.19" }
+    return match ?: clean.ifBlank { "2.3.20" }
 }
 
 fun generatedVersionCode(versionName: String): Int {
@@ -106,7 +106,7 @@ val levyraVersionName = normalizedVersionName(
     (findProperty("levyraVersionName") as? String)
         ?: System.getenv("LEVYRA_VERSION_NAME")
         ?: githubTagVersionName()
-        ?: "2.3.19"
+        ?: "2.3.20"
 )
 
 val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
@@ -134,6 +134,9 @@ android {
         buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
     }
 
+    sourceSets.getByName("main").kotlin.directories.add(
+        if (isFdroidBuild) "src/fdroid/java" else "src/upstream/java"
+    )
     if (isFdroidBuild) {
         sourceSets.getByName("debug").manifest.srcFile("src/fdroid/AndroidManifest.xml")
         sourceSets.getByName("release").manifest.srcFile("src/fdroid/AndroidManifest.xml")
@@ -251,11 +254,13 @@ dependencies {
     implementation(libs.androidx.car.app.projected)
     implementation(libs.androidx.media.compat)
     implementation(libs.androidx.media3.datasource.okhttp)
-    implementation(libs.androidx.media3.datasource.cronet) {
-        exclude(group = "org.chromium.net", module = "cronet-api")
-        exclude(group = "com.google.android.gms", module = "play-services-cronet")
+    if (!isFdroidBuild) {
+        implementation(libs.androidx.media3.datasource.cronet) {
+            exclude(group = "org.chromium.net", module = "cronet-api")
+            exclude(group = "com.google.android.gms", module = "play-services-cronet")
+        }
+        implementation(libs.chromium.cronet.embedded)
     }
-    implementation(libs.chromium.cronet.embedded)
     implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.database)
     implementation(libs.kotlinx.coroutines.android)

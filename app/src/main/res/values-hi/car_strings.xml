@@ -12,4 +12,6 @@
     <string name="car_connecting_player">प्लेयर से कनेक्ट हो रहा है</string>
     <string name="car_now_playing">अभी चल रहा है</string>
     <string name="car_queue">कतार</string>
+    <string name="notification_shuffle">शफ़ल</string>
+    <string name="notification_favorite">पसंदीदा</string>
 </resources>

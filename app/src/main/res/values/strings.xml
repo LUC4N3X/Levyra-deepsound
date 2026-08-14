@@ -26,4 +26,6 @@
     <string name="car_connecting_player">Connecting to player</string>
     <string name="car_now_playing">Now playing</string>
     <string name="car_queue">Queue</string>
+    <string name="notification_shuffle">Shuffle</string>
+    <string name="notification_favorite">Favorite</string>
 </resources>

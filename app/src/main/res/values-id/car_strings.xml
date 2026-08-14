@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Menghubungkan ke pemutar</string>
     <string name="car_now_playing">Sedang diputar</string>
     <string name="car_queue">Antrean</string>
+    <string name="notification_shuffle">Acak</string>
+    <string name="notification_favorite">Favorit</string>
 </resources>

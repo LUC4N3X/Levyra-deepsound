@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Opretter forbindelse til afspilleren</string>
     <string name="car_now_playing">Afspiller nu</string>
     <string name="car_queue">Kø</string>
+    <string name="notification_shuffle">Bland</string>
+    <string name="notification_favorite">Favorit</string>
 </resources>
