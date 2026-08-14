@@ -95,7 +95,7 @@ class OfflineExportWorker(
                         KEY_EMBEDDED_METADATA to existing.embeddedMetadata,
                         KEY_MIME_TYPE to existing.mimeType,
                         KEY_URI to existing.uri,
-                        KEY_DESTINATION_LABEL to "Già presente nella libreria"
+                        KEY_DESTINATION_LABEL to "Music/Levyra"
                     )
                 )
             }
@@ -174,16 +174,20 @@ class OfflineExportWorker(
             throw error
         } catch (error: Throwable) {
             val current = taskDao.byKey(taskKey)
+            val unsupportedSource = error.message.orEmpty().let { message ->
+                message.contains("Offline export requires an M4A audio source", ignoreCase = true) ||
+                    message.contains("Offline export received a non-audio MP4 source", ignoreCase = true)
+            }
             if (current == null || current.workId != workId) {
                 Result.failure(errorData(ERROR_SUPERSEDED))
-            } else if (error is IOException && runAttemptCount < 2) {
+            } else if (error is IOException && !unsupportedSource && runAttemptCount < 2) {
                 taskDao.updateStateForWork(taskKey, workId, "RETRYING", current.progress, error.message.orEmpty(), System.currentTimeMillis())
                 Timber.w(error, "Offline export retry scheduled")
                 Result.retry()
             } else {
                 taskDao.updateStateForWork(taskKey, workId, "FAILED", current.progress, error.message.orEmpty(), System.currentTimeMillis())
                 Timber.e(error, "Offline export failed")
-                Result.failure(errorData(error.message ?: "Esportazione non riuscita"))
+                Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else error.message ?: "Esportazione non riuscita"))
             }
         }
     }
