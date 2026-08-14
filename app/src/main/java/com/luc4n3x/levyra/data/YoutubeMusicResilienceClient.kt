@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeClientProfile
+import com.luc4n3x.levyra.data.network.YoutubeClientRegistry
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import okhttp3.MediaType.Companion.toMediaType
@@ -37,71 +39,7 @@ internal class YoutubeMusicResilienceClient(
     private val responseCache = LinkedHashMap<String, YoutubeMusicCacheEntry>(32, 0.75f, true)
     private var responseCacheBytes = 0L
 
-    private val profiles = listOf(
-        YoutubeMusicClientProfile(
-            id = "web-remix",
-            clientName = "WEB_REMIX",
-            clientVersion = webRemixVersion,
-            clientHeaderName = "67",
-            userAgent = WEB_USER_AGENT,
-            host = "https://music.youtube.com",
-            origin = "https://music.youtube.com",
-            platform = "DESKTOP",
-            priority = 0
-        ),
-        YoutubeMusicClientProfile(
-            id = "android-music",
-            clientName = "ANDROID_MUSIC",
-            clientVersion = "8.10.52",
-            clientHeaderName = "21",
-            userAgent = ANDROID_MUSIC_USER_AGENT,
-            host = "https://youtubei.googleapis.com",
-            origin = "",
-            platform = "MOBILE",
-            priority = 1,
-            androidSdkVersion = 35,
-            osName = "Android",
-            osVersion = "15"
-        ),
-        YoutubeMusicClientProfile(
-            id = "android",
-            clientName = "ANDROID",
-            clientVersion = "19.44.38",
-            clientHeaderName = "3",
-            userAgent = ANDROID_USER_AGENT,
-            host = "https://youtubei.googleapis.com",
-            origin = "",
-            platform = "MOBILE",
-            priority = 2,
-            androidSdkVersion = 35,
-            osName = "Android",
-            osVersion = "15"
-        ),
-        YoutubeMusicClientProfile(
-            id = "ios",
-            clientName = "IOS",
-            clientVersion = "20.10.4",
-            clientHeaderName = "5",
-            userAgent = IOS_USER_AGENT,
-            host = "https://youtubei.googleapis.com",
-            origin = "",
-            platform = "MOBILE",
-            priority = 3,
-            osName = "iOS",
-            osVersion = "18.3"
-        ),
-        YoutubeMusicClientProfile(
-            id = "web",
-            clientName = "WEB",
-            clientVersion = "2.20260630.01.00",
-            clientHeaderName = "1",
-            userAgent = WEB_USER_AGENT,
-            host = "https://www.youtube.com",
-            origin = "https://www.youtube.com",
-            platform = "DESKTOP",
-            priority = 4
-        )
-    )
+    private val profiles = YoutubeClientRegistry.browseProfiles(webRemixVersion)
 
     fun search(query: String, languageCode: String, params: String = ""): JSONObject? {
         val clean = query.trim()
@@ -296,7 +234,7 @@ internal class YoutubeMusicResilienceClient(
     }
 
     private fun payload(
-        profile: YoutubeMusicClientProfile,
+        profile: YoutubeClientProfile,
         kind: YoutubeMusicRequestKind,
         languageCode: String,
         browseId: String,
@@ -331,17 +269,17 @@ internal class YoutubeMusicResilienceClient(
         return root
     }
 
-    private fun orderedProfiles(now: Long): List<YoutubeMusicClientProfile> {
+    private fun orderedProfiles(now: Long): List<YoutubeClientProfile> {
         val available = profiles.filter { (health[it.id]?.blockedUntilMs ?: 0L) <= now }
         if (available.isEmpty()) return emptyList()
         return available.sortedWith(
-            compareByDescending<YoutubeMusicClientProfile> {
+            compareByDescending<YoutubeClientProfile> {
                 health[it.id]?.score ?: DEFAULT_PROFILE_SCORE
-            }.thenBy { it.priority }
+            }.thenBy { it.tier }
         )
     }
 
-    private fun recordSuccess(profile: YoutubeMusicClientProfile, latencyMs: Long, now: Long) {
+    private fun recordSuccess(profile: YoutubeClientProfile, latencyMs: Long, now: Long) {
         health.compute(profile.id) { _, current ->
             val previous = current ?: YoutubeMusicClientHealth()
             val samples = (previous.successes + 1).coerceAtMost(MAX_HEALTH_SAMPLES)
@@ -362,7 +300,7 @@ internal class YoutubeMusicResilienceClient(
     }
 
     private fun recordFailure(
-        profile: YoutubeMusicClientProfile,
+        profile: YoutubeClientProfile,
         statusCode: Int?,
         reason: String,
         latencyMs: Long?,
@@ -501,14 +439,6 @@ internal class YoutubeMusicResilienceClient(
         const val LONG_BLOCK_MS = 2L * 60L * 1_000L
         const val HARD_BLOCK_MS = 10L * 60L * 1_000L
         const val DEFAULT_PROFILE_SCORE = 50.0
-        const val WEB_USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
-        const val ANDROID_MUSIC_USER_AGENT =
-            "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15; Pixel 8 Pro Build/AP3A.241105.007) gzip"
-        const val ANDROID_USER_AGENT =
-            "com.google.android.youtube/19.44.38 (Linux; U; Android 15; Pixel 8 Pro Build/AP3A.241105.007) gzip"
-        const val IOS_USER_AGENT =
-            "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)"
 
         val SEARCH_MARKERS = arrayOf(
             "musicResponsiveListItemRenderer",
@@ -538,7 +468,7 @@ internal fun interface YoutubeMusicTransport {
 internal data class YoutubeMusicTransportRequest(
     val path: String,
     val apiKey: String,
-    val profile: YoutubeMusicClientProfile,
+    val profile: YoutubeClientProfile,
     val payload: String,
     val referer: String,
     val visitorData: String,
@@ -549,21 +479,6 @@ internal data class YoutubeMusicTransportResponse(
     val code: Int,
     val body: String,
     val latencyMs: Long
-)
-
-internal data class YoutubeMusicClientProfile(
-    val id: String,
-    val clientName: String,
-    val clientVersion: String,
-    val clientHeaderName: String,
-    val userAgent: String,
-    val host: String,
-    val origin: String,
-    val platform: String,
-    val priority: Int,
-    val androidSdkVersion: Int = 0,
-    val osName: String = "",
-    val osVersion: String = ""
 )
 
 internal data class YoutubeMusicClientHealth(
@@ -598,7 +513,7 @@ private data class YoutubeMusicCacheEntry(
 )
 
 private data class YoutubeMusicDeferredFailure(
-    val profile: YoutubeMusicClientProfile,
+    val profile: YoutubeClientProfile,
     val statusCode: Int?,
     val reason: String,
     val latencyMs: Long?,
@@ -673,7 +588,7 @@ private class OkHttpYoutubeMusicTransport(context: Context?) : YoutubeMusicTrans
             .header("X-Youtube-Client-Name", request.profile.clientHeaderName)
             .header("X-Youtube-Client-Version", request.profile.clientVersion)
         if (request.profile.origin.isNotBlank()) builder.header("Origin", request.profile.origin)
-        if (request.profile.androidSdkVersion > 0) builder.header("X-Goog-Api-Format-Version", "2")
+        if (request.profile.useApiFormatVersion2) builder.header("X-Goog-Api-Format-Version", "2")
         request.visitorData.takeIf(String::isNotBlank)?.let { builder.header("X-Goog-Visitor-Id", it) }
 
         val httpRequest = GoogleApiKeyHeaders.applyTo(builder, appContext).build()

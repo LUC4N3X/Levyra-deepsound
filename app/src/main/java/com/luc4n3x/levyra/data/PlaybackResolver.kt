@@ -7,6 +7,11 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeClientProfile
+import com.luc4n3x.levyra.data.network.YoutubeClientRanking
+import com.luc4n3x.levyra.data.network.YoutubeClientRegistry
+import com.luc4n3x.levyra.data.network.YoutubeContentAwareClientSelector
+import com.luc4n3x.levyra.data.network.YoutubeContentHints
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
@@ -86,6 +91,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
         private const val LEVYRA_EXTRACTOR_PROVIDER = "LevyraExtractor"
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
+        private const val MAX_CONTENT_HINT_ENTRIES = 256
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]($YOUTUBE_VIDEO_ID_PATTERN)\\?["]""")
@@ -145,15 +151,12 @@ class PlaybackResolver private constructor(private val context: Context) {
     @Volatile
     private var lastNetworkWarmAt = 0L
 
-    private val profiles = listOf(
-        ClientProfile("ANDROID_VR", "1.65.10", "Android VR", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip", true, 0L, 0, false),
-        ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 1, false),
-        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 2, false),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 3, false),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 4, true),
-        ClientProfile("WEB", "2.20260630.01.00", "YouTube Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 5, true),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 6, false)
-    )
+    private val profiles = YoutubeClientRegistry.playbackProfiles
+    private val contentHintsLock = Any()
+    private val contentHints = object : LinkedHashMap<String, YoutubeContentHints>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, YoutubeContentHints>): Boolean =
+            size > MAX_CONTENT_HINT_ENTRIES
+    }
 
     init {
         restoreCache()
@@ -973,7 +976,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         audioQuality: String
     ): DirectStream? {
-        val ladder = orderedProfiles().map { profile ->
+        val ladder = orderedProfiles(contentHints(track)).map { profile ->
             listOf(
                 suspend {
                     runCatchingPreservingCancellation { resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality) }
@@ -1017,7 +1020,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
         val fallback = AtomicReference<DirectStream?>(null)
-        val workers = orderedProfiles().mapIndexed { index, profile ->
+        val workers = orderedProfiles(contentHints(track)).mapIndexed { index, profile ->
             launch {
                 val dynamicDelay = profile.delayMs + index * 20L
                 if (dynamicDelay > 0L) delay(dynamicDelay)
@@ -1048,32 +1051,52 @@ class PlaybackResolver private constructor(private val context: Context) {
         result
     }
 
-    private fun profileFromSource(source: String): ClientProfile? {
+    private fun profileFromSource(source: String): YoutubeClientProfile? {
         val normalized = source.lowercase()
         return profiles.firstOrNull { profile ->
             normalized.contains(profile.label.lowercase()) || normalized.contains(profile.clientName.lowercase())
         }
     }
 
-    private fun orderedProfiles(): List<ClientProfile> {
-        val now = System.currentTimeMillis()
-        val available = profiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
-        val candidates = if (available.isNotEmpty()) available else profiles
-        val sorted = candidates.sortedWith(
-            compareByDescending<ClientProfile> { profile -> clientHealth[profile.clientName]?.score ?: 50.0 }
-                .thenBy { profile -> clientHealth[profile.clientName]?.averageLatencyMs ?: Long.MAX_VALUE }
-                .thenBy { it.tier }
-        )
-        val vr = sorted.firstOrNull { it.clientName == "ANDROID_VR" } ?: return sorted
-        val best = sorted.firstOrNull() ?: return sorted
-        val vrHealth = clientHealth[vr.clientName]
-        val bestScore = clientHealth[best.clientName]?.score ?: 50.0
-        val vrScore = vrHealth?.score ?: 50.0
-        val keepVrPrimary = vrHealth?.consecutiveFailures.orZero() == 0 && vrScore >= bestScore - 12.0
-        return if (keepVrPrimary) listOf(vr) + sorted.filterNot { it === vr } else sorted
+    private fun orderedProfiles(hints: YoutubeContentHints): List<YoutubeClientProfile> {
+        return YoutubeContentAwareClientSelector.order(
+            profiles = profiles,
+            hints = hints,
+            nowMs = System.currentTimeMillis()
+        ) { profile ->
+            clientHealth[profile.clientName]?.let { health ->
+                YoutubeClientRanking(
+                    score = health.score,
+                    averageLatencyMs = health.averageLatencyMs,
+                    consecutiveFailures = health.consecutiveFailures,
+                    blockedUntilMs = health.blockedUntilMs
+                )
+            }
+        }
     }
 
-    private fun recordClientSuccess(profile: ClientProfile, latencyMs: Long) {
+    private fun contentHints(track: Track): YoutubeContentHints {
+        val metadata = YoutubeContentHints.fromMetadata(track.videoType)
+        val videoId = PlaybackSourceIdentity.sourceVideoId(track).takeIf { it.isNotBlank() }
+            ?: return metadata
+        val observed = synchronized(contentHintsLock) { contentHints[videoId] } ?: return metadata
+        return metadata.mergedWith(observed)
+    }
+
+    private fun playerResponseHints(root: JSONObject): YoutubeContentHints {
+        val details = root.optJSONObject("videoDetails") ?: return YoutubeContentHints.NONE
+        val live = details.optBoolean("isLiveContent", false) || details.optBoolean("isLive", false)
+        return YoutubeContentHints(isLive = true.takeIf { live })
+    }
+
+    private fun observeContentHints(videoId: String, observed: YoutubeContentHints) {
+        if (videoId.isBlank() || observed == YoutubeContentHints.NONE) return
+        synchronized(contentHintsLock) {
+            contentHints[videoId] = contentHints[videoId]?.mergedWith(observed) ?: observed
+        }
+    }
+
+    private fun recordClientSuccess(profile: YoutubeClientProfile, latencyMs: Long) {
         clientHealth.compute(profile.clientName) { name, current ->
             val previous = current ?: ClientHealth()
             val samples = (previous.successes + 1).coerceAtMost(10_000)
@@ -1092,7 +1115,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun recordClientFailure(profile: ClientProfile, latencyMs: Long?, error: Throwable) {
+    private fun recordClientFailure(profile: YoutubeClientProfile, latencyMs: Long?, error: Throwable) {
         if (!hasValidatedInternet()) {
             clearTransientClientPenalties()
             return
@@ -1346,7 +1369,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveWithInnerTube(
         track: Track,
-        profile: ClientProfile,
+        profile: YoutubeClientProfile,
         isVideoMode: Boolean = false,
         preferMp4Audio: Boolean = false,
         audioQuality: String = selectedAudioQuality
@@ -1385,7 +1408,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveWithInnerTubeOnce(
         track: Track,
-        profile: ClientProfile,
+        profile: YoutubeClientProfile,
         isVideoMode: Boolean,
         preferMp4Audio: Boolean,
         audioQuality: String
@@ -1400,7 +1423,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             playbackSecurity.cachedSession()
         }
         val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokensForPlayback(sourceVideoId, session) else null
-        val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
+        val signatureTimestamp = if (profile.useSignatureTimestamp) {
             runCatchingPreservingCancellation {
                 YoutubeJavaScriptPlayerManager.getSignatureTimestamp(sourceVideoId)
             }.getOrNull()
@@ -1420,15 +1443,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             .post(body.toRequestBody(jsonMediaType))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .header("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
-            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/$sourceVideoId" else sourceVideoUrl)
+            .header("Origin", profile.origin.ifBlank { "https://www.youtube.com" })
+            .header("Referer", if (profile.isEmbedded) "https://www.youtube.com/embed/$sourceVideoId" else sourceVideoUrl)
             .header("User-Agent", profile.userAgent)
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
         session.visitorData.takeIf { it.isNotBlank() }?.let {
             requestBuilder.header("X-Goog-Visitor-Id", it)
         }
-        if (profile.clientName == "ANDROID_VR") {
+        if (profile.useApiFormatVersion2) {
             requestBuilder.header("X-Goog-Api-Format-Version", "2")
         }
         val request = GoogleApiKeyHeaders.applyTo(requestBuilder, context).build()
@@ -1443,12 +1466,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 ?.optString("visitorData")
                 ?.takeIf { it.isNotBlank() }
                 ?.let(playbackSecurity::observeVisitorData)
+            observeContentHints(sourceVideoId, playerResponseHints(root))
             val playability = root.optJSONObject("playabilityStatus")
             val status = playability?.optString("status").orEmpty()
             if (status.isNotBlank() && status != "OK") {
                 val reason = playability?.optString("reason").orEmpty()
                 val subreason = playability?.optJSONObject("errorScreen")?.toString().orEmpty()
-                throw YoutubePlayerRequestException(null, reason.ifBlank { subreason.ifBlank { status } })
+                val diagnostic = reason.ifBlank { subreason.ifBlank { status } }
+                observeContentHints(sourceVideoId, YoutubeContentHints.fromPlayabilityReason(diagnostic))
+                throw YoutubePlayerRequestException(null, diagnostic)
             }
             val streamingData = root.optJSONObject("streamingData")
                 ?: throw YoutubePlayerRequestException(null, "Nessun blocco streamingData")
@@ -1484,7 +1510,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val url = format.resolveFormatUrl(
                     videoId = sourceVideoId,
                     streamingPoToken = poTokens?.streamingToken,
-                    transformThrottling = profile.clientName.startsWith("WEB")
+                    transformThrottling = profile.deciphersStreamUrls
                 )
                 if (url.isBlank() || isPlaybackUrlBlocked(url)) continue
                 bestAudioUrl = url
@@ -1498,7 +1524,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until adaptiveFormats.length()) {
                         val format = adaptiveFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(sourceVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
+                        val url = format.resolveFormatUrl(sourceVideoId, poTokens?.streamingToken, profile.deciphersStreamUrls)
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1520,7 +1546,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until muxedFormats.length()) {
                         val format = muxedFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(sourceVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
+                        val url = format.resolveFormatUrl(sourceVideoId, poTokens?.streamingToken, profile.deciphersStreamUrls)
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1547,7 +1573,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val hlsUrl = if (selection == null) {
                     streamingData.optString("hlsManifestUrl")
                         .takeIf { it.isNotBlank() }
-                        ?.let { it.finalizeStreamingUrl(sourceVideoId, poTokens?.streamingToken, profile.clientName.startsWith("WEB")) }
+                        ?.let { it.finalizeStreamingUrl(sourceVideoId, poTokens?.streamingToken, profile.deciphersStreamUrls) }
                         ?.takeIf { !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
                         .orEmpty()
                 } else {
@@ -2013,7 +2039,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun buildPlayerBody(
         videoId: String,
-        profile: ClientProfile,
+        profile: YoutubeClientProfile,
         visitorData: String,
         playerPoToken: String?,
         signatureTimestamp: Int?
@@ -2027,25 +2053,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("utcOffsetMinutes", 0)
             .put("timeZone", "UTC")
         visitorData.takeIf { it.isNotBlank() }?.let { client.put("visitorData", it) }
-        if (profile.android) {
-            val vr = profile.clientName == "ANDROID_VR"
-            client.put("androidSdkVersion", if (vr) 32 else 35)
-                .put("osName", "Android")
-                .put("osVersion", if (vr) "12L" else "15")
-                .put("platform", "MOBILE")
-            if (vr) {
-                client.put("deviceMake", "Oculus")
-                    .put("deviceModel", "Quest 3")
-            }
+        if (profile.osName.isNotBlank()) {
+            client.put("osName", profile.osName)
+                .put("osVersion", profile.osVersion)
+                .put("platform", profile.platform)
         }
-        if (profile.clientName == "IOS") {
-            client.put("deviceMake", "Apple")
-                .put("deviceModel", "iPhone16,2")
-                .put("osName", "iPhone")
-                .put("osVersion", "18.3")
-                .put("platform", "MOBILE")
-        }
-        if (profile.clientName == "WEB_EMBEDDED_PLAYER") {
+        if (profile.androidSdkVersion > 0) client.put("androidSdkVersion", profile.androidSdkVersion)
+        if (profile.deviceMake.isNotBlank()) client.put("deviceMake", profile.deviceMake)
+        if (profile.deviceModel.isNotBlank()) client.put("deviceModel", profile.deviceModel)
+        if (profile.isEmbedded) {
             client.put("clientScreen", "EMBED")
                 .put("thirdParty", JSONObject().put("embedUrl", "https://www.youtube.com/embed/$videoId"))
         }
@@ -2249,8 +2265,6 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 }
 
-private fun Int?.orZero(): Int = this ?: 0
-
 private fun Throwable.playbackDiagnostic(): String {
     val messages = generateSequence(this) { it.cause }
         .mapNotNull { cause -> cause.message?.trim()?.takeIf { it.isNotBlank() } }
@@ -2260,29 +2274,6 @@ private fun Throwable.playbackDiagnostic(): String {
 }
 
 class PlaybackBlockedException(message: String) : IllegalStateException(message)
-
-private data class ClientProfile(
-    val clientName: String,
-    val clientVersion: String,
-    val label: String,
-    val userAgent: String,
-    val android: Boolean,
-    val delayMs: Long,
-    val tier: Int,
-    val requiresPoToken: Boolean
-) {
-    val clientHeaderName: String
-        get() = when (clientName) {
-            "ANDROID" -> "3"
-            "ANDROID_MUSIC" -> "21"
-            "ANDROID_VR" -> "28"
-            "IOS" -> "5"
-            "WEB_REMIX" -> "67"
-            "WEB" -> "1"
-            "WEB_EMBEDDED_PLAYER" -> "56"
-            else -> "1"
-        }
-}
 
 private data class ClientHealth(
     val successes: Int = 0,

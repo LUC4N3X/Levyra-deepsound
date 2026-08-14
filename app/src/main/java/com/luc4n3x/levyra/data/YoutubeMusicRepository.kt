@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.network.YoutubeClientRegistry
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
@@ -355,7 +356,7 @@ private fun matchingArtistSignalIndex(artist: String, signals: List<String>): In
 
 class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
-    private val clientVersion = "1.20260423.01.00"
+    private val clientVersion = YoutubeClientRegistry.WEB_REMIX_VERSION
     private val memory = LinkedHashMap<String, Track>()
     private val watchRepository = YoutubeMusicWatchRepository(context)
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)

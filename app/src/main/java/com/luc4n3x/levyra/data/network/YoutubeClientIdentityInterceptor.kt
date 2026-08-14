@@ -16,13 +16,13 @@ internal object YoutubeClientIdentityInterceptor : Interceptor {
     private const val HEADER_REFERER = "Referer"
     private const val HEADER_USER_AGENT = "User-Agent"
 
-    private const val CLIENT_WEB = "1"
-    private const val CLIENT_ANDROID = "3"
-    private const val CLIENT_IOS = "5"
-    private const val CLIENT_ANDROID_MUSIC = "21"
-    private const val CLIENT_ANDROID_VR = "28"
-    private const val CLIENT_WEB_EMBEDDED = "56"
-    private const val CLIENT_WEB_REMIX = "67"
+    private const val CLIENT_WEB = YoutubeClientRegistry.CLIENT_ID_WEB
+    private const val CLIENT_ANDROID = YoutubeClientRegistry.CLIENT_ID_ANDROID
+    private const val CLIENT_IOS = YoutubeClientRegistry.CLIENT_ID_IOS
+    private const val CLIENT_ANDROID_MUSIC = YoutubeClientRegistry.CLIENT_ID_ANDROID_MUSIC
+    private const val CLIENT_ANDROID_VR = YoutubeClientRegistry.CLIENT_ID_ANDROID_VR
+    private const val CLIENT_WEB_EMBEDDED = YoutubeClientRegistry.CLIENT_ID_WEB_EMBEDDED
+    private const val CLIENT_WEB_REMIX = YoutubeClientRegistry.CLIENT_ID_WEB_REMIX
 
     private val nativeClientNames = setOf(
         CLIENT_ANDROID,
