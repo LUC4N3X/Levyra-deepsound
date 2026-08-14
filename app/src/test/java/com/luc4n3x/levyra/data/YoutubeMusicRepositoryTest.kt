@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.AlbumHit
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -317,4 +318,75 @@ class YoutubeMusicRepositoryTest {
         assertEquals(emptyList<String>(), references.map { it.browseId })
     }
 
+
+    @Test
+    fun albumRecoveryAcceptsExactTitleAndPrimaryArtistWithNewBrowseId() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale, Levante, DELIA",
+            year = "2026",
+            thumbnailUrl = "https://example.test/sacro.jpg",
+            query = "SACRO Serena Brancale Levante DELIA",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(
+            title = "Sacro",
+            artist = "Serena Brancale",
+            browseId = "MPRE_NEW"
+        )
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals("MPRE_NEW", selected?.browseId)
+    }
+
+    @Test
+    fun albumRecoveryRejectsDifferentTitle() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale, Levante, DELIA",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "SACRO Serena Brancale",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(
+            title = "Anema e core",
+            artist = "Serena Brancale",
+            browseId = "MPRE_OTHER"
+        )
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(null, selected)
+    }
+
+    @Test
+    fun albumRecoveryRejectsAlreadyAttemptedBrowseId() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "SACRO Serena Brancale",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(browseId = "MPRE_OLD")
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(null, selected)
+    }
 }
