@@ -17,7 +17,7 @@
 
   <!-- Base Card -->
   <rect x="0.5" y="0.5" width="143" height="37" rx="10" fill="url(#star-card-bg)" stroke="url(#star-border-grad)"/>
-  
+
   <!-- Subtle Top Highlight -->
   <path d="M10 1.5h124" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
 

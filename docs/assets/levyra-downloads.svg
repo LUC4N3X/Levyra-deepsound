@@ -17,7 +17,7 @@
 
   <!-- Base Card -->
   <rect x="0.5" y="0.5" width="173" height="37" rx="10" fill="url(#dl-card-bg)" stroke="url(#dl-border-grad)"/>
-  
+
   <!-- Subtle Top Highlight -->
   <path d="M10 1.5h154" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
 

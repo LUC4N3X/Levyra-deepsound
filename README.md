@@ -126,18 +126,18 @@ Android specifications
 ```mermaid
 graph TD
     UI["Jetpack Compose UI"] --> VM["LevyraViewModel"]
-    
+
     VM --> Player["LevyraPlayer Controller"]
     VM --> Resolver["PlaybackResolver"]
     VM --> Repos["Data Repositories"]
     VM --> Store["Room / DataStore Storage"]
     VM --> Work["WorkManager Downloads"]
-    
+
     Player --> Media3["AndroidX Media3 Service"]
-    
+
     Resolver --> InnerTube["YouTube InnerTube API"]
     Resolver --> Extractor["LevyraExtractor"]
-    
+
     Work --> Exporter["OfflineAudioExporter"]
     Exporter --> MediaStore["Android MediaStore"]
     Exporter --> Tagger["Kotlin M4A Tag Writer"]

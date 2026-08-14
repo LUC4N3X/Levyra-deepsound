@@ -30,7 +30,7 @@
   <!-- Left Icon Container -->
   <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
   <circle cx="86" cy="77" r="42" fill="url(#win-glow)"/>
-  
+
   <!-- Windows Logo -->
   <g transform="translate(61 52)" fill="#F8FAFC">
     <path d="M0 7.3 22 4.1v18.7H0z"/>
