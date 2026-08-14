@@ -3526,7 +3526,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update {
                     it.copy(
                         albumLoading = false,
-                        albumError = "Album non disponibile",
+                        albumError = LevyraStrings.forCode(it.languageCode).albumTracksUnavailable,
                         albumDetail = detail ?: AlbumDetail(album, "", emptyList())
                     )
                 }
