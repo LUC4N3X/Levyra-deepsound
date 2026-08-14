@@ -1,13 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-labelledby="title desc">
-<title id="title">Add Levyra to Obtainium</title><desc id="desc">Install and track Levyra updates directly from GitHub with Obtainium</desc>
-<defs><linearGradient id="p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#121826"/><stop offset="1" stop-color="#0A0F1D"/></linearGradient><linearGradient id="a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#22D3EE"/></linearGradient><linearGradient id="o" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#5B21B6"/></linearGradient></defs>
-<rect x="8" y="8" width="744" height="138" rx="24" fill="url(#p)" stroke="#2A354A" stroke-width="2"/>
-<rect x="32" y="26" width="4" height="102" rx="2" fill="url(#a)"/>
-<rect x="54" y="38" width="76" height="76" rx="22" fill="#171F31" stroke="#354057"/>
-<g transform="translate(26.6 13.8) scale(.52)"><path d="M182 91 151 73 123 82 132 108 149 106 135 139 104 121 118 110 108 87 81 98 69 133 129 166 167 133Z" fill="url(#o)"/></g>
-<text x="154" y="49" fill="#6EE7B7" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.6">OBTAINIUM · DIRECT FROM GITHUB</text>
-<text x="154" y="81" fill="#FFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="30" font-weight="800">Install with Obtainium</text>
-<text x="154" y="108" fill="#94A3B8" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="600">One tap · Signed APK · Automatic update tracking</text>
-<g opacity=".22" fill="#34D399"><rect x="154" y="118" width="5" height="10" rx="2.5"/><rect x="165" y="112" width="5" height="16" rx="2.5"/><rect x="176" y="116" width="5" height="12" rx="2.5"/><rect x="187" y="108" width="5" height="20" rx="2.5"/><rect x="198" y="114" width="5" height="14" rx="2.5"/></g>
-<g transform="translate(558 49)"><rect width="164" height="56" rx="17" fill="url(#a)"/><text x="70" y="35" text-anchor="middle" fill="#06141A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="15" font-weight="900">Add to Obtainium</text><path d="M139 20.5 147 28l-8 7.5M146 28h-18" fill="none" stroke="#06141A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Install Levyra with Obtainium">
+  <title>Install Levyra with Obtainium</title>
+  <defs>
+    <linearGradient id="ob-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="60%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="ob-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="ob-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="ob-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#A855F7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ob-gem" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#E9D5FF"/>
+      <stop offset="25%" stop-color="#C084FC"/>
+      <stop offset="65%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#581C87"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Base Card -->
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#ob-bg)" stroke="url(#ob-border)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <!-- Left Accent Pillar -->
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#ob-accent)"/>
+
+  <!-- Left Icon Container -->
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="44" fill="url(#ob-glow)"/>
+
+  <!-- Obtainium Gem Icon (Bold & Centered) -->
+  <path d="M 119.0 60.4 100.9 49.8 84.5 55.1 89.8 70.3 99.7 69.1 91.5 88.4 73.4 77.9 81.6 71.5 75.8 58.0 60.0 64.4 53.0 84.9 88.0 104.2 110.2 84.9 Z" fill="url(#ob-gem)"/>
+  <path d="M 119.0 60.4 100.9 49.8 84.5 55.1 89.8 70.3 99.7 69.1 91.5 88.4 73.4 77.9 81.6 71.5 75.8 58.0 60.0 64.4 53.0 84.9 88.0 104.2 110.2 84.9 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1.2"/>
+
+  <!-- Eyebrow Tag -->
+  <g transform="translate(156 30)">
+    <rect width="216" height="22" rx="6" fill="#10B981" fill-opacity="0.12" stroke="#10B981" stroke-opacity="0.25"/>
+    <circle cx="10" cy="11" r="3" fill="#34D399"/>
+    <text x="20" y="15" fill="#6EE7B7" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.2">OBTAINIUM · DIRECT FROM GITHUB</text>
+  </g>
+
+  <!-- Title -->
+  <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Install with Obtainium</text>
+
+  <!-- Subtitle / Meta -->
+  <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">One tap · Signed APK · Automatic update tracking</text>
+
+  <!-- Musical Equalizer Spectrum -->
+  <g transform="translate(156 118)" fill="#10B981" fill-opacity="0.45">
+    <rect x="0" y="6" width="4" height="10" rx="2"/>
+    <rect x="8" y="1" width="4" height="15" rx="2"/>
+    <rect x="16" y="7" width="4" height="9" rx="2"/>
+    <rect x="24" y="0" width="4" height="16" rx="2"/>
+    <rect x="32" y="4" width="4" height="12" rx="2"/>
+    <rect x="40" y="8" width="4" height="8" rx="2"/>
+    <rect x="48" y="2" width="4" height="14" rx="2"/>
+  </g>
+
+  <!-- Right CTA Button (Spacious, No Overlap) -->
+  <g transform="translate(538 50)">
+    <rect width="186" height="54" rx="16" fill="url(#ob-accent)"/>
+    <rect width="186" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.25"/>
+    <text x="74" y="34" text-anchor="middle" fill="#022213" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="900" letter-spacing="0.2">Add to Obtainium</text>
+    <path d="M156 27h-16M150 21l6 6-6 6" fill="none" stroke="#022213" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>
