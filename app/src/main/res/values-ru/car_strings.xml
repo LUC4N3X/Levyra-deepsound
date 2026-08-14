@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Подключение к плееру</string>
     <string name="car_now_playing">Сейчас играет</string>
     <string name="car_queue">Очередь</string>
+    <string name="notification_shuffle">Перемешать</string>
+    <string name="notification_favorite">Избранное</string>
 </resources>

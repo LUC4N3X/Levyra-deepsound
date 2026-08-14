@@ -24,4 +24,6 @@
     <string name="car_connecting_player">Connessione al player</string>
     <string name="car_now_playing">In riproduzione</string>
     <string name="car_queue">Coda</string>
+    <string name="notification_shuffle">Casuale</string>
+    <string name="notification_favorite">Mi piace</string>
 </resources>

@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Đang kết nối với trình phát</string>
     <string name="car_now_playing">Đang phát</string>
     <string name="car_queue">Hàng đợi</string>
+    <string name="notification_shuffle">Phát ngẫu nhiên</string>
+    <string name="notification_favorite">Yêu thích</string>
 </resources>

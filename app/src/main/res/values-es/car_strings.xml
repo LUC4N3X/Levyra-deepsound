@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Conectando al reproductor</string>
     <string name="car_now_playing">Reproduciendo ahora</string>
     <string name="car_queue">Cola</string>
+    <string name="notification_shuffle">Aleatorio</string>
+    <string name="notification_favorite">Favorito</string>
 </resources>

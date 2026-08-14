@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Σύνδεση με το πρόγραμμα αναπαραγωγής</string>
     <string name="car_now_playing">Αναπαράγεται τώρα</string>
     <string name="car_queue">Ουρά</string>
+    <string name="notification_shuffle">Τυχαία σειρά</string>
+    <string name="notification_favorite">Αγαπημένο</string>
 </resources>

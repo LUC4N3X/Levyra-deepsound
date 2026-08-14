@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Kumokonekta sa player</string>
     <string name="car_now_playing">Nagpe-play ngayon</string>
     <string name="car_queue">Queue</string>
+    <string name="notification_shuffle">Ihalo</string>
+    <string name="notification_favorite">Paborito</string>
 </resources>
