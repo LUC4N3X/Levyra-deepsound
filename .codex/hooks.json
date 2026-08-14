@@ -1,5 +1,5 @@
 {
-  "description": "Levyra project lifecycle hooks for automatic owner-authorized tooling bootstrap.",
+  "description": "Levyra project lifecycle hooks for automatic owner-authorized Codex tooling bootstrap.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,10 +7,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/ensure-rtk.sh\" --quiet >/dev/null 2>&1 || true'",
-            "commandWindows": "powershell -NoProfile -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/ensure-rtk.ps1') -Quiet *> $null; exit 0\"",
+            "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/ensure-codex-tooling.sh\" --quiet >/dev/null 2>&1 || true; printf \"%s\\n\" \"Levyra Codex bootstrap is automatic. Prefer jCodeMunch for non-trivial code discovery, but use native reads/search whenever broader context is needed for correctness. Token savings never override correctness.\"'",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/ensure-codex-tooling.ps1') -Quiet *> $null; Write-Output 'Levyra Codex bootstrap is automatic. Prefer jCodeMunch for non-trivial code discovery, but use native reads/search whenever broader context is needed for correctness. Token savings never override correctness.'; exit 0\"",
             "timeout": 600,
-            "statusMessage": "Preparing Levyra RTK"
+            "statusMessage": "Preparing Levyra Codex tooling"
           }
         ]
       }
