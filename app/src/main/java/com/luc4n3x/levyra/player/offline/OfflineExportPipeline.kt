@@ -129,7 +129,8 @@ internal class OfflineExportPipeline(
 
     suspend fun export(track: Track): OfflineExportResult {
         var resolved = resolve(track)
-        if (isMp4AudioExportUrl(resolved.streamUrl)) {
+        val continuousPrefetchEnabled = settings.resumable && settings.effectiveRateKbps == 0
+        if (continuousPrefetchEnabled && isMp4AudioExportUrl(resolved.streamUrl)) {
             try {
                 prefetcher.cache(resolved, progress)
             } catch (error: CancellationException) {
