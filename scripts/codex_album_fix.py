@@ -1,0 +1,410 @@
+from pathlib import Path
+
+
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected exactly one match, found {count}")
+    return text.replace(old, new, 1)
+
+
+repo_path = Path("app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt")
+repo = repo_path.read_text(encoding="utf-8")
+
+helper = r'''
+internal fun selectAlbumRecoveryCandidate(
+    album: AlbumHit,
+    candidates: List<AlbumHit>,
+    excludedBrowseIds: Set<String> = emptySet()
+): AlbumHit? {
+    val titleKey = albumRecommendationTextKey(album.title)
+    if (titleKey.isBlank()) return null
+
+    val artistKey = albumRecommendationTextKey(album.artist)
+    val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
+    val artistBrowseId = album.artistBrowseId.trim()
+    val excluded = excludedBrowseIds
+        .map { it.trim().lowercase(Locale.ROOT) }
+        .filter(String::isNotBlank)
+        .toSet()
+
+    return candidates.asSequence()
+        .filter { candidate ->
+            val browseId = candidate.browseId.trim()
+            browseId.isNotBlank() && browseId.lowercase(Locale.ROOT) !in excluded
+        }
+        .filter { candidate ->
+            albumRecommendationTextKey(candidate.title) == titleKey
+        }
+        .firstOrNull { candidate ->
+            val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
+            val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
+            (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
+                (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
+                (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
+        }
+}
+'''.strip()
+
+class_marker = "class YoutubeMusicRepository(private val context: Context? = null) {"
+if "internal fun selectAlbumRecoveryCandidate(" not in repo:
+    repo = replace_once(repo, class_marker, helper + "\n\n" + class_marker, "recovery helper insertion")
+
+album_start = repo.index("    suspend fun albumDetail(")
+album_end = repo.index("    suspend fun resolveAlbumDescription(", album_start)
+new_album_block = r'''    suspend fun albumDetail(
+        album: AlbumHit,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): AlbumDetail = withContext(Dispatchers.IO) {
+        val initial = loadAlbumDetailOnce(album, languageCode)
+        if (initial.tracks.isNotEmpty()) return@withContext initial
+
+        val attemptedBrowseIds = setOf(album.browseId, initial.album.browseId)
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .toSet()
+        val recovery = findAlbumRecoveryCandidate(
+            album = album,
+            languageCode = languageCode,
+            excludedBrowseIds = attemptedBrowseIds
+        ) ?: return@withContext initial
+
+        val recovered = loadAlbumDetailOnce(recovery, languageCode)
+        if (recovered.tracks.isNotEmpty()) recovered else initial
+    }
+
+    private suspend fun loadAlbumDetailOnce(album: AlbumHit, languageCode: String): AlbumDetail {
+        val resolved = resolveAlbumHit(album, languageCode)
+        val root = resolved.browseId.takeIf { it.isNotBlank() }
+            ?.let { requestMusicBrowseRoot(languageCode, it) }
+        val headerAlbum = root?.let { parseAlbumHeader(it, resolved) } ?: resolved
+        val cover = headerAlbum.thumbnailUrl.ifBlank { resolved.thumbnailUrl }
+        val canonicalAudioPlaylistId = sequenceOf(
+            root?.let(::extractAudioPlaylistId).orEmpty(),
+            headerAlbum.audioPlaylistId,
+            resolved.audioPlaylistId,
+            album.audioPlaylistId
+        )
+            .map { it.trim().removePrefix("VL") }
+            .firstOrNull { it.startsWith("OLA") }
+            .orEmpty()
+        val playlistTracks = if (canonicalAudioPlaylistId.isNotBlank()) {
+            try {
+                playlist(canonicalAudioPlaylistId, languageCode, 60)?.tracks.orEmpty()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+        val shelfTracks = if (playlistTracks.isEmpty()) {
+            root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
+        } else {
+            emptyList()
+        }
+        val finalTracks = (if (playlistTracks.isNotEmpty()) playlistTracks else shelfTracks)
+            .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
+            .take(60)
+        val finalArtist = headerAlbum.artist.cleanAlbumArtistLabel()
+            .ifBlank {
+                finalTracks.firstNotNullOfOrNull {
+                    it.artist.cleanAlbumArtistLabel().takeIf(String::isNotBlank)
+                }.orEmpty()
+            }
+            .ifBlank { resolved.artist.cleanAlbumArtistLabel() }
+        val finalAlbum = headerAlbum.copy(
+            artist = finalArtist,
+            thumbnailUrl = cover,
+            query = "${headerAlbum.title} $finalArtist".trim(),
+            browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
+            audioPlaylistId = canonicalAudioPlaylistId,
+            explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
+        )
+        val enrichedTracks = finalTracks.map { track ->
+            track.copy(
+                album = finalAlbum.title,
+                albumBrowseId = finalAlbum.browseId,
+                year = track.year.ifBlank { finalAlbum.year },
+                explicit = track.explicit || finalAlbum.explicit,
+                thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank {
+                    track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+                }
+            )
+        }
+        enrichedTracks.forEach { memory[it.id] = it }
+        val description = root?.let { parseAlbumDescription(it) }.orEmpty()
+        return AlbumDetail(
+            album = finalAlbum,
+            description = description,
+            tracks = enrichedTracks,
+            otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
+            trackCount = enrichedTracks.size,
+            durationMs = enrichedTracks.sumOf { it.durationMs }
+        )
+    }
+
+    private fun findAlbumRecoveryCandidate(
+        album: AlbumHit,
+        languageCode: String,
+        excludedBrowseIds: Set<String>
+    ): AlbumHit? {
+        if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return null
+        val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
+        if (query.length < 2) return null
+        val candidates = searchAlbumHits(query, languageCode, 12)
+        return selectAlbumRecoveryCandidate(album, candidates, excludedBrowseIds)
+    }
+
+'''
+repo = repo[:album_start] + new_album_block + repo[album_end:]
+repo_path.write_text(repo, encoding="utf-8")
+
+view_model_path = Path("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+view_model = view_model_path.read_text(encoding="utf-8")
+view_model = replace_once(
+    view_model,
+    'albumError = "Album non disponibile",',
+    'albumError = LevyraStrings.forCode(it.languageCode).albumTracksUnavailable,',
+    "localized empty album error"
+)
+view_model_path.write_text(view_model, encoding="utf-8")
+
+ui_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+ui = ui_path.read_text(encoding="utf-8")
+ui = replace_once(
+    ui,
+    "                    onDownloadAlbum = viewModel::exportCurrentAlbum,\n\n                    onAddToPlaylist =",
+    "                    onDownloadAlbum = viewModel::exportCurrentAlbum,\n                    onRetry = { state.albumDetail?.album?.let(viewModel::openAlbum) },\n\n                    onAddToPlaylist =",
+    "AlbumOverlay call retry callback"
+)
+
+overlay_start = ui.index("@Composable\nprivate fun AlbumOverlay(")
+overlay_end = ui.index("@Composable\nprivate fun AlbumLoadingCard()", overlay_start)
+overlay = ui[overlay_start:overlay_end]
+overlay = replace_once(
+    overlay,
+    "    onDownloadAlbum: () -> Unit,\n\n    onAddToPlaylist:",
+    "    onDownloadAlbum: () -> Unit,\n    onRetry: () -> Unit,\n\n    onAddToPlaylist:",
+    "AlbumOverlay retry parameter"
+)
+overlay = replace_once(
+    overlay,
+    "    val albumIsResolving = albumIsActive && state.isResolving\n    val albumBottomInset =",
+    "    val albumIsResolving = albumIsActive && state.isResolving\n    val trackLoadFailed = album != null && tracks.isEmpty() && !state.albumLoading\n    val albumBottomInset =",
+    "album track failure state"
+)
+touch_count = overlay.count(".size(44.dp).pressable(")
+if touch_count != 2:
+    raise SystemExit(f"album topbar touch targets: expected 2, found {touch_count}")
+overlay = overlay.replace(".size(44.dp).pressable(", ".size(48.dp).pressable(")
+overlay = replace_once(
+    overlay,
+    "                            trackCount = tracks.size,\n                            isPlaying = albumIsPlaying,",
+    "                            trackCount = tracks.size,\n                            trackLoadFailed = trackLoadFailed,\n                            isPlaying = albumIsPlaying,",
+    "AlbumHeroCard failure state"
+)
+overlay = replace_once(
+    overlay,
+    "                            onDownload = onDownloadAlbum,\n                            onOpenArtist = onOpenAlbumArtist,",
+    "                            onDownload = onDownloadAlbum,\n                            onRetry = onRetry,\n                            onOpenArtist = onOpenAlbumArtist,",
+    "AlbumHeroCard retry action"
+)
+overlay = replace_once(
+    overlay,
+    "                            GlassMessage(state.albumError ?: strings.albumTracksUnavailable, LevyraOrange)",
+    "                            AlbumTracksUnavailableState(strings.albumTracksUnavailable)",
+    "compact album track error"
+)
+ui = ui[:overlay_start] + overlay + ui[overlay_end:]
+
+hero_start = ui.index("@Composable\nprivate fun AlbumHeroCard(")
+hero_end = ui.index("@Composable\nprivate fun AlbumPrimaryPlayButton(", hero_start)
+hero = ui[hero_start:hero_end]
+hero = replace_once(
+    hero,
+    "    trackCount: Int,\n    isPlaying: Boolean,",
+    "    trackCount: Int,\n    trackLoadFailed: Boolean,\n    isPlaying: Boolean,",
+    "AlbumHeroCard track failure parameter"
+)
+hero = replace_once(
+    hero,
+    "    onDownload: () -> Unit,\n    onOpenArtist: () -> Unit,",
+    "    onDownload: () -> Unit,\n    onRetry: () -> Unit,\n    onOpenArtist: () -> Unit,",
+    "AlbumHeroCard retry parameter"
+)
+hero = replace_once(
+    hero,
+    "        AlbumPrimaryPlayButton(\n            enabled = trackCount > 0,\n            isPlaying = isPlaying,\n            isResolving = isResolving,\n            accentStart = accentStart,\n            accentEnd = accentEnd,\n            onClick = onPlayAll\n        )",
+    "        AlbumPrimaryPlayButton(\n            enabled = trackCount > 0 || trackLoadFailed,\n            isPlaying = isPlaying && !trackLoadFailed,\n            isResolving = isResolving,\n            retry = trackLoadFailed,\n            accentStart = accentStart,\n            accentEnd = accentEnd,\n            onClick = if (trackLoadFailed) onRetry else onPlayAll\n        )",
+    "Album primary retry action"
+)
+hero = replace_once(
+    hero,
+    "            AlbumSecondaryAction(icon = Icons.Rounded.Download, label = LocalLevyraStrings.current.offline, enabled = trackCount > 0, modifier = Modifier.weight(1f), onClick = onDownload)\n            AlbumSecondaryAction(icon = Icons.Rounded.Person, label = LocalLevyraStrings.current.artistLabel, enabled = album.artist.isNotBlank(), modifier = Modifier.weight(1f), onClick = onOpenArtist)\n            AlbumSecondaryAction(icon = Icons.Rounded.Share, label = LocalLevyraStrings.current.share, enabled = true, modifier = Modifier.weight(1f), onClick = onShare)",
+    "            if (trackCount > 0) {\n                AlbumSecondaryAction(icon = Icons.Rounded.Download, label = LocalLevyraStrings.current.offline, enabled = true, modifier = Modifier.weight(1f), onClick = onDownload)\n            }\n            AlbumSecondaryAction(icon = Icons.Rounded.Person, label = LocalLevyraStrings.current.artistLabel, enabled = album.artist.isNotBlank(), modifier = Modifier.weight(1f), onClick = onOpenArtist)\n            AlbumSecondaryAction(icon = Icons.Rounded.Share, label = LocalLevyraStrings.current.share, enabled = true, modifier = Modifier.weight(1f), onClick = onShare)",
+    "album secondary actions"
+)
+
+unavailable_state = r'''@Composable
+private fun AlbumTracksUnavailableState(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(LevyraOrange.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = LevyraOrange,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+        Text(
+            text = message,
+            color = LevyraMuted,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+'''.strip() + "\n\n"
+hero = hero.rstrip() + "\n\n" + unavailable_state
+ui = ui[:hero_start] + hero + ui[hero_end:]
+
+primary_start = ui.index("@Composable\nprivate fun AlbumPrimaryPlayButton(")
+primary_end = ui.index("@Composable\nprivate fun AlbumSecondaryAction(", primary_start)
+primary = ui[primary_start:primary_end]
+primary = replace_once(
+    primary,
+    "    isResolving: Boolean,\n    accentStart: Color,",
+    "    isResolving: Boolean,\n    retry: Boolean,\n    accentStart: Color,",
+    "AlbumPrimaryPlayButton retry parameter"
+)
+primary = replace_once(
+    primary,
+    "                    if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,",
+    "                    when {\n                        retry -> Icons.Rounded.Refresh\n                        isPlaying -> Icons.Rounded.Pause\n                        else -> Icons.Rounded.PlayArrow\n                    },",
+    "album primary retry icon"
+)
+primary = replace_once(
+    primary,
+    "                if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play,",
+    "                when {\n                    retry -> LocalLevyraStrings.current.exploreSamplesRetry\n                    isPlaying -> LocalLevyraStrings.current.playing\n                    else -> LocalLevyraStrings.current.play\n                },",
+    "album primary retry label"
+)
+ui = ui[:primary_start] + primary + ui[primary_end:]
+
+secondary_start = ui.index("@Composable\nprivate fun AlbumSecondaryAction(")
+secondary_end = ui.index("private fun uiTrackMatches(", secondary_start)
+secondary = ui[secondary_start:secondary_end]
+secondary = replace_once(
+    secondary,
+    "            .height(46.dp)",
+    "            .height(48.dp)",
+    "album secondary touch target"
+)
+ui = ui[:secondary_start] + secondary + ui[secondary_end:]
+ui_path.write_text(ui, encoding="utf-8")
+
+test_path = Path("app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicRepositoryTest.kt")
+tests = test_path.read_text(encoding="utf-8")
+if "import com.luc4n3x.levyra.domain.AlbumHit" not in tests:
+    tests = replace_once(
+        tests,
+        "package com.luc4n3x.levyra.data\n\nimport org.json.JSONObject",
+        "package com.luc4n3x.levyra.data\n\nimport com.luc4n3x.levyra.domain.AlbumHit\nimport org.json.JSONObject",
+        "AlbumHit test import"
+    )
+
+if "albumRecoveryAcceptsExactTitleAndPrimaryArtistWithNewBrowseId" not in tests:
+    test_block = r'''
+    @Test
+    fun albumRecoveryAcceptsExactTitleAndPrimaryArtistWithNewBrowseId() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale, Levante, DELIA",
+            year = "2026",
+            thumbnailUrl = "https://example.test/sacro.jpg",
+            query = "SACRO Serena Brancale Levante DELIA",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(
+            title = "Sacro",
+            artist = "Serena Brancale",
+            browseId = "MPRE_NEW"
+        )
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals("MPRE_NEW", selected?.browseId)
+    }
+
+    @Test
+    fun albumRecoveryRejectsDifferentTitle() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale, Levante, DELIA",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "SACRO Serena Brancale",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(
+            title = "Anema e core",
+            artist = "Serena Brancale",
+            browseId = "MPRE_OTHER"
+        )
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(null, selected)
+    }
+
+    @Test
+    fun albumRecoveryRejectsAlreadyAttemptedBrowseId() {
+        val seed = AlbumHit(
+            title = "SACRO",
+            artist = "Serena Brancale",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "SACRO Serena Brancale",
+            browseId = "MPRE_OLD"
+        )
+        val candidate = seed.copy(browseId = "MPRE_OLD")
+
+        val selected = selectAlbumRecoveryCandidate(
+            album = seed,
+            candidates = listOf(candidate),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(null, selected)
+    }
+'''.strip("\n")
+    class_end = tests.rfind("\n}")
+    if class_end < 0:
+        raise SystemExit("YoutubeMusicRepositoryTest class end not found")
+    tests = tests[:class_end] + "\n\n" + test_block + tests[class_end:]
+
+test_path.write_text(tests, encoding="utf-8")
