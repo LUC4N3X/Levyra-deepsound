@@ -2,9 +2,10 @@
 
 ## Purpose and hierarchy
 
-This file is the repository-wide operating contract for coding agents. Codex,
-Google Antigravity, OpenClaw, and compatible runtimes should read it from the
-Git root, then apply any nearer `AGENTS.md` for the files in scope.
+This file is the repository-wide operating contract for coding agents. Claude
+Code, Codex, ChatGPT when operating through a repository-capable runtime,
+Google Antigravity, OpenCode, OpenClaw, and compatible runtimes should read it
+from the Git root, then apply any nearer `AGENTS.md` for the files in scope.
 
 Instruction order:
 
@@ -69,6 +70,42 @@ complexity-budget, and diff-quality rules.
 Runtime-specific discovery must not create separate sources of truth. This file,
 nearest scoped instructions, approved planning, matching skills, and current
 repository evidence remain the shared hierarchy.
+
+## Execution-first operating mode
+
+This policy is shared by every supported coding runtime. It is not a
+Claude-specific preference.
+
+- When the owner asks to `fix`, `update`, `address`, `implement`, `refactor`, or
+  otherwise change code, execute the requested work directly inside the
+  authorized scope. Do not turn an implementation request into an unsolicited
+  design discussion, tutorial, list of alternatives, or approval pause.
+- Do not ask routine confirmation questions when the requested outcome,
+  repository evidence, and existing architecture already determine the next
+  safe action.
+- Ask only when an indispensable input is missing, materially different
+  interpretations would produce meaningfully different results, or the next
+  action is destructive, irreversible, security-sensitive, or outside the
+  owner's existing authorization.
+- If the requested approach conflicts with current repository evidence,
+  security, data integrity, compatibility, product invariants, or deterministic
+  validation, surface the conflict briefly and choose the smallest safe
+  correction when it remains inside scope. Never silently execute a known-bad
+  approach merely to appear compliant.
+- For code-bearing work: inspect the current owner and nearby tests, make the
+  smallest coherent change, run focused validation, fix regressions introduced
+  by the change, inspect the final diff, then report the result, files changed,
+  checks run, and any real blocker.
+- Treat `only this`, `solo questo`, and equivalent wording as a hard scope
+  boundary. Do not perform opportunistic refactors, unrelated cleanup,
+  dependency churn, version changes, or speculative architecture work.
+- Prefer execution over commentary. Explain decisions only when they materially
+  affect correctness, safety, compatibility, validation, or the owner's next
+  action.
+- Execution-first behavior never grants permission to commit, push, open or
+  merge a pull request, tag, publish, release, deploy, change repository
+  settings, bypass approvals, weaken sandboxing, or skip required validation.
+  Those actions keep their existing owner-controlled authorization rules.
 
 ## Always-on context budget
 
