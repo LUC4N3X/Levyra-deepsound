@@ -43,12 +43,14 @@ object LevyraPlayerDesign {
     val HeaderButtonCompact: Dp = 38.dp
     val UtilityButton: Dp = 44.dp
     val UtilityButtonCompact: Dp = 40.dp
-    val TransportButton: Dp = 50.dp
-    val TransportButtonCompact: Dp = 44.dp
-    val PrimaryWidth: Dp = 74.dp
-    val PrimaryWidthCompact: Dp = 66.dp
-    val PrimaryHeight: Dp = 58.dp
-    val PrimaryHeightCompact: Dp = 54.dp
+    val TransportButton: Dp = 56.dp
+    val TransportButtonCompact: Dp = 48.dp
+    val TransportSquircleCorner: Dp = 18.dp
+    val TransportSquircleCornerCompact: Dp = 16.dp
+    val PrimaryWidth: Dp = 78.dp
+    val PrimaryWidthCompact: Dp = 70.dp
+    val PrimaryHeight: Dp = 66.dp
+    val PrimaryHeightCompact: Dp = 58.dp
     val PrimaryCorner: Dp = 24.dp
     val MinimumTouchTarget: Dp = 48.dp
 
@@ -56,10 +58,10 @@ object LevyraPlayerDesign {
     val TrackHeight: Dp = 4.5.dp
     val TrackHeightActive: Dp = 7.5.dp
     val WaveAmplitude: Dp = 3.5.dp
-    val HandleWidth: Dp = 4.dp
-    val HandleWidthActive: Dp = 6.dp
-    val HandleHeight: Dp = 22.dp
-    val HandleHeightActive: Dp = 28.dp
+    val HandleWidth: Dp = 6.dp
+    val HandleWidthActive: Dp = 8.dp
+    val HandleHeight: Dp = 20.dp
+    val HandleHeightActive: Dp = 26.dp
 
     val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val Standard: Easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
