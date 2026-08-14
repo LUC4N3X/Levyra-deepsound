@@ -1601,6 +1601,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onFavorite = viewModel::toggleFavorite,
                     onDownload = viewModel::exportTrack,
                     onDownloadAlbum = viewModel::exportCurrentAlbum,
+                    onRetry = { state.albumDetail?.album?.let(viewModel::openAlbum) },
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
@@ -2047,6 +2048,7 @@ private fun AlbumOverlay(
     onFavorite: (Track) -> Unit,
     onDownload: (Track) -> Unit,
     onDownloadAlbum: () -> Unit,
+    onRetry: () -> Unit,
 
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
@@ -2073,6 +2075,7 @@ private fun AlbumOverlay(
     val albumIsActive = albumCurrentTrack != null
     val albumIsPlaying = albumIsActive && state.isPlaying
     val albumIsResolving = albumIsActive && state.isResolving
+    val trackLoadFailed = album != null && tracks.isEmpty() && !state.albumLoading
     val albumBottomInset = animatedBottomContentInset(
         collapsed = 112.dp,
         expanded = 232.dp,
@@ -2112,7 +2115,7 @@ private fun AlbumOverlay(
                         color = Color.White.copy(alpha = 0.06f),
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                         shape = CircleShape,
-                        modifier = Modifier.size(44.dp).pressable(onClick = onClose)
+                        modifier = Modifier.size(48.dp).pressable(onClick = onClose)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back, tint = LevyraText)
@@ -2123,7 +2126,7 @@ private fun AlbumOverlay(
                         color = Color.White.copy(alpha = 0.06f),
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                         shape = CircleShape,
-                        modifier = Modifier.size(44.dp).pressable(onClick = {
+                        modifier = Modifier.size(48.dp).pressable(onClick = {
                             val query = listOf(album?.title.orEmpty(), album?.artist.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
                             if (query.isNotBlank()) openExternalUrl(context, "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}", strings)
                         })
@@ -2152,6 +2155,7 @@ private fun AlbumOverlay(
                             cover = cover,
                             description = description,
                             trackCount = tracks.size,
+                            trackLoadFailed = trackLoadFailed,
                             isPlaying = albumIsPlaying,
                             isResolving = albumIsResolving,
                             accentStart = accentStart,
@@ -2160,6 +2164,7 @@ private fun AlbumOverlay(
                                 if (albumIsActive) onTogglePlayback() else onPlayAll()
                             },
                             onDownload = onDownloadAlbum,
+                            onRetry = onRetry,
                             onOpenArtist = onOpenAlbumArtist,
                             onShare = {
                                 val shareText = buildString {
@@ -2217,7 +2222,7 @@ private fun AlbumOverlay(
                         }
                     } else if (!state.albumLoading) {
                         item(key = "album-no-tracks") {
-                            GlassMessage(state.albumError ?: strings.albumTracksUnavailable, LevyraOrange)
+                            AlbumTracksUnavailableState(strings.albumTracksUnavailable)
                         }
                     }
                 }
@@ -2287,12 +2292,14 @@ private fun AlbumHeroCard(
     cover: String,
     description: String,
     trackCount: Int,
+    trackLoadFailed: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     accentStart: Color,
     accentEnd: Color,
     onPlayAll: () -> Unit,
     onDownload: () -> Unit,
+    onRetry: () -> Unit,
     onOpenArtist: () -> Unit,
     onShare: () -> Unit
 ) {
@@ -2356,19 +2363,22 @@ private fun AlbumHeroCard(
         }
 
         AlbumPrimaryPlayButton(
-            enabled = trackCount > 0,
-            isPlaying = isPlaying,
+            enabled = trackCount > 0 || trackLoadFailed,
+            isPlaying = isPlaying && !trackLoadFailed,
             isResolving = isResolving,
+            retry = trackLoadFailed,
             accentStart = accentStart,
             accentEnd = accentEnd,
-            onClick = onPlayAll
+            onClick = if (trackLoadFailed) onRetry else onPlayAll
         )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AlbumSecondaryAction(icon = Icons.Rounded.Download, label = LocalLevyraStrings.current.offline, enabled = trackCount > 0, modifier = Modifier.weight(1f), onClick = onDownload)
+            if (trackCount > 0) {
+                AlbumSecondaryAction(icon = Icons.Rounded.Download, label = LocalLevyraStrings.current.offline, enabled = true, modifier = Modifier.weight(1f), onClick = onDownload)
+            }
             AlbumSecondaryAction(icon = Icons.Rounded.Person, label = LocalLevyraStrings.current.artistLabel, enabled = album.artist.isNotBlank(), modifier = Modifier.weight(1f), onClick = onOpenArtist)
             AlbumSecondaryAction(icon = Icons.Rounded.Share, label = LocalLevyraStrings.current.share, enabled = true, modifier = Modifier.weight(1f), onClick = onShare)
         }
@@ -2407,10 +2417,44 @@ private fun AlbumHeroCard(
 }
 
 @Composable
+private fun AlbumTracksUnavailableState(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(LevyraOrange.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = LevyraOrange,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+        Text(
+            text = message,
+            color = LevyraMuted,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
 private fun AlbumPrimaryPlayButton(
     enabled: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
+    retry: Boolean,
     accentStart: Color,
     accentEnd: Color,
     onClick: () -> Unit
@@ -2445,14 +2489,22 @@ private fun AlbumPrimaryPlayButton(
                 )
             } else {
                 Icon(
-                    if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    when {
+                        retry -> Icons.Rounded.Refresh
+                        isPlaying -> Icons.Rounded.Pause
+                        else -> Icons.Rounded.PlayArrow
+                    },
                     null,
                     tint = if (enabled) enabledContent else disabledContent,
                     modifier = Modifier.size(26.dp)
                 )
             }
             Text(
-                if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play,
+                when {
+                    retry -> LocalLevyraStrings.current.exploreSamplesRetry
+                    isPlaying -> LocalLevyraStrings.current.playing
+                    else -> LocalLevyraStrings.current.play
+                },
                 color = if (enabled) enabledContent else disabledContent,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -2475,7 +2527,7 @@ private fun AlbumSecondaryAction(
     val buttonShape = RoundedCornerShape(cornerRadius)
     Row(
         modifier = modifier
-            .height(46.dp)
+            .height(48.dp)
             .clip(buttonShape)
             .background(Color.White.copy(alpha = if (enabled) 0.06f else 0.03f))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)), buttonShape)
