@@ -289,7 +289,7 @@ Levyra does not include tracking SDKs, telemetry frameworks, or advertising serv
 
 ---
 
-## 🤝 Contributing
+## 💡 Contributing
 
 Contributions are welcome. To get started:
 
