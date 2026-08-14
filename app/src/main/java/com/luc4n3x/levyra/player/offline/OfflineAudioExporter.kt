@@ -53,7 +53,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -164,15 +163,6 @@ internal fun missingAudioRanges(
     }
     if (cursor < contentLength) missing += AudioDownloadRange(cursor, contentLength - 1L)
     return missing.flatMap { splitAudioRange(it, chunkSize) }
-}
-
-internal fun parallelVisibleDownloadBytes(
-    committedBytes: Long,
-    inFlightBytes: Collection<Long>,
-    targetLength: Long
-): Long {
-    val visible = committedBytes.coerceAtLeast(0L) + inFlightBytes.sumOf { it.coerceAtLeast(0L) }
-    return if (targetLength > 0L) visible.coerceAtMost(targetLength) else visible
 }
 
 internal fun isUsableAudioRangeResponse(
@@ -699,7 +689,6 @@ class OfflineAudioExporter(
         val container = detectContainer(contentType, track.streamUrl)
         val temp = existingFile ?: File(workspace, "raw-${System.nanoTime()}.${container.extension}")
         val downloadedBytes = AtomicLong(initialDownloadedBytes.coerceIn(0L, targetLength))
-        val inFlightBytes = ConcurrentHashMap<Long, Long>()
         val lastProgress = AtomicInteger(downloadProgress(downloadedBytes.get(), targetLength))
         val concurrency = minOf(
             parallelAudioConcurrency(targetLength),
@@ -718,7 +707,6 @@ class OfflineAudioExporter(
                 ranges = ranges,
                 outputFile = temp,
                 downloadedBytes = downloadedBytes,
-                inFlightBytes = inFlightBytes,
                 lastProgress = lastProgress,
                 targetLength = targetLength,
                 limiter = limiter
@@ -742,7 +730,6 @@ class OfflineAudioExporter(
         ranges: List<AudioDownloadRange>,
         outputFile: File,
         downloadedBytes: AtomicLong,
-        inFlightBytes: ConcurrentHashMap<Long, Long>,
         lastProgress: AtomicInteger,
         targetLength: Long,
         limiter: Semaphore
@@ -755,7 +742,6 @@ class OfflineAudioExporter(
                 ranges = pending,
                 outputFile = outputFile,
                 downloadedBytes = downloadedBytes,
-                inFlightBytes = inFlightBytes,
                 lastProgress = lastProgress,
                 targetLength = targetLength,
                 limiter = limiter
@@ -782,7 +768,6 @@ class OfflineAudioExporter(
         ranges: List<AudioDownloadRange>,
         outputFile: File,
         downloadedBytes: AtomicLong,
-        inFlightBytes: ConcurrentHashMap<Long, Long>,
         lastProgress: AtomicInteger,
         targetLength: Long,
         limiter: Semaphore
@@ -791,15 +776,7 @@ class OfflineAudioExporter(
             async(Dispatchers.IO) {
                 try {
                     limiter.withPermit {
-                        downloadAudioRange(
-                            url,
-                            range,
-                            outputFile,
-                            downloadedBytes,
-                            inFlightBytes,
-                            lastProgress,
-                            targetLength
-                        )
+                        downloadAudioRange(url, range, outputFile, downloadedBytes, lastProgress, targetLength)
                     }
                     null
                 } catch (error: CancellationException) {
@@ -816,28 +793,17 @@ class OfflineAudioExporter(
         range: AudioDownloadRange,
         outputFile: File,
         downloadedBytes: AtomicLong,
-        inFlightBytes: ConcurrentHashMap<Long, Long>,
         lastProgress: AtomicInteger,
         targetLength: Long
     ) {
         var lastError: IOException? = null
         repeat(RANGE_RETRY_COUNT) { attempt ->
             try {
-                downloadAudioRangeAttempt(
-                    url,
-                    range,
-                    outputFile,
-                    downloadedBytes,
-                    inFlightBytes,
-                    lastProgress,
-                    targetLength
-                )
+                downloadAudioRangeAttempt(url, range, outputFile, downloadedBytes, lastProgress, targetLength)
                 return
             } catch (error: IOException) {
                 lastError = error
                 if (attempt < RANGE_RETRY_COUNT - 1) delay(RANGE_RETRY_DELAY_MS * (attempt + 1L))
-            } finally {
-                inFlightBytes.remove(range.start)
             }
         }
         throw lastError ?: IOException("Range audio non riuscito")
@@ -848,7 +814,6 @@ class OfflineAudioExporter(
         range: AudioDownloadRange,
         outputFile: File,
         downloadedBytes: AtomicLong,
-        inFlightBytes: ConcurrentHashMap<Long, Long>,
         lastProgress: AtomicInteger,
         targetLength: Long
     ) {
@@ -886,23 +851,12 @@ class OfflineAudioExporter(
                         rateLimiter.consume(read)
                         output.write(buffer, 0, read)
                         written += read.toLong()
-                        inFlightBytes[range.start] = written
-                        val visibleBytes = parallelVisibleDownloadBytes(
-                            committedBytes = downloadedBytes.get(),
-                            inFlightBytes = inFlightBytes.values,
-                            targetLength = targetLength
-                        )
-                        updateParallelProgress(
-                            lastProgress,
-                            minOf(81, downloadProgress(visibleBytes, targetLength))
-                        )
                     }
                 }
             }
             if (written != range.length) {
                 throw IOException("Range troncato: ${range.start}-${range.endInclusive} ($written/${range.length} byte)")
             }
-            inFlightBytes.remove(range.start)
             val total = downloadedBytes.addAndGet(range.length)
             updateParallelProgress(lastProgress, downloadProgress(total, targetLength))
         }
