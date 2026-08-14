@@ -60,11 +60,11 @@
     <rect x="48" y="9" width="4" height="7" rx="2"/>
   </g>
 
-  <!-- Right CTA Button -->
-  <g transform="translate(576 50)">
-    <rect width="148" height="54" rx="16" fill="url(#gh-accent)"/>
-    <rect width="148" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/>
-    <text x="58" y="34" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="15.5" font-weight="800" letter-spacing="0.2">Get APK</text>
-    <path d="M104 27h-16M98 21l6 6-6 6" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right CTA Button (Spacious, No Overlap) -->
+  <g transform="translate(572 50)">
+    <rect width="152" height="54" rx="16" fill="url(#gh-accent)"/>
+    <rect width="152" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/>
+    <text x="56" y="34" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="15.5" font-weight="800" letter-spacing="0.2">Get APK</text>
+    <path d="M112 27h-16M106 21l6 6-6 6" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

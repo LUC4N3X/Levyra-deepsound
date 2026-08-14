@@ -31,7 +31,7 @@
   <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
   <circle cx="86" cy="77" r="42" fill="url(#win-glow)"/>
 
-  <!-- Windows Logo -->
+  <!-- Windows Logo (Centered & Crisp) -->
   <g transform="translate(61 52)" fill="#F8FAFC">
     <path d="M0 7.3 22 4.1v18.7H0z"/>
     <path d="M26.2 3.5 50 0v22.8H26.2z"/>
@@ -63,11 +63,11 @@
     <rect x="48" y="7" width="4" height="9" rx="2"/>
   </g>
 
-  <!-- Right CTA Button -->
-  <g transform="translate(564 50)">
-    <rect width="160" height="54" rx="16" fill="url(#win-accent)"/>
-    <rect width="160" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.25"/>
-    <text x="64" y="34" text-anchor="middle" fill="#031525" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="15" font-weight="900" letter-spacing="0.2">Get Windows</text>
-    <path d="M118 27h-16M112 21l6 6-6 6" fill="none" stroke="#031525" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right CTA Button (Spacious, No Overlap) -->
+  <g transform="translate(554 50)">
+    <rect width="170" height="54" rx="16" fill="url(#win-accent)"/>
+    <rect width="170" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.25"/>
+    <text x="60" y="34" text-anchor="middle" fill="#031525" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14.5" font-weight="900" letter-spacing="0.2">Get Windows</text>
+    <path d="M142 27h-16M136 21l6 6-6 6" fill="none" stroke="#031525" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
