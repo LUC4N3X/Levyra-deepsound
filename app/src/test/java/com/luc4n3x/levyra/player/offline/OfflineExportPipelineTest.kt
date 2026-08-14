@@ -34,7 +34,7 @@ class OfflineExportPipelineTest {
         assertTrue(source.contains("CacheWriter"))
         assertTrue(source.contains("CacheDataSource.Factory()"))
         assertTrue(source.contains("LevyraYoutubeDataSource.Factory"))
-        assertTrue(source.contains("PlaybackNetworkStack.warmupFactory"))
+        assertTrue(source.contains("PlaybackNetworkStack.playbackFactory"))
         assertTrue(source.contains("LevyraPlaybackCacheKey.stream(track)"))
         assertFalse(source.contains("downloadAudioRanges("))
     }
