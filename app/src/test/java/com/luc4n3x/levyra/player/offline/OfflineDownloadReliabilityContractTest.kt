@@ -87,6 +87,34 @@ class OfflineDownloadReliabilityContractTest {
     }
 
     @Test
+    fun liveParallelProgressCountsInFlightBytesWithoutExceedingTarget() {
+        assertEquals(
+            450L,
+            parallelVisibleDownloadBytes(
+                committedBytes = 200L,
+                inFlightBytes = listOf(100L, 150L),
+                targetLength = 1_000L
+            )
+        )
+        assertEquals(
+            1_000L,
+            parallelVisibleDownloadBytes(
+                committedBytes = 900L,
+                inFlightBytes = listOf(250L),
+                targetLength = 1_000L
+            )
+        )
+        assertEquals(
+            200L,
+            parallelVisibleDownloadBytes(
+                committedBytes = 200L,
+                inFlightBytes = emptyList(),
+                targetLength = 1_000L
+            )
+        )
+    }
+
+    @Test
     fun exporterKeepsIntegrityRetryAndSerialFallbackGuards() {
         val source = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
 
@@ -96,6 +124,16 @@ class OfflineDownloadReliabilityContractTest {
         assertTrue(source.contains("repeat(PARALLEL_BATCH_RETRY_COUNT)"))
         assertTrue(source.contains("Parallel offline download failed, falling back to serial"))
         assertTrue(source.contains("if (targetLength > 0L && total != targetLength)"))
+    }
+
+    @Test
+    fun exporterReportsLiveFragmentBytesWithoutCompletingEarly() {
+        val source = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
+
+        assertTrue(source.contains("inFlightBytes[range.start] = written"))
+        assertTrue(source.contains("parallelVisibleDownloadBytes"))
+        assertTrue(source.contains("minOf(81, downloadProgress(visibleBytes, targetLength))"))
+        assertTrue(source.contains("inFlightBytes.remove(range.start)"))
     }
 
     @Test
