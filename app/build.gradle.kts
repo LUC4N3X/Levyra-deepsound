@@ -135,8 +135,15 @@ android {
     }
 
     if (isFdroidBuild) {
-        sourceSets.getByName("debug").manifest.srcFile("src/fdroid/AndroidManifest.xml")
-        sourceSets.getByName("release").manifest.srcFile("src/fdroid/AndroidManifest.xml")
+        sourceSets.getByName("main").java.exclude("com/luc4n3x/levyra/player/PlaybackNetworkStack.kt")
+        sourceSets.getByName("debug").apply {
+            manifest.srcFile("src/fdroid/AndroidManifest.xml")
+            java.srcDir("src/fdroid/java")
+        }
+        sourceSets.getByName("release").apply {
+            manifest.srcFile("src/fdroid/AndroidManifest.xml")
+            java.srcDir("src/fdroid/java")
+        }
     }
 
     signingConfigs {
@@ -251,11 +258,13 @@ dependencies {
     implementation(libs.androidx.car.app.projected)
     implementation(libs.androidx.media.compat)
     implementation(libs.androidx.media3.datasource.okhttp)
-    implementation(libs.androidx.media3.datasource.cronet) {
-        exclude(group = "org.chromium.net", module = "cronet-api")
-        exclude(group = "com.google.android.gms", module = "play-services-cronet")
+    if (!isFdroidBuild) {
+        implementation(libs.androidx.media3.datasource.cronet) {
+            exclude(group = "org.chromium.net", module = "cronet-api")
+            exclude(group = "com.google.android.gms", module = "play-services-cronet")
+        }
+        implementation(libs.chromium.cronet.embedded)
     }
-    implementation(libs.chromium.cronet.embedded)
     implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.database)
     implementation(libs.kotlinx.coroutines.android)
