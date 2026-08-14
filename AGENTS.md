@@ -92,7 +92,7 @@ Claude-specific preference.
   validation, surface the conflict briefly and choose the smallest safe
   correction when it remains inside scope. Never silently execute a known-bad
   approach merely to appear compliant.
-- For code-bearing work: inspect the current owner and nearby tests, make the
+- For code-bearing work: inspect the current implementation and nearby tests, make the
   smallest coherent change, run focused validation, fix regressions introduced
   by the change, inspect the final diff, then report the result, files changed,
   checks run, and any real blocker.
