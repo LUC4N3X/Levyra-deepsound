@@ -198,6 +198,10 @@ fun PlayerTransportControls(
     val primaryWidth = if (compact) LevyraPlayerDesign.PrimaryWidthCompact else LevyraPlayerDesign.PrimaryWidth
     val primaryHeight = if (compact) LevyraPlayerDesign.PrimaryHeightCompact else LevyraPlayerDesign.PrimaryHeight
 
+    val transportShape = RoundedCornerShape(
+        if (compact) LevyraPlayerDesign.TransportSquircleCornerCompact else LevyraPlayerDesign.TransportSquircleCorner
+    )
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -218,10 +222,11 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipPrevious,
             contentDescription = labels.previous,
             size = transportSize,
-            iconSize = if (compact) 26.dp else 28.dp,
-            fill = LevyraPlayerDesign.GlassFillStrong,
-            borderTop = Color.White.copy(alpha = 0.22f),
-            borderBottom = Color.White.copy(alpha = 0.08f),
+            iconSize = if (compact) 24.dp else 26.dp,
+            fill = Color.White.copy(alpha = 0.08f),
+            borderTop = Color.White.copy(alpha = 0.16f),
+            borderBottom = Color.White.copy(alpha = 0.06f),
+            shape = transportShape,
             onClick = onPrevious
         )
         PlayerPrimaryButton(
@@ -240,10 +245,11 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipNext,
             contentDescription = labels.next,
             size = transportSize,
-            iconSize = if (compact) 26.dp else 28.dp,
-            fill = LevyraPlayerDesign.GlassFillStrong,
-            borderTop = Color.White.copy(alpha = 0.22f),
-            borderBottom = Color.White.copy(alpha = 0.08f),
+            iconSize = if (compact) 24.dp else 26.dp,
+            fill = Color.White.copy(alpha = 0.08f),
+            borderTop = Color.White.copy(alpha = 0.16f),
+            borderBottom = Color.White.copy(alpha = 0.06f),
+            shape = transportShape,
             onClick = onNext
         )
         PlayerModeToggleButton(
@@ -350,28 +356,24 @@ private fun playerPrimaryIconTransition(): ContentTransform =
 
 private fun Modifier.playerPrimarySurface(
     shape: Shape,
-    accent: Color
+    gradientColors: List<Color>,
+    ambientColor: Color
 ): Modifier = this
     .shadow(
-        elevation = 12.dp,
+        elevation = 14.dp,
         shape = shape,
         clip = false,
-        ambientColor = accent.copy(alpha = 0.45f),
-        spotColor = Color.Black.copy(alpha = 0.55f)
+        ambientColor = ambientColor.copy(alpha = 0.55f),
+        spotColor = Color.Black.copy(alpha = 0.60f)
     )
     .background(
-        Brush.verticalGradient(
-            listOf(
-                Color(0xFFFFFFFF),
-                Color(0xFFE6E8ED)
-            )
-        ),
+        Brush.linearGradient(gradientColors),
         shape
     )
     .border(
         BorderStroke(
             1.dp,
-            Color.White.copy(alpha = 0.38f)
+            Color.White.copy(alpha = 0.35f)
         ),
         shape
     )
@@ -412,8 +414,16 @@ private fun PlayerPrimaryButton(
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val contentColor = Color(0xFF0D0D10)
+    val contentColor = Color(0xFF0F0E17)
     val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
+
+    val gradientColors = remember(accentTarget, accentSecondaryTarget) {
+        listOf(
+            Color(0xFF7A88FF).playerMix(accentTarget, 0.25f),
+            Color(0xFFC850C0).playerMix(accentSecondaryTarget, 0.25f),
+            Color(0xFFFF6584).playerMix(accentTarget, 0.15f)
+        )
+    }
 
     SpringIconButton(
         onClick = onClick,
@@ -425,20 +435,21 @@ private fun PlayerPrimaryButton(
                 .size(width = width, height = height)
                 .playerPrimarySurface(
                     shape = shape,
-                    accent = accentTarget
+                    gradientColors = gradientColors,
+                    ambientColor = gradientColors[1]
                 ),
             contentAlignment = Alignment.Center
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.5.dp,
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.8.dp,
                     color = contentColor
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
-                    iconSize = 28.dp,
+                    iconSize = 30.dp,
                     tint = contentColor,
                     animated = animated
                 )
