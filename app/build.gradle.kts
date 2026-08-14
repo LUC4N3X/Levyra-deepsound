@@ -134,16 +134,12 @@ android {
         buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
     }
 
+    sourceSets.getByName("main").kotlin.directories.add(
+        if (isFdroidBuild) "src/fdroid/java" else "src/upstream/java"
+    )
     if (isFdroidBuild) {
-        sourceSets.getByName("main").java.exclude("com/luc4n3x/levyra/player/PlaybackNetworkStack.kt")
-        sourceSets.getByName("debug").apply {
-            manifest.srcFile("src/fdroid/AndroidManifest.xml")
-            java.srcDir("src/fdroid/java")
-        }
-        sourceSets.getByName("release").apply {
-            manifest.srcFile("src/fdroid/AndroidManifest.xml")
-            java.srcDir("src/fdroid/java")
-        }
+        sourceSets.getByName("debug").manifest.srcFile("src/fdroid/AndroidManifest.xml")
+        sourceSets.getByName("release").manifest.srcFile("src/fdroid/AndroidManifest.xml")
     }
 
     signingConfigs {
