@@ -2,7 +2,7 @@
 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
 
-# ✦ Levyra
+# Levyra
 
 **A native music player and private offline audio library for Android and Windows.**
 
