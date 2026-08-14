@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.player.offline
 
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LevyraDownloadPreset
+import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.nio.file.Files
@@ -49,10 +52,7 @@ class OfflineAudioExporterTest {
 
     @Test
     fun exporterNeverFallsBackToTheDownloadsCollection() {
-        val source = sequenceOf(
-            Path.of("app/src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt"),
-            Path.of("src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt")
-        ).firstOrNull(Files::exists) ?: error("OfflineAudioExporter.kt not found")
+        val source = exporterSource()
         val content = Files.readString(source)
 
         assertFalse(content.contains("MediaStore.Downloads"))
@@ -185,8 +185,37 @@ class OfflineAudioExporterTest {
     }
 
     @Test
+    fun effectiveFragmentLimitsStayInsideTheDownloadHostBudget() {
+        val perHostBudget = LevyraHttpClientFactory.download().dispatcher.maxRequestsPerHost
+
+        LevyraDownloadPreset.entries.forEach { preset ->
+            val fragments = LevyraDownloadSettings(preset = preset).maxParallelFragments
+            assertTrue("$preset exceeds the per-host download budget", fragments <= perHostBudget)
+        }
+    }
+
+    @Test
+    fun exporterKeepsRangeIntegrityRetryAndSerialFallbackGuards() {
+        val content = Files.readString(exporterSource())
+
+        assertTrue(content.contains("if (written != range.length)"))
+        assertTrue(content.contains("if (downloadedBytes.get() != targetLength || temp.length() != targetLength)"))
+        assertTrue(content.contains("repeat(RANGE_RETRY_COUNT)"))
+        assertTrue(content.contains("repeat(PARALLEL_BATCH_RETRY_COUNT)"))
+        assertTrue(content.contains("Parallel offline download failed, falling back to serial"))
+        assertTrue(content.contains("if (targetLength > 0L && total != targetLength)"))
+    }
+
+    @Test
     fun taskKeysProduceStableSafePartialFileNames() {
         assertEquals("track_id_with_spaces", offlineDownloadTaskFileKey(" track id with spaces "))
         assertEquals("unknown", offlineDownloadTaskFileKey(""))
+    }
+
+    private fun exporterSource(): Path {
+        return sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt")
+        ).firstOrNull(Files::exists) ?: error("OfflineAudioExporter.kt not found")
     }
 }
