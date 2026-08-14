@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -49,16 +50,26 @@ class OpenClawPrOnlyPolicyTest(unittest.TestCase):
         )
 
     def run_worker(self, *args: str) -> subprocess.CompletedProcess[str]:
+        cmd = (
+            ["bash", str(self.bin_dir / "levyra-worker"), *args]
+            if sys.platform == "win32"
+            else [str(self.bin_dir / "levyra-worker"), *args]
+        )
         return subprocess.run(
-            [str(self.bin_dir / "levyra-worker"), *args],
+            cmd,
             env=self.env,
             text=True,
             capture_output=True,
         )
 
     def run_evidence(self, *args: str) -> subprocess.CompletedProcess[str]:
+        cmd = (
+            ["bash", str(self.bin_dir / "levyra-evidence"), *args]
+            if sys.platform == "win32"
+            else [str(self.bin_dir / "levyra-evidence"), *args]
+        )
         return subprocess.run(
-            [str(self.bin_dir / "levyra-evidence"), *args],
+            cmd,
             env=self.env,
             text=True,
             capture_output=True,
