@@ -10893,10 +10893,10 @@ private fun PlayerImmersiveBackdrop(
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to mixedAccent.playerMix(Color(0xFF14131A), 0.35f),
-                        0.32f to primarySurface.playerMix(Color(0xFF0C0B10), 0.60f),
-                        0.64f to Color(0xFF08080C),
-                        1.00f to Color(0xFF030305)
+                        0.00f to mixedAccent.playerMix(Color(0xFF2C1445), 0.35f),
+                        0.32f to primarySurface.playerMix(Color(0xFF13091E), 0.55f),
+                        0.64f to Color(0xFF0C0614),
+                        1.00f to Color(0xFF050308)
                     )
                 )
             )
@@ -10910,7 +10910,7 @@ private fun PlayerImmersiveBackdrop(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primarySurface.playerMix(Color.White, 0.12f).copy(alpha = 0.45f * intensity),
+                            primarySurface.playerMix(Color(0xFF8A50E6), 0.35f).copy(alpha = 0.45f * intensity),
                             primarySurface.copy(alpha = 0.22f * intensity),
                             Color.Transparent
                         ),
@@ -10925,7 +10925,7 @@ private fun PlayerImmersiveBackdrop(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            secondarySurface.playerMix(Color.White, 0.10f).copy(alpha = 0.38f * intensity),
+                            secondarySurface.playerMix(Color(0xFFC04FE6), 0.30f).copy(alpha = 0.38f * intensity),
                             secondarySurface.copy(alpha = 0.15f * intensity),
                             Color.Transparent
                         ),
@@ -11188,20 +11188,26 @@ private fun LevyraControlPulseHandle(
     onToggle: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val width = if (compact) 82.dp else 88.dp
-    val height = if (compact) 26.dp else 28.dp
+    val width = if (compact) 88.dp else 94.dp
+    val height = if (compact) 28.dp else 30.dp
+    val lineWidth = if (compact) 18.dp else 20.dp
+    val iconBoxSize = if (compact) 22.dp else 24.dp
+    val iconSize = if (compact) 17.dp else 18.dp
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "player-shelf-chevron"
     )
 
+    val leftAccent = Color(0xFF4A7DFF).playerMix(activeColor, 0.4f)
+    val rightAccent = Color(0xFFFF4B8B).playerMix(secondaryColor, 0.4f)
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = Color.White.copy(alpha = if (expanded) 0.12f else 0.07f),
+            color = Color(0xFF140D22).copy(alpha = 0.85f),
             border = BorderStroke(
                 1.dp,
                 Color.White.copy(alpha = if (expanded) 0.22f else 0.12f)
@@ -11211,34 +11217,61 @@ private fun LevyraControlPulseHandle(
                 .width(width)
                 .height(height)
                 .shadow(
-                    elevation = 4.dp,
+                    elevation = 6.dp,
                     shape = RoundedCornerShape(500.dp),
-                    ambientColor = activeColor.copy(alpha = 0.20f),
+                    ambientColor = activeColor.copy(alpha = 0.25f),
                     spotColor = Color.Black.copy(alpha = 0.50f)
                 )
                 .pressable(pressedScale = 0.96f, onClick = onToggle)
         ) {
-            Box(
+            Row(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = strings.options,
-                    tint = Color.White.copy(alpha = 0.85f),
+                // Left glowing accent bar
+                Box(
                     modifier = Modifier
-                        .size(17.dp)
-                        .graphicsLayer { rotationZ = rotation }
+                        .width(lineWidth)
+                        .height(2.5.dp)
+                        .background(leftAccent.copy(alpha = 0.85f), CircleShape)
                 )
-                if (hasActiveState && !expanded) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 8.dp)
-                            .size(5.dp)
-                            .background(activeColor.playerMix(Color.White, 0.4f), CircleShape)
+                Spacer(modifier = Modifier.width(6.dp))
+                // Center gradient rounded box
+                Box(
+                    modifier = Modifier
+                        .size(iconBoxSize)
+                        .graphicsLayer { rotationZ = rotation }
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF6B73FF),
+                                    Color(0xFFC355E6)
+                                )
+                            ),
+                            shape = RoundedCornerShape(7.dp)
+                        )
+                        .border(
+                            BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                            RoundedCornerShape(7.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = strings.options,
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
                     )
                 }
+                Spacer(modifier = Modifier.width(6.dp))
+                // Right glowing accent bar
+                Box(
+                    modifier = Modifier
+                        .width(lineWidth)
+                        .height(2.5.dp)
+                        .background(rightAccent.copy(alpha = 0.85f), CircleShape)
+                )
             }
         }
     }
@@ -11390,44 +11423,43 @@ private fun PlayerYoutubeEngagementRow(
         enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
         exit = fadeOut(animationSpec = tween(140))
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 4.dp else 6.dp),
-            contentAlignment = Alignment.CenterStart
+                .padding(top = if (compact) 6.dp else 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Likes & Dislikes Capsule
             Surface(
-                color = Color.White.copy(alpha = 0.055f),
-                border = BorderStroke(
-                    1.dp,
-                    if (comments.visible) primary.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.09f)
-                ),
+                color = Color(0xFF1E152E).copy(alpha = 0.82f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                 shape = CircleShape
             ) {
                 Row(
-                    modifier = Modifier.height(28.dp),
+                    modifier = Modifier.height(32.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         modifier = Modifier.padding(
-                            start = 10.dp,
-                            end = 8.dp
+                            start = 12.dp,
+                            end = 10.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = if (hasLikes) 0.88f else 0.45f),
-                            modifier = Modifier.size(13.dp)
+                            tint = Color.White.copy(alpha = if (hasLikes) 0.92f else 0.50f),
+                            modifier = Modifier.size(15.dp)
                         )
                         if (hasLikes) {
                             Text(
                                 text = compactYoutubeCount(track.youtubeLikeCount),
-                                color = Color.White.copy(alpha = 0.88f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.92f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
                         }
@@ -11435,83 +11467,88 @@ private fun PlayerYoutubeEngagementRow(
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(14.dp)
-                            .background(Color.White.copy(alpha = 0.10f))
+                            .height(16.dp)
+                            .background(Color.White.copy(alpha = 0.14f))
                     )
                     Row(
                         modifier = Modifier.padding(
-                            start = 8.dp,
-                            end = 8.dp
+                            start = 10.dp,
+                            end = 12.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbDown,
                             contentDescription = null,
                             tint = if (hasDislikeEstimate) {
-                                secondary.playerMix(Color.White, 0.60f)
+                                secondary.playerMix(Color.White, 0.65f)
                             } else {
-                                Color.White.copy(alpha = 0.45f)
+                                Color.White.copy(alpha = 0.50f)
                             },
-                            modifier = Modifier.size(13.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         when {
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.5.dp,
-                                color = secondary.playerMix(Color.White, 0.60f)
+                                modifier = Modifier.size(11.dp),
+                                strokeWidth = 1.6.dp,
+                                color = secondary.playerMix(Color.White, 0.65f)
                             )
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.88f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(14.dp)
-                            .background(Color.White.copy(alpha = 0.10f))
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .pressable(enabled = canOpenComments, onClick = onComments)
-                            .padding(horizontal = 8.dp),
-                        contentAlignment = Alignment.Center
+                }
+            }
+
+            // Comments Capsule
+            Surface(
+                color = Color(0xFF1E152E).copy(alpha = 0.82f),
+                border = BorderStroke(
+                    1.dp,
+                    if (comments.visible) primary.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                ),
+                shape = CircleShape
+            ) {
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .pressable(enabled = canOpenComments, onClick = onComments)
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ChatBubbleOutline,
-                                contentDescription = null,
-                                tint = if (canOpenComments) {
-                                    primary.playerMix(Color.White, 0.60f)
-                                } else {
-                                    Color.White.copy(alpha = 0.40f)
-                                },
-                                modifier = Modifier.size(13.dp)
+                        Icon(
+                            imageVector = Icons.Rounded.ChatBubbleOutline,
+                            contentDescription = null,
+                            tint = if (canOpenComments) {
+                                primary.playerMix(Color.White, 0.65f)
+                            } else {
+                                Color.White.copy(alpha = 0.45f)
+                            },
+                            modifier = Modifier.size(15.dp)
+                        )
+                        when {
+                            comments.loading && !comments.loaded -> CircularProgressIndicator(
+                                modifier = Modifier.size(11.dp),
+                                strokeWidth = 1.6.dp,
+                                color = primary.playerMix(Color.White, 0.60f)
                             )
-                            when {
-                                comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                    modifier = Modifier.size(10.dp),
-                                    strokeWidth = 1.5.dp,
-                                    color = primary.playerMix(Color.White, 0.55f)
-                                )
-                                commentBadge.isNotBlank() -> Text(
-                                    text = commentBadge,
-                                    color = Color.White.copy(alpha = 0.88f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1
-                                )
-                            }
+                            commentBadge.isNotBlank() -> Text(
+                                text = commentBadge,
+                                color = Color.White.copy(alpha = 0.90f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
@@ -12150,12 +12187,9 @@ private fun PlayerScreen(
 
         val metaBlock: @Composable (Track) -> Unit = { activeTrack ->
             val isFavorite = activeTrack.id in state.favoriteIds
-            val favoriteFill = primary.copy(alpha = 0.42f)
-            val favoriteTint = remember(primaryTarget) {
-                Color.White.playerContentColor(
-                    listOf(primaryTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
-                )
-            }
+            val favoriteFill = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
+            val favoriteTint = if (isFavorite) Color(0xFFFF2D55) else Color.White.copy(alpha = 0.85f)
+            val favoriteBorder = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.65f) else Color.White.copy(alpha = 0.22f)
             val favoriteScale by animateFloatAsState(
                 targetValue = if (isFavorite) 1.08f else 1f,
                 animationSpec = if (state.animationsEnabled) {
@@ -12165,11 +12199,8 @@ private fun PlayerScreen(
                 },
                 label = "player-favorite-scale"
             )
-            val actionSize = if (compactPlayer) {
-                LevyraPlayerDesign.UtilityButtonCompact
-            } else {
-                LevyraPlayerDesign.UtilityButton
-            }
+            val heartButtonSize = if (compactPlayer) 44.dp else 48.dp
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -12195,11 +12226,11 @@ private fun PlayerScreen(
                         ) { titleTrack ->
                             Text(
                                 text = titleTrack.title,
-                                color = LevyraPlayerDesign.TextPrimary,
-                                fontSize = if (compactPlayer) 22.sp else 25.sp,
-                                lineHeight = if (compactPlayer) 24.sp else 27.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = (-0.4).sp,
+                                color = Color.White,
+                                fontSize = if (compactPlayer) 23.sp else 26.sp,
+                                lineHeight = if (compactPlayer) 25.sp else 29.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.3).sp,
                                 maxLines = if (state.animationsEnabled) 1 else 2,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = if (state.animationsEnabled) {
@@ -12212,71 +12243,44 @@ private fun PlayerScreen(
                                 }
                             )
                         }
+                        Spacer(modifier = Modifier.height(2.dp))
                         Row(
                             modifier = Modifier
-                                .heightIn(min = 32.dp)
                                 .clip(LevyraPlayerDesign.ShapePill)
                                 .clickable(
                                     onClickLabel = strings.openArtist,
                                     onClick = { viewModel.openArtist(activeTrack) }
-                                )
-                                .padding(end = LevyraPlayerDesign.SpaceXs),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXxs)
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = activeTrack.artist,
-                                color = LevyraPlayerDesign.TextSecondary,
-                                fontSize = if (compactPlayer) 13.5.sp else 14.5.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White.copy(alpha = 0.70f),
+                                fontSize = if (compactPlayer) 14.sp else 15.sp,
+                                fontWeight = FontWeight.Medium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
-                            )
-                            Icon(
-                                imageVector = Icons.Rounded.ChevronRight,
-                                contentDescription = null,
-                                tint = LevyraPlayerDesign.TextTertiary,
-                                modifier = Modifier.size(16.dp)
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
                     Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
-                    Row(horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)) {
-                        PlayerGlassIconButton(
-                            icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                            contentDescription = strings.addToPlaylist,
-                            size = actionSize,
-                            iconSize = if (compactPlayer) 22.dp else 23.dp,
-                            tint = LevyraPlayerDesign.TextSecondary,
-                            onClick = { playlistTarget = activeTrack }
-                        )
-                        PlayerGlassIconButton(
-                            icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            contentDescription = strings.favoritesPlain,
-                            size = actionSize,
-                            iconSize = if (compactPlayer) 23.dp else 24.dp,
-                            tint = if (isFavorite) favoriteTint else LevyraPlayerDesign.TextSecondary,
-                            fill = if (isFavorite) favoriteFill else LevyraPlayerDesign.GlassFill,
-                            borderTop = if (isFavorite) {
-                                primary.playerMix(Color.White, 0.3f).copy(alpha = 0.7f)
-                            } else {
-                                LevyraPlayerDesign.GlassBorderTop
-                            },
-                            borderBottom = if (isFavorite) {
-                                primary.copy(alpha = 0.2f)
-                            } else {
-                                LevyraPlayerDesign.GlassBorderBottom
-                            },
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    scaleX = favoriteScale
-                                    scaleY = favoriteScale
-                                }
-                                .semantics { toggleableState = ToggleableState(isFavorite) },
-                            onClick = { viewModel.toggleFavorite(activeTrack) }
-                        )
-                    }
+                    PlayerGlassIconButton(
+                        icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = strings.favoritesPlain,
+                        size = heartButtonSize,
+                        iconSize = if (compactPlayer) 24.dp else 26.dp,
+                        tint = favoriteTint,
+                        fill = favoriteFill,
+                        borderTop = favoriteBorder,
+                        borderBottom = favoriteBorder,
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = favoriteScale
+                                scaleY = favoriteScale
+                            }
+                            .semantics { toggleableState = ToggleableState(isFavorite) },
+                        onClick = { viewModel.toggleFavorite(activeTrack) }
+                    )
                 }
                 PlayerYoutubeEngagementRow(
                     track = activeTrack,
@@ -13329,24 +13333,25 @@ private fun PlayerTimeline(
             isPlaying = isPlaying,
             animated = animationsEnabled
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = LevyraPlayerDesign.SpaceXs),
+                .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = formatSeekbarMillis(positionMs),
-                color = LevyraPlayerDesign.TextSecondary,
-                fontSize = if (compact) 11.sp else 11.5.sp,
+                color = Color.White.copy(alpha = 0.82f),
+                fontSize = if (compact) 11.5.sp else 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.2.sp
             )
             Text(
                 text = if (durationMs > 0L) formatSeekbarMillis(durationMs) else formatDuration(durationMs),
-                color = LevyraPlayerDesign.TextTertiary,
-                fontSize = if (compact) 11.sp else 11.5.sp,
+                color = Color.White.copy(alpha = 0.65f),
+                fontSize = if (compact) 11.5.sp else 12.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.2.sp
             )

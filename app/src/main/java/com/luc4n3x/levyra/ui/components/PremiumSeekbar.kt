@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -293,20 +294,39 @@ fun PremiumSeekbar(
                 }
             }
 
-            if (handleScale.value > 0.01f) {
-                drawRoundRect(
-                    color = trailingColor.copy(alpha = 0.30f * handleScale.value),
-                    topLeft = Offset(handleX - handleWidth * 1.6f, centerY - handleHeight * 0.65f),
-                    size = Size(handleWidth * 3.2f, handleHeight * 1.30f),
-                    cornerRadius = CornerRadius(handleWidth * 1.6f, handleWidth * 1.6f)
-                )
-            }
+            // Glowing Ambient Halo behind the diamond thumb
+            val diamondRadius = 6.5.dp.toPx() + (3.dp.toPx() * handleScale.value)
+            val glowRadius = diamondRadius * 2.2f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        activeColor.copy(alpha = 0.65f),
+                        trailingColor.copy(alpha = 0.25f),
+                        Color.Transparent
+                    ),
+                    center = Offset(handleX, centerY),
+                    radius = glowRadius
+                ),
+                radius = glowRadius,
+                center = Offset(handleX, centerY)
+            )
 
-            drawRoundRect(
-                color = thumbColor,
-                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
-                size = Size(handleWidth, handleHeight),
-                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
+            // Sparkling Diamond Path
+            val diamondPath = Path().apply {
+                moveTo(handleX, centerY - diamondRadius)
+                lineTo(handleX + diamondRadius * 0.82f, centerY)
+                lineTo(handleX, centerY + diamondRadius)
+                lineTo(handleX - diamondRadius * 0.82f, centerY)
+                close()
+            }
+            drawPath(
+                path = diamondPath,
+                color = thumbColor
+            )
+            drawCircle(
+                color = Color.White,
+                radius = diamondRadius * 0.35f,
+                center = Offset(handleX, centerY)
             )
         }
     }
