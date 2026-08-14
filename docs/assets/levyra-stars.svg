@@ -1,16 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="142" height="40" viewBox="0 0 142 40" role="img" aria-label="Stars: 6">
-<title>Stars: 6</title>
-<defs>
-  <linearGradient id="stars-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111A2B"/><stop offset=".58" stop-color="#0B1220"/><stop offset="1" stop-color="#080D18"/></linearGradient>
-  <linearGradient id="stars-accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FBBF24"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>
-</defs>
-<rect x=".5" y=".5" width="141" height="39" rx="12" fill="url(#stars-bg)" stroke="#2B3850"/>
-<path d="M13 1h116" stroke="#FFFFFF" stroke-opacity=".055" stroke-linecap="round"/>
-<rect x="2" y="9" width="3" height="22" rx="1.5" fill="url(#stars-accent)"/>
-<circle cx="22" cy="20" r="11" fill="#FBBF24" fill-opacity=".075" stroke="#FBBF24" stroke-opacity=".3"/>
-<g transform="translate(14 12)" fill="url(#stars-accent)"><path d="M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z"/></g>
-<text x="42" y="24.1" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11.4" font-weight="800" letter-spacing=".12">Stars</text>
-<rect x="105" y="6" width="30" height="28" rx="9" fill="url(#stars-accent)"/>
-<rect x="105.5" y="6.5" width="29" height="27" rx="8.5" fill="none" stroke="#FFFFFF" stroke-opacity=".18"/>
-<text x="120" y="24.2" text-anchor="middle" fill="#15110A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11" font-weight="900">6</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="38" viewBox="0 0 144 38" role="img" aria-label="Stars: 6">
+  <title>Stars: 6</title>
+  <defs>
+    <linearGradient id="star-card-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="100%" stop-color="#070A12"/>
+    </linearGradient>
+    <linearGradient id="star-pill-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="star-border-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Base Card -->
+  <rect x="0.5" y="0.5" width="143" height="37" rx="10" fill="url(#star-card-bg)" stroke="url(#star-border-grad)"/>
+  
+  <!-- Subtle Top Highlight -->
+  <path d="M10 1.5h124" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <!-- Left Accent Bar -->
+  <rect x="2" y="8" width="3" height="22" rx="1.5" fill="url(#star-pill-grad)"/>
+
+  <!-- Icon Aura & Icon -->
+  <circle cx="21" cy="19" r="10" fill="#FBBF24" fill-opacity="0.12"/>
+  <g transform="translate(13.5 11.5)" fill="url(#star-pill-grad)">
+    <path d="M7.5.5a.7.7 0 0 1 .63.39l1.72 3.48 3.84.56a.7.7 0 0 1 .39 1.19l-2.78 2.71.66 3.83a.7.7 0 0 1-1.02.74L7.5 11.6l-3.44 1.8a.7.7 0 0 1-1.02-.74l.66-3.83-2.78-2.71a.7.7 0 0 1 .39-1.19l3.84-.56L6.87.89A.7.7 0 0 1 7.5.5Z"/>
+  </g>
+
+  <!-- Label -->
+  <text x="39" y="23" fill="#E2E8F0" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11" font-weight="700" letter-spacing="0.2">Stars</text>
+
+  <!-- Value Capsule -->
+  <rect x="94" y="5" width="44" height="28" rx="8" fill="url(#star-pill-grad)"/>
+  <rect x="94.5" y="5.5" width="43" height="27" rx="7.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.25"/>
+  <text x="116" y="23" text-anchor="middle" fill="#1C1302" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="11.5" font-weight="900" letter-spacing="0.2">6</text>
 </svg>
