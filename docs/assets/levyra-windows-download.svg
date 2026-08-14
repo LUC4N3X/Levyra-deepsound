@@ -1,13 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-labelledby="title desc">
-<title id="title">Download Levyra Desktop for Windows</title><desc id="desc">Official Levyra Windows release download card</desc>
-<defs><linearGradient id="p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#121826"/><stop offset="1" stop-color="#0A0F1D"/></linearGradient><linearGradient id="a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#67E8F9"/><stop offset="1" stop-color="#3B82F6"/></linearGradient></defs>
-<rect x="8" y="8" width="744" height="138" rx="24" fill="url(#p)" stroke="#2A354A" stroke-width="2"/>
-<rect x="32" y="26" width="4" height="102" rx="2" fill="url(#a)"/>
-<rect x="54" y="38" width="76" height="76" rx="22" fill="#171F31" stroke="#354057"/>
-<g fill="#FFF"><path d="M70 53.5 91 50.5v21H70z"/><path d="M95 49.5 114 47v24H95z"/><path d="M70 77h21v21L70 95.5z"/><path d="M95 77h19v24l-19-2.5z"/></g>
-<text x="154" y="49" fill="#7DD3FC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.6">OFFICIAL GITHUB RELEASE</text>
-<text x="154" y="81" fill="#FFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="30" font-weight="800">Levyra for Windows</text>
-<text x="154" y="108" fill="#94A3B8" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="600">MSI · EXE · Portable ZIP · Windows 10/11 x64</text>
-<g opacity=".22" fill="#60A5FA"><rect x="154" y="118" width="5" height="10" rx="2.5"/><rect x="165" y="112" width="5" height="16" rx="2.5"/><rect x="176" y="116" width="5" height="12" rx="2.5"/><rect x="187" y="108" width="5" height="20" rx="2.5"/><rect x="198" y="114" width="5" height="14" rx="2.5"/></g>
-<g transform="translate(578 49)"><rect width="144" height="56" rx="17" fill="url(#a)"/><text x="58" y="35" text-anchor="middle" fill="#07111A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="900">Get Windows</text><path d="M112 20.5 120 28l-8 7.5M119 28h-19" fill="none" stroke="#07111A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Download Levyra for Windows">
+  <title>Download Levyra for Windows</title>
+  <defs>
+    <linearGradient id="win-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="60%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="win-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="win-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <radialGradient id="win-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Base Card -->
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#win-bg)" stroke="url(#win-border)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <!-- Left Accent Pillar -->
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#win-accent)"/>
+
+  <!-- Left Icon Container -->
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="42" fill="url(#win-glow)"/>
+
+  <!-- Windows Logo (Centered & Crisp) -->
+  <g transform="translate(61 52)" fill="#F8FAFC">
+    <path d="M0 7.3 22 4.1v18.7H0z"/>
+    <path d="M26.2 3.5 50 0v22.8H26.2z"/>
+    <path d="M0 26.9h22v18.7L0 42.4z"/>
+    <path d="M26.2 26.9H50V49.7L26.2 46.2z"/>
+  </g>
+
+  <!-- Eyebrow Tag -->
+  <g transform="translate(156 30)">
+    <rect width="186" height="22" rx="6" fill="#0284C7" fill-opacity="0.15" stroke="#38BDF8" stroke-opacity="0.25"/>
+    <circle cx="10" cy="11" r="3" fill="#38BDF8"/>
+    <text x="20" y="15" fill="#7DD3FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.2">OFFICIAL DESKTOP RELEASE</text>
+  </g>
+
+  <!-- Title -->
+  <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Levyra for Windows</text>
+
+  <!-- Subtitle / Meta -->
+  <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">MSI · EXE · Portable ZIP · Windows 10/11 x64</text>
+
+  <!-- Musical Equalizer Spectrum -->
+  <g transform="translate(156 118)" fill="#38BDF8" fill-opacity="0.45">
+    <rect x="0" y="5" width="4" height="11" rx="2"/>
+    <rect x="8" y="0" width="4" height="16" rx="2"/>
+    <rect x="16" y="6" width="4" height="10" rx="2"/>
+    <rect x="24" y="2" width="4" height="14" rx="2"/>
+    <rect x="32" y="8" width="4" height="8" rx="2"/>
+    <rect x="40" y="1" width="4" height="15" rx="2"/>
+    <rect x="48" y="7" width="4" height="9" rx="2"/>
+  </g>
+
+  <!-- Right CTA Button (Spacious, No Overlap) -->
+  <g transform="translate(554 50)">
+    <rect width="170" height="54" rx="16" fill="url(#win-accent)"/>
+    <rect width="170" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.25"/>
+    <text x="60" y="34" text-anchor="middle" fill="#031525" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14.5" font-weight="900" letter-spacing="0.2">Get Windows</text>
+    <path d="M142 27h-16M136 21l6 6-6 6" fill="none" stroke="#031525" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

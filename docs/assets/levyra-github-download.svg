@@ -1,13 +1,70 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-labelledby="title desc">
-<title id="title">Download Levyra from GitHub Releases</title><desc id="desc">Official signed Levyra APK download card</desc>
-<defs><linearGradient id="p" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#121826"/><stop offset="1" stop-color="#0A0F1D"/></linearGradient><linearGradient id="a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#6D28D9"/></linearGradient></defs>
-<rect x="8" y="8" width="744" height="138" rx="24" fill="url(#p)" stroke="#2A354A" stroke-width="2"/>
-<rect x="32" y="26" width="4" height="102" rx="2" fill="url(#a)"/>
-<rect x="54" y="38" width="76" height="76" rx="22" fill="#171F31" stroke="#354057"/>
-<circle cx="92" cy="76" r="24" fill="#FFF"/><g transform="translate(68 52) scale(2)"><path fill="#6D28D9" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.745.084-.729.084-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.305-5.466-1.334-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 0 1 3-.405c1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></g>
-<text x="154" y="49" fill="#A78BFA" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="1.6">OFFICIAL GITHUB RELEASE</text>
-<text x="154" y="81" fill="#FFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="30" font-weight="800">Download Levyra</text>
-<text x="154" y="108" fill="#94A3B8" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="600">Signed APK · Android 8.0+ · No Play Store</text>
-<g opacity=".22" fill="#8B5CF6"><rect x="154" y="118" width="5" height="10" rx="2.5"/><rect x="165" y="112" width="5" height="16" rx="2.5"/><rect x="176" y="116" width="5" height="12" rx="2.5"/><rect x="187" y="108" width="5" height="20" rx="2.5"/><rect x="198" y="114" width="5" height="14" rx="2.5"/></g>
-<g transform="translate(578 49)"><rect width="144" height="56" rx="17" fill="url(#a)"/><text x="60" y="35" text-anchor="middle" fill="#FFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="800">Get APK</text><path d="M104 20.5 112 28l-8 7.5M111 28H92" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Download Levyra from GitHub Releases">
+  <title>Download Levyra from GitHub Releases</title>
+  <defs>
+    <linearGradient id="gh-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="60%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="gh-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="gh-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <radialGradient id="gh-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Base Card -->
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#gh-bg)" stroke="url(#gh-border)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <!-- Left Accent Pillar -->
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#gh-accent)"/>
+
+  <!-- Left Icon Container -->
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="42" fill="url(#gh-glow)"/>
+
+  <!-- GitHub Icon -->
+  <g transform="translate(62 53) scale(2)">
+    <path fill="#F8FAFC" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.745.084-.729.084-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.305-5.466-1.334-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 0 1 3-.405c1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+  </g>
+
+  <!-- Eyebrow Tag -->
+  <g transform="translate(156 30)">
+    <rect width="186" height="22" rx="6" fill="#8B5CF6" fill-opacity="0.12" stroke="#8B5CF6" stroke-opacity="0.25"/>
+    <circle cx="10" cy="11" r="3" fill="#A78BFA"/>
+    <text x="20" y="15" fill="#C4B5FD" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.2">OFFICIAL GITHUB RELEASE</text>
+  </g>
+
+  <!-- Title -->
+  <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Download Levyra</text>
+
+  <!-- Subtitle / Meta -->
+  <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">Signed APK · Android 8.0+ · No Play Store</text>
+
+  <!-- Musical Equalizer Spectrum -->
+  <g transform="translate(156 118)" fill="#8B5CF6" fill-opacity="0.45">
+    <rect x="0" y="8" width="4" height="8" rx="2"/>
+    <rect x="8" y="2" width="4" height="14" rx="2"/>
+    <rect x="16" y="5" width="4" height="11" rx="2"/>
+    <rect x="24" y="0" width="4" height="16" rx="2"/>
+    <rect x="32" y="6" width="4" height="10" rx="2"/>
+    <rect x="40" y="3" width="4" height="13" rx="2"/>
+    <rect x="48" y="9" width="4" height="7" rx="2"/>
+  </g>
+
+  <!-- Right CTA Button (Spacious, No Overlap) -->
+  <g transform="translate(572 50)">
+    <rect width="152" height="54" rx="16" fill="url(#gh-accent)"/>
+    <rect width="152" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.22"/>
+    <text x="56" y="34" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="15.5" font-weight="800" letter-spacing="0.2">Get APK</text>
+    <path d="M112 27h-16M106 21l6 6-6 6" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>
