@@ -15,12 +15,14 @@
       <stop offset="100%" stop-color="#059669"/>
     </linearGradient>
     <radialGradient id="ob-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#34D399" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#34D399" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#A855F7" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="ob-gem" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#C084FC"/>
-      <stop offset="100%" stop-color="#7C3AED"/>
+    <linearGradient id="ob-gem" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#E9D5FF"/>
+      <stop offset="25%" stop-color="#C084FC"/>
+      <stop offset="65%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#581C87"/>
     </linearGradient>
   </defs>
 
@@ -33,10 +35,11 @@
 
   <!-- Left Icon Container -->
   <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
-  <circle cx="86" cy="77" r="42" fill="url(#ob-glow)"/>
+  <circle cx="86" cy="77" r="44" fill="url(#ob-glow)"/>
 
-  <!-- Obtainium Gem Icon (Centered) -->
-  <path d="M 112.0 63.9 97.7 55.6 84.8 59.7 89.0 71.7 96.8 70.8 90.4 86.0 76.1 77.7 82.5 72.6 77.9 62.0 65.5 67.1 60.0 83.2 87.6 98.4 105.1 83.2 Z" fill="url(#ob-gem)"/>
+  <!-- Obtainium Gem Icon (Bold & Centered) -->
+  <path d="M 119.0 60.4 100.9 49.8 84.5 55.1 89.8 70.3 99.7 69.1 91.5 88.4 73.4 77.9 81.6 71.5 75.8 58.0 60.0 64.4 53.0 84.9 88.0 104.2 110.2 84.9 Z" fill="url(#ob-gem)"/>
+  <path d="M 119.0 60.4 100.9 49.8 84.5 55.1 89.8 70.3 99.7 69.1 91.5 88.4 73.4 77.9 81.6 71.5 75.8 58.0 60.0 64.4 53.0 84.9 88.0 104.2 110.2 84.9 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="1.2"/>
 
   <!-- Eyebrow Tag -->
   <g transform="translate(156 30)">
