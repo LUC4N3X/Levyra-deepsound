@@ -12,4 +12,6 @@
     <string name="car_connecting_player">プレーヤーに接続中</string>
     <string name="car_now_playing">再生中</string>
     <string name="car_queue">キュー</string>
+    <string name="notification_shuffle">シャッフル</string>
+    <string name="notification_favorite">お気に入り</string>
 </resources>

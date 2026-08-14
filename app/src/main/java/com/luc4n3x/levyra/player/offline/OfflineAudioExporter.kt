@@ -229,6 +229,21 @@ internal fun isMp4AudioSource(contentType: String, url: String): Boolean {
     return isMp4AudioExportUrl(url)
 }
 
+internal fun isUnsupportedOfflineAudioSource(error: Throwable): Boolean {
+    var current: Throwable? = error
+    while (current != null) {
+        val message = current.message.orEmpty()
+        if (
+            message.contains("Offline export requires an M4A audio source", ignoreCase = true) ||
+            message.contains("Offline export received a non-audio MP4 source", ignoreCase = true)
+        ) {
+            return true
+        }
+        current = current.cause
+    }
+    return false
+}
+
 internal fun audioContentLengthFromRangeHeader(contentRange: String): Long {
     return contentRange.substringAfterLast('/', "")
         .trim()
@@ -334,6 +349,13 @@ class OfflineAudioExporter(
                 if (firstError is CancellationException) throw firstError
                 val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
                 if (!canRefresh) throw firstError
+                if (isUnsupportedOfflineAudioSource(firstError)) {
+                    resolver.reportPlaybackFailure(
+                        track = playable,
+                        isVideoMode = false,
+                        reason = firstError.message.orEmpty().ifBlank { "offline export source rejected" }
+                    )
+                }
                 reportProgress(7)
                 playable = resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
                 metadataTrack = mergeOfflineMetadataTrack(track, playable)
@@ -387,6 +409,7 @@ class OfflineAudioExporter(
                 return downloadAudioAttempt(track, workspace, useRange)
             } catch (error: IOException) {
                 lastError = error
+                if (isUnsupportedOfflineAudioSource(error)) throw error
                 if (index < rangeAttempts.lastIndex) delay(350L * (index + 1))
             }
         }
