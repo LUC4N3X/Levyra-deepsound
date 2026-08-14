@@ -17361,7 +17361,7 @@ private fun MiniPlayer(
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     MiniPlayerToggleButton(
                         isPlaying = isPlaying,
@@ -17433,7 +17433,8 @@ private fun MiniPlayerToggleButton(
     isResolving: Boolean,
     buttonColor: Color,
     animated: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val playBg = buttonColor.copy(alpha = 1f)
     val playTint = remember(playBg) { Color.White.playerContentColor(listOf(playBg)) }
@@ -17443,33 +17444,42 @@ private fun MiniPlayerToggleButton(
         label = "mini-play-corner"
     )
     Box(
-        modifier = Modifier
-            .size(40.dp)
-            .background(playBg, RoundedCornerShape(corner))
+        modifier = modifier
+            .sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
+            )
             .pressable(onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
-        if (isResolving) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = playTint
-            )
-        } else {
-            AnimatedContent(
-                targetState = isPlaying,
-                transitionSpec = {
-                    (fadeIn(tween(140)) + scaleIn(initialScale = 0.7f, animationSpec = tween(140))) togetherWith
-                        (fadeOut(tween(100)) + scaleOut(targetScale = 0.7f, animationSpec = tween(100)))
-                },
-                label = "mini-play-icon"
-            ) { playing ->
-                Icon(
-                    imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                    tint = playTint,
-                    modifier = Modifier.size(22.dp)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(playBg, RoundedCornerShape(corner)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isResolving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = playTint
                 )
+            } else {
+                AnimatedContent(
+                    targetState = isPlaying,
+                    transitionSpec = {
+                        (fadeIn(tween(140)) + scaleIn(initialScale = 0.7f, animationSpec = tween(140))) togetherWith
+                            (fadeOut(tween(100)) + scaleOut(targetScale = 0.7f, animationSpec = tween(100)))
+                    },
+                    label = "mini-play-icon"
+                ) { playing ->
+                    Icon(
+                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
+                        tint = playTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
@@ -17479,6 +17489,7 @@ private fun MiniPlayerToggleButton(
 private fun PlayerRoundIconButton(
     icon: ImageVector,
     contentDescription: String?,
+    modifier: Modifier = Modifier,
     size: Dp = 44.dp,
     iconSize: Dp = 22.dp,
     tint: Color = LevyraText,
@@ -17487,14 +17498,23 @@ private fun PlayerRoundIconButton(
     onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .size(size)
-            .background(background, CircleShape)
-            .border(BorderStroke(1.dp, borderColor), CircleShape)
+        modifier = modifier
+            .sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
+            )
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
+        Box(
+            modifier = Modifier
+                .size(size)
+                .background(background, CircleShape)
+                .border(BorderStroke(1.dp, borderColor), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
+        }
     }
 }
 
