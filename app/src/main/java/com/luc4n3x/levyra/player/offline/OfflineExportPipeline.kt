@@ -162,8 +162,8 @@ internal class OfflineExportPipeline(
     private suspend fun resolve(track: Track): Track {
         progress(4)
         val resolved = resolver.resolveForOffline(
-            track = track.copy(streamUrl = ""),
-            preferredAudioQuality = settings.resolverAudioQuality
+            track.copy(streamUrl = ""),
+            settings.resolverAudioQuality
         )
         if (resolved.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
         return resolved
