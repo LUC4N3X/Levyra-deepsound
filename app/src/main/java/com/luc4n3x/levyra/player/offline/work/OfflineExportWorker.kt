@@ -1,3 +1,4 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.player.offline.work
 
 import android.app.Notification
@@ -23,23 +24,22 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.R
-import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
-import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
+import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import java.io.IOException
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
-import java.io.IOException
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-
 
 private object OfflineDownloadConcurrencyGate {
     private val mutex = Mutex()
@@ -102,54 +102,56 @@ class OfflineExportWorker(
                 )
             }
         }
-        if (taskDao.updateStateForWork(taskKey, workId, "RUNNING", 1, "", System.currentTimeMillis()) == 0) {
+
+        val previousProgress = taskDao.byKey(taskKey)?.progress?.coerceIn(1, 99) ?: 1
+        if (taskDao.updateStateForWork(taskKey, workId, "RUNNING", previousProgress, "", System.currentTimeMillis()) == 0) {
             return Result.failure(errorData(ERROR_SUPERSEDED))
         }
         return try {
-            setProgress(workDataOf(KEY_PROGRESS to 1))
-            setForeground(createForegroundInfo(track, taskKey, 1, strings))
-            var persistedProgress = 1
+            setProgress(workDataOf(KEY_PROGRESS to previousProgress))
+            setForeground(createForegroundInfo(track, taskKey, previousProgress, strings))
+            var persistedProgress = previousProgress
             var persistedAtMs = SystemClock.elapsedRealtime()
-            var foregroundProgress = 1
+            var foregroundProgress = previousProgress
             var foregroundAtMs = persistedAtMs
-            val exporter = OfflineAudioExporter(
+            val publishProgress: suspend (Int) -> Unit = { value ->
+                val safeProgress = value.coerceIn(0, 100)
+                val monotonicProgress = maxOf(safeProgress, persistedProgress)
+                val nowElapsed = SystemClock.elapsedRealtime()
+                val progressAdvanced = monotonicProgress > persistedProgress
+                val shouldPersist = monotonicProgress == 100 ||
+                    progressAdvanced && (
+                        monotonicProgress >= persistedProgress + PROGRESS_PERSIST_STEP ||
+                            nowElapsed - persistedAtMs >= PROGRESS_PERSIST_INTERVAL_MS
+                        )
+                if (shouldPersist) {
+                    persistedProgress = monotonicProgress
+                    persistedAtMs = nowElapsed
+                    setProgress(workDataOf(KEY_PROGRESS to monotonicProgress))
+                    val updated = taskDao.updateRunningProgress(taskKey, workId, monotonicProgress, System.currentTimeMillis())
+                    if (updated == 0) throw CancellationException("Download no longer active")
+                }
+                val foregroundAdvanced = monotonicProgress > foregroundProgress
+                val shouldRefreshForeground = monotonicProgress == 100 ||
+                    foregroundAdvanced && (
+                        monotonicProgress >= foregroundProgress + FOREGROUND_PROGRESS_STEP ||
+                            nowElapsed - foregroundAtMs >= FOREGROUND_PROGRESS_INTERVAL_MS
+                        )
+                if (shouldRefreshForeground) {
+                    foregroundProgress = monotonicProgress
+                    foregroundAtMs = nowElapsed
+                    setForeground(createForegroundInfo(track, taskKey, monotonicProgress, strings))
+                }
+            }
+            val pipeline = OfflineExportPipeline(
                 context = applicationContext,
-                resolver = PlaybackResolver.getInstance(applicationContext),
-                progress = { value ->
-                    val safeProgress = value.coerceIn(0, 100)
-                    val monotonicProgress = maxOf(safeProgress, persistedProgress)
-                    val nowElapsed = SystemClock.elapsedRealtime()
-                    val progressAdvanced = monotonicProgress > persistedProgress
-                    val shouldPersist = monotonicProgress == 100 ||
-                        progressAdvanced && (
-                            monotonicProgress >= persistedProgress + PROGRESS_PERSIST_STEP ||
-                                nowElapsed - persistedAtMs >= PROGRESS_PERSIST_INTERVAL_MS
-                            )
-                    if (shouldPersist) {
-                        persistedProgress = monotonicProgress
-                        persistedAtMs = nowElapsed
-                        setProgress(workDataOf(KEY_PROGRESS to monotonicProgress))
-                        val updated = taskDao.updateRunningProgress(taskKey, workId, monotonicProgress, System.currentTimeMillis())
-                        if (updated == 0) throw CancellationException("Download no longer active")
-                    }
-                    val foregroundAdvanced = monotonicProgress > foregroundProgress
-                    val shouldRefreshForeground = monotonicProgress == 100 ||
-                        foregroundAdvanced && (
-                            monotonicProgress >= foregroundProgress + FOREGROUND_PROGRESS_STEP ||
-                                nowElapsed - foregroundAtMs >= FOREGROUND_PROGRESS_INTERVAL_MS
-                            )
-                    if (shouldRefreshForeground) {
-                        foregroundProgress = monotonicProgress
-                        foregroundAtMs = nowElapsed
-                        setForeground(createForegroundInfo(track, taskKey, monotonicProgress, strings))
-                    }
-                },
+                progress = publishProgress,
                 taskKey = taskKey,
                 settings = settings,
                 downloadQualityKey = downloadQualityKey
             )
             val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
-                exporter.export(track)
+                pipeline.export(track)
             }
             if (taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis()) == 0) {
                 return Result.failure(errorData(ERROR_SUPERSEDED))
