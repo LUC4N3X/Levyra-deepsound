@@ -19,8 +19,8 @@
       <stop offset="100%" stop-color="#34D399" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="ob-gem" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#A78BFA"/>
-      <stop offset="100%" stop-color="#6D28D9"/>
+      <stop offset="0%" stop-color="#C084FC"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
     </linearGradient>
   </defs>
 
@@ -35,10 +35,8 @@
   <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
   <circle cx="86" cy="77" r="42" fill="url(#ob-glow)"/>
 
-  <!-- Obtainium Gem Icon -->
-  <g transform="translate(42 22) scale(0.68)">
-    <path d="M182 91 151 73 123 82 132 108 149 106 135 139 104 121 118 110 108 87 81 98 69 133 129 166 167 133Z" fill="url(#ob-gem)"/>
-  </g>
+  <!-- Obtainium Gem Icon (Centered) -->
+  <path d="M 112.0 63.9 97.7 55.6 84.8 59.7 89.0 71.7 96.8 70.8 90.4 86.0 76.1 77.7 82.5 72.6 77.9 62.0 65.5 67.1 60.0 83.2 87.6 98.4 105.1 83.2 Z" fill="url(#ob-gem)"/>
 
   <!-- Eyebrow Tag -->
   <g transform="translate(156 30)">
