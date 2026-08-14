@@ -10874,8 +10874,8 @@ private fun PlayerImmersiveBackdrop(
         label = "player-backdrop-secondary"
     )
     val intensity by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.82f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        targetValue = if (isPlaying) 1f else 0.85f,
+        animationSpec = tween(600, easing = FastOutSlowInEasing),
         label = "player-backdrop-intensity"
     )
     val primarySurface = remember(primary) {
@@ -10884,8 +10884,8 @@ private fun PlayerImmersiveBackdrop(
     val secondarySurface = remember(secondary) {
         secondary.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
     }
-    val backgroundAccent = remember(primarySurface, secondarySurface) {
-        primarySurface.playerMix(secondarySurface, 0.35f).playerMix(PlayerDarkSurface, 0.45f)
+    val mixedAccent = remember(primarySurface, secondarySurface) {
+        primarySurface.playerMix(secondarySurface, 0.40f)
     }
 
     Box(
@@ -10893,42 +10893,61 @@ private fun PlayerImmersiveBackdrop(
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to backgroundAccent,
-                        0.38f to backgroundAccent.playerMix(Color(0xFF09090D), 0.65f),
-                        0.72f to Color(0xFF070709),
-                        1.00f to Color.Black
+                        0.00f to mixedAccent.playerMix(Color(0xFF14131A), 0.35f),
+                        0.32f to primarySurface.playerMix(Color(0xFF0C0B10), 0.60f),
+                        0.64f to Color(0xFF08080C),
+                        1.00f to Color(0xFF030305)
                     )
                 )
             )
             .drawBehind {
                 if (size.minDimension <= 0f) return@drawBehind
-                val topCenter = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.12f)
-                val sideCenter = androidx.compose.ui.geometry.Offset(size.width * 0.85f, size.height * 0.28f)
+                val topCenter = androidx.compose.ui.geometry.Offset(size.width * 0.30f, size.height * 0.16f)
+                val centerOrb = androidx.compose.ui.geometry.Offset(size.width * 0.75f, size.height * 0.30f)
+                val auraCenter = androidx.compose.ui.geometry.Offset(size.width * 0.50f, size.height * 0.24f)
+
+                // Wide soft central glow behind artwork
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primarySurface.playerMix(Color.White, 0.08f).copy(alpha = 0.32f * intensity),
-                            primarySurface.copy(alpha = 0.12f * intensity),
+                            primarySurface.playerMix(Color.White, 0.12f).copy(alpha = 0.45f * intensity),
+                            primarySurface.copy(alpha = 0.22f * intensity),
+                            Color.Transparent
+                        ),
+                        center = auraCenter,
+                        radius = size.width * 0.90f
+                    ),
+                    radius = size.width * 0.90f,
+                    center = auraCenter
+                )
+
+                // Secondary atmospheric top orb
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            secondarySurface.playerMix(Color.White, 0.10f).copy(alpha = 0.38f * intensity),
+                            secondarySurface.copy(alpha = 0.15f * intensity),
+                            Color.Transparent
+                        ),
+                        center = centerOrb,
+                        radius = size.width * 0.75f
+                    ),
+                    radius = size.width * 0.75f,
+                    center = centerOrb
+                )
+
+                // Top highlight bloom
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primarySurface.copy(alpha = 0.28f * intensity),
                             Color.Transparent
                         ),
                         center = topCenter,
-                        radius = size.width * 0.95f
+                        radius = size.width * 0.65f
                     ),
-                    radius = size.width * 0.95f,
+                    radius = size.width * 0.65f,
                     center = topCenter
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            secondarySurface.playerMix(Color.White, 0.06f).copy(alpha = 0.24f * intensity),
-                            secondarySurface.copy(alpha = 0.08f * intensity),
-                            Color.Transparent
-                        ),
-                        center = sideCenter,
-                        radius = size.width * 0.80f
-                    ),
-                    radius = size.width * 0.80f,
-                    center = sideCenter
                 )
             }
     ) {
@@ -10939,9 +10958,9 @@ private fun PlayerImmersiveBackdrop(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.15f),
-                            Color.Black.copy(alpha = 0.60f),
-                            Color.Black.copy(alpha = 0.88f)
+                            Color.Black.copy(alpha = 0.08f),
+                            Color.Black.copy(alpha = 0.45f),
+                            Color.Black.copy(alpha = 0.86f)
                         )
                     )
                 )
@@ -10961,18 +10980,18 @@ private fun PlayerArtworkCanvas(
 ) {
     val context = LocalContext.current
     val haloScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.015f else 0.995f,
-        animationSpec = tween(190, easing = FastOutSlowInEasing),
+        targetValue = if (isPlaying) 1.035f else 1.0f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "player-artwork-halo-scale"
     )
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.58f else 0.42f,
-        animationSpec = tween(190, easing = FastOutSlowInEasing),
+        targetValue = if (isPlaying) 0.65f else 0.45f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "player-artwork-halo-alpha"
     )
     val artworkShadow by animateFloatAsState(
-        targetValue = if (isPlaying) 24f else 15f,
-        animationSpec = tween(190, easing = FastOutSlowInEasing),
+        targetValue = if (isPlaying) 28f else 18f,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
         label = "player-artwork-shadow"
     )
     val primary = Color(track.accentStart)
@@ -10980,9 +10999,10 @@ private fun PlayerArtworkCanvas(
     val artworkShape = RoundedCornerShape(cornerRadius)
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        // Luminous Ambient Halo
         Box(
             modifier = Modifier
-                .fillMaxSize(0.94f)
+                .fillMaxSize(0.96f)
                 .graphicsLayer {
                     scaleX = haloScale
                     scaleY = haloScale
@@ -10991,27 +11011,31 @@ private fun PlayerArtworkCanvas(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            primary.playerMix(Color.Black, 0.60f).copy(alpha = 0.13f),
-                            secondary.playerMix(Color.Black, 0.68f).copy(alpha = 0.07f),
-                            primary.playerMix(Color.Black, 0.78f).copy(alpha = 0.04f),
+                            primary.playerMix(Color.White, 0.15f).copy(alpha = 0.35f),
+                            secondary.copy(alpha = 0.20f),
+                            primary.playerMix(Color.Black, 0.50f).copy(alpha = 0.08f),
                             Color.Transparent
                         )
                     ),
-                    RoundedCornerShape(cornerRadius + 22.dp)
+                    RoundedCornerShape(cornerRadius + 20.dp)
                 )
         )
+        // 3D Elevated Cover Surface
         Box(
             modifier = Modifier
-                .fillMaxSize(0.91f)
-                .graphicsLayer {
-                    shadowElevation = artworkShadow
-                    shape = artworkShape
-                    clip = true
-                }
-                .background(Color.Black.copy(alpha = 0.16f), artworkShape)
+                .fillMaxSize(0.92f)
+                .shadow(
+                    elevation = artworkShadow.dp,
+                    shape = artworkShape,
+                    clip = false,
+                    ambientColor = primary.copy(alpha = 0.50f),
+                    spotColor = Color.Black.copy(alpha = 0.85f)
+                )
+                .clip(artworkShape)
+                .background(Color.Black.copy(alpha = 0.20f), artworkShape)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.14f),
+                    color = Color.White.copy(alpha = 0.18f),
                     shape = artworkShape
                 )
         ) {
@@ -11038,16 +11062,17 @@ private fun PlayerArtworkCanvas(
                     InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
                 }
             }
+            // Delicate top-down lighting sheen
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.09f),
                                 Color.Transparent,
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.11f)
+                                Color.Black.copy(alpha = 0.14f)
                             )
                         )
                     )
@@ -11113,12 +11138,12 @@ private fun PlayerModeSwitchTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent,
+        targetValue = if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) selectedContent else LevyraPlayerDesign.TextSecondary,
+        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary,
         animationSpec = tabSpec,
         label = "player-mode-tab-content"
     )
@@ -11128,15 +11153,25 @@ private fun PlayerModeSwitchTab(
                 this.selected = isSelected
                 role = Role.Tab
             }
-            .background(background, LevyraPlayerDesign.ShapePill)
+            .then(
+                if (selected) {
+                    Modifier
+                        .shadow(4.dp, LevyraPlayerDesign.ShapePill, clip = false)
+                        .background(background, LevyraPlayerDesign.ShapePill)
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)), LevyraPlayerDesign.ShapePill)
+                } else {
+                    Modifier.background(background, LevyraPlayerDesign.ShapePill)
+                }
+            )
             .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 7.dp)
+            .padding(horizontal = 15.dp, vertical = 6.5.dp)
     ) {
         Text(
             text = label,
             color = contentColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
+            letterSpacing = 0.2.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -11153,15 +11188,11 @@ private fun LevyraControlPulseHandle(
     onToggle: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val width = if (compact) 88.dp else 94.dp
-    val height = if (compact) 29.dp else 31.dp
-    val lineWidth = if (compact) 18.dp else 20.dp
-    val iconBoxSize = if (compact) 21.dp else 23.dp
-    val iconSize = if (compact) 17.dp else 18.dp
-    val glow = if (expanded) 0.34f else 0.22f
+    val width = if (compact) 82.dp else 88.dp
+    val height = if (compact) 26.dp else 28.dp
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "player-shelf-chevron"
     )
 
@@ -11170,84 +11201,42 @@ private fun LevyraControlPulseHandle(
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = Color.Black.copy(alpha = 0.24f),
+            color = Color.White.copy(alpha = if (expanded) 0.12f else 0.07f),
             border = BorderStroke(
                 1.dp,
-                Color.White.copy(alpha = if (expanded) 0.17f else 0.10f)
+                Color.White.copy(alpha = if (expanded) 0.22f else 0.12f)
             ),
             shape = RoundedCornerShape(500.dp),
             modifier = Modifier
                 .width(width)
                 .height(height)
-                .shadow(3.dp, RoundedCornerShape(500.dp))
-                .pressable(pressedScale = 0.98f, onClick = onToggle)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = RoundedCornerShape(500.dp),
+                    ambientColor = activeColor.copy(alpha = 0.20f),
+                    spotColor = Color.Black.copy(alpha = 0.50f)
+                )
+                .pressable(pressedScale = 0.96f, onClick = onToggle)
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                activeColor.copy(alpha = 0.06f),
-                                activeColor.copy(alpha = glow),
-                                secondaryColor.copy(alpha = glow),
-                                secondaryColor.copy(alpha = 0.06f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(500.dp)
-                    ),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 7.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(lineWidth)
-                            .height(2.dp)
-                            .background(activeColor.copy(alpha = 0.68f), CircleShape)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(iconBoxSize)
-                            .graphicsLayer { rotationZ = rotation }
-                            .background(
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        activeColor.copy(alpha = 0.46f),
-                                        secondaryColor.copy(alpha = 0.46f)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                                RoundedCornerShape(8.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = strings.options,
-                            tint = Color.White,
-                            modifier = Modifier.size(iconSize)
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .width(lineWidth)
-                            .height(2.dp)
-                            .background(secondaryColor.copy(alpha = 0.68f), CircleShape)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = strings.options,
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .size(17.dp)
+                        .graphicsLayer { rotationZ = rotation }
+                )
                 if (hasActiveState && !expanded) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 5.dp, end = 8.dp)
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 8.dp)
                             .size(5.dp)
-                            .background(Color.White, CircleShape)
+                            .background(activeColor.playerMix(Color.White, 0.4f), CircleShape)
                     )
                 }
             }
@@ -11404,41 +11393,41 @@ private fun PlayerYoutubeEngagementRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 7.dp else 9.dp),
+                .padding(top = if (compact) 4.dp else 6.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Surface(
-                color = Color.White.copy(alpha = 0.085f),
+                color = Color.White.copy(alpha = 0.055f),
                 border = BorderStroke(
                     1.dp,
-                    if (comments.visible) primary.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.105f)
+                    if (comments.visible) primary.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.09f)
                 ),
                 shape = CircleShape
             ) {
                 Row(
-                    modifier = Modifier.height(48.dp),
+                    modifier = Modifier.height(28.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         modifier = Modifier.padding(
-                            start = if (compact) 12.dp else 13.dp,
-                            end = if (compact) 10.dp else 11.dp
+                            start = 10.dp,
+                            end = 8.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
-                            modifier = Modifier.size(if (compact) 18.dp else 19.dp)
+                            tint = Color.White.copy(alpha = if (hasLikes) 0.88f else 0.45f),
+                            modifier = Modifier.size(13.dp)
                         )
                         if (hasLikes) {
                             Text(
                                 text = compactYoutubeCount(track.youtubeLikeCount),
-                                color = Color.White.copy(alpha = 0.94f),
-                                fontSize = if (compact) 12.sp else 12.5.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White.copy(alpha = 0.88f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
@@ -11446,38 +11435,38 @@ private fun PlayerYoutubeEngagementRow(
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(24.dp)
-                            .background(Color.White.copy(alpha = 0.14f))
+                            .height(14.dp)
+                            .background(Color.White.copy(alpha = 0.10f))
                     )
                     Row(
                         modifier = Modifier.padding(
-                            start = if (compact) 10.dp else 11.dp,
-                            end = if (compact) 10.dp else 11.dp
+                            start = 8.dp,
+                            end = 8.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbDown,
                             contentDescription = null,
                             tint = if (hasDislikeEstimate) {
-                                secondary.playerMix(Color.White, 0.58f)
+                                secondary.playerMix(Color.White, 0.60f)
                             } else {
-                                Color.White.copy(alpha = 0.48f)
+                                Color.White.copy(alpha = 0.45f)
                             },
-                            modifier = Modifier.size(if (compact) 18.dp else 19.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         when {
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(if (compact) 12.dp else 13.dp),
-                                strokeWidth = 1.8.dp,
-                                color = secondary.playerMix(Color.White, 0.58f)
+                                modifier = Modifier.size(10.dp),
+                                strokeWidth = 1.5.dp,
+                                color = secondary.playerMix(Color.White, 0.60f)
                             )
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = if (compact) 12.sp else 12.5.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
@@ -11485,42 +11474,41 @@ private fun PlayerYoutubeEngagementRow(
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(24.dp)
-                            .background(Color.White.copy(alpha = 0.14f))
+                            .height(14.dp)
+                            .background(Color.White.copy(alpha = 0.10f))
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .sizeIn(minWidth = 48.dp)
                             .pressable(enabled = canOpenComments, onClick = onComments)
-                            .padding(horizontal = if (compact) 10.dp else 11.dp),
+                            .padding(horizontal = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.ChatBubbleOutline,
                                 contentDescription = null,
                                 tint = if (canOpenComments) {
-                                    primary.playerMix(Color.White, 0.58f)
+                                    primary.playerMix(Color.White, 0.60f)
                                 } else {
-                                    Color.White.copy(alpha = 0.42f)
+                                    Color.White.copy(alpha = 0.40f)
                                 },
-                                modifier = Modifier.size(if (compact) 18.dp else 19.dp)
+                                modifier = Modifier.size(13.dp)
                             )
                             when {
                                 comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                    modifier = Modifier.size(if (compact) 12.dp else 13.dp),
-                                    strokeWidth = 1.8.dp,
-                                    color = primary.playerMix(Color.White, 0.52f)
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = primary.playerMix(Color.White, 0.55f)
                                 )
                                 commentBadge.isNotBlank() -> Text(
                                     text = commentBadge,
-                                    color = Color.White.copy(alpha = 0.92f),
-                                    fontSize = if (compact) 12.sp else 12.5.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White.copy(alpha = 0.88f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     maxLines = 1
                                 )
                             }

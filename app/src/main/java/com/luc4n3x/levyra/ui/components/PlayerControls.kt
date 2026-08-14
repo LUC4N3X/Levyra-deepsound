@@ -218,7 +218,10 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipPrevious,
             contentDescription = labels.previous,
             size = transportSize,
-            iconSize = if (compact) 27.dp else 29.dp,
+            iconSize = if (compact) 26.dp else 28.dp,
+            fill = LevyraPlayerDesign.GlassFillStrong,
+            borderTop = Color.White.copy(alpha = 0.22f),
+            borderBottom = Color.White.copy(alpha = 0.08f),
             onClick = onPrevious
         )
         PlayerPrimaryButton(
@@ -237,7 +240,10 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipNext,
             contentDescription = labels.next,
             size = transportSize,
-            iconSize = if (compact) 27.dp else 29.dp,
+            iconSize = if (compact) 26.dp else 28.dp,
+            fill = LevyraPlayerDesign.GlassFillStrong,
+            borderTop = Color.White.copy(alpha = 0.22f),
+            borderBottom = Color.White.copy(alpha = 0.08f),
             onClick = onNext
         )
         PlayerModeToggleButton(
@@ -344,21 +350,28 @@ private fun playerPrimaryIconTransition(): ContentTransform =
 
 private fun Modifier.playerPrimarySurface(
     shape: Shape,
-    start: Color,
-    end: Color
+    accent: Color
 ): Modifier = this
     .shadow(
-        elevation = 3.dp,
+        elevation = 12.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.18f),
-        spotColor = Color.Black.copy(alpha = 0.24f)
+        ambientColor = accent.copy(alpha = 0.45f),
+        spotColor = Color.Black.copy(alpha = 0.55f)
     )
-    .background(Brush.linearGradient(listOf(start, end)), shape)
+    .background(
+        Brush.verticalGradient(
+            listOf(
+                Color(0xFFFFFFFF),
+                Color(0xFFE6E8ED)
+            )
+        ),
+        shape
+    )
     .border(
         BorderStroke(
-            LevyraPlayerDesign.Hairline,
-            Color.White.copy(alpha = 0.12f)
+            1.dp,
+            Color.White.copy(alpha = 0.38f)
         ),
         shape
     )
@@ -381,7 +394,7 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, ani
             tint = tint,
             modifier = Modifier
                 .size(iconSize)
-                .offset(x = if (playing) 0.dp else 1.dp)
+                .offset(x = if (playing) 0.dp else 1.5.dp)
         )
     }
 }
@@ -399,35 +412,12 @@ private fun PlayerPrimaryButton(
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val gradient = remember(accentTarget, accentSecondaryTarget) {
-        playerContrastGradient(
-            start = Color(0xFFF2F2F4).playerMix(accentTarget, 0.04f),
-            end = Color(0xFFDDDEE2).playerMix(accentSecondaryTarget, 0.03f),
-            minimumContrast = PlayerMinimumContrast
-        )
-    }
-    val colorSpec: AnimationSpec<Color> =
-        if (animated) LevyraPlayerDesign.emphasizedTween(520) else snap()
-    val gradientStart by animateColorAsState(
-        targetValue = gradient.start,
-        animationSpec = colorSpec,
-        label = "player-primary-start"
-    )
-    val gradientEnd by animateColorAsState(
-        targetValue = gradient.end,
-        animationSpec = colorSpec,
-        label = "player-primary-end"
-    )
-    val gradientContent by animateColorAsState(
-        targetValue = gradient.content,
-        animationSpec = colorSpec,
-        label = "player-primary-content"
-    )
+    val contentColor = Color(0xFF0D0D10)
     val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
     SpringIconButton(
         onClick = onClick,
-        pressedScale = 0.96f,
+        pressedScale = 0.93f,
         contentDescription = if (isPlaying) pauseLabel else playLabel
     ) {
         Box(
@@ -435,22 +425,21 @@ private fun PlayerPrimaryButton(
                 .size(width = width, height = height)
                 .playerPrimarySurface(
                     shape = shape,
-                    start = gradientStart,
-                    end = gradientEnd
+                    accent = accentTarget
                 ),
             contentAlignment = Alignment.Center
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(height * 0.42f),
+                    modifier = Modifier.size(22.dp),
                     strokeWidth = 2.5.dp,
-                    color = gradientContent
+                    color = contentColor
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
-                    iconSize = height * 0.50f,
-                    tint = gradientContent,
+                    iconSize = 28.dp,
+                    tint = contentColor,
                     animated = animated
                 )
             }

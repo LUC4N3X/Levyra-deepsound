@@ -43,23 +43,23 @@ object LevyraPlayerDesign {
     val HeaderButtonCompact: Dp = 38.dp
     val UtilityButton: Dp = 44.dp
     val UtilityButtonCompact: Dp = 40.dp
-    val TransportButton: Dp = 52.dp
-    val TransportButtonCompact: Dp = 46.dp
-    val PrimaryWidth: Dp = 76.dp
-    val PrimaryWidthCompact: Dp = 68.dp
-    val PrimaryHeight: Dp = 62.dp
-    val PrimaryHeightCompact: Dp = 56.dp
-    val PrimaryCorner: Dp = 28.dp
+    val TransportButton: Dp = 50.dp
+    val TransportButtonCompact: Dp = 44.dp
+    val PrimaryWidth: Dp = 74.dp
+    val PrimaryWidthCompact: Dp = 66.dp
+    val PrimaryHeight: Dp = 58.dp
+    val PrimaryHeightCompact: Dp = 54.dp
+    val PrimaryCorner: Dp = 24.dp
     val MinimumTouchTarget: Dp = 48.dp
 
     val Hairline: Dp = 1.dp
     val TrackHeight: Dp = 4.5.dp
     val TrackHeightActive: Dp = 7.5.dp
-    val WaveAmplitude: Dp = 3.dp
+    val WaveAmplitude: Dp = 3.5.dp
     val HandleWidth: Dp = 4.dp
     val HandleWidthActive: Dp = 6.dp
     val HandleHeight: Dp = 22.dp
-    val HandleHeightActive: Dp = 30.dp
+    val HandleHeightActive: Dp = 28.dp
 
     val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val Standard: Easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
@@ -90,15 +90,15 @@ object LevyraPlayerDesign {
     const val WavePeriodDp: Float = 26f
     const val WaveCycleMillis: Int = 1_600
 
-    val GlassFill: Color = Color.White.copy(alpha = 0.07f)
-    val GlassFillStrong: Color = Color.White.copy(alpha = 0.12f)
-    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.28f)
-    val GlassBorderTop: Color = Color.White.copy(alpha = 0.16f)
-    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.06f)
-    val GlassSpecular: Color = Color.White.copy(alpha = 0.03f)
+    val GlassFill: Color = Color.White.copy(alpha = 0.08f)
+    val GlassFillStrong: Color = Color.White.copy(alpha = 0.14f)
+    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.35f)
+    val GlassBorderTop: Color = Color.White.copy(alpha = 0.18f)
+    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.08f)
+    val GlassSpecular: Color = Color.White.copy(alpha = 0.04f)
 
     val TextPrimary: Color = Color.White
-    val TextSecondary: Color = Color.White.copy(alpha = 0.72f)
-    val TextTertiary: Color = Color.White.copy(alpha = 0.48f)
+    val TextSecondary: Color = Color.White.copy(alpha = 0.76f)
+    val TextTertiary: Color = Color.White.copy(alpha = 0.50f)
     val IconIdle: Color = Color.White.copy(alpha = 0.65f)
 }
