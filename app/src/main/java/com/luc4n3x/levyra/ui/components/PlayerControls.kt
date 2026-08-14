@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -264,19 +266,28 @@ private fun PlayerModeToggleButton(
     animated: Boolean,
     onClick: () -> Unit
 ) {
-    val fill = if (active) {
-        Color.White.playerMix(accent, 0.06f).copy(alpha = 0.12f)
-    } else {
-        Color.Transparent
-    }
+    val fill by animateColorAsState(
+        targetValue = if (active) {
+            Color.White.playerMix(accent, 0.18f).copy(alpha = 0.16f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
+        label = "player-toggle-fill"
+    )
     val activeTint = remember(accentTarget) {
-        Color.White.playerMix(accentTarget, 0.04f)
+        Color.White.playerMix(accentTarget, 0.08f)
     }
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
     val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.18f else 0f,
+        targetValue = if (active) 0.38f else 0f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-border"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (active) 1.04f else 1.0f,
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-toggle-scale"
     )
 
     SpringIconButton(
@@ -286,6 +297,10 @@ private fun PlayerModeToggleButton(
                 minWidth = LevyraPlayerDesign.MinimumTouchTarget,
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .semantics { toggleableState = ToggleableState(active) },
         pressedScale = 0.92f,
         contentDescription = contentDescription
@@ -295,7 +310,10 @@ private fun PlayerModeToggleButton(
                 .size(size)
                 .background(fill, CircleShape)
                 .border(
-                    BorderStroke(LevyraPlayerDesign.Hairline, Color.White.playerMix(accent, 0.08f).copy(alpha = borderAlpha)),
+                    BorderStroke(
+                        LevyraPlayerDesign.Hairline,
+                        accent.playerMix(Color.White, 0.20f).copy(alpha = borderAlpha)
+                    ),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -305,6 +323,15 @@ private fun PlayerModeToggleButton(
                 tint = tint,
                 modifier = Modifier.size(iconSize)
             )
+            if (active) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 4.dp)
+                        .size(3.dp)
+                        .background(accentTarget.playerMix(Color.White, 0.4f), CircleShape)
+                )
+            }
         }
     }
 }
