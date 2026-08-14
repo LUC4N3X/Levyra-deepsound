@@ -353,6 +353,39 @@ private fun matchingArtistSignalIndex(artist: String, signals: List<String>): In
     }
 }
 
+internal fun selectAlbumRecoveryCandidate(
+    album: AlbumHit,
+    candidates: List<AlbumHit>,
+    excludedBrowseIds: Set<String> = emptySet()
+): AlbumHit? {
+    val titleKey = albumRecommendationTextKey(album.title)
+    if (titleKey.isBlank()) return null
+
+    val artistKey = albumRecommendationTextKey(album.artist)
+    val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
+    val artistBrowseId = album.artistBrowseId.trim()
+    val excluded = excludedBrowseIds
+        .map { it.trim().lowercase(Locale.ROOT) }
+        .filter(String::isNotBlank)
+        .toSet()
+
+    return candidates.asSequence()
+        .filter { candidate ->
+            val browseId = candidate.browseId.trim()
+            browseId.isNotBlank() && browseId.lowercase(Locale.ROOT) !in excluded
+        }
+        .filter { candidate ->
+            albumRecommendationTextKey(candidate.title) == titleKey
+        }
+        .firstOrNull { candidate ->
+            val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
+            val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
+            (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
+                (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
+                (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
+        }
+}
+
 class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
@@ -870,71 +903,111 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }.distinctBy { it.id }
     }
 
-    suspend fun albumDetail(album: AlbumHit, languageCode: String = LevyraLanguageCatalog.deviceDefault()): AlbumDetail = withContext(Dispatchers.IO) {
-    val resolved = resolveAlbumHit(album, languageCode)
-    val root = resolved.browseId.takeIf { it.isNotBlank() }?.let { requestMusicBrowseRoot(languageCode, it) }
-    val headerAlbum = root?.let { parseAlbumHeader(it, resolved) } ?: resolved
-    val cover = headerAlbum.thumbnailUrl.ifBlank { resolved.thumbnailUrl }
-    val canonicalAudioPlaylistId = sequenceOf(
-        root?.let(::extractAudioPlaylistId).orEmpty(),
-        headerAlbum.audioPlaylistId,
-        resolved.audioPlaylistId,
-        album.audioPlaylistId
-    )
-        .map { it.trim().removePrefix("VL") }
-        .firstOrNull { it.startsWith("OLA") }
-        .orEmpty()
-    val playlistTracks = if (canonicalAudioPlaylistId.isNotBlank()) {
-        try {
-            playlist(canonicalAudioPlaylistId, languageCode, 60)?.tracks.orEmpty()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Throwable) {
+    suspend fun albumDetail(
+        album: AlbumHit,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): AlbumDetail = withContext(Dispatchers.IO) {
+        val initial = loadAlbumDetailOnce(album, languageCode)
+        if (initial.tracks.isNotEmpty()) return@withContext initial
+
+        val attemptedBrowseIds = setOf(album.browseId, initial.album.browseId)
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .toSet()
+        val recovery = findAlbumRecoveryCandidate(
+            album = album,
+            languageCode = languageCode,
+            excludedBrowseIds = attemptedBrowseIds
+        ) ?: return@withContext initial
+
+        val recovered = loadAlbumDetailOnce(recovery, languageCode)
+        if (recovered.tracks.isNotEmpty()) recovered else initial
+    }
+
+    private suspend fun loadAlbumDetailOnce(album: AlbumHit, languageCode: String): AlbumDetail {
+        val resolved = resolveAlbumHit(album, languageCode)
+        val root = resolved.browseId.takeIf { it.isNotBlank() }
+            ?.let { requestMusicBrowseRoot(languageCode, it) }
+        val headerAlbum = root?.let { parseAlbumHeader(it, resolved) } ?: resolved
+        val cover = headerAlbum.thumbnailUrl.ifBlank { resolved.thumbnailUrl }
+        val canonicalAudioPlaylistId = sequenceOf(
+            root?.let(::extractAudioPlaylistId).orEmpty(),
+            headerAlbum.audioPlaylistId,
+            resolved.audioPlaylistId,
+            album.audioPlaylistId
+        )
+            .map { it.trim().removePrefix("VL") }
+            .firstOrNull { it.startsWith("OLA") }
+            .orEmpty()
+        val playlistTracks = if (canonicalAudioPlaylistId.isNotBlank()) {
+            try {
+                playlist(canonicalAudioPlaylistId, languageCode, 60)?.tracks.orEmpty()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        } else {
             emptyList()
         }
-    } else {
-        emptyList()
-    }
-    val shelfTracks = if (playlistTracks.isEmpty()) {
-        root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
-    } else {
-        emptyList()
-    }
-    val finalTracks = (if (playlistTracks.isNotEmpty()) playlistTracks else shelfTracks)
-        .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
-        .take(60)
-    val finalArtist = headerAlbum.artist.cleanAlbumArtistLabel()
-        .ifBlank { finalTracks.firstNotNullOfOrNull { it.artist.cleanAlbumArtistLabel().takeIf(String::isNotBlank) }.orEmpty() }
-        .ifBlank { resolved.artist.cleanAlbumArtistLabel() }
-    val finalAlbum = headerAlbum.copy(
-        artist = finalArtist,
-        thumbnailUrl = cover,
-        query = "${headerAlbum.title} $finalArtist".trim(),
-        browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
-        audioPlaylistId = canonicalAudioPlaylistId,
-        explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
-    )
-    val enrichedTracks = finalTracks.map { track ->
-        track.copy(
-            album = finalAlbum.title,
-            albumBrowseId = finalAlbum.browseId,
-            year = track.year.ifBlank { finalAlbum.year },
-            explicit = track.explicit || finalAlbum.explicit,
-            thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
-            largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
+        val shelfTracks = if (playlistTracks.isEmpty()) {
+            root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
+        } else {
+            emptyList()
+        }
+        val finalTracks = (if (playlistTracks.isNotEmpty()) playlistTracks else shelfTracks)
+            .distinctBy { it.id.ifBlank { "${it.title.lowercase()}|${it.artist.lowercase()}" } }
+            .take(60)
+        val finalArtist = headerAlbum.artist.cleanAlbumArtistLabel()
+            .ifBlank {
+                finalTracks.firstNotNullOfOrNull {
+                    it.artist.cleanAlbumArtistLabel().takeIf(String::isNotBlank)
+                }.orEmpty()
+            }
+            .ifBlank { resolved.artist.cleanAlbumArtistLabel() }
+        val finalAlbum = headerAlbum.copy(
+            artist = finalArtist,
+            thumbnailUrl = cover,
+            query = "${headerAlbum.title} $finalArtist".trim(),
+            browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
+            audioPlaylistId = canonicalAudioPlaylistId,
+            explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
+        )
+        val enrichedTracks = finalTracks.map { track ->
+            track.copy(
+                album = finalAlbum.title,
+                albumBrowseId = finalAlbum.browseId,
+                year = track.year.ifBlank { finalAlbum.year },
+                explicit = track.explicit || finalAlbum.explicit,
+                thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank {
+                    track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+                }
+            )
+        }
+        enrichedTracks.forEach { memory[it.id] = it }
+        val description = root?.let { parseAlbumDescription(it) }.orEmpty()
+        return AlbumDetail(
+            album = finalAlbum,
+            description = description,
+            tracks = enrichedTracks,
+            otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
+            trackCount = enrichedTracks.size,
+            durationMs = enrichedTracks.sumOf { it.durationMs }
         )
     }
-    enrichedTracks.forEach { memory[it.id] = it }
-    val description = root?.let { parseAlbumDescription(it) }.orEmpty()
-    AlbumDetail(
-        album = finalAlbum,
-        description = description,
-        tracks = enrichedTracks,
-        otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
-        trackCount = enrichedTracks.size,
-        durationMs = enrichedTracks.sumOf { it.durationMs }
-    )
-}
+
+    private fun findAlbumRecoveryCandidate(
+        album: AlbumHit,
+        languageCode: String,
+        excludedBrowseIds: Set<String>
+    ): AlbumHit? {
+        if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return null
+        val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
+        if (query.length < 2) return null
+        val candidates = searchAlbumHits(query, languageCode, 12)
+        return selectAlbumRecoveryCandidate(album, candidates, excludedBrowseIds)
+    }
 
     suspend fun resolveAlbumDescription(
         detail: AlbumDetail,
