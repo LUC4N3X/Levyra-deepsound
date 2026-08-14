@@ -2,7 +2,7 @@
 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
 
-# 🎵 Levyra
+# ✦ Levyra
 
 **A native music player and private offline audio library for Android and Windows.**
 
@@ -13,7 +13,7 @@
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="GitHub Stars"></a>
 </p>
 
-### 📥 Download & Install
+### ✦ Download & Install
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download APK" width="365" /></a>&nbsp;&nbsp;
@@ -27,7 +27,7 @@
 
 ---
 
-## 🎧 The listening experience
+## ✦ The listening experience
 
 Levyra is built for listeners who care about how their music feels, sounds, and stays organized. Most modern streaming apps treat songs like disposable bandwidth, locked behind accounts, bloated algorithmic feeds, and temporary cache blobs that vanish when you step offline.
 
@@ -44,13 +44,13 @@ Levyra puts your music back in your hands:
 
 ---
 
-## 🎶 Features
+## ✦ Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 🔊 Pure sound and playback
+### ✦ Pure sound and playback
 
 * **Native audio pipelines**: AndroidX Media3 foreground audio service on Android; libvlc with global shortcuts and system tray controls on Windows.
 * **Acoustic tuning**: Volume normalization to smooth out volume jumps between acoustic and loud tracks, plus silence skipping.
@@ -60,7 +60,7 @@ Levyra puts your music back in your hands:
 </td>
 <td width="50%" valign="top">
 
-### 💾 Offline vault and exports
+### ✦ Offline vault and exports
 
 * **Standard M4A files**: Android exports are standard audio files with embedded metadata and artwork, stored in `Music/Levyra`.
 * **Desktop offline manager**: Windows maintains an offline library with HTTP Range chunk resuming, pause, and retry support.
@@ -72,7 +72,7 @@ Levyra puts your music back in your hands:
 <tr>
 <td width="50%" valign="top">
 
-### 🔍 Discovery and stream extraction
+### ✦ Discovery and stream extraction
 
 * **Clean stream selection**: Dual-resolver pipeline choosing the highest-fidelity Opus or AAC streams via InnerTube and LevyraExtractor.
 * **Queue prefetching**: Upcoming songs in your queue pre-buffer ahead of time for immediate track transitions.
@@ -82,7 +82,7 @@ Levyra puts your music back in your hands:
 </td>
 <td width="50%" valign="top">
 
-### 🎤 Synced lyrics and listening pulse
+### ✦ Synced lyrics and listening pulse
 
 * **Live synced lyrics**: Real-time scrolling lyrics powered by LRCLIB, synchronized with the playback position for sing-alongs.
 * **Static lyrics fallback**: Clean text display when timestamped lyrics are unavailable.
@@ -95,7 +95,7 @@ Levyra puts your music back in your hands:
 
 ---
 
-## 📱 Interface preview
+## ✦ Interface preview
 
 <div align="center">
   <img src="docs/assets/levyra-ui-preview-2026.webp" alt="Levyra interface preview showing discovery, collections, player and offline library" width="100%" />
@@ -104,7 +104,7 @@ Levyra puts your music back in your hands:
 
 ---
 
-## 🏛️ Architecture
+## ✦ Architecture
 
 Levyra ships two native clients from one repository:
 
@@ -168,7 +168,7 @@ For detailed desktop documentation, see [`desktop/README.md`](desktop/README.md)
 
 ---
 
-## ⚙️ Technical stack
+## ✦ Technical stack
 
 ```yaml
 android:
@@ -192,7 +192,7 @@ desktop:
 
 ---
 
-## 🛠️ Building from source
+## ✦ Building from source
 
 ### Android prerequisites
 
@@ -265,7 +265,7 @@ Version codes follow `major * 1_000_000 + minor * 10_000 + patch * 100 + build` 
 
 ---
 
-## 🔒 Privacy and network activity
+## ✦ Privacy and network activity
 
 Levyra does not include tracking SDKs, telemetry frameworks, or advertising services. Listening metrics and favorites never leave your device.
 
@@ -289,7 +289,7 @@ Levyra does not include tracking SDKs, telemetry frameworks, or advertising serv
 
 ---
 
-## 💡 Contributing
+## ✦ Contributing
 
 Contributions are welcome. To get started:
 
@@ -310,7 +310,7 @@ Contributions are welcome. To get started:
 
 ---
 
-## 🌟 Credits and acknowledgments
+## ✦ Credits and acknowledgments
 
 <table align="center">
   <tr>
@@ -336,7 +336,7 @@ Contributions are welcome. To get started:
 
 ---
 
-## 📜 License and disclaimer
+## ✦ License and disclaimer
 
 > [!NOTE]
 > **Educational and research use**
