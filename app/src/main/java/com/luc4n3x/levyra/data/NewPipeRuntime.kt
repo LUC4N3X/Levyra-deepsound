@@ -88,12 +88,14 @@ object NewPipeRuntime {
             if (english) "" else ",en-US;q=0.8,en;q=0.7"
     }
 
-    private fun applyRequestedLocalization() = synchronized(this) {
-        val requested = requestedLanguage
-        if (requested.isBlank() || requested == appliedLanguage) return
-        val locale = LevyraContentLocales.forLanguage(requested)
-        NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
-        appliedLanguage = locale.languageCode
+    private fun applyRequestedLocalization() {
+        synchronized(this) {
+            val requested = requestedLanguage
+            if (requested.isBlank() || requested == appliedLanguage) return
+            val locale = LevyraContentLocales.forLanguage(requested)
+            NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
+            appliedLanguage = locale.languageCode
+        }
     }
 }
 
