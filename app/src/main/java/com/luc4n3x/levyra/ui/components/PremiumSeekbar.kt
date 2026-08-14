@@ -117,7 +117,6 @@ fun PremiumSeekbar(
     }
 
     val wavePath = remember { Path() }
-    val diamondPath = remember { Path() }
     val wavePhase = remember { Animatable(0f) }
     LaunchedEffect(waveActive) {
         if (!waveActive) return@LaunchedEffect
@@ -223,18 +222,19 @@ fun PremiumSeekbar(
 
             val baseTrackHeight = LevyraPlayerDesign.TrackHeight.toPx()
             val trackHeight = baseTrackHeight * trackScale.value
-            val diamondRadius = 6.5.dp.toPx() + (3.dp.toPx() * handleScale.value)
-            val diamondHalfWidth = diamondRadius * 0.82f
-            val visualHandleWidth = diamondHalfWidth * 2f
+            val handleWidth = LevyraPlayerDesign.HandleWidth.toPx() +
+                (LevyraPlayerDesign.HandleWidthActive - LevyraPlayerDesign.HandleWidth).toPx() * handleScale.value
+            val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
+                (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * handleScale.value
             val gap = trackHeight * 1.1f
             val capInset = trackHeight / 2f
             val trackStart = capInset
             val trackEnd = (totalWidth - capInset).coerceAtLeast(trackStart)
             val trackSpan = trackEnd - trackStart
 
-            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, visualHandleWidth)
-            val activeEnd = (handleX - diamondHalfWidth - gap).coerceIn(trackStart, trackEnd)
-            val inactiveStart = (handleX + diamondHalfWidth + gap).coerceIn(trackStart, trackEnd)
+            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleWidth)
+            val activeEnd = (handleX - handleWidth / 2f - gap).coerceIn(trackStart, trackEnd)
+            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceIn(trackStart, trackEnd)
 
             if (inactiveStart < trackEnd) {
                 drawRoundRect(
@@ -293,37 +293,20 @@ fun PremiumSeekbar(
                 }
             }
 
-            val glowRadius = diamondRadius * 2.2f
-            drawCircle(
-                color = trailingColor.copy(alpha = 0.10f),
-                radius = glowRadius,
-                center = Offset(handleX, centerY)
-            )
-            drawCircle(
-                color = activeColor.copy(alpha = 0.18f),
-                radius = glowRadius * 0.68f,
-                center = Offset(handleX, centerY)
-            )
-            drawCircle(
-                color = activeColor.copy(alpha = 0.28f),
-                radius = glowRadius * 0.42f,
-                center = Offset(handleX, centerY)
-            )
+            if (handleScale.value > 0.01f) {
+                drawRoundRect(
+                    color = trailingColor.copy(alpha = 0.30f * handleScale.value),
+                    topLeft = Offset(handleX - handleWidth * 1.6f, centerY - handleHeight * 0.65f),
+                    size = Size(handleWidth * 3.2f, handleHeight * 1.30f),
+                    cornerRadius = CornerRadius(handleWidth * 1.6f, handleWidth * 1.6f)
+                )
+            }
 
-            diamondPath.rewind()
-            diamondPath.moveTo(handleX, centerY - diamondRadius)
-            diamondPath.lineTo(handleX + diamondHalfWidth, centerY)
-            diamondPath.lineTo(handleX, centerY + diamondRadius)
-            diamondPath.lineTo(handleX - diamondHalfWidth, centerY)
-            diamondPath.close()
-            drawPath(
-                path = diamondPath,
-                color = thumbColor
-            )
-            drawCircle(
-                color = Color.White,
-                radius = diamondRadius * 0.35f,
-                center = Offset(handleX, centerY)
+            drawRoundRect(
+                color = thumbColor,
+                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
+                size = Size(handleWidth, handleHeight),
+                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
             )
         }
     }

@@ -12292,6 +12292,14 @@ private fun PlayerScreen(
                             .semantics { toggleableState = ToggleableState(isFavorite) },
                         onClick = { viewModel.toggleFavorite(activeTrack) }
                     )
+                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
+                    PlayerGlassIconButton(
+                        icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        contentDescription = strings.addToPlaylist,
+                        size = heartButtonSize,
+                        iconSize = if (compactPlayer) 23.dp else 25.dp,
+                        onClick = { playlistTarget = activeTrack }
+                    )
                 }
                 PlayerYoutubeEngagementRow(
                     track = activeTrack,
