@@ -30,6 +30,7 @@ import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -73,9 +74,10 @@ class OfflineExportWorker(
     override suspend fun doWork(): Result {
         val payload = inputData.getString(KEY_TRACK_PAYLOAD).orEmpty()
         val taskKey = inputData.getString(KEY_TASK_KEY).orEmpty().ifBlank { id.toString() }
-        val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("Traccia non valida"))
+        val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("invalid_track_payload"))
         val taskDao = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao()
         val preferences = LevyraPreferences(applicationContext)
+        val strings = LevyraStrings.forCode(preferences.languageCode())
         val settings = preferences.downloadSettings()
         val downloadQualityKey = settings.storedQualityKey(preferences.audioQuality())
         val workId = id.toString()
@@ -105,7 +107,7 @@ class OfflineExportWorker(
         }
         return try {
             setProgress(workDataOf(KEY_PROGRESS to 1))
-            setForeground(createForegroundInfo(track, taskKey, 1))
+            setForeground(createForegroundInfo(track, taskKey, 1, strings))
             var persistedProgress = 1
             var persistedAtMs = SystemClock.elapsedRealtime()
             var foregroundProgress = 1
@@ -139,7 +141,7 @@ class OfflineExportWorker(
                     if (shouldRefreshForeground) {
                         foregroundProgress = monotonicProgress
                         foregroundAtMs = nowElapsed
-                        setForeground(createForegroundInfo(track, taskKey, monotonicProgress))
+                        setForeground(createForegroundInfo(track, taskKey, monotonicProgress, strings))
                     }
                 },
                 taskKey = taskKey,
@@ -187,7 +189,7 @@ class OfflineExportWorker(
             } else {
                 taskDao.updateStateForWork(taskKey, workId, "FAILED", current.progress, error.message.orEmpty(), System.currentTimeMillis())
                 Timber.e(error, "Offline export failed")
-                Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else error.message ?: "Esportazione non riuscita"))
+                Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else error.message ?: "offline_export_failed"))
             }
         }
     }
@@ -203,9 +205,14 @@ class OfflineExportWorker(
         }.getOrDefault(false)
     }
 
-    private fun createForegroundInfo(track: Track, taskKey: String, progress: Int): ForegroundInfo {
-        ensureNotificationChannel()
-        val notification = buildForegroundNotification(track, taskKey, progress.coerceIn(0, 100))
+    private fun createForegroundInfo(
+        track: Track,
+        taskKey: String,
+        progress: Int,
+        strings: LevyraStrings
+    ): ForegroundInfo {
+        ensureNotificationChannel(strings)
+        val notification = buildForegroundNotification(track, taskKey, progress.coerceIn(0, 100), strings)
         val notificationId = NOTIFICATION_ID_BASE + (track.id.hashCode() and Int.MAX_VALUE) % NOTIFICATION_ID_RANGE
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -214,18 +221,25 @@ class OfflineExportWorker(
         }
     }
 
-    private fun buildForegroundNotification(track: Track, taskKey: String, progress: Int): Notification {
-        val title = track.title.ifBlank { "Download offline" }
+    private fun buildForegroundNotification(
+        track: Track,
+        taskKey: String,
+        progress: Int,
+        strings: LevyraStrings
+    ): Notification {
+        val title = track.title.ifBlank { strings.offlineDownloadsPlain }
         val artist = track.artist.ifBlank { "LEVYRA" }
         val percent = progress.coerceIn(0, 100)
         return NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_widget_download)
-            .setContentTitle("Download offline")
+            .setContentTitle(strings.offlineDownloadsPlain)
             .setContentText("$percent% - $title")
             .setStyle(NotificationCompat.BigTextStyle().bigText("$title\n$artist"))
             .setContentIntent(openAppIntent())
             .apply {
-                if (percent < 100) addAction(android.R.drawable.ic_menu_close_clear_cancel, "Annulla", cancelDownloadIntent(taskKey))
+                if (percent < 100) {
+                    addAction(android.R.drawable.ic_menu_close_clear_cancel, strings.cancelDownload, cancelDownloadIntent(taskKey))
+                }
             }
             .setOngoing(percent < 100)
             .setOnlyAlertOnce(true)
@@ -257,15 +271,15 @@ class OfflineExportWorker(
         return PendingIntent.getBroadcast(applicationContext, taskKey.hashCode() and Int.MAX_VALUE, intent, flags)
     }
 
-    private fun ensureNotificationChannel() {
+    private fun ensureNotificationChannel(strings: LevyraStrings) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Download offline",
+            strings.offlineDownloadsPlain,
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Stato dei download offline Levyra"
+            description = strings.downloads
         }
         manager.createNotificationChannel(channel)
     }
