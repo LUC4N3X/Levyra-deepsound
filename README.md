@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Banner" width="560" />
+<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
 
 # Levyra
 
-**Native, private music streaming and offline library for Android and Windows.**
+**A native music player and private offline library for Android and Windows.**
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest release"></a>
@@ -16,39 +16,27 @@
 ### Download
 
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download APK" width="320" /></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" alt="Install via Obtainium" width="320" /></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download APK" width="340" /></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" alt="Install via Obtainium" width="340" /></a>
 </p>
 <p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Windows Desktop" width="320" /></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Windows Desktop" width="340" /></a>
 </p>
 
 </div>
 
 ---
 
-## Overview
+## The listening experience
 
-Levyra is an open-source music player built from scratch in Kotlin for Android and Windows. It provides fast streaming, local playback, and direct file ownership without user accounts, subscriptions, or telemetry.
+Levyra is built for listeners who care about how their music feels, sounds, and stays organized. Most modern streaming apps treat music like disposable bandwidth, locked behind accounts, bloated feeds, and proprietary caches that disappear the moment you go offline.
 
-On Android, downloaded tracks are saved as tagged M4A files in your public `Music/Levyra` folder so you can move or back them up freely. On Windows, Levyra maintains a persistent local library with resumable downloads and automatically prioritizes verified local files over network streams.
+Levyra takes the opposite route:
 
-<table>
-  <tr>
-    <td width="33%" valign="top">
-      <h4>Private by design</h4>
-      Listening history, statistics, and preferences remain in local storage. No trackers, telemetry, or remote user profiling.
-    </td>
-    <td width="33%" valign="top">
-      <h4>Real file ownership</h4>
-      Standard M4A exports with embedded metadata and artwork, not encrypted or disposable cache blobs.
-    </td>
-    <td width="33%" valign="top">
-      <h4>Native audio engines</h4>
-      AndroidX Media3 and ExoPlayer on Android; libvlc with system tray integration and mini player on Windows.
-    </td>
-  </tr>
-</table>
+* **Real audio files you keep**: When you download a track on Android, it saves as a tagged M4A file in your public `Music/Levyra` directory. Embedded album covers, artist tags, and track numbers are included so your music works in any audio player, car stereo, or USB drive.
+* **Tuned playback engines**: Android uses AndroidX Media3 and ExoPlayer for fast buffering, gapless queueing, and low-latency audio routing. Windows runs an isolated libvlc pipeline with background playback and mini-player controls.
+* **Music without interruptions**: Built-in SponsorBlock skips music video intros, mid-track dialogue, and outro silence automatically, getting straight to the song.
+* **Zero telemetry**: Play counts, listening minutes, streaks, and playlists stay entirely in a local SQLite database on your device.
 
 <div align="center">
   <code>Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>Media3</code> &nbsp;·&nbsp; <code>libvlc</code>
@@ -62,44 +50,44 @@ On Android, downloaded tracks are saved as tagged M4A files in your public `Musi
 <tr>
 <td width="50%" valign="top">
 
-### Playback and audio control
+### Pure audio and playback
 
-* **Platform-native playback**: AndroidX Media3 foreground service with MediaSession on Android; libvlc, tray controls, and single-instance handling on Windows.
-* **Playback controls**: Loop all, loop single, shuffle, adjustable playback speed, and sleep timers (15, 30, 60 minutes).
-* **Audio processing**: Volume normalization, silence skipping, and stream quality selection (Auto, High, Low).
-* **SponsorBlock integration**: Automatically skips non-music intro and promotional segments during playback.
+* **Native audio pipelines**: AndroidX Media3 foreground audio service on Android; libvlc with global hotkeys and desktop tray controls on Windows.
+* **Sound tuning**: Volume normalization to level out quiet acoustic tracks and loud masters, plus silence skipping for continuous listening.
+* **SponsorBlock for music**: Drops video skits, sponsor spots, and non-music talking segments before the music starts.
+* **Queue control**: Shuffling, loop single or entire queue, custom playback speed, and sleep timers (15, 30, 60 minutes).
 
 </td>
 <td width="50%" valign="top">
 
-### Offline library and downloads
+### Offline library and exports
 
-* **Android file exports**: Saves tagged M4A files to `Music/Levyra` with full metadata and embedded album art.
-* **Windows offline store**: Resumable downloads with progress tracking, HTTP Range support, and cancellation.
-* **Atomic writes**: Prevents partial or corrupted files from appearing as complete in your library.
-* **Local-first routing**: Automatically switches to the verified offline copy when available.
+* **Standard M4A files**: Android exports are standard audio files with embedded metadata and artwork, stored in `Music/Levyra`.
+* **Desktop offline vault**: Windows maintains an offline library with HTTP Range chunk resuming, pause, and retry support.
+* **Local-first priority**: If a track exists in your offline library, Levyra plays the local file instantly without touching the network.
+* **Atomic file completion**: Partial downloads are never marked as complete until checksums and tags are written.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-### Search and stream extraction
+### Discovery and stream extraction
 
-* **Dual resolver**: Combines InnerTube and LevyraExtractor with automatic Opus and M4A stream selection.
-* **Stream caching**: In-memory and TTL caching reduce repeated network requests.
-* **Search filters**: Live search suggestions, categorised filters, and top-match sorting.
-* **Queue prefetching**: Prefetches upcoming queue items for fast, gapless track transitions.
+* **Smart stream selection**: Dual-resolver engine choosing the cleanest Opus or AAC streams via InnerTube and LevyraExtractor.
+* **Prefetching**: Next songs in your queue pre-buffer ahead of time for immediate track transitions.
+* **Intelligent caching**: TTL caching reduces duplicate queries and speeds up search result loading.
+* **Fast search**: Live search suggestions, instant artist matching, and categorized filters.
 
 </td>
 <td width="50%" valign="top">
 
-### Lyrics and listening metrics
+### Synced lyrics and listening pulse
 
-* **Synchronized lyrics**: Live scrolling lyrics powered by LRCLIB, synced with the active player.
-* **Static fallback**: Clean static lyrics display when timestamped lyrics are unavailable.
-* **Local pulse stats**: Track total listening time, play count, daily streaks, completion rates, and peak hours.
-* **Accurate history**: Artist rankings and history based on actual playtime, stored locally in SQLite.
+* **Live synced lyrics**: Real-time scrolling lyrics powered by LRCLIB, synchronized with the playback position.
+* **Static lyrics fallback**: Clean text display when timestamped lyrics are unavailable.
+* **Listening Pulse**: Local dashboard with total hours listened, daily streaks, completion rates, and peak listening times.
+* **Playtime-based rankings**: Top artists and tracks ranked by real minutes played, not accidental taps.
 
 </td>
 </tr>
@@ -118,12 +106,12 @@ On Android, downloaded tracks are saved as tagged M4A files in your public `Musi
 
 ## Architecture
 
-Levyra maintains two native clients in a single repository:
+Levyra ships two native clients from one repository:
 
-* **Android** (`app/`): Built with Jetpack Compose and Material 3, following unidirectional data flow around a centralized ViewModel and AndroidX Media3 audio service.
-* **Windows Desktop** (`desktop/`): Isolated Kotlin/JVM application using Compose Multiplatform, libvlc audio output, and local JSON/file persistence under `%APPDATA%\Levyra`.
+* **Android** (`app/`): 100% Kotlin with Jetpack Compose and Material 3, orchestrated by a central ViewModel with AndroidX Media3 managing audio lifecycle.
+* **Windows Desktop** (`desktop/`): Kotlin/JVM desktop client built with Compose Multiplatform, libvlc audio output, and local JSON/file persistence in `%APPDATA%\Levyra`.
 
-Both clients share the core extractor logic and localization resources.
+Both clients share the core extractor and localization layers.
 
 ```text
 Android specifications
@@ -176,7 +164,7 @@ desktop/
 └── version.properties  Desktop release version
 ```
 
-For full desktop documentation, see [`desktop/README.md`](desktop/README.md).
+For detailed desktop documentation, see [`desktop/README.md`](desktop/README.md).
 
 ---
 
@@ -273,13 +261,13 @@ levyraVersionCode=2032000
 levyraDesktopVersion=1.2.0
 ```
 
-Version codes follow the formula `major * 1_000_000 + minor * 10_000 + patch * 100 + build` (build range: 0 to 99).
+Version codes follow `major * 1_000_000 + minor * 10_000 + patch * 100 + build` (build range: 0 to 99).
 
 ---
 
 ## Privacy and network activity
 
-Levyra does not include third-party tracking SDKs, advertising networks, or analytics services. All user metrics and listening data remain strictly on your local device.
+Levyra does not include tracking SDKs, telemetry frameworks, or advertising services. Listening metrics and favorites never leave your device.
 
 ### External network connections
 
@@ -359,5 +347,5 @@ This project is released under the **GNU General Public License v3.0 (GPL-3.0)**
 This project is not affiliated with, sponsored by, or endorsed by Google LLC or YouTube. All trademarks belong to their respective owners.
 
 <div align="center">
-  <p>If you find Levyra useful, consider starring the repository on GitHub.</p>
+  <p>If you enjoy Levyra, consider starring the repository on GitHub.</p>
 </div>
