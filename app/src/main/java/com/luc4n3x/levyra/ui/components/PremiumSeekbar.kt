@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -118,6 +117,7 @@ fun PremiumSeekbar(
     }
 
     val wavePath = remember { Path() }
+    val diamondPath = remember { Path() }
     val wavePhase = remember { Animatable(0f) }
     LaunchedEffect(waveActive) {
         if (!waveActive) return@LaunchedEffect
@@ -223,19 +223,18 @@ fun PremiumSeekbar(
 
             val baseTrackHeight = LevyraPlayerDesign.TrackHeight.toPx()
             val trackHeight = baseTrackHeight * trackScale.value
-            val handleWidth = LevyraPlayerDesign.HandleWidth.toPx() +
-                (LevyraPlayerDesign.HandleWidthActive - LevyraPlayerDesign.HandleWidth).toPx() * handleScale.value
-            val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
-                (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * handleScale.value
+            val diamondRadius = 6.5.dp.toPx() + (3.dp.toPx() * handleScale.value)
+            val diamondHalfWidth = diamondRadius * 0.82f
+            val visualHandleWidth = diamondHalfWidth * 2f
             val gap = trackHeight * 1.1f
             val capInset = trackHeight / 2f
             val trackStart = capInset
             val trackEnd = (totalWidth - capInset).coerceAtLeast(trackStart)
             val trackSpan = trackEnd - trackStart
 
-            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleWidth)
-            val activeEnd = (handleX - handleWidth / 2f - gap).coerceIn(trackStart, trackEnd)
-            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceIn(trackStart, trackEnd)
+            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, visualHandleWidth)
+            val activeEnd = (handleX - diamondHalfWidth - gap).coerceIn(trackStart, trackEnd)
+            val inactiveStart = (handleX + diamondHalfWidth + gap).coerceIn(trackStart, trackEnd)
 
             if (inactiveStart < trackEnd) {
                 drawRoundRect(
@@ -294,31 +293,29 @@ fun PremiumSeekbar(
                 }
             }
 
-            // Glowing Ambient Halo behind the diamond thumb
-            val diamondRadius = 6.5.dp.toPx() + (3.dp.toPx() * handleScale.value)
             val glowRadius = diamondRadius * 2.2f
             drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        activeColor.copy(alpha = 0.65f),
-                        trailingColor.copy(alpha = 0.25f),
-                        Color.Transparent
-                    ),
-                    center = Offset(handleX, centerY),
-                    radius = glowRadius
-                ),
+                color = trailingColor.copy(alpha = 0.10f),
                 radius = glowRadius,
                 center = Offset(handleX, centerY)
             )
+            drawCircle(
+                color = activeColor.copy(alpha = 0.18f),
+                radius = glowRadius * 0.68f,
+                center = Offset(handleX, centerY)
+            )
+            drawCircle(
+                color = activeColor.copy(alpha = 0.28f),
+                radius = glowRadius * 0.42f,
+                center = Offset(handleX, centerY)
+            )
 
-            // Sparkling Diamond Path
-            val diamondPath = Path().apply {
-                moveTo(handleX, centerY - diamondRadius)
-                lineTo(handleX + diamondRadius * 0.82f, centerY)
-                lineTo(handleX, centerY + diamondRadius)
-                lineTo(handleX - diamondRadius * 0.82f, centerY)
-                close()
-            }
+            diamondPath.rewind()
+            diamondPath.moveTo(handleX, centerY - diamondRadius)
+            diamondPath.lineTo(handleX + diamondHalfWidth, centerY)
+            diamondPath.lineTo(handleX, centerY + diamondRadius)
+            diamondPath.lineTo(handleX - diamondHalfWidth, centerY)
+            diamondPath.close()
             drawPath(
                 path = diamondPath,
                 color = thumbColor

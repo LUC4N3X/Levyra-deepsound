@@ -11224,54 +11224,64 @@ private fun LevyraControlPulseHandle(
                 )
                 .pressable(pressedScale = 0.96f, onClick = onToggle)
         ) {
-            Row(
+            Box(
                 modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                contentAlignment = Alignment.Center
             ) {
-                // Left glowing accent bar
-                Box(
-                    modifier = Modifier
-                        .width(lineWidth)
-                        .height(2.5.dp)
-                        .background(leftAccent.copy(alpha = 0.85f), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                // Center gradient rounded box
-                Box(
-                    modifier = Modifier
-                        .size(iconBoxSize)
-                        .graphicsLayer { rotationZ = rotation }
-                        .background(
-                            brush = Brush.linearGradient(
-                                listOf(
-                                    Color(0xFF6B73FF),
-                                    Color(0xFFC355E6)
-                                )
-                            ),
-                            shape = RoundedCornerShape(7.dp)
-                        )
-                        .border(
-                            BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                            RoundedCornerShape(7.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = strings.options,
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
+                    Box(
+                        modifier = Modifier
+                            .width(lineWidth)
+                            .height(2.5.dp)
+                            .background(leftAccent.copy(alpha = 0.85f), CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(iconBoxSize)
+                            .graphicsLayer { rotationZ = rotation }
+                            .background(
+                                brush = Brush.linearGradient(
+                                    listOf(
+                                        Color(0xFF6B73FF),
+                                        Color(0xFFC355E6)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(7.dp)
+                            )
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                RoundedCornerShape(7.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = strings.options,
+                            tint = Color.White,
+                            modifier = Modifier.size(iconSize)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(lineWidth)
+                            .height(2.5.dp)
+                            .background(rightAccent.copy(alpha = 0.85f), CircleShape)
                     )
                 }
-                Spacer(modifier = Modifier.width(6.dp))
-                // Right glowing accent bar
-                Box(
-                    modifier = Modifier
-                        .width(lineWidth)
-                        .height(2.5.dp)
-                        .background(rightAccent.copy(alpha = 0.85f), CircleShape)
-                )
+                if (hasActiveState && !expanded) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 6.dp)
+                            .size(5.dp)
+                            .background(activeColor.playerMix(Color.White, 0.4f), CircleShape)
+                    )
+                }
             }
         }
     }
@@ -12246,6 +12256,7 @@ private fun PlayerScreen(
                         Spacer(modifier = Modifier.height(2.dp))
                         Row(
                             modifier = Modifier
+                                .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                                 .clip(LevyraPlayerDesign.ShapePill)
                                 .clickable(
                                     onClickLabel = strings.openArtist,
