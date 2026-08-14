@@ -26,10 +26,10 @@ object LevyraHttpClientFactory {
         maxRequests = 64
         maxRequestsPerHost = 24
     }
-    private val downloadConnectionPool = ConnectionPool(48, 5, TimeUnit.MINUTES)
+    private val downloadConnectionPool = ConnectionPool(16, 5, TimeUnit.MINUTES)
     private val downloadDispatcher = Dispatcher().apply {
-        maxRequests = 128
-        maxRequestsPerHost = 48
+        maxRequests = 32
+        maxRequestsPerHost = 8
     }
 
     @Volatile
@@ -118,7 +118,7 @@ object LevyraHttpClientFactory {
                 .dispatcher(downloadDispatcher)
                 .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
                 .connectTimeout(6, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
                 .writeTimeout(15, TimeUnit.SECONDS)
                 .callTimeout(0, TimeUnit.MILLISECONDS)
                 .followRedirects(true)
