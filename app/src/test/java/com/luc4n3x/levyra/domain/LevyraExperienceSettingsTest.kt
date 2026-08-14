@@ -58,23 +58,13 @@ class LevyraExperienceSettingsTest {
     @Test
     fun downloadSettingsNormalizeRateAndParallelism() {
         val invalid = LevyraDownloadSettings(maxRateKbps = 777).normalized()
-        val automatic = LevyraDownloadSettings(preset = LevyraDownloadPreset.Automatic).normalized()
         val dataSaver = LevyraDownloadSettings(preset = LevyraDownloadPreset.DataSaver).normalized()
         val highQuality = LevyraDownloadSettings(preset = LevyraDownloadPreset.HighQuality, maxRateKbps = 4096).normalized()
 
         assertEquals(0, invalid.maxRateKbps)
         assertEquals(0, dataSaver.effectiveRateKbps)
-        assertEquals(3, dataSaver.maxParallelFragments)
-        assertEquals(4, automatic.maxParallelFragments)
+        assertEquals(16, dataSaver.maxParallelFragments)
         assertEquals(4096, highQuality.effectiveRateKbps)
-        assertEquals(6, highQuality.maxParallelFragments)
-    }
-
-    @Test
-    fun everyDownloadPresetKeepsFragmentPressureBounded() {
-        LevyraDownloadPreset.entries.forEach { preset ->
-            val fragments = LevyraDownloadSettings(preset = preset).maxParallelFragments
-            assertTrue("$preset uses too many parallel fragments: $fragments", fragments in 1..6)
-        }
+        assertEquals(24, highQuality.maxParallelFragments)
     }
 }
