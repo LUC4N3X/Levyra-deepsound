@@ -2,9 +2,9 @@
 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
 
-# Levyra
+# 🎵 Levyra
 
-**A native music player and private offline library for Android and Windows.**
+**A native music player and private offline audio library for Android and Windows.**
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest release"></a>
@@ -13,7 +13,7 @@
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="GitHub Stars"></a>
 </p>
 
-### Download
+### 📥 Download & Install
 
 <p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download APK" width="365" /></a>&nbsp;&nbsp;
@@ -27,16 +27,16 @@
 
 ---
 
-## The listening experience
+## 🎧 The listening experience
 
-Levyra is built for listeners who care about how their music feels, sounds, and stays organized. Most modern streaming apps treat music like disposable bandwidth, locked behind accounts, bloated feeds, and proprietary caches that disappear the moment you go offline.
+Levyra is built for listeners who care about how their music feels, sounds, and stays organized. Most modern streaming apps treat songs like disposable bandwidth, locked behind accounts, bloated algorithmic feeds, and temporary cache blobs that vanish when you step offline.
 
-Levyra takes the opposite route:
+Levyra puts your music back in your hands:
 
-* **Real audio files you keep**: When you download a track on Android, it saves as a tagged M4A file in your public `Music/Levyra` directory. Embedded album covers, artist tags, and track numbers are included so your music works in any audio player, car stereo, or USB drive.
-* **Tuned playback engines**: Android uses AndroidX Media3 and ExoPlayer for fast buffering, gapless queueing, and low-latency audio routing. Windows runs an isolated libvlc pipeline with background playback and mini-player controls.
-* **Music without interruptions**: Built-in SponsorBlock skips music video intros, mid-track dialogue, and outro silence automatically, getting straight to the song.
-* **Zero telemetry**: Play counts, listening minutes, streaks, and playlists stay entirely in a local SQLite database on your device.
+* 💿 **Real audio files you keep**: When you download a track on Android, it saves as a tagged M4A file directly into your `Music/Levyra` directory. High-resolution album artwork, artist tags, and track metadata are baked in so your files play in any car stereo, DAP, or local player.
+* ⚡ **Tuned native audio engines**: Android uses AndroidX Media3 and ExoPlayer for immediate buffering, gapless queueing, and low-latency audio routing. Windows runs an isolated libvlc pipeline with background playback and mini player controls.
+* ✂️ **Music without interruptions**: Built-in SponsorBlock skips video intros, mid-track dialogue, skit scenes, and outro silence automatically, getting straight to the beat.
+* 🛡️ **Zero tracking**: Listening minutes, play streaks, history, and playlists stay entirely inside a local SQLite database on your device.
 
 <div align="center">
   <code>Kotlin</code> &nbsp;·&nbsp; <code>Jetpack Compose</code> &nbsp;·&nbsp; <code>Compose Multiplatform</code> &nbsp;·&nbsp; <code>Media3</code> &nbsp;·&nbsp; <code>libvlc</code>
@@ -44,47 +44,47 @@ Levyra takes the opposite route:
 
 ---
 
-## Features
+## 🎶 Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### Pure audio and playback
+### 🔊 Pure sound and playback
 
-* **Native audio pipelines**: AndroidX Media3 foreground audio service on Android; libvlc with global hotkeys and desktop tray controls on Windows.
-* **Sound tuning**: Volume normalization to level out quiet acoustic tracks and loud masters, plus silence skipping for continuous listening.
-* **SponsorBlock for music**: Drops video skits, sponsor spots, and non-music talking segments before the music starts.
-* **Queue control**: Shuffling, loop single or entire queue, custom playback speed, and sleep timers (15, 30, 60 minutes).
+* **Native audio pipelines**: AndroidX Media3 foreground audio service on Android; libvlc with global shortcuts and system tray controls on Windows.
+* **Acoustic tuning**: Volume normalization to smooth out volume jumps between acoustic and loud tracks, plus silence skipping.
+* **SponsorBlock for music**: Drops music video sketches, sponsors, and non-musical chatter before the song starts.
+* **Playback flexibility**: Shuffle, repeat single or whole queue, custom playback speed, and sleep timers (15, 30, 60 minutes).
 
 </td>
 <td width="50%" valign="top">
 
-### Offline library and exports
+### 💾 Offline vault and exports
 
 * **Standard M4A files**: Android exports are standard audio files with embedded metadata and artwork, stored in `Music/Levyra`.
-* **Desktop offline vault**: Windows maintains an offline library with HTTP Range chunk resuming, pause, and retry support.
-* **Local-first priority**: If a track exists in your offline library, Levyra plays the local file instantly without touching the network.
-* **Atomic file completion**: Partial downloads are never marked as complete until checksums and tags are written.
+* **Desktop offline manager**: Windows maintains an offline library with HTTP Range chunk resuming, pause, and retry support.
+* **Local-first playback**: If a track exists offline, Levyra plays the local file instantly without touching the network.
+* **Atomic file writes**: Partial downloads are never marked as complete until tags and checksums are verified.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-### Discovery and stream extraction
+### 🔍 Discovery and stream extraction
 
-* **Smart stream selection**: Dual-resolver engine choosing the cleanest Opus or AAC streams via InnerTube and LevyraExtractor.
-* **Prefetching**: Next songs in your queue pre-buffer ahead of time for immediate track transitions.
-* **Intelligent caching**: TTL caching reduces duplicate queries and speeds up search result loading.
+* **Clean stream selection**: Dual-resolver pipeline choosing the highest-fidelity Opus or AAC streams via InnerTube and LevyraExtractor.
+* **Queue prefetching**: Upcoming songs in your queue pre-buffer ahead of time for immediate track transitions.
+* **Intelligent caching**: TTL stream caching cuts duplicate queries and keeps navigation snappy.
 * **Fast search**: Live search suggestions, instant artist matching, and categorized filters.
 
 </td>
 <td width="50%" valign="top">
 
-### Synced lyrics and listening pulse
+### 🎤 Synced lyrics and listening pulse
 
-* **Live synced lyrics**: Real-time scrolling lyrics powered by LRCLIB, synchronized with the playback position.
+* **Live synced lyrics**: Real-time scrolling lyrics powered by LRCLIB, synchronized with the playback position for sing-alongs.
 * **Static lyrics fallback**: Clean text display when timestamped lyrics are unavailable.
 * **Listening Pulse**: Local dashboard with total hours listened, daily streaks, completion rates, and peak listening times.
 * **Playtime-based rankings**: Top artists and tracks ranked by real minutes played, not accidental taps.
@@ -95,16 +95,16 @@ Levyra takes the opposite route:
 
 ---
 
-## Interface preview
+## 📱 Interface preview
 
 <div align="center">
   <img src="docs/assets/levyra-ui-preview-2026.webp" alt="Levyra interface preview showing discovery, collections, player and offline library" width="100%" />
-  <p><em>Levyra interface across discovery, player, collections, and local offline library.</em></p>
+  <p><em>Levyra interface across discovery, playback, collections, and local offline library.</em></p>
 </div>
 
 ---
 
-## Architecture
+## 🏛️ Architecture
 
 Levyra ships two native clients from one repository:
 
@@ -126,18 +126,18 @@ Android specifications
 ```mermaid
 graph TD
     UI["Jetpack Compose UI"] --> VM["LevyraViewModel"]
-
+    
     VM --> Player["LevyraPlayer Controller"]
     VM --> Resolver["PlaybackResolver"]
     VM --> Repos["Data Repositories"]
     VM --> Store["Room / DataStore Storage"]
     VM --> Work["WorkManager Downloads"]
-
+    
     Player --> Media3["AndroidX Media3 Service"]
-
+    
     Resolver --> InnerTube["YouTube InnerTube API"]
     Resolver --> Extractor["LevyraExtractor"]
-
+    
     Work --> Exporter["OfflineAudioExporter"]
     Exporter --> MediaStore["Android MediaStore"]
     Exporter --> Tagger["Kotlin M4A Tag Writer"]
@@ -168,7 +168,7 @@ For detailed desktop documentation, see [`desktop/README.md`](desktop/README.md)
 
 ---
 
-## Technical stack
+## ⚙️ Technical stack
 
 ```yaml
 android:
@@ -192,7 +192,7 @@ desktop:
 
 ---
 
-## Building from source
+## 🛠️ Building from source
 
 ### Android prerequisites
 
@@ -265,7 +265,7 @@ Version codes follow `major * 1_000_000 + minor * 10_000 + patch * 100 + build` 
 
 ---
 
-## Privacy and network activity
+## 🔒 Privacy and network activity
 
 Levyra does not include tracking SDKs, telemetry frameworks, or advertising services. Listening metrics and favorites never leave your device.
 
@@ -289,7 +289,7 @@ Levyra does not include tracking SDKs, telemetry frameworks, or advertising serv
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome. To get started:
 
@@ -310,7 +310,7 @@ Contributions are welcome. To get started:
 
 ---
 
-## Credits and acknowledgments
+## 🌟 Credits and acknowledgments
 
 <table align="center">
   <tr>
@@ -336,7 +336,7 @@ Contributions are welcome. To get started:
 
 ---
 
-## License and disclaimer
+## 📜 License and disclaimer
 
 > [!NOTE]
 > **Educational and research use**
