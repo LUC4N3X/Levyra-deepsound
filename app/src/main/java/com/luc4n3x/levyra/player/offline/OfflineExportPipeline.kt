@@ -66,7 +66,7 @@ internal class OfflineStreamPrefetcher(context: Context) {
             withContext(Dispatchers.IO) {
                 val cache = LevyraMediaCache.get(appContext)
                 val upstream = LevyraYoutubeDataSource.Factory(
-                    PlaybackNetworkStack.warmupFactory(appContext)
+                    PlaybackNetworkStack.playbackFactory(appContext)
                         .setDefaultRequestProperties(
                             mapOf(
                                 "Accept" to "*/*",
