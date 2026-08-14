@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Connexion au lecteur</string>
     <string name="car_now_playing">Lecture en cours</string>
     <string name="car_queue">File d’attente</string>
+    <string name="notification_shuffle">Aléatoire</string>
+    <string name="notification_favorite">Favori</string>
 </resources>

@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Verbinden met speler</string>
     <string name="car_now_playing">Wordt nu afgespeeld</string>
     <string name="car_queue">Wachtrij</string>
+    <string name="notification_shuffle">Shuffle</string>
+    <string name="notification_favorite">Favoriet</string>
 </resources>

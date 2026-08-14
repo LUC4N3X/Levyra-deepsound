@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Verbindung zum Player wird hergestellt</string>
     <string name="car_now_playing">Aktuelle Wiedergabe</string>
     <string name="car_queue">Warteschlange</string>
+    <string name="notification_shuffle">Zufallswiedergabe</string>
+    <string name="notification_favorite">Favorit</string>
 </resources>

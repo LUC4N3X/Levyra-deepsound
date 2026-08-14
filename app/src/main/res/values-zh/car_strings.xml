@@ -12,4 +12,6 @@
     <string name="car_connecting_player">正在连接播放器</string>
     <string name="car_now_playing">正在播放</string>
     <string name="car_queue">队列</string>
+    <string name="notification_shuffle">随机播放</string>
+    <string name="notification_favorite">收藏</string>
 </resources>

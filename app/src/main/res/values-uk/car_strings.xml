@@ -12,4 +12,6 @@
     <string name="car_connecting_player">Підключення до програвача</string>
     <string name="car_now_playing">Зараз відтворюється</string>
     <string name="car_queue">Черга</string>
+    <string name="notification_shuffle">Перемішати</string>
+    <string name="notification_favorite">Вибране</string>
 </resources>
