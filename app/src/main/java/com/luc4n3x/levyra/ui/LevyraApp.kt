@@ -11102,13 +11102,13 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.55f),
-                        0.12f to baseColor.copy(alpha = 0.18f),
-                        0.24f to Color.Transparent,
-                        0.48f to Color.Transparent,
-                        0.62f to baseColor.copy(alpha = 0.38f),
-                        0.76f to baseColor.copy(alpha = 0.78f),
-                        0.88f to baseColor.copy(alpha = 0.94f),
+                        0.00f to baseColor.copy(alpha = 0.72f),
+                        0.09f to baseColor.copy(alpha = 0.30f),
+                        0.19f to Color.Transparent,
+                        0.50f to Color.Transparent,
+                        0.57f to baseColor.copy(alpha = 0.55f),
+                        0.63f to baseColor.copy(alpha = 0.92f),
+                        0.68f to baseColor,
                         1.00f to baseColor
                     )
                 )
@@ -12258,7 +12258,7 @@ private fun PlayerScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         AnimatedContent(
