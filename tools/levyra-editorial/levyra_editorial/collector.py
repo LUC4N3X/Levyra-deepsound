@@ -381,9 +381,14 @@ def build_spotify_canvas_catalog(
             tracks_by_id.setdefault(track.id, track)
     canvas_urls = client.get_canvas_urls(list(tracks_by_id))
     items: list[dict[str, Any]] = []
+    rejected_url_reasons: dict[str, int] = {}
     for track_id, track in tracks_by_id.items():
         url = canvas_urls.get(track_id)
         if not url:
+            continue
+        url_problem = _spotify_canvas_url_problem(url)
+        if url_problem is not None:
+            rejected_url_reasons[url_problem] = rejected_url_reasons.get(url_problem, 0) + 1
             continue
         item: dict[str, Any] = {
             "song": track.title,
@@ -395,6 +400,11 @@ def build_spotify_canvas_catalog(
         if track.isrc:
             item["isrc"] = track.isrc
         items.append(item)
+    if rejected_url_reasons:
+        summary = ", ".join(
+            f"{reason}={count}" for reason, count in sorted(rejected_url_reasons.items())
+        )
+        LOGGER.warning("Skipped Spotify Canvas rows with invalid media destinations: %s", summary)
     payload = {
         "version": SPOTIFY_CANVAS_CATALOG_VERSION,
         "generatedAt": catalog.generated_at,
@@ -426,7 +436,7 @@ def validate_spotify_canvas_catalog(payload: Mapping[str, Any]) -> None:
                 raise ValueError(f"Spotify Canvas item has an invalid {key}.")
         if item.get("scope") != "track":
             raise ValueError("Spotify Canvas items must use track scope.")
-        if _public_spotify_canvas_url(item.get("url")) is None:
+        if _spotify_canvas_url_problem(item.get("url")) is not None:
             raise ValueError("Spotify Canvas item has an invalid media URL.")
         raw_isrc = str(item.get("isrc") or "").strip()
         if raw_isrc and re.fullmatch(r"[A-Z]{2}[A-Z0-9]{3}[0-9]{7}", raw_isrc) is None:
@@ -478,27 +488,30 @@ def _assert_safe_keys(value: Any) -> None:
             _assert_safe_keys(item)
 
 
-def _public_spotify_canvas_url(value: Any) -> str | None:
+def _spotify_canvas_url_problem(value: Any) -> str | None:
     normalized = str(value or "").strip()
     if not normalized:
-        return None
+        return "empty"
     try:
         parsed = urlparse(normalized)
         port = parsed.port
     except ValueError:
-        return None
-    if (
-        parsed.scheme != "https"
-        or parsed.hostname != SPOTIFY_CANVAS_HOST
-        or parsed.username
-        or parsed.password
-        or port not in (None, 443)
-        or parsed.query
-        or parsed.fragment
-        or not parsed.path.lower().endswith(".mp4")
-    ):
-        return None
-    return normalized
+        return "malformed"
+    if parsed.scheme != "https":
+        return "scheme"
+    if parsed.hostname != SPOTIFY_CANVAS_HOST:
+        return "host"
+    if parsed.username or parsed.password:
+        return "credentials"
+    if port not in (None, 443):
+        return "port"
+    if parsed.query:
+        return "query"
+    if parsed.fragment:
+        return "fragment"
+    if not parsed.path.lower().endswith(".mp4"):
+        return "extension"
+    return None
 
 
 def _safe_youtube_music_match(value: Any) -> dict[str, Any] | None:

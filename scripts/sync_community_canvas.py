@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-UPSTREAM_URL = "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json"
 ALLOWED_HOSTS = (
     "canvaz.scdn.co",
     "vivimusicanvas.mkmdevilmi.workers.dev",
@@ -373,8 +372,7 @@ def resolve_sources(arguments: argparse.Namespace) -> list[SourceSpec]:
         ]
     if arguments.sources_file is not None:
         return load_sources_file(arguments.sources_file)
-    source_url = arguments.source_url or UPSTREAM_URL
-    return [SourceSpec(name="upstream", location=source_url, required=True)]
+    raise CatalogError("Choose --sources-file or --input")
 
 
 def merge_sources(
@@ -528,7 +526,6 @@ def write_compatibility_catalog(
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-url")
     parser.add_argument("--sources-file", type=Path)
     parser.add_argument("--input", type=Path)
     parser.add_argument("--output", type=Path)
@@ -557,10 +554,10 @@ def main() -> int:
 
     selected_modes = sum(
         value is not None
-        for value in (arguments.source_url, arguments.sources_file, arguments.input)
+        for value in (arguments.sources_file, arguments.input)
     )
     if selected_modes > 1:
-        print("Choose only one of --source-url, --sources-file or --input", file=sys.stderr)
+        print("Choose only one of --sources-file or --input", file=sys.stderr)
         return 1
     if (
         arguments.compat_output is not None

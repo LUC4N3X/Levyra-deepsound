@@ -12,9 +12,9 @@
       "required": false
     },
     {
-      "name": "vivimusicanvas",
+      "name": "community-seed-vivi",
       "url": "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json",
-      "required": true
+      "required": false
     }
   ]
 }

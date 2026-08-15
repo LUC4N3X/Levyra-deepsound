@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -199,6 +200,33 @@ def test_public_canvas_catalog_strips_all_spotify_source_identifiers() -> None:
     assert "playlist-source-id" not in serialized
     assert "artist-source-id" not in serialized
     assert "album-source-id" not in serialized
+
+
+def test_invalid_canvas_row_isolated_from_valid_catalog(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    valid_id = "5osCClSjGplWagDsJmyivf"
+    invalid_id = "6osCClSjGplWagDsJmyivg"
+    valid_url = "https://canvaz.scdn.co/upload/artist/video/canvas.cnvs.mp4"
+    catalog = _catalog(valid_id)
+    original = catalog.collections[0].tracks[0]
+    catalog.collections[0].tracks.append(
+        replace(original, id=invalid_id, uri=f"spotify:track:{invalid_id}", title="Other Song")
+    )
+
+    class Resolver:
+        def get_canvas_urls(self, track_ids: list[str]) -> dict[str, str]:
+            assert track_ids == [valid_id, invalid_id]
+            return {
+                valid_id: valid_url,
+                invalid_id: "https://canvaz.scdn.co/upload/artist/video/canvas.webm",
+            }
+
+    payload = build_spotify_canvas_catalog(catalog, Resolver())
+
+    assert [item["song"] for item in payload["items"]] == ["Canvas Song"]
+    assert "extension=1" in caplog.text
+    assert "canvas.webm" not in caplog.text
 
 
 @pytest.mark.parametrize(

@@ -32,8 +32,8 @@ import kotlin.coroutines.resumeWithException
  *
  * The provider prefers Levyra's hash-sharded index. The app downloads one tiny manifest and only
  * the shards that can contain the current recording, so catalog growth does not increase APK size
- * or require loading the complete catalog. The legacy flat mirror and upstream catalog remain a
- * rollout fallback while the indexed mirror is unavailable.
+ * or require loading the complete catalog. Levyra's bounded flat snapshot remains a rollout
+ * fallback while the indexed mirror is unavailable.
  */
 class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
     override val id: String = PROVIDER_ID
@@ -214,48 +214,32 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
             cachedEntries.takeIf { it.isNotEmpty() && refreshedAt < catalogExpiresAtMs }?.let {
                 return@withLock it
             }
-            val parsed = loadFirstUsableCatalog()
+            val parsed = loadMirrorCatalog()
             cachedEntries = parsed
             catalogExpiresAtMs = refreshedAt + CATALOG_TTL_MS
             parsed
         }
     }
 
-    private suspend fun loadFirstUsableCatalog(): List<CommunityCanvasEntry> {
-        var lastError: Throwable? = null
-        val deadlineMs = System.currentTimeMillis() + CATALOG_BUDGET_MS
-        for ((index, source) in CATALOG_URLS.withIndex()) {
-            val remainingMs = deadlineMs - System.currentTimeMillis()
-            if (remainingMs <= 0L) break
-            val sourcesLeft = CATALOG_URLS.size - index
-            val sliceMs = maxOf(MIN_SOURCE_BUDGET_MS, remainingMs / sourcesLeft)
-                .coerceAtMost(remainingMs)
-            val payload = try {
-                withTimeoutOrNull(sliceMs) { fetchPayload(source, MAX_CATALOG_BYTES) }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                lastError = error
-                continue
+    private suspend fun loadMirrorCatalog(): List<CommunityCanvasEntry> {
+        val payload = try {
+            withTimeoutOrNull(CATALOG_BUDGET_MS) {
+                fetchPayload(MIRROR_CATALOG_URL, MAX_CATALOG_BYTES)
             }
-            if (payload == null) {
-                lastError = CommunityCanvasException("Community canvas source timed out")
-                continue
-            }
-            val document = parseCommunityCanvasDocument(payload)
-            if (isUsableCatalog(source, document)) return document.entries
-            lastError = CommunityCanvasException("Community canvas catalog is not usable")
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            throw CommunityCanvasException("Levyra canvas mirror is unavailable", error)
+        } ?: throw CommunityCanvasException("Levyra canvas mirror timed out")
+        val document = parseCommunityCanvasDocument(payload)
+        if (
+            document.version != MIRROR_CATALOG_VERSION ||
+            document.entries.size < MIN_MIRROR_CATALOG_ENTRIES
+        ) {
+            throw CommunityCanvasException("Levyra canvas mirror is not usable")
         }
-        throw lastError ?: CommunityCanvasException("Community canvas catalog is unavailable")
+        return document.entries
     }
-
-    private fun isUsableCatalog(source: String, catalog: CommunityCanvasCatalog): Boolean =
-        if (source == MIRROR_CATALOG_URL) {
-            catalog.version == MIRROR_CATALOG_VERSION &&
-                catalog.entries.size >= MIN_MIRROR_CATALOG_ENTRIES
-        } else {
-            catalog.entries.isNotEmpty()
-        }
 
     private suspend fun fetchPayload(source: String, maxBytes: Int): String =
         suspendCancellableCoroutine { continuation ->
@@ -323,9 +307,6 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         const val INDEX_MANIFEST_URL = "$INDEX_ROOT_URL/manifest.json"
         const val MIRROR_CATALOG_URL =
             "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/canvas-data/catalog/community-canvas.json"
-        const val UPSTREAM_CATALOG_URL =
-            "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json"
-        val CATALOG_URLS = listOf(MIRROR_CATALOG_URL, UPSTREAM_CATALOG_URL)
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/142 Mobile Safari/537.36 Levyra/CommunityCanvas"
         const val MAX_CATALOG_BYTES = 1024 * 1024
@@ -338,7 +319,6 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         const val INDEX_LOOKUP_BUDGET_MS = 4_500L
         const val CATALOG_FALLBACK_RESERVE_MS = 4_000L
         const val INDEX_MANIFEST_TIMEOUT_MS = 1_800L
-        const val MIN_SOURCE_BUDGET_MS = 2_000L
         const val MIRROR_CATALOG_VERSION = 1
         const val MIN_MIRROR_CATALOG_ENTRIES = 100
         const val MAX_CACHED_INDEX_SHARDS = 8
