@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-15T12:46:12Z",
+  "generatedAt": "2026-08-15T13:11:53Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -327,7 +327,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -532,13 +532,6 @@
       "artist": "Foo Fighters",
       "album": "The Colour And The Shape",
       "url": "https://canvaz.scdn.co/upload/artist/7jy3rLJdDQY21OgRLCZ9sD/video/efebf7d4e5eb4561881de4ddbadb799d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2397,6 +2390,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Vila med mig",
       "artist": "Humlan Djojj, Josefine Götestam",
       "album": "Sov med Humlan Djojj",
@@ -3451,13 +3451,6 @@
       "artist": "HANRORO",
       "album": "JAMONG SALGU CLUB",
       "url": "https://canvaz.scdn.co/upload/artist/5wVJpXzuKV6Xj7Yhsf2uYx/video/933dcee293aa49719de54cf765e60990.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "RUDE!",
-      "artist": "Hearts2Hearts",
-      "album": "RUDE!",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
       "scope": "track"
     },
     {

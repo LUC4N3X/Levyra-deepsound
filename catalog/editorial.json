@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-15T13:01:09Z",
+  "generatedAt": "2026-08-15T13:11:53Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1442,7 +1442,7 @@
         },
         {
           "position": 10,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1450,8 +1450,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1461,7 +1461,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 11,
@@ -14835,7 +14835,7 @@
         },
         {
           "position": 26,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -14843,8 +14843,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -14854,7 +14854,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 27,
@@ -24291,14 +24291,6 @@
           },
           "durationMs": 235000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qrnJL6P-QqQ",
-            "audioConfidence": 100,
-            "videoId": "NRGDT2UUlsk",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UC_DHlXllTSMB8pTC38_leFg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d34a0632f6861e8875d6899b"
         },
         {
@@ -24339,12 +24331,6 @@
           },
           "durationMs": 198567,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "bAoxY1jQnqo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCbwAI7LydeNSRU-bywK0EHw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f3e3f888fbfcc916ecce50a9"
         },
         {
