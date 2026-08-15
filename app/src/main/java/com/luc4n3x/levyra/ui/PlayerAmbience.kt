@@ -7,19 +7,22 @@ import androidx.compose.ui.graphics.Color
 internal data class PlayerAmbience(
     val tint: Color,
     val elevated: Color,
+    val control: Color,
     val base: Color
 )
 
 private const val AmbienceTintLevel = 0.30f
 private const val AmbienceElevatedLevel = 0.085f
-private const val AmbienceBaseLevel = 0.022f
+private const val AmbienceControlLevel = 0.090f
+private const val AmbienceBaseLevel = 0.042f
 
 internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience {
     val blended = primary.playerAmbienceMix(secondary, 0.5f)
     return PlayerAmbience(
         tint = blended.playerAmbienceDesaturate(0.28f).playerAmbienceTone(AmbienceTintLevel),
         elevated = blended.playerAmbienceDesaturate(0.42f).playerAmbienceTone(AmbienceElevatedLevel),
-        base = blended.playerAmbienceDesaturate(0.66f).playerAmbienceTone(AmbienceBaseLevel)
+        control = blended.playerAmbienceDesaturate(0.20f).playerAmbienceTone(AmbienceControlLevel),
+        base = blended.playerAmbienceDesaturate(0.34f).playerAmbienceTone(AmbienceBaseLevel)
     )
 }
 

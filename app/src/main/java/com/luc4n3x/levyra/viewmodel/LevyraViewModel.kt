@@ -394,6 +394,19 @@ internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
 internal fun Track.forModeResolution(): Track =
     copy(streamUrl = "", videoStreamUrl = "", playbackManifest = null)
 
+/**
+ * Song mode resolves from [Track.audioVideoId] and falls back to the video URL when it is blank,
+ * so a video-mode replacement must carry the original song identity or returning to song mode
+ * would resolve the official video as if it were the song.
+ */
+internal fun Track.withPreservedAudioIdentity(source: Track): Track {
+    if (audioVideoId.isNotBlank()) return this
+    val audioId = source.audioVideoId.trim().ifBlank {
+        youtubePlayableTrack(source)?.audioVideoId?.trim().orEmpty()
+    }
+    return if (audioId.isBlank()) this else copy(audioVideoId = audioId)
+}
+
 internal fun videoCandidateId(candidate: Track): String =
     youtubeVideoId(candidate.videoUrl).ifBlank { candidate.id.trim() }
 
@@ -1781,7 +1794,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(pendingVideoMode = targetMode, isResolving = true, playerError = null) }
         modeSwitchJob = viewModelScope.launch {
             try {
-                val selectedSource = if (targetMode) preferredVideoPlaybackTrack(track) else youtubePlayableTrack(track)
+                val selectedSource = if (targetMode) {
+                    preferredVideoPlaybackTrack(track)?.withPreservedAudioIdentity(track)
+                } else {
+                    youtubePlayableTrack(track)
+                }
                 val baseTrack = selectedSource?.forModeResolution()
                     ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
                 val resolved = withContext(Dispatchers.IO) {
@@ -1840,8 +1857,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         errorMessage: String
     ) {
         if (isLocalPlaybackTrack(failedTrack)) return
-        val currentTrackId = _state.value.currentTrack?.id
-        if (currentTrackId != null && currentTrackId != failedTrack.id) return
         val transitionId = ++streamTransitionId
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()

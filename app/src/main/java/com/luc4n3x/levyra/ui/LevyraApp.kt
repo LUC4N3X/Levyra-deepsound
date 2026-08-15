@@ -11095,10 +11095,16 @@ private fun PlayerCanvasFusionScrim(
         animationSpec = tween(700, easing = LinearOutSlowInEasing),
         label = "player-canvas-fusion-base"
     )
+    val control = animateColorAsState(
+        targetValue = ambience.control,
+        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        label = "player-canvas-fusion-control"
+    )
     Box(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
             val baseColor = base.value
+            val controlColor = control.value
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
@@ -11106,9 +11112,10 @@ private fun PlayerCanvasFusionScrim(
                         0.09f to baseColor.copy(alpha = 0.30f),
                         0.19f to Color.Transparent,
                         0.50f to Color.Transparent,
-                        0.57f to baseColor.copy(alpha = 0.55f),
-                        0.63f to baseColor.copy(alpha = 0.92f),
-                        0.68f to baseColor,
+                        0.57f to controlColor.copy(alpha = 0.55f),
+                        0.63f to controlColor.copy(alpha = 0.92f),
+                        0.68f to controlColor,
+                        0.86f to controlColor.playerAmbienceMix(baseColor, 0.55f),
                         1.00f to baseColor
                     )
                 )
@@ -11967,8 +11974,7 @@ private fun PlayerScreen(
             state.animationsEnabled &&
             playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
-            track != null &&
-            state.motionArtwork != null
+            track != null
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
         val immersiveMotionAlpha by animateFloatAsState(
             targetValue = if (immersiveArtworkEnabled) 1f else 0f,

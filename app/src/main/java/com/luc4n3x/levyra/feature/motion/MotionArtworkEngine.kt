@@ -132,24 +132,28 @@ class MotionArtworkEngine(context: Context) {
             )
         }
 
-        val ranked = candidates.mapNotNull { candidate ->
-            val match = CanonicalTrackMatcher.match(identity, candidate)
-            Timber.d(
-                "motion candidate %s scope=%s score=%d accepted=%b minimum=%d album=%s",
-                candidate.provider,
-                candidate.scope,
-                match.score,
-                match.accepted,
-                config.minimumConfidence,
-                candidate.identity.album
-            )
-            if (!match.accepted || match.score < config.minimumConfidence) null
-            else MotionArtworkRankedCandidate(
-                candidate,
-                match.score,
-                providerRanks[candidate.provider] ?: Int.MAX_VALUE
-            )
-        }.sortedWith(
+        val ranked = candidates
+            .map { candidate -> candidate to CanonicalTrackMatcher.match(identity, candidate) }
+            .onEach { (candidate, match) ->
+                Timber.d(
+                    "motion candidate %s scope=%s score=%d accepted=%b minimum=%d album=%s",
+                    candidate.provider,
+                    candidate.scope,
+                    match.score,
+                    match.accepted,
+                    config.minimumConfidence,
+                    candidate.identity.album
+                )
+            }
+            .mapNotNull { (candidate, match) ->
+                if (!match.accepted || match.score < config.minimumConfidence) null
+                else MotionArtworkRankedCandidate(
+                    candidate,
+                    match.score,
+                    providerRanks[candidate.provider] ?: Int.MAX_VALUE
+                )
+            }
+            .sortedWith(
             compareBy<MotionArtworkRankedCandidate> { it.providerRank }
                 .thenByDescending { it.confidence }
         )
