@@ -12,8 +12,12 @@ This repository-owned Python tool reads configured public country rankings with 
 - Android obtains artwork independently and keeps the exact same artwork when the selected row opens in the player.
 - Required country failures block publication. Only collections explicitly marked `optional` may be skipped.
 - A failed or incomplete run never replaces the last valid catalog.
+- Canvas lookup is read-only and best-effort. Its private endpoint is used only inside GitHub
+  Actions; the public Canvas output contains no Spotify IDs, URIs, tokens or account data.
 
-The implementation is original Levyra code. SimpMusic was used only as a behavioral reference for the current `sp_dc` plus TOTP session exchange; no SimpMusic source code was copied.
+The implementation is original Levyra code. SimpMusic was used only as a behavioral reference for
+the current `sp_dc` plus TOTP session exchange and Canvas protocol shape; no SimpMusic source code
+was copied.
 
 ## Repository secret
 
@@ -31,12 +35,17 @@ Paste only the `sp_dc` value. Same-repository pull requests can run the live rea
 
 ## Publication
 
-The workflow runs every six hours and on manual dispatch. It validates the complete catalog, compares the raw previous JSON without `generatedAt`, and updates the data-only `editorial-data` branch only when substantive content changed.
+The workflow runs every six hours and on manual dispatch. It validates the complete editorial
+catalog and the optional sanitized Spotify Canvas catalog, compares both without `generatedAt`, and
+updates the data-only `editorial-data` branch only when substantive content changed. A Canvas
+refresh failure preserves the last published Canvas file while normal editorial publication can
+continue.
 
 Public URL:
 
 ```text
 https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json
+https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/spotify-canvas.json
 ```
 
 Android uses a process-wide repository, a separate bounded HTTP cache, an `AtomicFile` disk snapshot, a 30-minute refresh target and a 48-hour maximum catalog age. Network refresh runs independently and never consumes the existing YouTube chart latency budget.

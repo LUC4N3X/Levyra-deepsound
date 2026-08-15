@@ -568,6 +568,7 @@ private fun communityTextSimilarity(first: String, second: String): Double {
 }
 
 internal val COMMUNITY_MEDIA_HOSTS = setOf(
+    "canvaz.scdn.co",
     "vivimusicanvas.mkmdevilmi.workers.dev",
     "vivimusicanvas-mtih.vercel.app"
 )

@@ -2,6 +2,11 @@
   "version": 1,
   "sources": [
     {
+      "name": "spotify-editorial-canvas",
+      "url": "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/spotify-canvas.json",
+      "required": false
+    },
+    {
       "name": "levyra-curated",
       "path": "catalog/community-canvas-extra.json",
       "required": false

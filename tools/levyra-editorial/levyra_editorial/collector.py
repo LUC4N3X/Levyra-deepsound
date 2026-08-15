@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlparse
 
 from .models import Album, Artist, Catalog, Collection, Track
 
@@ -14,6 +15,8 @@ LOGGER = logging.getLogger(__name__)
 CATALOG_SCHEMA_VERSION = 1
 CONFIG_SCHEMA_VERSION = 1
 COLLECTION_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+SPOTIFY_CANVAS_CATALOG_VERSION = 1
+SPOTIFY_CANVAS_HOST = "canvaz.scdn.co"
 
 
 class EditorialClient(Protocol):
@@ -36,6 +39,11 @@ class EditorialClient(Protocol):
         title_hints: list[str],
     ) -> str:
         """Resolve an official editorial playlist from a localized query."""
+
+
+class CanvasClient(Protocol):
+    def get_canvas_urls(self, track_ids: list[str]) -> dict[str, str]:
+        """Resolve read-only Canvas URLs keyed by Spotify track ID."""
 
 
 def utc_now_iso() -> str:
@@ -362,6 +370,90 @@ def write_catalog(catalog: Catalog, output_path: Path) -> None:
     temporary.replace(output_path)
 
 
+def build_spotify_canvas_catalog(
+    catalog: Catalog,
+    client: CanvasClient,
+) -> dict[str, Any]:
+    """Create an account-free Canvas source for Levyra's existing motion index."""
+    tracks_by_id: dict[str, Track] = {}
+    for collection in catalog.collections:
+        for track in collection.tracks:
+            tracks_by_id.setdefault(track.id, track)
+    canvas_urls = client.get_canvas_urls(list(tracks_by_id))
+    items: list[dict[str, Any]] = []
+    for track_id, track in tracks_by_id.items():
+        url = canvas_urls.get(track_id)
+        if not url:
+            continue
+        item: dict[str, Any] = {
+            "song": track.title,
+            "artist": ", ".join(artist.name for artist in track.artists),
+            "album": track.album.name,
+            "url": url,
+            "scope": "track",
+        }
+        if track.isrc:
+            item["isrc"] = track.isrc
+        items.append(item)
+    payload = {
+        "version": SPOTIFY_CANVAS_CATALOG_VERSION,
+        "generatedAt": catalog.generated_at,
+        "items": items,
+    }
+    validate_spotify_canvas_catalog(payload)
+    return payload
+
+
+def validate_spotify_canvas_catalog(payload: Mapping[str, Any]) -> None:
+    """Reject credentials, source identifiers and non-Spotify media destinations."""
+    if set(payload) != {"version", "generatedAt", "items"}:
+        raise ValueError("Spotify Canvas catalog has unexpected root fields.")
+    if payload.get("version") != SPOTIFY_CANVAS_CATALOG_VERSION:
+        raise ValueError(f"Spotify Canvas catalog version must be {SPOTIFY_CANVAS_CATALOG_VERSION}.")
+    generated_at = payload.get("generatedAt")
+    if not isinstance(generated_at, str) or not generated_at.endswith("Z"):
+        raise ValueError("Spotify Canvas generatedAt must be a UTC ISO timestamp.")
+    items = payload.get("items")
+    if not isinstance(items, list) or not items:
+        raise ValueError("Spotify Canvas catalog must contain at least one item.")
+    _assert_safe_keys(payload)
+    allowed_fields = {"song", "artist", "album", "url", "scope", "isrc"}
+    for item in items:
+        if not isinstance(item, Mapping) or not set(item).issubset(allowed_fields):
+            raise ValueError("Spotify Canvas catalog contains an invalid item.")
+        for key in ("song", "artist", "album"):
+            if not isinstance(item.get(key), str) or not str(item[key]).strip():
+                raise ValueError(f"Spotify Canvas item has an invalid {key}.")
+        if item.get("scope") != "track":
+            raise ValueError("Spotify Canvas items must use track scope.")
+        if _public_spotify_canvas_url(item.get("url")) is None:
+            raise ValueError("Spotify Canvas item has an invalid media URL.")
+        raw_isrc = str(item.get("isrc") or "").strip()
+        if raw_isrc and re.fullmatch(r"[A-Z]{2}[A-Z0-9]{3}[0-9]{7}", raw_isrc) is None:
+            raise ValueError("Spotify Canvas item has an invalid ISRC.")
+
+
+def write_spotify_canvas_catalog(payload: Mapping[str, Any], output_path: Path) -> None:
+    validate_spotify_canvas_catalog(payload)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = output_path.with_suffix(output_path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(dict(payload), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(output_path)
+
+
+def validate_spotify_canvas_file(path: Path) -> None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"Unable to read Spotify Canvas catalog: {path}") from error
+    if not isinstance(payload, dict):
+        raise ValueError("Spotify Canvas catalog root must be an object.")
+    validate_spotify_canvas_catalog(payload)
+
+
 def validate_catalog_file(path: Path) -> None:
     """Validate an existing generated catalog file."""
     try:
@@ -384,6 +476,29 @@ def _assert_safe_keys(value: Any) -> None:
     elif isinstance(value, list):
         for item in value:
             _assert_safe_keys(item)
+
+
+def _public_spotify_canvas_url(value: Any) -> str | None:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return None
+    try:
+        parsed = urlparse(normalized)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != SPOTIFY_CANVAS_HOST
+        or parsed.username
+        or parsed.password
+        or port not in (None, 443)
+        or parsed.query
+        or parsed.fragment
+        or not parsed.path.lower().endswith(".mp4")
+    ):
+        return None
+    return normalized
 
 
 def _safe_youtube_music_match(value: Any) -> dict[str, Any] | None:

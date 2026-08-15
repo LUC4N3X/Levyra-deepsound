@@ -18,7 +18,11 @@ from typing import Any
 from urllib.parse import urlsplit
 
 UPSTREAM_URL = "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json"
-ALLOWED_HOSTS = ("vivimusicanvas.mkmdevilmi.workers.dev", "vivimusicanvas-mtih.vercel.app")
+ALLOWED_HOSTS = (
+    "canvaz.scdn.co",
+    "vivimusicanvas.mkmdevilmi.workers.dev",
+    "vivimusicanvas-mtih.vercel.app",
+)
 ALLOWED_EXTENSIONS = (".mp4", ".m3u8")
 DECLARED_SCOPES = {"track": "track", "song": "track", "album": "album"}
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")

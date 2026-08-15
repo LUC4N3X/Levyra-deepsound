@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "tools/levyra-editorial/**"
+      - "catalog/community-canvas-sources.json"
+      - "scripts/sync_community_canvas.py"
+      - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkDestinationPolicyTest.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/ChartOfficialArtworkResolver.kt"
@@ -87,7 +91,7 @@ jobs:
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --require-canvas
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
@@ -111,6 +115,20 @@ jobs:
             echo "::error::Catalog contains source page URLs or URIs"
             exit 1
           fi
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
+            test "$(jq '.items | length' build/editorial/spotify-canvas.json)" -ge 1
+            if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|uri|id)"[[:space:]]*:' build/editorial/spotify-canvas.json; then
+              echo "::error::Spotify Canvas catalog contains private source material"
+              exit 1
+            fi
+            if jq -e 'any(.items[]; (.url | test("^https://canvaz\\.scdn\\.co/[^?#]+\\.mp4$") | not))' build/editorial/spotify-canvas.json >/dev/null; then
+              echo "::error::Spotify Canvas catalog contains an unapproved media URL"
+              exit 1
+            fi
+          else
+            echo "::warning::Spotify Canvas was unavailable; validating static provider fallback"
+          fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
       - name: Upload Pull Request Diagnostics
         uses: actions/upload-artifact@v7
@@ -119,6 +137,7 @@ jobs:
           path: |
             build/editorial/catalog.json
             build/editorial/catalog.sha256
+            build/editorial/spotify-canvas.json
           if-no-files-found: error
           retention-days: 7
 
@@ -156,7 +175,7 @@ jobs:
       - name: Generate Catalog
         run: |
           set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
@@ -180,6 +199,19 @@ jobs:
             echo "::error::Catalog contains source page URLs or URIs"
             exit 1
           fi
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
+            if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid|uri|id)"[[:space:]]*:' build/editorial/spotify-canvas.json; then
+              echo "::error::Spotify Canvas catalog contains private source material"
+              exit 1
+            fi
+            if jq -e 'any(.items[]; (.url | test("^https://canvaz\\.scdn\\.co/[^?#]+\\.mp4$") | not))' build/editorial/spotify-canvas.json >/dev/null; then
+              echo "::error::Spotify Canvas catalog contains an unapproved media URL"
+              exit 1
+            fi
+          else
+            echo "::warning::Spotify Canvas refresh unavailable; preserving the last valid catalog"
+          fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
       - name: Upload Diagnostics
         uses: actions/upload-artifact@v7
@@ -188,6 +220,7 @@ jobs:
           path: |
             build/editorial/catalog.json
             build/editorial/catalog.sha256
+            build/editorial/spotify-canvas.json
           if-no-files-found: error
           retention-days: 14
       - name: Publish Last Valid Catalog
@@ -196,20 +229,36 @@ jobs:
           branch="editorial-data"
           source_ref="$(git rev-parse HEAD)"
           cp build/editorial/catalog.json /tmp/editorial.json
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            cp build/editorial/spotify-canvas.json /tmp/spotify-canvas.json
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
             git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
             git switch --force-create "${branch}" "origin/${branch}"
+            changed=0
             if [ -f catalog/editorial.json ]; then
               jq -S 'del(.generatedAt)' catalog/editorial.json > /tmp/current-editorial-content.json
               jq -S 'del(.generatedAt)' /tmp/editorial.json > /tmp/new-editorial-content.json
-              if cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json; then
-                echo "Catalog content is unchanged; publication skipped."
-                git switch --detach "${source_ref}"
-                exit 0
+              cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json || changed=1
+            else
+              changed=1
+            fi
+            if [ -f /tmp/spotify-canvas.json ]; then
+              if [ -f catalog/spotify-canvas.json ]; then
+                jq -S 'del(.generatedAt)' catalog/spotify-canvas.json > /tmp/current-canvas-content.json
+                jq -S 'del(.generatedAt)' /tmp/spotify-canvas.json > /tmp/new-canvas-content.json
+                cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json || changed=1
+              else
+                changed=1
               fi
+            fi
+            if [ "${changed}" -eq 0 ]; then
+              echo "Editorial and Spotify Canvas content are unchanged; publication skipped."
+              git switch --detach "${source_ref}"
+              exit 0
             fi
           else
             git switch --orphan "${branch}"
@@ -218,8 +267,14 @@ jobs:
 
           mkdir -p catalog
           cp /tmp/editorial.json catalog/editorial.json
+          if [ -f /tmp/spotify-canvas.json ]; then
+            cp /tmp/spotify-canvas.json catalog/spotify-canvas.json
+          fi
           git add catalog/editorial.json
+          if [ -f catalog/spotify-canvas.json ]; then
+            git add catalog/spotify-canvas.json
+          fi
           git commit -m "chore(editorial): refresh catalog from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
-          echo "Published catalog to ${branch}/catalog/editorial.json"
+          echo "Published editorial data to ${branch}/catalog/"

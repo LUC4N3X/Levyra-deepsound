@@ -115,8 +115,16 @@ Catalog growth is configured in `catalog/community-canvas-sources.json`. A sourc
 
 The repository currently defines:
 
-1. `catalog/community-canvas-extra.json`, the Levyra-curated overlay;
-2. the existing upstream community catalog.
+1. the sanitized Spotify Canvas catalog published by the repository-owned editorial workflow;
+2. `catalog/community-canvas-extra.json`, the Levyra-curated overlay;
+3. the existing upstream community catalog.
+
+The Spotify source is generated only in GitHub Actions. Its `sp_dc`, TOTP material, bearer token,
+client token and Spotify track URI never enter the catalog, Android build or logs. The published
+rows contain only matching text, optional ISRC and an allowlisted `canvaz.scdn.co` MP4 URL. If the
+session expires or the private read-only endpoint changes, the editorial workflow preserves the
+last valid Canvas catalog and the optional source cannot block the Levyra/Vivi, Apple Music or
+Tidal fallback paths.
 
 Adding another reviewed source or importing thousands of validated entries into the curated overlay
 requires only a data/workflow change. No Android release is needed because the next scheduled mirror
@@ -207,6 +215,10 @@ reviewing and changing both:
 
 * `COMMUNITY_MEDIA_HOSTS` in `CommunityCanvasProvider.kt`;
 * `ALLOWED_HOSTS` in `scripts/sync_community_canvas.py`.
+
+The approved Canvas media destinations are the two existing community hosts plus the exact Spotify
+CDN host `canvaz.scdn.co`; subdomains, credentials, query strings, fragments and non-standard ports
+are rejected by the Spotify publisher before the shared mirror validation runs.
 
 Other limits:
 

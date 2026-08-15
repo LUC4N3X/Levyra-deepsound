@@ -27,6 +27,12 @@ class MotionArtworkDestinationPolicyTest {
                 "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4".toHttpUrl()
             )
         )
+        assertTrue(
+            MotionArtworkDestinationPolicy.isAllowedUrl(
+                "community-canvas",
+                "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4".toHttpUrl()
+            )
+        )
         assertFalse(
             MotionArtworkDestinationPolicy.isAllowedUrl(
                 "tidal-video-cover",
