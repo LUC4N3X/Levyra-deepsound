@@ -251,12 +251,12 @@ private fun PlayerSkipButton(
             minWidth = LevyraPlayerDesign.MinimumTouchTarget,
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
-        pressedScale = 0.88f,
+        pressedScale = 0.86f,
         contentDescription = contentDescription
     ) {
         PlayerIcon(
             icon = icon,
-            tint = LevyraPlayerDesign.TextPrimary,
+            tint = Color.White,
             modifier = Modifier.size(iconSize)
         )
     }
@@ -273,7 +273,7 @@ private fun PlayerModeToggleButton(
     onClick: () -> Unit
 ) {
     val activeTint = remember(accentTarget) {
-        Color.White.playerMix(accentTarget, 0.22f)
+        Color(0xFF1DB954).playerMix(accentTarget, 0.35f)
     }
     val tint by animateColorAsState(
         targetValue = if (active) activeTint else LevyraPlayerDesign.IconIdle,
@@ -294,7 +294,7 @@ private fun PlayerModeToggleButton(
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
             .semantics { toggleableState = ToggleableState(active) },
-        pressedScale = 0.88f,
+        pressedScale = 0.86f,
         contentDescription = contentDescription
     ) {
         Box(
@@ -325,18 +325,17 @@ private fun playerPrimaryIconTransition(): ContentTransform =
             scaleOut(targetScale = 0.82f, animationSpec = LevyraPlayerDesign.standardTween(100)))
 
 private fun Modifier.playerPrimarySurface(
-    shape: Shape,
-    gradientColors: List<Color>
+    shape: Shape
 ): Modifier = this
     .shadow(
-        elevation = 12.dp,
+        elevation = 10.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.30f),
-        spotColor = Color.Black.copy(alpha = 0.55f)
+        ambientColor = Color.Black.copy(alpha = 0.35f),
+        spotColor = Color.Black.copy(alpha = 0.60f)
     )
     .background(
-        Brush.verticalGradient(gradientColors),
+        Color.White,
         shape
     )
 
@@ -374,26 +373,17 @@ private fun PlayerPrimaryButton(
     onClick: () -> Unit
 ) {
     val contentColor = LevyraPlayerDesign.PrimaryContent
-    val corner by animateDpAsState(
-        targetValue = if (isPlaying) LevyraPlayerDesign.PrimaryCornerPlaying else size / 2f,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
-        label = "player-primary-corner"
-    )
-    val gradientColors = remember {
-        listOf(Color.White, Color(0xFFEDEDF1))
-    }
 
     SpringIconButton(
         onClick = onClick,
-        pressedScale = 0.93f,
+        pressedScale = 0.90f,
         contentDescription = if (isPlaying) pauseLabel else playLabel
     ) {
         Box(
             modifier = Modifier
                 .size(size)
                 .playerPrimarySurface(
-                    shape = RoundedCornerShape(corner),
-                    gradientColors = gradientColors
+                    shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {

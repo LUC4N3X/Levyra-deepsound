@@ -11102,13 +11102,13 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.62f),
-                        0.13f to baseColor.copy(alpha = 0.14f),
-                        0.32f to Color.Transparent,
-                        0.50f to baseColor.copy(alpha = 0.26f),
-                        0.62f to baseColor.copy(alpha = 0.70f),
-                        0.74f to baseColor.copy(alpha = 0.93f),
-                        0.84f to baseColor,
+                        0.00f to baseColor.copy(alpha = 0.55f),
+                        0.12f to baseColor.copy(alpha = 0.18f),
+                        0.24f to Color.Transparent,
+                        0.48f to Color.Transparent,
+                        0.62f to baseColor.copy(alpha = 0.38f),
+                        0.76f to baseColor.copy(alpha = 0.78f),
+                        0.88f to baseColor.copy(alpha = 0.94f),
                         1.00f to baseColor
                     )
                 )
@@ -11135,8 +11135,10 @@ private fun PlayerModeSwitch(
         modifier = Modifier
             .selectableGroup()
             .playerGlass(
-                shape = LevyraPlayerDesign.ShapePill,
-                fill = LevyraPlayerDesign.GlassFillSunken
+                shape = CircleShape,
+                fill = Color.Black.copy(alpha = 0.35f),
+                borderTop = Color.White.copy(alpha = 0.14f),
+                borderBottom = Color.White.copy(alpha = 0.08f)
             )
             .padding(3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -11174,7 +11176,7 @@ private fun PlayerModeSwitchTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent,
+        targetValue = if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
@@ -11192,21 +11194,21 @@ private fun PlayerModeSwitchTab(
             .then(
                 if (selected) {
                     Modifier
-                        .shadow(4.dp, LevyraPlayerDesign.ShapePill, clip = false)
-                        .background(background, LevyraPlayerDesign.ShapePill)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)), LevyraPlayerDesign.ShapePill)
+                        .shadow(3.dp, CircleShape, clip = false)
+                        .background(background, CircleShape)
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
                 } else {
-                    Modifier.background(background, LevyraPlayerDesign.ShapePill)
+                    Modifier.background(background, CircleShape)
                 }
             )
             .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 6.5.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
         Text(
             text = label,
             color = contentColor,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.2.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -11224,96 +11226,53 @@ private fun LevyraControlPulseHandle(
     onToggle: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val width = if (compact) 88.dp else 94.dp
-    val height = if (compact) 28.dp else 30.dp
-    val lineWidth = if (compact) 18.dp else 20.dp
-    val iconBoxSize = if (compact) 22.dp else 24.dp
-    val iconSize = if (compact) 17.dp else 18.dp
+    val width = if (compact) 82.dp else 88.dp
+    val height = if (compact) 26.dp else 28.dp
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
         label = "player-shelf-chevron"
     )
-
-    val leftAccent = Color(0xFF4A7DFF).playerMix(activeColor, 0.4f)
-    val rightAccent = Color(0xFFFF4B8B).playerMix(secondaryColor, 0.4f)
 
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = Color(0xFF140D22).copy(alpha = 0.85f),
+            color = Color.Black.copy(alpha = 0.30f),
             border = BorderStroke(
                 1.dp,
-                Color.White.copy(alpha = if (expanded) 0.22f else 0.12f)
+                Color.White.copy(alpha = if (expanded) 0.20f else 0.10f)
             ),
-            shape = RoundedCornerShape(500.dp),
+            shape = CircleShape,
             modifier = Modifier
                 .width(width)
                 .height(height)
                 .shadow(
-                    elevation = 6.dp,
-                    shape = RoundedCornerShape(500.dp),
-                    ambientColor = activeColor.copy(alpha = 0.25f),
-                    spotColor = Color.Black.copy(alpha = 0.50f)
+                    elevation = 4.dp,
+                    shape = CircleShape,
+                    ambientColor = Color.Black.copy(alpha = 0.25f),
+                    spotColor = Color.Black.copy(alpha = 0.45f)
                 )
-                .pressable(pressedScale = 0.96f, onClick = onToggle)
+                .pressable(pressedScale = 0.94f, onClick = onToggle)
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(lineWidth)
-                            .height(2.5.dp)
-                            .background(leftAccent.copy(alpha = 0.85f), CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(iconBoxSize)
-                            .graphicsLayer { rotationZ = rotation }
-                            .background(
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        Color(0xFF6B73FF),
-                                        Color(0xFFC355E6)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(7.dp)
-                            )
-                            .border(
-                                BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
-                                RoundedCornerShape(7.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = strings.options,
-                            tint = Color.White,
-                            modifier = Modifier.size(iconSize)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(lineWidth)
-                            .height(2.5.dp)
-                            .background(rightAccent.copy(alpha = 0.85f), CircleShape)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = strings.options,
+                    tint = Color.White.copy(alpha = if (expanded) 1f else 0.80f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = rotation }
+                )
                 if (hasActiveState && !expanded) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
-                            .padding(end = 6.dp)
+                            .padding(end = 8.dp)
                             .size(5.dp)
                             .background(activeColor.playerMix(Color.White, 0.4f), CircleShape)
                     )
@@ -11476,34 +11435,34 @@ private fun PlayerYoutubeEngagementRow(
         ) {
             // Likes & Dislikes Capsule
             Surface(
-                color = Color.Black.copy(alpha = 0.32f),
+                color = Color.White.copy(alpha = 0.08f),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                 shape = CircleShape
             ) {
                 Row(
-                    modifier = Modifier.height(32.dp),
+                    modifier = Modifier.height(28.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         modifier = Modifier.padding(
-                            start = 12.dp,
-                            end = 10.dp
+                            start = 10.dp,
+                            end = 8.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = if (hasLikes) 0.92f else 0.50f),
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         if (hasLikes) {
                             Text(
                                 text = compactYoutubeCount(track.youtubeLikeCount),
                                 color = Color.White.copy(alpha = 0.92f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
@@ -11511,16 +11470,16 @@ private fun PlayerYoutubeEngagementRow(
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(16.dp)
-                            .background(Color.White.copy(alpha = 0.14f))
+                            .height(14.dp)
+                            .background(Color.White.copy(alpha = 0.12f))
                     )
                     Row(
                         modifier = Modifier.padding(
-                            start = 10.dp,
-                            end = 12.dp
+                            start = 8.dp,
+                            end = 10.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ThumbDown,
@@ -11530,19 +11489,19 @@ private fun PlayerYoutubeEngagementRow(
                             } else {
                                 Color.White.copy(alpha = 0.50f)
                             },
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         when {
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(11.dp),
-                                strokeWidth = 1.6.dp,
+                                modifier = Modifier.size(10.dp),
+                                strokeWidth = 1.4.dp,
                                 color = Color.White.copy(alpha = 0.72f)
                             )
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = Color.White.copy(alpha = 0.88f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
@@ -11552,7 +11511,7 @@ private fun PlayerYoutubeEngagementRow(
 
             // Comments Capsule
             Surface(
-                color = Color.Black.copy(alpha = 0.32f),
+                color = Color.White.copy(alpha = 0.08f),
                 border = BorderStroke(
                     1.dp,
                     if (comments.visible) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.12f)
@@ -11561,36 +11520,36 @@ private fun PlayerYoutubeEngagementRow(
             ) {
                 Box(
                     modifier = Modifier
-                        .height(32.dp)
+                        .height(28.dp)
                         .pressable(enabled = canOpenComments, onClick = onComments)
-                        .padding(horizontal = 12.dp),
+                        .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ChatBubbleOutline,
                             contentDescription = null,
                             tint = if (canOpenComments) {
-                                Color.White.copy(alpha = 0.72f)
+                                Color.White.copy(alpha = 0.75f)
                             } else {
                                 Color.White.copy(alpha = 0.45f)
                             },
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         when {
                             comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                modifier = Modifier.size(11.dp),
-                                strokeWidth = 1.6.dp,
+                                modifier = Modifier.size(10.dp),
+                                strokeWidth = 1.4.dp,
                                 color = Color.White.copy(alpha = 0.72f)
                             )
                             commentBadge.isNotBlank() -> Text(
                                 text = commentBadge,
                                 color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
                         }
@@ -12068,7 +12027,7 @@ private fun PlayerScreen(
                     icon = Icons.Rounded.KeyboardArrowDown,
                     contentDescription = strings.collapsePlayer,
                     size = headerButtonSize,
-                    iconSize = if (compactPlayer) 25.dp else 26.dp,
+                    iconSize = if (compactPlayer) 22.dp else 24.dp,
                     onClick = collapseActions.collapse
                 )
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -12084,8 +12043,10 @@ private fun PlayerScreen(
                         Box(
                             modifier = Modifier
                                 .playerGlass(
-                                    shape = LevyraPlayerDesign.ShapePill,
-                                    fill = LevyraPlayerDesign.GlassFillSunken
+                                    shape = CircleShape,
+                                    fill = Color.Black.copy(alpha = 0.35f),
+                                    borderTop = Color.White.copy(alpha = 0.14f),
+                                    borderBottom = Color.White.copy(alpha = 0.08f)
                                 )
                                 .padding(horizontal = 14.dp, vertical = 7.dp)
                         ) {
@@ -12093,7 +12054,7 @@ private fun PlayerScreen(
                                 text = strings.formatPlayingFrom(track?.source ?: "LEVYRA"),
                                 color = LevyraPlayerDesign.TextSecondary,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
+                                fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.1.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -12106,7 +12067,7 @@ private fun PlayerScreen(
                         icon = Icons.Rounded.PictureInPictureAlt,
                         contentDescription = strings.pictureInPicture,
                         size = headerButtonSize,
-                        iconSize = 20.dp,
+                        iconSize = 19.dp,
                         borderTop = primary.copy(alpha = 0.48f),
                         borderBottom = primary.copy(alpha = 0.14f),
                         onClick = { LevyraPipBridge.enter() }
@@ -12116,7 +12077,7 @@ private fun PlayerScreen(
                     icon = Icons.Rounded.MoreVert,
                     contentDescription = strings.options,
                     size = headerButtonSize,
-                    iconSize = if (compactPlayer) 21.dp else 22.dp,
+                    iconSize = if (compactPlayer) 20.dp else 21.dp,
                     onClick = { viewModel.openAudioQualityPanel() }
                 )
             }
@@ -12276,11 +12237,11 @@ private fun PlayerScreen(
 
         val metaBlock: @Composable (Track) -> Unit = { activeTrack ->
             val isFavorite = activeTrack.id in state.favoriteIds
-            val favoriteFill = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f)
-            val favoriteTint = if (isFavorite) Color(0xFFFF2D55) else Color.White.copy(alpha = 0.85f)
-            val favoriteBorder = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.65f) else Color.White.copy(alpha = 0.22f)
+            val favoriteFill = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f)
+            val favoriteTint = if (isFavorite) Color(0xFFFF2D55) else Color.White.copy(alpha = 0.70f)
+            val favoriteBorder = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.50f) else Color.White.copy(alpha = 0.12f)
             val favoriteScale by animateFloatAsState(
-                targetValue = if (isFavorite) 1.08f else 1f,
+                targetValue = if (isFavorite) 1.12f else 1f,
                 animationSpec = if (state.animationsEnabled) {
                     LevyraPlayerDesign.expressiveSpring()
                 } else {
@@ -12288,7 +12249,7 @@ private fun PlayerScreen(
                 },
                 label = "player-favorite-scale"
             )
-            val heartButtonSize = if (compactPlayer) LevyraPlayerDesign.HeaderButtonCompact else LevyraPlayerDesign.HeaderButton
+            val heartButtonSize = if (compactPlayer) 38.dp else 40.dp
 
             Column(
                 modifier = Modifier
@@ -12358,7 +12319,7 @@ private fun PlayerScreen(
                         icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = strings.favoritesPlain,
                         size = heartButtonSize,
-                        iconSize = if (compactPlayer) 24.dp else 26.dp,
+                        iconSize = if (compactPlayer) 22.dp else 24.dp,
                         tint = favoriteTint,
                         fill = favoriteFill,
                         borderTop = favoriteBorder,
@@ -12376,7 +12337,11 @@ private fun PlayerScreen(
                         icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                         contentDescription = strings.addToPlaylist,
                         size = heartButtonSize,
-                        iconSize = if (compactPlayer) 23.dp else 25.dp,
+                        iconSize = if (compactPlayer) 22.dp else 24.dp,
+                        tint = Color.White.copy(alpha = 0.75f),
+                        fill = Color.White.copy(alpha = 0.06f),
+                        borderTop = Color.White.copy(alpha = 0.12f),
+                        borderBottom = Color.White.copy(alpha = 0.06f),
                         onClick = { playlistTarget = activeTrack }
                     )
                 }

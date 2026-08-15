@@ -123,9 +123,8 @@ internal fun MotionArtworkLayer(
         environment.localAllowed &&
         isPlaying &&
         !videoReady
-    val videoCoversStaticArtwork = presentation == MotionArtworkPresentation.Card
     val staticBedAlpha by animateFloatAsState(
-        targetValue = if (videoReady && videoCoversStaticArtwork) 0f else 1f,
+        targetValue = if (videoReady) 0f else 1f,
         animationSpec = tween(
             durationMillis = STATIC_ARTWORK_BED_FADE_MS,
             delayMillis = if (videoReady) VIDEO_FADE_IN_MS else 0,

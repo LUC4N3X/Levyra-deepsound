@@ -182,11 +182,8 @@ fun PremiumSeekbar(
 
             val trackHeight = LevyraPlayerDesign.TrackHeight.toPx() +
                 (LevyraPlayerDesign.TrackHeightActive - LevyraPlayerDesign.TrackHeight).toPx() * scrub
-            val handleWidth = LevyraPlayerDesign.HandleWidth.toPx() +
-                (LevyraPlayerDesign.HandleWidthActive - LevyraPlayerDesign.HandleWidth).toPx() * scrub
-            val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
-                (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * scrub
-            val gap = trackHeight * 1.05f
+            val thumbRadius = LevyraPlayerDesign.ThumbRadius.toPx() +
+                (LevyraPlayerDesign.ThumbRadiusActive - LevyraPlayerDesign.ThumbRadius).toPx() * scrub
             val capInset = trackHeight / 2f
             val trackStart = capInset
             val trackEnd = (totalWidth - capInset).coerceAtLeast(trackStart)
@@ -194,30 +191,30 @@ fun PremiumSeekbar(
             val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
             val trackTop = centerY - trackHeight / 2f
 
-            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleWidth)
-            val activeEnd = (handleX - handleWidth / 2f - gap).coerceIn(trackStart, trackEnd)
-            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceIn(trackStart, trackEnd)
+            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, thumbRadius * 2f)
 
-            if (inactiveStart < trackEnd) {
-                drawRoundRect(
-                    color = inactiveColor,
-                    topLeft = Offset(inactiveStart, trackTop),
-                    size = Size(trackEnd - inactiveStart, trackHeight),
-                    cornerRadius = radius
-                )
-            }
+            // 1. Inactive continuous background track
+            drawRoundRect(
+                color = inactiveColor,
+                topLeft = Offset(trackStart, trackTop),
+                size = Size(trackSpan, trackHeight),
+                cornerRadius = radius
+            )
 
+            // 2. Buffered progress span
             val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
-            if (bufferedEnd > inactiveStart) {
+            val bufferedSpan = bufferedEnd - trackStart
+            if (bufferedSpan > 0f) {
                 drawRoundRect(
                     color = LevyraPlayerDesign.TrackBuffered,
-                    topLeft = Offset(inactiveStart, trackTop),
-                    size = Size(bufferedEnd - inactiveStart, trackHeight),
+                    topLeft = Offset(trackStart, trackTop),
+                    size = Size(bufferedSpan, trackHeight),
                     cornerRadius = radius
                 )
             }
 
-            val activeSpan = activeEnd - trackStart
+            // 3. Active continuous progress track
+            val activeSpan = handleX - trackStart
             if (activeSpan > 0f) {
                 drawRoundRect(
                     color = activeColor,
@@ -227,22 +224,26 @@ fun PremiumSeekbar(
                 )
             }
 
+            // 4. Thumb glow when scrubbing
             if (scrub > 0.01f) {
-                val glowWidth = handleWidth * 3.4f
-                val glowHeight = handleHeight * 1.36f
-                drawRoundRect(
+                val glowRadius = thumbRadius * 1.8f
+                drawCircle(
                     color = trailingColor.copy(alpha = 0.22f * scrub),
-                    topLeft = Offset(handleX - glowWidth / 2f, centerY - glowHeight / 2f),
-                    size = Size(glowWidth, glowHeight),
-                    cornerRadius = CornerRadius(glowWidth / 2f, glowWidth / 2f)
+                    radius = glowRadius,
+                    center = Offset(handleX, centerY)
                 )
             }
 
-            drawRoundRect(
+            // 5. Thumb circle with soft shadow
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.20f),
+                radius = thumbRadius + 1f,
+                center = Offset(handleX, centerY + 1f)
+            )
+            drawCircle(
                 color = thumbColor,
-                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
-                size = Size(handleWidth, handleHeight),
-                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
+                radius = thumbRadius,
+                center = Offset(handleX, centerY)
             )
         }
     }
