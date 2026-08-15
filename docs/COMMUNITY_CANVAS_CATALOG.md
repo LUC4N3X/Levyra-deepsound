@@ -242,7 +242,9 @@ There is no clock-based freshness check because publication intentionally skips 
 ## Mirror pipeline
 
 `.github/workflows/community-canvas-mirror.yml` runs on relevant pull requests, daily at 04:37 UTC
-and on demand. It:
+and on demand. Trusted same-repository pull requests publish their validated result so the signed PR
+APK exercises the real runtime path; fork and Dependabot pull requests can validate but cannot
+publish. The workflow:
 
 1. verifies Python/Android lookup compatibility vectors;
 2. loads every configured source;
