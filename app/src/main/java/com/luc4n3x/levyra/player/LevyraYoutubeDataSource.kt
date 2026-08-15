@@ -7,16 +7,11 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
-import java.util.concurrent.atomic.AtomicLong
 
 @UnstableApi
 class LevyraYoutubeDataSource private constructor(
     private val delegate: DataSource
 ) : DataSource {
-    companion object {
-        private val requestNumber = AtomicLong(1L)
-    }
-
     class Factory(
         private val upstreamFactory: DataSource.Factory
     ) : DataSource.Factory {
@@ -32,7 +27,6 @@ class LevyraYoutubeDataSource private constructor(
     override fun open(dataSpec: DataSpec): Long {
         val originalUrl = dataSpec.uri.toString()
         if (!isYoutubeMediaUrl(dataSpec.uri)) return delegate.open(dataSpec)
-        val adaptedUri = appendRequestNumber(dataSpec.uri)
         val headers = requestHeaders(originalUrl)
         val httpDelegate = delegate as? HttpDataSource
         if (httpDelegate != null) {
@@ -40,7 +34,6 @@ class LevyraYoutubeDataSource private constructor(
             headers.forEach { (name, value) -> httpDelegate.setRequestProperty(name, value) }
         }
         val adaptedSpec = dataSpec
-            .withUri(adaptedUri)
             .withAdditionalHeaders(headers.filterKeys { !it.equals("User-Agent", true) })
         return delegate.open(adaptedSpec)
     }
@@ -55,12 +48,6 @@ class LevyraYoutubeDataSource private constructor(
 
     override fun close() {
         delegate.close()
-    }
-
-    private fun appendRequestNumber(uri: Uri): Uri {
-        if (!isProgressiveGoogleVideo(uri)) return uri
-        val adaptedUrl = googleVideoPlaybackUrl(uri.toString(), requestNumber.getAndIncrement())
-        return if (adaptedUrl == uri.toString()) uri else Uri.parse(adaptedUrl)
     }
 
     private fun requestHeaders(url: String): Map<String, String> {
@@ -94,26 +81,4 @@ class LevyraYoutubeDataSource private constructor(
             host.endsWith("ytimg.com")
     }
 
-    private fun isProgressiveGoogleVideo(uri: Uri): Boolean {
-        val host = uri.host.orEmpty().lowercase()
-        val path = uri.path.orEmpty().lowercase()
-        if (!host.endsWith("googlevideo.com")) return false
-        if (!path.contains("videoplayback")) return false
-        if (uri.getQueryParameter("sq") != null) return false
-        if (path.endsWith(".m3u8") || path.endsWith(".mpd")) return false
-        return true
-    }
-}
-
-internal fun googleVideoPlaybackUrl(
-    url: String,
-    requestNumber: Long
-): String {
-    val fragmentIndex = url.indexOf('#')
-    val withoutFragment = if (fragmentIndex >= 0) url.substring(0, fragmentIndex) else url
-    val fragment = if (fragmentIndex >= 0) url.substring(fragmentIndex) else ""
-    val query = withoutFragment.substringAfter('?', "")
-    if (query.split('&').any { it.substringBefore('=').equals("rn", ignoreCase = true) }) return url
-    val separator = if (withoutFragment.contains('?')) "&" else "?"
-    return "$withoutFragment${separator}rn=${requestNumber.coerceAtLeast(1L)}$fragment"
 }
