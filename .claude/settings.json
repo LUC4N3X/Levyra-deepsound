@@ -39,7 +39,8 @@
       "Bash(git status*)",
       "Bash(git branch --show-current)",
       "Bash(git branch --list*)",
-      "Bash(python3 scripts/check_android_regex_compatibility.py)"
+      "Bash(python3 scripts/check_android_regex_compatibility.py)",
+      "mcp__jcodemunch"
     ],
     "deny": [
       "Read(./local.properties)",
@@ -64,6 +65,12 @@
             "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh\"",
             "timeout": 600,
             "statusMessage": "Preparing Levyra tooling"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/jcodemunch-start.sh\"",
+            "timeout": 600,
+            "statusMessage": "Preparing Levyra jCodeMunch"
           }
         ]
       }
