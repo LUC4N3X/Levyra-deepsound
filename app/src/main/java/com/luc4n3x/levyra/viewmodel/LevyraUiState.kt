@@ -52,6 +52,7 @@ data class LevyraUiState(
     val isSamplesOpen: Boolean = false,
     val showSettings: Boolean = false,
     val animationsEnabled: Boolean = true,
+    val motionArtworkEnabled: Boolean = true,
     val dynamicColor: Boolean = true,
     val userName: String = "",
     val languageCode: String = "en",

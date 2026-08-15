@@ -24,7 +24,7 @@ class MotionArtworkDestinationPolicyTest {
         assertTrue(
             MotionArtworkDestinationPolicy.isAllowedUrl(
                 "community-canvas",
-                "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4".toHttpUrl()
+                "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4".toHttpUrl()
             )
         )
         assertFalse(

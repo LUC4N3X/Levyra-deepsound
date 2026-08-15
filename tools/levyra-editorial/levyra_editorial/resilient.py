@@ -13,10 +13,13 @@ from .collector import (
     CATALOG_SCHEMA_VERSION,
     EditorialClient,
     build_catalog,
+    build_spotify_canvas_catalog,
     load_config,
     utc_now_iso,
     validate_catalog_file,
+    validate_spotify_canvas_file,
     write_catalog,
+    write_spotify_canvas_catalog,
 )
 from .models import Catalog, Collection
 from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
@@ -128,7 +131,12 @@ def build_resilient_catalog(
     )
 
 
-def run_collection(config_path: Path, output_path: Path) -> None:
+def run_collection(
+    config_path: Path,
+    output_path: Path,
+    canvas_output_path: Path | None = None,
+    require_canvas: bool = False,
+) -> None:
     """Execute one resilient collector run using the repository Actions secret."""
     config = load_config(config_path)
     raw_secret = os.environ.get("LEVYRA_EDITORIAL_SP_DC", "")
@@ -143,9 +151,22 @@ def run_collection(config_path: Path, output_path: Path) -> None:
     else:
         LOGGER.warning("LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata.")
     client = CentralEditorialClient(spotify, youtube_music)
+    canvas_count = 0
     try:
         catalog = build_resilient_catalog(config, client)
         write_catalog(catalog, output_path)
+        if canvas_output_path is not None:
+            try:
+                canvas_catalog = build_spotify_canvas_catalog(catalog, spotify)
+                write_spotify_canvas_catalog(canvas_catalog, canvas_output_path)
+                canvas_count = len(canvas_catalog["items"])
+            except (EditorialSourceError, OSError, ValueError) as error:
+                if require_canvas:
+                    raise
+                LOGGER.warning(
+                    "Spotify Canvas refresh skipped; the last published source remains active: %s",
+                    type(error).__name__,
+                )
     finally:
         client.close()
     LOGGER.info(
@@ -153,6 +174,12 @@ def run_collection(config_path: Path, output_path: Path) -> None:
         output_path,
         len(catalog.collections),
     )
+    if canvas_output_path is not None and canvas_count:
+        LOGGER.info(
+            "Spotify Canvas catalog written to %s with %d item(s).",
+            canvas_output_path,
+            canvas_count,
+        )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -171,10 +198,26 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path("build/editorial/catalog.json"),
         help="Path for the generated catalog.",
     )
-    parser.add_argument(
+    validation = parser.add_mutually_exclusive_group()
+    validation.add_argument(
         "--validate",
         type=Path,
         help="Validate an existing catalog instead of collecting remote data.",
+    )
+    validation.add_argument(
+        "--validate-canvas",
+        type=Path,
+        help="Validate an existing sanitized Spotify Canvas catalog.",
+    )
+    parser.add_argument(
+        "--canvas-output",
+        type=Path,
+        help="Optional path for the best-effort sanitized Spotify Canvas catalog.",
+    )
+    parser.add_argument(
+        "--require-canvas",
+        action="store_true",
+        help="Fail when live Canvas verification cannot produce a sanitized catalog.",
     )
     return parser
 
@@ -190,8 +233,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.validate:
             validate_catalog_file(args.validate)
             LOGGER.info("Catalog validation succeeded: %s", args.validate)
+        elif args.validate_canvas:
+            validate_spotify_canvas_file(args.validate_canvas)
+            LOGGER.info("Spotify Canvas validation succeeded: %s", args.validate_canvas)
         else:
-            run_collection(args.config, args.output)
+            if args.require_canvas and args.canvas_output is None:
+                raise ValueError("--require-canvas requires --canvas-output.")
+            run_collection(args.config, args.output, args.canvas_output, args.require_canvas)
         return 0
     except (EditorialSourceError, OSError, ValueError) as error:
         LOGGER.error("%s", error)

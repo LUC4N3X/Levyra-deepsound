@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -941,6 +942,9 @@ private fun libraryProjection(state: LevyraUiState): LibraryProjection = Library
 
 private data class PlayerProjection(
     val animationsEnabled: Boolean,
+    val motionArtworkEnabled: Boolean,
+    val motionArtwork: MotionArtwork?,
+    val motionArtworkLoading: Boolean,
     val audioNormalization: Boolean,
     val bufferedPositionMs: Long,
     val currentTrack: Track?,
@@ -964,6 +968,9 @@ private data class PlayerProjection(
 
 private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
     animationsEnabled = state.animationsEnabled,
+    motionArtworkEnabled = state.motionArtworkEnabled,
+    motionArtwork = state.motionArtwork,
+    motionArtworkLoading = state.motionArtworkLoading,
     audioNormalization = state.audioNormalization,
     bufferedPositionMs = state.bufferedPositionMs,
     currentTrack = state.currentTrack,

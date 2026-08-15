@@ -9,6 +9,7 @@ import os
 import re
 import struct
 import time
+import uuid
 from collections.abc import Mapping, Sequence
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -25,6 +26,8 @@ SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
 TOKEN_URL = "https://open.spotify.com/api/token"
 API_BASE_URL = "https://api.spotify.com/v1"
 PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v1/query"
+CLIENT_TOKEN_URL = "https://clienttoken.spotify.com/v1/clienttoken"
+CANVAS_URL = "https://spclient.wg.spotify.com/canvaz-cache/v0/canvases"
 
 DEFAULT_SECRET_DICT_URL = (
     "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/"
@@ -45,6 +48,11 @@ TOKEN_ATTEMPTS = (
     ("web-player", "transport"),
     ("web-player", "init"),
 )
+CANVAS_BATCH_SIZE = 50
+MAX_CANVAS_TRACKS = 3_000
+MAX_CANVAS_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_CLIENT_TOKEN_RESPONSE_BYTES = 64 * 1024
+CANVAS_RESPONSE_MIME_TYPES = {"application/protobuf", "application/x-protobuf"}
 
 
 class EditorialSourceError(RuntimeError):
@@ -118,6 +126,102 @@ def generate_totp(
         struct.unpack(">I", digest[offset : offset + 4])[0] & 0x7FFFFFFF
     ) % (10**digits)
     return f"{code:0{digits}d}"
+
+
+def encode_canvas_request(track_ids: Sequence[str]) -> bytes:
+    """Encode the small protobuf request used by Spotify's read-only Canvas endpoint."""
+    output = bytearray()
+    for track_id in track_ids:
+        normalized = str(track_id or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9]{10,80}", normalized):
+            raise SourceApiError("A Spotify Canvas track ID is invalid.")
+        track_uri = f"spotify:track:{normalized}".encode()
+        track_message = b"\x0a" + _encode_varint(len(track_uri)) + track_uri
+        output.extend(b"\x0a")
+        output.extend(_encode_varint(len(track_message)))
+        output.extend(track_message)
+    return bytes(output)
+
+
+def decode_canvas_response(payload: bytes) -> list[tuple[str, str]]:
+    """Decode only the track URI and media URL fields from a bounded Canvas response."""
+    canvases: list[tuple[str, str]] = []
+    for field_number, wire_type, value in _iter_protobuf_fields(payload):
+        if field_number != 1 or wire_type != 2 or not isinstance(value, bytes):
+            continue
+        canvas_url: str | None = None
+        track_uri: str | None = None
+        for canvas_field, canvas_wire, canvas_value in _iter_protobuf_fields(value):
+            if canvas_wire != 2 or not isinstance(canvas_value, bytes):
+                continue
+            try:
+                decoded = canvas_value.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+            if canvas_field == 2:
+                canvas_url = decoded
+            elif canvas_field == 5:
+                track_uri = decoded
+        if canvas_url and track_uri:
+            canvases.append((track_uri, canvas_url))
+    return canvases
+
+
+def _encode_varint(value: int) -> bytes:
+    if value < 0:
+        raise ValueError("A protobuf varint cannot be negative.")
+    output = bytearray()
+    while value > 0x7F:
+        output.append((value & 0x7F) | 0x80)
+        value >>= 7
+    output.append(value)
+    return bytes(output)
+
+
+def _read_varint(payload: bytes, offset: int) -> tuple[int, int]:
+    value = 0
+    for byte_index in range(10):
+        if offset >= len(payload):
+            raise SourceApiError("Spotify Canvas returned truncated protobuf data.")
+        current = payload[offset]
+        offset += 1
+        value |= (current & 0x7F) << (byte_index * 7)
+        if current & 0x80 == 0:
+            return value, offset
+    raise SourceApiError("Spotify Canvas returned an oversized protobuf varint.")
+
+
+def _iter_protobuf_fields(payload: bytes) -> list[tuple[int, int, bytes | int]]:
+    fields: list[tuple[int, int, bytes | int]] = []
+    offset = 0
+    while offset < len(payload):
+        key, offset = _read_varint(payload, offset)
+        field_number = key >> 3
+        wire_type = key & 0x07
+        if field_number <= 0:
+            raise SourceApiError("Spotify Canvas returned an invalid protobuf field.")
+        if wire_type == 0:
+            value, offset = _read_varint(payload, offset)
+        elif wire_type == 1:
+            if offset + 8 > len(payload):
+                raise SourceApiError("Spotify Canvas returned truncated protobuf data.")
+            value = payload[offset : offset + 8]
+            offset += 8
+        elif wire_type == 2:
+            length, offset = _read_varint(payload, offset)
+            if length > len(payload) - offset:
+                raise SourceApiError("Spotify Canvas returned truncated protobuf data.")
+            value = payload[offset : offset + length]
+            offset += length
+        elif wire_type == 5:
+            if offset + 4 > len(payload):
+                raise SourceApiError("Spotify Canvas returned truncated protobuf data.")
+            value = payload[offset : offset + 4]
+            offset += 4
+        else:
+            raise SourceApiError("Spotify Canvas returned an unsupported protobuf wire type.")
+        fields.append((field_number, wire_type, value))
+    return fields
 
 
 def select_latest_totp_secret(
@@ -260,6 +364,9 @@ class SpotifyWebClient:
         self._timeout = timeout_seconds
         self._access_token: str | None = None
         self._client_id: str | None = None
+        self._client_token: str | None = None
+        self._client_token_expires_at = 0.0
+        self._device_id = str(uuid.uuid4())
         self._expires_at_ms = 0
         self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
         self._track_metadata: dict[str, Mapping[str, Any]] = {}
@@ -540,6 +647,133 @@ class SpotifyWebClient:
                     if value is not None:
                         album[key] = value
         return items
+
+    def get_canvas_urls(self, track_ids: Sequence[str]) -> dict[str, str]:
+        """Resolve Canvas media for public track IDs without exposing account material."""
+        unique_ids = list(dict.fromkeys(str(value or "").strip() for value in track_ids))
+        if len(unique_ids) > MAX_CANVAS_TRACKS:
+            raise SourceApiError("The Spotify Canvas request exceeds the bounded track limit.")
+        if not unique_ids:
+            return {}
+        encode_canvas_request(unique_ids)
+        resolved: dict[str, str] = {}
+        for offset in range(0, len(unique_ids), CANVAS_BATCH_SIZE):
+            chunk = unique_ids[offset : offset + CANVAS_BATCH_SIZE]
+            response = self._request_canvas_batch(chunk)
+            for track_uri, canvas_url in decode_canvas_response(response):
+                prefix = "spotify:track:"
+                if not track_uri.startswith(prefix):
+                    continue
+                track_id = track_uri.removeprefix(prefix)
+                if track_id in chunk and track_id not in resolved:
+                    resolved[track_id] = canvas_url
+        return resolved
+
+    def _request_canvas_batch(self, track_ids: Sequence[str]) -> bytes:
+        if self._access_token is None:
+            self.authenticate()
+        body = encode_canvas_request(track_ids)
+
+        def request() -> requests.Response:
+            return self._session.post(
+                CANVAS_URL,
+                data=body,
+                headers=self._canvas_headers(),
+                timeout=self._timeout,
+                stream=True,
+                allow_redirects=False,
+            )
+
+        response = request()
+        if response.status_code in {401, 403}:
+            response.close()
+            self.authenticate()
+            self._client_token = None
+            response = request()
+        if response.status_code == 429:
+            delay = _bounded_retry_after(response.headers.get("Retry-After"))
+            response.close()
+            if delay > 0:
+                time.sleep(delay)
+            response = request()
+        try:
+            if response.status_code != 200:
+                raise SourceApiError(
+                    f"Spotify Canvas lookup failed with HTTP {response.status_code}."
+                )
+            content_type = response.headers.get("Content-Type", "").partition(";")[0].strip().lower()
+            if content_type not in CANVAS_RESPONSE_MIME_TYPES:
+                raise SourceApiError("Spotify Canvas returned an unsupported media type.")
+            return _read_bounded_response(response, MAX_CANVAS_RESPONSE_BYTES)
+        finally:
+            response.close()
+
+    def _canvas_headers(self) -> dict[str, str]:
+        if self._access_token is None:
+            raise AuthenticationError("The editorial source is not authenticated.")
+        return {
+            "Authorization": f"Bearer {self._access_token}",
+            "Client-Token": self._get_client_token(),
+            "Accept": "application/protobuf",
+            "Content-Type": "application/protobuf",
+            "App-Platform": "WebPlayer",
+        }
+
+    def _get_client_token(self) -> str:
+        if self._client_token and time.monotonic() < self._client_token_expires_at:
+            return self._client_token
+        if not self._client_id:
+            if self._access_token is None:
+                self.authenticate()
+            if not self._client_id:
+                raise AuthenticationError("Spotify did not provide a web-player client ID.")
+        response = self._session.post(
+            CLIENT_TOKEN_URL,
+            json={
+                "client_data": {
+                    "client_version": SPOTIFY_APP_VERSION,
+                    "client_id": self._client_id,
+                    "js_sdk_data": {
+                        "device_brand": "unknown",
+                        "device_model": "unknown",
+                        "os": "linux",
+                        "os_version": "unknown",
+                        "device_id": self._device_id,
+                        "device_type": "computer",
+                    },
+                }
+            },
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            timeout=self._timeout,
+            stream=True,
+            allow_redirects=False,
+        )
+        try:
+            if response.status_code != 200:
+                raise AuthenticationError(
+                    f"Spotify client-token endpoint returned HTTP {response.status_code}."
+                )
+            content_type = response.headers.get("Content-Type", "").partition(";")[0].strip().lower()
+            if content_type != "application/json":
+                raise AuthenticationError(
+                    "Spotify client-token endpoint returned an unsupported media type."
+                )
+            try:
+                payload = json.loads(_read_bounded_response(response, MAX_CLIENT_TOKEN_RESPONSE_BYTES))
+            except (SourceApiError, UnicodeDecodeError, ValueError) as error:
+                raise AuthenticationError("Spotify client-token endpoint returned invalid JSON.") from error
+        finally:
+            response.close()
+        granted = payload.get("granted_token") if isinstance(payload, Mapping) else None
+        client_token_value = (
+            str(granted.get("token") or "").strip() if isinstance(granted, Mapping) else ""
+        )
+        expires_after = granted.get("expires_after_seconds") if isinstance(granted, Mapping) else None
+        if not client_token_value or not isinstance(expires_after, int) or expires_after <= 0:
+            raise AuthenticationError("Spotify client-token endpoint returned an invalid token.")
+        self._client_token = client_token_value
+        self._client_token_expires_at = time.monotonic() + max(1, expires_after - 30)
+        return client_token_value
 
     def _api_headers(self) -> dict[str, str]:
         if self._access_token is None:
@@ -843,6 +1077,24 @@ def _playlist_union(payload: Mapping[str, Any]) -> dict[str, Any]:
             "The editorial pathfinder response is missing playlistV2."
         )
     return dict(playlist)
+
+
+def _read_bounded_response(response: requests.Response, limit: int) -> bytes:
+    raw_length = response.headers.get("Content-Length")
+    if raw_length:
+        try:
+            if int(raw_length) > limit:
+                raise SourceApiError("Spotify Canvas response exceeds the size limit.")
+        except ValueError as error:
+            raise SourceApiError("Spotify Canvas returned an invalid content length.") from error
+    output = bytearray()
+    for chunk in response.iter_content(chunk_size=16 * 1024):
+        if not chunk:
+            continue
+        output.extend(chunk)
+        if len(output) > limit:
+            raise SourceApiError("Spotify Canvas response exceeds the size limit.")
+    return bytes(output)
 
 
 def _convert_playlist_item(

@@ -43,13 +43,13 @@ object LevyraPlayerDesign {
     val HeaderButtonCompact: Dp = 38.dp
     val UtilityButton: Dp = 44.dp
     val UtilityButtonCompact: Dp = 40.dp
-    val TransportButton: Dp = 56.dp
+    val TransportButton: Dp = 54.dp
     val TransportButtonCompact: Dp = 48.dp
     val TransportSquircleCorner: Dp = 18.dp
     val TransportSquircleCornerCompact: Dp = 16.dp
-    val PrimaryWidth: Dp = 78.dp
+    val PrimaryWidth: Dp = 76.dp
     val PrimaryWidthCompact: Dp = 70.dp
-    val PrimaryHeight: Dp = 66.dp
+    val PrimaryHeight: Dp = 64.dp
     val PrimaryHeightCompact: Dp = 58.dp
     val PrimaryCorner: Dp = 24.dp
     val MinimumTouchTarget: Dp = 48.dp
@@ -92,12 +92,12 @@ object LevyraPlayerDesign {
     const val WavePeriodDp: Float = 26f
     const val WaveCycleMillis: Int = 1_600
 
-    val GlassFill: Color = Color.White.copy(alpha = 0.08f)
-    val GlassFillStrong: Color = Color.White.copy(alpha = 0.14f)
-    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.35f)
-    val GlassBorderTop: Color = Color.White.copy(alpha = 0.18f)
-    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.08f)
-    val GlassSpecular: Color = Color.White.copy(alpha = 0.04f)
+    val GlassFill: Color = Color.White.copy(alpha = 0.055f)
+    val GlassFillStrong: Color = Color.White.copy(alpha = 0.10f)
+    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.28f)
+    val GlassBorderTop: Color = Color.White.copy(alpha = 0.14f)
+    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.05f)
+    val GlassSpecular: Color = Color.White.copy(alpha = 0.025f)
 
     val TextPrimary: Color = Color.White
     val TextSecondary: Color = Color.White.copy(alpha = 0.76f)
