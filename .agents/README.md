@@ -120,6 +120,7 @@ boundaries.
 | `levyra-project-manager` | Specification, roadmap, active phase, acceptance criteria, and handoff |
 | `levyra-openclaw-orchestrator` | OpenClaw delegation, coding-runtime coordination, review, and evidence |
 | `levyra-context-efficiency` | RTK routing, focused context selection, measured savings, and raw-output fallback |
+| `levyra-codex-bootstrap` | Codex SessionStart tooling bootstrap, jCodeMunch/RTK/Matt skill setup, and fail-open validation |
 | `levyra-real-engineering` | Matt Pocock-style clarify/spec/tickets/implement/review routing for non-trivial work |
 | `levyra-player` | Android playback, queue, Media3, MediaSession, notification, and audio/video modes |
 | `levyra-extractor` | InnerTube, extraction, stream resolution, fallback, retry, and cache |
