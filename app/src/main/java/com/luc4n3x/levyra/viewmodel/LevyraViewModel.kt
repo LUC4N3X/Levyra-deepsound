@@ -994,7 +994,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.value.currentTrack
                 ?.takeUnless(::isLocalPlaybackTrack)
                 ?.let { resolver.invalidate(it, _state.value.isVideoMode) }
-            _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
+            _state.update { it.copy(playerError = cleanPlaybackError(errorMsg), isPlaying = false, isResolving = false) }
         }
         applyFollowedArtists(followedArtistsStore.load())
         startTicker()
@@ -1842,7 +1842,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         pendingVideoMode = null,
                         isResolving = false,
                         isPlaying = player.isPlaying || snapshot.isPlaying,
-                        playerError = cleanUserError(error)
+                        playerError = cleanPlaybackError(error)
                     )
                 }
             }
@@ -1900,7 +1900,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 if (transitionId != streamTransitionId) return@launch
-                val message = cleanUserError(error)
+                val message = cleanPlaybackError(error)
                 player.failRecovery(message)
                 _state.update { it.copy(isResolving = false, isPlaying = false, playerError = message) }
             }
@@ -3884,6 +3884,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
 
+    private fun cleanPlaybackError(error: Throwable): String {
+        if (error is TimeoutCancellationException) {
+            return LevyraStrings.forCode(_state.value.languageCode)
+                .localizeUserError("timeout", youtubePlayback = true)
+        }
+        return cleanPlaybackError(error.message)
+    }
+
+    private fun cleanPlaybackError(message: String?): String {
+        return LevyraStrings.forCode(_state.value.languageCode)
+            .localizeUserError(message, youtubePlayback = true)
+    }
+
     private fun cleanUserError(error: Throwable): String {
         if (error is TimeoutCancellationException) {
             return LevyraStrings.forCode(_state.value.languageCode).localizeUserError("timeout")
@@ -4909,7 +4922,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 bufferedPositionMs = 0L,
                 durationMs = track.durationMs,
                 currentTrack = track.copy(streamUrl = ""),
-                playerError = if (retryWhenOnline) null else cleanUserError(error)
+                playerError = if (retryWhenOnline) null else cleanPlaybackError(error)
             )
         }
         if (retryWhenOnline) scheduleOfflineAutoAdvanceRetry(track, requestId)
@@ -6641,7 +6654,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             bufferedPositionMs = buffered.coerceAtLeast(position),
                             durationMs = duration,
                             isPlaying = player.isPlaying,
-                            playerError = if (player.isPlaying) null else it.playerError,
                             activeLyric = active
                         )
                     }

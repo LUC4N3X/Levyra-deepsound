@@ -473,6 +473,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
+            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
             if (streamStillFresh(track.streamUrl)) {
                 store(track, track, isVideoMode)
                 return track
@@ -679,12 +680,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
         if (manifest != null && manifest.isFresh(now) && manifestUrlsUsable(manifest, isVideoMode, preferMp4Audio)) {
-            recordSourceMatchSuccess(track, isVideoMode, audioQuality, preferMp4Audio)
-            return track.applyManifest(
+            val restored = track.applyManifest(
                 manifest = manifest,
                 sourceVideoUrl = stored.entity.sourceVideoUrl,
                 source = stored.entity.provider.ifBlank { "Persistent source match" }
             )
+            if (!isVideoMode || restored.hasVideoPlaybackPayload()) {
+                recordSourceMatchSuccess(track, isVideoMode, audioQuality, preferMp4Audio)
+                return restored
+            }
         }
         if (!allowNetworkRefresh) return null
         val sourceVideoId = stored.entity.sourceVideoId
@@ -2289,11 +2293,6 @@ private fun Throwable.playbackDiagnostic(): String {
 
 class PlaybackBlockedException(message: String) : IllegalStateException(message)
 
-/**
- * Clients that still receive classic progressive `videoplayback` URLs. Other clients are being
- * moved to server-driven adaptive delivery, whose URLs serve the first range and then reject
- * continuations, so playback stops as soon as the initial buffer is consumed.
- */
 private val PROGRESSIVE_STREAM_CLIENTS = setOf("VISIONOS", "ANDROID_VR")
 
 private data class ClientProfile(

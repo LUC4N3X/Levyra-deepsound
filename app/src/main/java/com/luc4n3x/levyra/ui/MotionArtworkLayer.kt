@@ -71,13 +71,13 @@ internal fun MotionArtworkLayer(
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
     val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
-    var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
+    var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation) {
         mutableStateOf(false)
     }
-    var videoReady by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
+    var videoReady by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation) {
         mutableStateOf(false)
     }
-    var videoRetryCount by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
+    var videoRetryCount by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation) {
         mutableStateOf(0)
     }
     val videoArtwork = artwork?.takeIf {
@@ -358,11 +358,11 @@ private fun MotionArtworkVideo(
     val context = LocalContext.current
     val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
     val currentOnUnavailable by rememberUpdatedState(onUnavailable)
-    var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType) {
+    var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) {
         mutableStateOf(false)
     }
-    var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType) { mutableStateOf(false) }
-    var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType) {
+    var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) { mutableStateOf(false) }
+    var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) {
         mutableStateOf(VideoSize.UNKNOWN)
     }
     var surfaceSize by remember { mutableStateOf(IntSize.Zero) }

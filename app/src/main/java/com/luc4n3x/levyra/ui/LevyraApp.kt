@@ -10916,24 +10916,25 @@ private fun PlayerImmersiveBackdrop(
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val animationsEnabled = LocalAnimationsEnabled.current
     val tint = animateColorAsState(
         targetValue = ambience.tint,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-backdrop-tint"
     )
     val elevated = animateColorAsState(
         targetValue = ambience.elevated,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-backdrop-elevated"
     )
     val base = animateColorAsState(
         targetValue = ambience.base,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-backdrop-base"
     )
     val glow = animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0.74f,
-        animationSpec = tween(600, easing = FastOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(600, easing = FastOutSlowInEasing) else snap(),
         label = "player-backdrop-glow"
     )
 
@@ -10985,7 +10986,7 @@ private fun PlayerArtworkCanvas(
     val context = LocalContext.current
     val artworkShadow by animateDpAsState(
         targetValue = if (isPlaying) 26.dp else 14.dp,
-        animationSpec = tween(420, easing = FastOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(420, easing = FastOutSlowInEasing) else snap(),
         label = "player-artwork-shadow"
     )
     val primary = Color(track.accentStart)
@@ -11090,14 +11091,15 @@ private fun PlayerCanvasFusionScrim(
     ambience: PlayerAmbience,
     modifier: Modifier = Modifier
 ) {
+    val animationsEnabled = LocalAnimationsEnabled.current
     val base = animateColorAsState(
         targetValue = ambience.base,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-canvas-fusion-base"
     )
     val control = animateColorAsState(
         targetValue = ambience.control,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-canvas-fusion-control"
     )
     Box(
@@ -11233,11 +11235,12 @@ private fun LevyraControlPulseHandle(
     onToggle: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val animationsEnabled = LocalAnimationsEnabled.current
     val width = if (compact) 82.dp else 88.dp
     val height = if (compact) 26.dp else 28.dp
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        animationSpec = if (animationsEnabled) tween(durationMillis = 200, easing = FastOutSlowInEasing) else snap(),
         label = "player-shelf-chevron"
     )
 
@@ -11416,6 +11419,7 @@ private fun PlayerQuickAction(
                 minWidth = LevyraPlayerDesign.MinimumTouchTarget,
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
+            .semantics { this.contentDescription = contentDescription }
             .pressable(enabled = enabled, pressedScale = 0.92f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -11435,7 +11439,7 @@ private fun PlayerQuickAction(
             } else {
                 Icon(
                     imageVector = icon,
-                    contentDescription = contentDescription,
+                    contentDescription = null,
                     tint = tint,
                     modifier = Modifier.size(if (compact) 19.dp else 20.dp)
                 )
@@ -17414,12 +17418,12 @@ private fun MiniPlayer(
     val miniSecondaryContent = LevyraPlayerDesign.TextSecondary
     val animatedProgress = animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(420, easing = LinearOutSlowInEasing),
+        animationSpec = if (animated) tween(420, easing = LinearOutSlowInEasing) else snap(),
         label = "mini-progress"
     )
     val animatedBuffered = animateFloatAsState(
         targetValue = bufferedProgress.coerceIn(0f, 1f),
-        animationSpec = tween(520, easing = LinearOutSlowInEasing),
+        animationSpec = if (animated) tween(520, easing = LinearOutSlowInEasing) else snap(),
         label = "mini-buffered"
     )
     var swipeOffsetPx by remember(track.id) { mutableStateOf(0f) }

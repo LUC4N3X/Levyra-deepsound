@@ -337,11 +337,11 @@ internal fun selectAppleEditorialVideo(editorialVideo: JSONObject?): AppleEditor
     var best: AppleEditorialVideo? = null
     var bestRank = Int.MIN_VALUE
     var bestArea = -1L
-    keys.forEachIndexed { keyIndex, key ->
-        val asset = root.optJSONObject(key) ?: return@forEachIndexed
+    keys.take(APPLE_EDITORIAL_MAX_ASSETS).forEach { key ->
+        val asset = root.optJSONObject(key) ?: return@forEach
         val url = APPLE_EDITORIAL_URL_FIELDS.firstNotNullOfOrNull { field ->
             asset.optString(field).trim().takeIf { it.startsWith("https://") }
-        } ?: return@forEachIndexed
+        } ?: return@forEach
         val frame = asset.optJSONObject("previewFrame")
         val width = frame?.optInt("width")?.takeIf { it > 0 }
         val height = frame?.optInt("height")?.takeIf { it > 0 }
@@ -360,7 +360,6 @@ internal fun selectAppleEditorialVideo(editorialVideo: JSONObject?): AppleEditor
             bestRank = orientationRank
             bestArea = area
         }
-        if (keyIndex >= APPLE_EDITORIAL_MAX_ASSETS) return best
     }
     return best
 }
