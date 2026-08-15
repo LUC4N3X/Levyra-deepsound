@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - "catalog/community-canvas-sources.json"
-      - "catalog/community-canvas-extra.json"
       - "scripts/sync_community_canvas.py"
       - "scripts/build_community_canvas_index.py"
       - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
@@ -103,7 +102,9 @@ jobs:
 
   publish:
     name: Publish Mirror Branch
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     needs: normalize
     runs-on: ubuntu-latest
     timeout-minutes: 10

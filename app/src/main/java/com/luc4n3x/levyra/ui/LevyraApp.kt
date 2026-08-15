@@ -1481,6 +1481,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
                 SettingsOverlay(
                     animationsEnabled = state.animationsEnabled,
+                    motionArtworkEnabled = state.motionArtworkEnabled,
                     dynamicColor = state.dynamicColor,
                     sponsorBlock = state.sponsorBlockEnabled,
                     skipSilence = state.skipSilence,
@@ -1498,6 +1499,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onDownloadSettings = viewModel::setDownloadSettings,
                     onBackupSettings = viewModel::setBackupSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
+                    onMotionArtwork = viewModel::setMotionArtworkEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
                     onSkipSilence = viewModel::setSkipSilence,
@@ -11134,6 +11136,95 @@ private fun PlayerArtworkCanvas(
 }
 
 @Composable
+private fun PlayerImmersiveMotionCanvas(
+    track: Track,
+    artworkUrl: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val animateFallback = motionArtwork == null && animationsEnabled && isPlaying
+    val fallbackScale: Float
+    val fallbackDrift: Float
+    if (animateFallback) {
+        val fallbackMotion = rememberInfiniteTransition(label = "player-artwork-fallback")
+        fallbackScale = fallbackMotion.animateFloat(
+            initialValue = 1.08f,
+            targetValue = 1.16f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(14_000, easing = LevyraPlayerDesign.Standard),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-fallback-scale"
+        ).value
+        fallbackDrift = fallbackMotion.animateFloat(
+            initialValue = -10f,
+            targetValue = 10f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(18_000, easing = LevyraPlayerDesign.Standard),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-fallback-drift"
+        ).value
+    } else {
+        fallbackScale = 1.08f
+        fallbackDrift = 0f
+    }
+    Box(modifier = modifier) {
+        MotionArtworkLayer(
+            artwork = motionArtwork,
+            enabled = animationsEnabled,
+            isPlaying = isPlaying,
+            cornerRadius = 0.dp,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = 0.9f }
+        ) {
+            if (artworkUrl.isNotBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(artworkUrl)
+                        .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            if (animateFallback) {
+                                scaleX = fallbackScale
+                                scaleY = fallbackScale
+                                translationX = fallbackDrift
+                            }
+                        }
+                )
+            } else {
+                InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Black.copy(alpha = 0.24f),
+                            0.38f to Color.Black.copy(alpha = 0.12f),
+                            0.58f to Color.Black.copy(alpha = 0.46f),
+                            0.74f to Color.Black.copy(alpha = 0.84f),
+                            1f to Color.Black.copy(alpha = 0.99f)
+                        )
+                    )
+                )
+        )
+    }
+}
+
+@Composable
 private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
@@ -11468,8 +11559,6 @@ private fun compactYoutubeCount(value: Long): String {
 private fun PlayerYoutubeEngagementRow(
     track: Track,
     engagement: YoutubeEngagementState,
-    primary: Color,
-    secondary: Color,
     compact: Boolean,
     onComments: () -> Unit
 ) {
@@ -11494,7 +11583,7 @@ private fun PlayerYoutubeEngagementRow(
         ) {
             // Likes & Dislikes Capsule
             Surface(
-                color = Color(0xFF1E152E).copy(alpha = 0.82f),
+                color = Color.Black.copy(alpha = 0.32f),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                 shape = CircleShape
             ) {
@@ -11544,7 +11633,7 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ThumbDown,
                             contentDescription = null,
                             tint = if (hasDislikeEstimate) {
-                                secondary.playerMix(Color.White, 0.65f)
+                                Color.White.copy(alpha = 0.72f)
                             } else {
                                 Color.White.copy(alpha = 0.50f)
                             },
@@ -11554,7 +11643,7 @@ private fun PlayerYoutubeEngagementRow(
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
                                 modifier = Modifier.size(11.dp),
                                 strokeWidth = 1.6.dp,
-                                color = secondary.playerMix(Color.White, 0.65f)
+                                color = Color.White.copy(alpha = 0.72f)
                             )
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
@@ -11570,10 +11659,10 @@ private fun PlayerYoutubeEngagementRow(
 
             // Comments Capsule
             Surface(
-                color = Color(0xFF1E152E).copy(alpha = 0.82f),
+                color = Color.Black.copy(alpha = 0.32f),
                 border = BorderStroke(
                     1.dp,
-                    if (comments.visible) primary.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                    if (comments.visible) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.12f)
                 ),
                 shape = CircleShape
             ) {
@@ -11592,7 +11681,7 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ChatBubbleOutline,
                             contentDescription = null,
                             tint = if (canOpenComments) {
-                                primary.playerMix(Color.White, 0.65f)
+                                Color.White.copy(alpha = 0.72f)
                             } else {
                                 Color.White.copy(alpha = 0.45f)
                             },
@@ -11602,7 +11691,7 @@ private fun PlayerYoutubeEngagementRow(
                             comments.loading && !comments.loaded -> CircularProgressIndicator(
                                 modifier = Modifier.size(11.dp),
                                 strokeWidth = 1.6.dp,
-                                color = primary.playerMix(Color.White, 0.60f)
+                                color = Color.White.copy(alpha = 0.72f)
                             )
                             commentBadge.isNotBlank() -> Text(
                                 text = commentBadge,
@@ -11938,7 +12027,7 @@ private fun PlayerScreen(
             repeat = strings.repeat
         )
     }
-    val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
+    val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
@@ -12017,6 +12106,17 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
+        val immersiveArtworkEnabled = state.motionArtworkEnabled &&
+            state.animationsEnabled &&
+            playerPane == LevyraPlayerPane.Stacked &&
+            !state.isVideoMode &&
+            track != null
+        val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
+        val immersiveMotionAlpha by animateFloatAsState(
+            targetValue = if (immersiveArtworkEnabled) 1f else 0f,
+            animationSpec = if (state.animationsEnabled) tween(520, easing = LinearOutSlowInEasing) else snap(),
+            label = "player-immersive-motion-alpha"
+        )
 
         PlayerImmersiveBackdrop(
             primaryTarget = primaryTarget,
@@ -12024,6 +12124,26 @@ private fun PlayerScreen(
             isPlaying = state.isPlaying,
             modifier = Modifier.fillMaxSize()
         )
+        if (track != null && immersiveArtworkEnabled) {
+            PlayerImmersiveMotionCanvas(
+                track = track,
+                artworkUrl = artworkUrl,
+                motionArtwork = immersiveMotionArtwork,
+                animationsEnabled = state.animationsEnabled,
+                isPlaying = state.isPlaying,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = if (morphActive) 0f else {
+                            immersiveMotionAlpha * playerSwipeContentAlpha(
+                                settledSwipeOffset,
+                                size.width
+                            )
+                        }
+                        translationX = settledSwipeOffset * 0.32f
+                    }
+            )
+        }
 
         val headerBlock: @Composable () -> Unit = {
             val headerButtonSize = if (compactPlayer) {
@@ -12134,7 +12254,7 @@ private fun PlayerScreen(
                     PlayerArtworkCanvas(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
-                        motionArtwork = state.motionArtwork,
+                        motionArtwork = state.motionArtwork.takeUnless { immersiveArtworkEnabled },
                         animationsEnabled = state.animationsEnabled && !state.isVideoMode,
                         isPlaying = state.isPlaying,
                         cornerRadius = artCorner,
@@ -12149,7 +12269,8 @@ private fun PlayerScreen(
                                 alpha = if (morphActive) {
                                     0f
                                 } else {
-                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                                    playerSwipeContentAlpha(settledSwipeOffset, size.width) *
+                                        (1f - immersiveMotionAlpha)
                                 }
                             }
                     )
@@ -12356,8 +12477,6 @@ private fun PlayerScreen(
                 PlayerYoutubeEngagementRow(
                     track = activeTrack,
                     engagement = state.youtubeEngagement,
-                    primary = primary,
-                    secondary = secondary,
                     compact = compactPlayer,
                     onComments = viewModel::openYoutubeComments
                 )
@@ -12369,8 +12488,8 @@ private fun PlayerScreen(
                 positionMs = state.positionMs,
                 bufferedPositionMs = state.bufferedPositionMs,
                 durationMs = state.durationMs,
-                activeColor = primary,
-                secondaryColor = secondary,
+                activeColor = Color.White.copy(alpha = 0.94f),
+                secondaryColor = Color.White.copy(alpha = 0.62f),
                 isPlaying = state.isPlaying,
                 animationsEnabled = state.animationsEnabled,
                 compact = compactPlayer,
@@ -14178,6 +14297,7 @@ private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onCli
 @Composable
 private fun SettingsOverlay(
     animationsEnabled: Boolean,
+    motionArtworkEnabled: Boolean,
     dynamicColor: Boolean,
     sponsorBlock: Boolean,
     skipSilence: Boolean,
@@ -14195,6 +14315,7 @@ private fun SettingsOverlay(
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
+    onMotionArtwork: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
     onSkipSilence: (Boolean) -> Unit,
@@ -14341,6 +14462,15 @@ private fun SettingsOverlay(
                                     subtitle = strings.animationsSubtitle,
                                     checked = animationsEnabled,
                                     onCheckedChange = onAnimations
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.AutoAwesome,
+                                    title = strings.motionArtwork,
+                                    subtitle = strings.motionArtworkSubtitle,
+                                    checked = motionArtworkEnabled,
+                                    onCheckedChange = onMotionArtwork
                                 )
                             }
                             item {

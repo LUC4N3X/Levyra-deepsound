@@ -232,8 +232,6 @@ fun PlayerTransportControls(
         PlayerPrimaryButton(
             isPlaying = isPlaying,
             isResolving = isResolving,
-            accentTarget = accents.primaryTarget,
-            accentSecondaryTarget = accents.secondaryTarget,
             width = primaryWidth,
             height = primaryHeight,
             animated = animated,
@@ -360,11 +358,11 @@ private fun Modifier.playerPrimarySurface(
     ambientColor: Color
 ): Modifier = this
     .shadow(
-        elevation = 14.dp,
+        elevation = 10.dp,
         shape = shape,
         clip = false,
-        ambientColor = ambientColor.copy(alpha = 0.55f),
-        spotColor = Color.Black.copy(alpha = 0.60f)
+        ambientColor = ambientColor.copy(alpha = 0.38f),
+        spotColor = Color.Black.copy(alpha = 0.52f)
     )
     .background(
         Brush.linearGradient(gradientColors),
@@ -373,7 +371,7 @@ private fun Modifier.playerPrimarySurface(
     .border(
         BorderStroke(
             1.dp,
-            Color.White.copy(alpha = 0.35f)
+            Color.White.copy(alpha = 0.24f)
         ),
         shape
     )
@@ -405,8 +403,6 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, ani
 private fun PlayerPrimaryButton(
     isPlaying: Boolean,
     isResolving: Boolean,
-    accentTarget: Color,
-    accentSecondaryTarget: Color,
     width: Dp,
     height: Dp,
     animated: Boolean,
@@ -414,14 +410,14 @@ private fun PlayerPrimaryButton(
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val contentColor = Color(0xFF0F0E17)
+    val contentColor = Color(0xFF171717)
     val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
-    val gradientColors = remember(accentTarget, accentSecondaryTarget) {
+    val gradientColors = remember {
         listOf(
-            Color(0xFF7A88FF).playerMix(accentTarget, 0.25f),
-            Color(0xFFC850C0).playerMix(accentSecondaryTarget, 0.25f),
-            Color(0xFFFF6584).playerMix(accentTarget, 0.15f)
+            Color.White.copy(alpha = 0.98f),
+            Color(0xFFF2F2F4),
+            Color(0xFFE4E4E8)
         )
     }
 

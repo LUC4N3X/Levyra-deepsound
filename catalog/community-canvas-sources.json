@@ -2,14 +2,9 @@
   "version": 1,
   "sources": [
     {
-      "name": "levyra-curated",
-      "path": "catalog/community-canvas-extra.json",
+      "name": "spotify-editorial-canvas",
+      "url": "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/spotify-canvas.json",
       "required": false
-    },
-    {
-      "name": "vivimusicanvas",
-      "url": "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json",
-      "required": true
     }
   ]
 }

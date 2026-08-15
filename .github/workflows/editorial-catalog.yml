@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "tools/levyra-editorial/**"
+      - "catalog/community-canvas-sources.json"
+      - "scripts/sync_community_canvas.py"
+      - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/feature/motion/MotionArtworkDestinationPolicyTest.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/ChartOfficialArtworkResolver.kt"
@@ -53,9 +57,8 @@ jobs:
   integration:
     name: Test Live Editorial Collection
     if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main'
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -65,7 +68,7 @@ jobs:
       LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
       LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
     steps:
-      - name: Checkout Pull Request
+      - name: Checkout Trusted Main
         uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -87,7 +90,7 @@ jobs:
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json --require-canvas
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
@@ -111,6 +114,12 @@ jobs:
             echo "::error::Catalog contains source page URLs or URIs"
             exit 1
           fi
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
+            test "$(jq '.items | length' build/editorial/spotify-canvas.json)" -ge 1
+          else
+            echo "::warning::Spotify Canvas was unavailable; validating static provider fallback"
+          fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
       - name: Upload Pull Request Diagnostics
         uses: actions/upload-artifact@v7
@@ -119,12 +128,15 @@ jobs:
           path: |
             build/editorial/catalog.json
             build/editorial/catalog.sha256
+            build/editorial/spotify-canvas.json
           if-no-files-found: error
           retention-days: 7
 
   collect:
     name: Collect and Publish
-    if: github.event_name != 'pull_request'
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -146,17 +158,29 @@ jobs:
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
       - name: Install Collector
         run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Check Editorial Secrets
+      - name: Check Editorial Availability
+        id: availability
         run: |
           set -euo pipefail
-          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+          if [ -z "${LEVYRA_EDITORIAL_SP_DC:-}" ]; then
+            echo "::warning::Spotify editorial session is unavailable; preserving the last valid catalogs"
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "available=true" >> "${GITHUB_OUTPUT}"
           if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
             echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata"
           fi
       - name: Generate Catalog
+        id: generate
+        if: steps.availability.outputs.available == 'true'
         run: |
           set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          if ! timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json --canvas-output build/editorial/spotify-canvas.json; then
+            echo "::warning::Editorial refresh failed; preserving the last valid catalogs"
+            echo "ready=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
@@ -180,36 +204,61 @@ jobs:
             echo "::error::Catalog contains source page URLs or URIs"
             exit 1
           fi
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            levyra-editorial --validate-canvas build/editorial/spotify-canvas.json
+          else
+            echo "::warning::Spotify Canvas refresh unavailable; preserving the last valid catalog"
+          fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
+          echo "ready=true" >> "${GITHUB_OUTPUT}"
       - name: Upload Diagnostics
+        if: steps.generate.outputs.ready == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: editorial-catalog-${{ github.run_number }}
           path: |
             build/editorial/catalog.json
             build/editorial/catalog.sha256
+            build/editorial/spotify-canvas.json
           if-no-files-found: error
           retention-days: 14
       - name: Publish Last Valid Catalog
+        if: steps.generate.outputs.ready == 'true'
         run: |
           set -euo pipefail
           branch="editorial-data"
           source_ref="$(git rev-parse HEAD)"
           cp build/editorial/catalog.json /tmp/editorial.json
+          if [ -f build/editorial/spotify-canvas.json ]; then
+            cp build/editorial/spotify-canvas.json /tmp/spotify-canvas.json
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
             git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
             git switch --force-create "${branch}" "origin/${branch}"
+            changed=0
             if [ -f catalog/editorial.json ]; then
               jq -S 'del(.generatedAt)' catalog/editorial.json > /tmp/current-editorial-content.json
               jq -S 'del(.generatedAt)' /tmp/editorial.json > /tmp/new-editorial-content.json
-              if cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json; then
-                echo "Catalog content is unchanged; publication skipped."
-                git switch --detach "${source_ref}"
-                exit 0
+              cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json || changed=1
+            else
+              changed=1
+            fi
+            if [ -f /tmp/spotify-canvas.json ]; then
+              if [ -f catalog/spotify-canvas.json ]; then
+                jq -S 'del(.generatedAt)' catalog/spotify-canvas.json > /tmp/current-canvas-content.json
+                jq -S 'del(.generatedAt)' /tmp/spotify-canvas.json > /tmp/new-canvas-content.json
+                cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json || changed=1
+              else
+                changed=1
               fi
+            fi
+            if [ "${changed}" -eq 0 ]; then
+              echo "Editorial and Spotify Canvas content are unchanged; publication skipped."
+              git switch --detach "${source_ref}"
+              exit 0
             fi
           else
             git switch --orphan "${branch}"
@@ -218,8 +267,14 @@ jobs:
 
           mkdir -p catalog
           cp /tmp/editorial.json catalog/editorial.json
+          if [ -f /tmp/spotify-canvas.json ]; then
+            cp /tmp/spotify-canvas.json catalog/spotify-canvas.json
+          fi
           git add catalog/editorial.json
+          if [ -f catalog/spotify-canvas.json ]; then
+            git add catalog/spotify-canvas.json
+          fi
           git commit -m "chore(editorial): refresh catalog from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
-          echo "Published catalog to ${branch}/catalog/editorial.json"
+          echo "Published editorial data to ${branch}/catalog/"
