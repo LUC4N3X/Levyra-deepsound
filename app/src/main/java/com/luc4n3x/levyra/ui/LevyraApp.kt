@@ -11145,6 +11145,25 @@ private fun PlayerImmersiveMotionCanvas(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val fallbackMotion = rememberInfiniteTransition(label = "player-artwork-fallback")
+    val fallbackScale by fallbackMotion.animateFloat(
+        initialValue = 1.08f,
+        targetValue = 1.16f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(14_000, easing = LevyraPlayerDesign.Standard),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "player-artwork-fallback-scale"
+    )
+    val fallbackDrift by fallbackMotion.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(18_000, easing = LevyraPlayerDesign.Standard),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "player-artwork-fallback-drift"
+    )
     Box(modifier = modifier) {
         MotionArtworkLayer(
             artwork = motionArtwork,
@@ -11165,7 +11184,15 @@ private fun PlayerImmersiveMotionCanvas(
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            if (motionArtwork == null && animationsEnabled && isPlaying) {
+                                scaleX = fallbackScale
+                                scaleY = fallbackScale
+                                translationX = fallbackDrift
+                            }
+                        }
                 )
             } else {
                 InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
@@ -11550,7 +11577,7 @@ private fun PlayerYoutubeEngagementRow(
         ) {
             // Likes & Dislikes Capsule
             Surface(
-                color = Color(0xFF1E152E).copy(alpha = 0.82f),
+                color = Color.Black.copy(alpha = 0.32f),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                 shape = CircleShape
             ) {
@@ -11600,7 +11627,7 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ThumbDown,
                             contentDescription = null,
                             tint = if (hasDislikeEstimate) {
-                                secondary.playerMix(Color.White, 0.65f)
+                                Color.White.copy(alpha = 0.72f)
                             } else {
                                 Color.White.copy(alpha = 0.50f)
                             },
@@ -11610,7 +11637,7 @@ private fun PlayerYoutubeEngagementRow(
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
                                 modifier = Modifier.size(11.dp),
                                 strokeWidth = 1.6.dp,
-                                color = secondary.playerMix(Color.White, 0.65f)
+                                color = Color.White.copy(alpha = 0.72f)
                             )
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
@@ -11626,10 +11653,10 @@ private fun PlayerYoutubeEngagementRow(
 
             // Comments Capsule
             Surface(
-                color = Color(0xFF1E152E).copy(alpha = 0.82f),
+                color = Color.Black.copy(alpha = 0.32f),
                 border = BorderStroke(
                     1.dp,
-                    if (comments.visible) primary.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                    if (comments.visible) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.12f)
                 ),
                 shape = CircleShape
             ) {
@@ -11648,7 +11675,7 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ChatBubbleOutline,
                             contentDescription = null,
                             tint = if (canOpenComments) {
-                                primary.playerMix(Color.White, 0.65f)
+                                Color.White.copy(alpha = 0.72f)
                             } else {
                                 Color.White.copy(alpha = 0.45f)
                             },
@@ -11658,7 +11685,7 @@ private fun PlayerYoutubeEngagementRow(
                             comments.loading && !comments.loaded -> CircularProgressIndicator(
                                 modifier = Modifier.size(11.dp),
                                 strokeWidth = 1.6.dp,
-                                color = primary.playerMix(Color.White, 0.60f)
+                                color = Color.White.copy(alpha = 0.72f)
                             )
                             commentBadge.isNotBlank() -> Text(
                                 text = commentBadge,
@@ -11994,7 +12021,7 @@ private fun PlayerScreen(
             repeat = strings.repeat
         )
     }
-    val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
+    val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
@@ -12457,8 +12484,8 @@ private fun PlayerScreen(
                 positionMs = state.positionMs,
                 bufferedPositionMs = state.bufferedPositionMs,
                 durationMs = state.durationMs,
-                activeColor = primary,
-                secondaryColor = secondary,
+                activeColor = Color.White.copy(alpha = 0.94f),
+                secondaryColor = Color.White.copy(alpha = 0.62f),
                 isPlaying = state.isPlaying,
                 animationsEnabled = state.animationsEnabled,
                 compact = compactPlayer,

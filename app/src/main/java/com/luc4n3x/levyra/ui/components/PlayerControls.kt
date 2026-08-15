@@ -414,14 +414,14 @@ private fun PlayerPrimaryButton(
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val contentColor = Color.White.copy(alpha = 0.96f)
+    val contentColor = Color(0xFF171717)
     val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
-    val gradientColors = remember(accentTarget, accentSecondaryTarget) {
+    val gradientColors = remember {
         listOf(
-            accentTarget.playerMix(Color.White, 0.18f),
-            accentTarget.playerMix(accentSecondaryTarget, 0.42f),
-            accentSecondaryTarget.playerMix(Color.Black, 0.12f)
+            Color.White.copy(alpha = 0.98f),
+            Color(0xFFF2F2F4),
+            Color(0xFFE4E4E8)
         )
     }
 
