@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-15T01:52:00Z",
+  "generatedAt": "2026-08-15T07:00:09Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1994,7 +1994,7 @@
         },
         {
           "position": 35,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2002,12 +2002,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 36,
@@ -3810,7 +3810,7 @@
             "confidence": 100,
             "artistBrowseId": "UCKEFjh4JL-OyMI8z3h5Coaw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028a2cdfdf817954def88143a6"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b82c6857d2f4bb0eba6235bc"
         },
         {
           "position": 14,
@@ -4927,6 +4927,12 @@
           },
           "durationMs": 176213,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "O2tKlnfrLkY",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -7627,7 +7633,7 @@
         },
         {
           "position": 21,
-          "id": "levyra-68fcfb916bb338f70aa5",
+          "id": "levyra-7fd08f9e4c7d58013a4d",
           "title": "Apaga Apaga Apaga - Ao Vivo",
           "artists": [
             {
@@ -7635,12 +7641,12 @@
             }
           ],
           "album": {
-            "name": "Toma Essa Verdade (Ao Vivo)",
-            "releaseDate": "2024-08-09"
+            "name": "As Mais Tocadas Danilo e Davi - 2026 (Ao Vivo)",
+            "releaseDate": "2025-09-23"
           },
           "durationMs": 178882,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020d5f00c853be5debb5eba851"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ee575d99f001805ca93ac8da"
         },
         {
           "position": 22,
@@ -7999,7 +8005,7 @@
           ],
           "album": {
             "name": "MOLHO (Ao Vivo)",
-            "releaseDate": "2025-10-16"
+            "releaseDate": "2026-04-16"
           },
           "durationMs": 192367,
           "explicit": false,
@@ -8009,7 +8015,7 @@
             "confidence": 100,
             "artistBrowseId": "UChn53L2iJ2EY1CGZcO4aV6A"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c89ff3434d85f33354c929b8"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f04abb4f70f72b26963eab5"
         },
         {
           "position": 37,
@@ -8204,7 +8210,7 @@
         },
         {
           "position": 44,
-          "id": "levyra-9f7f7ed97ef04e3a1b78",
+          "id": "levyra-b13bf7899897168372d0",
           "title": "Foi por Conveniência",
           "artists": [
             {
@@ -8212,8 +8218,8 @@
             }
           ],
           "album": {
-            "name": "Foi por Conveniência",
-            "releaseDate": "2021-01-15"
+            "name": "Manuscritos, Capítulo I",
+            "releaseDate": "2026-04-22"
           },
           "durationMs": 205586,
           "explicit": false,
@@ -8223,7 +8229,7 @@
             "confidence": 100,
             "artistBrowseId": "UCj14PDgkcQQMz6v-g2eruBA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbdde8a138debae4178aaaa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029cea79f4d67ac59fc57191bc"
         },
         {
           "position": 45,
@@ -10369,11 +10375,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 38,
@@ -17667,6 +17673,14 @@
           },
           "durationMs": 173962,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "j6FAo_CuA10",
+            "audioConfidence": 100,
+            "videoId": "O_JPxJmPpH4",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCmNYxKGJ5De3g6G5fbjsSjw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c2f169f9a9d73249953ebae0"
         },
         {
@@ -20499,12 +20513,6 @@
           },
           "durationMs": 290146,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LlxOzikJ0a4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCIMuwfTAzgZ5Dg84TmYxYkA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dfed999f959177dfc4f33cdc"
         },
         {
@@ -21114,12 +21122,6 @@
           },
           "durationMs": 207200,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "u8aBtdeb68Q",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVznsJmPM4qyjLYyORcu0Tg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c175a1d89c39c1cd297cb669"
         },
         {
@@ -21632,7 +21634,7 @@
             "confidence": 100,
             "artistBrowseId": "UC9tx_HmhNISUR39M29r9a8A"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0289f64a56f9c086a08fcac39d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021c4531b72e6d1e25580573ff"
         },
         {
           "position": 46,
@@ -25886,10 +25888,10 @@
           "durationMs": 234168,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "-zNB1BT2mi4",
+            "audioVideoId": "5q906vfrzyY",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCO2EZyzX5-X3Dc65bta6yDg"
+            "artistBrowseId": "UCjhtSjcSCUWbfFAWrp8Ow6w"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d6ebd978c7c460eaf3f75f85"
         },
@@ -27157,8 +27159,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -30082,7 +30082,7 @@
             "confidence": 100,
             "artistBrowseId": "UCKEFjh4JL-OyMI8z3h5Coaw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028a2cdfdf817954def88143a6"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b82c6857d2f4bb0eba6235bc"
         },
         {
           "position": 3,
