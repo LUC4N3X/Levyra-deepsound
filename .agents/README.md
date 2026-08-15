@@ -240,12 +240,14 @@ there; every other unapproved executable or plugin remains opt-in.
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
 python3 scripts/validate_matt_skills.py
+python3 scripts/validate_claude_mem.py
 ```
 
 The validators check shared discovery, skill inventory, RTK TOML, setup
 behavior, real-engineering integration, cross-runtime
 design/performance/R8/Intent-security/general-security routing, dependency
-review, plugin scope, and absence of unapproved local-model profiles.
+review, plugin scope, claude-mem integration, and absence of unapproved
+local-model profiles.
 
 ## Maintenance rules
 
