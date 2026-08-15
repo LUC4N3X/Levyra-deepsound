@@ -25,6 +25,7 @@ class MotionArtworkRuntimeTest {
     @Test
     fun runtimeEpochChangesOnlyForARealConfigurationChange() {
         val initial = MotionArtworkRuntime.snapshot()
+        assertTrue(initial.epoch >= MOTION_ARTWORK_CACHE_SCHEMA_EPOCH)
         try {
             val changedOrder = initial.value.providerOrder.reversed().ifEmpty { listOf("tidal-video-cover") }
             val changed = MotionArtworkRuntime.update(initial.value.copy(providerOrder = changedOrder))

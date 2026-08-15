@@ -17,8 +17,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-UPSTREAM_URL = "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json"
-ALLOWED_HOSTS = ("vivimusicanvas.mkmdevilmi.workers.dev", "vivimusicanvas-mtih.vercel.app")
+ALLOWED_HOSTS = (
+    "canvaz.scdn.co",
+)
 ALLOWED_EXTENSIONS = (".mp4", ".m3u8")
 DECLARED_SCOPES = {"track": "track", "song": "track", "album": "album"}
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
@@ -283,7 +284,7 @@ def verify_sync_invariants() -> None:
         "song": "Don't Stop (Live)",
         "artist": "Artist One feat. Artist Two",
         "album": "Exact Album",
-        "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/curated.mp4",
+        "url": "https://canvaz.scdn.co/upload/artist/video/curated.cnvs.mp4",
         "scope": "track",
         "isrc": "USUM71703861",
     }
@@ -291,7 +292,7 @@ def verify_sync_invariants() -> None:
         **curated,
         "song": "Dont Stop Live",
         "artist": "Artist One, Artist Two",
-        "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/upstream.mp4",
+        "url": "https://canvaz.scdn.co/upload/artist/video/upstream.cnvs.mp4",
         "isrc": "GBAYE0601498",
     }
     if not catalog_source_identity_keys(curated).intersection(
@@ -369,8 +370,7 @@ def resolve_sources(arguments: argparse.Namespace) -> list[SourceSpec]:
         ]
     if arguments.sources_file is not None:
         return load_sources_file(arguments.sources_file)
-    source_url = arguments.source_url or UPSTREAM_URL
-    return [SourceSpec(name="upstream", location=source_url, required=True)]
+    raise CatalogError("Choose --sources-file or --input")
 
 
 def merge_sources(
@@ -524,7 +524,6 @@ def write_compatibility_catalog(
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-url")
     parser.add_argument("--sources-file", type=Path)
     parser.add_argument("--input", type=Path)
     parser.add_argument("--output", type=Path)
@@ -553,10 +552,10 @@ def main() -> int:
 
     selected_modes = sum(
         value is not None
-        for value in (arguments.source_url, arguments.sources_file, arguments.input)
+        for value in (arguments.sources_file, arguments.input)
     )
     if selected_modes > 1:
-        print("Choose only one of --source-url, --sources-file or --input", file=sys.stderr)
+        print("Choose only one of --sources-file or --input", file=sys.stderr)
         return 1
     if (
         arguments.compat_output is not None

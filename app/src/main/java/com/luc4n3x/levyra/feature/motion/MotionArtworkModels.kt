@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import java.util.Locale
 
 internal const val MOTION_ARTWORK_POSITIVE_TTL_MS = 24L * 60L * 60L * 1000L
-internal const val MOTION_ARTWORK_NEGATIVE_TTL_MS = 60L * 60L * 1000L
+internal const val MOTION_ARTWORK_NEGATIVE_TTL_MS = 10L * 60L * 1000L
 
 enum class MotionArtworkScope {
     TRACK,

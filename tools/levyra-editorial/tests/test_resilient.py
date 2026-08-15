@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -131,3 +132,67 @@ def test_optional_youtube_music_client_value_error_is_caught(
         resilient_module.run_collection(tmp_path, tmp_path)
 
     assert captured == {"spotify": spotify, "youtube": None}
+
+
+def test_canvas_failure_preserves_last_valid_output(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Any,
+) -> None:
+    class Spotify:
+        def close(self) -> None:
+            return None
+
+    spotify = Spotify()
+    canvas_path = tmp_path / "spotify-canvas.json"
+    canvas_path.write_text("last-valid", encoding="utf-8")
+    monkeypatch.delenv("LEVYRA_EDITORIAL_YTM_COOKIE", raising=False)
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: SimpleNamespace(collections=[]),
+    )
+    monkeypatch.setattr(resilient_module, "write_catalog", lambda _catalog, _path: None)
+    monkeypatch.setattr(
+        resilient_module,
+        "build_spotify_canvas_catalog",
+        lambda _catalog, _spotify: (_ for _ in ()).throw(SourceApiError("unavailable")),
+    )
+
+    resilient_module.run_collection(tmp_path / "config.json", tmp_path / "catalog.json", canvas_path)
+
+    assert canvas_path.read_text(encoding="utf-8") == "last-valid"
+
+
+def test_live_canvas_verification_surfaces_resolver_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Any,
+) -> None:
+    class Spotify:
+        def close(self) -> None:
+            return None
+
+    spotify = Spotify()
+    monkeypatch.delenv("LEVYRA_EDITORIAL_YTM_COOKIE", raising=False)
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: SimpleNamespace(collections=[]),
+    )
+    monkeypatch.setattr(resilient_module, "write_catalog", lambda _catalog, _path: None)
+    monkeypatch.setattr(
+        resilient_module,
+        "build_spotify_canvas_catalog",
+        lambda _catalog, _spotify: (_ for _ in ()).throw(SourceApiError("unavailable")),
+    )
+
+    with pytest.raises(SourceApiError, match="unavailable"):
+        resilient_module.run_collection(
+            tmp_path / "config.json",
+            tmp_path / "catalog.json",
+            tmp_path / "spotify-canvas.json",
+            require_canvas=True,
+        )
