@@ -115,11 +115,12 @@ Rerun the exact command raw whenever compact output is insufficient.
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
 python3 scripts/validate_matt_skills.py
+python3 scripts/validate_claude_mem.py
 ```
 
 The validators check the workspace bridge, skill frontmatter/inventory, RTK
-configuration, real-engineering routing, automatic security routing, and shared
-documentation.
+configuration, real-engineering routing, automatic security routing,
+claude-mem integration, and shared documentation.
 
 ## Rule activation
 
@@ -151,7 +152,7 @@ If skills do not appear:
 3. confirm each skill has YAML frontmatter with a non-empty `description`;
 4. keep `.agents/rules/levyra-workspace.md` active;
 5. start a new conversation;
-6. run all three validators and fix every reported error.
+6. run all four validators and fix every reported error.
 
 Do not copy skills into `.gemini/skills/`. `.agents/skills/` is the canonical
 location shared by supported runtimes.
