@@ -1,0 +1,11 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Project-scoped, optional MCP. The launcher pins and verifies jCodeMunch before
+# handing stdio to the server. If the bootstrap fails, Codex remains usable with
+# its native repository tools because this server is intentionally not required.
+[mcp_servers.jcodemunch]
+command = "python"
+args = ["scripts/codex_jcodemunch.py", "serve"]
+required = false
+startup_timeout_sec = 180
+tool_timeout_sec = 120
