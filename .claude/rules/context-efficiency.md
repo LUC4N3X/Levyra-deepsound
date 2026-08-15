@@ -11,6 +11,13 @@ repository reading or noisy commands:
 - keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics
   raw when compression could change the conclusion.
 
+For non-trivial repository exploration, prefer the project-scoped jCodeMunch MCP
+for symbol-level discovery before broad reads. Treat it as a navigator, not a
+restriction: Claude native Read/Grep/Glob/Bash tools remain available and must be
+used whenever control flow, lifecycle, state, concurrency, generated behavior,
+tests, or correctness require broader evidence. Token savings never override
+correctness.
+
 For non-trivial repository exploration, builds, tests, lint, logs, broad
 searches, dependencies, Git/GitHub, CI, CodeRabbit, adb, setup, or other
 high-volume work, invoke `levyra-context-efficiency` and follow
