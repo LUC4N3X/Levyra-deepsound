@@ -11134,6 +11134,58 @@ private fun PlayerArtworkCanvas(
 }
 
 @Composable
+private fun PlayerImmersiveMotionCanvas(
+    track: Track,
+    artworkUrl: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork,
+    animationsEnabled: Boolean,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    Box(modifier = modifier) {
+        MotionArtworkLayer(
+            artwork = motionArtwork,
+            enabled = animationsEnabled,
+            isPlaying = isPlaying,
+            cornerRadius = 0.dp,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (artworkUrl.isNotBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(artworkUrl)
+                        .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Black.copy(alpha = 0.18f),
+                            0.42f to Color.Black.copy(alpha = 0.08f),
+                            0.64f to Color.Black.copy(alpha = 0.52f),
+                            0.78f to Color.Black.copy(alpha = 0.88f),
+                            1f to Color.Black.copy(alpha = 0.98f)
+                        )
+                    )
+                )
+        )
+    }
+}
+
+@Composable
 private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
@@ -12017,6 +12069,14 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
+        val immersiveMotionArtwork = state.motionArtwork.takeIf {
+            playerPane == LevyraPlayerPane.Stacked && !state.isVideoMode && track != null
+        }
+        val immersiveMotionAlpha by animateFloatAsState(
+            targetValue = if (immersiveMotionArtwork != null) 1f else 0f,
+            animationSpec = if (state.animationsEnabled) tween(420, easing = LinearOutSlowInEasing) else snap(),
+            label = "player-immersive-motion-alpha"
+        )
 
         PlayerImmersiveBackdrop(
             primaryTarget = primaryTarget,
@@ -12024,6 +12084,26 @@ private fun PlayerScreen(
             isPlaying = state.isPlaying,
             modifier = Modifier.fillMaxSize()
         )
+        if (track != null && immersiveMotionArtwork != null) {
+            PlayerImmersiveMotionCanvas(
+                track = track,
+                artworkUrl = artworkUrl,
+                motionArtwork = immersiveMotionArtwork,
+                animationsEnabled = state.animationsEnabled,
+                isPlaying = state.isPlaying,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = if (morphActive) 0f else {
+                            immersiveMotionAlpha * playerSwipeContentAlpha(
+                                settledSwipeOffset,
+                                size.width
+                            )
+                        }
+                        translationX = settledSwipeOffset * 0.32f
+                    }
+            )
+        }
 
         val headerBlock: @Composable () -> Unit = {
             val headerButtonSize = if (compactPlayer) {
@@ -12134,7 +12214,7 @@ private fun PlayerScreen(
                     PlayerArtworkCanvas(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
-                        motionArtwork = state.motionArtwork,
+                        motionArtwork = state.motionArtwork.takeUnless { immersiveMotionArtwork != null },
                         animationsEnabled = state.animationsEnabled && !state.isVideoMode,
                         isPlaying = state.isPlaying,
                         cornerRadius = artCorner,
@@ -12149,7 +12229,8 @@ private fun PlayerScreen(
                                 alpha = if (morphActive) {
                                     0f
                                 } else {
-                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                                    playerSwipeContentAlpha(settledSwipeOffset, size.width) *
+                                        (1f - immersiveMotionAlpha)
                                 }
                             }
                     )

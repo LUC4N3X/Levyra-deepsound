@@ -26,6 +26,11 @@ optional CI inputs with explicit attribution, but Levyra normalizes, validates, 
 republishes the complete runtime contract under the repository-owned `canvas-data` branch. A source
 removal or outage therefore cannot redirect installed clients to another project's mutable `main`.
 
+In the stacked fullscreen player, a resolved Canvas becomes the immersive edge-to-edge visual layer
+behind the existing controls. The same muted decorative Media3 player is reused; the square artwork
+crossfades away only for motion artwork, while its static image remains the immediate fallback until
+the first video frame is ready. Side-by-side and native Video mode retain their existing surfaces.
+
 ## Scalable sharded index
 
 The sharded format is designed so the catalog can grow from hundreds to millions of mappings
@@ -233,6 +238,7 @@ Other limits:
 * each index shard is capped at 192 KiB;
 * indexed lookup is capped at 4.5 s but is shortened dynamically to reserve 4 s of the provider timeout for catalog fallback; with the default 6.5 s provider timeout the index receives at most 2.5 s;
 * the repository-owned compatibility snapshot has a 6 s internal budget but remains bounded by the provider timeout left after the indexed attempt;
+* conclusive misses expire after 10 minutes, and cache-schema bumps invalidate older persisted misses when catalog compatibility changes;
 * all OkHttp requests are cancellable with their coroutine.
 
 The client caches parsed manifests, shards and fallback entries, never both raw HTTP responses.
