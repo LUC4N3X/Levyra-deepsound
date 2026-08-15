@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-15T11:51:10Z",
+  "generatedAt": "2026-08-15T12:07:54Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -1099,6 +1099,13 @@
       "artist": "KITSCHKRIEG, Blumengarten, Shirin David",
       "album": "KITSCHKRIEG ZWEI",
       "url": "https://canvaz.scdn.co/upload/artist/5tHiL8SKSaZGMBUPIiSmX4/video/8f664a49e2904c3c80a500031a4f114e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "The One That Got Away",
+      "artist": "Katy Perry",
+      "album": "Teenage Dream",
+      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
       "scope": "track"
     },
     {
