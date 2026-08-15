@@ -45,6 +45,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
@@ -53,6 +54,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+internal enum class MotionArtworkPresentation {
+    Card,
+    Immersive
+}
+
 @Composable
 internal fun MotionArtworkLayer(
     artwork: MotionArtwork?,
@@ -60,6 +66,7 @@ internal fun MotionArtworkLayer(
     isPlaying: Boolean,
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
+    presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
@@ -116,11 +123,22 @@ internal fun MotionArtworkLayer(
         environment.localAllowed &&
         isPlaying &&
         !videoReady
+    val videoCoversStaticArtwork = presentation == MotionArtworkPresentation.Card
+    val staticBedAlpha by animateFloatAsState(
+        targetValue = if (videoReady && videoCoversStaticArtwork) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = STATIC_ARTWORK_BED_FADE_MS,
+            delayMillis = if (videoReady) VIDEO_FADE_IN_MS else 0,
+            easing = FastOutSlowInEasing
+        ),
+        label = "motion-artwork-bed-alpha"
+    )
 
     Box(modifier = modifier) {
         MotionArtworkStaticFallback(
             animated = animateStatic,
             cornerRadius = cornerRadius,
+            alpha = { staticBedAlpha },
             modifier = Modifier.fillMaxSize(),
             content = staticArtwork
         )
@@ -129,6 +147,7 @@ internal fun MotionArtworkLayer(
                 artwork = videoArtwork,
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
+                presentation = presentation,
                 onFirstFrame = {
                     videoReady = true
                     videoRetryCount = 0
@@ -225,6 +244,7 @@ private fun rememberMotionArtworkEnvironment(observe: Boolean): MotionArtworkEnv
 private fun MotionArtworkStaticFallback(
     animated: Boolean,
     cornerRadius: Dp,
+    alpha: () -> Float,
     modifier: Modifier,
     content: @Composable () -> Unit
 ) {
@@ -233,7 +253,6 @@ private fun MotionArtworkStaticFallback(
     val zoomPhase = remember { Animatable(0f) }
     val horizontalDrift = remember { Animatable(0f) }
     val verticalDrift = remember { Animatable(0f) }
-    val tiltPhase = remember { Animatable(0f) }
     val motionAmount by animateFloatAsState(
         targetValue = if (animated) 1f else 0f,
         animationSpec = tween(
@@ -260,12 +279,6 @@ private fun MotionArtworkStaticFallback(
                 }
                 launch {
                     verticalDrift.animateTo(
-                        0f,
-                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
-                    )
-                }
-                launch {
-                    tiltPhase.animateTo(
                         0f,
                         tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
                     )
@@ -310,18 +323,6 @@ private fun MotionArtworkStaticFallback(
                     )
                 }
             }
-            launch {
-                while (isActive) {
-                    tiltPhase.animateTo(
-                        1f,
-                        tween(STATIC_ARTWORK_TILT_DURATION_MS, easing = FastOutSlowInEasing)
-                    )
-                    tiltPhase.animateTo(
-                        -1f,
-                        tween(STATIC_ARTWORK_TILT_DURATION_MS, easing = FastOutSlowInEasing)
-                    )
-                }
-            }
         }
     }
 
@@ -331,17 +332,13 @@ private fun MotionArtworkStaticFallback(
                 .fillMaxSize()
                 .onSizeChanged { artworkSize = it }
                 .graphicsLayer {
+                    this.alpha = alpha()
                     val amount = motionAmount
-                    val scale = 1f + amount * (0.058f + zoomPhase.value * 0.026f)
+                    val scale = 1f + amount * (0.042f + zoomPhase.value * 0.022f)
                     scaleX = scale
                     scaleY = scale
-                    translationX = artworkSize.width * 0.021f * horizontalDrift.value * amount
-                    translationY = artworkSize.height * 0.016f * verticalDrift.value * amount
-                    rotationZ = 0.18f * tiltPhase.value * amount
-                    rotationX = 3.5f * verticalDrift.value * amount
-                    rotationY = 4.2f * horizontalDrift.value * amount
-                    val maxDim = maxOf(artworkSize.width, artworkSize.height).toFloat()
-                    cameraDistance = (maxDim * 4f).coerceAtLeast(12f * density)
+                    translationX = artworkSize.width * 0.016f * horizontalDrift.value * amount
+                    translationY = artworkSize.height * 0.012f * verticalDrift.value * amount
                 }
         ) {
             content()
@@ -354,6 +351,7 @@ private fun MotionArtworkVideo(
     artwork: MotionArtwork,
     isPlaying: Boolean,
     cornerRadius: Dp,
+    presentation: MotionArtworkPresentation,
     onFirstFrame: () -> Unit,
     onUnavailable: () -> Unit,
     modifier: Modifier
@@ -365,22 +363,38 @@ private fun MotionArtworkVideo(
         mutableStateOf(false)
     }
     var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType) { mutableStateOf(false) }
-    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType) {
+    var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType) {
+        mutableStateOf(VideoSize.UNKNOWN)
+    }
+    var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
+    val maxZoom = when (presentation) {
+        MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
+        MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
+    }
+    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) {
+        val decodeLimit = when (presentation) {
+            MotionArtworkPresentation.Card -> CARD_MAX_VIDEO_DIMENSION
+            MotionArtworkPresentation.Immersive -> IMMERSIVE_MAX_VIDEO_DIMENSION
+        }
+        val bitrateLimit = when (presentation) {
+            MotionArtworkPresentation.Card -> CARD_MAX_VIDEO_BITRATE
+            MotionArtworkPresentation.Immersive -> IMMERSIVE_MAX_VIDEO_BITRATE
+        }
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
-            videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
             trackSelectionParameters = trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-                .setMaxVideoSize(1280, 1280)
-                .setMaxVideoBitrate(4_000_000)
+                .setViewportSize(decodeLimit, decodeLimit, false)
+                .setMaxVideoSize(decodeLimit, decodeLimit)
+                .setMaxVideoBitrate(bitrateLimit)
                 .build()
         }
     }
     val textureView = remember(player) { TextureView(context) }
     val videoAlpha by animateFloatAsState(
         targetValue = if (firstFrameRendered && !failed) 1f else 0f,
-        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = VIDEO_FADE_IN_MS, easing = FastOutSlowInEasing),
         label = "motion-artwork-alpha"
     )
 
@@ -389,6 +403,10 @@ private fun MotionArtworkVideo(
             override fun onRenderedFirstFrame() {
                 firstFrameRendered = true
                 currentOnFirstFrame()
+            }
+
+            override fun onVideoSizeChanged(size: VideoSize) {
+                videoSize = size
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -432,7 +450,20 @@ private fun MotionArtworkVideo(
         factory = { textureView },
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .graphicsLayer { alpha = videoAlpha }
+            .onSizeChanged { surfaceSize = it }
+            .graphicsLayer {
+                alpha = videoAlpha
+                val fit = motionArtworkFit(
+                    videoWidth = videoSize.width,
+                    videoHeight = videoSize.height,
+                    pixelWidthHeightRatio = videoSize.pixelWidthHeightRatio,
+                    containerWidth = surfaceSize.width,
+                    containerHeight = surfaceSize.height,
+                    maxZoom = maxZoom
+                )
+                scaleX = fit.scaleX
+                scaleY = fit.scaleY
+            }
     )
 }
 
@@ -441,12 +472,17 @@ private data class MotionArtworkEnvironment(
     val localAllowed: Boolean
 )
 
-private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 9_000
-private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 11_500
-private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 13_500
-private const val STATIC_ARTWORK_TILT_DURATION_MS = 17_000
+private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 11_000
+private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 14_000
+private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 17_000
 private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
 private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
+private const val STATIC_ARTWORK_BED_FADE_MS = 420
+private const val VIDEO_FADE_IN_MS = 620
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
 private const val VIDEO_RETRY_DELAY_MS = 4_000L
 private const val MAX_VIDEO_RETRIES = 1
+private const val CARD_MAX_VIDEO_DIMENSION = 1_280
+private const val IMMERSIVE_MAX_VIDEO_DIMENSION = 1_920
+private const val CARD_MAX_VIDEO_BITRATE = 4_000_000
+private const val IMMERSIVE_MAX_VIDEO_BITRATE = 8_000_000

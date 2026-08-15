@@ -41,26 +41,24 @@ object LevyraPlayerDesign {
 
     val HeaderButton: Dp = 42.dp
     val HeaderButtonCompact: Dp = 38.dp
-    val UtilityButton: Dp = 44.dp
-    val UtilityButtonCompact: Dp = 40.dp
-    val TransportButton: Dp = 54.dp
-    val TransportButtonCompact: Dp = 48.dp
-    val TransportSquircleCorner: Dp = 18.dp
-    val TransportSquircleCornerCompact: Dp = 16.dp
-    val PrimaryWidth: Dp = 76.dp
-    val PrimaryWidthCompact: Dp = 70.dp
-    val PrimaryHeight: Dp = 64.dp
-    val PrimaryHeightCompact: Dp = 58.dp
-    val PrimaryCorner: Dp = 24.dp
+    val ModeSlot: Dp = 40.dp
+    val ModeGlyph: Dp = 20.dp
+    val ModeGlyphCompact: Dp = 19.dp
+    val ModeIndicator: Dp = 3.dp
+    val SkipGlyph: Dp = 34.dp
+    val SkipGlyphCompact: Dp = 30.dp
+    val PrimarySize: Dp = 68.dp
+    val PrimarySizeCompact: Dp = 60.dp
+    val PrimaryGlyph: Dp = 30.dp
+    val PrimaryCornerPlaying: Dp = 22.dp
     val MinimumTouchTarget: Dp = 48.dp
 
     val Hairline: Dp = 1.dp
-    val TrackHeight: Dp = 4.5.dp
-    val TrackHeightActive: Dp = 7.5.dp
-    val WaveAmplitude: Dp = 3.5.dp
-    val HandleWidth: Dp = 6.dp
-    val HandleWidthActive: Dp = 8.dp
-    val HandleHeight: Dp = 20.dp
+    val TrackHeight: Dp = 4.dp
+    val TrackHeightActive: Dp = 6.5.dp
+    val HandleWidth: Dp = 5.dp
+    val HandleWidthActive: Dp = 7.dp
+    val HandleHeight: Dp = 18.dp
     val HandleHeightActive: Dp = 26.dp
 
     val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
@@ -89,18 +87,17 @@ object LevyraPlayerDesign {
     fun <T> standardTween(durationMillis: Int = 220): TweenSpec<T> =
         tween(durationMillis = durationMillis, easing = Standard)
 
-    const val WavePeriodDp: Float = 26f
-    const val WaveCycleMillis: Int = 1_600
-
     val GlassFill: Color = Color.White.copy(alpha = 0.055f)
     val GlassFillStrong: Color = Color.White.copy(alpha = 0.10f)
     val GlassFillSunken: Color = Color.Black.copy(alpha = 0.28f)
     val GlassBorderTop: Color = Color.White.copy(alpha = 0.14f)
     val GlassBorderBottom: Color = Color.White.copy(alpha = 0.05f)
-    val GlassSpecular: Color = Color.White.copy(alpha = 0.025f)
 
     val TextPrimary: Color = Color.White
     val TextSecondary: Color = Color.White.copy(alpha = 0.76f)
-    val TextTertiary: Color = Color.White.copy(alpha = 0.50f)
-    val IconIdle: Color = Color.White.copy(alpha = 0.65f)
+    val TextTertiary: Color = Color.White.copy(alpha = 0.52f)
+    val IconIdle: Color = Color.White.copy(alpha = 0.58f)
+    val PrimaryContent: Color = Color(0xFF141416)
+    val TrackInactive: Color = Color.White.copy(alpha = 0.18f)
+    val TrackBuffered: Color = Color.White.copy(alpha = 0.30f)
 }
