@@ -38,6 +38,14 @@ class LevyraStrings private constructor(
     val app: String get() = value("app")
     val animations: String get() = value("animations")
     val animationsSubtitle: String get() = value("animationsSubtitle")
+    val motionArtwork: String get() = when (code) {
+        "it" -> "Canvas nel player"
+        else -> "Player Canvas"
+    }
+    val motionArtworkSubtitle: String get() = when (code) {
+        "it" -> "Mostra i video degli artisti; disattiva per usare sempre la copertina"
+        else -> "Show artist videos; turn off to always use the album cover"
+    }
     val dynamicColor: String get() = value("dynamicColor")
     val dynamicColorSubtitle: String get() = value("dynamicColorSubtitle")
     val sponsorBlock: String get() = value("sponsorBlock")

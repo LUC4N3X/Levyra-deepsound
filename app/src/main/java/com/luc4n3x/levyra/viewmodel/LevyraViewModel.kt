@@ -905,6 +905,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 userName = settings.userName,
                 languageCode = settings.languageCode,
                 animationsEnabled = settings.animationsEnabled && !adaptivePlaybackPolicy.current(videoMode = false).lowRam,
+                motionArtworkEnabled = settings.motionArtworkEnabled,
                 dynamicColor = settings.dynamicColor,
                 sponsorBlockEnabled = settings.sponsorBlock,
                 skipSilence = settings.skipSilence,
@@ -2602,14 +2603,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAnimationsEnabled(value: Boolean) {
         preferences.setAnimationsEnabled(value)
+        val motionEnabled = value && _state.value.motionArtworkEnabled
         _state.update {
             it.copy(
                 animationsEnabled = value,
+                motionArtwork = if (motionEnabled) it.motionArtwork else null,
+                motionArtworkLoading = if (motionEnabled) it.motionArtworkLoading else false
+            )
+        }
+        if (motionEnabled) {
+            _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+        } else {
+            motionArtworkJob?.cancel()
+            motionArtworkRequestKey = null
+            motionArtworkPrefetchJob?.cancel()
+        }
+    }
+
+    fun setMotionArtworkEnabled(value: Boolean) {
+        preferences.setMotionArtworkEnabled(value)
+        _state.update {
+            it.copy(
+                motionArtworkEnabled = value,
                 motionArtwork = if (value) it.motionArtwork else null,
                 motionArtworkLoading = if (value) it.motionArtworkLoading else false
             )
         }
-        if (value) {
+        if (value && _state.value.animationsEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         } else {
             motionArtworkJob?.cancel()
@@ -6016,7 +6036,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun refreshMotionArtworkAround(current: Track) {
-        if (!_state.value.animationsEnabled) {
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
@@ -6053,7 +6073,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun prefetchNextMotionArtwork(current: Track) {
         motionArtworkPrefetchJob?.cancel()
-        if (!_state.value.animationsEnabled) return
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) return
         val generation = queueEngine.state.value.generation
         val currentKey = MotionArtworkIdentityKey.create(current)
         val next = queueEngine.upcoming(2)

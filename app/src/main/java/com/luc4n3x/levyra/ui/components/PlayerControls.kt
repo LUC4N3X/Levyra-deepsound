@@ -360,11 +360,11 @@ private fun Modifier.playerPrimarySurface(
     ambientColor: Color
 ): Modifier = this
     .shadow(
-        elevation = 14.dp,
+        elevation = 10.dp,
         shape = shape,
         clip = false,
-        ambientColor = ambientColor.copy(alpha = 0.55f),
-        spotColor = Color.Black.copy(alpha = 0.60f)
+        ambientColor = ambientColor.copy(alpha = 0.38f),
+        spotColor = Color.Black.copy(alpha = 0.52f)
     )
     .background(
         Brush.linearGradient(gradientColors),
@@ -373,7 +373,7 @@ private fun Modifier.playerPrimarySurface(
     .border(
         BorderStroke(
             1.dp,
-            Color.White.copy(alpha = 0.35f)
+            Color.White.copy(alpha = 0.24f)
         ),
         shape
     )
@@ -414,14 +414,14 @@ private fun PlayerPrimaryButton(
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val contentColor = Color(0xFF0F0E17)
+    val contentColor = Color.White.copy(alpha = 0.96f)
     val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
     val gradientColors = remember(accentTarget, accentSecondaryTarget) {
         listOf(
-            Color(0xFF7A88FF).playerMix(accentTarget, 0.25f),
-            Color(0xFFC850C0).playerMix(accentSecondaryTarget, 0.25f),
-            Color(0xFFFF6584).playerMix(accentTarget, 0.15f)
+            accentTarget.playerMix(Color.White, 0.18f),
+            accentTarget.playerMix(accentSecondaryTarget, 0.42f),
+            accentSecondaryTarget.playerMix(Color.Black, 0.12f)
         )
     }
 

@@ -1481,6 +1481,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
                 SettingsOverlay(
                     animationsEnabled = state.animationsEnabled,
+                    motionArtworkEnabled = state.motionArtworkEnabled,
                     dynamicColor = state.dynamicColor,
                     sponsorBlock = state.sponsorBlockEnabled,
                     skipSilence = state.skipSilence,
@@ -1498,6 +1499,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onDownloadSettings = viewModel::setDownloadSettings,
                     onBackupSettings = viewModel::setBackupSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
+                    onMotionArtwork = viewModel::setMotionArtworkEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
                     onSkipSilence = viewModel::setSkipSilence,
@@ -11137,7 +11139,7 @@ private fun PlayerArtworkCanvas(
 private fun PlayerImmersiveMotionCanvas(
     track: Track,
     artworkUrl: String,
-    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
     animationsEnabled: Boolean,
     isPlaying: Boolean,
     modifier: Modifier = Modifier
@@ -11149,7 +11151,9 @@ private fun PlayerImmersiveMotionCanvas(
             enabled = animationsEnabled,
             isPlaying = isPlaying,
             cornerRadius = 0.dp,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = 0.9f }
         ) {
             if (artworkUrl.isNotBlank()) {
                 AsyncImage(
@@ -11173,11 +11177,11 @@ private fun PlayerImmersiveMotionCanvas(
                 .background(
                     Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0f to Color.Black.copy(alpha = 0.18f),
-                            0.42f to Color.Black.copy(alpha = 0.08f),
-                            0.64f to Color.Black.copy(alpha = 0.52f),
-                            0.78f to Color.Black.copy(alpha = 0.88f),
-                            1f to Color.Black.copy(alpha = 0.98f)
+                            0f to Color.Black.copy(alpha = 0.24f),
+                            0.38f to Color.Black.copy(alpha = 0.12f),
+                            0.58f to Color.Black.copy(alpha = 0.46f),
+                            0.74f to Color.Black.copy(alpha = 0.84f),
+                            1f to Color.Black.copy(alpha = 0.99f)
                         )
                     )
                 )
@@ -12069,12 +12073,15 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
-        val immersiveMotionArtwork = state.motionArtwork.takeIf {
-            playerPane == LevyraPlayerPane.Stacked && !state.isVideoMode && track != null
-        }
+        val immersiveArtworkEnabled = state.motionArtworkEnabled &&
+            state.animationsEnabled &&
+            playerPane == LevyraPlayerPane.Stacked &&
+            !state.isVideoMode &&
+            track != null
+        val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
         val immersiveMotionAlpha by animateFloatAsState(
-            targetValue = if (immersiveMotionArtwork != null) 1f else 0f,
-            animationSpec = if (state.animationsEnabled) tween(420, easing = LinearOutSlowInEasing) else snap(),
+            targetValue = if (immersiveArtworkEnabled) 1f else 0f,
+            animationSpec = if (state.animationsEnabled) tween(520, easing = LinearOutSlowInEasing) else snap(),
             label = "player-immersive-motion-alpha"
         )
 
@@ -12084,7 +12091,7 @@ private fun PlayerScreen(
             isPlaying = state.isPlaying,
             modifier = Modifier.fillMaxSize()
         )
-        if (track != null && immersiveMotionArtwork != null) {
+        if (track != null && immersiveArtworkEnabled) {
             PlayerImmersiveMotionCanvas(
                 track = track,
                 artworkUrl = artworkUrl,
@@ -12214,7 +12221,7 @@ private fun PlayerScreen(
                     PlayerArtworkCanvas(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
-                        motionArtwork = state.motionArtwork.takeUnless { immersiveMotionArtwork != null },
+                        motionArtwork = state.motionArtwork.takeUnless { immersiveArtworkEnabled },
                         animationsEnabled = state.animationsEnabled && !state.isVideoMode,
                         isPlaying = state.isPlaying,
                         cornerRadius = artCorner,
@@ -14259,6 +14266,7 @@ private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onCli
 @Composable
 private fun SettingsOverlay(
     animationsEnabled: Boolean,
+    motionArtworkEnabled: Boolean,
     dynamicColor: Boolean,
     sponsorBlock: Boolean,
     skipSilence: Boolean,
@@ -14276,6 +14284,7 @@ private fun SettingsOverlay(
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
+    onMotionArtwork: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
     onSkipSilence: (Boolean) -> Unit,
@@ -14422,6 +14431,15 @@ private fun SettingsOverlay(
                                     subtitle = strings.animationsSubtitle,
                                     checked = animationsEnabled,
                                     onCheckedChange = onAnimations
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.AutoAwesome,
+                                    title = strings.motionArtwork,
+                                    subtitle = strings.motionArtworkSubtitle,
+                                    checked = motionArtworkEnabled,
+                                    onCheckedChange = onMotionArtwork
                                 )
                             }
                             item {
