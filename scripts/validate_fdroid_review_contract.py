@@ -177,6 +177,9 @@ def collect_violations(
             "Return YouTube Dislike",
             "WebView",
             "remote announcement feed",
+            "raw.githubusercontent.com",
+            "github.com",
+            "ZemerTeam/zemer-cipher",
         ),
         "fastlane/metadata/android/it-IT/full_description.txt": (
             "YouTube",
@@ -193,6 +196,9 @@ def collect_violations(
             "Return YouTube Dislike",
             "WebView",
             "feed degli annunci remoti",
+            "raw.githubusercontent.com",
+            "github.com",
+            "ZemerTeam/zemer-cipher",
         ),
     }
     for relative, disclosures in descriptions.items():
