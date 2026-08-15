@@ -6624,6 +6624,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             bufferedPositionMs = buffered.coerceAtLeast(position),
                             durationMs = duration,
                             isPlaying = player.isPlaying,
+                            playerError = if (player.isPlaying) null else it.playerError,
                             activeLyric = active
                         )
                     }

@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -243,6 +244,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.streamUrl.isNotBlank()) {
             if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
+            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
             return if (streamStillFresh(track.streamUrl)) track else null
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
@@ -252,6 +254,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             return null
         }
         if (!isVideoMode && !isPlayableAudioUrl(hit.track.streamUrl)) {
+            remove(key)
+            return null
+        }
+        if (isVideoMode && !hit.track.hasVideoPlaybackPayload()) {
             remove(key)
             return null
         }
@@ -423,7 +429,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
-                (isVideoMode || isPlayableAudioUrl(it)) &&
+                (if (isVideoMode) track.hasVideoPlaybackPayload() else isPlayableAudioUrl(it)) &&
                 (!preferMp4Audio || track.playbackManifest?.supportsMp4AudioExport() == true || isMp4AudioUrl(it))
         }?.let { return@coroutineScope track }
         if (!preferMp4Audio) {

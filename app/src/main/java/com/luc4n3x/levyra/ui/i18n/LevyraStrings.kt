@@ -763,6 +763,18 @@ class LevyraStrings private constructor(
             } else {
                 "Slow connection: try again in a few seconds"
             }
+            raw.contains("429", ignoreCase = true) -> if (code == "it") {
+                "Troppe richieste a YouTube: attendi qualche secondo"
+            } else {
+                "Too many requests to YouTube: wait a few seconds"
+            }
+            raw.contains("403", ignoreCase = true) ||
+                raw.contains("410", ignoreCase = true) ||
+                raw.contains("Source error", ignoreCase = true) -> if (code == "it") {
+                    "YouTube ha rifiutato il link del brano: sto riprovando con una nuova sorgente"
+                } else {
+                    "YouTube rejected this track link: retrying with a fresh source"
+                }
             raw.contains("Primary directory Music not allowed", ignoreCase = true) ||
                 raw.contains("content://media/external_primary/file", ignoreCase = true) -> if (code == "it") {
                     "Questo dispositivo non ha consentito il salvataggio in Music/Levyra"
