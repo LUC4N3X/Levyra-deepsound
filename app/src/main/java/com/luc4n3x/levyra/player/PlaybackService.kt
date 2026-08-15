@@ -258,10 +258,7 @@ class PlaybackService : MediaLibraryService() {
             .setCache(cache)
             .setUpstreamDataSourceFactory(upstreamFactory)
             .setCacheWriteDataSinkFactory(cacheSinkFactory)
-            .setFlags(
-                CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR or
-                    CacheDataSource.FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS
-            )
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
         val defaultFactory = DefaultMediaSourceFactory(cacheDataSourceFactory)
 

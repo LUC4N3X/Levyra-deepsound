@@ -36,7 +36,6 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerManager
-import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import timber.log.Timber
 import okhttp3.Call
 import okhttp3.Callback
@@ -52,7 +51,6 @@ import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.atomic.AtomicLong
 
 internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
 
@@ -81,14 +79,6 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
         largeThumbnailUrl = artwork,
         moodTags = resolved.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
     )
-}
-
-internal fun shouldQuarantineExtractor(source: String, reason: String): Boolean {
-    if (!source.contains("LevyraExtractor", ignoreCase = true)) return false
-    val value = reason.lowercase()
-    return value.contains("403") || value.contains("410") || value.contains("forbidden") ||
-        value.contains("expired") || value.contains("scadut") || value.contains("signature") ||
-        value.contains("potoken") || value.contains("po token")
 }
 
 class PlaybackResolver private constructor(private val context: Context) {
@@ -120,7 +110,6 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
     private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
     private val failedPlaybackUrls = ConcurrentHashMap<String, Long>()
-    private val extractorBlockedUntilMs = AtomicLong(0L)
     private val youtubeEngagementCache = ConcurrentHashMap<String, CachedYoutubeEngagement>()
     private val videoSelector = LevyraVideoStreamSelector(context)
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
@@ -298,10 +287,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         if (recovery.refreshSecurity) {
             YoutubeLocalDecoder.notifyStreamRejected(track.source)
-            playbackSecurity.invalidatePlaybackTokens()
-        }
-        if (shouldQuarantineExtractor(track.source, reason)) {
-            extractorBlockedUntilMs.updateAndGet { current -> maxOf(current, now + recovery.quarantineMs) }
         }
         if (recovery.rotateCodec) {
             videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
@@ -1302,21 +1287,15 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun verifyDirectAudioUrlFast(url: String): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
-        val requestBuilder = Request.Builder()
+        if (isTrustedGoogleVideoUrl(url)) return true
+        val request = Request.Builder()
             .url(url)
             .get()
             .header("Range", "bytes=0-8191")
             .header("Accept", "*/*")
             .header("Accept-Encoding", "identity")
-            .header("User-Agent", playbackUserAgent(url))
-        val web = runCatching { YoutubeParsingHelper.isWebStreamingUrl(url) }.getOrDefault(false)
-        val embedded = runCatching { YoutubeParsingHelper.isTvHtml5SimplyEmbeddedPlayerStreamingUrl(url) }.getOrDefault(false)
-        if (web || embedded) {
-            requestBuilder
-                .header("Origin", "https://www.youtube.com")
-                .header("Referer", if (embedded) "https://www.youtube.com/embed/" else "https://www.youtube.com/")
-        }
-        val request = requestBuilder.build()
+            .header("User-Agent", profiles.first().userAgent)
+            .build()
         val result = runCatchingPreservingCancellation {
             streamProbeClient.newCall(request).execute().use { response ->
                 if (response.code == 403 || response.code == 404 || response.code == 410 || response.code == 416 || response.code == 429) return@use false
@@ -1331,12 +1310,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         return result
     }
 
-    private fun playbackUserAgent(url: String): String {
-        return when {
-            runCatching { YoutubeParsingHelper.isIosStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getIosUserAgent(null)
-            runCatching { YoutubeParsingHelper.isAndroidStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getAndroidUserAgent(null)
-            else -> profiles.first { it.clientName == "WEB" }.userAgent
-        }
+    private fun isTrustedGoogleVideoUrl(url: String): Boolean {
+        val clean = url.lowercase()
+        if (!clean.startsWith("https://")) return false
+        if (!clean.contains("googlevideo.com/")) return false
+        if (clean.contains("mime=audio%2f") || clean.contains("mime=audio/")) return true
+        return clean.contains("/videoplayback") && !isHlsManifestUrl(clean)
     }
 
     private fun expiresAtFor(url: String): Long {
@@ -1727,9 +1706,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean = false,
         audioQuality: String = selectedAudioQuality
     ): Track {
-        if (extractorBlockedUntilMs.get() > System.currentTimeMillis()) {
-            throw PlaybackBlockedException("LevyraExtractor temporaneamente escluso dopo un rifiuto del CDN")
-        }
         NewPipeRuntime.ensure()
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)
@@ -1745,9 +1721,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         val url = audio?.content ?: hlsUrl
             ?: throw IllegalStateException("LevyraExtractor non ha restituito stream audio diretti o HLS per ${track.title}")
-        if (audio != null && !verifyDirectAudioUrlFast(url)) {
-            throw PlaybackBlockedException("LevyraExtractor ha restituito uno stream rifiutato dal CDN")
-        }
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
@@ -1794,9 +1767,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         audioQuality: String = selectedAudioQuality
     ): Track {
-        if (extractorBlockedUntilMs.get() > System.currentTimeMillis()) {
-            throw PlaybackBlockedException("LevyraExtractor temporaneamente escluso dopo un rifiuto del CDN")
-        }
         NewPipeRuntime.ensure()
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)

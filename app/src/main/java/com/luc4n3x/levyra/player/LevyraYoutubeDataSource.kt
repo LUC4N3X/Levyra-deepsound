@@ -7,11 +7,16 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+import java.util.concurrent.atomic.AtomicLong
 
 @UnstableApi
 class LevyraYoutubeDataSource private constructor(
     private val delegate: DataSource
 ) : DataSource {
+    companion object {
+        private val requestNumber = AtomicLong(1L)
+    }
+
     class Factory(
         private val upstreamFactory: DataSource.Factory
     ) : DataSource.Factory {
@@ -27,6 +32,7 @@ class LevyraYoutubeDataSource private constructor(
     override fun open(dataSpec: DataSpec): Long {
         val originalUrl = dataSpec.uri.toString()
         if (!isYoutubeMediaUrl(dataSpec.uri)) return delegate.open(dataSpec)
+        val adaptedUri = appendRequestNumber(dataSpec.uri)
         val headers = requestHeaders(originalUrl)
         val httpDelegate = delegate as? HttpDataSource
         if (httpDelegate != null) {
@@ -34,6 +40,7 @@ class LevyraYoutubeDataSource private constructor(
             headers.forEach { (name, value) -> httpDelegate.setRequestProperty(name, value) }
         }
         val adaptedSpec = dataSpec
+            .withUri(adaptedUri)
             .withAdditionalHeaders(headers.filterKeys { !it.equals("User-Agent", true) })
         return delegate.open(adaptedSpec)
     }
@@ -48,6 +55,14 @@ class LevyraYoutubeDataSource private constructor(
 
     override fun close() {
         delegate.close()
+    }
+
+    private fun appendRequestNumber(uri: Uri): Uri {
+        if (!isProgressiveGoogleVideo(uri)) return uri
+        if (!uri.getQueryParameter("rn").isNullOrBlank()) return uri
+        return uri.buildUpon()
+            .appendQueryParameter("rn", requestNumber.getAndIncrement().toString())
+            .build()
     }
 
     private fun requestHeaders(url: String): Map<String, String> {
@@ -81,4 +96,13 @@ class LevyraYoutubeDataSource private constructor(
             host.endsWith("ytimg.com")
     }
 
+    private fun isProgressiveGoogleVideo(uri: Uri): Boolean {
+        val host = uri.host.orEmpty().lowercase()
+        val path = uri.path.orEmpty().lowercase()
+        if (!host.endsWith("googlevideo.com")) return false
+        if (!path.contains("videoplayback")) return false
+        if (uri.getQueryParameter("sq") != null) return false
+        if (path.endsWith(".m3u8") || path.endsWith(".mpd")) return false
+        return true
+    }
 }

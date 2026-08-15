@@ -14,12 +14,4 @@ class PlaybackResolverOfflineExportTest {
         assertFalse(isMp4OfflineAudioCandidate("audio/webm; codecs=opus", "https://example.com/audio.webm"))
         assertFalse(isMp4OfflineAudioCandidate("WEBMA_OPUS", "https://example.com/audio"))
     }
-
-    @Test
-    fun rejectedExtractorStreamsAreQuarantinedWithoutAffectingOtherProviders() {
-        assertTrue(shouldQuarantineExtractor("LevyraExtractor · OPUS", "Response code: 403"))
-        assertTrue(shouldQuarantineExtractor("LevyraExtractor HLS", "signature expired"))
-        assertFalse(shouldQuarantineExtractor("YouTube Android", "Response code: 403"))
-        assertFalse(shouldQuarantineExtractor("LevyraExtractor", "network timeout"))
-    }
 }
