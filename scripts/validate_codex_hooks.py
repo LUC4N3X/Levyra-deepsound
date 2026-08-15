@@ -12,6 +12,17 @@ HOOKS_PATH = ROOT / ".codex" / "hooks.json"
 PIN = "b34be37caf3796b69a50952a28e60e32b5daad43"
 
 
+def require_terms(errors: list[str], relative_path: str, terms: tuple[str, ...]) -> None:
+    path = ROOT / relative_path
+    if not path.is_file():
+        errors.append(f"missing Codex bootstrap script: {relative_path}")
+        return
+    text = path.read_text(encoding="utf-8")
+    for term in terms:
+        if term not in text:
+            errors.append(f"{relative_path}: missing bootstrap contract {term!r}")
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -62,7 +73,7 @@ def main() -> int:
                             command_windows = command_handler.get("commandWindows", "")
                             for term in (
                                 "git rev-parse --show-toplevel",
-                                "scripts/ensure-rtk.sh",
+                                "scripts/ensure-codex-tooling.sh",
                                 "|| true",
                             ):
                                 if term not in command:
@@ -71,7 +82,7 @@ def main() -> int:
                                     )
                             for term in (
                                 "git rev-parse --show-toplevel",
-                                "scripts/ensure-rtk.ps1",
+                                "scripts/ensure-codex-tooling.ps1",
                                 "exit 0",
                             ):
                                 if term not in command_windows:
@@ -80,8 +91,19 @@ def main() -> int:
                                     )
                             if command_handler.get("timeout") != 600:
                                 errors.append(
-                                    "Codex RTK bootstrap hook timeout must be 600 seconds"
+                                    "Codex tooling bootstrap hook timeout must be 600 seconds"
                                 )
+
+    require_terms(
+        errors,
+        "scripts/ensure-codex-tooling.sh",
+        ("scripts/ensure-rtk.sh", "codex_jcodemunch.py", "mattpocock/skills"),
+    )
+    require_terms(
+        errors,
+        "scripts/ensure-codex-tooling.ps1",
+        ("ensure-rtk.ps1", "codex_jcodemunch.py", "mattpocock/skills"),
+    )
 
     for relative_path in ("scripts/ensure-rtk.sh", "scripts/ensure-rtk.ps1"):
         path = ROOT / relative_path
@@ -101,8 +123,8 @@ def main() -> int:
 
     print(
         "Codex hook validation passed: project SessionStart automatically "
-        "ensures the pinned RTK build on startup/resume with Unix/Windows "
-        "fail-open commands."
+        "runs the fail-open unified tooling bootstrap on startup/resume, and the "
+        "bootstrap still delegates to the pinned RTK contract."
     )
     return 0
 
