@@ -101,21 +101,45 @@ fun PremiumSeekbar(
         Path().apply {
             if (widthPx <= 0f) return@apply
             val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
-            val amplitude = with(density) { 2.6.dp.toPx() }
-            val wavelength = with(density) { 20.dp.toPx() }
+            val amplitude = with(density) { 2.4.dp.toPx() }
+            val wavelength = with(density) { 38.dp.toPx() }
+            val quarterWave = wavelength / 4f
             var waveStart = -wavelength
             moveTo(waveStart, centerY)
             while (waveStart < widthPx + wavelength) {
-                val waveEnd = waveStart + wavelength
                 cubicTo(
-                    waveStart + wavelength * 0.22f,
+                    waveStart + quarterWave * 0.45f,
+                    centerY,
+                    waveStart + quarterWave * 0.55f,
                     centerY - amplitude,
-                    waveStart + wavelength * 0.78f,
-                    centerY + amplitude,
-                    waveEnd,
+                    waveStart + quarterWave,
+                    centerY - amplitude
+                )
+                cubicTo(
+                    waveStart + quarterWave * 1.45f,
+                    centerY - amplitude,
+                    waveStart + quarterWave * 1.55f,
+                    centerY,
+                    waveStart + quarterWave * 2f,
                     centerY
                 )
-                waveStart = waveEnd
+                cubicTo(
+                    waveStart + quarterWave * 2.45f,
+                    centerY,
+                    waveStart + quarterWave * 2.55f,
+                    centerY + amplitude,
+                    waveStart + quarterWave * 3f,
+                    centerY + amplitude
+                )
+                cubicTo(
+                    waveStart + quarterWave * 3.45f,
+                    centerY + amplitude,
+                    waveStart + quarterWave * 3.55f,
+                    centerY,
+                    waveStart + wavelength,
+                    centerY
+                )
+                waveStart += wavelength
             }
         }
     }
@@ -239,17 +263,29 @@ fun PremiumSeekbar(
             }
 
             if (handleX > trackStart) {
+                val activeSpan = handleX - trackStart
                 clipRect(
                     left = trackStart,
                     top = 0f,
                     right = handleX,
                     bottom = size.height
                 ) {
-                    drawPath(
-                        path = wavePath,
-                        color = activeColor,
-                        style = Stroke(width = trackHeight, cap = StrokeCap.Round)
-                    )
+                    if (scrub > 0.001f) {
+                        drawRoundRect(
+                            color = activeColor.copy(alpha = activeColor.alpha * scrub),
+                            topLeft = Offset(trackStart, trackTop),
+                            size = Size(activeSpan, trackHeight),
+                            cornerRadius = radius
+                        )
+                    }
+                    val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
+                    if (waveAlpha > 0.001f) {
+                        drawPath(
+                            path = wavePath,
+                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
+                            style = Stroke(width = trackHeight, cap = StrokeCap.Round)
+                        )
+                    }
                 }
             }
 
