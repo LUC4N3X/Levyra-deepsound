@@ -96,21 +96,21 @@ fun PremiumSeekbar(
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
     }
+
     val wavePath = remember(widthPx, density) {
         Path().apply {
             if (widthPx <= 0f) return@apply
             val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
-            val amplitude = with(density) { 1.dp.toPx() }
-            val wavelength = with(density) { 30.dp.toPx() }
-            moveTo(0f, centerY)
-            var waveStart = 0f
-            while (waveStart < widthPx) {
-                val waveEnd = (waveStart + wavelength).coerceAtMost(widthPx)
-                val waveWidth = waveEnd - waveStart
+            val amplitude = with(density) { 2.6.dp.toPx() }
+            val wavelength = with(density) { 20.dp.toPx() }
+            var waveStart = -wavelength
+            moveTo(waveStart, centerY)
+            while (waveStart < widthPx + wavelength) {
+                val waveEnd = waveStart + wavelength
                 cubicTo(
-                    waveStart + waveWidth * 0.25f,
+                    waveStart + wavelength * 0.22f,
                     centerY - amplitude,
-                    waveStart + waveWidth * 0.75f,
+                    waveStart + wavelength * 0.78f,
                     centerY + amplitude,
                     waveEnd,
                     centerY
