@@ -22,7 +22,7 @@ internal fun highResolutionPlayerArtworkUrl(url: String): String {
         lower.contains("mzstatic.com/") ->
             clean.replace("{w}", "1200", ignoreCase = true)
                 .replace("{h}", "1200", ignoreCase = true)
-                .replace(Regex("/\\d+x\\d+bb\\."), "/1200x1200bb.")
+                .replace(Regex("/\\d+x\\d+bb(?=[.-])"), "/1200x1200bb")
         lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") ->
             clean.replace(Regex("=w\\d+-h\\d+"), "=w1200-h1200")
                 .replace(Regex("=s\\d+"), "=s1200")

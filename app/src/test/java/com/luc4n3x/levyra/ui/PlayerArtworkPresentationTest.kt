@@ -42,4 +42,14 @@ class PlayerArtworkPresentationTest {
             )
         )
     }
+
+    @Test
+    fun `preserves apple format suffix while requesting full size artwork`() {
+        assertEquals(
+            "https://is1-ssl.mzstatic.com/image/thumb/example/1200x1200bb-60.jpg",
+            highResolutionPlayerArtworkUrl(
+                "https://is1-ssl.mzstatic.com/image/thumb/example/100x100bb-60.jpg"
+            )
+        )
+    }
 }

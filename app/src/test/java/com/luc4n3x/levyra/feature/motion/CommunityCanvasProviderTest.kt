@@ -84,7 +84,7 @@ class CommunityCanvasProviderTest {
         val candidates = communityCanvasCandidates(identity, entries, nowMs = 1_000L)
 
         assertTrue(candidates.any { it.scope == MotionArtworkScope.ALBUM && it.url == albumUrl })
-        assertTrue(candidates.none { it.url.contains("/Song/7.mp4") })
+        assertTrue(candidates.none { it.url.contains("7.cnvs.mp4") })
     }
 
     @Test

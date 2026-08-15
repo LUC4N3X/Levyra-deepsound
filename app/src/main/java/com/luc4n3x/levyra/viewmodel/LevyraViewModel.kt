@@ -2724,6 +2724,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyFollowedArtists(followed)
         pendingSeekMs = snapshot.lastPositionMs.coerceAtLeast(0L)
         val restoredTrack = snapshot.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
+        val restoredAnimationsEnabled = snapshot.animationsEnabled &&
+            !adaptivePlaybackPolicy.current(videoMode = false).lowRam
+        motionArtworkJob?.cancel()
+        motionArtworkRequestKey = null
+        motionArtworkPrefetchJob?.cancel()
         _state.update {
             it.copy(
                 favorites = favorites,
@@ -2733,7 +2738,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 personalOrbitTracks = snapshot.personalOrbitTracks,
                 userName = snapshot.userName,
                 languageCode = snapshot.languageCode,
-                animationsEnabled = snapshot.animationsEnabled && !adaptivePlaybackPolicy.current(videoMode = false).lowRam,
+                animationsEnabled = restoredAnimationsEnabled,
+                motionArtworkEnabled = snapshot.motionArtworkEnabled,
+                motionArtwork = null,
+                motionArtworkLoading = false,
                 dynamicColor = snapshot.dynamicColor,
                 sponsorBlockEnabled = snapshot.sponsorBlock,
                 skipSilence = snapshot.skipSilence,
@@ -2766,6 +2774,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 fallbackIndex = -1,
                 fallbackPositionMs = 0L
             )
+        }
+        if (snapshot.motionArtworkEnabled && restoredAnimationsEnabled) {
+            _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         }
     }
 

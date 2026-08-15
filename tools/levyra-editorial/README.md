@@ -27,9 +27,9 @@ Create `LEVYRA_EDITORIAL_SP_DC` in:
 Repository Settings → Secrets and variables → Actions → New repository secret
 ```
 
-Paste only the `sp_dc` value. Same-repository pull requests run the live read-only integration test
-and publish the validated data branch so their signed APK can exercise the exact runtime catalog.
-Fork and Dependabot pull requests never receive repository secrets and cannot publish.
+Paste only the `sp_dc` value. Pull requests, including same-repository branches, run only the
+secretless collector verification and cannot publish data branches. Fork and Dependabot pull
+requests receive the same read-only boundary and never receive repository secrets.
 
 ## Collections
 
@@ -37,11 +37,12 @@ Fork and Dependabot pull requests never receive repository secrets and cannot pu
 
 ## Publication
 
-The workflow runs every six hours, on manual dispatch and for trusted same-repository pull requests. It validates the complete editorial
-catalog and the optional sanitized Spotify Canvas catalog, compares both without `generatedAt`, and
-updates the data-only `editorial-data` branch only when substantive content changed. A Canvas
-refresh failure preserves the last published Canvas file while normal editorial publication can
-continue.
+The workflow verifies collector code on relevant pull requests without secrets or write permission.
+Live integration runs only through a manual dispatch on `main`; collection and publication run every
+six hours or through a manual dispatch on `main`. Trusted publication validates the complete
+editorial catalog and optional sanitized Spotify Canvas catalog, compares both without `generatedAt`,
+and updates the data-only `editorial-data` branch only when substantive content changed. A missing
+or expired Spotify session preserves the last published files.
 
 Public URL:
 
