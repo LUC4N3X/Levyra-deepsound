@@ -1240,7 +1240,8 @@ class PlaybackService : MediaLibraryService() {
     private data class ServiceRecoveryPlan(
         val localPlayback: Boolean,
         val delaysMs: LongArray,
-        val positionMs: Long
+        val positionMs: Long,
+        val trackId: String?
     )
 
     private fun scheduleServiceRecovery(error: PlaybackException) {
@@ -1257,8 +1258,19 @@ class PlaybackService : MediaLibraryService() {
         return ServiceRecoveryPlan(
             localPlayback = localPlayback,
             delaysMs = if (localPlayback) LOCAL_RECOVERY_DELAYS_MS else ONLINE_RECOVERY_DELAYS_MS,
-            positionMs = mediaSession?.player?.currentPosition?.coerceAtLeast(0L) ?: 0L
+            positionMs = mediaSession?.player?.currentPosition?.coerceAtLeast(0L) ?: 0L,
+            trackId = currentRecoveryTrackId()
         )
+    }
+
+    private fun currentRecoveryTrackId(): String? =
+        queueEngine.state.value.currentTrack?.id?.takeIf { it.isNotBlank() }
+            ?: mediaSession?.player?.currentMediaItem?.mediaId?.takeIf { it.isNotBlank() }
+
+    private fun recoveryTargetChanged(plan: ServiceRecoveryPlan): Boolean {
+        val expected = plan.trackId ?: return false
+        val current = currentRecoveryTrackId() ?: return false
+        return current != expected
     }
 
     private suspend fun runServiceRecovery(error: PlaybackException, plan: ServiceRecoveryPlan) {
@@ -1332,6 +1344,17 @@ class PlaybackService : MediaLibraryService() {
         val attempt = serviceRecoveryAttempts++
         acquirePlaybackWakeLock()
         delay(plan.delaysMs[attempt])
+        if (recoveryTargetChanged(plan)) {
+            serviceRecoveryAttempts = 0
+            serviceRecoveryExhausted = false
+            releasePlaybackWakeLock()
+            Timber.i("Background playback recovery abandoned: track changed")
+            return true
+        }
+        if (finishHealthyServiceRecovery()) {
+            releasePlaybackWakeLock()
+            return true
+        }
         val restored = restoreCurrentPlayback(
             positionMs = plan.positionMs,
             preferFreshResolution = !plan.localPlayback && hasInternetCapableNetwork()

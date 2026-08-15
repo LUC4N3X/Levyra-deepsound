@@ -1840,6 +1840,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         errorMessage: String
     ) {
         if (isLocalPlaybackTrack(failedTrack)) return
+        val currentTrackId = _state.value.currentTrack?.id
+        if (currentTrackId != null && currentTrackId != failedTrack.id) return
         val transitionId = ++streamTransitionId
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
