@@ -115,8 +115,34 @@ class MotionArtworkEngine(context: Context) {
             }
         }
 
+        outcomes.forEachIndexed { index, outcome ->
+            val provider = providers.getOrNull(index)?.id ?: "unknown"
+            val summary = when (outcome) {
+                is MotionArtworkProviderResult.Found -> "found=${outcome.candidates.size}"
+                MotionArtworkProviderResult.NoMatch -> "noMatch"
+                is MotionArtworkProviderResult.Failed -> "failed"
+            }
+            Timber.d(
+                "motion provider %s -> %s for %s / %s (album=%s)",
+                provider,
+                summary,
+                identity.title,
+                identity.artists.joinToString(),
+                identity.album
+            )
+        }
+
         val ranked = candidates.mapNotNull { candidate ->
             val match = CanonicalTrackMatcher.match(identity, candidate)
+            Timber.d(
+                "motion candidate %s scope=%s score=%d accepted=%b minimum=%d album=%s",
+                candidate.provider,
+                candidate.scope,
+                match.score,
+                match.accepted,
+                config.minimumConfidence,
+                candidate.identity.album
+            )
             if (!match.accepted || match.score < config.minimumConfidence) null
             else MotionArtworkRankedCandidate(
                 candidate,
