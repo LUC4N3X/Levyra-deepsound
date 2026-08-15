@@ -208,6 +208,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("userName", snapshot.userName)
             .put("languageCode", snapshot.languageCode)
             .put("animationsEnabled", snapshot.animationsEnabled)
+            .put("motionArtworkEnabled", snapshot.motionArtworkEnabled)
             .put("dynamicColor", snapshot.dynamicColor)
             .put("sponsorBlock", snapshot.sponsorBlock)
             .put("skipSilence", snapshot.skipSilence)
@@ -232,6 +233,7 @@ class LevyraBackupManager(private val context: Context) {
             userName = json.optString("userName"),
             languageCode = json.optString("languageCode"),
             animationsEnabled = json.optBoolean("animationsEnabled", true),
+            motionArtworkEnabled = json.optBoolean("motionArtworkEnabled", true),
             dynamicColor = json.optBoolean("dynamicColor", true),
             sponsorBlock = json.optBoolean("sponsorBlock", true),
             skipSilence = json.optBoolean("skipSilence", false),

@@ -365,14 +365,14 @@ def verify_compatibility_vectors() -> None:
                 "song": "Track One",
                 "artist": "Exact Artist",
                 "album": "Exact Album",
-                "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/1.m3u8",
+                "url": "https://canvaz.scdn.co/upload/artist/video/album-1.m3u8",
                 "isrc": "USUM71703861",
             },
             {
                 "song": "Track Two",
                 "artist": "Exact Artist",
                 "album": "Exact Album",
-                "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/1.m3u8",
+                "url": "https://canvaz.scdn.co/upload/artist/video/album-1.m3u8",
             },
         ]
     )
@@ -392,7 +392,7 @@ def verify_compatibility_vectors() -> None:
             {
                 "_key": f"test-key-{index}",
                 "h": "A" * 43,
-                "u": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/test.mp4",
+                "u": "https://canvaz.scdn.co/upload/artist/video/test.cnvs.mp4",
                 "s": "t",
             }
             for index in range(8)

@@ -127,7 +127,7 @@ class CommunityCanvasIndexTest {
               "items": [
                 {
                   "h": "-K6RoUVvFyzLwspAVDpboQ9Ad9om6Fpv3P29SRtmU08",
-                  "u": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/2.mp4",
+                  "u": "https://canvaz.scdn.co/upload/artist/video/2.cnvs.mp4",
                   "s": "t",
                   "i": "USSM12209777",
                   "w": 1080,
@@ -135,7 +135,7 @@ class CommunityCanvasIndexTest {
                 },
                 {
                   "h": "XW0J48rLsOi5wNCr4BFRQV4hl4Uln4huUif_6VUN2No",
-                  "u": "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/9.m3u8",
+                  "u": "https://canvaz.scdn.co/upload/artist/video/9.m3u8",
                   "s": "a"
                 },
                 {

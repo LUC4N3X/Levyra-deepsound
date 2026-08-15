@@ -380,7 +380,7 @@ private fun MotionArtworkVideo(
     val textureView = remember(player) { TextureView(context) }
     val videoAlpha by animateFloatAsState(
         targetValue = if (firstFrameRendered && !failed) 1f else 0f,
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
         label = "motion-artwork-alpha"
     )
 

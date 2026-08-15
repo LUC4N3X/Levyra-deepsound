@@ -1,4 +1,4 @@
-# Community canvas catalog
+# Levyra Canvas catalog
 
 Levyra's `community-canvas` provider is an optional, read-only motion-artwork source. It maps a
 recording to a short looping video and sends every candidate through the shared matcher and URL
@@ -7,20 +7,34 @@ HTTPS, an approved host and an MP4 or HLS path.
 
 ## Runtime lookup order
 
-The provider uses three layers:
+The provider uses two repository-owned layers:
 
 | Order | Source | Purpose |
 |:--|:--|:--|
 | 1 | `canvas-data/catalog/index/v2` | Hash-sharded Levyra index used for normal lookups |
 | 2 | `canvas-data/catalog/community-canvas.json` | Bounded compatibility snapshot used during rollout or index failure |
-| 3 | `vivizzz007/vivimusicanvas@main:canvas.json` | Original upstream fallback |
 
 When the indexed mirror is healthy, the app never downloads the complete catalog. A missing result
-in a healthy index is conclusive and does not trigger the flat download. The bounded mirror and
-upstream are consulted only when the manifest or every relevant shard is unavailable or invalid.
+in a healthy index is conclusive and does not trigger the flat download. The bounded Levyra snapshot
+is consulted only when the manifest or every relevant shard is unavailable or invalid.
 If one shard fails but another relevant shard produces a valid exact match, Levyra keeps that result.
 Identities that cannot produce an index key also use the legacy catalog path instead of being treated
 as a conclusive indexed miss.
+
+In automatic mode, provider priority is strict: Levyra's Spotify Canvas catalog, Apple Music motion
+artwork, then Tidal `videoCover`. If none produces a verified match, the player keeps Levyra's normal
+artwork and its local decorative motion treatment. The historical internal ID `community-canvas`
+now represents only the Spotify catalog published and sanitized by Levyra.
+
+Android never reads a third-party catalog directly. Levyra consumes only the sanitized Spotify
+catalog published by its trusted editorial workflow, then validates and republishes the runtime
+contract under the repository-owned `canvas-data` branch. A provider outage therefore cannot
+redirect installed clients to another project's mutable branch.
+
+In the stacked fullscreen player, a resolved Canvas becomes the immersive edge-to-edge visual layer
+behind the existing controls. The same muted decorative Media3 player is reused, while the static
+artwork remains immediate and gains a subtle local motion treatment when no provider video is ready.
+Side-by-side and native Video mode retain their existing surfaces.
 
 ## Scalable sharded index
 
@@ -104,23 +118,21 @@ The manifest is the only mutable pointer. It and the newly generated directory a
 Git transaction. Old generation directories remain available for compatibility; current clients
 cannot reach them after refreshing the manifest.
 
-## Multi-source aggregation
+## Repository-owned aggregation
 
-Catalog growth is configured in `catalog/community-canvas-sources.json`. A source can be:
+Catalog growth is configured in `catalog/community-canvas-sources.json`. The current source is the
+sanitized Spotify Canvas catalog published by Levyra's repository-owned editorial workflow. There
+is no runtime or build-time dependency on a third-party community catalog.
 
-* a repository-local JSON file declared with `path`;
-* an HTTPS JSON catalog declared with `url`;
-* required, which fails publication when unavailable;
-* optional, which is recorded as unavailable while healthy sources continue.
+The Spotify source is generated only in GitHub Actions. Its `sp_dc`, TOTP material, bearer token,
+client token and Spotify track URI never enter the catalog, Android build or logs. The published
+rows contain only matching text, optional ISRC and an allowlisted `canvaz.scdn.co` MP4 URL. If the
+session expires or the private read-only endpoint changes, the editorial workflow preserves the
+last valid Canvas catalog and the optional source cannot block the Levyra catalog, Apple Music or
+Tidal fallback paths.
 
-The repository currently defines:
-
-1. `catalog/community-canvas-extra.json`, the Levyra-curated overlay;
-2. the existing upstream community catalog.
-
-Adding another reviewed source or importing thousands of validated entries into the curated overlay
-requires only a data/workflow change. No Android release is needed because the next scheduled mirror
-run merges, validates, deduplicates and rebuilds every shard.
+Refreshing the Spotify source requires only a trusted workflow run. No Android release is needed
+because the next scheduled mirror run validates, deduplicates and rebuilds every shard.
 
 Exact duplicate rows are discarded across sources. Different approved media URLs for the same
 recording remain separate candidates so the normal verifier and ranking path can choose a playable
@@ -152,9 +164,9 @@ A compatibility snapshot looks like this:
   "generatedAt": "2026-08-01T04:37:00Z",
   "sources": [
     {
-      "name": "vivimusicanvas",
-      "location": "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json",
-      "required": true,
+      "name": "spotify-editorial-canvas",
+      "location": "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/spotify-canvas.json",
+      "required": false,
       "entries": 187,
       "status": "ok"
     }
@@ -165,7 +177,7 @@ A compatibility snapshot looks like this:
       "song": "Dracula",
       "artist": "Tame Impala",
       "album": "Deadbeat",
-      "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4"
+      "url": "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
     }
   ]
 }
@@ -208,6 +220,10 @@ reviewing and changing both:
 * `COMMUNITY_MEDIA_HOSTS` in `CommunityCanvasProvider.kt`;
 * `ALLOWED_HOSTS` in `scripts/sync_community_canvas.py`.
 
+The only approved Canvas media destination is the exact Spotify CDN host `canvaz.scdn.co`;
+subdomains, credentials, query strings, fragments and non-standard ports are rejected by the
+Spotify publisher before the shared mirror validation runs.
+
 Other limits:
 
 * each configured source is capped at 256 MiB during CI ingestion;
@@ -216,7 +232,8 @@ Other limits:
 * the index manifest is capped at 256 KiB;
 * each index shard is capped at 192 KiB;
 * indexed lookup is capped at 4.5 s but is shortened dynamically to reserve 4 s of the provider timeout for catalog fallback; with the default 6.5 s provider timeout the index receives at most 2.5 s;
-* legacy mirror/upstream fallback has a 6 s internal budget but remains bounded by the provider timeout left after the indexed attempt;
+* the repository-owned compatibility snapshot has a 6 s internal budget but remains bounded by the provider timeout left after the indexed attempt;
+* conclusive misses expire after 10 minutes, and cache-schema bumps invalidate older persisted misses when catalog compatibility changes;
 * all OkHttp requests are cancellable with their coroutine.
 
 The client caches parsed manifests, shards and fallback entries, never both raw HTTP responses.
@@ -225,8 +242,9 @@ There is no clock-based freshness check because publication intentionally skips 
 
 ## Mirror pipeline
 
-`.github/workflows/community-canvas-mirror.yml` runs on relevant pull requests, daily at 04:37 UTC
-and on demand. It:
+`.github/workflows/community-canvas-mirror.yml` validates relevant pull requests without secrets or
+write permissions. Publication runs only from trusted `main` code, daily at 04:37 UTC or through a
+manual dispatch. The workflow:
 
 1. verifies Python/Android lookup compatibility vectors;
 2. loads every configured source;
@@ -235,6 +253,9 @@ and on demand. It:
 5. builds the compact hash-sharded index from the complete collection;
 6. verifies the manifest, immutable generation path, file count and size limits;
 7. publishes the bounded fallback, manifest and new generation together to `canvas-data`.
+
+The published branch is Levyra's authoritative runtime source. The app has no network fallback to
+the raw source catalogs used by the build job.
 
 The publisher compares both the compatibility snapshot and manifest without `generatedAt`, so a
 pure timestamp change creates no commit while an index-builder or content change is not skipped.

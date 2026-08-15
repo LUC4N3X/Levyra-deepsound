@@ -38,6 +38,8 @@ class LevyraStrings private constructor(
     val app: String get() = value("app")
     val animations: String get() = value("animations")
     val animationsSubtitle: String get() = value("animationsSubtitle")
+    val motionArtwork: String get() = value("motionArtwork")
+    val motionArtworkSubtitle: String get() = value("motionArtworkSubtitle")
     val dynamicColor: String get() = value("dynamicColor")
     val dynamicColorSubtitle: String get() = value("dynamicColorSubtitle")
     val sponsorBlock: String get() = value("sponsorBlock")
@@ -955,6 +957,7 @@ class LevyraStrings private constructor(
 
     companion object {
         private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
+        private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
 
         private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
             mapOf(
@@ -989,8 +992,9 @@ class LevyraStrings private constructor(
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
             val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code)
-            require(resolvedEntries.keys == requiredKeys) {
-                "Invalid localization bundle $code: missing=${requiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - requiredKeys}"
+            val allRequiredKeys = requiredKeys + motionArtworkKeys
+            require(resolvedEntries.keys == allRequiredKeys) {
+                "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
             return LevyraStrings(code, resolvedEntries)
         }
@@ -1018,6 +1022,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animations",
             "animationsSubtitle" to "Effects, transitions and card press feedback",
+            "motionArtwork" to "Player Canvas",
+            "motionArtworkSubtitle" to "Show artist videos; turn off to always use the album cover",
             "dynamicColor" to "Dynamic color",
             "dynamicColorSubtitle" to "Background and accents from the current cover",
             "sponsorBlock" to "SponsorBlock",
@@ -1400,6 +1406,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animazioni",
             "animationsSubtitle" to "Effetti, transizioni e pressione delle card",
+            "motionArtwork" to "Canvas nel player",
+            "motionArtworkSubtitle" to "Mostra i video degli artisti; disattiva per usare sempre la copertina",
             "dynamicColor" to "Colore dinamico",
             "dynamicColorSubtitle" to "Sfondo e accenti presi dalla copertina del brano",
             "sponsorBlock" to "SponsorBlock",
@@ -1782,6 +1790,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animaciones",
             "animationsSubtitle" to "Efectos, transiciones y respuesta al pulsar tarjetas",
+            "motionArtwork" to "Canvas del reproductor",
+            "motionArtworkSubtitle" to "Muestra vídeos de artistas; desactívalo para usar siempre la portada",
             "dynamicColor" to "Color dinámico",
             "dynamicColorSubtitle" to "Fondo y acentos tomados de la portada actual",
             "sponsorBlock" to "SponsorBlock",
@@ -2164,6 +2174,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animations",
             "animationsSubtitle" to "Effets, transitions et retour tactile des cartes",
+            "motionArtwork" to "Canvas du lecteur",
+            "motionArtworkSubtitle" to "Affiche les vidéos des artistes ; désactivez-le pour toujours utiliser la pochette",
             "dynamicColor" to "Couleur dynamique",
             "dynamicColorSubtitle" to "Fond et accents tirés de la pochette actuelle",
             "sponsorBlock" to "SponsorBlock",
@@ -2546,6 +2558,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animationen",
             "animationsSubtitle" to "Effekte, Übergänge und Karten-Feedback",
+            "motionArtwork" to "Player-Canvas",
+            "motionArtworkSubtitle" to "Zeigt Künstlervideos; deaktivieren, um immer das Cover zu verwenden",
             "dynamicColor" to "Dynamische Farbe",
             "dynamicColorSubtitle" to "Hintergrund und Akzente aus dem aktuellen Cover",
             "sponsorBlock" to "SponsorBlock",
@@ -2928,6 +2942,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animações",
             "animationsSubtitle" to "Efeitos, transições e resposta ao tocar nos cartões",
+            "motionArtwork" to "Canvas do reprodutor",
+            "motionArtworkSubtitle" to "Mostra vídeos dos artistas; desative para usar sempre a capa",
             "dynamicColor" to "Cor dinâmica",
             "dynamicColorSubtitle" to "Fundo e detalhes tirados da capa atual",
             "sponsorBlock" to "SponsorBlock",
@@ -3310,6 +3326,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animaties",
             "animationsSubtitle" to "Effecten, overgangen en kaartfeedback",
+            "motionArtwork" to "Canvas in de speler",
+            "motionArtworkSubtitle" to "Toont artiestenvideo's; schakel uit om altijd de albumhoes te gebruiken",
             "dynamicColor" to "Dynamische kleur",
             "dynamicColorSubtitle" to "Achtergrond en accenten uit de huidige cover",
             "sponsorBlock" to "SponsorBlock",
@@ -3692,6 +3710,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animacje",
             "animationsSubtitle" to "Efekty, przejścia i reakcje kart",
+            "motionArtwork" to "Canvas odtwarzacza",
+            "motionArtworkSubtitle" to "Pokazuje filmy artystów; wyłącz, aby zawsze używać okładki albumu",
             "dynamicColor" to "Kolor dynamiczny",
             "dynamicColorSubtitle" to "Tło i akcenty z aktualnej okładki",
             "sponsorBlock" to "SponsorBlock",
@@ -4074,6 +4094,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animații",
             "animationsSubtitle" to "Efecte, tranziții și feedback la carduri",
+            "motionArtwork" to "Canvas în player",
+            "motionArtworkSubtitle" to "Afișează videoclipurile artiștilor; dezactivează pentru a folosi mereu coperta",
             "dynamicColor" to "Culoare dinamică",
             "dynamicColorSubtitle" to "Fundal și accente din coperta curentă",
             "sponsorBlock" to "SponsorBlock",
@@ -4456,6 +4478,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Κινήσεις",
             "animationsSubtitle" to "Εφέ, μεταβάσεις και ανάδραση καρτών",
+            "motionArtwork" to "Canvas αναπαραγωγής",
+            "motionArtworkSubtitle" to "Εμφανίζει βίντεο καλλιτεχνών· απενεργοποιήστε το για να χρησιμοποιείται πάντα το εξώφυλλο",
             "dynamicColor" to "Δυναμικό χρώμα",
             "dynamicColorSubtitle" to "Φόντο και τονισμοί από το τρέχον εξώφυλλο",
             "sponsorBlock" to "SponsorBlock",
@@ -4838,6 +4862,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animationer",
             "animationsSubtitle" to "Effekter, övergångar och kortfeedback",
+            "motionArtwork" to "Canvas i spelaren",
+            "motionArtworkSubtitle" to "Visar artistvideor; stäng av för att alltid använda albumomslaget",
             "dynamicColor" to "Dynamisk färg",
             "dynamicColorSubtitle" to "Bakgrund och accenter från aktuellt omslag",
             "sponsorBlock" to "SponsorBlock",
@@ -5220,6 +5246,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animationer",
             "animationsSubtitle" to "Effekter, overgange og kortfeedback",
+            "motionArtwork" to "Canvas i afspilleren",
+            "motionArtworkSubtitle" to "Viser kunstnervideoer; slå fra for altid at bruge albumcoveret",
             "dynamicColor" to "Dynamisk farve",
             "dynamicColorSubtitle" to "Baggrund og accenter fra det aktuelle cover",
             "sponsorBlock" to "SponsorBlock",
@@ -5602,6 +5630,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Animace",
             "animationsSubtitle" to "Efekty, přechody a odezva karet",
+            "motionArtwork" to "Canvas přehrávače",
+            "motionArtworkSubtitle" to "Zobrazuje videa interpretů; vypnutím se vždy použije obal alba",
             "dynamicColor" to "Dynamická barva",
             "dynamicColorSubtitle" to "Pozadí a akcenty z aktuálního obalu",
             "sponsorBlock" to "SponsorBlock",
@@ -5984,6 +6014,8 @@ class LevyraStrings private constructor(
             "app" to "APP",
             "animations" to "Анімації",
             "animationsSubtitle" to "Ефекти, переходи та відгук карток",
+            "motionArtwork" to "Canvas у програвачі",
+            "motionArtworkSubtitle" to "Показує відео виконавців; вимкніть, щоб завжди використовувати обкладинку",
             "dynamicColor" to "Динамічний колір",
             "dynamicColorSubtitle" to "Фон і акценти з поточної обкладинки",
             "sponsorBlock" to "SponsorBlock",
@@ -6366,6 +6398,8 @@ class LevyraStrings private constructor(
             "app" to "ПРИЛОЖЕНИЕ",
             "animations" to "Анимации",
             "animationsSubtitle" to "Эффекты, переходы и отклик карточек",
+            "motionArtwork" to "Canvas в плеере",
+            "motionArtworkSubtitle" to "Показывает видео исполнителей; отключите, чтобы всегда использовать обложку",
             "dynamicColor" to "Динамические цвета",
             "dynamicColorSubtitle" to "Фон и акценты на основе текущей обложки",
             "sponsorBlock" to "SponsorBlock",
@@ -6748,6 +6782,8 @@ class LevyraStrings private constructor(
             "app" to "UYGULAMA",
             "animations" to "Animasyonlar",
             "animationsSubtitle" to "Efektler, geçişler ve kart dokunma geri bildirimi",
+            "motionArtwork" to "Oynatıcı Canvas'ı",
+            "motionArtworkSubtitle" to "Sanatçı videolarını gösterir; her zaman albüm kapağını kullanmak için kapatın",
             "dynamicColor" to "Dinamik renk",
             "dynamicColorSubtitle" to "Geçerli kapaktan alınan arka plan ve vurgu renkleri",
             "sponsorBlock" to "SponsorBlock",
@@ -7130,6 +7166,8 @@ class LevyraStrings private constructor(
             "app" to "التطبيق",
             "animations" to "الحركات",
             "animationsSubtitle" to "المؤثرات والانتقالات واستجابة الضغط على البطاقات",
+            "motionArtwork" to "Canvas في المشغّل",
+            "motionArtworkSubtitle" to "يعرض فيديوهات الفنانين؛ عطّله لاستخدام غلاف الألبوم دائمًا",
             "dynamicColor" to "الألوان الديناميكية",
             "dynamicColorSubtitle" to "خلفية وألوان بارزة مستوحاة من الغلاف الحالي",
             "sponsorBlock" to "SponsorBlock",
@@ -7512,6 +7550,8 @@ class LevyraStrings private constructor(
             "app" to "应用",
             "animations" to "动画",
             "animationsSubtitle" to "特效、转场与卡片按压反馈",
+            "motionArtwork" to "播放器 Canvas",
+            "motionArtworkSubtitle" to "显示艺人视频；关闭后始终使用专辑封面",
             "dynamicColor" to "动态配色",
             "dynamicColorSubtitle" to "从当前封面提取背景与强调色",
             "sponsorBlock" to "SponsorBlock",

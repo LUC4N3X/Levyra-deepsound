@@ -26,6 +26,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -50,6 +51,7 @@ data class LevyraPreferencesSnapshot(
     val userName: String,
     val languageCode: String,
     val animationsEnabled: Boolean,
+    val motionArtworkEnabled: Boolean,
     val dynamicColor: Boolean,
     val sponsorBlock: Boolean,
     val skipSilence: Boolean,
@@ -89,6 +91,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_USER_NAME] = snapshot.userName
             mutable[KEY_LANGUAGE_CODE] = normalizedLanguage
             mutable[KEY_ANIMATIONS] = snapshot.animationsEnabled
+            mutable[KEY_MOTION_ARTWORK] = snapshot.motionArtworkEnabled
             mutable[KEY_DYNAMIC_COLOR] = snapshot.dynamicColor
             mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
             mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
@@ -178,6 +181,16 @@ class LevyraPreferences(context: Context) {
 
     fun setAnimationsEnabled(value: Boolean) {
         write { it[KEY_ANIMATIONS] = value }
+    }
+
+    suspend fun setMotionArtworkEnabled(value: Boolean) {
+        try {
+            dataStore.edit { it[KEY_MOTION_ARTWORK] = value }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore write failed")
+        }
     }
 
     fun themePreset(): String = read(com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC) {
@@ -452,6 +465,7 @@ class LevyraPreferences(context: Context) {
             userName = preferences[KEY_USER_NAME].orEmpty(),
             languageCode = normalizedLanguage,
             animationsEnabled = preferences[KEY_ANIMATIONS] ?: true,
+            motionArtworkEnabled = preferences[KEY_MOTION_ARTWORK] ?: true,
             dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
             sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: DEFAULT_SPONSORBLOCK_ENABLED,
             skipSilence = preferences[KEY_SKIP_SILENCE] ?: false,
@@ -477,6 +491,7 @@ class LevyraPreferences(context: Context) {
         userName = "",
         languageCode = LevyraLanguageCatalog.deviceDefault(),
         animationsEnabled = true,
+        motionArtworkEnabled = true,
         dynamicColor = true,
         sponsorBlock = DEFAULT_SPONSORBLOCK_ENABLED,
         skipSilence = false,
@@ -658,6 +673,7 @@ class LevyraPreferences(context: Context) {
         val KEY_LAST_TRACK = stringPreferencesKey("last_track")
         val KEY_LAST_POSITION = longPreferencesKey("last_position")
         val KEY_ANIMATIONS = booleanPreferencesKey("animations_enabled")
+        val KEY_MOTION_ARTWORK = booleanPreferencesKey("motion_artwork_enabled")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_SPONSORBLOCK = booleanPreferencesKey("sponsorblock_enabled")
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")

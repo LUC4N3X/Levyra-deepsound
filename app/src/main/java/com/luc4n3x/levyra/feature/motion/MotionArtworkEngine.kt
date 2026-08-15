@@ -118,16 +118,20 @@ class MotionArtworkEngine(context: Context) {
         val ranked = candidates.mapNotNull { candidate ->
             val match = CanonicalTrackMatcher.match(identity, candidate)
             if (!match.accepted || match.score < config.minimumConfidence) null
-            else RankedCandidate(candidate, match.score, providerRanks[candidate.provider] ?: Int.MAX_VALUE)
+            else MotionArtworkRankedCandidate(
+                candidate,
+                match.score,
+                providerRanks[candidate.provider] ?: Int.MAX_VALUE
+            )
         }.sortedWith(
-            compareByDescending<RankedCandidate> { it.confidence }
-                .thenBy { it.providerRank }
+            compareBy<MotionArtworkRankedCandidate> { it.providerRank }
+                .thenByDescending { it.confidence }
         )
 
-        var verified: RankedCandidate? = null
+        var verified: MotionArtworkRankedCandidate? = null
         var verifierFailed = false
-        val verificationCandidates = ranked.take(MAX_VERIFICATION_CANDIDATES)
-        for (rankedCandidate in verificationCandidates) {
+        val verificationPlan = buildMotionArtworkVerificationPlan(ranked)
+        for (rankedCandidate in verificationPlan.candidates) {
             when (urlVerifier.verify(rankedCandidate.candidate)) {
                 MotionArtworkVerificationResult.Verified -> {
                     verified = rankedCandidate
@@ -138,7 +142,7 @@ class MotionArtworkEngine(context: Context) {
             }
         }
         if (verified == null) {
-            val conclusive = !providerFailed && !verifierFailed && ranked.size <= MAX_VERIFICATION_CANDIDATES
+            val conclusive = !providerFailed && !verifierFailed && verificationPlan.exhaustive
             if (conclusive) {
                 repository.saveNegative(
                     identityKey = identityKey,
@@ -177,13 +181,36 @@ class MotionArtworkEngine(context: Context) {
         activeProviders
     }
 
-    private data class RankedCandidate(
-        val candidate: MotionArtworkCandidate,
-        val confidence: Int,
-        val providerRank: Int
-    )
+}
 
-    private companion object {
-        const val MAX_VERIFICATION_CANDIDATES = 3
+internal data class MotionArtworkRankedCandidate(
+    val candidate: MotionArtworkCandidate,
+    val confidence: Int,
+    val providerRank: Int
+)
+
+internal data class MotionArtworkVerificationPlan(
+    val candidates: List<MotionArtworkRankedCandidate>,
+    val exhaustive: Boolean
+)
+
+internal fun buildMotionArtworkVerificationPlan(
+    ranked: List<MotionArtworkRankedCandidate>,
+    maxCandidatesPerProvider: Int = 3
+): MotionArtworkVerificationPlan {
+    require(maxCandidatesPerProvider > 0)
+    val selectedPerProvider = mutableMapOf<Int, Int>()
+    val candidates = ranked.filter { candidate ->
+        val selected = selectedPerProvider[candidate.providerRank] ?: 0
+        if (selected >= maxCandidatesPerProvider) {
+            false
+        } else {
+            selectedPerProvider[candidate.providerRank] = selected + 1
+            true
+        }
     }
+    return MotionArtworkVerificationPlan(
+        candidates = candidates,
+        exhaustive = candidates.size == ranked.size
+    )
 }

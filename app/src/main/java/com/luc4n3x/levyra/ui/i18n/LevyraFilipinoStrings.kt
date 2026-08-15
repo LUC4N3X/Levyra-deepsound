@@ -17,6 +17,8 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "app" to "APP",
     "animations" to "Mga animation",
     "animationsSubtitle" to "Mga effect, transition, at tugon kapag pinindot ang card",
+    "motionArtwork" to "Canvas ng player",
+    "motionArtworkSubtitle" to "Ipinapakita ang video ng artist; i-off para laging gamitin ang album cover",
     "dynamicColor" to "Dynamic na kulay",
     "dynamicColorSubtitle" to "Background at accent mula sa kasalukuyang cover",
     "sponsorBlock" to "SponsorBlock",

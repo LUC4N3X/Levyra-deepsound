@@ -26,8 +26,14 @@ data class MotionArtworkConfig(
 object MotionArtworkRuntime {
     private val config = VersionedRuntimeConfig(MotionArtworkConfig().normalized())
 
-    fun snapshot(): RuntimeConfigSnapshot<MotionArtworkConfig> = config.snapshot()
+    fun snapshot(): RuntimeConfigSnapshot<MotionArtworkConfig> = config.snapshot().withCacheSchema()
 
     fun update(value: MotionArtworkConfig): RuntimeConfigSnapshot<MotionArtworkConfig> =
-        config.update(value.normalized())
+        config.update(value.normalized()).withCacheSchema()
+
+    private fun RuntimeConfigSnapshot<MotionArtworkConfig>.withCacheSchema() = copy(
+        epoch = epoch + MOTION_ARTWORK_CACHE_SCHEMA_EPOCH
+    )
 }
+
+internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 1L
