@@ -26,6 +26,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -182,8 +183,14 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_ANIMATIONS] = value }
     }
 
-    fun setMotionArtworkEnabled(value: Boolean) {
-        write { it[KEY_MOTION_ARTWORK] = value }
+    suspend fun setMotionArtworkEnabled(value: Boolean) {
+        try {
+            dataStore.edit { it[KEY_MOTION_ARTWORK] = value }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore write failed")
+        }
     }
 
     fun themePreset(): String = read(com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC) {

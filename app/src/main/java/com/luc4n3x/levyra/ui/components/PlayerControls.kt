@@ -232,8 +232,6 @@ fun PlayerTransportControls(
         PlayerPrimaryButton(
             isPlaying = isPlaying,
             isResolving = isResolving,
-            accentTarget = accents.primaryTarget,
-            accentSecondaryTarget = accents.secondaryTarget,
             width = primaryWidth,
             height = primaryHeight,
             animated = animated,
@@ -405,8 +403,6 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, ani
 private fun PlayerPrimaryButton(
     isPlaying: Boolean,
     isResolving: Boolean,
-    accentTarget: Color,
-    accentSecondaryTarget: Color,
     width: Dp,
     height: Dp,
     animated: Boolean,

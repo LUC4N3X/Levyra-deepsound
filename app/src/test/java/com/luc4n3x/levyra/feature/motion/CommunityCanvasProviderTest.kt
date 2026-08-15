@@ -17,7 +17,7 @@ class CommunityCanvasProviderTest {
                   "song": "Exact Song",
                   "artist": "Exact Artist",
                   "album": "Exact Album",
-                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4"
+                  "url": "https://canvaz.scdn.co/upload/artist/video/1.cnvs.mp4"
                 },
                 {
                   "song": "Bad Host",
@@ -29,7 +29,7 @@ class CommunityCanvasProviderTest {
                   "song": "Bad Type",
                   "artist": "Exact Artist",
                   "album": "Exact Album",
-                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/3.txt"
+                  "url": "https://canvaz.scdn.co/upload/artist/video/3.txt"
                 }
               ]
             }
@@ -42,7 +42,7 @@ class CommunityCanvasProviderTest {
 
     @Test
     fun albumDirectoryEntryAlsoCoversTheRestOfTheAlbum() {
-        val albumUrl = "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/dawn.m3u8"
+        val albumUrl = "https://canvaz.scdn.co/Album/dawn.m3u8"
         val entries = parseCommunityCanvasCatalog(
             """
             {
@@ -57,7 +57,7 @@ class CommunityCanvasProviderTest {
                   "song": "Other Song",
                   "artist": "Exact Artist",
                   "album": "Other Album",
-                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/7.mp4"
+                  "url": "https://canvaz.scdn.co/upload/artist/video/7.cnvs.mp4"
                 }
               ]
             }
@@ -99,7 +99,7 @@ class CommunityCanvasProviderTest {
                   "song": "Album Canvas",
                   "artist": "Exact Artist",
                   "album": "Exact Album",
-                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/9.mp4",
+                  "url": "https://canvaz.scdn.co/upload/artist/video/9.cnvs.mp4",
                   "scope": "album",
                   "isrc": "USUM71703861",
                   "width": 1080,
@@ -128,7 +128,7 @@ class CommunityCanvasProviderTest {
                   "song": "Exact Song",
                   "artist": "Exact Artist",
                   "album": "Exact Album",
-                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4",
+                  "url": "https://canvaz.scdn.co/upload/artist/video/1.cnvs.mp4",
                   "isrc": "not-an-isrc"
                 }
               ]
@@ -153,7 +153,7 @@ class CommunityCanvasProviderTest {
 
     @Test
     fun albumCanvasIgnoresTheIsrcOfTheListedTrack() {
-        val albumUrl = "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/dawn.m3u8"
+        val albumUrl = "https://canvaz.scdn.co/Album/dawn.m3u8"
         val entries = parseCommunityCanvasCatalog(
             """
             {
@@ -191,7 +191,7 @@ class CommunityCanvasProviderTest {
 
     @Test
     fun repeatedAlbumScopeEntriesCollapseIntoOneCandidate() {
-        val albumUrl = "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/dawn.m3u8"
+        val albumUrl = "https://canvaz.scdn.co/Album/dawn.m3u8"
         val entries = parseCommunityCanvasCatalog(
             """
             {
@@ -244,7 +244,7 @@ class CommunityCanvasProviderTest {
                 song = "Flowers",
                 artist = "Miley Cyrus",
                 album = "Endless Summer Vacation",
-                url = "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/flowers.mp4",
+                url = "https://canvaz.scdn.co/upload/artist/video/flowers.cnvs.mp4",
                 scope = MotionArtworkScope.TRACK,
             )
         )
@@ -275,7 +275,7 @@ class CommunityCanvasProviderTest {
                   "song": "Exact Song",
                   "artist": "Exact Artist",
                   "album": "Exact Album",
-                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4"
+                  "url": "https://canvaz.scdn.co/upload/artist/video/1.cnvs.mp4"
                 }
               ]
             }
@@ -295,7 +295,7 @@ class CommunityCanvasProviderTest {
                 song = "Exact Song",
                 artist = "Exact Artist",
                 album = "Exact Album",
-                url = "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4",
+                url = "https://canvaz.scdn.co/upload/artist/video/1.cnvs.mp4",
                 scope = MotionArtworkScope.TRACK,
                 isrc = "GBAYE0601498"
             )
@@ -317,7 +317,7 @@ class CommunityCanvasProviderTest {
 
     @Test
     fun repeatedAlbumCanvasIsInferredAsAlbumScope() {
-        val url = "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/dawn.m3u8"
+        val url = "https://canvaz.scdn.co/Album/dawn.m3u8"
         val entries = listOf(
             CommunityCanvasEntry("Track One", "Exact Artist", "Exact Album", url, MotionArtworkScope.TRACK),
             CommunityCanvasEntry("Track Two", "Exact Artist", "Exact Album", url, MotionArtworkScope.TRACK)
@@ -346,7 +346,7 @@ class CommunityCanvasProviderTest {
                 song = "Exact Song",
                 artist = "Exact Artist",
                 album = "Exact Album",
-                url = "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.m3u8",
+                url = "https://canvaz.scdn.co/upload/artist/video/1.m3u8",
                 scope = MotionArtworkScope.TRACK
             )
         )

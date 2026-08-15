@@ -110,11 +110,6 @@ internal class YoutubePlaybackSecurity private constructor(
         }
     }
 
-    fun invalidatePlaybackTokens() {
-        lastWarmAtMs.set(0L)
-        tokenGenerator.invalidate()
-    }
-
     fun cachedSession(): YoutubeGuestSession {
         return YoutubeGuestSession(
             visitorData = prefs.getString(KEY_VISITOR_DATA, "").orEmpty(),

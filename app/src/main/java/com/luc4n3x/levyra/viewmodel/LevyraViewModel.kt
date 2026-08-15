@@ -2621,7 +2621,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setMotionArtworkEnabled(value: Boolean) {
-        preferences.setMotionArtworkEnabled(value)
         _state.update {
             it.copy(
                 motionArtworkEnabled = value,
@@ -2629,6 +2628,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 motionArtworkLoading = if (value) it.motionArtworkLoading else false
             )
         }
+        viewModelScope.launch { preferences.setMotionArtworkEnabled(value) }
         if (value && _state.value.animationsEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         } else {

@@ -21,15 +21,20 @@ If one shard fails but another relevant shard produces a valid exact match, Levy
 Identities that cannot produce an index key also use the legacy catalog path instead of being treated
 as a conclusive indexed miss.
 
-Android never reads a third-party catalog directly. External catalogs may be declared as untrusted,
-optional CI inputs with explicit attribution, but Levyra normalizes, validates, deduplicates and
-republishes the complete runtime contract under the repository-owned `canvas-data` branch. A source
-removal or outage therefore cannot redirect installed clients to another project's mutable `main`.
+In automatic mode, provider priority is strict: Levyra's Spotify Canvas catalog, Apple Music motion
+artwork, then Tidal `videoCover`. If none produces a verified match, the player keeps Levyra's normal
+artwork and its local decorative motion treatment. The historical internal ID `community-canvas`
+now represents only the Spotify catalog published and sanitized by Levyra.
+
+Android never reads a third-party catalog directly. Levyra consumes only the sanitized Spotify
+catalog published by its trusted editorial workflow, then validates and republishes the runtime
+contract under the repository-owned `canvas-data` branch. A provider outage therefore cannot
+redirect installed clients to another project's mutable branch.
 
 In the stacked fullscreen player, a resolved Canvas becomes the immersive edge-to-edge visual layer
-behind the existing controls. The same muted decorative Media3 player is reused; the square artwork
-crossfades away only for motion artwork, while its static image remains the immediate fallback until
-the first video frame is ready. Side-by-side and native Video mode retain their existing surfaces.
+behind the existing controls. The same muted decorative Media3 player is reused, while the static
+artwork remains immediate and gains a subtle local motion treatment when no provider video is ready.
+Side-by-side and native Video mode retain their existing surfaces.
 
 ## Scalable sharded index
 
@@ -113,20 +118,11 @@ The manifest is the only mutable pointer. It and the newly generated directory a
 Git transaction. Old generation directories remain available for compatibility; current clients
 cannot reach them after refreshing the manifest.
 
-## Multi-source aggregation
+## Repository-owned aggregation
 
-Catalog growth is configured in `catalog/community-canvas-sources.json`. A source can be:
-
-* a repository-local JSON file declared with `path`;
-* an HTTPS JSON catalog declared with `url`;
-* required, which fails publication when unavailable;
-* optional, which is recorded as unavailable while healthy sources continue.
-
-The repository currently defines:
-
-1. the sanitized Spotify Canvas catalog published by the repository-owned editorial workflow;
-2. `catalog/community-canvas-extra.json`, the Levyra-curated overlay;
-3. an attributed optional community seed used only while building Levyra's catalog.
+Catalog growth is configured in `catalog/community-canvas-sources.json`. The current source is the
+sanitized Spotify Canvas catalog published by Levyra's repository-owned editorial workflow. There
+is no runtime or build-time dependency on a third-party community catalog.
 
 The Spotify source is generated only in GitHub Actions. Its `sp_dc`, TOTP material, bearer token,
 client token and Spotify track URI never enter the catalog, Android build or logs. The published
@@ -135,9 +131,8 @@ session expires or the private read-only endpoint changes, the editorial workflo
 last valid Canvas catalog and the optional source cannot block the Levyra catalog, Apple Music or
 Tidal fallback paths.
 
-Adding another reviewed source or importing thousands of validated entries into the curated overlay
-requires only a data/workflow change. No Android release is needed because the next scheduled mirror
-run merges, validates, deduplicates and rebuilds every shard.
+Refreshing the Spotify source requires only a trusted workflow run. No Android release is needed
+because the next scheduled mirror run validates, deduplicates and rebuilds every shard.
 
 Exact duplicate rows are discarded across sources. Different approved media URLs for the same
 recording remain separate candidates so the normal verifier and ranking path can choose a playable
@@ -182,7 +177,7 @@ A compatibility snapshot looks like this:
       "song": "Dracula",
       "artist": "Tame Impala",
       "album": "Deadbeat",
-      "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4"
+      "url": "https://canvaz.scdn.co/upload/artist/video/example.cnvs.mp4"
     }
   ]
 }
@@ -225,9 +220,9 @@ reviewing and changing both:
 * `COMMUNITY_MEDIA_HOSTS` in `CommunityCanvasProvider.kt`;
 * `ALLOWED_HOSTS` in `scripts/sync_community_canvas.py`.
 
-The approved Canvas media destinations are the two existing community hosts plus the exact Spotify
-CDN host `canvaz.scdn.co`; subdomains, credentials, query strings, fragments and non-standard ports
-are rejected by the Spotify publisher before the shared mirror validation runs.
+The only approved Canvas media destination is the exact Spotify CDN host `canvaz.scdn.co`;
+subdomains, credentials, query strings, fragments and non-standard ports are rejected by the
+Spotify publisher before the shared mirror validation runs.
 
 Other limits:
 
@@ -247,10 +242,9 @@ There is no clock-based freshness check because publication intentionally skips 
 
 ## Mirror pipeline
 
-`.github/workflows/community-canvas-mirror.yml` runs on relevant pull requests, daily at 04:37 UTC
-and on demand. Trusted same-repository pull requests publish their validated result so the signed PR
-APK exercises the real runtime path; fork and Dependabot pull requests can validate but cannot
-publish. The workflow:
+`.github/workflows/community-canvas-mirror.yml` validates relevant pull requests without secrets or
+write permissions. Publication runs only from trusted `main` code, daily at 04:37 UTC or through a
+manual dispatch. The workflow:
 
 1. verifies Python/Android lookup compatibility vectors;
 2. loads every configured source;

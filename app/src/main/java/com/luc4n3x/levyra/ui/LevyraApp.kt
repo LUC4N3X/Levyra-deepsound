@@ -11145,25 +11145,33 @@ private fun PlayerImmersiveMotionCanvas(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val fallbackMotion = rememberInfiniteTransition(label = "player-artwork-fallback")
-    val fallbackScale by fallbackMotion.animateFloat(
-        initialValue = 1.08f,
-        targetValue = 1.16f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(14_000, easing = LevyraPlayerDesign.Standard),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "player-artwork-fallback-scale"
-    )
-    val fallbackDrift by fallbackMotion.animateFloat(
-        initialValue = -10f,
-        targetValue = 10f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(18_000, easing = LevyraPlayerDesign.Standard),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "player-artwork-fallback-drift"
-    )
+    val animateFallback = motionArtwork == null && animationsEnabled && isPlaying
+    val fallbackScale: Float
+    val fallbackDrift: Float
+    if (animateFallback) {
+        val fallbackMotion = rememberInfiniteTransition(label = "player-artwork-fallback")
+        fallbackScale = fallbackMotion.animateFloat(
+            initialValue = 1.08f,
+            targetValue = 1.16f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(14_000, easing = LevyraPlayerDesign.Standard),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-fallback-scale"
+        ).value
+        fallbackDrift = fallbackMotion.animateFloat(
+            initialValue = -10f,
+            targetValue = 10f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(18_000, easing = LevyraPlayerDesign.Standard),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-fallback-drift"
+        ).value
+    } else {
+        fallbackScale = 1.08f
+        fallbackDrift = 0f
+    }
     Box(modifier = modifier) {
         MotionArtworkLayer(
             artwork = motionArtwork,
@@ -11187,7 +11195,7 @@ private fun PlayerImmersiveMotionCanvas(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            if (motionArtwork == null && animationsEnabled && isPlaying) {
+                            if (animateFallback) {
                                 scaleX = fallbackScale
                                 scaleY = fallbackScale
                                 translationX = fallbackDrift
@@ -11551,8 +11559,6 @@ private fun compactYoutubeCount(value: Long): String {
 private fun PlayerYoutubeEngagementRow(
     track: Track,
     engagement: YoutubeEngagementState,
-    primary: Color,
-    secondary: Color,
     compact: Boolean,
     onComments: () -> Unit
 ) {
@@ -12471,8 +12477,6 @@ private fun PlayerScreen(
                 PlayerYoutubeEngagementRow(
                     track = activeTrack,
                     engagement = state.youtubeEngagement,
-                    primary = primary,
-                    secondary = secondary,
                     compact = compactPlayer,
                     onComments = viewModel::openYoutubeComments
                 )

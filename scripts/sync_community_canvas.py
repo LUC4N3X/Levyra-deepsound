@@ -19,8 +19,6 @@ from urllib.parse import urlsplit
 
 ALLOWED_HOSTS = (
     "canvaz.scdn.co",
-    "vivimusicanvas.mkmdevilmi.workers.dev",
-    "vivimusicanvas-mtih.vercel.app",
 )
 ALLOWED_EXTENSIONS = (".mp4", ".m3u8")
 DECLARED_SCOPES = {"track": "track", "song": "track", "album": "album"}
@@ -286,7 +284,7 @@ def verify_sync_invariants() -> None:
         "song": "Don't Stop (Live)",
         "artist": "Artist One feat. Artist Two",
         "album": "Exact Album",
-        "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/curated.mp4",
+        "url": "https://canvaz.scdn.co/upload/artist/video/curated.cnvs.mp4",
         "scope": "track",
         "isrc": "USUM71703861",
     }
@@ -294,7 +292,7 @@ def verify_sync_invariants() -> None:
         **curated,
         "song": "Dont Stop Live",
         "artist": "Artist One, Artist Two",
-        "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/upstream.mp4",
+        "url": "https://canvaz.scdn.co/upload/artist/video/upstream.cnvs.mp4",
         "isrc": "GBAYE0601498",
     }
     if not catalog_source_identity_keys(curated).intersection(

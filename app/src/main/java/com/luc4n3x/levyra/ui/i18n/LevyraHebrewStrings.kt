@@ -17,6 +17,8 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "app" to "אפליקציה",
     "animations" to "אנימציות",
     "animationsSubtitle" to "אפקטים, מעברים ומשוב בלחיצה על כרטיסים",
+    "motionArtwork" to "Canvas בנגן",
+    "motionArtworkSubtitle" to "מציג סרטוני אמנים; כבו כדי להשתמש תמיד בעטיפת האלבום",
     "dynamicColor" to "צבע דינמי",
     "dynamicColorSubtitle" to "רקע והדגשות מעטיפת השיר הנוכחי",
     "sponsorBlock" to "SponsorBlock",
