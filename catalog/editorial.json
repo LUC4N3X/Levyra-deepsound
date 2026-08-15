@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-15T12:07:54Z",
+  "generatedAt": "2026-08-15T12:46:12Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1832,6 +1832,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -3042,6 +3048,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -4933,12 +4945,6 @@
           },
           "durationMs": 176213,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "O2tKlnfrLkY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -6111,11 +6117,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 10,
@@ -10387,11 +10393,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 38,
@@ -10547,14 +10553,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -10662,6 +10660,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -21934,6 +21938,12 @@
           },
           "durationMs": 156034,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "3F9jlnANW08",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCmWwbZ-8SngcUzRAD8rCVvw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027e77585ffef632e51313b3e0"
         },
         {
@@ -22068,12 +22078,6 @@
           },
           "durationMs": 200000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Q4AE3ub4nBM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCC3Hg75KxQk4VTrBSphEbGw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d505bec2fbfee5857725d333"
         },
         {
@@ -28044,14 +28048,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -29300,6 +29296,12 @@
           },
           "durationMs": 188591,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "jJ8fPgsiwvg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCNsMksDl9za5N9R7hyYa97g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02759a0f224bec949bf7218a2d"
         },
         {
@@ -29442,12 +29444,6 @@
           },
           "durationMs": 165207,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "gVLHB-ZFkTU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCL6BVY3mcn4xFaMz3dgtt3g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028c32bafec7c0feac429c3001"
         },
         {

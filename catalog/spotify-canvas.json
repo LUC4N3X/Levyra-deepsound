@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-15T12:07:54Z",
+  "generatedAt": "2026-08-15T12:46:12Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -1102,13 +1102,6 @@
       "scope": "track"
     },
     {
-      "song": "The One That Got Away",
-      "artist": "Katy Perry",
-      "album": "Teenage Dream",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "In the End",
       "artist": "Linkin Park",
       "album": "Hybrid Theory (Bonus Edition)",
@@ -1820,13 +1813,6 @@
       "artist": "Effe Serieus",
       "album": "Baila de Gasolina",
       "url": "https://canvaz.scdn.co/upload/artist/3NRhf1UyPB4XwxBq1eQE93/video/b13c49e1f64742f09e62f260bcc4deaf.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Midnight Sun",
-      "artist": "Zara Larsson",
-      "album": "Midnight Sun",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4529,6 +4515,13 @@
       "artist": "Full Trunk",
       "album": "אין מילים איתך",
       "url": "https://canvaz.scdn.co/upload/artist/1CD5WWtF6AFUq6BTY20I4k/video/1e7cdff6e5e04c0e929e4987486ba51e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "I Can’t Wait",
+      "artist": "Phoebe Bridgers",
+      "album": "Lost Weekend",
+      "url": "https://canvaz.scdn.co/upload/licensor/3zQMAX3jvXrQSwvcazsqzQ/video/9083beebe770487fa712dd70371dcb68.cnvs.mp4",
       "scope": "track"
     },
     {
