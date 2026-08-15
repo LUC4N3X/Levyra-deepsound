@@ -11104,10 +11104,11 @@ private fun PlayerCanvasFusionScrim(
                     colorStops = arrayOf(
                         0.00f to baseColor.copy(alpha = 0.62f),
                         0.13f to baseColor.copy(alpha = 0.14f),
-                        0.34f to Color.Transparent,
-                        0.55f to baseColor.copy(alpha = 0.20f),
-                        0.70f to baseColor.copy(alpha = 0.60f),
-                        0.84f to baseColor.copy(alpha = 0.90f),
+                        0.32f to Color.Transparent,
+                        0.50f to baseColor.copy(alpha = 0.26f),
+                        0.62f to baseColor.copy(alpha = 0.70f),
+                        0.74f to baseColor.copy(alpha = 0.93f),
+                        0.84f to baseColor,
                         1.00f to baseColor
                     )
                 )
@@ -12021,26 +12022,33 @@ private fun PlayerScreen(
             isPlaying = state.isPlaying,
             modifier = Modifier.fillMaxSize()
         )
-        if (track != null && (immersiveArtworkEnabled || immersiveMotionAlpha > 0.01f)) {
-            PlayerImmersiveMotionCanvas(
-                track = track,
-                artworkUrl = artworkUrl,
-                motionArtwork = immersiveMotionArtwork,
-                ambience = ambience,
-                animationsEnabled = state.animationsEnabled,
-                isPlaying = state.isPlaying,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = if (morphActive) 0f else {
-                            immersiveMotionAlpha * playerSwipeContentAlpha(
-                                settledSwipeOffset,
-                                size.width
-                            )
+        AnimatedVisibility(
+            visible = track != null && immersiveArtworkEnabled,
+            enter = if (state.animationsEnabled) fadeIn(tween(520, easing = LinearOutSlowInEasing)) else EnterTransition.None,
+            exit = if (state.animationsEnabled) fadeOut(tween(320, easing = LinearOutSlowInEasing)) else ExitTransition.None,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            val canvasTrack = track ?: state.currentTrack
+            if (canvasTrack != null) {
+                PlayerImmersiveMotionCanvas(
+                    track = canvasTrack,
+                    artworkUrl = artworkUrl,
+                    motionArtwork = immersiveMotionArtwork,
+                    ambience = ambience,
+                    animationsEnabled = state.animationsEnabled,
+                    isPlaying = state.isPlaying,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = if (morphActive) {
+                                0f
+                            } else {
+                                playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                            }
+                            translationX = settledSwipeOffset * 0.32f
                         }
-                        translationX = settledSwipeOffset * 0.32f
-                    }
-            )
+                )
+            }
         }
 
         val headerBlock: @Composable () -> Unit = {
