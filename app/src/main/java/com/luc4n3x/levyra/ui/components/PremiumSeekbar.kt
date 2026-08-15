@@ -29,6 +29,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -91,6 +95,29 @@ fun PremiumSeekbar(
 
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
+    }
+    val wavePath = remember(widthPx, density) {
+        Path().apply {
+            if (widthPx <= 0f) return@apply
+            val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
+            val amplitude = with(density) { 1.dp.toPx() }
+            val wavelength = with(density) { 30.dp.toPx() }
+            moveTo(0f, centerY)
+            var waveStart = 0f
+            while (waveStart < widthPx) {
+                val waveEnd = (waveStart + wavelength).coerceAtMost(widthPx)
+                val waveWidth = waveEnd - waveStart
+                cubicTo(
+                    waveStart + waveWidth * 0.25f,
+                    centerY - amplitude,
+                    waveStart + waveWidth * 0.75f,
+                    centerY + amplitude,
+                    waveEnd,
+                    centerY
+                )
+                waveStart = waveEnd
+            }
+        }
     }
 
     Box(
@@ -193,7 +220,6 @@ fun PremiumSeekbar(
 
             val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, thumbRadius * 2f)
 
-            // 1. Inactive continuous background track
             drawRoundRect(
                 color = inactiveColor,
                 topLeft = Offset(trackStart, trackTop),
@@ -201,7 +227,6 @@ fun PremiumSeekbar(
                 cornerRadius = radius
             )
 
-            // 2. Buffered progress span
             val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
             val bufferedSpan = bufferedEnd - trackStart
             if (bufferedSpan > 0f) {
@@ -213,18 +238,21 @@ fun PremiumSeekbar(
                 )
             }
 
-            // 3. Active continuous progress track
-            val activeSpan = handleX - trackStart
-            if (activeSpan > 0f) {
-                drawRoundRect(
-                    color = activeColor,
-                    topLeft = Offset(trackStart, trackTop),
-                    size = Size(activeSpan, trackHeight),
-                    cornerRadius = radius
-                )
+            if (handleX > trackStart) {
+                clipRect(
+                    left = trackStart,
+                    top = 0f,
+                    right = handleX,
+                    bottom = size.height
+                ) {
+                    drawPath(
+                        path = wavePath,
+                        color = activeColor,
+                        style = Stroke(width = trackHeight, cap = StrokeCap.Round)
+                    )
+                }
             }
 
-            // 4. Thumb glow when scrubbing
             if (scrub > 0.01f) {
                 val glowRadius = thumbRadius * 1.8f
                 drawCircle(
@@ -234,7 +262,6 @@ fun PremiumSeekbar(
                 )
             }
 
-            // 5. Thumb circle with soft shadow
             drawCircle(
                 color = Color.Black.copy(alpha = 0.20f),
                 radius = thumbRadius + 1f,

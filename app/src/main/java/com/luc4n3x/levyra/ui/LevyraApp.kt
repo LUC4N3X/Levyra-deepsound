@@ -11290,6 +11290,161 @@ private fun LevyraControlPulseHandle(
 }
 
 @Composable
+private fun PlayerQuickActionsBar(
+    track: Track,
+    state: LevyraUiState,
+    primary: Color,
+    secondary: Color,
+    compact: Boolean,
+    viewModel: PlayerViewModel
+) {
+    val strings = LocalLevyraStrings.current
+    var optionsExpanded by remember(track.id) { mutableStateOf(false) }
+    val isDownloaded = track.id in state.downloadedTrackIds
+    val optionsActive = state.playbackSpeed != 1f ||
+        state.sleepTimerMinutes > 0 ||
+        state.audioNormalization
+    val activePrimary = primary.playerMix(Color.White, 0.48f)
+    val activeSecondary = secondary.playerMix(Color.White, 0.44f)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(LevyraPlayerDesign.MinimumTouchTarget),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        PlayerQuickAction(
+            icon = Icons.AutoMirrored.Rounded.QueueMusic,
+            contentDescription = strings.queue,
+            tint = Color.White.copy(alpha = 0.76f),
+            active = false,
+            compact = compact,
+            modifier = Modifier.weight(1f),
+            onClick = viewModel::openQueue
+        )
+        PlayerQuickAction(
+            icon = Icons.AutoMirrored.Rounded.Subject,
+            contentDescription = strings.lyrics,
+            tint = if (state.lyrics.isNotEmpty()) activePrimary else Color.White.copy(alpha = 0.72f),
+            active = state.lyrics.isNotEmpty(),
+            compact = compact,
+            modifier = Modifier.weight(1f),
+            onClick = viewModel::openLyrics
+        )
+        PlayerQuickAction(
+            icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+            contentDescription = when {
+                state.isOfflineExporting -> strings.downloadInProgress
+                isDownloaded -> strings.downloaded
+                else -> strings.download
+            },
+            tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
+            active = state.isOfflineExporting || isDownloaded,
+            busy = state.isOfflineExporting,
+            enabled = !state.isOfflineExporting,
+            compact = compact,
+            modifier = Modifier.weight(1f),
+            onClick = viewModel::exportCurrentTrack
+        )
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            PlayerQuickAction(
+                icon = Icons.Rounded.Equalizer,
+                contentDescription = strings.options,
+                tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
+                active = optionsActive || optionsExpanded,
+                compact = compact,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { optionsExpanded = !optionsExpanded }
+            )
+            DropdownMenu(
+                expanded = optionsExpanded,
+                onDismissRequest = { optionsExpanded = false },
+                modifier = Modifier
+                    .width(if (compact) 276.dp else 296.dp)
+                    .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+            ) {
+                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    PlayerOptionsRow(
+                        speed = state.playbackSpeed,
+                        sleepMinutes = state.sleepTimerMinutes,
+                        audioNormalization = state.audioNormalization,
+                        activeColor = primary,
+                        secondaryColor = secondary,
+                        compact = true,
+                        onSpeed = viewModel::cycleSpeed,
+                        onSleep = viewModel::cycleSleepTimer,
+                        onNormalization = viewModel::toggleAudioNormalization
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerQuickAction(
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color,
+    active: Boolean,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+    busy: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val fill by animateColorAsState(
+        targetValue = if (active) tint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
+        label = "player-quick-fill"
+    )
+    val border by animateColorAsState(
+        targetValue = if (active) tint.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.065f),
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
+        label = "player-quick-border"
+    )
+    val shape = LevyraPlayerDesign.ShapeSm
+
+    Box(
+        modifier = modifier
+            .sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
+            )
+            .pressable(enabled = enabled, pressedScale = 0.92f, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(if (compact) 38.dp else 40.dp)
+                .background(fill, shape)
+                .border(LevyraPlayerDesign.Hairline, border, shape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (busy) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(if (compact) 17.dp else 18.dp),
+                    strokeWidth = 2.dp,
+                    color = tint
+                )
+            } else {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    tint = tint,
+                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlayerUtilityDock(
     activeColor: Color,
     secondaryColor: Color,
@@ -11952,17 +12107,14 @@ private fun PlayerScreen(
             resolvePlayerPane(maxWidth.value, maxHeight.value)
         }
         val compactPlayer = layoutMode == LevyraLayoutMode.Compact && (maxWidth < 380.dp || maxHeight < 700.dp)
-        var advancedControlsExpanded by remember(track?.id) {
-            mutableStateOf(false)
-        }
         val playerHorizontalPadding = if (state.isVideoMode) {
             LevyraPlayerDesign.SpaceSm
         } else {
             levyraFoldAwareGutterDp(layoutMode, compactPlayer).dp
         }
         val playerItemSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
-        val playerMetaSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceMd else LevyraPlayerDesign.SpaceLg
-        val playerControlSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm
+        val playerMetaSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceSm else LevyraPlayerDesign.SpaceMd
+        val playerControlSpacing = if (compactPlayer) LevyraPlayerDesign.SpaceXxs else LevyraPlayerDesign.SpaceXs
         val paneCount = if (playerPane == LevyraPlayerPane.SideBySide) 2f else 1f
         val artworkSize = minOf(
             ((maxWidth - playerHorizontalPadding * 2f) / paneCount).coerceAtLeast(180.dp),
@@ -12396,30 +12548,14 @@ private fun PlayerScreen(
             )
         }
 
-        val pulseBlock: @Composable () -> Unit = {
-            LevyraControlPulseHandle(
-                expanded = advancedControlsExpanded,
-                compact = compactPlayer,
-                activeColor = primary,
-                secondaryColor = secondary,
-                hasActiveState = state.playbackSpeed != 1f || state.sleepTimerMinutes > 0 || state.isOfflineExporting,
-                onToggle = { advancedControlsExpanded = !advancedControlsExpanded }
-            )
-        }
-
-        val advancedBlock: @Composable (Track) -> Unit = { activeTrack ->
-            PlayerAdvancedControlsPanel(
-                expanded = advancedControlsExpanded,
+        val quickActionsBlock: @Composable (Track) -> Unit = { activeTrack ->
+            PlayerQuickActionsBar(
                 track = activeTrack,
                 state = state,
                 primary = primary,
                 secondary = secondary,
-                primaryContent = primaryContent,
-                secondaryContent = secondaryContent,
                 compact = compactPlayer,
-                strings = strings,
-                viewModel = viewModel,
-                onAddToPlaylist = { playlistTarget = activeTrack }
+                viewModel = viewModel
             )
         }
 
@@ -12459,14 +12595,13 @@ private fun PlayerScreen(
                         metaBlock(track)
                         timelineBlock()
                         transportBlock()
-                        pulseBlock()
-                        advancedBlock(track)
+                        quickActionsBlock(track)
                         PlayerError(state.playerError)
                     }
                 }
             }
         } else {
-            val isPortraitScrollable = advancedControlsExpanded || maxHeight < 540.dp
+            val isPortraitScrollable = maxHeight < 540.dp
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -12520,10 +12655,7 @@ private fun PlayerScreen(
                         timelineBlock()
                         Spacer(modifier = Modifier.height(playerControlSpacing))
                         transportBlock()
-                        pulseBlock()
-                        if (advancedControlsExpanded) {
-                            advancedBlock(track)
-                        }
+                        quickActionsBlock(track)
                         PlayerError(state.playerError)
                     }
                 }

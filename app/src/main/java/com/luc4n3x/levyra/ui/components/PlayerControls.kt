@@ -245,20 +245,33 @@ private fun PlayerSkipButton(
     iconSize: Dp,
     onClick: () -> Unit
 ) {
+    val shape = LevyraPlayerDesign.ShapeSm
     SpringIconButton(
         onClick = onClick,
         modifier = Modifier.sizeIn(
             minWidth = LevyraPlayerDesign.MinimumTouchTarget,
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
-        pressedScale = 0.86f,
+        pressedScale = 0.88f,
         contentDescription = contentDescription
     ) {
-        PlayerIcon(
-            icon = icon,
-            tint = Color.White,
-            modifier = Modifier.size(iconSize)
-        )
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(Color.White.copy(alpha = 0.055f), shape)
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    Color.White.copy(alpha = 0.09f),
+                    shape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            PlayerIcon(
+                icon = icon,
+                tint = Color.White.copy(alpha = 0.94f),
+                modifier = Modifier.size(iconSize)
+            )
+        }
     }
 }
 
@@ -285,6 +298,16 @@ private fun PlayerModeToggleButton(
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-indicator"
     )
+    val surfaceColor by animateColorAsState(
+        targetValue = if (active) activeTint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "player-toggle-surface"
+    )
+    val surfaceBorder by animateColorAsState(
+        targetValue = if (active) activeTint.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.06f),
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "player-toggle-border"
+    )
 
     SpringIconButton(
         onClick = onClick,
@@ -298,7 +321,14 @@ private fun PlayerModeToggleButton(
         contentDescription = contentDescription
     ) {
         Box(
-            modifier = Modifier.size(LevyraPlayerDesign.ModeSlot),
+            modifier = Modifier
+                .size(LevyraPlayerDesign.ModeSlot)
+                .background(surfaceColor, LevyraPlayerDesign.ShapeSm)
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    surfaceBorder,
+                    LevyraPlayerDesign.ShapeSm
+                ),
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
@@ -373,6 +403,11 @@ private fun PlayerPrimaryButton(
     onClick: () -> Unit
 ) {
     val contentColor = LevyraPlayerDesign.PrimaryContent
+    val corner by animateDpAsState(
+        targetValue = if (isPlaying) LevyraPlayerDesign.CornerMd else size * 0.5f,
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-primary-corner"
+    )
 
     SpringIconButton(
         onClick = onClick,
@@ -383,7 +418,7 @@ private fun PlayerPrimaryButton(
             modifier = Modifier
                 .size(size)
                 .playerPrimarySurface(
-                    shape = CircleShape
+                    shape = RoundedCornerShape(corner)
                 ),
             contentAlignment = Alignment.Center
         ) {
