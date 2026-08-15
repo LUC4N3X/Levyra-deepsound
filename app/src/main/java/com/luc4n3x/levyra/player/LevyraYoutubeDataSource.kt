@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.player
 
 import android.net.Uri
-import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
@@ -33,16 +32,17 @@ class LevyraYoutubeDataSource private constructor(
     override fun open(dataSpec: DataSpec): Long {
         val originalUrl = dataSpec.uri.toString()
         if (!isYoutubeMediaUrl(dataSpec.uri)) return delegate.open(dataSpec)
-        val adaptedSpec = adaptGoogleVideoRequest(dataSpec)
+        val adaptedUri = appendRequestNumber(dataSpec.uri)
         val headers = requestHeaders(originalUrl)
         val httpDelegate = delegate as? HttpDataSource
         if (httpDelegate != null) {
             httpDelegate.clearAllRequestProperties()
             headers.forEach { (name, value) -> httpDelegate.setRequestProperty(name, value) }
         }
-        val requestSpec = adaptedSpec
+        val adaptedSpec = dataSpec
+            .withUri(adaptedUri)
             .withAdditionalHeaders(headers.filterKeys { !it.equals("User-Agent", true) })
-        return delegate.open(requestSpec)
+        return delegate.open(adaptedSpec)
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
@@ -57,22 +57,10 @@ class LevyraYoutubeDataSource private constructor(
         delegate.close()
     }
 
-    private fun adaptGoogleVideoRequest(dataSpec: DataSpec): DataSpec {
-        if (!isProgressiveGoogleVideo(dataSpec.uri)) return dataSpec
-        val request = googleVideoPlaybackRequest(
-            url = dataSpec.uri.toString(),
-            position = dataSpec.position,
-            requestedLength = dataSpec.length,
-            requestNumber = requestNumber.getAndIncrement()
-        )
-        val builder = dataSpec.buildUpon().setUri(request.url)
-        if (request.rangeLength != C.LENGTH_UNSET.toLong()) {
-            builder
-                .setUriPositionOffset(dataSpec.uriPositionOffset + dataSpec.position)
-                .setPosition(0L)
-                .setLength(request.rangeLength)
-        }
-        return builder.build()
+    private fun appendRequestNumber(uri: Uri): Uri {
+        if (!isProgressiveGoogleVideo(uri)) return uri
+        val adaptedUrl = googleVideoPlaybackUrl(uri.toString(), requestNumber.getAndIncrement())
+        return if (adaptedUrl == uri.toString()) uri else Uri.parse(adaptedUrl)
     }
 
     private fun requestHeaders(url: String): Map<String, String> {
@@ -117,46 +105,15 @@ class LevyraYoutubeDataSource private constructor(
     }
 }
 
-internal data class GoogleVideoPlaybackRequest(
-    val url: String,
-    val rangeLength: Long
-)
-
-internal fun googleVideoPlaybackRequest(
+internal fun googleVideoPlaybackUrl(
     url: String,
-    position: Long,
-    requestedLength: Long,
     requestNumber: Long
-): GoogleVideoPlaybackRequest {
+): String {
     val fragmentIndex = url.indexOf('#')
     val withoutFragment = if (fragmentIndex >= 0) url.substring(0, fragmentIndex) else url
     val fragment = if (fragmentIndex >= 0) url.substring(fragmentIndex) else ""
-    val queryIndex = withoutFragment.indexOf('?')
-    val base = if (queryIndex >= 0) withoutFragment.substring(0, queryIndex) else withoutFragment
-    val query = if (queryIndex >= 0) withoutFragment.substring(queryIndex + 1) else ""
-    val parts = query.split('&').filter(String::isNotBlank)
-    val contentLength = parts.firstNotNullOfOrNull { part ->
-        part.takeIf { it.substringBefore('=').equals("clen", ignoreCase = true) }
-            ?.substringAfter('=', "")
-            ?.toLongOrNull()
-    }
-    val safePosition = position.coerceAtLeast(0L)
-    val rangeLength = when {
-        requestedLength > 0L -> requestedLength
-        contentLength != null && contentLength > safePosition -> contentLength - safePosition
-        else -> C.LENGTH_UNSET.toLong()
-    }
-    val normalized = parts.filterNot { part ->
-        val key = part.substringBefore('=')
-        key.equals("range", ignoreCase = true) || key.equals("rn", ignoreCase = true)
-    }.toMutableList()
-    if (rangeLength > 0L) {
-        val endInclusive = safePosition + rangeLength - 1L
-        normalized += "range=$safePosition-$endInclusive"
-    }
-    normalized += "rn=${requestNumber.coerceAtLeast(1L)}"
-    return GoogleVideoPlaybackRequest(
-        url = "$base?${normalized.joinToString("&")}$fragment",
-        rangeLength = rangeLength
-    )
+    val query = withoutFragment.substringAfter('?', "")
+    if (query.split('&').any { it.substringBefore('=').equals("rn", ignoreCase = true) }) return url
+    val separator = if (withoutFragment.contains('?')) "&" else "?"
+    return "$withoutFragment${separator}rn=${requestNumber.coerceAtLeast(1L)}$fragment"
 }
