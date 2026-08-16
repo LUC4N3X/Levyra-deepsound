@@ -2,11 +2,7 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,8 +31,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -55,7 +51,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import java.util.Locale
-import kotlin.math.PI
 import kotlin.math.roundToInt
 
 @Composable
@@ -69,7 +64,6 @@ fun PremiumSeekbar(
     trailingColor: Color = activeColor,
     inactiveColor: Color = LevyraMuted.copy(alpha = 0.35f),
     thumbColor: Color = Color.White,
-    isPlaying: Boolean = false,
     animated: Boolean = true,
     contentDescription: String? = null
 ) {
@@ -89,49 +83,65 @@ fun PremiumSeekbar(
         seekbarProgressFraction(bufferedPositionMs, durationMs).coerceAtLeast(effectiveProgress)
     }
 
-    val trackScale = remember { Animatable(1f) }
-    val handleScale = remember { Animatable(0f) }
-    val waveAmplitude = remember { Animatable(0f) }
-
+    val scrubAmount = remember { Animatable(0f) }
     val scrubSpec: AnimationSpec<Float> =
         if (animated) LevyraPlayerDesign.expressiveSpring() else snap()
     LaunchedEffect(isDragging, animated) {
-        trackScale.animateTo(
-            targetValue = if (isDragging) 1.55f else 1f,
-            animationSpec = scrubSpec
-        )
-    }
-    LaunchedEffect(isDragging, animated) {
-        handleScale.animateTo(
+        scrubAmount.animateTo(
             targetValue = if (isDragging) 1f else 0f,
             animationSpec = scrubSpec
         )
     }
 
-    val waveActive = animated && isPlaying && !isDragging && durationMs > 0L
-    LaunchedEffect(waveActive, animated) {
-        waveAmplitude.animateTo(
-            targetValue = if (waveActive) 1f else 0f,
-            animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap()
-        )
-    }
-
-    val wavePath = remember { Path() }
-    val wavePhase = remember { Animatable(0f) }
-    LaunchedEffect(waveActive) {
-        if (!waveActive) return@LaunchedEffect
-        wavePhase.snapTo(0f)
-        wavePhase.animateTo(
-            targetValue = -2f * PI.toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(LevyraPlayerDesign.WaveCycleMillis, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            )
-        )
-    }
-
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
+    }
+
+    val wavePath = remember(widthPx, density) {
+        Path().apply {
+            if (widthPx <= 0f) return@apply
+            val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
+            val amplitude = with(density) { 2.4.dp.toPx() }
+            val wavelength = with(density) { 38.dp.toPx() }
+            val quarterWave = wavelength / 4f
+            var waveStart = -wavelength
+            moveTo(waveStart, centerY)
+            while (waveStart < widthPx + wavelength) {
+                cubicTo(
+                    waveStart + quarterWave * 0.45f,
+                    centerY,
+                    waveStart + quarterWave * 0.55f,
+                    centerY - amplitude,
+                    waveStart + quarterWave,
+                    centerY - amplitude
+                )
+                cubicTo(
+                    waveStart + quarterWave * 1.45f,
+                    centerY - amplitude,
+                    waveStart + quarterWave * 1.55f,
+                    centerY,
+                    waveStart + quarterWave * 2f,
+                    centerY
+                )
+                cubicTo(
+                    waveStart + quarterWave * 2.45f,
+                    centerY,
+                    waveStart + quarterWave * 2.55f,
+                    centerY + amplitude,
+                    waveStart + quarterWave * 3f,
+                    centerY + amplitude
+                )
+                cubicTo(
+                    waveStart + quarterWave * 3.45f,
+                    centerY + amplitude,
+                    waveStart + quarterWave * 3.55f,
+                    centerY,
+                    waveStart + wavelength,
+                    centerY
+                )
+                waveStart += wavelength
+            }
+        }
     }
 
     Box(
@@ -219,94 +229,84 @@ fun PremiumSeekbar(
             val totalWidth = size.width
             if (totalWidth <= 0f) return@Canvas
             val centerY = size.height / 2f
+            val scrub = scrubAmount.value
 
-            val baseTrackHeight = LevyraPlayerDesign.TrackHeight.toPx()
-            val trackHeight = baseTrackHeight * trackScale.value
-            val handleWidth = LevyraPlayerDesign.HandleWidth.toPx() +
-                (LevyraPlayerDesign.HandleWidthActive - LevyraPlayerDesign.HandleWidth).toPx() * handleScale.value
-            val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
-                (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * handleScale.value
-            val gap = trackHeight * 1.1f
+            val trackHeight = LevyraPlayerDesign.TrackHeight.toPx() +
+                (LevyraPlayerDesign.TrackHeightActive - LevyraPlayerDesign.TrackHeight).toPx() * scrub
+            val thumbRadius = LevyraPlayerDesign.ThumbRadius.toPx() +
+                (LevyraPlayerDesign.ThumbRadiusActive - LevyraPlayerDesign.ThumbRadius).toPx() * scrub
             val capInset = trackHeight / 2f
             val trackStart = capInset
             val trackEnd = (totalWidth - capInset).coerceAtLeast(trackStart)
             val trackSpan = trackEnd - trackStart
+            val radius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+            val trackTop = centerY - trackHeight / 2f
 
-            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleWidth)
-            val activeEnd = (handleX - handleWidth / 2f - gap).coerceIn(trackStart, trackEnd)
-            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceIn(trackStart, trackEnd)
+            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, thumbRadius * 2f)
 
-            if (inactiveStart < trackEnd) {
-                drawRoundRect(
-                    color = inactiveColor,
-                    topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
-                    size = Size(trackEnd - inactiveStart, trackHeight),
-                    cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-                )
-            }
+            drawRoundRect(
+                color = inactiveColor,
+                topLeft = Offset(trackStart, trackTop),
+                size = Size(trackSpan, trackHeight),
+                cornerRadius = radius
+            )
 
             val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
-            if (bufferedEnd > inactiveStart) {
+            val bufferedSpan = bufferedEnd - trackStart
+            if (bufferedSpan > 0f) {
                 drawRoundRect(
-                    color = thumbColor.copy(alpha = 0.22f),
-                    topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
-                    size = Size(bufferedEnd - inactiveStart, trackHeight),
-                    cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+                    color = LevyraPlayerDesign.TrackBuffered,
+                    topLeft = Offset(trackStart, trackTop),
+                    size = Size(bufferedSpan, trackHeight),
+                    cornerRadius = radius
                 )
             }
 
-            val activeSpan = activeEnd - trackStart
-            if (activeSpan > 0f) {
-                val amplitudePx = LevyraPlayerDesign.WaveAmplitude.toPx() * waveAmplitude.value
-                if (amplitudePx > 0.4f) {
-                    val wavelength = LevyraPlayerDesign.WavePeriodDp.dp.toPx()
-                    val taper = wavelength * 0.75f
-                    val samples = seekbarWaveSampleCount(activeSpan)
-                    val step = activeSpan / samples
-                    wavePath.rewind()
-                    var offsetX = 0f
-                    var index = 0
-                    while (index <= samples) {
-                        val local = seekbarWaveTaper(offsetX, activeSpan, taper)
-                        val y = centerY + seekbarWaveOffset(offsetX, amplitudePx * local, wavelength, wavePhase.value)
-                        val pointX = trackStart + offsetX
-                        if (index == 0) wavePath.moveTo(pointX, y) else wavePath.lineTo(pointX, y)
-                        offsetX += step
-                        index += 1
-                    }
-                    drawPath(
-                        path = wavePath,
-                        color = activeColor,
-                        style = Stroke(
-                            width = trackHeight,
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
+            if (handleX > trackStart) {
+                val activeSpan = handleX - trackStart
+                clipRect(
+                    left = trackStart,
+                    top = 0f,
+                    right = handleX,
+                    bottom = size.height
+                ) {
+                    if (scrub > 0.001f) {
+                        drawRoundRect(
+                            color = activeColor.copy(alpha = activeColor.alpha * scrub),
+                            topLeft = Offset(trackStart, trackTop),
+                            size = Size(activeSpan, trackHeight),
+                            cornerRadius = radius
                         )
-                    )
-                } else {
-                    drawRoundRect(
-                        color = activeColor,
-                        topLeft = Offset(trackStart, centerY - trackHeight / 2f),
-                        size = Size(activeSpan, trackHeight),
-                        cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-                    )
+                    }
+                    val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
+                    if (waveAlpha > 0.001f) {
+                        drawPath(
+                            path = wavePath,
+                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
+                            style = Stroke(width = trackHeight, cap = StrokeCap.Round)
+                        )
+                    }
                 }
             }
 
-            if (handleScale.value > 0.01f) {
-                drawRoundRect(
-                    color = trailingColor.copy(alpha = 0.30f * handleScale.value),
-                    topLeft = Offset(handleX - handleWidth * 1.6f, centerY - handleHeight * 0.65f),
-                    size = Size(handleWidth * 3.2f, handleHeight * 1.30f),
-                    cornerRadius = CornerRadius(handleWidth * 1.6f, handleWidth * 1.6f)
+            if (scrub > 0.01f) {
+                val glowRadius = thumbRadius * 1.8f
+                drawCircle(
+                    color = trailingColor.copy(alpha = 0.22f * scrub),
+                    radius = glowRadius,
+                    center = Offset(handleX, centerY)
                 )
             }
 
-            drawRoundRect(
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.20f),
+                radius = thumbRadius + 1f,
+                center = Offset(handleX, centerY + 1f)
+            )
+            drawCircle(
                 color = thumbColor,
-                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
-                size = Size(handleWidth, handleHeight),
-                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
+                radius = thumbRadius,
+                center = Offset(handleX, centerY)
             )
         }
     }

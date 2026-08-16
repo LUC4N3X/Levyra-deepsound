@@ -145,26 +145,3 @@ internal fun playerContrastGradient(
         else -> PlayerContrastGradient(Color.Black, Color.Black, Color.White)
     }
 }
-
-internal fun Color.playerMutedContentColor(
-    backgrounds: List<Color>,
-    minimumContrast: Float = PlayerMinimumContrast
-): Color {
-    val source = copy(alpha = 1f)
-    if (backgrounds.any { playerContrastRatio(source, it) < minimumContrast }) return source
-    val averageBackground = backgrounds.fold(Color.Transparent) { accumulator, color ->
-        if (accumulator == Color.Transparent) color.copy(alpha = 1f) else accumulator.playerMix(color.copy(alpha = 1f), 0.5f)
-    }
-    var low = 0f
-    var high = 1f
-    repeat(24) {
-        val middle = (low + high) / 2f
-        val candidate = source.playerMix(averageBackground, middle).copy(alpha = 1f)
-        if (backgrounds.all { playerContrastRatio(candidate, it) >= minimumContrast }) {
-            low = middle
-        } else {
-            high = middle
-        }
-    }
-    return source.playerMix(averageBackground, low).copy(alpha = 1f)
-}

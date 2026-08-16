@@ -21,6 +21,7 @@ internal object YoutubeClientIdentityInterceptor : Interceptor {
     private const val CLIENT_IOS = "5"
     private const val CLIENT_ANDROID_MUSIC = "21"
     private const val CLIENT_ANDROID_VR = "28"
+    private const val CLIENT_VISIONOS = "101"
     private const val CLIENT_WEB_EMBEDDED = "56"
     private const val CLIENT_WEB_REMIX = "67"
 
@@ -28,7 +29,8 @@ internal object YoutubeClientIdentityInterceptor : Interceptor {
         CLIENT_ANDROID,
         CLIENT_IOS,
         CLIENT_ANDROID_MUSIC,
-        CLIENT_ANDROID_VR
+        CLIENT_ANDROID_VR,
+        CLIENT_VISIONOS
     )
 
     override fun intercept(chain: Interceptor.Chain): Response {
