@@ -28,6 +28,22 @@ class OfflineExportPipelineTest {
     }
 
     @Test
+    fun sequentialPrefetchIsSkippedForSourcesThatCannotStreamToTheEnd() {
+        val adaptiveMp4Audio = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=140&" +
+            "mime=audio%2Fmp4&gir=yes&clen=3168361&c=ANDROID_VR"
+
+        assertFalse(supportsContinuousPrefetch(adaptiveMp4Audio))
+        assertTrue(supportsContinuousPrefetch("$adaptiveMp4Audio&ratebypass=yes"))
+        assertTrue(supportsContinuousPrefetch("$adaptiveMp4Audio&pot=token-value"))
+        assertFalse(
+            supportsContinuousPrefetch(
+                "https://rr3---sn-example.googlevideo.com/videoplayback?itag=251&" +
+                    "mime=audio%2Fwebm&ratebypass=yes&clen=3168361"
+            )
+        )
+    }
+
+    @Test
     fun pipelineUsesMedia3CacheWriterAndYoutubeAwareDataSource() {
         val source = Files.readString(sourceFile("player/offline/OfflineExportPipeline.kt"))
 
