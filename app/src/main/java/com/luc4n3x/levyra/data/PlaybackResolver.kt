@@ -2018,7 +2018,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         val audio = selectAudioStream(completeAudioStreams, preferMp4Audio, audioQuality)
         val muxedAudioSource = if (audio == null && !preferMp4Audio) {
             info.videoStreams.firstOrNull {
-                it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
+                it.isUrl &&
+                    it.content.isNotBlank() &&
+                    YoutubeStreamCapability.servesCompleteStream(it.content) &&
+                    !isPlaybackUrlBlocked(it.content) &&
+                    streamStillFresh(it.content)
             }
         } else {
             null
@@ -2051,7 +2055,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .map { audioDescriptor(it, it.content == url) }
                 .toList()
 
-            muxedAudioSource != null -> listOf(innerTubeAudioDescriptor(null, url))
+            muxedAudioSource != null -> listOf(videoDescriptor(extractorVideoCandidate(muxedAudioSource), true))
             else -> listOf(hlsDescriptor(url))
         }
         val manifest = buildManifest(
@@ -2097,7 +2101,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         ).withYoutubeEngagement(info.likeCount, info.viewCount)
         cacheYoutubeEngagement(sourceVideoId, info.likeCount, info.viewCount)
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
-        val selectedAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false, audioQuality = audioQuality)
+        val completeAudioStreams = info.audioStreams.filter {
+            it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
+        }
+        val selectedAudio = selectAudioStream(completeAudioStreams, preferMp4Audio = false, audioQuality = audioQuality)
         val bestAudio = selectedAudio?.content.orEmpty()
         val muxedCandidates = info.videoStreams
             .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
@@ -2115,9 +2122,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             val selectedAudioUrl = if (selection.candidate.muxed) selection.candidate.url else bestAudio
             val selectedVideoUrl = if (selection.candidate.muxed) "" else selection.candidate.url
             val descriptors = buildList {
-                info.audioStreams
+                completeAudioStreams
                     .asSequence()
-                    .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
+                    .filter {
+                        it.content.isNotBlank() &&
+                            !isPlaybackUrlBlocked(it.content) &&
+                            streamStillFresh(it.content)
+                    }
                     .mapTo(this) { audioDescriptor(it, it.content == selectedAudioUrl) }
                 muxedCandidates.mapTo(this) { videoDescriptor(it, it.url == selection.candidate.url) }
                 videoOnlyCandidates.mapTo(this) { videoDescriptor(it, it.url == selection.candidate.url) }
