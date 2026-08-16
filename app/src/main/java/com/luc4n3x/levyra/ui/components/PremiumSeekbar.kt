@@ -2,7 +2,13 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -52,6 +58,7 @@ import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 fun PremiumSeekbar(
@@ -105,6 +112,17 @@ fun PremiumSeekbar(
             waveReveal.snapTo(1f)
         }
     }
+
+    val waveMotion = rememberInfiniteTransition(label = "player-wave-motion")
+    val wavePhase by waveMotion.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4_200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "player-wave-phase"
+    )
 
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
@@ -258,6 +276,8 @@ fun PremiumSeekbar(
                         val baselineY = centerY + trackHeight / 2f
                         val topBaseY = centerY - trackHeight / 2f
                         val step = 2.dp.toPx().coerceAtLeast(1f)
+                        val phaseOffset = if (animated && !isDragging) wavePhase else 0f
+                        val edgeFeather = 18.dp.toPx().coerceAtMost(activeSpan / 2f)
 
                         val waveFill = Path().apply {
                             moveTo(trackStart, baselineY)
@@ -265,9 +285,23 @@ fun PremiumSeekbar(
                             var x = trackStart
                             while (x < handleX) {
                                 val localX = x - trackStart
-                                val phase = (localX / waveLength) * (2f * PI.toFloat())
-                                val crest = ((1f - cos(phase)) * 0.5f).coerceIn(0f, 1f)
-                                lineTo(x, topBaseY - waveHeight * crest)
+                                val phase = (localX / waveLength) * (2f * PI.toFloat()) + phaseOffset
+                                val primaryCrest = (1f - cos(phase)) * 0.5f
+                                val secondaryRipple = sin(phase * 2f) * 0.07f
+                                val waterProfile = (primaryCrest + secondaryRipple).coerceIn(0f, 1f)
+                                val edgeEnvelope = if (edgeFeather > 0f) {
+                                    minOf(
+                                        1f,
+                                        localX / edgeFeather,
+                                        (activeSpan - localX) / edgeFeather
+                                    ).coerceIn(0f, 1f)
+                                } else {
+                                    1f
+                                }
+                                lineTo(
+                                    x,
+                                    topBaseY - waveHeight * waterProfile * edgeEnvelope
+                                )
                                 x += step
                             }
                             lineTo(handleX, topBaseY)
