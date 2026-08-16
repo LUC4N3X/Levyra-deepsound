@@ -88,6 +88,22 @@ class OfflineDownloadReliabilityContractTest {
         val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
         assertTrue(exporter.contains("if (downloaded.requiresAudioExtraction)"))
         assertTrue(exporter.contains("OfflineAudioTrackExtractor.extractAudioTrack"))
+
+        val extractor = Files.readString(sourceFile("player/offline/OfflineAudioTrackExtractor.kt"))
+        assertTrue(extractor.contains("setRemoveVideo(true)"))
+        assertTrue(extractor.contains("Transformer.Builder(context)"))
+        assertTrue(extractor.contains("runCatching { output.delete() }"))
+    }
+
+    @Test
+    fun theFailingStreamUrlReachesQuarantineSoTheNextResolveCanRotate() {
+        val player = Files.readString(sourceFile("player/LevyraPlayer.kt"))
+        val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
+
+        assertTrue(player.contains("mediaItem.localConfiguration?.uri?.toString()"))
+        assertTrue(player.contains("queueTrack.copy(streamUrl = playingUri)"))
+        assertTrue(resolver.contains("failedPlaybackUrls[it] = now + recovery.quarantineMs"))
+        assertTrue(resolver.contains("!isPlaybackUrlBlocked(it.content)"))
     }
 
     @Test

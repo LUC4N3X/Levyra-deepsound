@@ -72,6 +72,19 @@ internal fun isMp4OfflineAudioCandidate(mimeOrFormat: String, url: String): Bool
         path.endsWith(".mp4")
 }
 
+internal fun playbackStreamDiagnostics(url: String): String {
+    if (url.isBlank()) return "empty"
+    val query = url.substringAfter('?', "")
+    fun parameter(name: String): String = query.split('&')
+        .firstOrNull { it.startsWith("$name=") }
+        ?.substringAfter('=')
+        ?.takeIf { it.isNotEmpty() }
+        ?: "-"
+    val proofOfOrigin = if (parameter("pot") == "-") "no" else "yes"
+    return "itag=${parameter("itag")} mime=${parameter("mime")} client=${parameter("c")} " +
+        "ratebypass=${parameter("ratebypass")} pot=$proofOfOrigin expire=${parameter("expire")}"
+}
+
 internal fun isMuxedMp4ExportUrl(url: String): Boolean {
     val lower = url.lowercase()
     return lower.contains("mime=video%2fmp4") || lower.contains("mime=video/mp4")
@@ -418,6 +431,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
             return
         }
+        Timber.w(
+            "playback failure source=%s mode=%s reason=%s stream=%s",
+            track.source,
+            if (isVideoMode) "video" else "audio",
+            reason.take(120),
+            playbackStreamDiagnostics(track.streamUrl)
+        )
         invalidate(track, isVideoMode)
         resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
         val now = System.currentTimeMillis()
@@ -570,7 +590,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
                 (if (isVideoMode) track.hasVideoPlaybackPayload() else isPlayableAudioUrl(it)) &&
-                (!preferMp4Audio || track.playbackManifest?.let(::supportsOfflineExport) == true || isMp4AudioUrl(it))
+                (
+                    !preferMp4Audio ||
+                        track.playbackManifest?.let(::supportsOfflineExport) == true ||
+                        (isMp4AudioUrl(it) && YoutubeStreamCapability.servesCompleteStream(it))
+                    )
         }?.let { return@coroutineScope track }
         if (!preferMp4Audio) {
             val cacheLookupTrack = if (reuseProvidedStream) track else track.copy(streamUrl = "", videoStreamUrl = "")
@@ -945,7 +969,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 resolved.streamUrl.isNotBlank() &&
                 streamStillFresh(resolved.streamUrl) &&
                 isPlayableAudioUrl(resolved.streamUrl) &&
-                (!preferMp4Audio || resolved.playbackManifest?.let(::supportsOfflineExport) == true || isMp4AudioUrl(resolved.streamUrl))
+                (
+                    !preferMp4Audio ||
+                        resolved.playbackManifest?.let(::supportsOfflineExport) == true ||
+                        (
+                            isMp4AudioUrl(resolved.streamUrl) &&
+                                YoutubeStreamCapability.servesCompleteStream(resolved.streamUrl)
+                            )
+                    )
             ) {
                 return track.copy(
                     streamUrl = resolved.streamUrl,
@@ -2037,7 +2068,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         val info = StreamInfo.getInfo(ServiceList.YouTube, sourceVideoUrl)
         currentCoroutineContext().ensureActive()
         val completeAudioStreams = info.audioStreams.filter {
-            it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
+            it.isUrl &&
+                it.content.isNotBlank() &&
+                YoutubeStreamCapability.servesCompleteStream(it.content) &&
+                !isPlaybackUrlBlocked(it.content) &&
+                streamStillFresh(it.content)
         }
         val audio = selectAudioStream(completeAudioStreams, preferMp4Audio, audioQuality)
         val muxedAudioSource = if (audio == null) {

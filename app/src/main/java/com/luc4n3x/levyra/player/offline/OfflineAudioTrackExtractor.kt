@@ -18,6 +18,15 @@ import kotlinx.coroutines.withContext
 
 internal object OfflineAudioTrackExtractor {
     suspend fun extractAudioTrack(context: Context, input: File, output: File) {
+        try {
+            runExtraction(context, input, output)
+        } catch (error: Throwable) {
+            runCatching { output.delete() }
+            throw error
+        }
+    }
+
+    private suspend fun runExtraction(context: Context, input: File, output: File) {
         val failure = withContext(Dispatchers.Main) {
             val completion = CompletableDeferred<ExportException?>()
             val transformer = Transformer.Builder(context)
@@ -49,7 +58,6 @@ internal object OfflineAudioTrackExtractor {
             }
         }
         if (failure != null) {
-            runCatching { output.delete() }
             throw IOException("Offline audio extraction failed: ${failure.message.orEmpty()}", failure)
         }
         if (!output.isFile || output.length() <= 0L) {

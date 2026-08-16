@@ -625,19 +625,19 @@ Workers use retry policies for eligible network failures and reject incomplete m
 
 ### Offline source eligibility
 
-Only sources that can serve a complete track are exported. A googlevideo
-`videoplayback` URL without `ratebypass` and without a proof-of-origin token
-serves roughly the first mebibyte and then answers `403` for every continuation
-request, so `YoutubeStreamCapability.servesCompleteStream` rejects it for both
-playback and download.
+A googlevideo `videoplayback` URL without `ratebypass` and without a
+proof-of-origin token serves roughly the first mebibyte and then answers `403`
+for every continuation request. `YoutubeStreamCapability.servesCompleteStream`
+identifies those sources. Playback skips them, the export path refuses to select
+or replay them, and the sequential cache prefetch is limited to sources that can
+stream to the end. Every remaining download runs through bounded parallel range
+requests.
 
-When no audio-only MP4 source qualifies, the download path reuses the same
-progressive muxed MP4 the player already streams and reduces it to its audio
-track with `androidx.media3:media3-transformer` (`OfflineAudioTrackExtractor`).
-The extraction runs on device, keeps the AAC audio, and produces the same `.m4a`
-output the tagger and MediaStore steps expect. Sequential cache prefetch is
-skipped for sources that cannot stream to the end, so those downloads go straight
-to bounded parallel range requests.
+When no audio-only MP4 source qualifies, the export reuses the progressive muxed
+MP4 the player already streams and reduces it to its audio track with
+`androidx.media3:media3-transformer` (`OfflineAudioTrackExtractor`). The
+extraction runs on device, keeps the AAC audio, and produces the same `.m4a`
+output the tagger and MediaStore steps expect.
  
 ---
  

@@ -472,7 +472,7 @@ class OfflineAudioExporter(
         )
         val partial = resumablePartialFile(workspace, container)
         val existingBytes = partial.takeIf { settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
-        ensureStorageAvailable(workspace, expectedLength, existingBytes)
+        ensureStorageAvailable(workspace, expectedLength, existingBytes, requiresAudioExtraction)
         if (expectedLength > 0L && existingBytes == expectedLength) {
             reportProgress(82)
             return DownloadedAudio(partial, container, requiresAudioExtraction)
@@ -625,16 +625,27 @@ class OfflineAudioExporter(
         return output
     }
 
-    private fun ensureStorageAvailable(workspace: File, expectedLength: Long, existingBytes: Long) {
+    private fun ensureStorageAvailable(
+        workspace: File,
+        expectedLength: Long,
+        existingBytes: Long,
+        requiresAudioExtraction: Boolean
+    ) {
         val remainingDownloadBytes = if (expectedLength > 0L) {
             (expectedLength - existingBytes).coerceAtLeast(0L)
         } else {
             UNKNOWN_LENGTH_STORAGE_ALLOWANCE_BYTES
         }
         val mediaStoreCopyBytes = expectedLength.takeIf { it > 0L } ?: UNKNOWN_LENGTH_STORAGE_ALLOWANCE_BYTES
+        val stagingBytes = if (requiresAudioExtraction) {
+            mediaStoreCopyBytes.coerceAtMost(MAX_AUDIO_BYTES) * 2L
+        } else {
+            0L
+        }
         val requiredBytes = remainingDownloadBytes
             .coerceAtMost(MAX_AUDIO_BYTES)
             .plus(mediaStoreCopyBytes.coerceAtMost(MAX_AUDIO_BYTES))
+            .plus(stagingBytes)
             .plus(MIN_FREE_STORAGE_RESERVE_BYTES)
         if (workspace.usableSpace < requiredBytes) {
             throw IOException("Spazio insufficiente: servono almeno ${formatStorageBytes(requiredBytes)} liberi")
