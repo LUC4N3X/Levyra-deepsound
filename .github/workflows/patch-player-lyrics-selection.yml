@@ -33,12 +33,14 @@ jobs:
 
           path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
           text = path.read_text(encoding="utf-8")
-          old = """            tint = if (state.lyrics.isNotEmpty()) activePrimary else Color.White.copy(alpha = 0.72f),
-            active = state.lyrics.isNotEmpty(),
-"""
-          new = """            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
-            active = state.showLyrics,
-"""
+          old = (
+              "            tint = if (state.lyrics.isNotEmpty()) activePrimary else Color.White.copy(alpha = 0.72f),\n"
+              "            active = state.lyrics.isNotEmpty(),\n"
+          )
+          new = (
+              "            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),\n"
+              "            active = state.showLyrics,\n"
+          )
           count = text.count(old)
           if count != 1:
               raise SystemExit(f"Expected exactly one lyrics quick-action block, found {count}")
