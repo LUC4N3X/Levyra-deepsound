@@ -4,11 +4,126 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Runtime dependencies that are intentionally packaged in the F-Droid release.
+# The coordinate is pinned here as a review contract as well as the Gradle alias:
+# adding a dependency or repointing an existing alias must be reviewed explicitly.
+FDROID_RUNTIME_DEPENDENCIES = {
+    "androidx.core.ktx": "androidx.core:core-ktx",
+    "androidx.activity.compose": "androidx.activity:activity-compose",
+    "androidx.lifecycle.runtime.ktx": "androidx.lifecycle:lifecycle-runtime-ktx",
+    "androidx.lifecycle.runtime.compose": "androidx.lifecycle:lifecycle-runtime-compose",
+    "androidx.lifecycle.viewmodel.compose": "androidx.lifecycle:lifecycle-viewmodel-compose",
+    "androidx.compose.bom": "androidx.compose:compose-bom",
+    "androidx.compose.ui": "androidx.compose.ui:ui",
+    "androidx.compose.ui.graphics": "androidx.compose.ui:ui-graphics",
+    "androidx.compose.ui.tooling.preview": "androidx.compose.ui:ui-tooling-preview",
+    "androidx.compose.material3": "androidx.compose.material3:material3",
+    "androidx.compose.material.icons.extended": "androidx.compose.material:material-icons-extended",
+    "androidx.compose.ui.text.googlefonts": "androidx.compose.ui:ui-text-google-fonts",
+    "androidx.media3.exoplayer": "androidx.media3:media3-exoplayer",
+    "androidx.media3.exoplayer.hls": "androidx.media3:media3-exoplayer-hls",
+    "androidx.media3.exoplayer.dash": "androidx.media3:media3-exoplayer-dash",
+    "androidx.media3.session": "androidx.media3:media3-session",
+    "androidx.media3.ui": "androidx.media3:media3-ui",
+    "androidx.car.app": "androidx.car.app:app",
+    "androidx.car.app.projected": "androidx.car.app:app-projected",
+    "androidx.media.compat": "androidx.media:media",
+    "androidx.media3.datasource.okhttp": "androidx.media3:media3-datasource-okhttp",
+    "androidx.media3.datasource": "androidx.media3:media3-datasource",
+    "androidx.media3.database": "androidx.media3:media3-database",
+    "androidx.media3.transformer": "androidx.media3:media3-transformer",
+    "kotlinx.coroutines.android": "org.jetbrains.kotlinx:kotlinx-coroutines-android",
+    "coil.compose": "io.coil-kt.coil3:coil-compose",
+    "coil.network.okhttp": "io.coil-kt.coil3:coil-network-okhttp",
+    "okhttp": "com.squareup.okhttp3:okhttp",
+    "okhttp.brotli": "com.squareup.okhttp3:okhttp-brotli",
+    "newpipe.extractor": "com.github.LUC4N3X:LevyraExtractor",
+    "androidx.room.runtime": "androidx.room:room-runtime",
+    "androidx.room.ktx": "androidx.room:room-ktx",
+    "androidx.datastore.preferences": "androidx.datastore:datastore-preferences",
+    "androidx.work.runtime.ktx": "androidx.work:work-runtime-ktx",
+    "androidx.profileinstaller": "androidx.profileinstaller:profileinstaller",
+    "kotlinx.serialization.json": "org.jetbrains.kotlinx:kotlinx-serialization-json",
+    "timber": "com.jakewharton.timber:timber",
+    "shimmer": "com.valentinilk.shimmer:compose-shimmer",
+    "chucker.no.op": "com.github.chuckerteam.chucker:library-no-op",
+    "desugar.jdk.libs.nio": "com.android.tools:desugar_jdk_libs_nio",
+}
+
+RUNTIME_DEPENDENCY_CALL = re.compile(
+    r"^\s*(?:implementation|api|releaseImplementation|runtimeOnly|coreLibraryDesugaring)\s*\("
+)
+LIBS_ACCESSOR = re.compile(r"\blibs\.([A-Za-z0-9_.]+)")
+CATALOG_LIBRARY = re.compile(r'^([A-Za-z0-9_.-]+)\s*=\s*\{(.*)\}\s*$')
+CATALOG_GROUP = re.compile(r'\bgroup\s*=\s*"([^"]+)"')
+CATALOG_NAME = re.compile(r'\bname\s*=\s*"([^"]+)"')
+CATALOG_MODULE = re.compile(r'\bmodule\s*=\s*"([^"]+)"')
+
+
+def _fdroid_runtime_aliases(build: str) -> tuple[list[tuple[int, str]], list[str]]:
+    """Return packaged F-Droid aliases while ignoring the explicit non-F-Droid block."""
+    aliases: list[tuple[int, str]] = []
+    malformed: list[str] = []
+    excluded_depth = 0
+
+    for line_number, line in enumerate(build.splitlines(), start=1):
+        if excluded_depth:
+            excluded_depth += line.count("{") - line.count("}")
+            continue
+
+        if re.search(r"\bif\s*\(\s*!isFdroidBuild\s*\)\s*\{", line):
+            excluded_depth = max(1, line.count("{") - line.count("}"))
+            continue
+
+        if not RUNTIME_DEPENDENCY_CALL.search(line):
+            continue
+
+        match = LIBS_ACCESSOR.search(line)
+        if match:
+            aliases.append((line_number, match.group(1)))
+        else:
+            malformed.append(
+                f"line {line_number}: F-Droid runtime dependency must use a reviewed libs.* alias: {line.strip()}"
+            )
+
+    return aliases, malformed
+
+
+def _catalog_coordinates(catalog: str) -> dict[str, str]:
+    coordinates: dict[str, str] = {}
+    in_libraries = False
+    for raw_line in catalog.splitlines():
+        line = raw_line.strip()
+        if line == "[libraries]":
+            in_libraries = True
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_libraries = False
+            continue
+        if not in_libraries or not line or line.startswith("#"):
+            continue
+        match = CATALOG_LIBRARY.match(line)
+        if not match:
+            continue
+        alias, body = match.groups()
+        module = CATALOG_MODULE.search(body)
+        if module:
+            coordinate = module.group(1)
+        else:
+            group = CATALOG_GROUP.search(body)
+            name = CATALOG_NAME.search(body)
+            if group is None or name is None:
+                continue
+            coordinate = f"{group.group(1)}:{name.group(1)}"
+        coordinates[alias.replace("-", ".")] = coordinate
+    return coordinates
 
 
 def collect_violations(
@@ -61,6 +176,27 @@ def collect_violations(
         'buildConfigField("boolean", "REMOTE_ANNOUNCEMENTS_ENABLED", (!isFdroidBuild).toString())',
         "the F-Droid build must disable remote announcements",
     )
+
+    catalog_path = "gradle/libs.versions.toml"
+    catalog = read(catalog_path)
+    catalog_coordinates = _catalog_coordinates(catalog)
+    runtime_aliases, malformed_dependencies = _fdroid_runtime_aliases(build)
+    violations.extend(f"{build_path}: {message}" for message in malformed_dependencies)
+    for line_number, alias in runtime_aliases:
+        expected_coordinate = FDROID_RUNTIME_DEPENDENCIES.get(alias)
+        if expected_coordinate is None:
+            violations.append(
+                f"{build_path}: line {line_number}: unreviewed F-Droid runtime dependency "
+                f"libs.{alias}; review its license/network behavior and add it to "
+                "FDROID_RUNTIME_DEPENDENCIES only when intentionally approved"
+            )
+            continue
+        actual_coordinate = catalog_coordinates.get(alias)
+        if actual_coordinate != expected_coordinate:
+            violations.append(
+                f"{catalog_path}: libs.{alias} must remain {expected_coordinate!r} for the "
+                f"reviewed F-Droid build (found {actual_coordinate!r})"
+            )
 
     prompt_path = (
         "app/src/main/java/com/luc4n3x/levyra/ui/support/"
@@ -161,6 +297,21 @@ def collect_violations(
             "the reviewed localization path must remain in use",
         )
 
+    editorial_path = "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
+    editorial = read(editorial_path)
+    for marker in (
+        '"https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"',
+        'host == "i.scdn.co"',
+        'host.endsWith(".scdn.co")',
+        'host == "image-cdn-ak.spotifycdn.com"',
+    ):
+        require(
+            editorial_path,
+            editorial,
+            marker,
+            "the reviewed editorial network host contract changed; update F-Droid disclosure and review the trust boundary",
+        )
+
     descriptions = {
         "fastlane/metadata/android/en-US/full_description.txt": (
             "YouTube",
@@ -169,6 +320,9 @@ def collect_violations(
             "Tidal",
             "Qobuz",
             "Wikidata",
+            "Spotify",
+            "scdn.co",
+            "spotifycdn.com",
             "LRCLIB",
             "Lyrics.ovh",
             "LyricsPlus",
@@ -188,6 +342,9 @@ def collect_violations(
             "Tidal",
             "Qobuz",
             "Wikidata",
+            "Spotify",
+            "scdn.co",
+            "spotifycdn.com",
             "LRCLIB",
             "Lyrics.ovh",
             "LyricsPlus",
