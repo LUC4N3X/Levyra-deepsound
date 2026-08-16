@@ -90,6 +90,9 @@ class PlaybackService : MediaLibraryService() {
     private val playbackWarmup by lazy { PlaybackWarmup(this) }
     private var queueSkipJob: Job? = null
     private var servicePrefetchJob: Job? = null
+    private var servicePrefetchTargetIdentity: String? = null
+    private var servicePrefetchRequestToken = 0L
+    @Volatile private var preparedQueueNext: PreparedQueueNext? = null
     private var serviceRecoveryJob: Job? = null
     private var recoveryResetJob: Job? = null
     private var stickyRestoreJob: Job? = null
@@ -108,6 +111,15 @@ class PlaybackService : MediaLibraryService() {
     private var lastPlaybackExpected: Boolean? = null
     private var lastPlaybackHeartbeatAtMs = 0L
     private var appliedPlayerWakeMode = C.WAKE_MODE_NETWORK
+
+    private data class PreparedQueueNext(
+        val sourceIdentity: String,
+        val targetIdentity: String,
+        val targetTrackId: String,
+        val resolved: Track,
+        val preparedAtElapsedMs: Long
+    )
+
     private val platformMediaAudioAttributes by lazy {
         android.media.AudioAttributes.Builder()
             .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
@@ -139,6 +151,9 @@ class PlaybackService : MediaLibraryService() {
         private const val WATCHDOG_STALL_TIMEOUT_MS = 15_000L
         private const val MAX_TRANSITION_LOOKAHEAD_MS = 20_000L
         private const val TRANSITION_PREPARE_TIMEOUT_MS = 8_000L
+        private const val PREPARED_QUEUE_WAIT_MS = 2_000L
+        private const val PREPARED_QUEUE_MAX_AGE_MS = 15L * 60L * 1_000L
+        private const val PREPARED_QUEUE_PRIME_BYTES = 384L * 1024L
         private const val PRIMARY_HANDOFF_WARN_MS = 5_000L
         private const val PRIMARY_HANDOFF_SYNC_TIMEOUT_MS = 2_500L
         private const val PRIMARY_HANDOFF_FADE_MS = 240L
@@ -181,11 +196,16 @@ class PlaybackService : MediaLibraryService() {
             return true
         }
 
-        fun prepareQueueNext(track: com.luc4n3x.levyra.domain.Track): Boolean = false
+        fun prepareQueueNext(track: com.luc4n3x.levyra.domain.Track): Boolean =
+            activeService?.prepareQueueNextInternal(track) == true
 
-        fun clearPreparedQueueNext() = Unit
+        fun clearPreparedQueueNext() {
+            activeService?.clearPreparedQueueNextInternal()
+        }
 
-        fun consumePreparedQueueNext(trackId: String) = Unit
+        fun consumePreparedQueueNext(trackId: String) {
+            activeService?.consumePreparedQueueNextInternal(trackId)
+        }
 
         @Volatile
         var isQueueTransitionInProgress: Boolean = false
@@ -331,6 +351,7 @@ class PlaybackService : MediaLibraryService() {
                 normalizationProcessor.setYoutubeLoudness(loudness, perceptual)
                 watchdogPositionMs = C.TIME_UNSET
                 watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
+                if (!isLocalMediaItem(mediaItem)) prefetchServiceQueueNext()
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -633,7 +654,7 @@ class PlaybackService : MediaLibraryService() {
     ) {
         cancelQueueTransition()
         queueSkipJob?.cancel()
-        servicePrefetchJob?.cancel()
+        cancelServicePrefetch()
         queueSkipJob = serviceScope.launch {
             val player = activePlayer ?: return@launch
             if (allowRewind && rewindInsteadOfSkip(player, forward)) return@launch
@@ -687,12 +708,19 @@ class PlaybackService : MediaLibraryService() {
     private suspend fun resolveSkipTarget(
         target: com.luc4n3x.levyra.domain.Track,
         autoAdvance: Boolean
-    ): com.luc4n3x.levyra.domain.Track? = if (autoAdvance) {
-        resolveQueueTrackPersistently(target)
-    } else {
-        runCatching { resolveQueueTrack(target) }
-            .onFailure { Timber.w(it, "Background queue resolution failed") }
-            .getOrNull()
+    ): com.luc4n3x.levyra.domain.Track? {
+        val targetIdentity = playbackQueueIdentity(target)
+        preparedQueueTrackForTarget(targetIdentity)?.let { resolved ->
+            consumePreparedQueueNextInternal(target.id.ifBlank { resolved.id })
+            return resolved
+        }
+        return if (autoAdvance) {
+            resolveQueueTrackPersistently(target)
+        } else {
+            runCatching { resolveQueueTrack(target) }
+                .onFailure { Timber.w(it, "Background queue resolution failed") }
+                .getOrNull()
+        }
     }
 
     private fun abandonAutoAdvance(target: com.luc4n3x.levyra.domain.Track, autoAdvance: Boolean) {
@@ -719,21 +747,162 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun prefetchServiceQueueNext() {
-        servicePrefetchJob?.cancel()
-        val generation = queueEngine.state.value.generation
-        servicePrefetchJob = serviceScope.launch {
-            val target = withContext(Dispatchers.IO) {
-                queueEngine.upcoming(1).firstOrNull()
-            } ?: return@launch
-            if (isLocalPlaybackTrack(target) || !hasInternetCapableNetwork()) return@launch
-            val resolved = withContext(Dispatchers.IO) {
-                runCatching { resolveQueueTrack(target) }
-                    .onFailure { Timber.d(it, "Service queue prefetch skipped") }
-                    .getOrNull()
-            } ?: return@launch
-            if (queueEngine.state.value.generation != generation) return@launch
-            withContext(Dispatchers.IO) { runCatching { playbackWarmup.prime(resolved, 256L * 1024L) } }
+        val target = queueEngine.upcoming(1).firstOrNull() ?: return
+        prepareQueueNextInternal(target)
+    }
+
+    private fun prepareQueueNextInternal(target: Track): Boolean {
+        val snapshot = queueEngine.state.value
+        val current = snapshot.currentTrack ?: return false
+        val expectedNext = queueEngine.upcoming(1).firstOrNull() ?: return false
+        val sourceIdentity = playbackQueueIdentity(current)
+        val targetIdentity = playbackQueueIdentity(target)
+        if (targetIdentity != playbackQueueIdentity(expectedNext)) return false
+
+        val now = SystemClock.elapsedRealtime()
+        preparedQueueNext?.let { prepared ->
+            if (queuePrecacheMatchesTransition(
+                    preparedSourceIdentity = prepared.sourceIdentity,
+                    preparedTargetIdentity = prepared.targetIdentity,
+                    currentSourceIdentity = sourceIdentity,
+                    currentTargetIdentity = targetIdentity,
+                    preparedAtElapsedMs = prepared.preparedAtElapsedMs,
+                    nowElapsedMs = now,
+                    maxAgeMs = PREPARED_QUEUE_MAX_AGE_MS
+                ) && prepared.resolved.streamUrl.isNotBlank()
+            ) {
+                return true
+            }
+            if (queuePrecacheMatchesTarget(
+                    preparedTargetIdentity = prepared.targetIdentity,
+                    requestedTargetIdentity = targetIdentity,
+                    preparedAtElapsedMs = prepared.preparedAtElapsedMs,
+                    nowElapsedMs = now,
+                    maxAgeMs = PREPARED_QUEUE_MAX_AGE_MS
+                ) && prepared.resolved.streamUrl.isNotBlank()
+            ) {
+                preparedQueueNext = prepared.copy(sourceIdentity = sourceIdentity)
+                return true
+            }
         }
+
+        if (servicePrefetchJob?.isActive == true && servicePrefetchTargetIdentity == targetIdentity) return true
+        if (!isLocalPlaybackTrack(target) && !hasInternetCapableNetwork()) return false
+
+        cancelServicePrefetch()
+        val requestToken = ++servicePrefetchRequestToken
+        servicePrefetchTargetIdentity = targetIdentity
+        servicePrefetchJob = serviceScope.launch {
+            try {
+                val resolved = withContext(Dispatchers.IO) {
+                    runCatching { resolveQueueTrack(target) }
+                        .onFailure { Timber.d(it, "Service queue prefetch skipped") }
+                        .getOrNull()
+                } ?: return@launch
+                if (!queuePairStillCurrent(sourceIdentity, targetIdentity)) return@launch
+
+                preparedQueueNext = PreparedQueueNext(
+                    sourceIdentity = sourceIdentity,
+                    targetIdentity = targetIdentity,
+                    targetTrackId = target.id,
+                    resolved = resolved,
+                    preparedAtElapsedMs = SystemClock.elapsedRealtime()
+                )
+                if (!isLocalPlaybackTrack(resolved)) {
+                    withContext(Dispatchers.IO) {
+                        runCatching { playbackWarmup.prime(resolved, PREPARED_QUEUE_PRIME_BYTES) }
+                            .onFailure { Timber.d(it, "Prepared queue warmup skipped") }
+                    }
+                }
+            } finally {
+                if (servicePrefetchRequestToken == requestToken) {
+                    servicePrefetchTargetIdentity = null
+                    servicePrefetchJob = null
+                }
+            }
+        }
+        return true
+    }
+
+    private fun queuePairStillCurrent(sourceIdentity: String, targetIdentity: String): Boolean {
+        val current = queueEngine.state.value.currentTrack?.let(::playbackQueueIdentity) ?: return false
+        val next = queueEngine.upcoming(1).firstOrNull()?.let(::playbackQueueIdentity) ?: return false
+        return current == sourceIdentity && next == targetIdentity
+    }
+
+    private fun preparedQueueTrackForTarget(targetIdentity: String): Track? {
+        val prepared = preparedQueueNext ?: return null
+        val now = SystemClock.elapsedRealtime()
+        if (!queuePrecacheMatchesTarget(
+                preparedTargetIdentity = prepared.targetIdentity,
+                requestedTargetIdentity = targetIdentity,
+                preparedAtElapsedMs = prepared.preparedAtElapsedMs,
+                nowElapsedMs = now,
+                maxAgeMs = PREPARED_QUEUE_MAX_AGE_MS
+            ) || prepared.resolved.streamUrl.isBlank()
+        ) {
+            if (!isQueuePrecacheFresh(prepared.preparedAtElapsedMs, now, PREPARED_QUEUE_MAX_AGE_MS)) {
+                preparedQueueNext = null
+            }
+            return null
+        }
+        return prepared.resolved
+    }
+
+    private fun preparedQueueTrackForTransition(sourceIdentity: String, targetIdentity: String): Track? {
+        val prepared = preparedQueueNext ?: return null
+        val now = SystemClock.elapsedRealtime()
+        if (!queuePrecacheMatchesTransition(
+                preparedSourceIdentity = prepared.sourceIdentity,
+                preparedTargetIdentity = prepared.targetIdentity,
+                currentSourceIdentity = sourceIdentity,
+                currentTargetIdentity = targetIdentity,
+                preparedAtElapsedMs = prepared.preparedAtElapsedMs,
+                nowElapsedMs = now,
+                maxAgeMs = PREPARED_QUEUE_MAX_AGE_MS
+            ) || prepared.resolved.streamUrl.isBlank()
+        ) {
+            if (!isQueuePrecacheFresh(prepared.preparedAtElapsedMs, now, PREPARED_QUEUE_MAX_AGE_MS)) {
+                preparedQueueNext = null
+            }
+            return null
+        }
+        return prepared.resolved
+    }
+
+    private suspend fun awaitPreparedQueueTrackForTransition(
+        sourceIdentity: String,
+        targetIdentity: String
+    ): Track? {
+        preparedQueueTrackForTransition(sourceIdentity, targetIdentity)?.let { return it }
+        val inFlight = servicePrefetchJob
+        if (servicePrefetchTargetIdentity != targetIdentity || inFlight?.isActive != true) return null
+        return withTimeoutOrNull(PREPARED_QUEUE_WAIT_MS) {
+            while (inFlight.isActive) {
+                preparedQueueTrackForTransition(sourceIdentity, targetIdentity)?.let { return@withTimeoutOrNull it }
+                delay(25L)
+            }
+            preparedQueueTrackForTransition(sourceIdentity, targetIdentity)
+        }
+    }
+
+    private fun clearPreparedQueueNextInternal() {
+        preparedQueueNext = null
+        cancelServicePrefetch()
+    }
+
+    private fun consumePreparedQueueNextInternal(trackId: String) {
+        val prepared = preparedQueueNext ?: return
+        if (!queuePrecacheMatchesTrackId(prepared.targetTrackId, prepared.resolved.id, trackId)) return
+        preparedQueueNext = null
+        if (servicePrefetchTargetIdentity == prepared.targetIdentity) cancelServicePrefetch()
+    }
+
+    private fun cancelServicePrefetch() {
+        servicePrefetchRequestToken++
+        servicePrefetchJob?.cancel()
+        servicePrefetchJob = null
+        servicePrefetchTargetIdentity = null
     }
 
     private suspend fun resolveQueueTrackPersistently(
@@ -841,7 +1010,8 @@ class PlaybackService : MediaLibraryService() {
         val targetIdentity = playbackQueueIdentity(target)
         var secondary: ExoPlayer? = null
         try {
-            val resolved = withContext(Dispatchers.IO) { resolveQueueTrack(target) }
+            val resolved = awaitPreparedQueueTrackForTransition(currentIdentity, targetIdentity)
+                ?: withContext(Dispatchers.IO) { resolveQueueTrack(target) }
             if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
             secondary = buildTransitionPlayer(resolved).also { transitionPlayer = it }
             secondary.setPlaybackParameters(
@@ -883,6 +1053,7 @@ class PlaybackService : MediaLibraryService() {
                 Timber.w("Crossfade queue changed before compare-and-set handoff")
                 return
             }
+            consumePreparedQueueNextInternal(target.id.ifBlank { resolved.id })
 
             primary.volume = 0f
             primary.setMediaItem(
@@ -1099,7 +1270,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (shouldCancelPrefetchForMemoryPressure(level)) {
-            servicePrefetchJob?.cancel()
+            clearPreparedQueueNextInternal()
             cancelQueueTransition()
         }
     }
@@ -1123,7 +1294,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onDestroy() {
         queueSkipJob?.cancel()
-        servicePrefetchJob?.cancel()
+        clearPreparedQueueNextInternal()
         serviceRecoveryJob?.cancel()
         recoveryResetJob?.cancel()
         stickyRestoreJob?.cancel()
