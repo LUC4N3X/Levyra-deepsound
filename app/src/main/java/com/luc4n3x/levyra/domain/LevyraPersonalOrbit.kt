@@ -313,6 +313,8 @@ object LevyraPersonalOrbit {
             .mapNotNull { it.find(track.videoUrl)?.groupValues?.getOrNull(1) }
             .firstOrNull(youtubeVideoIdPattern::matches)
         if (fromUrl != null) return fromUrl
+        val counterpart = track.counterpartVideoId.trim().takeIf(youtubeVideoIdPattern::matches)
+        if (counterpart != null) return counterpart
         return track.id.trim().takeIf(youtubeVideoIdPattern::matches)
     }
 
