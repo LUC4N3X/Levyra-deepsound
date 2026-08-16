@@ -46,6 +46,7 @@ Upstream license: GNU General Public License v3.0
 | Kotlin | Primary programming language |
 | Jetpack Compose | Native UI framework |
 | AndroidX Media3 / ExoPlayer | Playback engine and media session layer |
+| AndroidX Media3 Transformer | On-device audio-track extraction for offline export (Apache-2.0, same `androidx.media3` version as the player) |
 | AndroidX Car App Library | Android Auto templated media interface |
 | AndroidX Room | Local database |
 | AndroidX DataStore | Local preference storage |

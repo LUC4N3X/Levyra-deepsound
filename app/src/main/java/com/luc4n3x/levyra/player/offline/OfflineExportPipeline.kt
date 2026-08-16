@@ -8,6 +8,7 @@ import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.YoutubeStreamCapability
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraMediaCache
@@ -26,6 +27,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+
+internal fun supportsContinuousPrefetch(streamUrl: String): Boolean {
+    return isMp4AudioExportUrl(streamUrl) && YoutubeStreamCapability.servesCompleteStream(streamUrl)
+}
 
 internal fun offlineContinuousDownloadProgress(bytesCached: Long, contentLength: Long): Int {
     if (contentLength <= 0L) return 12
@@ -130,7 +135,7 @@ internal class OfflineExportPipeline(
     suspend fun export(track: Track): OfflineExportResult {
         var resolved = resolve(track)
         val continuousPrefetchEnabled = settings.resumable && settings.effectiveRateKbps == 0
-        if (continuousPrefetchEnabled && isMp4AudioExportUrl(resolved.streamUrl)) {
+        if (continuousPrefetchEnabled && supportsContinuousPrefetch(resolved.streamUrl)) {
             try {
                 prefetcher.cache(resolved, progress)
             } catch (error: CancellationException) {
@@ -143,7 +148,7 @@ internal class OfflineExportPipeline(
                     reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" }
                 )
                 resolved = resolve(track)
-                if (isMp4AudioExportUrl(resolved.streamUrl)) {
+                if (supportsContinuousPrefetch(resolved.streamUrl)) {
                     prefetcher.cache(resolved, progress)
                 }
             }
