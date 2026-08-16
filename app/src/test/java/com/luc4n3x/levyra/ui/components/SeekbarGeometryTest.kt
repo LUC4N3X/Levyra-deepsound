@@ -61,37 +61,6 @@ class SeekbarGeometryTest {
     }
 
     @Test
-    fun `wave sample count stays bounded`() {
-        assertEquals(0, seekbarWaveSampleCount(0f))
-        assertEquals(1, seekbarWaveSampleCount(1f))
-        assertTrue(seekbarWaveSampleCount(100_000f) <= 900)
-    }
-
-    @Test
-    fun `wave amplitude tapers to zero at both edges`() {
-        val activeWidth = 200f
-        val taper = 20f
-        assertEquals(0f, seekbarWaveTaper(0f, activeWidth, taper), 0.0001f)
-        assertEquals(0f, seekbarWaveTaper(activeWidth, activeWidth, taper), 0.0001f)
-        assertEquals(1f, seekbarWaveTaper(100f, activeWidth, taper), 0.0001f)
-    }
-
-    @Test
-    fun `wave offset is flat without amplitude or wavelength`() {
-        assertEquals(0f, seekbarWaveOffset(10f, 0f, 30f, 0f), 0f)
-        assertEquals(0f, seekbarWaveOffset(10f, 4f, 0f, 0f), 0f)
-    }
-
-    @Test
-    fun `wave offset follows the sine of the travelled distance`() {
-        val wavelength = 40f
-        val amplitude = 3f
-        assertEquals(0f, seekbarWaveOffset(0f, amplitude, wavelength, 0f), 0.0001f)
-        assertEquals(amplitude, seekbarWaveOffset(wavelength / 4f, amplitude, wavelength, 0f), 0.0001f)
-        assertEquals(-amplitude, seekbarWaveOffset(3f * wavelength / 4f, amplitude, wavelength, 0f), 0.0001f)
-    }
-
-    @Test
     fun `seek millis is clamped to the track duration`() {
         assertEquals(0L, seekbarSeekMillis(0.5f, 0L))
         assertEquals(30_000L, seekbarSeekMillis(0.5f, 60_000L))

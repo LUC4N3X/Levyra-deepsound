@@ -743,11 +743,11 @@ class LevyraStrings private constructor(
         }
     }
 
-    fun localizeUserError(rawMessage: String?): String {
+    fun localizeUserError(rawMessage: String?, youtubePlayback: Boolean = false): String {
         val raw = rawMessage?.trim().orEmpty()
         return when {
-            raw.contains("Timed out waiting", ignoreCase = true) ||
-                raw.contains("sto aspettando lo stream", ignoreCase = true) -> if (code == "it") {
+            youtubePlayback && (raw.contains("Timed out waiting", ignoreCase = true) ||
+                raw.contains("sto aspettando lo stream", ignoreCase = true)) -> if (code == "it") {
                     "YouTube è lento: riprova tra qualche secondo"
                 } else {
                     "YouTube is slow: try again in a few seconds"
@@ -763,6 +763,18 @@ class LevyraStrings private constructor(
             } else {
                 "Slow connection: try again in a few seconds"
             }
+            youtubePlayback && raw.contains("429", ignoreCase = true) -> if (code == "it") {
+                "Troppe richieste a YouTube: attendi qualche secondo"
+            } else {
+                "Too many requests to YouTube: wait a few seconds"
+            }
+            youtubePlayback && (raw.contains("403", ignoreCase = true) ||
+                raw.contains("410", ignoreCase = true) ||
+                raw.contains("Source error", ignoreCase = true)) -> if (code == "it") {
+                    "YouTube ha rifiutato il link del brano: riprova"
+                } else {
+                    "YouTube rejected this track link: try again"
+                }
             raw.contains("Primary directory Music not allowed", ignoreCase = true) ||
                 raw.contains("content://media/external_primary/file", ignoreCase = true) -> if (code == "it") {
                     "Questo dispositivo non ha consentito il salvataggio in Music/Levyra"

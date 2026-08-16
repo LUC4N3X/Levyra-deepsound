@@ -101,11 +101,11 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 
         val output = ArrayList<MotionArtworkCandidate>(ranked.size)
         for (result in ranked) {
-            val directUrl = extractEditorialVideoUrl(result.attributes.optJSONObject("editorialVideo"))
+            val directVideo = extractEditorialVideoUrl(result.attributes.optJSONObject("editorialVideo"))
             val albumId = resolveAlbumId(result.item, result.attributes, type)
-            val resolved = if (!directUrl.isNullOrBlank()) {
+            val resolved = if (directVideo != null) {
                 AppleMotionResult(
-                    url = directUrl,
+                    video = directVideo,
                     albumName = result.album,
                     albumArtist = result.artist,
                     upc = result.attributes.optString("upc"),
@@ -132,10 +132,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                     trackId = result.item.optString("id"),
                     albumId = albumId.orEmpty()
                 ),
-                url = resolved.url,
+                url = resolved.video.url,
                 mimeType = "application/x-mpegURL",
-                width = 1280,
-                height = 1280,
+                width = resolved.video.width,
+                height = resolved.video.height,
                 expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
             )
         }
@@ -154,9 +154,9 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val attributes = root.optJSONArray("data")?.optJSONObject(0)?.optJSONObject("attributes") ?: return null
         val albumName = attributes.optString("name").trim()
         if (isUnsafeResult(albumName, albumName)) return null
-        val motionUrl = extractEditorialVideoUrl(attributes.optJSONObject("editorialVideo")) ?: return null
+        val motionVideo = extractEditorialVideoUrl(attributes.optJSONObject("editorialVideo")) ?: return null
         return AppleMotionResult(
-            url = motionUrl,
+            video = motionVideo,
             albumName = albumName,
             albumArtist = attributes.optString("artistName").trim(),
             upc = attributes.optString("upc").trim(),
@@ -252,16 +252,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .takeIf { value -> value.isNotBlank() && value.all { it.isDigit() } }
     }
 
-    private fun extractEditorialVideoUrl(editorialVideo: JSONObject?): String? {
-        val keys = listOf("motionDetailSquare", "motionDetailRaw", "motionDetailTall", "motionDetailStatic")
-        for (key in keys) {
-            val asset = editorialVideo?.optJSONObject(key) ?: continue
-            val url = listOf("video", "videoUrl", "hlsUrl", "url")
-                .firstNotNullOfOrNull { field -> asset.optString(field).takeIf { it.startsWith("https://") } }
-            if (url != null) return url
-        }
-        return null
-    }
+    private fun extractEditorialVideoUrl(editorialVideo: JSONObject?): AppleEditorialVideo? =
+        selectAppleEditorialVideo(editorialVideo)
 
     private fun jwtExpiration(token: String): Long? = runCatching {
         val payload = token.split('.').getOrNull(1) ?: return@runCatching null
@@ -297,7 +289,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
     )
 
     private data class AppleMotionResult(
-        val url: String,
+        val video: AppleEditorialVideo,
         val albumName: String,
         val albumArtist: String,
         val upc: String,
@@ -318,3 +310,58 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 private class MotionProviderException(message: String, cause: Throwable? = null) : IOException(message, cause)
 
 private fun JSONArray.optJSONObject(index: Int): JSONObject? = if (index in 0 until length()) opt(index) as? JSONObject else null
+
+internal data class AppleEditorialVideo(
+    val url: String,
+    val width: Int?,
+    val height: Int?
+)
+
+private val APPLE_EDITORIAL_URL_FIELDS = listOf("video", "videoUrl", "hlsUrl", "url")
+
+private val APPLE_EDITORIAL_KEY_ORDER = listOf(
+    "motionDetailTall",
+    "motionTallVideo3x4",
+    "motionDetailSquare",
+    "motionSquareVideo1x1",
+    "motionDetailRaw",
+    "motionDetailStatic"
+)
+
+internal fun selectAppleEditorialVideo(editorialVideo: JSONObject?): AppleEditorialVideo? {
+    val root = editorialVideo ?: return null
+    val keys = buildList {
+        APPLE_EDITORIAL_KEY_ORDER.forEach { if (root.has(it)) add(it) }
+        root.keys().forEach { key -> if (key !in APPLE_EDITORIAL_KEY_ORDER) add(key) }
+    }
+    var best: AppleEditorialVideo? = null
+    var bestRank = Int.MIN_VALUE
+    var bestArea = -1L
+    keys.take(APPLE_EDITORIAL_MAX_ASSETS).forEach { key ->
+        val asset = root.optJSONObject(key) ?: return@forEach
+        val url = APPLE_EDITORIAL_URL_FIELDS.firstNotNullOfOrNull { field ->
+            asset.optString(field).trim().takeIf { it.startsWith("https://") }
+        } ?: return@forEach
+        val frame = asset.optJSONObject("previewFrame")
+        val width = frame?.optInt("width")?.takeIf { it > 0 }
+        val height = frame?.optInt("height")?.takeIf { it > 0 }
+        val orientationRank = when {
+            width == null || height == null -> 1
+            height > width -> 3
+            height == width -> 2
+            else -> 0
+        }
+        val area = if (width != null && height != null) width.toLong() * height.toLong() else 0L
+        val better = orientationRank > bestRank ||
+            (orientationRank == bestRank && area > bestArea) ||
+            (orientationRank == bestRank && area == bestArea && best == null)
+        if (better) {
+            best = AppleEditorialVideo(url = url, width = width, height = height)
+            bestRank = orientationRank
+            bestArea = area
+        }
+    }
+    return best
+}
+
+private const val APPLE_EDITORIAL_MAX_ASSETS = 12

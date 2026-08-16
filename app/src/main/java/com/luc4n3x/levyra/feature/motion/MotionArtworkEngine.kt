@@ -115,15 +115,45 @@ class MotionArtworkEngine(context: Context) {
             }
         }
 
-        val ranked = candidates.mapNotNull { candidate ->
-            val match = CanonicalTrackMatcher.match(identity, candidate)
-            if (!match.accepted || match.score < config.minimumConfidence) null
-            else MotionArtworkRankedCandidate(
-                candidate,
-                match.score,
-                providerRanks[candidate.provider] ?: Int.MAX_VALUE
+        outcomes.forEachIndexed { index, outcome ->
+            val provider = providers.getOrNull(index)?.id ?: "unknown"
+            val summary = when (outcome) {
+                is MotionArtworkProviderResult.Found -> "found=${outcome.candidates.size}"
+                MotionArtworkProviderResult.NoMatch -> "noMatch"
+                is MotionArtworkProviderResult.Failed -> "failed"
+            }
+            Timber.d(
+                "motion provider %s -> %s for %s / %s (album=%s)",
+                provider,
+                summary,
+                identity.title,
+                identity.artists.joinToString(),
+                identity.album
             )
-        }.sortedWith(
+        }
+
+        val ranked = candidates
+            .map { candidate -> candidate to CanonicalTrackMatcher.match(identity, candidate) }
+            .onEach { (candidate, match) ->
+                Timber.d(
+                    "motion candidate %s scope=%s score=%d accepted=%b minimum=%d album=%s",
+                    candidate.provider,
+                    candidate.scope,
+                    match.score,
+                    match.accepted,
+                    config.minimumConfidence,
+                    candidate.identity.album
+                )
+            }
+            .mapNotNull { (candidate, match) ->
+                if (!match.accepted || match.score < config.minimumConfidence) null
+                else MotionArtworkRankedCandidate(
+                    candidate,
+                    match.score,
+                    providerRanks[candidate.provider] ?: Int.MAX_VALUE
+                )
+            }
+            .sortedWith(
             compareBy<MotionArtworkRankedCandidate> { it.providerRank }
                 .thenByDescending { it.confidence }
         )

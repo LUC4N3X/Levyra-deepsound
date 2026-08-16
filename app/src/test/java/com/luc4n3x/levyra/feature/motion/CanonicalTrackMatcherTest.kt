@@ -192,6 +192,59 @@ class CanonicalTrackMatcherTest {
         assertNotEquals(MotionArtworkIdentityKey.create(first), MotionArtworkIdentityKey.create(different))
     }
 
+    @Test
+    fun singleWithoutAlbumMetadataStillAcceptsAlbumMotion() {
+        val reference = identity(title = "SWAG MUSIC", artist = "Artie 5ive", album = "")
+        val candidate = albumCandidate(title = "SWAG MUSIC", artist = "Artie 5ive", album = "SWAG MUSIC")
+
+        val match = CanonicalTrackMatcher.match(reference, candidate)
+
+        assertTrue(match.accepted)
+        assertTrue(match.score >= 84)
+    }
+
+    @Test
+    fun singleWithPlaceholderAlbumStillAcceptsAlbumMotion() {
+        val candidate = albumCandidate(title = "SWAG MUSIC", artist = "Artie 5ive", album = "SWAG MUSIC - Single")
+        listOf("YouTube Music", "YouTube Music Video", "YouTube Music Charts", "YouTube").forEach { placeholder ->
+            val reference = identity(title = "SWAG MUSIC", artist = "Artie 5ive", album = placeholder)
+
+            val match = CanonicalTrackMatcher.match(reference, candidate)
+
+            assertTrue("rejected for placeholder $placeholder", match.accepted)
+        }
+    }
+
+    @Test
+    fun singleWithoutAlbumMetadataRejectsAnUnrelatedRelease() {
+        val reference = identity(title = "SWAG MUSIC", artist = "Artie 5ive", album = "")
+        val candidate = albumCandidate(title = "SWAG MUSIC", artist = "Artie 5ive", album = "Greatest Hits")
+
+        val match = CanonicalTrackMatcher.match(reference, candidate)
+
+        assertFalse(match.accepted)
+    }
+
+    @Test
+    fun singleWithoutAlbumMetadataRejectsAnEditionMismatch() {
+        val reference = identity(title = "SWAG MUSIC", artist = "Artie 5ive", album = "")
+        val candidate = albumCandidate(title = "SWAG MUSIC", artist = "Artie 5ive", album = "SWAG MUSIC (Remix)")
+
+        val match = CanonicalTrackMatcher.match(reference, candidate)
+
+        assertFalse(match.accepted)
+    }
+
+    @Test
+    fun realAlbumMetadataStillRequiresTheAlbumToMatch() {
+        val reference = identity(title = "Cenere", artist = "Lazza", album = "Sirio")
+        val candidate = albumCandidate(title = "Cenere", artist = "Lazza", album = "Cenere")
+
+        val match = CanonicalTrackMatcher.match(reference, candidate)
+
+        assertFalse(match.accepted)
+    }
+
     private fun albumCandidate(
         title: String,
         artist: String,
