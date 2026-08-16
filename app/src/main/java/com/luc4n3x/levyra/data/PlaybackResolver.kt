@@ -72,6 +72,17 @@ internal fun isMp4OfflineAudioCandidate(mimeOrFormat: String, url: String): Bool
         path.endsWith(".mp4")
 }
 
+internal fun isMuxedMp4ExportUrl(url: String): Boolean {
+    val lower = url.lowercase()
+    return lower.contains("mime=video%2fmp4") || lower.contains("mime=video/mp4")
+}
+
+internal fun supportsOfflineExport(manifest: ResolvedPlaybackManifest): Boolean {
+    if (manifest.selectedVideoUrl.isNotBlank()) return false
+    if (!YoutubeStreamCapability.servesCompleteStream(manifest.selectedAudioUrl)) return false
+    return manifest.supportsMp4AudioExport() || isMuxedMp4ExportUrl(manifest.selectedAudioUrl)
+}
+
 internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {
     val artworkLocked = presented.source.equals("Levyra Editorial", ignoreCase = true) ||
         EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags
@@ -559,7 +570,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
                 (if (isVideoMode) track.hasVideoPlaybackPayload() else isPlayableAudioUrl(it)) &&
-                (!preferMp4Audio || track.playbackManifest?.supportsMp4AudioExport() == true || isMp4AudioUrl(it))
+                (!preferMp4Audio || track.playbackManifest?.let(::supportsOfflineExport) == true || isMp4AudioUrl(it))
         }?.let { return@coroutineScope track }
         if (!preferMp4Audio) {
             val cacheLookupTrack = if (reuseProvidedStream) track else track.copy(streamUrl = "", videoStreamUrl = "")
@@ -694,6 +705,11 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?: errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) || it.contains("accedi", true) }
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
+        Timber.w(
+            "audio resolve failed offlineExport=%s errors=%s",
+            preferMp4Audio,
+            errors.joinToString(" | ").take(900)
+        )
         throw PlaybackBlockedException(reason)
     }
 
@@ -929,7 +945,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 resolved.streamUrl.isNotBlank() &&
                 streamStillFresh(resolved.streamUrl) &&
                 isPlayableAudioUrl(resolved.streamUrl) &&
-                (!preferMp4Audio || resolved.playbackManifest?.supportsMp4AudioExport() == true || isMp4AudioUrl(resolved.streamUrl))
+                (!preferMp4Audio || resolved.playbackManifest?.let(::supportsOfflineExport) == true || isMp4AudioUrl(resolved.streamUrl))
             ) {
                 return track.copy(
                     streamUrl = resolved.streamUrl,
@@ -1052,7 +1068,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (manifest == null || manifest.selectedAudioUrl.isBlank()) return false
         if (isPlaybackUrlBlocked(manifest.selectedAudioUrl) || !streamStillFresh(manifest.selectedAudioUrl)) return false
         if (!isVideoMode && !isPlayableAudioUrl(manifest.selectedAudioUrl)) return false
-        if (preferMp4Audio && !manifest.supportsMp4AudioExport()) return false
+        if (preferMp4Audio && !supportsOfflineExport(manifest)) return false
         val videoUrl = manifest.selectedVideoUrl
         if (videoUrl.isNotBlank() && (isPlaybackUrlBlocked(videoUrl) || !streamStillFresh(videoUrl))) return false
         return true
@@ -1131,7 +1147,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean = false
     ) {
         val manifest = resolved.playbackManifest ?: return
-        if (preferMp4Audio && !manifest.supportsMp4AudioExport()) return
+        if (preferMp4Audio && !supportsOfflineExport(manifest)) return
         try {
             sourceMatchStore.save(original, resolved, isVideoMode, audioQuality, confidence, preferMp4Audio)
         } catch (error: CancellationException) {
@@ -1326,8 +1342,16 @@ class PlaybackResolver private constructor(private val context: Context) {
                         recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
                         return@onSuccess
                     }
-                    if (!isVideoMode && preferMp4Audio && !isMp4AudioUrl(stream.url)) {
-                        fallback.compareAndSet(null, stream)
+                    if (!isVideoMode && preferMp4Audio) {
+                        val exportable = isMp4AudioUrl(stream.url) &&
+                            YoutubeStreamCapability.servesCompleteStream(stream.url)
+                        Timber.i(
+                            "offline candidate client=%s mp4=%s complete=%s",
+                            profile.label,
+                            isMp4AudioUrl(stream.url),
+                            YoutubeStreamCapability.servesCompleteStream(stream.url)
+                        )
+                        if (exportable) winner.complete(stream) else fallback.compareAndSet(null, stream)
                     } else {
                         winner.complete(stream)
                     }
@@ -2012,13 +2036,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceVideoUrl = "https://www.youtube.com/watch?v=$sourceVideoId"
         val info = StreamInfo.getInfo(ServiceList.YouTube, sourceVideoUrl)
         currentCoroutineContext().ensureActive()
-        val completeAudioStreams = info.audioStreams.filter {
+        val usableAudioStreams = info.audioStreams.filter {
             it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
         }
-        val audio = selectAudioStream(completeAudioStreams, preferMp4Audio, audioQuality)
-        val muxedAudioSource = if (audio == null && !preferMp4Audio) {
+        val audio = selectAudioStream(usableAudioStreams, preferMp4Audio, audioQuality)
+        val muxedAudioSource = if (audio == null) {
             info.videoStreams.firstOrNull {
-                it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
+                it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content) &&
+                    (!preferMp4Audio || isMuxedMp4ExportUrl(it.content))
             }
         } else {
             null
@@ -2045,7 +2070,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             LEVYRA_EXTRACTOR_HLS_PROVIDER
         }
         val descriptors = when {
-            audio != null -> completeAudioStreams
+            audio != null -> usableAudioStreams
                 .asSequence()
                 .filter { it.content.isNotBlank() && streamStillFresh(it.content) }
                 .map { audioDescriptor(it, it.content == url) }

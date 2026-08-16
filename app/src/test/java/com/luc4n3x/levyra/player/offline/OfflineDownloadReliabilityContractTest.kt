@@ -33,6 +33,26 @@ class OfflineDownloadReliabilityContractTest {
     }
 
     @Test
+    fun shortTracksFromRateLimitedSourcesAreStillDownloadedInBoundedRanges() {
+        val contentLength = 1_500_000L
+        val rateLimited = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=140&" +
+            "mime=audio%2Fmp4&gir=yes&clen=$contentLength&c=ANDROID_VR"
+        val ratebypass = "$rateLimited&ratebypass=yes"
+
+        val boundedRanges = planParallelAudioRanges(
+            contentLength = contentLength,
+            chunkSize = parallelAudioChunkSize(contentLength),
+            minLength = rangedDownloadMinLength(rateLimited)
+        )
+
+        assertTrue(boundedRanges.isNotEmpty())
+        assertEquals(0L, boundedRanges.first().start)
+        assertEquals(contentLength - 1L, boundedRanges.last().endInclusive)
+        assertEquals(contentLength, boundedRanges.sumOf { it.length })
+        assertEquals(MIN_PARALLEL_AUDIO_BYTES, rangedDownloadMinLength(ratebypass))
+    }
+
+    @Test
     fun missingRangePlannerRestoresCompleteCoverageWithoutOverlap() {
         val oneMb = 1024L * 1024L
         val contentLength = 12L * oneMb
@@ -51,6 +71,33 @@ class OfflineDownloadReliabilityContractTest {
 
         assertEquals(listOf(AudioDownloadRange(0L, contentLength - 1L)), complete)
         assertEquals(contentLength - covered.sumOf { it.length }, missing.sumOf { it.length })
+    }
+
+    @Test
+    fun progressiveMuxedMp4IsDownloadedAndReducedToItsAudioTrack() {
+        val muxed = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=18&" +
+            "mime=video%2Fmp4&ratebypass=yes&clen=15857332"
+        val audioOnly = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=140&" +
+            "mime=audio%2Fmp4&ratebypass=yes&clen=3168361"
+
+        assertTrue(isSupportedOfflineSource("video/mp4", muxed))
+        assertTrue(isMuxedMp4Source("", muxed))
+        assertFalse(isMuxedMp4Source("audio/mp4", audioOnly))
+        assertFalse(isSupportedOfflineSource("audio/webm", "https://example.com/a.webm"))
+
+        val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
+        assertTrue(exporter.contains("if (downloaded.requiresAudioExtraction)"))
+        assertTrue(exporter.contains("OfflineAudioTrackExtractor.extractAudioTrack"))
+    }
+
+    @Test
+    fun rangeResponsesAreValidatedBeforeTheirContentType() {
+        val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
+        val statusCheck = exporter.indexOf("if (!isUsableAudioRangeResponse(response.code")
+        val typeCheck = exporter.indexOf("if (!isSupportedOfflineSource(responseType", statusCheck)
+
+        assertTrue(statusCheck > 0)
+        assertTrue(typeCheck > statusCheck)
     }
 
     @Test
