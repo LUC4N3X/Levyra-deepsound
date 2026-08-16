@@ -72,7 +72,7 @@ class YoutubeClientIdentityInterceptorTest {
 
     @Test
     fun nativeClientsDoNotCarryBrowserNavigationHeaders() {
-        listOf("3", "5", "28").forEach { clientName ->
+        listOf("3", "5", "28", "101").forEach { clientName ->
             val request = playerRequest(
                 clientName = clientName,
                 clientVersion = "1.0",
