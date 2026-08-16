@@ -1,14 +1,19 @@
 # Levyra project-local RTK filters.
 #
-# RTK already provides dedicated compact handlers for Gradle/gradlew, Git,
-# GitHub CLI, common test runners, linters, Docker, logs, grep, find, and many
-# other commands. These project filters cover Levyra-specific commands that do
-# not have a dedicated built-in handler.
+# RTK already handles Gradle/gradlew, Git, GitHub CLI, common test runners,
+# linters, Docker, logs, grep, find, and many other commands with compact output.
 #
-# Project-local filters override built-in or user-global filters only when their
-# match_command expression matches. Keep failure markers and final summaries.
+# These filters are only for Levyra-specific commands that are not already
+# covered well by RTK's built-in handlers.
+#
+# Project-local filters override built-in or user-global filters only when
+# their match_command expression matches.
+#
+# Keep useful errors, failure details, and final summaries. The goal here is
+# simply to cut noisy output without making debugging harder.
 
 schema_version = 1
+
 
 [filters.levyra-agent-config]
 description = "Compact Levyra agent configuration validation"
@@ -31,8 +36,9 @@ name = "keeps validation failures"
 input = "Agent configuration validation failed:\n- missing required file: docs/ai/RTK.md\n"
 expected = "Agent configuration validation failed:\n- missing required file: docs/ai/RTK.md"
 
+
 [filters.levyra-coderabbit]
-description = "Compact local CodeRabbit agent review output while preserving findings"
+description = "Compact local CodeRabbit review output while keeping useful findings"
 match_command = "^coderabbit\\s+review\\b"
 strip_ansi = true
 strip_lines_matching = [
@@ -47,8 +53,9 @@ truncate_lines_at = 320
 max_lines = 180
 on_empty = "CodeRabbit review completed without textual findings"
 
+
 [filters.levyra-adb-logcat]
-description = "Bound Android logcat output while retaining recent diagnostics"
+description = "Limit Android logcat output while keeping recent diagnostics"
 match_command = "^adb\\s+logcat\\b"
 strip_ansi = true
 strip_lines_matching = [
@@ -58,8 +65,9 @@ truncate_lines_at = 400
 max_lines = 240
 on_empty = "adb logcat produced no matching lines"
 
+
 [filters.levyra-agent-tests]
-description = "Compact Levyra AI setup-script dry-run output"
+description = "Compact Levyra AI setup-script output"
 match_command = "^(?:(?:pwsh|powershell|bash|sh)\\s+.*|(?:\\.?[./\\\\])?)scripts[/\\\\]setup-ai\\.(ps1|sh)\\b"
 strip_ansi = true
 strip_lines_matching = [
