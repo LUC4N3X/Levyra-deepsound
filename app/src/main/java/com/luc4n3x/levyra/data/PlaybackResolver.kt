@@ -44,6 +44,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -85,6 +87,7 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
 
 private const val YOUTUBE_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 private const val ANDROID_REEL_CLIENT_VERSION = "21.03.36"
+private const val MAX_YOUTUBE_JSON_RESPONSE_BYTES = 8L * 1024L * 1024L
 private val youtubeNonceRandom = SecureRandom()
 
 private fun normalizedYoutubeCountryCode(countryCode: String): String {
@@ -177,6 +180,34 @@ internal fun generateYoutubeNonce(length: Int): String {
             }
         }
     }
+}
+
+internal fun readBoundedYoutubeJsonBody(
+    body: ResponseBody,
+    maxBytes: Long = MAX_YOUTUBE_JSON_RESPONSE_BYTES
+): String {
+    require(maxBytes in 1..Int.MAX_VALUE.toLong())
+    val declaredLength = body.contentLength()
+    if (declaredLength > maxBytes) {
+        throw IOException("YouTube JSON response exceeds $maxBytes byte limit")
+    }
+    val output = ByteArrayOutputStream(
+        declaredLength.takeIf { it in 1..maxBytes }?.toInt() ?: 8192
+    )
+    body.byteStream().use { input ->
+        val buffer = ByteArray(8192)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > maxBytes) {
+                throw IOException("YouTube JSON response exceeds $maxBytes byte limit")
+            }
+            output.write(buffer, 0, read)
+        }
+    }
+    return output.toByteArray().toString(StandardCharsets.UTF_8)
 }
 
 class PlaybackResolver private constructor(private val context: Context) {
@@ -802,10 +833,10 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun executeYoutubeJson(request: Request, label: String): JSONObject {
         return youtubeHttpClient.newCall(request).execute().use { response ->
-            val responseText = response.body.string()
             if (!response.isSuccessful) {
                 throw YoutubePlayerRequestException(response.code, "$label HTTP ${response.code}")
             }
+            val responseText = readBoundedYoutubeJsonBody(response.body)
             runCatching { JSONObject(responseText) }
                 .getOrElse { error ->
                     throw YoutubePlayerRequestException(

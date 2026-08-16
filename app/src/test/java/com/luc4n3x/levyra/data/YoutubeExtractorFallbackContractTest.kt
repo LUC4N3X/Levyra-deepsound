@@ -2,6 +2,11 @@ package com.luc4n3x.levyra.data
 
 import org.json.JSONArray
 import org.json.JSONObject
+import okhttp3.MediaType
+import okhttp3.ResponseBody
+import okio.Buffer
+import okio.BufferedSource
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -77,6 +82,30 @@ class YoutubeExtractorFallbackContractTest {
 
         assertEquals(1, formats.length())
         assertEquals(18, formats.getJSONObject(0).getInt("itag"))
+    }
+
+    @Test
+    fun youtubeJsonReadAcceptsSmallPayloads() {
+        val body = object : ResponseBody() {
+            override fun contentType(): MediaType? = null
+            override fun contentLength(): Long = -1L
+            override fun source(): BufferedSource = Buffer().writeUtf8("{\"ok\":true}")
+        }
+
+        assertEquals("{\"ok\":true}", readBoundedYoutubeJsonBody(body, 64))
+    }
+
+    @Test
+    fun youtubeJsonReadRejectsUnknownLengthBodiesPastTheLimit() {
+        val body = object : ResponseBody() {
+            override fun contentType(): MediaType? = null
+            override fun contentLength(): Long = -1L
+            override fun source(): BufferedSource = Buffer().writeUtf8("12345")
+        }
+
+        val error = runCatching { readBoundedYoutubeJsonBody(body, 4) }.exceptionOrNull()
+
+        assertTrue(error is IOException)
     }
 
     @Test
