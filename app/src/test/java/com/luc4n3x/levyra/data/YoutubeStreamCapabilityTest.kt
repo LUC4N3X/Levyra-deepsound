@@ -41,6 +41,29 @@ class YoutubeStreamCapabilityTest {
     }
 
     @Test
+    fun `googlevideo lookalike host is not treated as googlevideo`() {
+        assertTrue(
+            YoutubeStreamCapability.servesCompleteStream(
+                "https://notgooglevideo.com/videoplayback?itag=251&mime=audio%2Fwebm"
+            )
+        )
+    }
+
+    @Test
+    fun `extensionless and mime signaled hls urls stay eligible`() {
+        assertTrue(
+            YoutubeStreamCapability.servesCompleteStream(
+                "https://rr3---sn-example.googlevideo.com/videoplayback/hls_playlist?itag=251"
+            )
+        )
+        assertTrue(
+            YoutubeStreamCapability.servesCompleteStream(
+                "https://rr3---sn-example.googlevideo.com/videoplayback?itag=251&mime=application%2Fx-mpegURL"
+            )
+        )
+    }
+
+    @Test
     fun `a blank url is never eligible`() {
         assertFalse(YoutubeStreamCapability.servesCompleteStream(""))
     }
