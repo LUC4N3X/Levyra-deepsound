@@ -4,12 +4,20 @@ on:
   push:
     branches:
       - feat/player-wave-polish
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.event_name == 'push' || github.head_ref == 'feat/player-wave-polish'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
