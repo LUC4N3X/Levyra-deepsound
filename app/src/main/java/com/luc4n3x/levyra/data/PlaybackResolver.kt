@@ -2012,13 +2012,23 @@ class PlaybackResolver private constructor(private val context: Context) {
         val sourceVideoUrl = "https://www.youtube.com/watch?v=$sourceVideoId"
         val info = StreamInfo.getInfo(ServiceList.YouTube, sourceVideoUrl)
         currentCoroutineContext().ensureActive()
-        val audio = selectAudioStream(info.audioStreams, preferMp4Audio, audioQuality)
-        val hlsUrl = if (audio == null && !preferMp4Audio) {
+        val completeAudioStreams = info.audioStreams.filter {
+            it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
+        }
+        val audio = selectAudioStream(completeAudioStreams, preferMp4Audio, audioQuality)
+        val muxedAudioSource = if (audio == null && !preferMp4Audio) {
+            info.videoStreams.firstOrNull {
+                it.isUrl && YoutubeStreamCapability.servesCompleteStream(it.content)
+            }
+        } else {
+            null
+        }
+        val hlsUrl = if (audio == null && muxedAudioSource == null && !preferMp4Audio) {
             info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
         } else {
             null
         }
-        val url = audio?.content ?: hlsUrl
+        val url = audio?.content ?: muxedAudioSource?.content ?: hlsUrl
             ?: throw IllegalStateException("LevyraExtractor non ha restituito stream audio diretti o HLS per ${track.title}")
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
@@ -2029,15 +2039,20 @@ class PlaybackResolver private constructor(private val context: Context) {
             donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
         )
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
-        val provider = if (audio != null) LEVYRA_EXTRACTOR_PROVIDER else LEVYRA_EXTRACTOR_HLS_PROVIDER
-        val descriptors = if (audio != null) {
-            info.audioStreams
+        val provider = if (audio != null || muxedAudioSource != null) {
+            LEVYRA_EXTRACTOR_PROVIDER
+        } else {
+            LEVYRA_EXTRACTOR_HLS_PROVIDER
+        }
+        val descriptors = when {
+            audio != null -> completeAudioStreams
                 .asSequence()
-                .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
+                .filter { it.content.isNotBlank() && streamStillFresh(it.content) }
                 .map { audioDescriptor(it, it.content == url) }
                 .toList()
-        } else {
-            listOf(hlsDescriptor(url))
+
+            muxedAudioSource != null -> listOf(innerTubeAudioDescriptor(null, url))
+            else -> listOf(hlsDescriptor(url))
         }
         val manifest = buildManifest(
             sourceVideoId = sourceVideoId,
@@ -2051,10 +2066,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             streamUrl = url,
             videoStreamUrl = "",
             durationMs = durationMs,
-            source = if (audio != null) {
-                "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
-            } else {
-                LEVYRA_EXTRACTOR_HLS_PROVIDER
+            source = when {
+                audio != null -> "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+                muxedAudioSource != null -> LEVYRA_EXTRACTOR_PROVIDER
+                else -> LEVYRA_EXTRACTOR_HLS_PROVIDER
             },
             playbackManifest = manifest
         ).withYoutubeEngagement(info.likeCount, info.viewCount).also {
