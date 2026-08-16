@@ -1,0 +1,47 @@
+name: Patch player lyrics selection
+
+on:
+  push:
+    branches:
+      - feat/player-wave-polish
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/player-wave-polish
+          fetch-depth: 0
+
+      - name: Patch lyrics selected state
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          old = """            tint = if (state.lyrics.isNotEmpty()) activePrimary else Color.White.copy(alpha = 0.72f),
+            active = state.lyrics.isNotEmpty(),
+"""
+          new = """            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
+            active = state.showLyrics,
+"""
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one lyrics quick-action block, found {count}")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+      - name: Commit patch and remove helper
+        shell: bash
+        run: |
+          rm .github/workflows/patch-player-lyrics-selection.yml
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/patch-player-lyrics-selection.yml
+          git commit -m "fix(player): only highlight lyrics when opened"
+          git push origin HEAD:feat/player-wave-polish
