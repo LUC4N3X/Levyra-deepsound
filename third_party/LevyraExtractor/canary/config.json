@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "probe_attempts": 2,
+  "retry_delay_seconds": 2,
+  "youtube": {
+    "hl": "en",
+    "gl": "US"
+  },
+  "thresholds": {
+    "range_regressions_for_repair": 2,
+    "required_sentinel_regressions_for_repair": 2
+  },
+  "sentinels": [
+    {
+      "name": "youtube-dl-test",
+      "video_id": "BaW_jenozKc",
+      "required": true
+    },
+    {
+      "name": "iframe-api-demo",
+      "video_id": "M7lc1UVf-VE",
+      "required": true
+    },
+    {
+      "name": "legacy-public",
+      "video_id": "jNQXAC9IVRw",
+      "required": false
+    }
+  ],
+  "upstreams": [
+    {
+      "repo": "TeamNewPipe/NewPipeExtractor",
+      "branch": "dev"
+    },
+    {
+      "repo": "InfinityLoop1308/PipePipeExtractor",
+      "branch": "main"
+    },
+    {
+      "repo": "yt-dlp/yt-dlp",
+      "branch": "master"
+    },
+    {
+      "repo": "MetrolistGroup/MetrolistExtractor",
+      "branch": "main"
+    }
+  ]
+}
