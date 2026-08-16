@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -215,6 +216,7 @@ fun PlayerTransportControls(
             isPlaying = isPlaying,
             isResolving = isResolving,
             size = primarySize,
+            accentColor = accents.primaryTarget,
             animated = animated,
             playLabel = labels.play,
             pauseLabel = labels.pause,
@@ -397,12 +399,19 @@ private fun PlayerPrimaryButton(
     isPlaying: Boolean,
     isResolving: Boolean,
     size: Dp,
+    accentColor: Color,
     animated: Boolean,
     playLabel: String,
     pauseLabel: String,
     onClick: () -> Unit
 ) {
     val contentColor = LevyraPlayerDesign.PrimaryContent
+    val haloColor = accentColor.playerMix(Color.White, 0.16f)
+    val haloAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0.22f else 0.10f,
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(260) else snap(),
+        label = "player-primary-halo"
+    )
     val corner by animateDpAsState(
         targetValue = if (isPlaying) LevyraPlayerDesign.CornerMd else size * 0.5f,
         animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
@@ -417,6 +426,22 @@ private fun PlayerPrimaryButton(
         Box(
             modifier = Modifier
                 .size(size)
+                .drawBehind {
+                    val radius = this.size.minDimension * 0.72f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                haloColor.copy(alpha = haloAlpha),
+                                haloColor.copy(alpha = haloAlpha * 0.30f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = radius
+                        ),
+                        radius = radius,
+                        center = center
+                    )
+                }
                 .playerPrimarySurface(
                     shape = RoundedCornerShape(corner)
                 ),
