@@ -408,7 +408,7 @@ private fun PlayerPrimaryButton(
     val contentColor = LevyraPlayerDesign.PrimaryContent
     val haloColor = accentColor.playerMix(Color.White, 0.16f)
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.24f else 0.11f,
+        targetValue = if (isPlaying) 0.22f else 0.10f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(260) else snap(),
         label = "player-primary-halo"
     )
