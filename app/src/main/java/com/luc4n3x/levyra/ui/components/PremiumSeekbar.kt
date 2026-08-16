@@ -2,7 +2,9 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,8 +32,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,7 +51,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 fun PremiumSeekbar(
@@ -64,6 +67,7 @@ fun PremiumSeekbar(
     trailingColor: Color = activeColor,
     inactiveColor: Color = LevyraMuted.copy(alpha = 0.35f),
     thumbColor: Color = Color.White,
+    isPlaying: Boolean = true,
     animated: Boolean = true,
     contentDescription: String? = null
 ) {
@@ -93,55 +97,39 @@ fun PremiumSeekbar(
         )
     }
 
-    val scrubMillis by remember(durationMs) {
-        derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
+    val waveReveal = remember { Animatable(if (animated) 0f else 1f) }
+    LaunchedEffect(animated) {
+        if (animated) {
+            waveReveal.snapTo(0f)
+            waveReveal.animateTo(
+                targetValue = 1f,
+                animationSpec = LevyraPlayerDesign.emphasizedTween(420)
+            )
+        } else {
+            waveReveal.snapTo(1f)
+        }
     }
 
-    val wavePath = remember(widthPx, density) {
-        Path().apply {
-            if (widthPx <= 0f) return@apply
-            val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
-            val amplitude = with(density) { 2.4.dp.toPx() }
-            val wavelength = with(density) { 38.dp.toPx() }
-            val quarterWave = wavelength / 4f
-            var waveStart = -wavelength
-            moveTo(waveStart, centerY)
-            while (waveStart < widthPx + wavelength) {
-                cubicTo(
-                    waveStart + quarterWave * 0.45f,
-                    centerY,
-                    waveStart + quarterWave * 0.55f,
-                    centerY - amplitude,
-                    waveStart + quarterWave,
-                    centerY - amplitude
+    val wavePhase = remember { Animatable(0f) }
+    LaunchedEffect(animated, isPlaying, isDragging) {
+        if (!animated || !isPlaying || isDragging) return@LaunchedEffect
+        val fullPhase = 2f * PI.toFloat()
+        while (true) {
+            val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
+                .coerceIn(0.001f, 1f)
+            wavePhase.animateTo(
+                targetValue = fullPhase,
+                animationSpec = tween(
+                    durationMillis = (4_200f * remainingFraction).roundToInt().coerceAtLeast(1),
+                    easing = LinearEasing
                 )
-                cubicTo(
-                    waveStart + quarterWave * 1.45f,
-                    centerY - amplitude,
-                    waveStart + quarterWave * 1.55f,
-                    centerY,
-                    waveStart + quarterWave * 2f,
-                    centerY
-                )
-                cubicTo(
-                    waveStart + quarterWave * 2.45f,
-                    centerY,
-                    waveStart + quarterWave * 2.55f,
-                    centerY + amplitude,
-                    waveStart + quarterWave * 3f,
-                    centerY + amplitude
-                )
-                cubicTo(
-                    waveStart + quarterWave * 3.45f,
-                    centerY + amplitude,
-                    waveStart + quarterWave * 3.55f,
-                    centerY,
-                    waveStart + wavelength,
-                    centerY
-                )
-                waveStart += wavelength
-            }
+            )
+            wavePhase.snapTo(0f)
         }
+    }
+
+    val scrubMillis by remember(durationMs) {
+        derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
     }
 
     Box(
@@ -278,12 +266,60 @@ fun PremiumSeekbar(
                             cornerRadius = radius
                         )
                     }
+
                     val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
                     if (waveAlpha > 0.001f) {
+                        val targetWaveLength = 92.dp.toPx()
+                        val waveCount = (activeSpan / targetWaveLength)
+                            .roundToInt()
+                            .coerceAtLeast(1)
+                        val waveLength = activeSpan / waveCount
+                        val minimumWaveSpan = 56.dp.toPx()
+                        val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
+                        val waveHeight = 9.5.dp.toPx() * waveReveal.value * amplitudeScale
+                        val baselineY = centerY + trackHeight / 2f
+                        val topBaseY = centerY - trackHeight / 2f
+                        val step = 2.dp.toPx().coerceAtLeast(1f)
+                        val phaseOffset = if (animated && !isDragging) wavePhase.value else 0f
+                        val edgeFeather = 18.dp.toPx().coerceAtMost(activeSpan / 2f)
+
+                        val waveFill = Path().apply {
+                            moveTo(trackStart, baselineY)
+                            lineTo(trackStart, topBaseY)
+                            var x = trackStart
+                            while (x < handleX) {
+                                val localX = x - trackStart
+                                val phase = (localX / waveLength) * (2f * PI.toFloat()) + phaseOffset
+                                val primaryCrest = (1f - cos(phase)) * 0.5f
+                                val secondaryRipple = sin(phase * 2f) * 0.07f
+                                val waterProfile = (primaryCrest + secondaryRipple).coerceIn(0f, 1f)
+                                val edgeEnvelope = if (edgeFeather > 0f) {
+                                    minOf(
+                                        1f,
+                                        localX / edgeFeather,
+                                        (activeSpan - localX) / edgeFeather
+                                    ).coerceIn(0f, 1f)
+                                } else {
+                                    1f
+                                }
+                                lineTo(
+                                    x,
+                                    topBaseY - waveHeight * waterProfile * edgeEnvelope
+                                )
+                                x += step
+                            }
+                            lineTo(handleX, topBaseY)
+                            lineTo(handleX, baselineY)
+                            close()
+                        }
+
                         drawPath(
-                            path = wavePath,
-                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
-                            style = Stroke(width = trackHeight, cap = StrokeCap.Round)
+                            path = waveFill,
+                            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.14f)
+                        )
+                        drawPath(
+                            path = waveFill,
+                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha)
                         )
                     }
                 }
