@@ -313,4 +313,22 @@ class LevyraStringsTest {
             }
         }
     }
+
+
+    @Test
+    fun youtubePlaybackErrorsRequirePlaybackContext() {
+        val english = LevyraStrings.forCode("en")
+        val italian = LevyraStrings.forCode("it")
+
+        assertEquals(english.operationFailed, english.localizeUserError("HTTP 403"))
+        assertEquals(italian.operationFailed, italian.localizeUserError("HTTP 429"))
+        assertEquals(
+            "YouTube rejected this track link: try again",
+            english.localizeUserError("HTTP 403", youtubePlayback = true)
+        )
+        assertEquals(
+            "Troppe richieste a YouTube: attendi qualche secondo",
+            italian.localizeUserError("HTTP 429", youtubePlayback = true)
+        )
+    }
 }
