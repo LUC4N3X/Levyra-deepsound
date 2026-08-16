@@ -93,16 +93,30 @@ fun PremiumSeekbar(
         )
     }
 
+    val waveReveal = remember { Animatable(if (animated) 0f else 1f) }
+    LaunchedEffect(animated) {
+        if (animated) {
+            waveReveal.snapTo(0f)
+            waveReveal.animateTo(
+                targetValue = 1f,
+                animationSpec = LevyraPlayerDesign.emphasizedTween(420)
+            )
+        } else {
+            waveReveal.snapTo(1f)
+        }
+    }
+
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
     }
 
-    val wavePath = remember(widthPx, density) {
+    val waveRevealAmount = waveReveal.value
+    val wavePath = remember(widthPx, density, waveRevealAmount) {
         Path().apply {
             if (widthPx <= 0f) return@apply
             val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
-            val amplitude = with(density) { 2.4.dp.toPx() }
-            val wavelength = with(density) { 38.dp.toPx() }
+            val amplitude = with(density) { 3.2.dp.toPx() } * waveRevealAmount
+            val wavelength = with(density) { 13.5.dp.toPx() }
             val quarterWave = wavelength / 4f
             var waveStart = -wavelength
             moveTo(waveStart, centerY)
@@ -280,6 +294,14 @@ fun PremiumSeekbar(
                     }
                     val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
                     if (waveAlpha > 0.001f) {
+                        drawPath(
+                            path = wavePath,
+                            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.16f),
+                            style = Stroke(
+                                width = trackHeight + 2.8.dp.toPx(),
+                                cap = StrokeCap.Round
+                            )
+                        )
                         drawPath(
                             path = wavePath,
                             color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
