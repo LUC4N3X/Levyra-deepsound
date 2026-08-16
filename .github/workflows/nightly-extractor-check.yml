@@ -1,20 +1,418 @@
-name: Nightly Extractor Check
+name: Extractor Health & YouTube Canary
 
 on:
   schedule:
+    - cron: "15 0,6,12,18 * * *"
     - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      full_build:
+        description: "Also run the full nightly release build"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: nightly-extractor-check
+  group: youtube-canary-autofix
   cancel-in-progress: false
 
+env:
+  CANARY_CONFIG: third_party/LevyraExtractor/canary/config.json
+  CANARY_BASELINE: third_party/LevyraExtractor/canary/baseline.json
+
 jobs:
-  extractor:
+  youtube_canary:
+    name: Observe live YouTube player protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      decision: ${{ steps.probe.outputs.decision }}
+      severity: ${{ steps.probe.outputs.severity }}
+
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Test canary classifier and sanitization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s scripts/tests -p 'test_youtube_canary.py' -v
+
+      - name: Probe live YouTube behavior
+        id: probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/youtube-canary
+          python scripts/youtube_canary.py probe \
+            --config "${CANARY_CONFIG}" \
+            --baseline "${CANARY_BASELINE}" \
+            --out-dir artifacts/youtube-canary \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Summarize canary decision
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f artifacts/youtube-canary/report.md ]; then
+            cat artifacts/youtube-canary/report.md >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload sanitized canary diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: youtube-canary-${{ github.run_number }}
+          path: artifacts/youtube-canary
+          if-no-files-found: ignore
+          retention-days: 14
+
+  baseline_pr:
+    name: Open initial canary baseline PR
+    needs: youtube_canary
+    if: needs.youtube_canary.outputs.decision == 'bootstrap'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Confirm healthy bootstrap observation
+        id: confirm
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/youtube-canary-bootstrap
+          python scripts/youtube_canary.py probe \
+            --config "${CANARY_CONFIG}" \
+            --baseline "${CANARY_BASELINE}" \
+            --out-dir artifacts/youtube-canary-bootstrap \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Accept initial known-good baseline
+        if: steps.confirm.outputs.decision == 'bootstrap'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/youtube_canary.py accept \
+            --observation artifacts/youtube-canary-bootstrap/observation.json \
+            --baseline "${CANARY_BASELINE}" \
+            --reason "first healthy live YouTube canary observation"
+
+      - name: Create baseline draft PR
+        if: steps.confirm.outputs.decision == 'bootstrap'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          branch: automation/youtube-canary-baseline
+          base: main
+          delete-branch: true
+          draft: always-true
+          author: LUC4N3X <luca.testing96@gmail.com>
+          committer: LUC4N3X <luca.testing96@gmail.com>
+          commit-message: "chore(extractor): seed YouTube canary baseline"
+          title: "chore(extractor): seed YouTube canary baseline"
+          body: |
+            The autonomous YouTube canary completed two healthy live observations and is ready to establish its first known-good baseline.
+
+            This PR changes only the sanitized baseline metadata. It contains no cookie, API key, visitor data, signed media URL, media query string, or player JavaScript.
+
+            After this baseline is merged, material regressions are confirmed twice before the repair agent is allowed to prepare a draft extractor fix PR. Player-JS hash changes alone never trigger a repair.
+          add-paths: |
+            third_party/LevyraExtractor/canary/baseline.json
+          labels: extractor
+
+  repair_pr:
+    name: Prepare autonomous extractor repair PR
+    needs: youtube_canary
+    if: needs.youtube_canary.outputs.decision == 'repair'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup Java before sandbox hardening
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK before sandbox hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle before sandbox hardening
+        uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          cache-disabled: true
+
+      - name: Confirm the regression and capture private evidence
+        id: confirm
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts/youtube-canary-repair artifacts/private-youtube-canary
+          python scripts/youtube_canary.py probe \
+            --config "${CANARY_CONFIG}" \
+            --baseline "${CANARY_BASELINE}" \
+            --out-dir artifacts/youtube-canary-repair \
+            --private-evidence-dir artifacts/private-youtube-canary \
+            --github-output "${GITHUB_OUTPUT}"
+          cp artifacts/youtube-canary-repair/report.md /tmp/levyra-youtube-canary-report.md
+          cp artifacts/youtube-canary-repair/observation.json /tmp/levyra-youtube-canary-observation.json
+
+      - name: Check repair-agent credential
+        id: agent
+        if: steps.confirm.outputs.decision == 'repair'
+        shell: bash
+        env:
+          CANARY_OPENROUTER_API_KEY: ${{ secrets.LEVYRA_CANARY_OPENROUTER_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CANARY_OPENROUTER_API_KEY}" ]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Run constrained Codex repair agent through OpenRouter
+        id: codex
+        if: steps.confirm.outputs.decision == 'repair' && steps.agent.outputs.available == 'true'
+        continue-on-error: true
+        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1.11
+        with:
+          openai-api-key: ${{ secrets.LEVYRA_CANARY_OPENROUTER_API_KEY }}
+          responses-api-endpoint: https://openrouter.ai/api/v1/responses
+          model: openrouter/free
+          prompt-file: third_party/LevyraExtractor/canary/CODEX_REPAIR_PROMPT.md
+          output-file: artifacts/youtube-canary-repair/codex-final.md
+          working-directory: ${{ github.workspace }}
+          permission-profile: ":workspace"
+          safety-strategy: drop-sudo
+          effort: high
+          allow-bots: true
+
+      - name: Enforce autonomous repair scope
+        id: scope
+        if: >-
+          steps.confirm.outputs.decision == 'repair' &&
+          steps.agent.outputs.available == 'true' &&
+          steps.codex.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "${GITHUB_OUTPUT}"
+          import subprocess
+
+          allowed_exact = {
+              "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt",
+              "app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt",
+              "app/src/main/java/com/luc4n3x/levyra/data/network/YoutubeClientIdentityInterceptor.kt",
+          }
+          allowed_prefixes = (
+              "third_party/LevyraExtractor/extractor/src/main/",
+              "third_party/LevyraExtractor/extractor/src/test/",
+              "app/src/test/java/com/luc4n3x/levyra/data/",
+          )
+          ignored_prefixes = ("artifacts/",)
+
+          tracked = subprocess.check_output(["git", "diff", "--name-only"], text=True).splitlines()
+          untracked = subprocess.check_output(
+              ["git", "ls-files", "--others", "--exclude-standard"], text=True
+          ).splitlines()
+          changed = sorted({path.strip() for path in tracked + untracked if path.strip()})
+          production = [path for path in changed if not path.startswith(ignored_prefixes)]
+          invalid = [
+              path for path in production
+              if path not in allowed_exact and not path.startswith(allowed_prefixes)
+          ]
+          print(f"production_changed={'true' if production else 'false'}")
+          print(f"scope_ok={'false' if invalid else 'true'}")
+          if invalid:
+              print("invalid_paths<<EOF")
+              print("\n".join(invalid))
+              print("EOF")
+          PY
+
+      - name: Validate generated extractor patch
+        id: validate
+        if: >-
+          steps.confirm.outputs.decision == 'repair' &&
+          steps.agent.outputs.available == 'true' &&
+          steps.codex.outcome == 'success' &&
+          steps.scope.outputs.scope_ok == 'true' &&
+          steps.scope.outputs.production_changed == 'true'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :LevyraExtractor:extractor:test
+          ./gradlew --no-daemon :app:testDebugUnitTest
+          ./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug
+          python scripts/ai_quality_gate.py --profile fast
+          git diff --check
+
+      - name: Finalize validated repair or diagnostic-only change
+        id: finalize
+        if: steps.confirm.outputs.decision == 'repair'
+        shell: bash
+        env:
+          AGENT_AVAILABLE: ${{ steps.agent.outputs.available }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          SCOPE_OK: ${{ steps.scope.outputs.scope_ok }}
+          PRODUCTION_CHANGED: ${{ steps.scope.outputs.production_changed }}
+          VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          set -euo pipefail
+          mode="diagnostic"
+
+          if [ "${AGENT_AVAILABLE:-false}" = "true" ] && \
+             [ "${CODEX_OUTCOME:-skipped}" = "success" ] && \
+             [ "${SCOPE_OK:-false}" = "true" ] && \
+             [ "${PRODUCTION_CHANGED:-false}" = "true" ] && \
+             [ "${VALIDATION_OUTCOME:-skipped}" = "success" ]; then
+            mode="repair"
+            python scripts/youtube_canary.py accept \
+              --observation /tmp/levyra-youtube-canary-observation.json \
+              --baseline "${CANARY_BASELINE}" \
+              --reason "validated autonomous repair for confirmed YouTube regression"
+          else
+            git reset --hard HEAD
+            git clean -fd
+          fi
+
+          mkdir -p third_party/LevyraExtractor/canary/incidents
+          python scripts/youtube_canary.py incident \
+            --report /tmp/levyra-youtube-canary-report.md \
+            --destination third_party/LevyraExtractor/canary/incidents/current.md
+
+          echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
+          if [ "${mode}" = "repair" ]; then
+            echo "title=fix(extractor): adapt to detected YouTube player change" >> "${GITHUB_OUTPUT}"
+          else
+            echo "title=chore(extractor): investigate detected YouTube player change" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Build repair PR body
+        if: steps.confirm.outputs.decision == 'repair'
+        shell: bash
+        env:
+          MODE: ${{ steps.finalize.outputs.mode }}
+          AGENT_AVAILABLE: ${{ steps.agent.outputs.available }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          SCOPE_OK: ${{ steps.scope.outputs.scope_ok }}
+          PRODUCTION_CHANGED: ${{ steps.scope.outputs.production_changed }}
+          VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          {
+            echo "## YouTube Canary"
+            echo
+            if [ "${MODE}" = "repair" ]; then
+              echo "A material live YouTube regression was observed twice. The constrained repair agent produced an in-scope extractor/protocol patch and all pre-PR validation gates passed."
+              echo
+              echo "The accepted canary baseline is advanced in this PR only because the generated repair passed validation."
+            else
+              echo "A material live YouTube regression was observed twice, but the workflow did **not** accept an autonomous production fix. This draft PR intentionally contains only the sanitized incident report."
+              echo
+              echo "- OpenRouter repair-agent credential available: \`${AGENT_AVAILABLE:-false}\`"
+              echo "- Codex action outcome: \`${CODEX_OUTCOME:-not-run}\`"
+              echo "- Generated production change: \`${PRODUCTION_CHANGED:-false}\`"
+              echo "- Scope gate: \`${SCOPE_OK:-not-run}\`"
+              echo "- Validation outcome: \`${VALIDATION_OUTCOME:-not-run}\`"
+            fi
+            echo
+            echo "### Safety"
+            echo
+            echo "- No automatic merge or release."
+            echo "- Player JavaScript evidence is ephemeral and is not committed or uploaded."
+            echo "- API keys, visitor data, cookies, signed media URLs, and media query strings are not persisted."
+            echo "- Production edits are restricted to the extractor/protocol allowlist."
+            echo
+            cat third_party/LevyraExtractor/canary/incidents/current.md
+          } > artifacts/youtube-canary-pr-body.md
+
+      - name: Create or update autonomous draft PR
+        if: steps.confirm.outputs.decision == 'repair'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          branch: automation/youtube-canary-repair
+          base: main
+          delete-branch: true
+          draft: always-true
+          author: LUC4N3X <luca.testing96@gmail.com>
+          committer: LUC4N3X <luca.testing96@gmail.com>
+          commit-message: ${{ steps.finalize.outputs.title }}
+          title: ${{ steps.finalize.outputs.title }}
+          body-path: artifacts/youtube-canary-pr-body.md
+          add-paths: |
+            third_party/LevyraExtractor/extractor/src/main/**
+            third_party/LevyraExtractor/extractor/src/test/**
+            app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeLocalDecoder.kt
+            app/src/main/java/com/luc4n3x/levyra/data/network/YoutubeClientIdentityInterceptor.kt
+            app/src/test/java/com/luc4n3x/levyra/data/**
+            third_party/LevyraExtractor/canary/baseline.json
+            third_party/LevyraExtractor/canary/incidents/current.md
+          labels: extractor
+
+  nightly_build:
     name: Resolve Extractor Dependency and Build
+    if: >-
+      github.event.schedule == '0 2 * * *' ||
+      (github.event_name == 'workflow_dispatch' && inputs.full_build)
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
