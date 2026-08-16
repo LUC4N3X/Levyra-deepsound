@@ -11329,8 +11329,8 @@ private fun PlayerQuickActionsBar(
         PlayerQuickAction(
             icon = Icons.AutoMirrored.Rounded.Subject,
             contentDescription = strings.lyrics,
-            tint = if (state.lyrics.isNotEmpty()) activePrimary else Color.White.copy(alpha = 0.72f),
-            active = state.lyrics.isNotEmpty(),
+            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
+            active = state.showLyrics,
             compact = compact,
             modifier = Modifier.weight(1f),
             onClick = viewModel::openLyrics
