@@ -41,7 +41,7 @@ class LevyraYoutubeDataSource private constructor(
         }
         val adaptedSpec = dataSpec
             .withUri(adaptedUri)
-            .withAdditionalHeaders(headers.filterKeys { !it.equals("User-Agent", true) })
+            .withAdditionalHeaders(headers)
         return delegate.open(adaptedSpec)
     }
 
@@ -66,21 +66,31 @@ class LevyraYoutubeDataSource private constructor(
     }
 
     private fun requestHeaders(url: String): Map<String, String> {
+        val clientParam = url.substringAfter("?c=", "").ifBlank { url.substringAfter("&c=", "") }.substringBefore('&').uppercase()
         val userAgent = when {
-            runCatching { YoutubeParsingHelper.isIosStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getIosUserAgent(null)
-            runCatching { YoutubeParsingHelper.isAndroidStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getAndroidUserAgent(null)
+            clientParam == "VISIONOS" -> "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X; US)"
+            clientParam == "ANDROID_VR" -> "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip"
+            clientParam == "ANDROID_MUSIC" -> "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52"
+            clientParam == "ANDROID" || runCatching { YoutubeParsingHelper.isAndroidStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getAndroidUserAgent(null)
+            clientParam == "IOS" || clientParam == "IPHONE" || runCatching { YoutubeParsingHelper.isIosStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getIosUserAgent(null)
+            clientParam == "WEB_REMIX" || clientParam == "WEB" || clientParam == "WEB_EMBEDDED_PLAYER" || clientParam == "TVHTML5_SIMPLY_EMBEDDED_PLAYER" ->
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
             else -> "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
         }
-        val web = runCatching { YoutubeParsingHelper.isWebStreamingUrl(url) }.getOrDefault(false)
-        val embedded = runCatching { YoutubeParsingHelper.isTvHtml5SimplyEmbeddedPlayerStreamingUrl(url) }.getOrDefault(false)
+        val isMusicWeb = clientParam == "WEB_REMIX" || url.contains("music.youtube.com")
+        val isWeb = clientParam.startsWith("WEB") || isMusicWeb ||
+            runCatching { YoutubeParsingHelper.isWebStreamingUrl(url) }.getOrDefault(false)
+        val embedded = clientParam.contains("EMBEDDED") ||
+            runCatching { YoutubeParsingHelper.isTvHtml5SimplyEmbeddedPlayerStreamingUrl(url) }.getOrDefault(false)
+
         return linkedMapOf(
             "User-Agent" to userAgent,
             "Accept" to "*/*",
             "Accept-Encoding" to "identity"
         ).apply {
-            if (web || embedded) {
-                put("Origin", "https://www.youtube.com")
-                put("Referer", if (embedded) "https://www.youtube.com/embed/" else "https://www.youtube.com/")
+            if (isWeb || embedded) {
+                put("Origin", if (isMusicWeb) "https://music.youtube.com" else "https://www.youtube.com")
+                put("Referer", if (embedded) "https://www.youtube.com/embed/" else if (isMusicWeb) "https://music.youtube.com/" else "https://www.youtube.com/")
                 put("Sec-Fetch-Dest", "empty")
                 put("Sec-Fetch-Mode", "cors")
                 put("Sec-Fetch-Site", "cross-site")
