@@ -44,10 +44,13 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -80,6 +83,131 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
         largeThumbnailUrl = artwork,
         moodTags = resolved.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
     )
+}
+
+private const val YOUTUBE_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+private const val ANDROID_REEL_CLIENT_VERSION = "21.03.36"
+private const val MAX_YOUTUBE_JSON_RESPONSE_BYTES = 8L * 1024L * 1024L
+private val youtubeNonceRandom = SecureRandom()
+
+private fun normalizedYoutubeCountryCode(countryCode: String): String {
+    val normalized = countryCode.trim().uppercase()
+    return normalized.takeIf { it.length == 2 && it.all { char -> char in 'A'..'Z' } } ?: "US"
+}
+
+internal fun visionOsUserAgent(countryCode: String): String {
+    val country = normalizedYoutubeCountryCode(countryCode)
+    return "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X; $country)"
+}
+
+internal fun androidReelUserAgent(countryCode: String): String {
+    val country = normalizedYoutubeCountryCode(countryCode)
+    return "com.google.android.youtube/$ANDROID_REEL_CLIENT_VERSION (Linux; U; Android 15; $country) gzip"
+}
+
+internal fun applyVisionOsClientIdentity(client: JSONObject): JSONObject {
+    return client
+        .put("deviceMake", "Apple")
+        .put("deviceModel", "RealityDevice14,1")
+        .put("osName", "visionOS")
+        .put("osVersion", "25.6.0.23O471")
+        .put("platform", "MOBILE")
+        .put("clientScreen", "WATCH")
+}
+
+internal fun buildAndroidReelContext(
+    hl: String,
+    gl: String,
+    visitorData: String
+): JSONObject {
+    val client = JSONObject()
+        .put("clientName", "ANDROID")
+        .put("clientVersion", ANDROID_REEL_CLIENT_VERSION)
+        .put("clientScreen", "WATCH")
+        .put("platform", "MOBILE")
+        .put("osName", "Android")
+        .put("osVersion", "16")
+        .put("androidSdkVersion", 36)
+        .put("hl", hl.trim().ifBlank { "en" })
+        .put("gl", normalizedYoutubeCountryCode(gl))
+        .put("utcOffsetMinutes", 0)
+    visitorData.trim().takeIf { it.isNotBlank() }?.let { client.put("visitorData", it) }
+    return JSONObject()
+        .put("client", client)
+        .put(
+            "request",
+            JSONObject()
+                .put("internalExperimentFlags", JSONArray())
+                .put("useSsl", true)
+        )
+        .put("user", JSONObject().put("lockedSafetyMode", false))
+}
+
+internal fun buildAndroidReelRequestBody(
+    videoId: String,
+    cpn: String,
+    hl: String,
+    gl: String,
+    visitorData: String
+): JSONObject {
+    return JSONObject()
+        .put("context", buildAndroidReelContext(hl, gl, visitorData))
+        .put(
+            "playerRequest",
+            JSONObject()
+                .put("videoId", videoId)
+                .put("cpn", cpn)
+                .put("contentCheckOk", true)
+                .put("racyCheckOk", true)
+        )
+        .put("disablePlayerResponse", false)
+}
+
+internal fun androidReelFormats(response: JSONObject): JSONArray {
+    return response
+        .optJSONObject("playerResponse")
+        ?.optJSONObject("streamingData")
+        ?.optJSONArray("formats")
+        ?: JSONArray()
+}
+
+internal fun generateYoutubeNonce(length: Int): String {
+    require(length > 0)
+    return buildString(length) {
+        synchronized(youtubeNonceRandom) {
+            repeat(length) {
+                append(YOUTUBE_NONCE_ALPHABET[youtubeNonceRandom.nextInt(YOUTUBE_NONCE_ALPHABET.length)])
+            }
+        }
+    }
+}
+
+internal fun readBoundedYoutubeJsonBody(
+    body: ResponseBody,
+    maxBytes: Long = MAX_YOUTUBE_JSON_RESPONSE_BYTES
+): String {
+    require(maxBytes in 1..Int.MAX_VALUE.toLong())
+    val declaredLength = body.contentLength()
+    if (declaredLength > maxBytes) {
+        throw IOException("YouTube JSON response exceeds $maxBytes byte limit")
+    }
+    val output = ByteArrayOutputStream(
+        declaredLength.takeIf { it in 1..maxBytes }?.toInt() ?: 8192
+    )
+    body.byteStream().use { input ->
+        val buffer = ByteArray(8192)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > maxBytes) {
+                throw IOException("YouTube JSON response exceeds $maxBytes byte limit")
+            }
+            output.write(buffer, 0, read)
+        }
+    }
+    return output.toByteArray().toString(StandardCharsets.UTF_8)
 }
 
 class PlaybackResolver private constructor(private val context: Context) {
@@ -147,7 +275,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private var lastNetworkWarmAt = 0L
 
     private val profiles = listOf(
-        ClientProfile("VISIONOS", "1.02", "Apple Vision Pro", "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X)", false, 0L, 0, false),
+        ClientProfile("VISIONOS", "1.02", "Apple Vision Pro", visionOsUserAgent("US"), false, 0L, 0, false),
         ClientProfile("ANDROID_VR", "1.65.10", "Android VR", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip", true, 0L, 1, false),
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 2, false),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 3, false),
@@ -532,6 +660,16 @@ class PlaybackResolver private constructor(private val context: Context) {
                 persistResolvedSource(track, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)
                 return@withContext resolved
             }
+            val reelFallback = runCatchingPreservingCancellation {
+                resolveVideoWithAndroidReel(track)
+            }.onFailure { error ->
+                errors += "Android Reel: ${error.playbackDiagnostic()}"
+            }.getOrNull()
+            if (reelFallback != null) {
+                store(track, reelFallback, isVideoMode, audioQuality)
+                persistResolvedSource(track, reelFallback, isVideoMode, audioQuality, 78, preferMp4Audio)
+                return@withContext reelFallback
+            }
             val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
                 ?: errors.firstOrNull()
                 ?: "Video non disponibile"
@@ -557,6 +695,156 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
+    }
+
+    private suspend fun resolveVideoWithAndroidReel(track: Track): Track {
+        val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
+            .takeIf(youtubeVideoIdRegex::matches)
+            ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
+        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
+        val userAgent = androidReelUserAgent(locale.gl)
+        val cachedVisitorData = playbackSecurity.cachedSession().visitorData
+        val visitorData = runCatchingPreservingCancellation {
+            fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent)
+        }.getOrNull().orEmpty().ifBlank { cachedVisitorData }
+        currentCoroutineContext().ensureActive()
+
+        val cpn = generateYoutubeNonce(16)
+        val tParameter = generateYoutubeNonce(12)
+        val body = buildAndroidReelRequestBody(
+            videoId = sourceVideoId,
+            cpn = cpn,
+            hl = locale.hl,
+            gl = locale.gl,
+            visitorData = visitorData
+        ).toString()
+        val endpoint = "https://youtubei.googleapis.com/youtubei/v1/reel/reel_item_watch" +
+            "?prettyPrint=false&t=$tParameter&id=$sourceVideoId&\$fields=playerResponse"
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(body.toRequestBody(jsonMediaType))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("User-Agent", userAgent)
+            .header("X-Goog-Api-Format-Version", "2")
+            .build()
+        val root = executeYoutubeJson(request, "Android Reel")
+        currentCoroutineContext().ensureActive()
+        val playerResponse = root.optJSONObject("playerResponse")
+            ?: throw YoutubePlayerRequestException(null, "Android Reel non ha restituito playerResponse")
+        val playability = playerResponse.optJSONObject("playabilityStatus")
+        val status = playability?.optString("status").orEmpty()
+        if (status.isNotBlank() && status != "OK") {
+            val reason = playability?.optString("reason").orEmpty()
+            throw YoutubePlayerRequestException(null, reason.ifBlank { status })
+        }
+        val formats = androidReelFormats(root)
+        if (formats.length() == 0) {
+            throw YoutubePlayerRequestException(null, "Android Reel non ha restituito formati muxed")
+        }
+        val muxedCandidates = buildList {
+            for (i in 0 until formats.length()) {
+                val format = formats.optJSONObject(i) ?: continue
+                val mime = format.optString("mimeType")
+                if (!mime.startsWith("video/", true)) continue
+                val url = format.resolveFormatUrl(
+                    videoId = sourceVideoId,
+                    streamingPoToken = null,
+                    transformThrottling = true
+                ).takeIf { it.isNotBlank() }
+                    ?.withQueryParameterReplacing("cpn", cpn)
+                    .orEmpty()
+                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
+                add(
+                    LevyraVideoCandidate(
+                        url = url,
+                        mimeType = mime.substringBefore(';'),
+                        codec = codecFromMimeType(mime),
+                        width = format.optInt("width", 0),
+                        height = format.optInt("height", 0),
+                        fps = format.optInt("fps", 0),
+                        bitrate = format.optInt("bitrate", 0),
+                        itag = format.optInt("itag", 0),
+                        muxed = true,
+                        label = "android-reel"
+                    )
+                )
+            }
+        }
+        val selection = videoSelector.select(
+            muxedCandidates = muxedCandidates,
+            videoOnlyCandidates = emptyList(),
+            hasSeparateAudio = false,
+            blocked = ::isPlaybackUrlBlocked
+        ) ?: throw YoutubePlayerRequestException(null, "Android Reel non ha restituito uno stream video compatibile")
+
+        val details = playerResponse.optJSONObject("videoDetails")
+        val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L)
+            ?.takeIf { it > 0L }
+            ?: track.durationMs
+        val thumbnail = details
+            ?.optJSONObject("thumbnail")
+            ?.optJSONArray("thumbnails")
+            ?.bestThumbnail()
+            .orEmpty()
+            .ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
+        val manifest = buildManifest(
+            sourceVideoId = sourceVideoId,
+            provider = "YouTube Android Reel",
+            durationMs = duration,
+            selectedAudioUrl = selection.candidate.url,
+            selectedVideoUrl = "",
+            streams = listOf(videoDescriptor(selection.candidate, true))
+        )
+        return track.withDirectStream(
+            DirectStream(
+                url = selection.candidate.url,
+                videoUrl = "",
+                durationMs = duration,
+                thumbnailUrl = thumbnail,
+                source = "YouTube Android Reel · ${selection.reason}",
+                manifest = manifest
+            )
+        )
+    }
+
+    private fun fetchAndroidReelVisitorData(
+        hl: String,
+        gl: String,
+        userAgent: String
+    ): String {
+        val body = JSONObject()
+            .put("context", buildAndroidReelContext(hl, gl, ""))
+            .toString()
+        val request = Request.Builder()
+            .url("https://youtubei.googleapis.com/youtubei/v1/visitor_id?prettyPrint=false")
+            .post(body.toRequestBody(jsonMediaType))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("User-Agent", userAgent)
+            .header("X-Goog-Api-Format-Version", "2")
+            .build()
+        return executeYoutubeJson(request, "Android visitor")
+            .optJSONObject("responseContext")
+            ?.optString("visitorData")
+            ?.takeIf { it.isNotBlank() }
+            ?: throw YoutubePlayerRequestException(null, "Android visitorData assente")
+    }
+
+    private fun executeYoutubeJson(request: Request, label: String): JSONObject {
+        return youtubeHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw YoutubePlayerRequestException(response.code, "$label HTTP ${response.code}")
+            }
+            val responseText = readBoundedYoutubeJsonBody(response.body)
+            runCatching { JSONObject(responseText) }
+                .getOrElse { error ->
+                    throw YoutubePlayerRequestException(
+                        null,
+                        "$label risposta JSON non valida: ${error.message.orEmpty()}"
+                    )
+                }
+        }
     }
 
     private suspend fun resolveAudioFast(
@@ -1433,7 +1721,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("Accept", "application/json")
             .header("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
             .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/$sourceVideoId" else sourceVideoUrl)
-            .header("User-Agent", profile.userAgent)
+            .header("User-Agent", playerUserAgent(profile))
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
         session.visitorData.takeIf { it.isNotBlank() }?.let {
@@ -2022,6 +2310,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         return Regex("(\\d+)p").find(resolution)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
     }
 
+    private fun playerUserAgent(profile: ClientProfile): String {
+        if (profile.clientName != "VISIONOS") return profile.userAgent
+        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
+        return visionOsUserAgent(locale.gl)
+    }
+
     private fun buildPlayerBody(
         videoId: String,
         profile: ClientProfile,
@@ -2050,11 +2344,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
         }
         if (profile.clientName == "VISIONOS") {
-            client.put("deviceMake", "Apple")
-                .put("deviceModel", "RealityDevice14,1")
-                .put("osName", "visionOS")
-                .put("osVersion", "25.6.0.23O471")
-                .put("platform", "TV")
+            applyVisionOsClientIdentity(client)
         }
         if (profile.clientName == "IOS") {
             client.put("deviceMake", "Apple")
