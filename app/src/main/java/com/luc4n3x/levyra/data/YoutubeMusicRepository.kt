@@ -2358,16 +2358,29 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             if (normalized.contains("new")) add("new")
             if (isEmpty()) add("music")
         }
-        return Track(
-            id = id,
-            title = title.cleanLabel(),
+val youtubeVideoId = id.trim().takeIf { value ->
+    value.length == 11 && value.all { character ->
+        character in 'A'..'Z' || character in 'a'..'z' || character in '0'..'9' || character == '_' || character == '-'
+    }
+}
+val resolvedThumbnailUrl = thumbnailUrl.trim().ifBlank {
+    youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/hqdefault.jpg" }.orEmpty()
+}
+val resolvedLargeThumbnailUrl = largeThumbnailUrl.trim().ifBlank {
+    youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg" }
+        .orEmpty()
+        .ifBlank { resolvedThumbnailUrl }
+}
+return Track(
+    id = id,
+    title = title.cleanLabel(),
             artist = artist.cleanLabel(),
             album = album.cleanLabel(),
             durationMs = durationMs,
             streamUrl = "",
             videoUrl = videoUrl,
-            thumbnailUrl = thumbnailUrl,
-            largeThumbnailUrl = largeThumbnailUrl,
+            thumbnailUrl = resolvedThumbnailUrl,
+            largeThumbnailUrl = resolvedLargeThumbnailUrl,
             source = source,
             moodTags = tags,
             energy = (45 + seed % 52).coerceIn(0, 100),
