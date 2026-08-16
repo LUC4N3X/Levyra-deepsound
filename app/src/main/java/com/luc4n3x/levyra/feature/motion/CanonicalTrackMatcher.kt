@@ -80,11 +80,16 @@ object CanonicalTrackMatcher {
                 }
             }
         } else {
-            if (reference.album.isBlank() || albumSimilarity < 0.82) return MotionArtworkMatch(false, 0)
-            score += when {
-                albumSimilarity >= 1.0 -> 30
-                albumSimilarity >= 0.9 -> 25
-                else -> 20
+            if (hasUsableAlbum(reference)) {
+                if (albumSimilarity < 0.82) return MotionArtworkMatch(false, 0)
+                score += when {
+                    albumSimilarity >= 1.0 -> 30
+                    albumSimilarity >= 0.9 -> 25
+                    else -> 20
+                }
+            } else {
+                if (!releaseMatchesTrackTitle(reference.title, source.album)) return MotionArtworkMatch(false, 0)
+                score += 30
             }
             if (reference.upc.isNotBlank() && source.upc.isNotBlank()) {
                 if (reference.upc != source.upc) return MotionArtworkMatch(false, 0)
@@ -143,10 +148,49 @@ object CanonicalTrackMatcher {
         candidate: MotionTrackIdentity,
         scope: MotionArtworkScope
     ): Boolean {
-        val target = normalizeMotionText(if (scope == MotionArtworkScope.ALBUM) reference.album else reference.title)
-        val result = normalizeMotionText(if (scope == MotionArtworkScope.ALBUM) candidate.album else candidate.title)
+        val albumScope = scope == MotionArtworkScope.ALBUM
+        val referenceText = if (albumScope && hasUsableAlbum(reference)) reference.album else reference.title
+        val target = normalizeMotionText(referenceText)
+        val result = normalizeMotionText(if (albumScope) candidate.album else candidate.title)
         return editionTerms.none { term -> motionTextContainsTerm(result, term) != motionTextContainsTerm(target, term) }
     }
+
+    private fun hasUsableAlbum(reference: MotionTrackIdentity): Boolean {
+        val normalized = normalizeMotionText(reference.album)
+        if (normalized.isBlank()) return false
+        return normalized !in genericAlbumNames
+    }
+
+    private fun releaseMatchesTrackTitle(trackTitle: String, candidateAlbum: String): Boolean {
+        val title = releaseCoreName(trackTitle)
+        val album = releaseCoreName(candidateAlbum)
+        return title.isNotBlank() && title == album
+    }
+
+    private fun releaseCoreName(value: String): String {
+        var normalized = normalizeMotionText(value)
+        for (suffix in releaseSuffixes) {
+            if (normalized.endsWith(" $suffix")) {
+                normalized = normalized.removeSuffix(" $suffix").trim()
+                break
+            }
+        }
+        return normalized
+    }
+
+    private val genericAlbumNames = setOf(
+        "youtube",
+        "youtube music",
+        "youtube music video",
+        "youtube music charts",
+        "youtube shorts",
+        "apple music charts",
+        "unknown album",
+        "single",
+        "ep"
+    )
+
+    private val releaseSuffixes = listOf("single", "ep")
 
     private const val MINIMUM_STRUCTURAL_SCORE = 70
 }

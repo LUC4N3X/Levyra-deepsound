@@ -36,4 +36,4 @@ object MotionArtworkRuntime {
     )
 }
 
-internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 1L
+internal const val MOTION_ARTWORK_CACHE_SCHEMA_EPOCH = 2L

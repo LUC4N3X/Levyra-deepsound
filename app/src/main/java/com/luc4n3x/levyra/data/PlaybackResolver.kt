@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -146,13 +147,14 @@ class PlaybackResolver private constructor(private val context: Context) {
     private var lastNetworkWarmAt = 0L
 
     private val profiles = listOf(
-        ClientProfile("ANDROID_VR", "1.65.10", "Android VR", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip", true, 0L, 0, false),
-        ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 1, false),
-        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 2, false),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 3, false),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 4, true),
-        ClientProfile("WEB", "2.20260630.01.00", "YouTube Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 5, true),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 6, false)
+        ClientProfile("VISIONOS", "1.02", "Apple Vision Pro", "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X)", false, 0L, 0, false),
+        ClientProfile("ANDROID_VR", "1.65.10", "Android VR", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip", true, 0L, 1, false),
+        ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 2, false),
+        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 3, false),
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 4, false),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 5, true),
+        ClientProfile("WEB", "2.20260630.01.00", "YouTube Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 6, true),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 7, false)
     )
 
     init {
@@ -243,6 +245,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.streamUrl.isNotBlank()) {
             if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
+            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
             return if (streamStillFresh(track.streamUrl)) track else null
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
@@ -252,6 +255,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             return null
         }
         if (!isVideoMode && !isPlayableAudioUrl(hit.track.streamUrl)) {
+            remove(key)
+            return null
+        }
+        if (isVideoMode && !hit.track.hasVideoPlaybackPayload()) {
             remove(key)
             return null
         }
@@ -423,7 +430,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
-                (isVideoMode || isPlayableAudioUrl(it)) &&
+                (if (isVideoMode) track.hasVideoPlaybackPayload() else isPlayableAudioUrl(it)) &&
                 (!preferMp4Audio || track.playbackManifest?.supportsMp4AudioExport() == true || isMp4AudioUrl(it))
         }?.let { return@coroutineScope track }
         if (!preferMp4Audio) {
@@ -466,6 +473,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
+            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
             if (streamStillFresh(track.streamUrl)) {
                 store(track, track, isVideoMode)
                 return track
@@ -672,12 +680,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
         if (manifest != null && manifest.isFresh(now) && manifestUrlsUsable(manifest, isVideoMode, preferMp4Audio)) {
-            recordSourceMatchSuccess(track, isVideoMode, audioQuality, preferMp4Audio)
-            return track.applyManifest(
+            val restored = track.applyManifest(
                 manifest = manifest,
                 sourceVideoUrl = stored.entity.sourceVideoUrl,
                 source = stored.entity.provider.ifBlank { "Persistent source match" }
             )
+            if (!isVideoMode || restored.hasVideoPlaybackPayload()) {
+                recordSourceMatchSuccess(track, isVideoMode, audioQuality, preferMp4Audio)
+                return restored
+            }
         }
         if (!allowNetworkRefresh) return null
         val sourceVideoId = stored.entity.sourceVideoId
@@ -1064,7 +1075,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .thenBy { profile -> clientHealth[profile.clientName]?.averageLatencyMs ?: Long.MAX_VALUE }
                 .thenBy { it.tier }
         )
-        val vr = sorted.firstOrNull { it.clientName == "ANDROID_VR" } ?: return sorted
+        val vr = sorted.firstOrNull { it.clientName in PROGRESSIVE_STREAM_CLIENTS } ?: return sorted
         val best = sorted.firstOrNull() ?: return sorted
         val vrHealth = clientHealth[vr.clientName]
         val bestScore = clientHealth[best.clientName]?.score ?: 50.0
@@ -2038,6 +2049,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                     .put("deviceModel", "Quest 3")
             }
         }
+        if (profile.clientName == "VISIONOS") {
+            client.put("deviceMake", "Apple")
+                .put("deviceModel", "RealityDevice14,1")
+                .put("osName", "visionOS")
+                .put("osVersion", "25.6.0.23O471")
+                .put("platform", "TV")
+        }
         if (profile.clientName == "IOS") {
             client.put("deviceMake", "Apple")
                 .put("deviceModel", "iPhone16,2")
@@ -2161,7 +2179,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         transformThrottling: Boolean
     ): String {
         val transformed = if (transformThrottling && containsQueryParameter("n")) {
-            decodeThrottlingParameter(videoId, this)
+            decodeThrottlingParameter(videoId, this) ?: return ""
         } else {
             this
         }
@@ -2180,14 +2198,28 @@ class PlaybackResolver private constructor(private val context: Context) {
             .getOrElse { "" }
     }
 
-    private fun decodeThrottlingParameter(videoId: String, url: String): String {
-        return runCatching { YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(videoId, url) }
+    private fun decodeThrottlingParameter(videoId: String, url: String): String? {
+        val deobfuscated = runCatching {
+            YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(videoId, url)
+        }
             .recoverCatching {
                 YoutubeJavaScriptPlayerManager.clearThrottlingParametersCache()
                 YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(videoId, url)
             }
-            .getOrElse { url }
+            .onFailure { error ->
+                Timber.w(error, "Throttling parameter deobfuscation failed for %s", videoId)
+            }
+            .getOrNull()
+            ?: return null
+        if (throttlingParameterOf(deobfuscated) == throttlingParameterOf(url)) {
+            Timber.w("Throttling parameter unchanged for %s, treating stream as throttled", videoId)
+            return null
+        }
+        return deobfuscated
     }
+
+    private fun throttlingParameterOf(url: String): String =
+        url.substringAfter("&n=", "").ifBlank { url.substringAfter("?n=", "") }.substringBefore('&')
 
     private fun JSONObject.finiteFloat(key: String): Float? {
         if (!has(key) || isNull(key)) return null
@@ -2261,6 +2293,8 @@ private fun Throwable.playbackDiagnostic(): String {
 
 class PlaybackBlockedException(message: String) : IllegalStateException(message)
 
+private val PROGRESSIVE_STREAM_CLIENTS = setOf("VISIONOS", "ANDROID_VR")
+
 private data class ClientProfile(
     val clientName: String,
     val clientVersion: String,
@@ -2276,6 +2310,7 @@ private data class ClientProfile(
             "ANDROID" -> "3"
             "ANDROID_MUSIC" -> "21"
             "ANDROID_VR" -> "28"
+            "VISIONOS" -> "101"
             "IOS" -> "5"
             "WEB_REMIX" -> "67"
             "WEB" -> "1"
