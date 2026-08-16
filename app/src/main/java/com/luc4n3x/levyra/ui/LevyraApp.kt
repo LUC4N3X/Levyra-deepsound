@@ -12523,6 +12523,7 @@ private fun PlayerScreen(
                 durationMs = state.durationMs,
                 activeColor = Color.White.copy(alpha = 0.94f),
                 secondaryColor = Color.White.copy(alpha = 0.62f),
+                isPlaying = state.isPlaying,
                 animationsEnabled = state.animationsEnabled,
                 compact = compactPlayer,
                 onSeek = viewModel::seekTo
@@ -13516,6 +13517,7 @@ private fun PlayerTimeline(
     durationMs: Long,
     activeColor: Color,
     secondaryColor: Color,
+    isPlaying: Boolean,
     animationsEnabled: Boolean,
     compact: Boolean,
     onSeek: (Float) -> Unit
@@ -13525,6 +13527,7 @@ private fun PlayerTimeline(
             positionMs = positionMs,
             durationMs = durationMs,
             bufferedPositionMs = bufferedPositionMs,
+            isPlaying = isPlaying,
             onSeekTo = { seekMs ->
                 if (durationMs > 0L) {
                     onSeek((seekMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f))

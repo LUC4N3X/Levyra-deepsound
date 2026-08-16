@@ -3,10 +3,6 @@ package com.luc4n3x.levyra.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -71,6 +67,7 @@ fun PremiumSeekbar(
     trailingColor: Color = activeColor,
     inactiveColor: Color = LevyraMuted.copy(alpha = 0.35f),
     thumbColor: Color = Color.White,
+    isPlaying: Boolean = true,
     animated: Boolean = true,
     contentDescription: String? = null
 ) {
@@ -113,16 +110,23 @@ fun PremiumSeekbar(
         }
     }
 
-    val waveMotion = rememberInfiniteTransition(label = "player-wave-motion")
-    val wavePhase by waveMotion.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 4_200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "player-wave-phase"
-    )
+    val wavePhase = remember { Animatable(0f) }
+LaunchedEffect(animated, isPlaying, isDragging) {
+    if (!animated || !isPlaying || isDragging) return@LaunchedEffect
+    val fullPhase = 2f * PI.toFloat()
+    while (true) {
+        val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
+  .coerceIn(0.001f, 1f)
+        wavePhase.animateTo(
+  targetValue = fullPhase,
+  animationSpec = tween(
+      durationMillis = (4_200f * remainingFraction).roundToInt().coerceAtLeast(1),
+      easing = LinearEasing
+  )
+        )
+        wavePhase.snapTo(0f)
+    }
+}
 
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
@@ -276,7 +280,7 @@ fun PremiumSeekbar(
                         val baselineY = centerY + trackHeight / 2f
                         val topBaseY = centerY - trackHeight / 2f
                         val step = 2.dp.toPx().coerceAtLeast(1f)
-                        val phaseOffset = if (animated && !isDragging) wavePhase else 0f
+                        val phaseOffset = if (animated && !isDragging) wavePhase.value else 0f
                         val edgeFeather = 18.dp.toPx().coerceAtMost(activeSpan / 2f)
 
                         val waveFill = Path().apply {
