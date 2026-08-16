@@ -43,6 +43,32 @@ class FdroidReviewContractTest(unittest.TestCase):
         violations = self.violations_after(relative, mutated)
         self.assertTrue(any("disable remote announcements" in item for item in violations))
 
+    def test_new_fdroid_runtime_dependency_requires_review(self) -> None:
+        relative = "app/build.gradle.kts"
+        mutated = self.source(relative).replace(
+            "    implementation(libs.timber)\n",
+            "    implementation(libs.timber)\n    implementation(libs.leakcanary.android)\n",
+        )
+        violations = self.violations_after(relative, mutated)
+        self.assertTrue(any("unreviewed F-Droid runtime dependency" in item for item in violations))
+
+    def test_reviewed_dependency_coordinate_cannot_be_repointed(self) -> None:
+        relative = "gradle/libs.versions.toml"
+        mutated = self.source(relative).replace(
+            'okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }',
+            'okhttp = { group = "example.closed", name = "replacement", version.ref = "okhttp" }',
+        )
+        violations = self.violations_after(relative, mutated)
+        self.assertTrue(any("libs.okhttp must remain" in item for item in violations))
+
+    def test_non_fdroid_cronet_dependencies_stay_excluded_from_runtime_review(self) -> None:
+        relative = "app/build.gradle.kts"
+        aliases, malformed = contract._fdroid_runtime_aliases(self.source(relative))
+        alias_names = {alias for _, alias in aliases}
+        self.assertEqual([], malformed)
+        self.assertNotIn("androidx.media3.datasource.cronet", alias_names)
+        self.assertNotIn("chromium.cronet.embedded", alias_names)
+
     def test_hardcoded_runtime_message_is_rejected(self) -> None:
         relative = (
             "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
@@ -58,6 +84,21 @@ class FdroidReviewContractTest(unittest.TestCase):
         mutated = self.source(relative).replace("SponsorBlock", "segment service")
         violations = self.violations_after(relative, mutated)
         self.assertTrue(any("network behavior" in item for item in violations))
+
+    def test_spotify_artwork_disclosure_is_required(self) -> None:
+        relative = "fastlane/metadata/android/en-US/full_description.txt"
+        mutated = self.source(relative).replace("spotifycdn.com", "image host")
+        violations = self.violations_after(relative, mutated)
+        self.assertTrue(any("network behavior" in item for item in violations))
+
+    def test_editorial_artwork_host_contract_cannot_drift_silently(self) -> None:
+        relative = "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
+        mutated = self.source(relative).replace(
+            'host == "image-cdn-ak.spotifycdn.com"',
+            'host == "images.example.invalid"',
+        )
+        violations = self.violations_after(relative, mutated)
+        self.assertTrue(any("editorial network host contract changed" in item for item in violations))
 
     def test_removing_the_pr_gate_is_rejected(self) -> None:
         relative = ".github/workflows/pr-check.yml"
