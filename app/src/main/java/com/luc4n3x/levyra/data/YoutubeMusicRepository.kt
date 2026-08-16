@@ -2360,7 +2360,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }
 val youtubeVideoId = id.trim().takeIf { value ->
     value.length == 11 && value.all { character ->
-        character.isLetterOrDigit() || character == '_' || character == '-'
+        character in 'A'..'Z' || character in 'a'..'z' || character in '0'..'9' || character == '_' || character == '-'
     }
 }
 val resolvedThumbnailUrl = thumbnailUrl.trim().ifBlank {
