@@ -263,6 +263,7 @@ dependencies {
     }
     implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.database)
+    implementation(libs.androidx.media3.transformer)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)

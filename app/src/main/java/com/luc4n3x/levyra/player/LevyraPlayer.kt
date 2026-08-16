@@ -148,9 +148,14 @@ class LevyraPlayer(context: Context) {
                 override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
                     val queueTrack = queueEngine.state.value.currentTrack ?: return
                     if (mediaItem?.mediaId != LevyraMediaItemFactory.metadataOnly(queueTrack).mediaId) return
-                    loadedTrack = queueTrack
                     loadedVideoMode = mediaItem.mediaMetadata.extras
                         ?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true
+                    val playingUri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
+                    loadedTrack = when {
+                        playingUri.isBlank() -> queueTrack
+                        loadedVideoMode -> queueTrack.copy(videoStreamUrl = playingUri)
+                        else -> queueTrack.copy(streamUrl = playingUri)
+                    }
                     loadedStreamIdentity = streamIdentity(mediaItem, loadedVideoMode)
                     renderedVideoFrame = false
                     refreshVideoSurfaceState()

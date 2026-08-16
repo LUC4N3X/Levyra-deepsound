@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -618,25 +619,38 @@ internal fun LibraryListeningDashboard(
             Column(verticalArrangement = Arrangement.spacedBy(17.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Rounded.Insights, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                            Text(strings.pulseTitle, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                        }
-                        Text(strings.pulseSubtitle, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Surface(color = LevyraCyan.copy(alpha = 0.14f), shape = CircleShape) {
+                        Icon(
+                            imageVector = Icons.Rounded.Insights,
+                            contentDescription = null,
+                            tint = LevyraCyan,
+                            modifier = Modifier.padding(9.dp).size(18.dp)
+                        )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                    ) {
                         Text(
                             text = strings.formatLibraryDuration(pulse.totalListenMs),
                             color = LevyraText,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.5).sp
+                            letterSpacing = (-0.5).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Text(strings.pulseMinutes, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = strings.pulseMinutes,
+                            color = LevyraMuted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
@@ -737,6 +751,8 @@ private fun LibraryInsightMetric(
     }
 }
 
+private const val WEEK_CHART_MIN_PEAK_MS = 5L * 60L * 1000L
+
 @Composable
 private fun LibraryWeekChart(pulse: ListeningPulse, locale: Locale) {
     val week = pulse.week.takeLast(7)
@@ -766,8 +782,9 @@ private fun LibraryWeekChart(pulse: ListeningPulse, locale: Locale) {
         ) {
             week.forEach { day ->
                 val active = day.listenedMs > 0L
+                val scale = peak.coerceAtLeast(WEEK_CHART_MIN_PEAK_MS)
                 val fraction = if (peak > 0L) {
-                    (day.listenedMs.toFloat() / peak.toFloat()).coerceIn(0.10f, 1f)
+                    (day.listenedMs.toFloat() / scale.toFloat()).coerceIn(0.10f, 1f)
                 } else 0.10f
                 Box(
                     modifier = Modifier.weight(1f).fillMaxHeight(fraction)
