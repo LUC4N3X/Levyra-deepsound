@@ -30,8 +30,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,6 +49,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
 
 @Composable
@@ -108,54 +108,6 @@ fun PremiumSeekbar(
 
     val scrubMillis by remember(durationMs) {
         derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
-    }
-
-    val waveRevealAmount = waveReveal.value
-    val wavePath = remember(widthPx, density, waveRevealAmount) {
-        Path().apply {
-            if (widthPx <= 0f) return@apply
-            val centerY = with(density) { LevyraPlayerDesign.MinimumTouchTarget.toPx() / 2f }
-            val amplitude = with(density) { 3.2.dp.toPx() } * waveRevealAmount
-            val wavelength = with(density) { 13.5.dp.toPx() }
-            val quarterWave = wavelength / 4f
-            var waveStart = -wavelength
-            moveTo(waveStart, centerY)
-            while (waveStart < widthPx + wavelength) {
-                cubicTo(
-                    waveStart + quarterWave * 0.45f,
-                    centerY,
-                    waveStart + quarterWave * 0.55f,
-                    centerY - amplitude,
-                    waveStart + quarterWave,
-                    centerY - amplitude
-                )
-                cubicTo(
-                    waveStart + quarterWave * 1.45f,
-                    centerY - amplitude,
-                    waveStart + quarterWave * 1.55f,
-                    centerY,
-                    waveStart + quarterWave * 2f,
-                    centerY
-                )
-                cubicTo(
-                    waveStart + quarterWave * 2.45f,
-                    centerY,
-                    waveStart + quarterWave * 2.55f,
-                    centerY + amplitude,
-                    waveStart + quarterWave * 3f,
-                    centerY + amplitude
-                )
-                cubicTo(
-                    waveStart + quarterWave * 3.45f,
-                    centerY + amplitude,
-                    waveStart + quarterWave * 3.55f,
-                    centerY,
-                    waveStart + wavelength,
-                    centerY
-                )
-                waveStart += wavelength
-            }
-        }
     }
 
     Box(
@@ -292,20 +244,44 @@ fun PremiumSeekbar(
                             cornerRadius = radius
                         )
                     }
+
                     val waveAlpha = (1f - scrub).coerceIn(0f, 1f)
                     if (waveAlpha > 0.001f) {
+                        val targetWaveLength = 92.dp.toPx()
+                        val waveCount = (activeSpan / targetWaveLength)
+                            .roundToInt()
+                            .coerceAtLeast(1)
+                        val waveLength = activeSpan / waveCount
+                        val minimumWaveSpan = 56.dp.toPx()
+                        val amplitudeScale = (activeSpan / minimumWaveSpan).coerceIn(0f, 1f)
+                        val waveHeight = 9.5.dp.toPx() * waveReveal.value * amplitudeScale
+                        val baselineY = centerY + trackHeight / 2f
+                        val topBaseY = centerY - trackHeight / 2f
+                        val step = 2.dp.toPx().coerceAtLeast(1f)
+
+                        val waveFill = Path().apply {
+                            moveTo(trackStart, baselineY)
+                            lineTo(trackStart, topBaseY)
+                            var x = trackStart
+                            while (x < handleX) {
+                                val localX = x - trackStart
+                                val phase = (localX / waveLength) * (2f * PI.toFloat())
+                                val crest = ((1f - cos(phase)) * 0.5f).coerceIn(0f, 1f)
+                                lineTo(x, topBaseY - waveHeight * crest)
+                                x += step
+                            }
+                            lineTo(handleX, topBaseY)
+                            lineTo(handleX, baselineY)
+                            close()
+                        }
+
                         drawPath(
-                            path = wavePath,
-                            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.16f),
-                            style = Stroke(
-                                width = trackHeight + 2.8.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
+                            path = waveFill,
+                            color = trailingColor.copy(alpha = trailingColor.alpha * waveAlpha * 0.14f)
                         )
                         drawPath(
-                            path = wavePath,
-                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha),
-                            style = Stroke(width = trackHeight, cap = StrokeCap.Round)
+                            path = waveFill,
+                            color = activeColor.copy(alpha = activeColor.alpha * waveAlpha)
                         )
                     }
                 }
