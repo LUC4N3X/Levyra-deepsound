@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Get Levyra on F-Droid">
+  <title>Get Levyra on F-Droid</title>
+  <defs>
+    <linearGradient id="fd-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="60%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="fd-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="fd-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8AB000"/>
+      <stop offset="55%" stop-color="#64B5F6"/>
+      <stop offset="100%" stop-color="#1976D2"/>
+    </linearGradient>
+    <radialGradient id="fd-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#64B5F6" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#64B5F6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#fd-bg)" stroke="url(#fd-border)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#fd-accent)"/>
+
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="43" fill="url(#fd-glow)"/>
+
+  <g transform="translate(54 45)" fill="none" stroke="url(#fd-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21h40v31a9 9 0 0 1-9 9H21a9 9 0 0 1-9-9V21Z"/>
+    <path d="m18 17-8-10M46 17 54 7M15 21c2-8 8-12 17-12s15 4 17 12"/>
+    <circle cx="24" cy="35" r="2.5" fill="#8AB000" stroke="none"/>
+    <circle cx="40" cy="35" r="2.5" fill="#64B5F6" stroke="none"/>
+    <path d="M23 47h18"/>
+  </g>
+
+  <g transform="translate(156 30)">
+    <rect width="222" height="22" rx="6" fill="#64B5F6" fill-opacity="0.11" stroke="#64B5F6" stroke-opacity="0.26"/>
+    <circle cx="10" cy="11" r="3" fill="#8AB000"/>
+    <text x="20" y="15" fill="#93C5FD" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.15">F-DROID · OPEN SOURCE REPOSITORY</text>
+  </g>
+
+  <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Get Levyra on F-Droid</text>
+  <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">FOSS repository · Reproducible build · Automatic updates</text>
+
+  <g transform="translate(156 118)" fill="#64B5F6" fill-opacity="0.45">
+    <rect x="0" y="7" width="4" height="9" rx="2"/>
+    <rect x="8" y="2" width="4" height="14" rx="2"/>
+    <rect x="16" y="5" width="4" height="11" rx="2"/>
+    <rect x="24" y="0" width="4" height="16" rx="2"/>
+    <rect x="32" y="6" width="4" height="10" rx="2"/>
+    <rect x="40" y="3" width="4" height="13" rx="2"/>
+    <rect x="48" y="9" width="4" height="7" rx="2"/>
+  </g>
+
+  <g transform="translate(548 50)">
+    <rect width="176" height="54" rx="16" fill="url(#fd-accent)"/>
+    <rect width="176" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.24"/>
+    <text x="68" y="34" text-anchor="middle" fill="#06121C" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="900" letter-spacing="0.15">Open F-Droid</text>
+    <path d="M146 27h-16M140 21l6 6-6 6" fill="none" stroke="#06121C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
