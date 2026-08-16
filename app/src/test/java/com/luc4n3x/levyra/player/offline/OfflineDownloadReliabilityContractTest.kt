@@ -107,6 +107,18 @@ class OfflineDownloadReliabilityContractTest {
     }
 
     @Test
+    fun aRejectedProbeNeverOverridesTheContentTypeAdvertisedByTheUrl() {
+        val muxed = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=18&" +
+            "mime=video%2Fmp4&ratebypass=yes&clen=15857332"
+
+        assertTrue(isSupportedOfflineSource("", muxed))
+        assertFalse(isSupportedOfflineSource("text/plain", muxed))
+
+        val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
+        assertTrue(exporter.contains("if (!response.isSuccessful) return@executeCancellable fallback"))
+    }
+
+    @Test
     fun rangeResponsesAreValidatedBeforeTheirContentType() {
         val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
         val statusCheck = exporter.indexOf("if (!isUsableAudioRangeResponse(response.code")

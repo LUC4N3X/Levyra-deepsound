@@ -65,6 +65,8 @@ internal const val MIN_PARALLEL_AUDIO_BYTES = 2L * 1024L * 1024L
 internal const val FAST_METADATA_EMBED_MAX_BYTES = 32L * 1024L * 1024L
 internal const val FAST_METADATA_EMBED_MAX_DURATION_MS = 20L * 60L * 1000L
 private const val RANGE_ALIGNMENT_BYTES = 256L * 1024L
+internal const val DEFAULT_STREAM_USER_AGENT =
+    "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
 
 internal data class AudioDownloadRange(
     val start: Long,
@@ -541,7 +543,7 @@ class OfflineAudioExporter(
         val rangeParamApplied = downloadUrl != sourceUrl
         val request = Request.Builder()
             .url(downloadUrl)
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", DEFAULT_STREAM_USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")
             .header("Connection", "keep-alive")
@@ -889,7 +891,7 @@ class OfflineAudioExporter(
         val rangeParamApplied = rangeUrl != url
         val request = Request.Builder()
             .url(rangeUrl)
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", DEFAULT_STREAM_USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")
             .header("Connection", "keep-alive")
@@ -960,13 +962,14 @@ class OfflineAudioExporter(
         val request = Request.Builder()
             .url(rangeUrl)
             .get()
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", DEFAULT_STREAM_USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")
             .apply { if (!rangeParamApplied) header("Range", "bytes=0-0") }
             .build()
         return try {
             executeCancellable(request, PROBE_CALL_TIMEOUT_MS) { response ->
+                if (!response.isSuccessful) return@executeCancellable fallback
                 val contentRangeLength = audioContentLengthFromRangeHeader(response.header("Content-Range").orEmpty())
                 val bodyLength = response.body.contentLength()
                 AudioProbe(
@@ -992,7 +995,7 @@ class OfflineAudioExporter(
         val request = Request.Builder()
             .url(url)
             .head()
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", DEFAULT_STREAM_USER_AGENT)
             .header("Accept-Encoding", "identity")
             .build()
         return try {
@@ -1244,7 +1247,7 @@ class OfflineAudioExporter(
     private suspend fun downloadArtwork(track: Track): ByteArray? {
         val url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.trim()
         if (url.isBlank() || !url.startsWith("http", ignoreCase = true)) return null
-        val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
+        val request = Request.Builder().url(url).header("User-Agent", DEFAULT_STREAM_USER_AGENT).build()
         return try {
             executeCancellable(request, ARTWORK_CALL_TIMEOUT_MS) { response ->
                 if (!response.isSuccessful) return@executeCancellable null
@@ -1432,7 +1435,7 @@ class OfflineAudioExporter(
         private const val RANGE_RETRY_DELAY_MS = 120L
         private const val PARALLEL_BATCH_RETRY_COUNT = 2
         private const val PARALLEL_BATCH_RETRY_DELAY_MS = 180L
-        private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+
     }
 }
 
