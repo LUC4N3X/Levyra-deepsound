@@ -1,0 +1,158 @@
+name: Format PR 393 focused fixes
+
+on:
+  push:
+    branches:
+      - feat/player-wave-polish
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/player-wave-polish
+          fetch-depth: 0
+
+      - name: Normalize formatting
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          seekbar_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/components/PremiumSeekbar.kt")
+          seekbar = seekbar_path.read_text(encoding="utf-8")
+          seekbar = replace_once(
+              seekbar,
+              '''    val wavePhase = remember { Animatable(0f) }
+          LaunchedEffect(animated, isPlaying, isDragging) {
+              if (!animated || !isPlaying || isDragging) return@LaunchedEffect
+              val fullPhase = 2f * PI.toFloat()
+              while (true) {
+                  val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
+            .coerceIn(0.001f, 1f)
+                  wavePhase.animateTo(
+            targetValue = fullPhase,
+            animationSpec = tween(
+                durationMillis = (4_200f * remainingFraction).roundToInt().coerceAtLeast(1),
+                easing = LinearEasing
+            )
+                  )
+                  wavePhase.snapTo(0f)
+              }
+          }
+'''.replace("\n          ", "\n"),
+              '''    val wavePhase = remember { Animatable(0f) }
+    LaunchedEffect(animated, isPlaying, isDragging) {
+        if (!animated || !isPlaying || isDragging) return@LaunchedEffect
+        val fullPhase = 2f * PI.toFloat()
+        while (true) {
+            val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
+                .coerceIn(0.001f, 1f)
+            wavePhase.animateTo(
+                targetValue = fullPhase,
+                animationSpec = tween(
+                    durationMillis = (4_200f * remainingFraction).roundToInt().coerceAtLeast(1),
+                    easing = LinearEasing
+                )
+            )
+            wavePhase.snapTo(0f)
+        }
+    }
+''',
+              "PremiumSeekbar phase formatting",
+          )
+          seekbar_path.write_text(seekbar, encoding="utf-8")
+
+          repo_path = Path("app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt")
+          repo = repo_path.read_text(encoding="utf-8")
+          repo = replace_once(
+              repo,
+              '''val youtubeVideoId = id.trim().takeIf { value ->
+    value.length == 11 && value.all { character ->
+        character.isLetterOrDigit() || character == '_' || character == '-'
+    }
+}
+val resolvedThumbnailUrl = thumbnailUrl.trim().ifBlank {
+    youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/hqdefault.jpg" }.orEmpty()
+}
+val resolvedLargeThumbnailUrl = largeThumbnailUrl.trim().ifBlank {
+    youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg" }
+        .orEmpty()
+        .ifBlank { resolvedThumbnailUrl }
+}
+return Track(
+    id = id,
+    title = title.cleanLabel(),
+''',
+              '''        val youtubeVideoId = id.trim().takeIf { value ->
+            value.length == 11 && value.all { character ->
+                character.isLetterOrDigit() || character == '_' || character == '-'
+            }
+        }
+        val resolvedThumbnailUrl = thumbnailUrl.trim().ifBlank {
+            youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/hqdefault.jpg" }.orEmpty()
+        }
+        val resolvedLargeThumbnailUrl = largeThumbnailUrl.trim().ifBlank {
+            youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg" }
+                .orEmpty()
+                .ifBlank { resolvedThumbnailUrl }
+        }
+        return Track(
+            id = id,
+            title = title.cleanLabel(),
+''',
+              "YoutubeMusic artwork formatting",
+          )
+          repo_path.write_text(repo, encoding="utf-8")
+
+          test_path = Path("app/src/test/java/com/luc4n3x/levyra/domain/LevyraVideoArtworkFallbackTest.kt")
+          test = test_path.read_text(encoding="utf-8")
+          test = test.replace('''        assertEquals(
+  "https://i.ytimg.com/vi/AbCdEfGhI12/hqdefault.jpg",
+  LevyraPersonalOrbit.youtubeFallbackArtwork(track)
+        )''', '''        assertEquals(
+            "https://i.ytimg.com/vi/AbCdEfGhI12/hqdefault.jpg",
+            LevyraPersonalOrbit.youtubeFallbackArtwork(track)
+        )''')
+          test = test.replace('''        val italian = testTrack(
+  id = "catalog-entry",
+  counterpartVideoId = "AbCdEfGhI12",
+  title = "Dopo il tramonto",
+  artist = "Artista"
+        )''', '''        val italian = testTrack(
+            id = "catalog-entry",
+            counterpartVideoId = "AbCdEfGhI12",
+            title = "Dopo il tramonto",
+            artist = "Artista"
+        )''')
+          test = test.replace('''        assertEquals(
+  LevyraPersonalOrbit.youtubeFallbackArtwork(italian),
+  LevyraPersonalOrbit.youtubeFallbackArtwork(japanese)
+        )''', '''        assertEquals(
+            LevyraPersonalOrbit.youtubeFallbackArtwork(italian),
+            LevyraPersonalOrbit.youtubeFallbackArtwork(japanese)
+        )''')
+          test_path.write_text(test, encoding="utf-8")
+
+      - name: Commit formatting and remove helper
+        shell: bash
+        run: |
+          rm .github/workflows/format-pr393-fixes.yml
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/components/PremiumSeekbar.kt
+          git add app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt
+          git add app/src/test/java/com/luc4n3x/levyra/domain/LevyraVideoArtworkFallbackTest.kt
+          git add .github/workflows/format-pr393-fixes.yml
+          git commit -m "style: format PR 393 focused fixes"
+          git push origin HEAD:feat/player-wave-polish
