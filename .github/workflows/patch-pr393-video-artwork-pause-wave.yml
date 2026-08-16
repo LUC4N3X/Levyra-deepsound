@@ -1,0 +1,256 @@
+name: Patch PR 393 video artwork and player wave
+
+on:
+  push:
+    branches:
+      - feat/player-wave-polish
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/player-wave-polish
+          fetch-depth: 0
+
+      - name: Apply focused fixes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          # 1) Pause the water motion when playback is paused and resume from the frozen phase.
+          seekbar_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/components/PremiumSeekbar.kt")
+          seekbar = seekbar_path.read_text(encoding="utf-8")
+          for unused_import in (
+              "import androidx.compose.animation.core.RepeatMode\n",
+              "import androidx.compose.animation.core.animateFloat\n",
+              "import androidx.compose.animation.core.infiniteRepeatable\n",
+              "import androidx.compose.animation.core.rememberInfiniteTransition\n",
+          ):
+              seekbar = seekbar.replace(unused_import, "")
+
+          seekbar = replace_once(
+              seekbar,
+              "    thumbColor: Color = Color.White,\n    animated: Boolean = true,\n",
+              "    thumbColor: Color = Color.White,\n    isPlaying: Boolean = true,\n    animated: Boolean = true,\n",
+              "PremiumSeekbar isPlaying parameter",
+          )
+
+          old_motion = '''    val waveMotion = rememberInfiniteTransition(label = "player-wave-motion")
+    val wavePhase by waveMotion.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4_200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "player-wave-phase"
+    )
+'''
+          new_motion = '''    val wavePhase = remember { Animatable(0f) }
+    LaunchedEffect(animated, isPlaying, isDragging) {
+        if (!animated || !isPlaying || isDragging) return@LaunchedEffect
+        val fullPhase = 2f * PI.toFloat()
+        while (true) {
+            val remainingFraction = ((fullPhase - wavePhase.value) / fullPhase)
+                .coerceIn(0.001f, 1f)
+            wavePhase.animateTo(
+                targetValue = fullPhase,
+                animationSpec = tween(
+                    durationMillis = (4_200f * remainingFraction).roundToInt().coerceAtLeast(1),
+                    easing = LinearEasing
+                )
+            )
+            wavePhase.snapTo(0f)
+        }
+    }
+'''
+          seekbar = replace_once(seekbar, old_motion, new_motion, "water phase animation")
+          seekbar = replace_once(
+              seekbar,
+              "                        val phaseOffset = if (animated && !isDragging) wavePhase else 0f\n",
+              "                        val phaseOffset = if (animated && !isDragging) wavePhase.value else 0f\n",
+              "water phase draw value",
+          )
+          seekbar_path.write_text(seekbar, encoding="utf-8")
+
+          # 2) Thread the real playback state into the full-player timeline.
+          app_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          app = app_path.read_text(encoding="utf-8")
+
+          app, n = re.subn(
+              r'(PlayerTimeline\(\s*positionMs = state\.positionMs,\s*bufferedPositionMs = state\.bufferedPositionMs,\s*durationMs = state\.durationMs,\s*activeColor = [^\n]+,\s*secondaryColor = [^\n]+,\s*)(animationsEnabled = state\.animationsEnabled,)',
+              r'\1isPlaying = state.isPlaying,\n                \2',
+              app,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit(f"PlayerTimeline call: expected one match, found {n}")
+
+          app, n = re.subn(
+              r'(private fun PlayerTimeline\(\s*positionMs: Long,\s*bufferedPositionMs: Long,\s*durationMs: Long,\s*activeColor: Color,\s*secondaryColor: Color,\s*)(animationsEnabled: Boolean,)',
+              r'\1isPlaying: Boolean,\n    \2',
+              app,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit(f"PlayerTimeline signature: expected one match, found {n}")
+
+          app, n = re.subn(
+              r'(PremiumSeekbar\(\s*positionMs = positionMs,\s*durationMs = durationMs,\s*bufferedPositionMs = bufferedPositionMs,\s*)(onSeekTo =)',
+              r'\1isPlaying = isPlaying,\n            \2',
+              app,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit(f"PremiumSeekbar timeline call: expected one match, found {n}")
+          app_path.write_text(app, encoding="utf-8")
+
+          # 3) Make YouTube Music tracks self-heal missing localized thumbnail payloads from the video id.
+          repo_path = Path("app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt")
+          repo = repo_path.read_text(encoding="utf-8")
+          repo = replace_once(
+              repo,
+              "        return Track(\n            id = id,\n            title = title.cleanLabel(),\n",
+              '''        val youtubeVideoId = id.trim().takeIf { value ->
+            value.length == 11 && value.all { character ->
+                character.isLetterOrDigit() || character == '_' || character == '-'
+            }
+        }
+        val resolvedThumbnailUrl = thumbnailUrl.trim().ifBlank {
+            youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/hqdefault.jpg" }.orEmpty()
+        }
+        val resolvedLargeThumbnailUrl = largeThumbnailUrl.trim().ifBlank {
+            youtubeVideoId?.let { videoId -> "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg" }
+                .orEmpty()
+                .ifBlank { resolvedThumbnailUrl }
+        }
+
+        return Track(
+            id = id,
+            title = title.cleanLabel(),
+''',
+              "YoutubeMusic buildTrack fallback",
+          )
+          repo = replace_once(
+              repo,
+              "            thumbnailUrl = thumbnailUrl,\n            largeThumbnailUrl = largeThumbnailUrl,\n",
+              "            thumbnailUrl = resolvedThumbnailUrl,\n            largeThumbnailUrl = resolvedLargeThumbnailUrl,\n",
+              "YoutubeMusic resolved artwork assignment",
+          )
+          repo_path.write_text(repo, encoding="utf-8")
+
+          # 4) For chart/song entries promoted into the Video shelf, prefer their explicit video counterpart.
+          orbit_path = Path("app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt")
+          orbit = orbit_path.read_text(encoding="utf-8")
+          orbit = replace_once(
+              orbit,
+              '''        if (fromUrl != null) return fromUrl
+        return track.id.trim().takeIf(youtubeVideoIdPattern::matches)
+''',
+              '''        if (fromUrl != null) return fromUrl
+        val counterpart = track.counterpartVideoId.trim().takeIf(youtubeVideoIdPattern::matches)
+        if (counterpart != null) return counterpart
+        return track.id.trim().takeIf(youtubeVideoIdPattern::matches)
+''',
+              "counterpart artwork fallback",
+          )
+          orbit_path.write_text(orbit, encoding="utf-8")
+
+          # 5) Regression coverage: fallback is based on stable video identity, never localized text.
+          test_path = Path("app/src/test/java/com/luc4n3x/levyra/domain/LevyraVideoArtworkFallbackTest.kt")
+          test_path.parent.mkdir(parents=True, exist_ok=True)
+          test_path.write_text('''package com.luc4n3x.levyra.domain
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class LevyraVideoArtworkFallbackTest {
+
+    @Test
+    fun `counterpart video id provides artwork when song artwork is missing`() {
+        val track = testTrack(
+            id = "catalog-entry",
+            counterpartVideoId = "AbCdEfGhI12"
+        )
+
+        assertEquals(
+            "https://i.ytimg.com/vi/AbCdEfGhI12/hqdefault.jpg",
+            LevyraPersonalOrbit.youtubeFallbackArtwork(track)
+        )
+    }
+
+    @Test
+    fun `video artwork fallback is independent from localized display text`() {
+        val italian = testTrack(
+            id = "catalog-entry",
+            counterpartVideoId = "AbCdEfGhI12",
+            title = "Dopo il tramonto",
+            artist = "Artista"
+        )
+        val japanese = italian.copy(title = "夜のあと", artist = "アーティスト")
+
+        assertEquals(
+            LevyraPersonalOrbit.youtubeFallbackArtwork(italian),
+            LevyraPersonalOrbit.youtubeFallbackArtwork(japanese)
+        )
+    }
+
+    private fun testTrack(
+        id: String,
+        counterpartVideoId: String,
+        title: String = "Video",
+        artist: String = "Artist"
+    ) = Track(
+        id = id,
+        title = title,
+        artist = artist,
+        album = "",
+        durationMs = 0L,
+        streamUrl = "",
+        videoUrl = "",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "test",
+        moodTags = emptySet(),
+        energy = 0,
+        vocal = 0,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0,
+        counterpartVideoId = counterpartVideoId
+    )
+}
+''', encoding="utf-8")
+          PY
+
+      - name: Commit focused changes and remove helper
+        shell: bash
+        run: |
+          rm .github/workflows/patch-pr393-video-artwork-pause-wave.yml
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/ui/components/PremiumSeekbar.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt \
+            app/src/test/java/com/luc4n3x/levyra/domain/LevyraVideoArtworkFallbackTest.kt \
+            .github/workflows/patch-pr393-video-artwork-pause-wave.yml
+          git commit -m "fix(ui): guarantee video artwork and pause player wave"
+          git push origin HEAD:feat/player-wave-polish
