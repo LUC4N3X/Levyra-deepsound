@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-15T18:49:32Z",
+  "generatedAt": "2026-08-16T01:59:17Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -418,7 +418,7 @@
     {
       "song": "Dreams - 2004 Remaster",
       "artist": "Fleetwood Mac",
-      "album": "Rumours (Super Deluxe)",
+      "album": "Rumours",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
@@ -588,6 +588,13 @@
       "artist": "Silva Bumpa",
       "album": "On 2nite",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/c44158fad0e446d99a2aac6177bd8ea9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Dreams - 2004 Remaster",
+      "artist": "Fleetwood Mac",
+      "album": "Rumours (Super Deluxe)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3496,6 +3503,13 @@
       "scope": "track"
     },
     {
+      "song": "RUDE!",
+      "artist": "Hearts2Hearts",
+      "album": "RUDE!",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Landing in Love",
       "artist": "HANRORO",
       "album": "Take-off",
@@ -4550,6 +4564,13 @@
       "artist": "Becky G",
       "album": "BARAJA BENDITA",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/e20bd60924584cf98a6c40d6d0e499dd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Heaven Baby (feat. ZAYN)",
+      "artist": "Ayra Starr, ZAYN",
+      "album": "Starrgirl",
+      "url": "https://canvaz.scdn.co/upload/artist/3ZpEKRjHaHANcpk10u6Ntq/video/dc677ca50b1043cb9f39b17d47525282.cnvs.mp4",
       "scope": "track"
     },
     {
