@@ -8,23 +8,24 @@ class LevyraVideoArtworkFallbackTest {
     fun `counterpart video id provides artwork when song artwork is missing`() {
         val track = testTrack(id = "catalog-entry", counterpartVideoId = "AbCdEfGhI12")
         assertEquals(
-  "https://i.ytimg.com/vi/AbCdEfGhI12/hqdefault.jpg",
-  LevyraPersonalOrbit.youtubeFallbackArtwork(track)
+            "https://i.ytimg.com/vi/AbCdEfGhI12/hqdefault.jpg",
+            LevyraPersonalOrbit.youtubeFallbackArtwork(track)
         )
     }
 
     @Test
     fun `video artwork fallback is independent from localized display text`() {
         val italian = testTrack(
-  id = "catalog-entry",
-  counterpartVideoId = "AbCdEfGhI12",
-  title = "Dopo il tramonto",
-  artist = "Artista"
+            id = "catalog-entry",
+            counterpartVideoId = "AbCdEfGhI12",
+            title = "Dopo il tramonto",
+            artist = "Artista"
         )
         val japanese = italian.copy(title = "夜のあと", artist = "アーティスト")
+
         assertEquals(
-  LevyraPersonalOrbit.youtubeFallbackArtwork(italian),
-  LevyraPersonalOrbit.youtubeFallbackArtwork(japanese)
+            LevyraPersonalOrbit.youtubeFallbackArtwork(italian),
+            LevyraPersonalOrbit.youtubeFallbackArtwork(japanese)
         )
     }
 
