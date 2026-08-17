@@ -7564,16 +7564,21 @@ private fun HomeMusicVideoShelf(
 private val HomeVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")
 
 private fun homeMusicVideoPreviewTrack(track: Track): Track {
-    val videoId = track.counterpartVideoId
+    val videoId = PlaybackSourceIdentity.sourceVideoId(track)
         .trim()
         .takeIf(HomeVideoIdPattern::matches)
-        ?: PlaybackSourceIdentity.sourceVideoId(track)
+        ?: track.counterpartVideoId
             .trim()
             .takeIf(HomeVideoIdPattern::matches)
         ?: return track
+    val stableVideoThumbnail = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
+    val fallbackThumbnail = track.thumbnailUrl
+        .trim()
+        .ifBlank { track.largeThumbnailUrl.trim() }
+        .ifBlank { "https://i.ytimg.com/vi/$videoId/mqdefault.jpg" }
     return track.copy(
-        thumbnailUrl = "https://i.ytimg.com/vi/$videoId/mqdefault.jpg",
-        largeThumbnailUrl = "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+        thumbnailUrl = fallbackThumbnail,
+        largeThumbnailUrl = stableVideoThumbnail
     )
 }
 
@@ -8799,6 +8804,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val keyboardController = LocalSoftwareKeyboardController.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
 
+    LaunchedEffect(state.languageCode) {
+        viewModel.refreshArtistSuggestions()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -8852,10 +8861,17 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
 
                 item {
                     val fallbackSuggestions = LevyraContentLocales.artistSuggestions(state.languageCode)
-                    SuggestionsList(
+                    SearchArtistSuggestions(
                         title = LevyraContentLocales.artistSuggestionsTitle(state.languageCode),
-                        suggestions = fallbackSuggestions,
-                        onSuggestionClick = { query ->
+                        artists = state.homeArtists,
+                        fallbackNames = fallbackSuggestions,
+                        loading = state.homeArtistsLoading,
+                        onArtistClick = { hit ->
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            viewModel.openArtistFromHit(hit)
+                        },
+                        onFallbackClick = { query ->
                             focusManager.clearFocus()
                             keyboardController?.hide()
                             viewModel.setQuery(query)
