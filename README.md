@@ -113,9 +113,10 @@ Modern music streaming applications often treat music as temporary, disposable b
 ### 🎚️ Pure Audio & Playback Engine
 
 * **Dual Native Engines**: AndroidX Media3 foreground audio service on Android; isolated libvlc pipeline on Windows.
+* **Android Auto Integration**: Native in-car dashboard with library browsing, steering wheel controls, and voice playback.
 * **Acoustic Normalization**: Intelligent volume leveling smooths loudness jumps between studio tracks and live recordings.
 * **Smart Silence & Sponsor Skipping**: Automatic detection of video intros, banter, sponsors, and outro silence.
-* **Playback Controls**: True gapless playback, dynamic queue shuffle, single/queue repeat, custom pitch/speed, and sleep timers (15, 30, 60 min).
+* **Playback Controls**: True gapless playback, dynamic queue shuffle, single/queue repeat, custom pitch/speed, and sleep timers.
 * **Audio / Video Seamless Toggle**: Switch between high-efficiency Opus/AAC audio streams and full HD video playback with one tap.
 
 </td>
@@ -127,6 +128,7 @@ Modern music streaming applications often treat music as temporary, disposable b
 * **Permanent Local Storage**: Files are saved into standard Android `Music/Levyra` directory, accessible by all apps and external DACs.
 * **Local-First Routing**: If a track exists offline, Levyra plays the local copy instantly with 0ms network latency.
 * **Resilient Download Manager**: Chunked downloading with HTTP Range headers, automatic resume, and atomic verification.
+* **Backup & Portability**: 100% offline JSON export and import for playlists, favorites, and listening history with zero cloud dependency.
 
 </td>
 </tr>
@@ -139,14 +141,16 @@ Modern music streaming applications often treat music as temporary, disposable b
 * **Proactive Queue Prefetch**: Next songs pre-buffer silently in the background for zero-latency track skipping.
 * **Global Top Charts**: Real-time country-specific Top 50 charts (Italia, USA, UK, España, Global).
 * **Smart Orbit Rotation**: Adaptive recommendations that rotate with your listening mood and time of day.
+* **Samples & Clip Feed**: Short-form vertical music video teaser feed with real-time comment energy resonance.
 
 </td>
 <td width="50%" valign="top">
 
-### 📊 Karaoke Lyrics & Listening Pulse
+### 📊 Karaoke Lyrics & Visual Immersion
 
 * **Real-Time Synced Lyrics**: Millisecond-accurate scrolling lyrics powered by LRCLIB with line-by-line glow.
 * **Interactive Lyric Scrubbing**: Tap any lyric line to jump the audio track directly to that timestamp.
+* **Ambient Visuals & Motion Art**: Dynamic palette-reactive aurora backdrops, real-time waveform visualizer, and ambient looping motion art.
 * **Listening Pulse Dashboard**: 100% private on-device statistics—minutes played, top artists, completion rates, and peak hours.
 * **Real-Play Scoring**: Artists and tracks are ranked purely by actual playback duration, filtering out accidental skips.
 
