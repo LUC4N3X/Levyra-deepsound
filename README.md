@@ -303,7 +303,7 @@ Contributions, optimizations, and translations are warmly welcomed:
 
 ---
 
-## ✦ Author & Acknowledgments
+## ✦ Author & Credits
 
 <table align="center">
   <tr>
@@ -321,7 +321,7 @@ Contributions, optimizations, and translations are warmly welcomed:
   </tr>
 </table>
 
-### Open Source Foundations
+### Acknowledgments
 * [**Metrolist**](https://github.com/MetrolistGroup/Metrolist): Design inspiration for Compose UI architecture and theming.
 * [**LevyraExtractor**](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor): Custom stream extraction engine maintained for Levyra.
 * [**PipePipeExtractor**](https://github.com/InfinityLoop1308/PipePipeExtractor): Extractor foundation from the NewPipe and PipePipe open-source communities.
