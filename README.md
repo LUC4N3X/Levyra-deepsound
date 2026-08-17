@@ -187,41 +187,63 @@ Levyra is engineered as two decoupled, platform-optimized native clients sharing
 </tr>
 </table>
 
-### ✦ Reactive Audio & Data Flow
+### ✦ Core Audio & Data Pipelines
 
-```mermaid
-flowchart LR
-    subgraph UI_Layer ["🎨 Presentation Layer"]
-        UI["Jetpack Compose UI"]
-        VM["LevyraViewModel (UDF State)"]
-        UI <--> VM
-    end
+<table>
+<tr>
+<td width="33%" valign="top">
 
-    subgraph Audio_Core ["🎧 Audio & Playback Core"]
-        Player["LevyraPlayer Controller"]
-        Media3["AndroidX Media3 Service"]
-        Resolver["PlaybackResolver"]
-        VM --> Player --> Media3
-        VM --> Resolver
-    end
-
-    subgraph Data_Pipeline ["⚡ Stream & Data Pipeline"]
-        InnerTube["YouTube InnerTube"]
-        Extractor["LevyraExtractor Engine"]
-        LRCLIB["LRCLIB Synced Lyrics"]
-        Resolver --> InnerTube
-        Resolver --> Extractor
-        Resolver --> LRCLIB
-    end
-
-    subgraph Offline_Vault ["💾 Private Local Vault"]
-        Room["Room SQLite (Stats & Queue)"]
-        Exporter["WorkManager M4A Exporter"]
-        MediaStore["Android MediaStore / Music"]
-        VM --> Room
-        VM --> Exporter --> MediaStore
-    end
+#### 🎚️ 1. Unidirectional Playback
+```text
+User Gesture / Intent
+       ↓
+LevyraViewModel (UDF State)
+       ↓
+LevyraPlayer Controller
+       ↓
+AndroidX Media3 Service
+       ↓
+ExoPlayer Audio Sink
 ```
+<sub>State updates are strictly immutable and synchronized between the foreground audio service, media notifications, and Compose UI.</sub>
+
+</td>
+<td width="33%" valign="top">
+
+#### ⚡ 2. Stream Resolution & Sync
+```text
+Track Request
+       ↓
+PlaybackResolver
+       ↓
+InnerTube + LevyraExtractor
+       ↓
+Opus / AAC Audio Stream
+       ↓
+LRCLIB Synced Lyrics
+```
+<sub>Dual-resolver pipeline fetches the highest available bitrate and prefetches upcoming tracks for instant gapless transitions.</sub>
+
+</td>
+<td width="33%" valign="top">
+
+#### 💾 3. Private Offline Vault
+```text
+Download Trigger
+       ↓
+WorkManager Worker
+       ↓
+HTTP Range Resumable Stream
+       ↓
+M4A Metadata & Art Tagger
+       ↓
+Music/Levyra (Local Files)
+```
+<sub>Saves genuine tagged audio files with embedded cover art into device storage, accessible by external DAPs and car stereos.</sub>
+
+</td>
+</tr>
+</table>
 
 ### ✦ Architecture Component Layers
 
