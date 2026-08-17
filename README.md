@@ -156,106 +156,39 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 ---
 
-## ✦ System Architecture & Engine Design
+## ✦ Architecture & Engineering Blueprint
 
-Levyra is engineered as two decoupled, platform-optimized native clients sharing common extraction and localization foundations.
+Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 📱 Android Native Client (`app/`)
-* **Core Language**: 100% Kotlin 2.4 (Target SDK 37 · Min SDK 26)
-* **UI & Design**: Jetpack Compose · Material 3
-* **Audio Engine**: AndroidX Media3 / ExoPlayer Foreground Service
-* **State Management**: Central ViewModel · Unidirectional Data Flow (UDF)
-* **Local Vault**: Room SQLite · Jetpack DataStore Preferences
-* **Background Jobs**: WorkManager M4A Tagged Audio Exporter
+### 📱 Android Native Suite (`app/`)
+* 🎨 **[`ui/`](app/src/main/java/com/luc4n3x/levyra/ui)** — Fluid Jetpack Compose & Material 3 screens, gesture-driven canvas, and dynamic OLED palettes.
+* 🧠 **[`viewmodel/`](app/src/main/java/com/luc4n3x/levyra/viewmodel)** — Central state machine coordinating unidirectional immutable UI state.
+* 🎧 **[`player/`](app/src/main/java/com/luc4n3x/levyra/player)** — Low-latency AndroidX Media3 / ExoPlayer foreground audio service.
+* 💾 **[`player/offline/`](app/src/main/java/com/luc4n3x/levyra/player/offline)** — WorkManager background export engine with atomic M4A atom tagging & artwork.
+* ⚡ **[`data/`](app/src/main/java/com/luc4n3x/levyra/data)** — Dual stream resolver, LRCLIB synchronized lyrics client, and smart prefetch queues.
+* 🔒 **[`data/local/`](app/src/main/java/com/luc4n3x/levyra/data/local)** — Zero-telemetry Room SQLite database for playback metrics and favorites.
 
 </td>
 <td width="50%" valign="top">
 
-### 💻 Windows Desktop Client (`desktop/`)
-* **Core Runtime**: Kotlin / JVM (JDK 21 LTS)
-* **UI Framework**: Compose Multiplatform
-* **Audio Engine**: libvlc with hardware acceleration & tray controls
-* **Stream Pipeline**: Shared InnerTube & LevyraExtractor
-* **Private Storage**: `%APPDATA%\Levyra` (Zero telemetry)
-* **Packaging**: MSI & Standalone Executable (WiX Toolset)
+### 💻 Windows Desktop Suite (`desktop/`)
+* 🖥️ **[`desktop/app/`](desktop/app)** — Compose Multiplatform desktop UI with window management & auto-updater.
+* 🔊 **[`desktop/player/`](desktop/player)** — libvlc audio output engine with hardware acceleration, system tray, and global hotkeys.
+* 🌐 **[`desktop/core/`](desktop/core)** — Shared InnerTube stream resolver, download manager, and `%APPDATA%\Levyra` storage.
+* 📦 **[`desktop/packaging/`](desktop/packaging)** — WiX Toolset MSI installer and standalone portable distributions.
 
 </td>
 </tr>
 </table>
 
-### ✦ Core Audio & Data Pipelines
-
-<table>
-<tr>
-<td width="33%" valign="top">
-
-#### 🎚️ 1. Unidirectional Playback
-```text
-User Gesture / Intent
-       ↓
-LevyraViewModel (UDF State)
-       ↓
-LevyraPlayer Controller
-       ↓
-AndroidX Media3 Service
-       ↓
-ExoPlayer Audio Sink
-```
-<sub>State updates are strictly immutable and synchronized between the foreground audio service, media notifications, and Compose UI.</sub>
-
-</td>
-<td width="33%" valign="top">
-
-#### ⚡ 2. Stream Resolution & Sync
-```text
-Track Request
-       ↓
-PlaybackResolver
-       ↓
-InnerTube + LevyraExtractor
-       ↓
-Opus / AAC Audio Stream
-       ↓
-LRCLIB Synced Lyrics
-```
-<sub>Dual-resolver pipeline fetches the highest available bitrate and prefetches upcoming tracks for instant gapless transitions.</sub>
-
-</td>
-<td width="33%" valign="top">
-
-#### 💾 3. Private Offline Vault
-```text
-Download Trigger
-       ↓
-WorkManager Worker
-       ↓
-HTTP Range Resumable Stream
-       ↓
-M4A Metadata & Art Tagger
-       ↓
-Music/Levyra (Local Files)
-```
-<sub>Saves genuine tagged audio files with embedded cover art into device storage, accessible by external DAPs and car stereos.</sub>
-
-</td>
-</tr>
-</table>
-
-### ✦ Architecture Component Layers
-
-| Layer | Responsibility | Path |
-|:---|:---|:---|
-| **`ui/`** | Fluid Compose screens, bottom sheets, mini-player gesture canvas, and dynamic theme tokens | [`app/src/main/java/com/luc4n3x/levyra/ui`](app/src/main/java/com/luc4n3x/levyra/ui) |
-| **`viewmodel/`** | Central orchestrator coordinating unidirectional immutable UI state and playback commands | [`app/src/main/java/com/luc4n3x/levyra/viewmodel`](app/src/main/java/com/luc4n3x/levyra/viewmodel) |
-| **`domain/`** | Pure Kotlin domain models, playback contracts, and audio entity definitions | [`app/src/main/java/com/luc4n3x/levyra/domain`](app/src/main/java/com/luc4n3x/levyra/domain) |
-| **`player/`** | AndroidX Media3 foreground audio service, audio focus, low-latency queues, and prefetch buffer | [`app/src/main/java/com/luc4n3x/levyra/player`](app/src/main/java/com/luc4n3x/levyra/player) |
-| **`player/offline/`** | Resilient background export workers, atomic M4A container tagging, and MediaStore registration | [`app/src/main/java/com/luc4n3x/levyra/player/offline`](app/src/main/java/com/luc4n3x/levyra/player/offline) |
-| **`data/`** | Dual stream resolver, LRCLIB synchronized lyrics client, and metadata endpoints | [`app/src/main/java/com/luc4n3x/levyra/data`](app/src/main/java/com/luc4n3x/levyra/data) |
-| **`data/local/`** | 100% private Room SQLite DAOs, listening streaks, favorites, and DataStore preferences | [`app/src/main/java/com/luc4n3x/levyra/data/local`](app/src/main/java/com/luc4n3x/levyra/data/local) |
+### ✦ Under the Hood: Core Audio Principles
+* 🎚️ **Unidirectional State Flow**: User gestures update immutable state in the ViewModel, instantly propagating across the Compose UI, MediaSession notification, and Android Auto.
+* ⚡ **Dual Stream Resolver**: Queries InnerTube and LevyraExtractor with intelligent fallback, selecting the highest-fidelity Opus/AAC stream while prebuffering upcoming queue items.
+* 💾 **Standard File Vault**: Offline tracks are saved as real tagged M4A files directly into `Music/Levyra`, instantly playable across external DAPs, car stereos, and third-party media players.
 
 ---
 
