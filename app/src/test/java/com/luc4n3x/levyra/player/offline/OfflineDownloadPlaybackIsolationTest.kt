@@ -4,6 +4,16 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -75,6 +85,77 @@ class OfflineDownloadPlaybackIsolationTest {
     }
 
     @Test
+    fun identicalOfflinePrefetchesRunOneAtATimeInsteadOfRefetchingUpstream() = runBlocking {
+        val exported = track("https://rr.example/videoplayback?itag=140&mime=audio%2Fmp4&ratebypass=yes")
+        val offlineKey = LevyraPlaybackCacheKey.offlineStream(exported)
+        val inFlight = AtomicInteger(0)
+        val overlaps = AtomicInteger(0)
+        val transfers = AtomicInteger(0)
+
+        coroutineScope {
+            repeat(4) {
+                launch(Dispatchers.Default) {
+                    OfflineCacheWriteLocks.withKey(offlineKey) {
+                        if (inFlight.incrementAndGet() > 1) overlaps.incrementAndGet()
+                        transfers.incrementAndGet()
+                        delay(20L)
+                        inFlight.decrementAndGet()
+                    }
+                }
+            }
+        }
+
+        assertEquals(0, overlaps.get())
+        assertEquals(4, transfers.get())
+        assertEquals(0, OfflineCacheWriteLocks.activeKeyCount())
+    }
+
+    @Test
+    fun differentTracksAreNeverSerialisedAgainstEachOther() = runBlocking {
+        val first = LevyraPlaybackCacheKey.offlineStream(track("https://rr.example/videoplayback?itag=140"))
+        val second = LevyraPlaybackCacheKey.offlineStream(track("https://rr.example/videoplayback?itag=251"))
+        val bothInside = CompletableDeferred<Unit>()
+        val inside = AtomicInteger(0)
+
+        withTimeout(5_000L) {
+            coroutineScope {
+                listOf(first, second).forEach { key ->
+                    launch(Dispatchers.Default) {
+                        OfflineCacheWriteLocks.withKey(key) {
+                            if (inside.incrementAndGet() == 2) bothInside.complete(Unit)
+                            bothInside.await()
+                        }
+                    }
+                }
+            }
+        }
+
+        assertEquals(0, OfflineCacheWriteLocks.activeKeyCount())
+    }
+
+    @Test
+    fun aCancelledPrefetchReleasesTheKeyForTheNextExport() = runBlocking {
+        val key = LevyraPlaybackCacheKey.offlineStream(track("https://rr.example/videoplayback?itag=140"))
+        val holding = CompletableDeferred<Unit>()
+
+        val holder = launch(Dispatchers.Default) {
+            OfflineCacheWriteLocks.withKey(key) {
+                holding.complete(Unit)
+                awaitCancellation()
+            }
+        }
+        holding.await()
+        holder.cancelAndJoin()
+
+        val ran = withTimeout(5_000L) {
+            OfflineCacheWriteLocks.withKey(key) { true }
+        }
+
+        assertTrue(ran)
+        assertEquals(0, OfflineCacheWriteLocks.activeKeyCount())
+    }
+
+    @Test
     fun exportSeedsFromBothTheOfflineAndThePlaybackCacheNamespace() {
         val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
 
@@ -88,8 +169,10 @@ class OfflineDownloadPlaybackIsolationTest {
     fun continuousPrefetchWritesIntoTheOfflineNamespace() {
         val pipeline = Files.readString(sourceFile("player/offline/OfflineExportPipeline.kt"))
 
-        assertTrue(pipeline.contains(".setKey(LevyraPlaybackCacheKey.offlineStream(track))"))
-        assertFalse(pipeline.contains(".setKey(LevyraPlaybackCacheKey.stream(track))"))
+        assertTrue(pipeline.contains("val cacheKey = LevyraPlaybackCacheKey.offlineStream(track)"))
+        assertTrue(pipeline.contains(".setKey(cacheKey)"))
+        assertTrue(pipeline.contains("OfflineCacheWriteLocks.withKey(cacheKey)"))
+        assertFalse(pipeline.contains("LevyraPlaybackCacheKey.stream(track)"))
     }
 
     @Test
