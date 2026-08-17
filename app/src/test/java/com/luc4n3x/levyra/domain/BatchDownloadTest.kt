@@ -85,6 +85,97 @@ class BatchDownloadTest {
         assertEquals(BatchDownloadKind.Album, batchDownloadKindOf("something-else"))
     }
 
+    @Test
+    fun `settled batches leave the active list but failed ones stay for retry`() {
+        val batches = listOf(
+            batchWith(BatchDownloadState.Downloading, "a"),
+            batchWith(BatchDownloadState.Completed, "b"),
+            batchWith(BatchDownloadState.Failed, "c"),
+            batchWith(BatchDownloadState.Cancelled, "d"),
+            batchWith(BatchDownloadState.Queued, "e")
+        )
+
+        assertEquals(listOf("a", "c", "e"), visibleDownloadBatches(batches).map { it.key })
+    }
+
+    @Test
+    fun `a track already owned by an unsettled batch keeps its first membership`() {
+        assertTrue(
+            retainsExistingBatchMembership(
+                previousBatchKey = "album:first",
+                previousState = "RUNNING",
+                requestedBatchKey = "playlist:second"
+            )
+        )
+        assertTrue(
+            retainsExistingBatchMembership(
+                previousBatchKey = "album:first",
+                previousState = "FAILED",
+                requestedBatchKey = "playlist:second"
+            )
+        )
+    }
+
+    @Test
+    fun `a settled batch releases the track to a new batch`() {
+        assertFalse(
+            retainsExistingBatchMembership(
+                previousBatchKey = "album:first",
+                previousState = "SUCCEEDED",
+                requestedBatchKey = "playlist:second"
+            )
+        )
+        assertFalse(
+            retainsExistingBatchMembership(
+                previousBatchKey = "album:first",
+                previousState = "CANCELLED",
+                requestedBatchKey = "playlist:second"
+            )
+        )
+    }
+
+    @Test
+    fun `retrying the same batch is not treated as a competing membership`() {
+        assertFalse(
+            retainsExistingBatchMembership(
+                previousBatchKey = "album:first",
+                previousState = "FAILED",
+                requestedBatchKey = "album:first"
+            )
+        )
+    }
+
+    @Test
+    fun `a single track download does not clear an existing batch membership`() {
+        assertTrue(
+            retainsExistingBatchMembership(
+                previousBatchKey = "album:first",
+                previousState = "SUCCEEDED",
+                requestedBatchKey = ""
+            )
+        )
+        assertFalse(
+            retainsExistingBatchMembership(
+                previousBatchKey = "",
+                previousState = "QUEUED",
+                requestedBatchKey = ""
+            )
+        )
+    }
+
+    private fun batchWith(state: BatchDownloadState, key: String) = BatchDownload(
+        key = key,
+        kind = BatchDownloadKind.Album,
+        title = key,
+        artworkUrl = "",
+        total = 4,
+        completed = 1,
+        failed = 0,
+        active = 1,
+        progress = 25,
+        state = state
+    )
+
     private fun batch(total: Int, completed: Int, failed: Int, active: Int) = BatchDownload(
         key = "album:test",
         kind = BatchDownloadKind.Album,

@@ -64,6 +64,7 @@ import com.luc4n3x.levyra.data.mergeSearchAlbums
 import com.luc4n3x.levyra.data.mergeSearchArtists
 import com.luc4n3x.levyra.data.mergeSearchPlaylists
 import com.luc4n3x.levyra.data.mergeSearchSongs
+import com.luc4n3x.levyra.data.nextSearchContinuation
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.BatchDownload
@@ -4551,7 +4552,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         page: SearchSectionPage,
         requestedContinuation: String
     ) {
-        val nextContinuation = page.continuation.takeUnless { it == requestedContinuation }.orEmpty()
+        val nextContinuation = nextSearchContinuation(requestedContinuation, page.continuation)
         _state.update { state ->
             val data = state.searchData
             val merged = when (filter) {

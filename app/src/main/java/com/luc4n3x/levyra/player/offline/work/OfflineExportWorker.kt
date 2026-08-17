@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.retainsExistingBatchMembership
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -313,7 +314,6 @@ class OfflineExportWorker(
         private const val NOTIFICATION_ID_BASE = 4200
         private const val NOTIFICATION_ID_RANGE = 5000
         private const val COMPLETED_TASK_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
-        private val UNSETTLED_TASK_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING", "FAILED")
 
         suspend fun enqueue(
             context: Context,
@@ -341,10 +341,14 @@ class OfflineExportWorker(
             val track = TrackPayloadCodec.decode(trackPayload)
             val previous = dao.byKey(trackId)
             val retainedBatch = previous
-                ?.takeIf { it.batchKey.isNotBlank() && it.batchKey != batch?.key && it.state in UNSETTLED_TASK_STATES }
+                ?.takeIf {
+                    retainsExistingBatchMembership(
+                        previousBatchKey = it.batchKey,
+                        previousState = it.state,
+                        requestedBatchKey = batch?.key.orEmpty()
+                    )
+                }
                 ?.let { OfflineDownloadBatchRef(it.batchKey, it.batchTitle, it.batchKind, it.batchArtworkUrl, it.batchPosition) }
-                ?: previous?.takeIf { batch == null && it.batchKey.isNotBlank() }
-                    ?.let { OfflineDownloadBatchRef(it.batchKey, it.batchTitle, it.batchKind, it.batchArtworkUrl, it.batchPosition) }
             val now = System.currentTimeMillis()
             dao.prune(now - COMPLETED_TASK_RETENTION_MS)
             dao.upsert(

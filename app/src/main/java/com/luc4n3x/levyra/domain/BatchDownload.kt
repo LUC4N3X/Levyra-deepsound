@@ -64,6 +64,23 @@ fun batchDownloadState(
     return BatchDownloadState.Cancelled
 }
 
+fun visibleDownloadBatches(batches: List<BatchDownload>): List<BatchDownload> = batches.filterNot {
+    it.state == BatchDownloadState.Completed || it.state == BatchDownloadState.Cancelled
+}
+
+fun retainsExistingBatchMembership(
+    previousBatchKey: String,
+    previousState: String,
+    requestedBatchKey: String
+): Boolean {
+    if (previousBatchKey.isBlank()) return false
+    if (previousBatchKey == requestedBatchKey) return false
+    if (requestedBatchKey.isBlank()) return true
+    return previousState.uppercase(Locale.ROOT) in UNSETTLED_BATCH_CHILD_STATES
+}
+
+private val UNSETTLED_BATCH_CHILD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING", "FAILED")
+
 fun batchDownloadKey(kind: BatchDownloadKind, canonicalId: String, fallbackTitle: String): String {
     val identity = canonicalId.trim().lowercase(Locale.ROOT).ifBlank {
         fallbackTitle.trim().lowercase(Locale.ROOT).replace(Regex("[^\\p{L}\\p{N}]+"), "-").trim('-')

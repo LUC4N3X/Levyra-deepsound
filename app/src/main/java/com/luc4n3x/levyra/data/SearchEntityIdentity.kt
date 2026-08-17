@@ -48,6 +48,12 @@ internal fun searchPlaylistMetadataKey(playlist: PlaylistHit): String {
     return "playlist:$title|$author"
 }
 
+internal fun nextSearchContinuation(requested: String, returned: String): String {
+    val cleanReturned = returned.trim()
+    if (cleanReturned.isBlank()) return ""
+    return if (cleanReturned == requested.trim()) "" else cleanReturned
+}
+
 internal fun isMusicVideoResult(videoType: String): Boolean {
     val normalized = videoType.trim().uppercase(Locale.ROOT)
     if (normalized.isBlank()) return false

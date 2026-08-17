@@ -160,6 +160,24 @@ class SearchEntityIdentityTest {
     }
 
     @Test
+    fun `an echoed continuation token ends pagination instead of refetching page one`() {
+        assertEquals("", nextSearchContinuation(requested = "TOKEN_A", returned = "TOKEN_A"))
+        assertEquals("", nextSearchContinuation(requested = "TOKEN_A", returned = " TOKEN_A "))
+        assertEquals("TOKEN_B", nextSearchContinuation(requested = "TOKEN_A", returned = "TOKEN_B"))
+    }
+
+    @Test
+    fun `a missing continuation token ends pagination`() {
+        assertEquals("", nextSearchContinuation(requested = "TOKEN_A", returned = ""))
+        assertEquals("", nextSearchContinuation(requested = "", returned = "   "))
+    }
+
+    @Test
+    fun `the first page accepts the token it did not request`() {
+        assertEquals("TOKEN_A", nextSearchContinuation(requested = "", returned = "TOKEN_A"))
+    }
+
+    @Test
     fun `empty input stays empty`() {
         assertTrue(deduplicateSearchAlbums(emptyList()).isEmpty())
         assertTrue(deduplicateSearchArtists(emptyList()).isEmpty())
