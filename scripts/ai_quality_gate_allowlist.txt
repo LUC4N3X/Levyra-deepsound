@@ -1,2 +1,24 @@
 # Exact repository-relative binary or generated paths explicitly approved by
 # the owner may be listed here, one per line. Keep this empty by default.
+docs/assets/showcase/00_levyra_hero_showcase.webp
+docs/assets/showcase/01_playback_and_lyrics.webp
+docs/assets/showcase/02_home_and_charts.webp
+docs/assets/showcase/03_search_and_artist.webp
+docs/assets/showcase/04_library_and_pulse.webp
+docs/assets/showcase/05_video_and_samples.webp
+docs/assets/showcase/06_collections_and_genres.webp
+docs/assets/screenshots/artist_bio.webp
+docs/assets/screenshots/artist_discography.webp
+docs/assets/screenshots/explore_genres.webp
+docs/assets/screenshots/explore_samples.webp
+docs/assets/screenshots/home_collections.webp
+docs/assets/screenshots/home_orbit.webp
+docs/assets/screenshots/home_top50.webp
+docs/assets/screenshots/library_pulse.webp
+docs/assets/screenshots/library_quickpicks.webp
+docs/assets/screenshots/lyrics_synced.webp
+docs/assets/screenshots/player_nowplaying.webp
+docs/assets/screenshots/playlist_recent.webp
+docs/assets/screenshots/search_artist_avatars.webp
+docs/assets/screenshots/search_recent.webp
+docs/assets/screenshots/video_energy.webp
