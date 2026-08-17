@@ -1,0 +1,31 @@
+<svg width="100%" height="120" viewBox="0 0 1200 120" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="levyraWaveGrad1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4A00E0" stop-opacity="0.5" />
+      <stop offset="35%" stop-color="#6C5CE7" stop-opacity="0.6" />
+      <stop offset="70%" stop-color="#7F52FF" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#00D2FF" stop-opacity="0.4" />
+    </linearGradient>
+    <linearGradient id="levyraWaveGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C5CE7" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#7F52FF" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#9D72FF" stop-opacity="0.6" />
+    </linearGradient>
+    <linearGradient id="levyraWaveGrad3" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#7F52FF" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#6C5CE7" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#4A00E0" stop-opacity="0.9" />
+    </linearGradient>
+    <linearGradient id="levyraCrestGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00D2FF" stop-opacity="0.8" />
+      <stop offset="40%" stop-color="#9D72FF" stop-opacity="0.9" />
+      <stop offset="80%" stop-color="#7F52FF" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#00D2FF" stop-opacity="0.8" />
+    </linearGradient>
+  </defs>
+
+  <path d="M0,60 C150,20 350,110 550,50 C750,-10 950,90 1200,40 L1200,120 L0,120 Z" fill="url(#levyraWaveGrad1)" />
+  <path d="M0,75 C200,110 400,30 650,80 C900,130 1050,40 1200,65 L1200,120 L0,120 Z" fill="url(#levyraWaveGrad2)" />
+  <path d="M0,90 C180,45 380,105 600,60 C820,15 1020,85 1200,70 L1200,120 L0,120 Z" fill="url(#levyraWaveGrad3)" />
+  <path d="M0,90 C180,45 380,105 600,60 C820,15 1020,85 1200,70" stroke="url(#levyraCrestGlow)" stroke-width="1.5" fill="none" opacity="0.75" />
+</svg>
