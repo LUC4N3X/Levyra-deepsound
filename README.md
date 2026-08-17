@@ -156,76 +156,84 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 ---
 
-## ✦ System Architecture
+## ✦ System Architecture & Engine Design
 
-Levyra delivers two independent, specialized native clients engineered for maximum platform performance:
+Levyra is engineered as two decoupled, platform-optimized native clients sharing common extraction and localization foundations.
 
-* **Android Client** (`app/`): 100% Kotlin with Jetpack Compose & Material 3, orchestrated by a central ViewModel with AndroidX Media3 managing audio lifecycle.
-* **Windows Client** (`desktop/`): Kotlin/JVM desktop client built with Compose Multiplatform, libvlc audio output, and local JSON/file persistence in `%APPDATA%\Levyra`.
+<table>
+<tr>
+<td width="50%" valign="top">
 
-```text
-Android Specifications
-├── Package name     com.luc4n3x.levyra
-├── Target SDK       37 (Android 15)
-├── Min SDK          26 (Android 8.0 Oreo)
-├── Language         100% Kotlin
-├── UI Framework     Jetpack Compose + Material 3
-└── Audio Engine     AndroidX Media3 / ExoPlayer
-```
+### 📱 Android Native Client (`app/`)
+* **Core Language**: 100% Kotlin 2.4 (Target SDK 37 · Min SDK 26)
+* **UI & Design**: Jetpack Compose · Material 3
+* **Audio Engine**: AndroidX Media3 / ExoPlayer Foreground Service
+* **State Management**: Central ViewModel · Unidirectional Data Flow (UDF)
+* **Local Vault**: Room SQLite · Jetpack DataStore Preferences
+* **Background Jobs**: WorkManager M4A Tagged Audio Exporter
+
+</td>
+<td width="50%" valign="top">
+
+### 💻 Windows Desktop Client (`desktop/`)
+* **Core Runtime**: Kotlin / JVM (JDK 21 LTS)
+* **UI Framework**: Compose Multiplatform
+* **Audio Engine**: libvlc with hardware acceleration & tray controls
+* **Stream Pipeline**: Shared InnerTube & LevyraExtractor
+* **Private Storage**: `%APPDATA%\Levyra` (Zero telemetry)
+* **Packaging**: MSI & Standalone Executable (WiX Toolset)
+
+</td>
+</tr>
+</table>
+
+### ✦ Reactive Audio & Data Flow
 
 ```mermaid
-graph TD
-    UI["Jetpack Compose UI"] --> VM["LevyraViewModel"]
+flowchart LR
+    subgraph UI_Layer ["🎨 Presentation Layer"]
+        UI["Jetpack Compose UI"]
+        VM["LevyraViewModel (UDF State)"]
+        UI <--> VM
+    end
 
-    VM --> Player["LevyraPlayer Controller"]
-    VM --> Resolver["PlaybackResolver"]
-    VM --> Repos["Data Repositories"]
-    VM --> Store["Room / DataStore Storage"]
-    VM --> Work["WorkManager Downloads"]
+    subgraph Audio_Core ["🎧 Audio & Playback Core"]
+        Player["LevyraPlayer Controller"]
+        Media3["AndroidX Media3 Service"]
+        Resolver["PlaybackResolver"]
+        VM --> Player --> Media3
+        VM --> Resolver
+    end
 
-    Player --> Media3["AndroidX Media3 Service"]
+    subgraph Data_Pipeline ["⚡ Stream & Data Pipeline"]
+        InnerTube["YouTube InnerTube"]
+        Extractor["LevyraExtractor Engine"]
+        LRCLIB["LRCLIB Synced Lyrics"]
+        Resolver --> InnerTube
+        Resolver --> Extractor
+        Resolver --> LRCLIB
+    end
 
-    Resolver --> InnerTube["YouTube InnerTube API"]
-    Resolver --> Extractor["LevyraExtractor"]
-
-    Work --> Exporter["OfflineAudioExporter"]
-    Exporter --> MediaStore["Android MediaStore"]
-    Exporter --> Tagger["Kotlin M4A Tag Writer"]
+    subgraph Offline_Vault ["💾 Private Local Vault"]
+        Room["Room SQLite (Stats & Queue)"]
+        Exporter["WorkManager M4A Exporter"]
+        MediaStore["Android MediaStore / Music"]
+        VM --> Room
+        VM --> Exporter --> MediaStore
+    end
 ```
 
-| Layer | Responsibility | Directory |
+### ✦ Architecture Component Layers
+
+| Layer | Responsibility | Path |
 |:---|:---|:---|
-| **UI** | Compose screens, bottom sheets, mini player, and fluid gestures | [`app/src/main/java/com/luc4n3x/levyra/ui`](app/src/main/java/com/luc4n3x/levyra/ui) |
-| **State** | Central ViewModel coordinating unidirectional immutable UI state | [`app/src/main/java/com/luc4n3x/levyra/viewmodel`](app/src/main/java/com/luc4n3x/levyra/viewmodel) |
-| **Domain** | Data models, audio contracts, and playback state representations | [`app/src/main/java/com/luc4n3x/levyra/domain`](app/src/main/java/com/luc4n3x/levyra/domain) |
-| **Data & Net** | InnerTube clients, LRCLIB lyrics parsers, and metadata providers | [`app/src/main/java/com/luc4n3x/levyra/data`](app/src/main/java/com/luc4n3x/levyra/data) |
-| **Audio** | Media3 foreground service, audio focus, and queue prefetching | [`app/src/main/java/com/luc4n3x/levyra/player`](app/src/main/java/com/luc4n3x/levyra/player) |
-| **Offline** | WorkManager export workers, M4A tagging, and MediaStore indexing | [`app/src/main/java/com/luc4n3x/levyra/player/offline`](app/src/main/java/com/luc4n3x/levyra/player/offline) |
-| **Storage** | Room SQLite entities, DAOs, listening history, and preferences | [`app/src/main/java/com/luc4n3x/levyra/data/local`](app/src/main/java/com/luc4n3x/levyra/data/local) |
-
----
-
-## ✦ Technical Stack
-
-```yaml
-Android Client:
-  Language: Kotlin 2.4.10
-  UI: Jetpack Compose (Material 3)
-  Architecture: Unidirectional Data Flow (MVI)
-  Audio Engine: AndroidX Media3 / ExoPlayer
-  Networking: OkHttp 5 with Brotli compression
-  Image Loading: Coil 3
-  Local Database: Room (SQLite) + DataStore Preferences
-  Background Jobs: AndroidX WorkManager
-  Build System: Gradle 9.7.0 Kotlin DSL + KSP
-
-Windows Desktop:
-  Language: Kotlin / JVM (JDK 21)
-  UI: Compose Multiplatform
-  Audio Engine: libvlc (VLC 3.0.x)
-  Storage: "%APPDATA%/Levyra"
-  Packaging: jpackage + WiX Toolset 3.14
-```
+| **`ui/`** | Fluid Compose screens, bottom sheets, mini-player gesture canvas, and dynamic theme tokens | [`app/src/main/java/com/luc4n3x/levyra/ui`](app/src/main/java/com/luc4n3x/levyra/ui) |
+| **`viewmodel/`** | Central orchestrator coordinating unidirectional immutable UI state and playback commands | [`app/src/main/java/com/luc4n3x/levyra/viewmodel`](app/src/main/java/com/luc4n3x/levyra/viewmodel) |
+| **`domain/`** | Pure Kotlin domain models, playback contracts, and audio entity definitions | [`app/src/main/java/com/luc4n3x/levyra/domain`](app/src/main/java/com/luc4n3x/levyra/domain) |
+| **`player/`** | AndroidX Media3 foreground audio service, audio focus, low-latency queues, and prefetch buffer | [`app/src/main/java/com/luc4n3x/levyra/player`](app/src/main/java/com/luc4n3x/levyra/player) |
+| **`player/offline/`** | Resilient background export workers, atomic M4A container tagging, and MediaStore registration | [`app/src/main/java/com/luc4n3x/levyra/player/offline`](app/src/main/java/com/luc4n3x/levyra/player/offline) |
+| **`data/`** | Dual stream resolver, LRCLIB synchronized lyrics client, and metadata endpoints | [`app/src/main/java/com/luc4n3x/levyra/data`](app/src/main/java/com/luc4n3x/levyra/data) |
+| **`data/local/`** | 100% private Room SQLite DAOs, listening streaks, favorites, and DataStore preferences | [`app/src/main/java/com/luc4n3x/levyra/data/local`](app/src/main/java/com/luc4n3x/levyra/data/local) |
 
 ---
 
