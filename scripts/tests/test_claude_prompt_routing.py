@@ -5,6 +5,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from scripts.ai_quality_gate import find_bash
+
 ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / ".claude" / "hooks" / "user-prompt-submit.sh"
 

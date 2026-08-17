@@ -11,41 +11,95 @@
       <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
     </linearGradient>
     <linearGradient id="fd-accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#8AB000"/>
-      <stop offset="55%" stop-color="#64B5F6"/>
-      <stop offset="100%" stop-color="#1976D2"/>
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="fd-btn-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0284C7"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
     </linearGradient>
     <radialGradient id="fd-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#64B5F6" stop-opacity="0.42"/>
-      <stop offset="100%" stop-color="#64B5F6" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#0284C7" stop-opacity="0.48"/>
+      <stop offset="70%" stop-color="#0284C7" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#0284C7" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="fd-robot-head" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="40%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="fd-robot-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="60%" stop-color="#1D4ED8"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+    <linearGradient id="fd-screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A1120"/>
+      <stop offset="100%" stop-color="#0F1A2E"/>
+    </linearGradient>
   </defs>
 
+  <!-- Base Card -->
   <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#fd-bg)" stroke="url(#fd-border)" stroke-width="1.5"/>
   <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <!-- Left Accent Pillar -->
   <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#fd-accent)"/>
 
+  <!-- Left Icon Container -->
   <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
-  <circle cx="86" cy="77" r="43" fill="url(#fd-glow)"/>
+  <circle cx="86" cy="77" r="44" fill="url(#fd-glow)"/>
 
-  <g transform="translate(54 45)" fill="none" stroke="url(#fd-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 21h40v31a9 9 0 0 1-9 9H21a9 9 0 0 1-9-9V21Z"/>
-    <path d="m18 17-8-10M46 17 54 7M15 21c2-8 8-12 17-12s15 4 17 12"/>
-    <circle cx="24" cy="35" r="2.5" fill="#8AB000" stroke="none"/>
-    <circle cx="40" cy="35" r="2.5" fill="#64B5F6" stroke="none"/>
-    <path d="M23 47h18"/>
+  <!-- Official F-Droid Robot Vector Emblem -->
+  <g transform="translate(86 77) scale(0.92) translate(-86 -77)">
+    <!-- Antennae -->
+    <path d="M72 49 L62 36" stroke="#60A5FA" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="60" cy="33.5" r="3.2" fill="#93C5FD"/>
+
+    <path d="M100 49 L110 36" stroke="#60A5FA" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="112" cy="33.5" r="3.2" fill="#93C5FD"/>
+
+    <!-- Upper Head Shell -->
+    <path d="M63 60 C63 50 71 44 86 44 C101 44 109 50 109 60 L109 64 L63 64 Z" fill="url(#fd-robot-head)"/>
+    <!-- Specular highlight on top head -->
+    <path d="M66 58 C68 50 75 46 86 46 C97 46 104 50 106 58" stroke="#BFDBFE" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.65"/>
+
+    <!-- Central Screen Inset (Dark OLED Display) -->
+    <rect x="65" y="65" width="42" height="23" rx="4" fill="url(#fd-screen)" stroke="#1E293B" stroke-width="1"/>
+
+    <!-- Glowing Robot Eyes -->
+    <circle cx="76" cy="76" r="3.2" fill="#38BDF8"/>
+    <circle cx="76" cy="76" r="1.5" fill="#FFFFFF"/>
+    <circle cx="76" cy="76" r="5" fill="#38BDF8" opacity="0.3"/>
+
+    <circle cx="96" cy="76" r="3.2" fill="#38BDF8"/>
+    <circle cx="96" cy="76" r="1.5" fill="#FFFFFF"/>
+    <circle cx="96" cy="76" r="5" fill="#38BDF8" opacity="0.3"/>
+
+    <!-- Lower Body Shell -->
+    <path d="M63 90 L109 90 L109 97 C109 107 101 113 86 113 C71 113 63 107 63 97 Z" fill="url(#fd-robot-body)"/>
+    <path d="M74 105 C78 108 82 109 86 109 C90 109 94 108 98 105" stroke="#60A5FA" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+
+    <!-- Outer Edge Glow Outline -->
+    <path d="M63 60 C63 50 71 44 86 44 C101 44 109 50 109 60 L109 97 C109 107 101 113 86 113 C71 113 63 107 63 97 Z" fill="none" stroke="#60A5FA" stroke-width="1.2" stroke-opacity="0.4"/>
   </g>
 
+  <!-- Eyebrow Tag -->
   <g transform="translate(156 30)">
-    <rect width="222" height="22" rx="6" fill="#64B5F6" fill-opacity="0.11" stroke="#64B5F6" stroke-opacity="0.26"/>
-    <circle cx="10" cy="11" r="3" fill="#8AB000"/>
-    <text x="20" y="15" fill="#93C5FD" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.15">F-DROID · OPEN SOURCE REPOSITORY</text>
+    <rect width="216" height="22" rx="6" fill="#0284C7" fill-opacity="0.14" stroke="#38BDF8" stroke-opacity="0.28"/>
+    <circle cx="10" cy="11" r="3" fill="#38BDF8"/>
+    <text x="20" y="15" fill="#7DD3FC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.2">F-DROID · OFFICIAL REPOSITORY</text>
   </g>
 
+  <!-- Title -->
   <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Get Levyra on F-Droid</text>
+
+  <!-- Subtitle / Meta -->
   <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">FOSS repository · Reproducible build · Automatic updates</text>
 
-  <g transform="translate(156 118)" fill="#64B5F6" fill-opacity="0.45">
+  <!-- Musical Equalizer Spectrum -->
+  <g transform="translate(156 118)" fill="#38BDF8" fill-opacity="0.45">
     <rect x="0" y="7" width="4" height="9" rx="2"/>
     <rect x="8" y="2" width="4" height="14" rx="2"/>
     <rect x="16" y="5" width="4" height="11" rx="2"/>
@@ -55,10 +109,11 @@
     <rect x="48" y="9" width="4" height="7" rx="2"/>
   </g>
 
+  <!-- Right CTA Button (Pro Studio Style) -->
   <g transform="translate(548 50)">
-    <rect width="176" height="54" rx="16" fill="url(#fd-accent)"/>
-    <rect width="176" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.24"/>
-    <text x="68" y="34" text-anchor="middle" fill="#06121C" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="900" letter-spacing="0.15">Open F-Droid</text>
-    <path d="M146 27h-16M140 21l6 6-6 6" fill="none" stroke="#06121C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect width="176" height="54" rx="16" fill="url(#fd-btn-grad)"/>
+    <rect width="176" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.25"/>
+    <text x="58" y="34" text-anchor="middle" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14.5" font-weight="800" letter-spacing="0.2">Open F-Droid</text>
+    <path d="M142 27h-16M136 21l6 6-6 6" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
