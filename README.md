@@ -194,24 +194,31 @@ Levyra is built from the ground up as a native, modular audio suite for Android 
 
 ## ✦ Building from Source
 
-### Android Build
-Prerequisites: **JDK 17**, **Android SDK Platform 37**, and Gradle 9.7.0.
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 📱 Android Build
+**Prerequisites**: JDK 17, Android SDK 37, Gradle 9.7.0.
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/LUC4N3X/Levyra-deepsound.git
 cd Levyra-deepsound
 
-# Build and install debug APK to a connected device
+# Install debug APK to connected device
 ./gradlew installDebug
 
-# Compile optimized release APK
+# Assemble release APK
 ./gradlew clean assembleRelease
 ```
-*Compiled APK output:* `app/build/outputs/apk/release/app-release.apk`
+<sub>Output: `app/build/outputs/apk/release/app-release.apk`</sub>
 
-### Windows Desktop Build
-Prerequisites: **JDK 21 LTS**, Windows x64, **VLC 3.0.x / libvlc**, and **WiX Toolset 3.14**.
+</td>
+<td width="50%" valign="top">
+
+### 💻 Windows Desktop Build
+**Prerequisites**: JDK 21 LTS, VLC 3.0.x / libvlc, WiX Toolset 3.14.
 
 ```powershell
 cd desktop
@@ -219,16 +226,22 @@ cd desktop
 .\gradlew.bat createReleaseDistributable
 .\gradlew.bat packageReleaseMsi packageReleaseExe
 ```
-*Distribution output:* `desktop/app/build/compose/binaries/main-release/`
+<sub>Output: `desktop/app/build/compose/binaries/main-release/`</sub>
 
-### F-Droid Reproducible Build
+</td>
+</tr>
+</table>
+
+<details>
+<summary><b>✦ F-Droid Reproducible Build & Versioning Contract</b></summary>
+<br>
+
+**F-Droid Reproducible Verification:**
 ```bash
 ./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
 ```
 
-### Versioning
-Android and Windows release cycles are independent:
-
+**Version Wiring Contract:**
 ```properties
 # Android: gradle.properties
 levyraVersionName=2.3.20
@@ -237,81 +250,92 @@ levyraVersionCode=2032000
 # Windows: desktop/version.properties
 levyraDesktopVersion=1.2.0
 ```
+<sub>Version code formula: <code>major * 1_000_000 + minor * 10_000 + patch * 100 + build</code>.</sub>
 
-Version codes follow `major * 1_000_000 + minor * 10_000 + patch * 100 + build` (build range: 0 to 99).
+</details>
 
 ---
 
 ## ✦ Privacy Blueprint & Permissions
 
-Levyra is built on zero-tracking principles. It contains no analytics frameworks, advertising SDKs, or background telemetry.
+Levyra is built on strict zero-tracking principles: no advertising identifiers, no user profiling, and no background telemetry.
 
-### External Network Endpoints
+<table>
+<tr>
+<td width="50%" valign="top">
 
-| Service | Purpose | Data Transmitted |
-|:---|:---|:---|
-| **YouTube & YT Music** | Audio / video streaming and catalog search | Track queries and stream token verification |
-| **LRCLIB** | Synchronized line-by-line karaoke lyrics | Track title and artist name |
-| **Metadata Providers** | High-resolution album artwork (Deezer, Apple Music, Tidal) | Search query strings |
-| **SponsorBlock** | Non-music segment skipping (optional) | Video ID hash prefix |
-| **GitHub Releases** | Update availability check on launch (disabled in F-Droid) | None |
+### 🌐 Network Transparency
+* **Stream Endpoints**: Direct connections to YouTube / YT Music CDN servers without proxy tracking.
+* **Synchronized Lyrics**: Secure queries to LRCLIB and YouTube Music with title and artist.
+* **Artwork & Metadata**: Public catalog queries across Deezer, Apple Music, and Tidal.
+* **SponsorBlock**: Optional query with truncated video ID hash prefixes.
+* **Update Verification**: Startup release checks on GitHub (disabled in F-Droid).
 
-### Android Permissions
+</td>
+<td width="50%" valign="top">
 
-| Permission | Mechanical Purpose |
-|:---|:---|
-| `INTERNET` & `ACCESS_NETWORK_STATE` | Streaming audio and fetching metadata |
-| `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Continuous background playback with notification controls |
-| `POST_NOTIFICATIONS` | Media playback controls and download progress updates |
-| `WAKE_LOCK` | Preventing CPU sleep during active audio playback |
-| `WRITE_EXTERNAL_STORAGE` (Android <= 9) | Saving exported M4A files to the public `Music/Levyra` directory |
+### 🛡️ Android Permissions
+* `INTERNET` & `ACCESS_NETWORK_STATE`: Stream audio and resolve album metadata.
+* `FOREGROUND_SERVICE_MEDIA_PLAYBACK`: Continuous background playback with notification controls.
+* `POST_NOTIFICATIONS`: Playback controls on lockscreen and download updates.
+* `WAKE_LOCK`: Prevents CPU sleep while playing audio with the screen off.
+* `WRITE_EXTERNAL_STORAGE` (Android ≤ 9): Exporting tagged M4A files to `Music/Levyra`.
+
+</td>
+</tr>
+</table>
 
 ---
 
 ## ✦ Contributing
 
-Contributions, bug fixes, and improvements are welcome:
+Contributions, optimizations, and translations are warmly welcomed:
 
-1. **Fork the repository** on GitHub.
-2. **Create a focused topic branch**:
-   ```bash
-   git checkout -b feature/playback-enhancement
-   ```
-3. **Commit changes** using clear commit messages:
-   ```bash
-   git commit -m "feat(player): optimize volume normalization curves"
-   ```
-4. **Run the quality gate**:
-   ```bash
-   python scripts/ai_quality_gate.py --profile fast
-   ```
-5. **Open a Pull Request** describing your changes and verification steps.
+<table>
+<tr>
+<td width="25%" align="center">
+<strong>🌿 1. Branch</strong><br>
+<sub><code>git checkout -b feature/audio-tuner</code></sub>
+</td>
+<td width="25%" align="center">
+<strong>⚡ 2. Develop</strong><br>
+<sub>Clean code & unidirectional data flow</sub>
+</td>
+<td width="25%" align="center">
+<strong>🧪 3. Quality Gate</strong><br>
+<sub><code>python scripts/ai_quality_gate.py --profile fast</code></sub>
+</td>
+<td width="25%" align="center">
+<strong>🚀 4. Pull Request</strong><br>
+<sub>Open PR with test verification</sub>
+</td>
+</tr>
+</table>
 
 ---
 
 ## ✦ Author & Acknowledgments
 
-<table align="center">
-  <tr>
-    <td align="center" width="110">
-      <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=160&w=160&fit=cover&mask=circle" width="75" alt="LUC4N3X" />
-      </a>
-    </td>
-    <td>
-      <strong>LUC4N3X</strong><br>
-      Creator & Lead Developer<br>
-      <sub>Audio engine architecture, stream extraction, Compose UI design, and offline pipelines.</sub><br>
-      <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub"></a>
-    </td>
-  </tr>
+<table>
+<tr>
+<td width="120" align="center">
+  <a href="https://github.com/LUC4N3X">
+    <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=160&w=160&fit=cover&mask=circle" width="80" alt="LUC4N3X" />
+  </a>
+</td>
+<td>
+  <strong>LUC4N3X</strong> — <em>Creator & Lead Developer</em><br>
+  <sub>Audio engine architecture, stream extraction pipeline, Jetpack Compose UI, and offline vault.</sub><br><br>
+  <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub"></a>
+</td>
+</tr>
 </table>
 
 ### Open Source Foundations
-* [**Metrolist**](https://github.com/MetrolistGroup/Metrolist): Inspiration for Compose UI architecture and design aesthetics.
-* [**LevyraExtractor**](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor): Custom stream extraction engine maintained for Levyra.
-* [**PipePipeExtractor**](https://github.com/InfinityLoop1308/PipePipeExtractor): Extractor foundations from the NewPipe and PipePipe open-source communities.
-* [**LRCLIB**](https://lrclib.net/): Synchronized lyric database powering real-time karaoke sync.
+* 💎 [**Metrolist**](https://github.com/MetrolistGroup/Metrolist) — Design inspiration for Compose UI architecture and theming.
+* ⚡ [**LevyraExtractor**](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor) — Custom stream extraction engine maintained for Levyra.
+* 🧬 [**PipePipeExtractor**](https://github.com/InfinityLoop1308/PipePipeExtractor) — Extractor foundation from the NewPipe and PipePipe open-source communities.
+* 🎙️ [**LRCLIB**](https://lrclib.net/) — Open synchronized lyric database powering real-time karaoke sync.
 
 ---
 
@@ -326,5 +350,5 @@ This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**
 This project is not affiliated with, sponsored by, or endorsed by Google LLC, YouTube, or Alphabet Inc.
 
 <div align="center">
-  <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub.</sub>
+  <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
 </div>
