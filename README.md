@@ -340,3 +340,5 @@ We welcome community contributions, bug fixes, localization, and performance enh
 <div align="center">
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
 </div>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&color=0:4A00E0,35:6C5CE7,70:7F52FF,100:00D2FF" width="100%" alt="Levyra Acoustic Waves" />
