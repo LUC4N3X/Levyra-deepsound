@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +77,8 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraGlass
+import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
@@ -85,56 +88,48 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 
 @Composable
-internal fun LibraryStorageCard(
+internal fun LibraryOfflineSummary(
     bytes: Long,
-    count: Int,
-    activeCount: Int,
-    onOpenFolder: () -> Unit
+    activeCount: Int
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = LevyraPanel.copy(alpha = 0.92f),
-        shape = RoundedCornerShape(26.dp),
-        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.18f)),
+        color = LevyraGlass,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, LevyraGlassBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = LevyraCyan.copy(alpha = 0.15f), shape = CircleShape) {
-                    Icon(
-                        Icons.Rounded.Storage,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.padding(10.dp).size(24.dp)
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        strings.offlineDownloadsPlain,
-                        color = LevyraText,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        listOf(
-                            strings.formatLibraryBytes(bytes),
-                            strings.formatDownloadedTrackCount(count),
-                            activeCount.takeIf { it > 0 }?.let { "$it ${strings.activeIndicator}" }.orEmpty()
-                        ).filter(String::isNotBlank).joinToString(" · "),
-                        color = LevyraMuted,
-                        fontSize = 12.sp
-                    )
-                }
-                TextButton(onClick = onOpenFolder) {
-                    Text(strings.downloadsFolder, color = LevyraCyan, fontWeight = FontWeight.Bold)
-                }
-            }
-            Text(
-                strings.downloadTrackHint,
-                color = LevyraMuted,
-                fontSize = 11.sp
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.Storage,
+                contentDescription = null,
+                tint = LevyraCyan,
+                modifier = Modifier.size(20.dp)
             )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    strings.offlineDownloadsPlain,
+                    color = LevyraText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    listOf(
+                        strings.formatLibraryBytes(bytes),
+                        activeCount.takeIf { it > 0 }?.let { "$it ${strings.activeIndicator}" }.orEmpty()
+                    ).filter(String::isNotBlank).joinToString(" · "),
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -343,14 +338,40 @@ private fun LibrarySelectionAction(
 }
 
 @Composable
-internal fun LibraryEmpty(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
+internal fun LibraryEmpty(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    detail: String? = null
+) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 42.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(42.dp))
-        Text(title, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Surface(color = LevyraGlass, shape = CircleShape) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = LevyraMuted,
+                modifier = Modifier.padding(16.dp).size(26.dp)
+            )
+        }
+        Text(
+            title,
+            color = LevyraText,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        if (!detail.isNullOrBlank()) {
+            Text(
+                detail,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
