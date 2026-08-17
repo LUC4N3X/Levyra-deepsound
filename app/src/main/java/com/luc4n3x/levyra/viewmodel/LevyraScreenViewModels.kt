@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartRegion
@@ -824,7 +825,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     interfaceSettings = state.interfaceSettings
 )
 
-private data class SearchProjection(
+internal data class SearchProjection(
     val currentTrack: Track?,
     val downloadProgressByTrackId: Map<String, Int>,
     val downloadedTrackIds: Set<String>,
@@ -844,10 +845,12 @@ private data class SearchProjection(
     val searchError: String?,
     val searchFilter: SearchFilter,
     val searchResults: List<Track>,
+    val searchSectionContinuations: Map<SearchFilter, String>,
+    val searchSectionLoading: Set<SearchFilter>,
     val searchSuggestions: List<String>
 )
 
-private fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
+internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
     currentTrack = state.currentTrack,
     downloadProgressByTrackId = state.downloadProgressByTrackId,
     downloadedTrackIds = state.downloadedTrackIds,
@@ -867,6 +870,8 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
     searchError = state.searchError,
     searchFilter = state.searchFilter,
     searchResults = state.searchResults,
+    searchSectionContinuations = state.searchSectionContinuations,
+    searchSectionLoading = state.searchSectionLoading,
     searchSuggestions = state.searchSuggestions
 )
 
@@ -914,12 +919,13 @@ internal fun exploreProjection(state: LevyraUiState): ExploreProjection = Explor
     playlists = state.playlists
 )
 
-private data class LibraryProjection(
+internal data class LibraryProjection(
     val currentTrack: Track?,
     val downloadProgressByTrackId: Map<String, Int>,
     val downloadedTrackIds: Set<String>,
     val downloadingTrackIds: Set<String>,
     val downloadQueue: List<OfflineDownloadTask>,
+    val downloadBatches: List<BatchDownload>,
     val downloadStorageBytes: Long,
     val downloads: List<DownloadedTrack>,
     val favoriteIds: Set<String>,
@@ -933,12 +939,13 @@ private data class LibraryProjection(
     val recentListens: List<Track>
 )
 
-private fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
+internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
     currentTrack = state.currentTrack,
     downloadProgressByTrackId = state.downloadProgressByTrackId,
     downloadedTrackIds = state.downloadedTrackIds,
     downloadingTrackIds = state.downloadingTrackIds,
     downloadQueue = state.downloadQueue,
+    downloadBatches = state.downloadBatches,
     downloadStorageBytes = state.downloadStorageBytes,
     downloads = state.downloads,
     favoriteIds = state.favoriteIds,
