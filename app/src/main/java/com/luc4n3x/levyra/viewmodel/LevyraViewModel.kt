@@ -3801,22 +3801,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun retryBatchDownload(batchKey: String) {
         if (batchKey.isBlank()) return
         viewModelScope.launch {
-            val failed = withContext(Dispatchers.IO) {
-                offlineDownloadTasksDao.batchTasks(batchKey).filter { it.state == "FAILED" }
-            }
-            failed.forEach { task ->
-                OfflineExportWorker.enqueue(
-                    context = getApplication<Application>().applicationContext,
-                    trackId = task.taskKey,
-                    trackPayload = task.payload,
-                    batch = OfflineDownloadBatchRef(
-                        key = task.batchKey,
-                        title = task.batchTitle,
-                        kind = task.batchKind,
-                        artworkUrl = task.batchArtworkUrl,
-                        position = task.batchPosition
-                    )
-                )
+            val appContext = getApplication<Application>().applicationContext
+            withContext(Dispatchers.IO) {
+                offlineDownloadTasksDao.batchTasks(batchKey)
+                    .filter { it.state == "FAILED" }
+                    .forEach { task ->
+                        OfflineExportWorker.enqueue(
+                            context = appContext,
+                            trackId = task.taskKey,
+                            trackPayload = task.payload,
+                            batch = OfflineDownloadBatchRef(
+                                key = task.batchKey,
+                                title = task.batchTitle,
+                                kind = task.batchKind,
+                                artworkUrl = task.batchArtworkUrl,
+                                position = task.batchPosition
+                            )
+                        )
+                    }
             }
         }
     }
@@ -3825,12 +3827,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (batchKey.isBlank()) return
         viewModelScope.launch {
             val appContext = getApplication<Application>().applicationContext
-            val tasks = withContext(Dispatchers.IO) { offlineDownloadTasksDao.batchTasks(batchKey) }
-            tasks.filter { it.state in ACTIVE_DOWNLOAD_STATES }.forEach { task ->
-                runCatchingPreservingCancellation { OfflineExportWorker.cancel(appContext, task.taskKey) }
-                    .onFailure { Timber.w(it, "batch child cancel failed") }
+            withContext(Dispatchers.IO) {
+                offlineDownloadTasksDao.batchTasks(batchKey)
+                    .filter { it.state in ACTIVE_DOWNLOAD_STATES }
+                    .forEach { task ->
+                        runCatchingPreservingCancellation { OfflineExportWorker.cancel(appContext, task.taskKey) }
+                            .onFailure { Timber.w(it, "batch child cancel failed") }
+                    }
+                offlineDownloadTasksDao.deleteBatch(batchKey)
             }
-            withContext(Dispatchers.IO) { offlineDownloadTasksDao.deleteBatch(batchKey) }
         }
     }
 
@@ -4502,7 +4507,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val outcome = runCatching { fetchSearchSection(filter, query, continuation) }
                 if (generation != searchGeneration.get()) return@launch
-                outcome.onSuccess { page -> publishSearchSection(filter, page) }
+                outcome.onSuccess { page -> publishSearchSection(filter, page, continuation) }
                     .onFailure { error ->
                         if (error is CancellationException) throw error
                         Timber.w(error, "search section load failed filter=%s", filter)
@@ -4541,7 +4546,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun publishSearchSection(filter: SearchFilter, page: SearchSectionPage) {
+    private fun publishSearchSection(
+        filter: SearchFilter,
+        page: SearchSectionPage,
+        requestedContinuation: String
+    ) {
+        val nextContinuation = page.continuation.takeUnless { it == requestedContinuation }.orEmpty()
         _state.update { state ->
             val data = state.searchData
             val merged = when (filter) {
@@ -4560,7 +4570,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     state.tracks
                 },
-                searchSectionContinuations = state.searchSectionContinuations + (filter to page.continuation)
+                searchSectionContinuations = state.searchSectionContinuations + (filter to nextContinuation)
             )
         }
     }

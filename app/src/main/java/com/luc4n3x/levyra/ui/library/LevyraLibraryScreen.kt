@@ -58,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.BatchDownloadState
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -530,8 +531,11 @@ internal fun LevyraLibraryScreen(
                             onOpenFolder = onOpenDownloads
                         )
                     }
-                    if (state.downloadBatches.isNotEmpty()) {
-                        items(state.downloadBatches, key = { "batch-${it.key}" }) { batch ->
+                    val activeBatches = state.downloadBatches.filterNot {
+                        it.state == BatchDownloadState.Completed || it.state == BatchDownloadState.Cancelled
+                    }
+                    if (activeBatches.isNotEmpty()) {
+                        items(activeBatches, key = { "batch-${it.key}" }) { batch ->
                             LibraryBatchDownloadRow(
                                 batch = batch,
                                 onRetry = { viewModel.retryBatchDownload(batch.key) },

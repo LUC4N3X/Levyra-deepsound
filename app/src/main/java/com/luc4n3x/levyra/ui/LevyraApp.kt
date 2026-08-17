@@ -17282,7 +17282,7 @@ private fun PlaylistHitRow(
                         modifier = Modifier.align(Alignment.BottomEnd)
                     ) {
                         Icon(
-                            Icons.Rounded.DownloadDone,
+                            Icons.Rounded.Download,
                             contentDescription = LocalLevyraStrings.current.downloadPlaylist,
                             tint = LevyraViolet,
                             modifier = Modifier.size(22.dp)
@@ -17324,7 +17324,7 @@ private fun SearchSectionFooter(
             contentAlignment = Alignment.Center
         ) {
             TextButton(onClick = onLoadMore) {
-                Text(strings.showAll, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(strings.more, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -17390,7 +17390,7 @@ private fun AlbumHitRow(
                             modifier = Modifier.align(Alignment.BottomEnd)
                         ) {
                             Icon(
-                                Icons.Rounded.DownloadDone,
+                                Icons.Rounded.Download,
                                 contentDescription = LocalLevyraStrings.current.download,
                                 tint = LevyraViolet,
                                 modifier = Modifier.size(22.dp)

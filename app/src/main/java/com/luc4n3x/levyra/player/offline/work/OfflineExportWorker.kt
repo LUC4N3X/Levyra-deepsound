@@ -313,6 +313,7 @@ class OfflineExportWorker(
         private const val NOTIFICATION_ID_BASE = 4200
         private const val NOTIFICATION_ID_RANGE = 5000
         private const val COMPLETED_TASK_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
+        private val UNSETTLED_TASK_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING", "FAILED")
 
         suspend fun enqueue(
             context: Context,
@@ -339,6 +340,11 @@ class OfflineExportWorker(
             val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
             val track = TrackPayloadCodec.decode(trackPayload)
             val previous = dao.byKey(trackId)
+            val retainedBatch = previous
+                ?.takeIf { it.batchKey.isNotBlank() && it.batchKey != batch?.key && it.state in UNSETTLED_TASK_STATES }
+                ?.let { OfflineDownloadBatchRef(it.batchKey, it.batchTitle, it.batchKind, it.batchArtworkUrl, it.batchPosition) }
+                ?: previous?.takeIf { batch == null && it.batchKey.isNotBlank() }
+                    ?.let { OfflineDownloadBatchRef(it.batchKey, it.batchTitle, it.batchKind, it.batchArtworkUrl, it.batchPosition) }
             val now = System.currentTimeMillis()
             dao.prune(now - COMPLETED_TASK_RETENTION_MS)
             dao.upsert(
@@ -354,11 +360,11 @@ class OfflineExportWorker(
                     error = "",
                     createdAt = previous?.createdAt ?: now,
                     updatedAt = now,
-                    batchKey = batch?.key ?: previous?.batchKey.orEmpty(),
-                    batchTitle = batch?.title ?: previous?.batchTitle.orEmpty(),
-                    batchKind = batch?.kind ?: previous?.batchKind.orEmpty(),
-                    batchArtworkUrl = batch?.artworkUrl ?: previous?.batchArtworkUrl.orEmpty(),
-                    batchPosition = batch?.position ?: previous?.batchPosition ?: 0
+                    batchKey = retainedBatch?.key ?: batch?.key.orEmpty(),
+                    batchTitle = retainedBatch?.title ?: batch?.title.orEmpty(),
+                    batchKind = retainedBatch?.kind ?: batch?.kind.orEmpty(),
+                    batchArtworkUrl = retainedBatch?.artworkUrl ?: batch?.artworkUrl.orEmpty(),
+                    batchPosition = retainedBatch?.position ?: batch?.position ?: 0
                 )
             )
             workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, request)

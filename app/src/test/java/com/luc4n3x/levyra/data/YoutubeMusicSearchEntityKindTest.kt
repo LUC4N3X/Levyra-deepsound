@@ -106,6 +106,29 @@ class YoutubeMusicSearchEntityKindTest {
     }
 
     @Test
+    fun `an author containing digits is not reused as the track count label`() {
+        val root = JSONObject().put(
+            "contents",
+            JSONArray().put(
+                JSONObject().put(
+                    "musicResponsiveListItemRenderer",
+                    JSONObject().put(
+                        "flexColumns",
+                        JSONArray()
+                            .put(runLine(browseRun("Punk Essentials", "VLPL999", "MUSIC_PAGE_TYPE_PLAYLIST")))
+                            .put(line("Blink 182"))
+                    )
+                )
+            )
+        )
+
+        val playlist = repository.parseSearchOverview(root, "punk").playlists.single()
+
+        assertEquals("Blink 182", playlist.author)
+        assertEquals("", playlist.trackCountLabel)
+    }
+
+    @Test
     fun `overview is empty for an unparsable payload`() {
         val overview = repository.parseSearchOverview(JSONObject().put("contents", JSONArray()), "query")
 

@@ -700,14 +700,16 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val playlistId = extractSearchPlaylistId(renderer)
         val browseId = extractSearchPlaylistBrowseId(renderer)
         if (playlistId.isBlank() && browseId.isBlank()) return null
-        val author = tokens.drop(1).firstOrNull(::isAlbumArtistToken).orEmpty()
+        val author = tokens.firstOrNull(::isAlbumArtistToken).orEmpty()
         return PlaylistHit(
             title = title.cleanLabel(),
             author = author.cleanLabel(),
             thumbnailUrl = upgradeThumbnail(findBestThumbnail(renderer)),
             playlistId = playlistId,
             browseId = browseId,
-            trackCountLabel = tokens.drop(1).firstOrNull { token -> token.any(Char::isDigit) }.orEmpty()
+            trackCountLabel = tokens
+                .firstOrNull { token -> token != author && token.any(Char::isDigit) }
+                .orEmpty()
         )
     }
 
