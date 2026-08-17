@@ -329,15 +329,23 @@ Contributions, optimizations, and translations are warmly welcomed:
 
 ---
 
-## ✦ License & Legal Notice
+## ✦ License & Legal Disclaimer
 
 > [!NOTE]
-> **Educational & Personal Use**
-> Levyra is an open-source client application. It does not host, store, or distribute copyrighted media files. All streams and metadata are retrieved directly from public third-party endpoints.
+> **Independent Open-Source Client & Legal Safeguards**
+> * **No Affiliation**: Levyra is an independent open-source project and is not affiliated with, authorized, maintained, sponsored, or endorsed by Google LLC, YouTube, Alphabet Inc., Apple Inc., Deezer S.A., Spotify AB, Tidal, or any of their subsidiaries or affiliates. All trademarks, service marks, trade names, and logos belong to their respective owners.
+> * **Zero Content Hosting**: Levyra does not host, store, cache, archive, or distribute any copyrighted media files on any server. The software operates purely as a local user-agent client interface that queries publicly available third-party endpoints. All audio streams, artwork, and metadata remain the exclusive property of their respective creators and copyright holders.
+> * **User Responsibility**: This software is provided for personal, educational, and interoperability research purposes. End users bear sole responsibility for ensuring their use complies with applicable local legislation, regulations, and relevant third-party terms of service. The developers assume no liability for any misuse or third-party claims.
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the [LICENSE](LICENSE) file for details.
+### License & Warranty
 
-This project is not affiliated with, sponsored by, or endorsed by Google LLC, YouTube, or Alphabet Inc.
+Levyra is licensed under the **[GNU General Public License v3.0](LICENSE)** (GPL-3.0).
+
+```text
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU General Public License for more details.
+```
 
 <div align="center">
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
