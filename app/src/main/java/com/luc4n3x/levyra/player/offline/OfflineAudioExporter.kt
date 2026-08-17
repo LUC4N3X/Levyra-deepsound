@@ -384,8 +384,10 @@ class OfflineAudioExporter(
                     resolver.reportPlaybackFailure(
                         track = playable,
                         isVideoMode = false,
-                        reason = firstError.message.orEmpty().ifBlank { "offline export source rejected" }
+                        reason = firstError.message.orEmpty().ifBlank { "offline export source rejected" },
+                        isOfflineExport = true
                     )
+                    releaseOfflineCacheSeed(playable)
                 }
                 reportProgress(7)
                 playable = resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
@@ -418,6 +420,7 @@ class OfflineAudioExporter(
                 reportProgress(98)
                 val fileName = buildFileName(metadataTrack, embeddedFile.container.extension)
                 persistDownload(track, metadataTrack, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
+                releaseOfflineCacheSeed(playable)
                 Timber.i("Offline export completed: %s", fileName)
                 reportProgress(100)
                 OfflineExportResult(
@@ -668,6 +671,17 @@ class OfflineAudioExporter(
         return File(workspace, "resume-$safeKey.${container.extension}.part")
     }
 
+    private fun offlineSeedCacheKeys(track: Track): List<String> {
+        val offlineKey = LevyraPlaybackCacheKey.offlineStream(track)
+        val playbackKey = LevyraPlaybackCacheKey.stream(track)
+        return if (offlineKey == playbackKey) listOf(offlineKey) else listOf(offlineKey, playbackKey)
+    }
+
+    private fun releaseOfflineCacheSeed(track: Track) {
+        runCatching { LevyraMediaCache.get(context).removeResource(LevyraPlaybackCacheKey.offlineStream(track)) }
+            .onFailure { Timber.d(it, "Offline cache seed release skipped") }
+    }
+
     private suspend fun prepareCachedPlaybackSeed(
         track: Track,
         workspace: File,
@@ -677,8 +691,8 @@ class OfflineAudioExporter(
     ): CachedAudioSeed? {
         if (track.id.isBlank() || expectedLength <= 0L) return null
         val cache = LevyraMediaCache.get(context)
-        val cacheKey = LevyraPlaybackCacheKey.stream(track)
-        val spans = cache.getCachedSpans(cacheKey)
+        val spans = offlineSeedCacheKeys(track)
+            .flatMap { key -> cache.getCachedSpans(key) }
             .filter { it.isCached && it.length > 0L && it.position < expectedLength && it.position + it.length > 0L }
             .sortedBy { it.position }
         if (spans.isEmpty()) return null

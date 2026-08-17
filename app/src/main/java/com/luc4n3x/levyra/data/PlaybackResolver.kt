@@ -417,11 +417,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         return hit.track
     }
 
-    fun invalidate(track: Track, isVideoMode: Boolean = false) {
-        remove(cacheKey(track, isVideoMode))
+    fun invalidate(track: Track, isVideoMode: Boolean = false, offlineExport: Boolean = false) {
+        remove(cacheKey(track, isVideoMode, selectedAudioQuality, offlineExport))
     }
 
-    fun reportPlaybackFailure(track: Track, isVideoMode: Boolean, reason: String) {
+    fun reportPlaybackFailure(
+        track: Track,
+        isVideoMode: Boolean,
+        reason: String,
+        isOfflineExport: Boolean = false
+    ) {
         if (isLocalPlaybackTrack(track)) {
             resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
             return
@@ -434,18 +439,20 @@ class PlaybackResolver private constructor(private val context: Context) {
         Timber.w(
             "playback failure source=%s mode=%s reason=%s stream=%s",
             track.source,
-            if (isVideoMode) "video" else "audio",
+            if (isVideoMode) "video" else if (isOfflineExport) "offline" else "audio",
             reason.take(120),
             playbackStreamDiagnostics(track.streamUrl)
         )
-        invalidate(track, isVideoMode)
+        invalidate(track, isVideoMode, isOfflineExport)
         resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
         val recovery = resilienceEngine.recoveryPlan(reason)
-        listOf(track.streamUrl, track.videoStreamUrl)
-            .filter { it.isNotBlank() }
-            .forEach { failedPlaybackUrls[it] = now + recovery.quarantineMs }
+        if (!isOfflineExport) {
+            listOf(track.streamUrl, track.videoStreamUrl)
+                .filter { it.isNotBlank() }
+                .forEach { failedPlaybackUrls[it] = now + recovery.quarantineMs }
+        }
         if (recovery.rotateClient) {
             profileFromSource(track.source)?.let { profile ->
                 recordClientFailure(profile, null, PlaybackBlockedException(reason))
@@ -454,7 +461,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (recovery.refreshSecurity) {
             YoutubeLocalDecoder.notifyStreamRejected(track.source)
         }
-        if (recovery.rotateCodec) {
+        if (recovery.rotateCodec && !isOfflineExport) {
             videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
         }
         val sourceMatchQuarantineMs = when {
@@ -464,7 +471,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         sourceMatchScope.launch {
             runCatchingPreservingCancellation {
-                sourceMatchStore.recordFailure(track, isVideoMode, selectedAudioQuality, sourceMatchQuarantineMs)
+                sourceMatchStore.recordFailure(
+                    track = track,
+                    videoMode = isVideoMode,
+                    audioQuality = selectedAudioQuality,
+                    quarantineMs = sourceMatchQuarantineMs,
+                    preferMp4Audio = isOfflineExport
+                )
             }.onFailure { error ->
                 Timber.w(error, "persistent source match failure update failed")
             }
@@ -612,7 +625,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     audioQuality = audioQuality,
                     errors = mutableListOf(),
                     allowNetworkRefresh = false
-                )?.also { store(offlineTrack, it, isVideoMode, audioQuality) }
+                )?.also { store(offlineTrack, it, isVideoMode, audioQuality, preferMp4Audio) }
             }
             restored?.let { return@coroutineScope it }
             throw PlaybackBlockedException("Connessione Internet non disponibile")
@@ -657,7 +670,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
-            store(track, restored, isVideoMode, audioQuality)
+            store(track, restored, isVideoMode, audioQuality, preferMp4Audio)
             return@withContext restored
         }
 
@@ -713,14 +726,14 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         val resolved = resolveAudioFast(track, errors, preferMp4Audio, audioQuality)
         if (resolved != null) {
-            store(track, resolved, isVideoMode, audioQuality)
+            store(track, resolved, isVideoMode, audioQuality, preferMp4Audio)
             persistResolvedSource(track, resolved, isVideoMode, audioQuality, 96, preferMp4Audio)
             return@withContext resolved
         }
 
         val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio, audioQuality)
         if (alternate != null) {
-            store(track, alternate, isVideoMode, audioQuality)
+            store(track, alternate, isVideoMode, audioQuality, preferMp4Audio)
             persistResolvedSource(track, alternate, isVideoMode, audioQuality, 84, preferMp4Audio)
             return@withContext alternate
         }
@@ -1531,7 +1544,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                     streamUrl = streamUrl,
                     playbackManifest = manifest
                 )
-                val audioCache = key.contains("_audio_", ignoreCase = true)
+                val audioCache = key.contains("_audio_", ignoreCase = true) ||
+                    key.contains("_offline_", ignoreCase = true)
                 if (track != null && streamUrl.isNotBlank() && now < expiresAt && streamStillFresh(streamUrl) && (!audioCache || isPlayableAudioUrl(streamUrl))) {
                     streamCache[key] = CachedStream(track, expiresAt)
                 } else {
@@ -1547,11 +1561,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         requestedTrack: Track,
         resolvedTrack: Track,
         isVideoMode: Boolean = false,
-        audioQuality: String = selectedAudioQuality
+        audioQuality: String = selectedAudioQuality,
+        offlineExport: Boolean = false
     ) {
         if (resolvedTrack.streamUrl.isBlank() || !streamStillFresh(resolvedTrack.streamUrl)) return
         if (!isVideoMode && !isPlayableAudioUrl(resolvedTrack.streamUrl)) return
-        val key = cacheKey(requestedTrack, isVideoMode, audioQuality)
+        val key = cacheKey(requestedTrack, isVideoMode, audioQuality, offlineExport)
         val expiresAt = resolvedTrack.playbackManifest?.expiresAtMs
             ?.takeIf { it > System.currentTimeMillis() }
             ?.let { minOf(it, expiresAtFor(resolvedTrack.streamUrl)) }
@@ -1691,11 +1706,17 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun cacheKey(
         track: Track,
         isVideoMode: Boolean = false,
-        audioQuality: String = selectedAudioQuality
+        audioQuality: String = selectedAudioQuality,
+        offlineExport: Boolean = false
     ): String {
         val base = PlaybackSourceIdentity.canonicalKey(track)
         val quality = normalizeAudioQuality(audioQuality).lowercase()
-        return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_$quality"
+        val mode = when {
+            isVideoMode -> "video"
+            offlineExport -> "offline"
+            else -> "audio"
+        }
+        return "${base}_${mode}_$quality"
     }
 
     private suspend fun resolveWithInnerTube(

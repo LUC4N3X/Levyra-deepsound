@@ -90,7 +90,7 @@ internal class OfflineStreamPrefetcher(context: Context) {
                     .createDataSource()
                 val dataSpec = DataSpec.Builder()
                     .setUri(Uri.parse(url))
-                    .setKey(LevyraPlaybackCacheKey.stream(track))
+                    .setKey(LevyraPlaybackCacheKey.offlineStream(track))
                     .setPosition(0L)
                     .build()
                 val listener = CacheWriter.ProgressListener { length, bytes, _ ->
@@ -145,7 +145,8 @@ internal class OfflineExportPipeline(
                 resolver.reportPlaybackFailure(
                     track = resolved,
                     isVideoMode = false,
-                    reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" }
+                    reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" },
+                    isOfflineExport = true
                 )
                 resolved = resolve(track)
                 if (supportsContinuousPrefetch(resolved.streamUrl)) {
