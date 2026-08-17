@@ -22,7 +22,7 @@ SCREENS = {
     "lyrics_synced": "Screenshot_20260816_234701_LEVYRA.jpg",
     "artist_bio": "Screenshot_20260816_234724_LEVYRA.jpg",
     "artist_discography": "Screenshot_20260816_234730_LEVYRA.jpg",
-    "video_energy": "Screenshot_20260817_121814_LEVYRA.jpg",
+    "video_energy": "Screenshot_20260817_145820_LEVYRA.jpg",
     "search_recent": "Screenshot_20260817_131545_LEVYRA.jpg",
     "playlist_recent": "Screenshot_20260817_131607_LEVYRA.jpg",
     "home_collections": "Screenshot_20260817_131624_LEVYRA.jpg",
