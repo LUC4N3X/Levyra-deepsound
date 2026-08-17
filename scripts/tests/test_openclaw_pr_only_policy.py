@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.ai_quality_gate import find_bash
+
 ROOT = Path(__file__).resolve().parents[2]
 WORKER = ROOT / "scripts" / "openclaw" / "levyra-worker"
 EVIDENCE = ROOT / "scripts" / "openclaw" / "levyra-evidence"
@@ -16,6 +18,9 @@ SETUP = ROOT / "scripts" / "setup-openclaw-levyra-pr-only.sh"
 
 class OpenClawPrOnlyPolicyTest(unittest.TestCase):
     def setUp(self) -> None:
+        self.bash = find_bash()
+        if sys.platform == "win32" and not self.bash:
+            raise unittest.SkipTest("Bash is required for OpenClaw tests on Windows")
         self.temp_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.temp_dir.name)
         self.repo = self.root / "repo"
@@ -51,7 +56,7 @@ class OpenClawPrOnlyPolicyTest(unittest.TestCase):
 
     def run_worker(self, *args: str) -> subprocess.CompletedProcess[str]:
         cmd = (
-            ["bash", str(self.bin_dir / "levyra-worker"), *args]
+            [self.bash, str(self.bin_dir / "levyra-worker"), *args]
             if sys.platform == "win32"
             else [str(self.bin_dir / "levyra-worker"), *args]
         )
@@ -64,7 +69,7 @@ class OpenClawPrOnlyPolicyTest(unittest.TestCase):
 
     def run_evidence(self, *args: str) -> subprocess.CompletedProcess[str]:
         cmd = (
-            ["bash", str(self.bin_dir / "levyra-evidence"), *args]
+            [self.bash, str(self.bin_dir / "levyra-evidence"), *args]
             if sys.platform == "win32"
             else [str(self.bin_dir / "levyra-evidence"), *args]
         )
@@ -77,7 +82,7 @@ class OpenClawPrOnlyPolicyTest(unittest.TestCase):
 
     def test_shell_syntax(self) -> None:
         for script in (WORKER, EVIDENCE, SETUP):
-            subprocess.run(["bash", "-n", str(script)], check=True, cwd=ROOT)
+            subprocess.run([self.bash or "bash", "-n", str(script)], check=True, cwd=ROOT)
 
     def test_worker_blocks_mutating_publication_from_main(self) -> None:
         for command in (("commit", "blocked"), ("push",), ("pr-open", "Title", "Body")):

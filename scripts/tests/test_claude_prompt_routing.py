@@ -9,9 +9,15 @@ ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / ".claude" / "hooks" / "user-prompt-submit.sh"
 
 
+from scripts.ai_quality_gate import find_bash
+
+
 def route(prompt: str) -> str:
+    bash = find_bash()
+    if not bash:
+        raise unittest.SkipTest("Bash is required for Claude prompt routing test")
     result = subprocess.run(
-        ["bash", str(HOOK)],
+        [bash, str(HOOK)],
         input=json.dumps({"prompt": prompt}),
         text=True,
         capture_output=True,
