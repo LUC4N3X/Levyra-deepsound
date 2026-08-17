@@ -416,7 +416,7 @@ internal fun AddTracksToPlaylistDialog(
                                 modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onAdd(playlist.id) })
                             ) {
                                 Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
+                                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
                                     Spacer(Modifier.width(10.dp))
                                     Text(
                                         playlist.name,
