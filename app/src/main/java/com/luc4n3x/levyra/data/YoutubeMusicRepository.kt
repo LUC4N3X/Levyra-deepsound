@@ -12,11 +12,14 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
+import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.SearchPage
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.parseCompactViewCount
 import kotlinx.coroutines.CancellationException
@@ -251,6 +254,30 @@ private const val ALBUM_RESULTS_PER_SEED = 8
 private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
+internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
+internal const val YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS = "EgWKAQIYAWoMEA4QChADEAQQCRAF"
+internal const val YOUTUBE_MUSIC_ARTIST_SEARCH_PARAMS = "EgWKAQIgAWoMEA4QChADEAQQCRAF"
+internal const val YOUTUBE_MUSIC_PLAYLIST_SEARCH_PARAMS = "EgWKAQIoAWoMEA4QChADEAQQCRAF"
+
+internal enum class SearchEntityKind {
+    Track,
+    Album,
+    Artist,
+    Playlist
+}
+
+private const val MUSIC_PAGE_TYPE_ALBUM = "MUSIC_PAGE_TYPE_ALBUM"
+private const val MUSIC_PAGE_TYPE_ARTIST = "MUSIC_PAGE_TYPE_ARTIST"
+private const val MUSIC_PAGE_TYPE_PLAYLIST = "MUSIC_PAGE_TYPE_PLAYLIST"
+private const val SEARCH_OVERVIEW_SONG_LIMIT = 20
+private const val SEARCH_OVERVIEW_VIDEO_LIMIT = 10
+private const val SEARCH_OVERVIEW_ARTIST_LIMIT = 8
+private const val SEARCH_OVERVIEW_ALBUM_LIMIT = 10
+private const val SEARCH_OVERVIEW_PLAYLIST_LIMIT = 10
+private val SUBSCRIBER_TOKEN_HINTS = listOf(
+    "subscriber", "iscritt", "scritt", "abonn", "suscriptor", "inscrito", "abonnee",
+    "subskry", "abonat", "συνδρομ", "подпис", "订阅", "訂閱", "チャンネル登録", "구독", "सदस्य", "ผู้ติดตาม", "מנוי", "مشترك"
+)
 private const val YOUTUBE_MUSIC_NEW_RELEASE_FALLBACK_LIMIT = 4
 private const val YOUTUBE_MUSIC_ARTIST_CONTAINS_MIN_LENGTH = 4
 
@@ -450,77 +477,292 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext SearchResults()
         val root = runCatching { searchInnerTubeRaw(cleanQuery, languageCode) }.getOrNull() ?: return@withContext fallbackResults(cleanQuery, languageCode)
-        val renderers = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
-        val songs = LinkedHashMap<String, Track>()
-        val artists = LinkedHashMap<String, ArtistHit>()
-        val albums = LinkedHashMap<String, AlbumHit>()
-        renderers.forEach { renderer ->
-            val lines = extractFlexLines(renderer)
-            val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return@forEach
-            val subtitleTokens = lines.drop(1).flatMap { it.split(" • ", " · ") }.map { it.trim() }
-            val kind = subtitleTokens.firstOrNull()?.lowercase().orEmpty()
-            val thumb = findBestThumbnail(renderer)
-            when {
-                kind.startsWith("artist") || kind.startsWith("artista") || kind.startsWith("artiste") || kind.startsWith("künstler") || kind.startsWith("kunstler") || kind.startsWith("artiest") || kind.startsWith("artysta") -> {
-                    val artistReference = extractYoutubeMusicArtistReference(renderer, title)
-                    val resolvedName = artistReference?.name?.ifBlank { title }.orEmpty().ifBlank { title }
-                    val artistKey = resolvedName.lowercase()
-                    if (!artists.containsKey(artistKey)) {
-                        val subs = subtitleTokens.firstOrNull { it.contains("scritt", ignoreCase = true) || it.contains("subscriber", ignoreCase = true) || it.contains("iscritt", ignoreCase = true) }.orEmpty()
-                        val seed = stableSeed(resolvedName)
-                        artists[artistKey] = ArtistHit(
-                            name = resolvedName,
-                            subscribers = subs,
-                            thumbnailUrl = upgradeThumbnail(thumb),
-                            accentStart = palette(seed).first,
-                            accentEnd = palette(seed).second,
-                            browseId = artistReference?.browseId.orEmpty()
-                        )
-                    }
-                }
-                levyraReleaseType(kind) == ReleaseType.Album && isPlausibleYoutubeMusicAlbumTitle(title) -> {
-                    val albumArtist = subtitleTokens.getOrNull(1).orEmpty()
-                    val artistReference = extractYoutubeMusicArtistReference(renderer, albumArtist)
-                    val resolvedArtist = artistReference?.name?.ifBlank { albumArtist }.orEmpty().ifBlank { albumArtist }
-                    val year = subtitleTokens.firstNotNullOfOrNull { Regex("\\b(19|20)\\d{2}\\b").find(it)?.value }.orEmpty()
-                    val key = "${title.lowercase()}|${resolvedArtist.lowercase()}"
-                    if (!albums.containsKey(key)) {
-                        albums[key] = AlbumHit(
-                            title = title,
-                            artist = resolvedArtist.ifBlank { "Album" },
-                            year = year,
-                            thumbnailUrl = upgradeThumbnail(thumb),
-                            query = "$title $resolvedArtist",
-                            browseId = extractAlbumBrowseId(renderer),
-                            artistBrowseId = artistReference?.browseId.orEmpty(),
-                            releaseType = ReleaseType.Album
-                        )
-                    }
-                }
-                else -> {
-                    val track = parseMusicRenderer(renderer, cleanQuery) ?: return@forEach
-                    if (!songs.containsKey(track.id)) songs[track.id] = track
-                }
-            }
+        val overview = parseSearchOverview(root, cleanQuery)
+        val withLegacyFallback = if (overview.songs.isEmpty() && overview.videos.isEmpty()) {
+            overview.copy(songs = parseLegacyVideoRenderers(root, cleanQuery))
+        } else {
+            overview
         }
-        if (songs.isEmpty()) {
-            val videoRenderers = mutableListOf<JSONObject>()
-            collectObjectsByKey(root, "videoRenderer", videoRenderers)
-            videoRenderers.forEach { renderer ->
-                val track = parseVideoRenderer(renderer, cleanQuery) ?: return@forEach
-                if (!songs.containsKey(track.id)) songs[track.id] = track
-            }
+        val results = withLegacyFallback.let { parsed ->
+            parsed.copy(
+                topTrack = parsed.songs.firstOrNull() ?: parsed.videos.firstOrNull(),
+                songs = parsed.songs.take(SEARCH_OVERVIEW_SONG_LIMIT),
+                videos = parsed.videos.take(SEARCH_OVERVIEW_VIDEO_LIMIT),
+                artists = parsed.artists.take(SEARCH_OVERVIEW_ARTIST_LIMIT),
+                albums = parsed.albums.take(SEARCH_OVERVIEW_ALBUM_LIMIT),
+                playlists = parsed.playlists.take(SEARCH_OVERVIEW_PLAYLIST_LIMIT)
+            )
         }
-        songs.values.forEach { memory[it.id] = it }
-        val songList = songs.values.toList()
-        val results = SearchResults(
-            topTrack = songList.firstOrNull(),
-            songs = songList.take(20),
-            artists = artists.values.take(8).toList(),
-            albums = albums.values.take(10).toList()
-        )
+        rememberSearchTracks(results.songs)
+        rememberSearchTracks(results.videos)
         if (results.isEmpty) fallbackResults(cleanQuery, languageCode) else results
+    }
+
+    suspend fun searchSongsPage(
+        query: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        continuation: String = ""
+    ): SearchPage<Track> = searchTrackPage(query, languageCode, YOUTUBE_MUSIC_SONG_SEARCH_PARAMS, continuation)
+
+    suspend fun searchVideosPage(
+        query: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        continuation: String = ""
+    ): SearchPage<Track> = searchTrackPage(query, languageCode, YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS, continuation)
+
+    suspend fun searchAlbumsPage(
+        query: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        continuation: String = ""
+    ): SearchPage<AlbumHit> = withContext(Dispatchers.IO) {
+        val root = searchSectionRoot(query, languageCode, YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS, continuation)
+            ?: return@withContext SearchPage()
+        SearchPage(parseSearchOverview(root, query.trim()).albums, findSearchContinuation(root))
+    }
+
+    suspend fun searchArtistsPage(
+        query: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        continuation: String = ""
+    ): SearchPage<ArtistHit> = withContext(Dispatchers.IO) {
+        val root = searchSectionRoot(query, languageCode, YOUTUBE_MUSIC_ARTIST_SEARCH_PARAMS, continuation)
+            ?: return@withContext SearchPage()
+        SearchPage(parseSearchOverview(root, query.trim()).artists, findSearchContinuation(root))
+    }
+
+    suspend fun searchPlaylistsPage(
+        query: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        continuation: String = ""
+    ): SearchPage<PlaylistHit> = withContext(Dispatchers.IO) {
+        val root = searchSectionRoot(query, languageCode, YOUTUBE_MUSIC_PLAYLIST_SEARCH_PARAMS, continuation)
+            ?: return@withContext SearchPage()
+        SearchPage(parseSearchOverview(root, query.trim()).playlists, findSearchContinuation(root))
+    }
+
+    private suspend fun searchTrackPage(
+        query: String,
+        languageCode: String,
+        params: String,
+        continuation: String
+    ): SearchPage<Track> = withContext(Dispatchers.IO) {
+        val cleanQuery = query.trim()
+        val root = searchSectionRoot(cleanQuery, languageCode, params, continuation) ?: return@withContext SearchPage()
+        val parsed = parseSearchOverview(root, cleanQuery)
+        val tracks = mergeSearchSongs(parsed.songs, parsed.videos).ifEmpty {
+            parseLegacyVideoRenderers(root, cleanQuery)
+        }
+        rememberSearchTracks(tracks)
+        SearchPage(tracks, findSearchContinuation(root))
+    }
+
+    private fun searchSectionRoot(
+        query: String,
+        languageCode: String,
+        params: String,
+        continuation: String
+    ): JSONObject? {
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return null
+        return runCatching {
+            searchInnerTubeRaw(cleanQuery, languageCode, params, continuation.trim())
+        }.getOrNull()
+    }
+
+    private fun rememberSearchTracks(tracks: List<Track>) {
+        tracks.forEach { track -> memory[track.id] = track }
+    }
+
+    internal fun parseSearchOverview(root: JSONObject, query: String): SearchResults {
+        val songs = mutableListOf<Track>()
+        val videos = mutableListOf<Track>()
+        val artists = mutableListOf<ArtistHit>()
+        val albums = mutableListOf<AlbumHit>()
+        val playlists = mutableListOf<PlaylistHit>()
+        val listItems = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicResponsiveListItemRenderer", listItems)
+        listItems.forEach { renderer ->
+            when (searchEntityKind(renderer)) {
+                SearchEntityKind.Artist -> parseSearchArtistHit(renderer)?.let(artists::add)
+                SearchEntityKind.Album -> parseSearchAlbumHit(renderer)?.let(albums::add)
+                SearchEntityKind.Playlist -> parseSearchPlaylistHit(renderer)?.let(playlists::add)
+                SearchEntityKind.Track -> {
+                    val track = parseMusicRenderer(renderer, query) ?: return@forEach
+                    if (isMusicVideoResult(track.videoType)) videos.add(track) else songs.add(track)
+                }
+            }
+        }
+        val cards = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicTwoRowItemRenderer", cards)
+        cards.forEach { card ->
+            when (searchEntityKind(card)) {
+                SearchEntityKind.Artist -> parseSearchArtistHit(card)?.let(artists::add)
+                SearchEntityKind.Album -> parseTwoRowAlbumHit(card)?.let(albums::add)
+                SearchEntityKind.Playlist -> parseSearchPlaylistHit(card)?.let(playlists::add)
+                SearchEntityKind.Track -> Unit
+            }
+        }
+        return SearchResults(
+            songs = deduplicateSearchSongs(songs),
+            videos = deduplicateSearchSongs(videos),
+            artists = deduplicateSearchArtists(artists),
+            albums = deduplicateSearchAlbums(albums),
+            playlists = deduplicateSearchPlaylists(playlists)
+        )
+    }
+
+    private fun parseLegacyVideoRenderers(root: JSONObject, query: String): List<Track> {
+        val videoRenderers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "videoRenderer", videoRenderers)
+        return deduplicateSearchSongs(videoRenderers.mapNotNull { parseVideoRenderer(it, query) })
+    }
+
+    internal fun searchEntityKind(renderer: JSONObject): SearchEntityKind {
+        if (extractPrimaryMusicVideoId(renderer).isNotBlank()) return SearchEntityKind.Track
+        val browseEndpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(renderer, "browseEndpoint", browseEndpoints)
+        var artist = false
+        var album = false
+        var playlist = false
+        browseEndpoints.forEach { endpoint ->
+            val browseId = endpoint.optString("browseId").orEmpty()
+            val pageType = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+                .uppercase(Locale.ROOT)
+            when {
+                pageType == MUSIC_PAGE_TYPE_ALBUM || browseId.startsWith("MPRE", ignoreCase = true) -> album = true
+                pageType == MUSIC_PAGE_TYPE_PLAYLIST || browseId.startsWith("VL", ignoreCase = true) -> playlist = true
+                pageType == MUSIC_PAGE_TYPE_ARTIST || browseId.startsWith("UC") -> artist = true
+            }
+        }
+        if (album) return SearchEntityKind.Album
+        if (playlist) return SearchEntityKind.Playlist
+        if (hasPlaylistOnlyWatchEndpoint(renderer)) return SearchEntityKind.Playlist
+        if (artist) return SearchEntityKind.Artist
+        return SearchEntityKind.Track
+    }
+
+    private fun hasPlaylistOnlyWatchEndpoint(renderer: JSONObject): Boolean {
+        val watchEndpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(renderer, "watchEndpoint", watchEndpoints)
+        if (watchEndpoints.isEmpty()) return false
+        return watchEndpoints.any { endpoint ->
+            endpoint.optString("playlistId").isNotBlank() && endpoint.optString("videoId").isBlank()
+        }
+    }
+
+    private fun parseSearchArtistHit(renderer: JSONObject): ArtistHit? {
+        val title = searchEntityTitle(renderer).ifBlank { return null }
+        val artistReference = extractYoutubeMusicArtistReference(renderer, title)
+        val resolvedName = artistReference?.name.orEmpty().ifBlank { title }.cleanLabel()
+        if (!isArtistShelfNameEligible(resolvedName)) return null
+        val seed = stableSeed(resolvedName)
+        val accents = palette(seed)
+        return ArtistHit(
+            name = resolvedName,
+            subscribers = searchEntitySubtitleTokens(renderer).firstOrNull(::isSubscriberToken).orEmpty(),
+            thumbnailUrl = upgradeThumbnail(findBestThumbnail(renderer)),
+            accentStart = accents.first,
+            accentEnd = accents.second,
+            browseId = artistReference?.browseId.orEmpty()
+        )
+    }
+
+    private fun parseSearchAlbumHit(renderer: JSONObject): AlbumHit? {
+        val title = searchEntityTitle(renderer).ifBlank { return null }
+        if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
+        val tokens = searchEntitySubtitleTokens(renderer)
+        val releaseType = levyraReleaseType(tokens.firstOrNull().orEmpty())
+        val albumArtist = tokens.drop(1).firstOrNull(::isAlbumArtistToken)
+            ?: tokens.firstOrNull(::isAlbumArtistToken)
+            .orEmpty()
+        val artistReference = extractYoutubeMusicArtistReference(renderer, albumArtist)
+        val resolvedArtist = artistReference?.name.orEmpty().ifBlank { albumArtist }.cleanLabel()
+        val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
+        return AlbumHit(
+            title = title.cleanLabel(),
+            artist = resolvedArtist.ifBlank { "Album" },
+            year = year,
+            thumbnailUrl = upgradeThumbnail(findBestThumbnail(renderer)),
+            query = listOf(title, resolvedArtist).filter(String::isNotBlank).joinToString(" "),
+            browseId = extractAlbumBrowseId(renderer),
+            artistBrowseId = artistReference?.browseId.orEmpty(),
+            audioPlaylistId = extractSearchPlaylistId(renderer),
+            releaseType = releaseType
+        )
+    }
+
+    private fun parseSearchPlaylistHit(renderer: JSONObject): PlaylistHit? {
+        val title = searchEntityTitle(renderer).ifBlank { return null }
+        val tokens = searchEntitySubtitleTokens(renderer)
+        val playlistId = extractSearchPlaylistId(renderer)
+        val browseId = extractSearchPlaylistBrowseId(renderer)
+        if (playlistId.isBlank() && browseId.isBlank()) return null
+        val author = tokens.firstOrNull(::isAlbumArtistToken).orEmpty()
+        return PlaylistHit(
+            title = title.cleanLabel(),
+            author = author.cleanLabel(),
+            thumbnailUrl = upgradeThumbnail(findBestThumbnail(renderer)),
+            playlistId = playlistId,
+            browseId = browseId,
+            trackCountLabel = tokens
+                .firstOrNull { token -> token != author && token.any(Char::isDigit) }
+                .orEmpty()
+        )
+    }
+
+    private fun searchEntityTitle(renderer: JSONObject): String {
+        extractFlexLines(renderer).firstOrNull()?.takeIf(String::isNotBlank)?.let { return it.trim() }
+        return renderer.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+    }
+
+    private fun searchEntitySubtitleTokens(renderer: JSONObject): List<String> {
+        val flexTokens = extractFlexLines(renderer).drop(1)
+        val subtitle = renderer.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty()
+        return (flexTokens + subtitle)
+            .flatMap { line -> line.split(" • ", " · ", " - ") }
+            .map(String::trim)
+            .filter(String::isNotBlank)
+    }
+
+    private fun isSubscriberToken(token: String): Boolean =
+        token.any(Char::isDigit) && SUBSCRIBER_TOKEN_HINTS.any { hint -> token.contains(hint, ignoreCase = true) }
+
+    private fun extractSearchPlaylistId(renderer: JSONObject): String {
+        val watchEndpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(renderer, "watchEndpoint", watchEndpoints)
+        watchEndpoints.firstNotNullOfOrNull { endpoint ->
+            endpoint.optString("playlistId").takeIf(String::isNotBlank)
+        }?.let { return it }
+        val browseId = extractSearchPlaylistBrowseId(renderer)
+        return browseId.removePrefix("VL").takeIf { it.isNotBlank() && it != browseId }.orEmpty()
+    }
+
+    private fun extractSearchPlaylistBrowseId(renderer: JSONObject): String {
+        val endpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(renderer, "browseEndpoint", endpoints)
+        return endpoints.firstNotNullOfOrNull { endpoint ->
+            val browseId = endpoint.optString("browseId").orEmpty()
+            val pageType = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+                .uppercase(Locale.ROOT)
+            browseId.takeIf {
+                it.startsWith("VL", ignoreCase = true) || pageType == MUSIC_PAGE_TYPE_PLAYLIST
+            }
+        }.orEmpty()
+    }
+
+    private fun findSearchContinuation(root: JSONObject): String {
+        val legacy = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "nextContinuationData", legacy)
+        legacy.firstNotNullOfOrNull { it.optString("continuation").takeIf(String::isNotBlank) }?.let { return it }
+        val commands = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "continuationCommand", commands)
+        return commands.firstNotNullOfOrNull { it.optString("token").takeIf(String::isNotBlank) }.orEmpty()
     }
 
     private suspend fun fallbackResults(query: String, languageCode: String): SearchResults {
@@ -541,9 +783,10 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun searchInnerTubeRaw(
         query: String,
         languageCode: String,
-        params: String = ""
+        params: String = "",
+        continuation: String = ""
     ): JSONObject? {
-        return resilienceClient.search(query, languageCode, params)
+        return resilienceClient.search(query, languageCode, params, continuation)
     }
 
     suspend fun home(

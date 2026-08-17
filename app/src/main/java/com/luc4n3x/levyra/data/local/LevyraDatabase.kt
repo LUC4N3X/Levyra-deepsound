@@ -23,7 +23,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackSourceMatchEntity::class,
         ArtistLoreEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -456,6 +456,20 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE offline_download_tasks ADD COLUMN batchKey TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE offline_download_tasks ADD COLUMN batchTitle TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE offline_download_tasks ADD COLUMN batchKind TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE offline_download_tasks ADD COLUMN batchArtworkUrl TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE offline_download_tasks ADD COLUMN batchPosition INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_offline_download_tasks_batchKey " +
+                        "ON offline_download_tasks(batchKey)"
+                )
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -477,7 +491,8 @@ abstract class LevyraDatabase : RoomDatabase() {
                         MIGRATION_10_11,
                         MIGRATION_11_12,
                         MIGRATION_12_13,
-                        MIGRATION_13_14
+                        MIGRATION_13_14,
+                        MIGRATION_14_15
                     )
                     .build()
                     .also { instance = it }

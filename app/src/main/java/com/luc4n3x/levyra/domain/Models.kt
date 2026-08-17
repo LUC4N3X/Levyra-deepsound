@@ -426,22 +426,46 @@ data class AlbumDetail(
     val durationMs: Long = tracks.sumOf { it.durationMs }
 )
 
+data class PlaylistHit(
+    val title: String,
+    val author: String,
+    val thumbnailUrl: String,
+    val playlistId: String = "",
+    val browseId: String = "",
+    val trackCountLabel: String = ""
+)
+
 data class SearchResults(
     val topTrack: Track? = null,
     val songs: List<Track> = emptyList(),
     val artists: List<ArtistHit> = emptyList(),
-    val albums: List<AlbumHit> = emptyList()
+    val albums: List<AlbumHit> = emptyList(),
+    val playlists: List<PlaylistHit> = emptyList(),
+    val videos: List<Track> = emptyList(),
+    val failedSections: Set<SearchFilter> = emptySet()
 ) {
     val isEmpty: Boolean
-        get() = topTrack == null && songs.isEmpty() && artists.isEmpty() && albums.isEmpty()
+        get() = topTrack == null &&
+            songs.isEmpty() &&
+            artists.isEmpty() &&
+            albums.isEmpty() &&
+            playlists.isEmpty() &&
+            videos.isEmpty()
 }
 
 enum class SearchFilter {
     All,
     Songs,
     Artists,
-    Albums
+    Albums,
+    Playlists,
+    Videos
 }
+
+data class SearchPage<T>(
+    val items: List<T> = emptyList(),
+    val continuation: String = ""
+)
 
 data class Playlist(
     val id: String,

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -64,6 +65,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.BatchDownload
+import com.luc4n3x.levyra.domain.BatchDownloadKind
+import com.luc4n3x.levyra.domain.BatchDownloadState
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
@@ -77,6 +81,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 
 @Composable
@@ -193,6 +198,66 @@ internal fun LibraryDownloadTaskRow(
                 else "${strings.localizeDownloadState(task.state)} · ${task.progress.coerceIn(0, 100)}%",
                 color = if (failed) MaterialTheme.colorScheme.error else LevyraMuted,
                 fontSize = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+internal fun LibraryBatchDownloadRow(
+    batch: BatchDownload,
+    onRetry: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val failed = batch.state == BatchDownloadState.Failed
+    Surface(
+        color = LevyraPanel.copy(alpha = 0.84f),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (batch.kind == BatchDownloadKind.Playlist) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.Album,
+                    contentDescription = null,
+                    tint = LevyraViolet,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        batch.title,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        "${batch.completed} / ${batch.total}",
+                        color = LevyraMuted,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
+                }
+                if (batch.canRetry) {
+                    IconButton(onClick = onRetry) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = strings.resumeDownload, tint = LevyraCyan)
+                    }
+                }
+                IconButton(onClick = onCancel) {
+                    Icon(Icons.Rounded.Cancel, contentDescription = strings.cancelDownload, tint = LevyraMuted)
+                }
+            }
+            LinearProgressIndicator(
+                progress = { batch.progress.coerceIn(0, 100) / 100f },
+                modifier = Modifier.fillMaxWidth().height(4.dp),
+                color = if (failed) MaterialTheme.colorScheme.error else LevyraViolet,
+                trackColor = LevyraPanelSoft
             )
         }
     }
