@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -529,6 +530,16 @@ internal fun LevyraLibraryScreen(
                             },
                             onOpenFolder = onOpenDownloads
                         )
+                    }
+                    val activeBatches = visibleDownloadBatches(state.downloadBatches)
+                    if (activeBatches.isNotEmpty()) {
+                        items(activeBatches, key = { "batch-${it.key}" }) { batch ->
+                            LibraryBatchDownloadRow(
+                                batch = batch,
+                                onRetry = { viewModel.retryBatchDownload(batch.key) },
+                                onCancel = { viewModel.cancelBatchDownload(batch.key) }
+                            )
+                        }
                     }
                     if (state.downloadQueue.isNotEmpty()) {
                         item(key = "offline-queue-title") {
