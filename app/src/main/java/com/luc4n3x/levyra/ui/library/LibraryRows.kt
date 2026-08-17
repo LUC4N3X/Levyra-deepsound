@@ -19,23 +19,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.OfflinePin
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +67,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
-import com.luc4n3x.levyra.ui.theme.LevyraViolet
+
+internal val LibraryRowShape = RoundedCornerShape(16.dp)
+internal val LibraryArtworkShape = RoundedCornerShape(12.dp)
+internal val LibraryCardShape = RoundedCornerShape(18.dp)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -71,58 +83,81 @@ internal fun LibraryTrackRow(
     isFavorite: Boolean,
     isDownloaded: Boolean,
     downloadProgress: Int?,
-    secondaryDetail: String? = null,
+    metadata: String? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onFavorite: () -> Unit,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    onQueue: (() -> Unit)? = null,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onDeleteDownload: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
+    var menuExpanded by remember { mutableStateOf(false) }
     Surface(
         color = when {
             selected -> LevyraCyan.copy(alpha = 0.14f)
-            isCurrent -> LevyraViolet.copy(alpha = 0.11f)
+            isCurrent -> LevyraCyan.copy(alpha = 0.08f)
             else -> Color.Transparent
         },
-        shape = RoundedCornerShape(19.dp),
+        shape = LibraryRowShape,
         border = if (selected) BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.55f)) else null,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .clip(LibraryRowShape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LibraryArtwork(
-                url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                title = track.title,
-                modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(15.dp),
-                selected = selected
-            )
+            Box(contentAlignment = Alignment.Center) {
+                LibraryArtwork(
+                    url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    title = track.title,
+                    modifier = Modifier.size(52.dp),
+                    shape = LibraryArtworkShape,
+                    selected = selected
+                )
+                if (isPlaying) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(LibraryArtworkShape)
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.GraphicEq,
+                            contentDescription = strings.playing,
+                            tint = LevyraCyan,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     track.title,
                     color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    secondaryDetail?.takeIf(String::isNotBlank)
-                        ?: listOf(track.artist, track.album).filter(String::isNotBlank).joinToString(" · "),
+                    libraryTrackSubtitle(track, metadata),
                     color = LevyraMuted,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (downloadProgress != null) {
                     LinearProgressIndicator(
                         progress = { downloadProgress.coerceIn(0, 100) / 100f },
-                        modifier = Modifier.fillMaxWidth().height(3.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 3.dp).height(3.dp),
                         color = LevyraCyan,
                         trackColor = LevyraPanelSoft
                     )
@@ -132,36 +167,97 @@ internal fun LibraryTrackRow(
                 Icon(
                     if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                     contentDescription = null,
-                    tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f)
+                    tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f),
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
             } else {
                 if (isDownloaded) {
-                    Icon(Icons.Rounded.OfflinePin, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
+                    Icon(
+                        Icons.Rounded.OfflinePin,
+                        contentDescription = strings.downloaded,
+                        tint = LevyraCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
                 }
                 IconButton(onClick = onFavorite) {
                     Icon(
                         if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
                         tint = if (isFavorite) LevyraPink else LevyraMuted,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 }
-                if (!isDownloaded && downloadProgress == null) {
-                    IconButton(onClick = onDownload) {
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
                         Icon(
-                            Icons.Rounded.Download,
-                            contentDescription = strings.download,
+                            Icons.Rounded.MoreVert,
+                            contentDescription = strings.songOptions,
                             tint = LevyraMuted,
-                            modifier = Modifier.size(21.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                }
-                if (isPlaying) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(strings.play) },
+                            leadingIcon = { Icon(Icons.Rounded.PlayArrow, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onClick()
+                            }
+                        )
+                        if (onQueue != null) {
+                            DropdownMenuItem(
+                                text = { Text(strings.addToQueue) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onQueue()
+                                }
+                            )
+                        }
+                        if (onAddToPlaylist != null) {
+                            DropdownMenuItem(
+                                text = { Text(strings.addToPlaylist) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onAddToPlaylist()
+                                }
+                            )
+                        }
+                        if (onDeleteDownload != null) {
+                            DropdownMenuItem(
+                                text = { Text(strings.deleteDownload, color = LevyraPink) },
+                                leadingIcon = {
+                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = LevyraPink)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDeleteDownload()
+                                }
+                            )
+                        } else if (!isDownloaded && downloadProgress == null) {
+                            DropdownMenuItem(
+                                text = { Text(strings.download) },
+                                leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onDownload()
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private fun libraryTrackSubtitle(track: Track, metadata: String?): String {
+    val identity = listOf(track.artist, track.album).filter(String::isNotBlank).joinToString(" · ")
+    val extra = metadata?.trim().orEmpty()
+    return listOf(identity, extra).filter(String::isNotBlank).joinToString(" · ")
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -177,19 +273,22 @@ internal fun LibraryPlaylistRow(
     val strings = LocalLevyraStrings.current
     Surface(
         color = if (selected) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
-        shape = RoundedCornerShape(20.dp),
+        shape = LibraryRowShape,
         border = if (selected) BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.55f)) else null,
-        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LibraryRowShape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LibraryArtwork(playlist.coverUrl, playlist.name, Modifier.size(66.dp), RoundedCornerShape(18.dp), selected)
-            Spacer(Modifier.width(13.dp))
+            LibraryArtwork(playlist.coverUrl, playlist.name, Modifier.size(56.dp), LibraryArtworkShape, selected)
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     playlist.name,
                     color = LevyraText,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -231,19 +330,22 @@ internal fun LibraryAlbumRow(
     val strings = LocalLevyraStrings.current
     Surface(
         color = if (selected) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
-        shape = RoundedCornerShape(20.dp),
+        shape = LibraryRowShape,
         border = if (selected) BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.55f)) else null,
-        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LibraryRowShape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LibraryArtwork(album.artworkUrl, album.title, Modifier.size(66.dp), RoundedCornerShape(18.dp), selected)
-            Spacer(Modifier.width(13.dp))
+            LibraryArtwork(album.artworkUrl, album.title, Modifier.size(56.dp), LibraryArtworkShape, selected)
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     album.title,
                     color = LevyraText,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -285,19 +387,22 @@ internal fun LibraryArtistRow(
     val strings = LocalLevyraStrings.current
     Surface(
         color = if (selected) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent,
-        shape = RoundedCornerShape(20.dp),
+        shape = LibraryRowShape,
         border = if (selected) BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.55f)) else null,
-        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LibraryRowShape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LibraryArtistAvatar(artist = artist, size = 64.dp, selected = selected)
-            Spacer(Modifier.width(13.dp))
+            LibraryArtistAvatar(artist = artist, size = 56.dp, selected = selected)
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     artist.name,
                     color = LevyraText,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -362,7 +467,7 @@ private fun LibraryPlaylistGridCard(
                 playlist.coverUrl,
                 playlist.name,
                 Modifier.fillMaxWidth().height(164.dp),
-                RoundedCornerShape(22.dp),
+                LibraryCardShape,
                 selected
             )
             if (selectionActive) {
@@ -447,7 +552,7 @@ private fun LibraryAlbumGridCard(
                 album.artworkUrl,
                 album.title,
                 Modifier.fillMaxWidth().height(164.dp),
-                RoundedCornerShape(22.dp),
+                LibraryCardShape,
                 selected
             )
             if (selectionActive) {

@@ -58,15 +58,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
@@ -110,6 +111,7 @@ internal fun LevyraLibraryScreen(
     var sortExpanded by remember { mutableStateOf(false) }
     var addToPlaylistTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var pendingDownloadDelete by remember { mutableStateOf<DownloadedTrack?>(null) }
     var showCreatePlaylist by remember { mutableStateOf(false) }
     var showImportPlaylist by remember { mutableStateOf(false) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
@@ -190,16 +192,20 @@ internal fun LevyraLibraryScreen(
                 top = 12.dp,
                 bottom = if (state.currentTrack != null || selectionActive) 230.dp else 116.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item(key = "library-title") {
                 LibraryHero(
                     title = strings.libraryTitle,
-                    subtitle = listOf(
-                        strings.formatTrackCount(catalog.tracks.size),
-                        "${state.playlists.size} ${strings.playlists}",
-                        strings.formatDownloadedTrackCount(state.downloads.size)
-                    ).joinToString(" · ")
+                    subtitle = when (category) {
+                        LibraryCategory.Overview, LibraryCategory.Songs ->
+                            strings.formatTrackCount(catalog.tracks.size)
+                        LibraryCategory.Playlists -> "${state.playlists.size} ${strings.playlistsPlain}"
+                        LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
+                        LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
+                        LibraryCategory.Offline ->
+                            strings.formatDownloadedTrackCount(state.downloads.size)
+                    }
                 )
             }
 
@@ -207,20 +213,20 @@ internal fun LevyraLibraryScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                     singleLine = true,
-                    shape = RoundedCornerShape(18.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    shape = RoundedCornerShape(16.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = LevyraText,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Medium
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = LevyraText,
                         unfocusedTextColor = LevyraText,
-                        focusedContainerColor = LevyraPanel.copy(alpha = 0.72f),
-                        unfocusedContainerColor = LevyraPanel.copy(alpha = 0.55f),
-                        focusedBorderColor = LevyraCyan.copy(alpha = 0.56f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.10f),
+                        focusedContainerColor = LevyraGlass,
+                        unfocusedContainerColor = LevyraGlass,
+                        focusedBorderColor = LevyraCyan.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.Transparent,
                         cursorColor = LevyraCyan,
                         focusedLeadingIconColor = LevyraCyan,
                         unfocusedLeadingIconColor = LevyraMuted,
@@ -229,12 +235,12 @@ internal fun LevyraLibraryScreen(
                     ),
                     placeholder = { Text(strings.searchPlaceholder, color = LevyraMuted, fontSize = 14.sp) },
                     leadingIcon = {
-                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp))
                     },
                     trailingIcon = {
                         if (query.isNotBlank()) {
                             IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Rounded.Close, contentDescription = strings.clear)
+                                Icon(Icons.Rounded.Close, contentDescription = strings.clear, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
@@ -353,14 +359,6 @@ internal fun LevyraLibraryScreen(
                 }
 
                 LibraryCategory.Playlists -> {
-                    item(key = "playlist-heading") {
-                        LibrarySectionTitle(
-                            title = strings.playlists,
-                            detail = "${visiblePlaylists.size} ${strings.playlists}",
-                            action = strings.newItem,
-                            onAction = { showCreatePlaylist = true }
-                        )
-                    }
                     item(key = "playlist-import-action") {
                         if (showImportPlaylistCard) {
                             LibraryImportPlaylistCard(
@@ -372,7 +370,17 @@ internal fun LevyraLibraryScreen(
                         }
                     }
                     if (visiblePlaylists.isEmpty()) {
-                        item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.createFirstPlaylistSubtitle) }
+                        item {
+                            if (query.isBlank()) {
+                                LibraryEmpty(
+                                    Icons.AutoMirrored.Rounded.QueueMusic,
+                                    strings.createFirstPlaylist,
+                                    strings.createFirstPlaylistSubtitle
+                                )
+                            } else {
+                                LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt)
+                            }
+                        }
                     } else if (layout == LibraryLayout.List) {
                         items(visiblePlaylists, key = { "playlist-${it.id}" }) { playlist ->
                             val key = "playlist:${playlist.id}"
@@ -409,11 +417,14 @@ internal fun LevyraLibraryScreen(
                 }
 
                 LibraryCategory.Albums -> {
-                    item(key = "album-heading") {
-                        LibrarySectionTitle(strings.albumsPlain, strings.savedTracks)
-                    }
                     if (visibleAlbums.isEmpty()) {
-                        item { LibraryEmpty(Icons.Rounded.Album, strings.albumUnavailable) }
+                        item {
+                            LibraryEmpty(
+                                Icons.Rounded.Album,
+                                if (query.isBlank()) strings.albumUnavailable else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.savedTracks else null
+                            )
+                        }
                     } else if (layout == LibraryLayout.Grid) {
                         items(
                             items = visibleAlbums.chunked(2),
@@ -450,11 +461,14 @@ internal fun LevyraLibraryScreen(
                 }
 
                 LibraryCategory.Artists -> {
-                    item(key = "artist-heading") {
-                        LibrarySectionTitle(strings.artists, strings.followedArtistsSubtitle)
-                    }
                     if (visibleArtists.isEmpty()) {
-                        item { LibraryEmpty(Icons.Rounded.Person, strings.artistProfileUnavailable) }
+                        item {
+                            LibraryEmpty(
+                                Icons.Rounded.Person,
+                                if (query.isBlank()) strings.artistProfileUnavailable else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.followedArtistsSubtitle else null
+                            )
+                        }
                     } else if (layout == LibraryLayout.Grid) {
                         items(
                             items = visibleArtists.chunked(2),
@@ -491,11 +505,14 @@ internal fun LevyraLibraryScreen(
                 }
 
                 LibraryCategory.Songs -> {
-                    item(key = "songs-heading") {
-                        LibrarySectionTitle(strings.songsPlain, strings.savedTracks)
-                    }
                     if (visibleTracks.isEmpty()) {
-                        item { LibraryEmpty(Icons.Rounded.MusicNote, strings.emptySearchPrompt) }
+                        item {
+                            LibraryEmpty(
+                                if (query.isBlank()) Icons.Rounded.MusicNote else Icons.Rounded.Search,
+                                if (query.isBlank()) strings.savedTracks else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.tapHeartToAdd else null
+                            )
+                        }
                     } else {
                         items(visibleTracks, key = { "song-${libraryTrackKey(it)}" }) { track ->
                             val key = libraryTrackKey(track)
@@ -514,7 +531,10 @@ internal fun LevyraLibraryScreen(
                                 },
                                 onLongClick = { selectedKeys = selectedKeys.toggle(key) },
                                 onFavorite = { viewModel.toggleFavorite(track) },
-                                onDownload = { viewModel.exportTrack(track) }
+                                onDownload = { viewModel.exportTrack(track) },
+                                onQueue = { viewModel.addToQueue(track) },
+                                onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                                modifier = Modifier.animateItem()
                             )
                         }
                     }
@@ -522,9 +542,8 @@ internal fun LevyraLibraryScreen(
 
                 LibraryCategory.Offline -> {
                     item(key = "offline-storage") {
-                        LibraryStorageCard(
+                        LibraryOfflineSummary(
                             bytes = state.downloadStorageBytes,
-                            count = state.downloads.size,
                             activeCount = state.downloadQueue.count {
                                 it.state in setOf("QUEUED", "RUNNING", "RETRYING", "PAUSED")
                             },
@@ -532,33 +551,40 @@ internal fun LevyraLibraryScreen(
                         )
                     }
                     val activeBatches = visibleDownloadBatches(state.downloadBatches)
-                    if (activeBatches.isNotEmpty()) {
-                        items(activeBatches, key = { "batch-${it.key}" }) { batch ->
-                            LibraryBatchDownloadRow(
-                                batch = batch,
-                                onRetry = { viewModel.retryBatchDownload(batch.key) },
-                                onCancel = { viewModel.cancelBatchDownload(batch.key) }
-                            )
-                        }
-                    }
-                    if (state.downloadQueue.isNotEmpty()) {
+                    val hasTransfers = activeBatches.isNotEmpty() || state.downloadQueue.isNotEmpty()
+                    if (hasTransfers) {
                         item(key = "offline-queue-title") {
                             LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
                         }
-                        items(state.downloadQueue, key = { "task-${it.taskKey}" }) { task ->
-                            LibraryDownloadTaskRow(
-                                task = task,
-                                onPause = { viewModel.pauseDownload(task.taskKey) },
-                                onResume = { viewModel.resumeDownload(task.taskKey) },
-                                onCancel = { viewModel.cancelDownload(task.taskKey) }
-                            )
+                    }
+                    items(activeBatches, key = { "batch-${it.key}" }) { batch ->
+                        LibraryBatchDownloadRow(
+                            batch = batch,
+                            onRetry = { viewModel.retryBatchDownload(batch.key) },
+                            onCancel = { viewModel.cancelBatchDownload(batch.key) }
+                        )
+                    }
+                    items(state.downloadQueue, key = { "task-${it.taskKey}" }) { task ->
+                        LibraryDownloadTaskRow(
+                            task = task,
+                            onPause = { viewModel.pauseDownload(task.taskKey) },
+                            onResume = { viewModel.resumeDownload(task.taskKey) },
+                            onCancel = { viewModel.cancelDownload(task.taskKey) }
+                        )
+                    }
+                    if (hasTransfers && visibleOffline.isNotEmpty()) {
+                        item(key = "offline-saved-title") {
+                            LibrarySectionTitle(strings.downloaded, "")
                         }
                     }
-                    item(key = "offline-heading") {
-                        LibrarySectionTitle(strings.offlineDownloadsPlain, strings.downloadsFolder)
-                    }
                     if (visibleOffline.isEmpty()) {
-                        item { LibraryEmpty(Icons.Rounded.OfflinePin, strings.noOfflineDownloads) }
+                        item {
+                            LibraryEmpty(
+                                if (query.isBlank()) Icons.Rounded.OfflinePin else Icons.Rounded.Search,
+                                if (query.isBlank()) strings.noOfflineDownloads else strings.emptySearchPrompt,
+                                if (query.isBlank()) strings.downloadTrackHint else null
+                            )
+                        }
                     } else {
                         items(visibleOffline, key = { "offline-${it.key}" }) { item ->
                             val track = item.track
@@ -572,7 +598,7 @@ internal fun LevyraLibraryScreen(
                                 isFavorite = track.id in state.favoriteIds,
                                 isDownloaded = true,
                                 downloadProgress = null,
-                                secondaryDetail = listOf(
+                                metadata = listOf(
                                     item.download.mimeType.substringAfter('/').uppercase(Locale.ROOT),
                                     strings.formatLibraryBytes(item.download.sizeBytes)
                                 ).filter(String::isNotBlank).joinToString(" · "),
@@ -582,7 +608,11 @@ internal fun LevyraLibraryScreen(
                                 },
                                 onLongClick = { selectedKeys = selectedKeys.toggle(key) },
                                 onFavorite = { viewModel.toggleFavorite(track) },
-                                onDownload = {}
+                                onDownload = {},
+                                onQueue = { viewModel.addToQueue(track) },
+                                onAddToPlaylist = { addToPlaylistTracks = listOf(track) },
+                                onDeleteDownload = { pendingDownloadDelete = item.download },
+                                modifier = Modifier.animateItem()
                             )
                         }
                     }
@@ -691,6 +721,24 @@ internal fun LevyraLibraryScreen(
                 viewModel.createPlaylistWithTracks(name, addToPlaylistTracks)
                 addToPlaylistTracks = emptyList()
                 selectedKeys = emptySet()
+            }
+        )
+    }
+
+    pendingDownloadDelete?.let { download ->
+        AlertDialog(
+            onDismissRequest = { pendingDownloadDelete = null },
+            title = { Text(strings.deleteDownload) },
+            text = { Text(download.title) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteDownload(download)
+                    selectedKeys = selectedKeys - "download:${download.id}"
+                    pendingDownloadDelete = null
+                }) { Text(strings.delete) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDownloadDelete = null }) { Text(strings.cancel) }
             }
         )
     }

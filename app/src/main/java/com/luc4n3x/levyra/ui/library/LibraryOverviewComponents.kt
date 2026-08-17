@@ -1,9 +1,12 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,7 +48,6 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -53,6 +56,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +64,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +78,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPink
@@ -81,73 +89,68 @@ import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 
+internal val LibraryPillShape = RoundedCornerShape(999.dp)
+
 @Composable
 internal fun LibraryHero(title: String, subtitle: String) {
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = title,
-                color = LevyraText,
-                fontSize = 32.sp,
-                lineHeight = 35.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.8).sp
-            )
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 28.sp,
+            lineHeight = 32.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.6).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() }
+        )
+        if (subtitle.isNotBlank()) {
             Text(
                 text = subtitle,
                 color = LevyraMuted,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(Modifier.width(14.dp))
-        Surface(
-            color = LevyraPanel.copy(alpha = 0.82f),
-            shape = CircleShape,
-            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.22f))
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.LibraryMusic,
-                contentDescription = null,
-                tint = LevyraCyan,
-                modifier = Modifier.padding(12.dp).size(24.dp)
             )
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LibraryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val container by animateColorAsState(
+        targetValue = if (selected) LevyraCyan.copy(alpha = 0.16f) else LevyraGlass,
+        animationSpec = tween(durationMillis = 160),
+        label = "libraryChipContainer"
+    )
+    val content by animateColorAsState(
+        targetValue = if (selected) LevyraCyan else LevyraMuted,
+        animationSpec = tween(durationMillis = 160),
+        label = "libraryChipContent"
+    )
     Surface(
-        color = if (selected) LevyraViolet.copy(alpha = 0.28f) else LevyraPanel.copy(alpha = 0.50f),
-        shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(
-            1.dp,
-            if (selected) LevyraViolet.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.09f)
-        ),
-        modifier = Modifier.height(38.dp).combinedClickable(onClick = onClick)
+        color = container,
+        shape = LibraryPillShape,
+        modifier = Modifier
+            .height(40.dp)
+            .clip(LibraryPillShape)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        Box(
+            modifier = Modifier.fillMaxHeight().padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
-            if (selected) {
-                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraText, modifier = Modifier.size(15.dp))
-            }
             Text(
                 text = label,
-                color = if (selected) LevyraText else LevyraMuted,
+                color = content,
                 fontSize = 13.sp,
-                fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
                 maxLines = 1
             )
         }
@@ -172,19 +175,34 @@ internal fun LibraryToolbar(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Box {
-            TextButton(
-                onClick = { onSortExpanded(true) },
-                colors = ButtonDefaults.textButtonColors(contentColor = LevyraText),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+            Surface(
+                color = LevyraGlass,
+                shape = LibraryPillShape,
+                modifier = Modifier
+                    .height(38.dp)
+                    .clip(LibraryPillShape)
+                    .clickable(onClick = { onSortExpanded(true) })
             ) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.Sort,
-                    contentDescription = null,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(7.dp))
-                Text(sort.libraryLabel(strings), fontSize = 13.sp, fontWeight = FontWeight.Black)
+                Row(
+                    modifier = Modifier.fillMaxHeight().padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.Sort,
+                        contentDescription = null,
+                        tint = LevyraCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = sort.libraryLabel(strings),
+                        color = LevyraText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             DropdownMenu(expanded = sortExpanded, onDismissRequest = { onSortExpanded(false) }) {
                 LibrarySort.entries.forEach { option ->
@@ -202,21 +220,21 @@ internal fun LibraryToolbar(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(
-                onClick = onSelectAll,
-                colors = ButtonDefaults.textButtonColors(contentColor = LevyraText),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Icon(Icons.Rounded.DoneAll, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(strings.all, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            IconButton(onClick = onSelectAll) {
+                Icon(
+                    Icons.Rounded.DoneAll,
+                    contentDescription = strings.all,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(20.dp)
+                )
             }
             if (category != LibraryCategory.Offline && category != LibraryCategory.Songs) {
                 IconButton(onClick = onLayout) {
                     Icon(
                         if (layout == LibraryLayout.List) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
-                        contentDescription = null,
-                        tint = LevyraMuted
+                        contentDescription = strings.options,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -233,16 +251,34 @@ internal fun LibrarySectionTitle(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Text(detail, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = title,
+                color = LevyraText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.3).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+            if (detail.isNotBlank()) {
+                Text(
+                    text = detail,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
         if (action != null && onAction != null) {
             TextButton(onClick = onAction) {
-                Text(action, color = LevyraCyan, fontWeight = FontWeight.Bold)
+                Text(action, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
     }
