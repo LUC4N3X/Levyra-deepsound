@@ -213,7 +213,7 @@ internal fun LevyraLibraryScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -546,8 +546,7 @@ internal fun LevyraLibraryScreen(
                             bytes = state.downloadStorageBytes,
                             activeCount = state.downloadQueue.count {
                                 it.state in setOf("QUEUED", "RUNNING", "RETRYING", "PAUSED")
-                            },
-                            onOpenFolder = onOpenDownloads
+                            }
                         )
                     }
                     val activeBatches = visibleDownloadBatches(state.downloadBatches)
