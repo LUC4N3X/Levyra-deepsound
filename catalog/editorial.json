@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-17T07:18:15Z",
+  "generatedAt": "2026-08-17T13:08:53Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2380,7 +2380,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -2388,8 +2388,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2399,7 +2399,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 3,
@@ -3093,7 +3093,7 @@
         },
         {
           "position": 34,
-          "id": "levyra-07bfa81c9a33aafde0f1",
+          "id": "levyra-4c886bf7b578fe1d1532",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3101,8 +3101,8 @@
             }
           ],
           "album": {
-            "name": "Nice To Each Other",
-            "releaseDate": "2025-05-30"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3112,7 +3112,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 35,
@@ -6409,8 +6409,8 @@
         },
         {
           "position": 24,
-          "id": "levyra-4e26311d711db463763b",
-          "title": "Danza Kuduro",
+          "id": "levyra-d43d31dade0c776df2b4",
+          "title": "Danza Kuduro - Version MTO",
           "artists": [
             {
               "name": "Lucenzo"
@@ -6420,12 +6420,12 @@
             }
           ],
           "album": {
-            "name": "Danza Kuduro 2019 (Luigi Ramirez Remix)",
-            "releaseDate": "2019-05-24"
+            "name": "Emigrante Del Mundo (Remastered)",
+            "releaseDate": "2011-12-19"
           },
-          "durationMs": 196099,
+          "durationMs": 216352,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e735b1d6f3b7d27654794d44"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dd6b19d30e8b2531c625fbc4"
         },
         {
           "position": 25,
@@ -7999,6 +7999,12 @@
           },
           "durationMs": 141692,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "Xb6zpm3U1NU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -10459,11 +10465,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 42,
@@ -10809,6 +10815,12 @@
           },
           "durationMs": 213559,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "vtlRXh2C9_Y",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC8Yuo0-S4BMCXWzYajCbMug"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bb76d47861576a1f2a62911c"
         },
         {
@@ -13101,7 +13113,7 @@
             "confidence": 100,
             "artistBrowseId": "UC3h8X6BJCtQNnLVZm0Ak3mw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022bb16cfff3a7acc82befd8e8"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d59e1a1f1d15715d55be6230"
         },
         {
           "position": 45,
@@ -16874,7 +16886,7 @@
         },
         {
           "position": 16,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16882,12 +16894,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 17,
@@ -20761,7 +20773,7 @@
             "confidence": 100,
             "artistBrowseId": "UCGKXb1syicud01CJOOFRykg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02613aaa3ae566d9f36008aed0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e691217483df8798445c82e2"
         },
         {
           "position": 50,
@@ -22073,20 +22085,20 @@
         },
         {
           "position": 13,
-          "id": "levyra-c3df00c3dfd6b9d6d5ae",
-          "title": "RUDE!",
+          "id": "levyra-a76c2a1b79e00f8138a6",
+          "title": "RUDE! - Japanese Ver.",
           "artists": [
             {
               "name": "Hearts2Hearts"
             }
           ],
           "album": {
-            "name": "RUDE!",
-            "releaseDate": "2026-02-20"
+            "name": "ICONIC HEART",
+            "releaseDate": "2026-08-09"
           },
           "durationMs": 200000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d505bec2fbfee5857725d333"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ccf2a687cd03daa7c9696e73"
         },
         {
           "position": 14,
@@ -22654,12 +22666,6 @@
           },
           "durationMs": 189000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "A9EpZWrQ3dM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCC3Hg75KxQk4VTrBSphEbGw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ccf2a687cd03daa7c9696e73"
         },
         {
@@ -22861,12 +22867,6 @@
           },
           "durationMs": 170880,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "7wJsfALKRR8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCraxhuo4vXXMMgXJ6Gil4Eg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024b56a34b0c2b3798fd46f855"
         },
         {
@@ -25153,12 +25153,6 @@
           },
           "durationMs": 222706,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "M2QKS9tte9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -25291,7 +25285,7 @@
             "confidence": 100,
             "artistBrowseId": "UCWoBKSc1j2KkPd5j_f8Qfaw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0214814de2da42fd2273d0fcff"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02854a92715a00a09e86e33c1a"
         }
       ]
     },
@@ -30476,7 +30470,7 @@
             "releaseDate": "2026-07-17"
           },
           "durationMs": 162935,
-          "explicit": false,
+          "explicit": true,
           "youtubeMusic": {
             "audioVideoId": "31Tyy3wr_2s",
             "audioConfidence": 100,
