@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.retainsExistingBatchMembership
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -40,6 +41,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
+
+data class OfflineDownloadBatchRef(
+    val key: String,
+    val title: String,
+    val kind: String,
+    val artworkUrl: String,
+    val position: Int
+)
 
 private object OfflineDownloadConcurrencyGate {
     private val mutex = Mutex()
@@ -306,7 +315,12 @@ class OfflineExportWorker(
         private const val NOTIFICATION_ID_RANGE = 5000
         private const val COMPLETED_TASK_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
 
-        suspend fun enqueue(context: Context, trackId: String, trackPayload: String): UUID {
+        suspend fun enqueue(
+            context: Context,
+            trackId: String,
+            trackPayload: String,
+            batch: OfflineDownloadBatchRef? = null
+        ): UUID {
             val appContext = context.applicationContext
             val workManager = WorkManager.getInstance(appContext)
             val uniqueName = uniqueNameFor(trackId)
@@ -326,6 +340,15 @@ class OfflineExportWorker(
             val dao = LevyraDatabase.get(appContext).offlineDownloadTasksDao()
             val track = TrackPayloadCodec.decode(trackPayload)
             val previous = dao.byKey(trackId)
+            val retainedBatch = previous
+                ?.takeIf {
+                    retainsExistingBatchMembership(
+                        previousBatchKey = it.batchKey,
+                        previousState = it.state,
+                        requestedBatchKey = batch?.key.orEmpty()
+                    )
+                }
+                ?.let { OfflineDownloadBatchRef(it.batchKey, it.batchTitle, it.batchKind, it.batchArtworkUrl, it.batchPosition) }
             val now = System.currentTimeMillis()
             dao.prune(now - COMPLETED_TASK_RETENTION_MS)
             dao.upsert(
@@ -340,7 +363,12 @@ class OfflineExportWorker(
                     workId = request.id.toString(),
                     error = "",
                     createdAt = previous?.createdAt ?: now,
-                    updatedAt = now
+                    updatedAt = now,
+                    batchKey = retainedBatch?.key ?: batch?.key.orEmpty(),
+                    batchTitle = retainedBatch?.title ?: batch?.title.orEmpty(),
+                    batchKind = retainedBatch?.kind ?: batch?.kind.orEmpty(),
+                    batchArtworkUrl = retainedBatch?.artworkUrl ?: batch?.artworkUrl.orEmpty(),
+                    batchPosition = retainedBatch?.position ?: batch?.position ?: 0
                 )
             )
             workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, request)

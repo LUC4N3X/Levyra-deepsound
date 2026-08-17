@@ -333,6 +333,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -8920,6 +8921,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 selected = filter,
                                 hasArtists = data.artists.isNotEmpty(),
                                 hasAlbums = data.albums.isNotEmpty(),
+                                hasPlaylists = data.playlists.isNotEmpty(),
+                                hasVideos = data.videos.isNotEmpty(),
                                 onSelect = viewModel::setSearchFilter
                             )
                         }
@@ -8943,7 +8946,13 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Artists) && data.artists.isNotEmpty()) {
-                            item { SectionTitle(strings.artists) }
+                            item {
+                                SearchSectionHeader(
+                                    title = strings.artists,
+                                    showAll = filter == SearchFilter.All,
+                                    onShowAll = { viewModel.setSearchFilter(SearchFilter.Artists) }
+                                )
+                            }
                             item {
                                 ArtistHitRow(
                                     artists = data.artists,
@@ -8956,7 +8965,13 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Albums) && data.albums.isNotEmpty()) {
-                            item { SectionTitle(strings.albumsPlain) }
+                            item {
+                                SearchSectionHeader(
+                                    title = strings.albumsPlain,
+                                    showAll = filter == SearchFilter.All,
+                                    onShowAll = { viewModel.setSearchFilter(SearchFilter.Albums) }
+                                )
+                            }
                             item {
                                 AlbumHitRow(
                                     albums = data.albums,
@@ -8964,14 +8979,71 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         viewModel.openAlbum(album)
-                                    }
+                                    },
+                                    onDownload = { album -> viewModel.exportAlbumHit(album) }
+                                )
+                            }
+                        }
+                        if ((filter == SearchFilter.All || filter == SearchFilter.Playlists) && data.playlists.isNotEmpty()) {
+                            item {
+                                SearchSectionHeader(
+                                    title = strings.playlistsPlain,
+                                    showAll = filter == SearchFilter.All,
+                                    onShowAll = { viewModel.setSearchFilter(SearchFilter.Playlists) }
+                                )
+                            }
+                            item {
+                                PlaylistHitRow(
+                                    playlists = data.playlists,
+                                    onClick = { playlist ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.playPlaylistHit(playlist)
+                                    },
+                                    onDownload = { playlist -> viewModel.exportPlaylistHit(playlist) }
+                                )
+                            }
+                        }
+                        if ((filter == SearchFilter.All || filter == SearchFilter.Videos) && data.videos.isNotEmpty()) {
+                            item {
+                                SearchSectionHeader(
+                                    title = strings.video,
+                                    showAll = filter == SearchFilter.All,
+                                    onShowAll = { viewModel.setSearchFilter(SearchFilter.Videos) }
+                                )
+                            }
+                            items(data.videos, key = { "search-video-${it.id}" }) { track ->
+                                SearchTrackCard(
+                                    track = track,
+                                    isCurrent = track.id == state.currentTrack?.id,
+                                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                    isFavorite = track.id in state.favoriteIds,
+                                    isDownloading = track.id in state.downloadingTrackIds,
+                                    isDownloaded = track.id in state.downloadedTrackIds,
+                                    downloadProgress = state.downloadProgressByTrackId[track.id],
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.playFrom(data.videos, track)
+                                    },
+                                    onFavorite = { viewModel.toggleFavorite(track) },
+                                    onAddToPlaylist = { addTarget = track },
+                                    onDownload = { viewModel.exportTrack(track) },
+                                    onArtist = { viewModel.openArtist(track) }
                                 )
                             }
                         }
                         if (filter == SearchFilter.All || filter == SearchFilter.Songs) {
                             val songs = if (filter == SearchFilter.All) data.songs.drop(if (data.topTrack != null) 1 else 0) else data.songs
                             if (songs.isNotEmpty()) {
-                                item { SectionTitle(strings.songs) }
+                                item {
+                                    SearchSectionHeader(
+                                        title = strings.songs,
+                                        showAll = filter == SearchFilter.All,
+                                        onShowAll = { viewModel.setSearchFilter(SearchFilter.Songs) }
+                                    )
+                                }
                                 items(songs, key = { "search-song-${it.id}" }) { track ->
                                     SearchTrackCard(
                                         track = track,
@@ -8993,6 +9065,16 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                         onArtist = { viewModel.openArtist(track) }
                                     )
                                 }
+                            }
+                        }
+                        if (filter != SearchFilter.All) {
+                            item(key = "search-section-footer") {
+                                SearchSectionFooter(
+                                    loading = filter in state.searchSectionLoading,
+                                    failed = filter in data.failedSections,
+                                    canLoadMore = state.searchSectionContinuations[filter].orEmpty().isNotBlank(),
+                                    onLoadMore = { viewModel.loadMoreSearchSection(filter) }
+                                )
                             }
                         }
                     }
@@ -16938,6 +17020,8 @@ private fun SearchFilterChips(
     selected: SearchFilter,
     hasArtists: Boolean,
     hasAlbums: Boolean,
+    hasPlaylists: Boolean,
+    hasVideos: Boolean,
     onSelect: (SearchFilter) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -16946,6 +17030,8 @@ private fun SearchFilterChips(
         add(SearchFilter.Songs to strings.songsPlain)
         if (hasArtists) add(SearchFilter.Artists to strings.artistsLabelPlural)
         if (hasAlbums) add(SearchFilter.Albums to strings.albumsPlain)
+        if (hasPlaylists) add(SearchFilter.Playlists to strings.playlistsPlain)
+        if (hasVideos) add(SearchFilter.Videos to strings.video)
     }
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -17157,7 +17243,120 @@ private fun ArtistHitRow(
 }
 
 @Composable
-private fun AlbumHitRow(albums: List<AlbumHit>, onClick: (AlbumHit) -> Unit) {
+private fun PlaylistHitRow(
+    playlists: List<PlaylistHit>,
+    onClick: (PlaylistHit) -> Unit,
+    onDownload: (PlaylistHit) -> Unit
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        itemsIndexed(
+            items = playlists,
+            key = { index, playlist ->
+                "playlist-hit-$index-${playlist.playlistId.ifBlank { playlist.title.trim().lowercase(Locale.ROOT) }}"
+            },
+            contentType = { _, _ -> "playlist-hit" }
+        ) { _, playlist ->
+            Column(
+                modifier = Modifier.width(150.dp).clickable { onClick(playlist) },
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(150.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(LevyraPanelSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (playlist.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(playlist.thumbnailUrl).crossfade(true).build(),
+                            contentDescription = playlist.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null, tint = LevyraMuted, modifier = Modifier.size(40.dp))
+                    }
+                    IconButton(
+                        onClick = { onDownload(playlist) },
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Download,
+                            contentDescription = LocalLevyraStrings.current.downloadPlaylist,
+                            tint = LevyraViolet,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                Text(playlist.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOf(playlist.author, playlist.trackCountLabel).filter { it.isNotBlank() }.joinToString(" · "),
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchSectionFooter(
+    loading: Boolean,
+    failed: Boolean,
+    canLoadMore: Boolean,
+    onLoadMore: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    when {
+        loading -> Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = LevyraCyan)
+        }
+        failed -> GlassMessage(strings.searchFailed, LevyraOrange)
+        canLoadMore -> Box(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            TextButton(onClick = onLoadMore) {
+                Text(strings.more, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchSectionHeader(title: String, showAll: Boolean, onShowAll: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Box(modifier = Modifier.weight(1f, fill = false)) { SectionTitle(title) }
+        if (showAll) {
+            TextButton(onClick = onShowAll) {
+                Text(
+                    LocalLevyraStrings.current.showAll,
+                    color = LevyraCyan,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumHitRow(
+    albums: List<AlbumHit>,
+    onClick: (AlbumHit) -> Unit,
+    onDownload: ((AlbumHit) -> Unit)? = null
+) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(
             items = albums,
@@ -17184,6 +17383,19 @@ private fun AlbumHitRow(albums: List<AlbumHit>, onClick: (AlbumHit) -> Unit) {
                         )
                     } else {
                         Icon(Icons.Rounded.Album, null, tint = LevyraMuted, modifier = Modifier.size(40.dp))
+                    }
+                    onDownload?.let { download ->
+                        IconButton(
+                            onClick = { download(album) },
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Download,
+                                contentDescription = LocalLevyraStrings.current.download,
+                                tint = LevyraViolet,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
                 Text(album.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)

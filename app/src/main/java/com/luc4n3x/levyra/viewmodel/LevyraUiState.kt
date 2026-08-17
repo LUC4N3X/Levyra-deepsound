@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
+import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
@@ -156,6 +157,7 @@ data class LevyraUiState(
     val downloadTitleByTrackId: Map<String, String> = emptyMap(),
     val offlineQueueSize: Int = 0,
     val downloadQueue: List<OfflineDownloadTask> = emptyList(),
+    val downloadBatches: List<BatchDownload> = emptyList(),
     val showArtist: Boolean = false,
     val artistLoading: Boolean = false,
     val artistError: String? = null,
@@ -163,6 +165,8 @@ data class LevyraUiState(
     val artistListStateKey: String = "",
     val searchData: SearchResults = SearchResults(),
     val searchFilter: SearchFilter = SearchFilter.All,
+    val searchSectionContinuations: Map<SearchFilter, String> = emptyMap(),
+    val searchSectionLoading: Set<SearchFilter> = emptySet(),
     val themePreset: String = LevyraThemes.COSMIC,
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
