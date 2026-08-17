@@ -185,33 +185,33 @@ Levyra is built from the ground up as a native, modular audio suite for Android 
 </tr>
 </table>
 
-### ✦ Under the Hood: Core Audio Principles
-* 🎚️ **Unidirectional State Flow**: User gestures update immutable state in the ViewModel, instantly propagating across the Compose UI, MediaSession notification, and Android Auto.
-* ⚡ **Dual Stream Resolver**: Queries InnerTube and LevyraExtractor with intelligent fallback, selecting the highest-fidelity Opus/AAC stream while prebuffering upcoming queue items.
-* 💾 **Standard File Vault**: Offline tracks are saved as real tagged M4A files directly into `Music/Levyra`, instantly playable across external DAPs, car stereos, and third-party media players.
+### ✦ Under the Hood
+* **Unidirectional State Flow**: User actions update immutable state in the ViewModel, dispatching synchronized changes across the Compose UI, MediaSession notification, and Android Auto.
+* **Dual Stream Resolver**: Queries InnerTube and LevyraExtractor with automatic fallback, selecting the highest-fidelity Opus or AAC stream while prefetching upcoming queue tracks.
+* **Standard File Vault**: Offline tracks save as tagged M4A files directly into `Music/Levyra`, playable in external DAPs, car stereos, and third-party media players.
 
 ---
 
 ## ✦ Building from Source
 
 ### Android Build
-Prerequisites: **JDK 17**, **Android SDK Platform 37**, Android Studio with AGP 9.3.1 support.
+Prerequisites: **JDK 17**, **Android SDK Platform 37**, and Gradle 9.7.0.
 
 ```bash
 # Clone the repository
 git clone https://github.com/LUC4N3X/Levyra-deepsound.git
 cd Levyra-deepsound
 
-# Build and install debug APK to connected device/emulator
+# Build and install debug APK to a connected device
 ./gradlew installDebug
 
 # Compile optimized release APK
 ./gradlew clean assembleRelease
 ```
-*The compiled APK will be generated at:* `app/build/outputs/apk/release/app-release.apk`
+*Compiled APK output:* `app/build/outputs/apk/release/app-release.apk`
 
 ### Windows Desktop Build
-Prerequisites: **JDK 21**, Windows x64, **VLC 3.0.x/libvlc**, and **WiX Toolset 3.14**.
+Prerequisites: **JDK 21 LTS**, Windows x64, **VLC 3.0.x / libvlc**, and **WiX Toolset 3.14**.
 
 ```powershell
 cd desktop
@@ -219,16 +219,14 @@ cd desktop
 .\gradlew.bat createReleaseDistributable
 .\gradlew.bat packageReleaseMsi packageReleaseExe
 ```
-*Outputs are created in:* `desktop/app/build/compose/binaries/main-release/`
+*Distribution output:* `desktop/app/build/compose/binaries/main-release/`
 
-### F-Droid Reproducible Verification
+### F-Droid Reproducible Build
 ```bash
-# Verify reproducible build profile
 ./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
 ```
 
 ### Versioning
-
 Android and Windows release cycles are independent:
 
 ```properties
@@ -246,44 +244,48 @@ Version codes follow `major * 1_000_000 + minor * 10_000 + patch * 100 + build` 
 
 ## ✦ Privacy Blueprint & Permissions
 
-Levyra is built strictly adhering to zero-tracking principles. There are no advertising identifiers, no behavioral analytics, and no telemetry services.
+Levyra is built on zero-tracking principles. It contains no analytics frameworks, advertising SDKs, or background telemetry.
 
-### External Network Blueprint
-* **Audio & Video Streams**: Retrieved directly from YouTube / YouTube Music CDN servers.
-* **Artwork & Metadata**: Resolved from public endpoints (Apple Music, Deezer, Tidal, Qobuz, Wikidata).
-* **Synced Lyrics**: Retrieved securely from LRCLIB and YouTube Music lyric providers.
-* **SponsorBlock**: Segment timestamps fetched on-demand during active playback (can be toggled in Settings).
-* **Update Verification**: GitHub Release builds check for updates on startup (disabled in F-Droid builds).
+### External Network Endpoints
+
+| Service | Purpose | Data Transmitted |
+|:---|:---|:---|
+| **YouTube & YT Music** | Audio / video streaming and catalog search | Track queries and stream token verification |
+| **LRCLIB** | Synchronized line-by-line karaoke lyrics | Track title and artist name |
+| **Metadata Providers** | High-resolution album artwork (Deezer, Apple Music, Tidal) | Search query strings |
+| **SponsorBlock** | Non-music segment skipping (optional) | Video ID hash prefix |
+| **GitHub Releases** | Update availability check on launch (disabled in F-Droid) | None |
 
 ### Android Permissions
+
 | Permission | Mechanical Purpose |
 |:---|:---|
-| `INTERNET` & `ACCESS_NETWORK_STATE` | Streaming media and fetching song metadata |
+| `INTERNET` & `ACCESS_NETWORK_STATE` | Streaming audio and fetching metadata |
 | `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Continuous background playback with notification controls |
 | `POST_NOTIFICATIONS` | Media playback controls and download progress updates |
 | `WAKE_LOCK` | Preventing CPU sleep during active audio playback |
-| `WRITE_EXTERNAL_STORAGE` (Android <= 9) | Writing exported M4A files to public `Music/Levyra` directory |
+| `WRITE_EXTERNAL_STORAGE` (Android <= 9) | Saving exported M4A files to the public `Music/Levyra` directory |
 
 ---
 
 ## ✦ Contributing
 
-We welcome community contributions, bug fixes, and feature improvements!
+Contributions, bug fixes, and improvements are welcome:
 
-1. Fork the repository on GitHub.
-2. Create your feature branch:
+1. **Fork the repository** on GitHub.
+2. **Create a focused topic branch**:
    ```bash
-   git checkout -b feature/acoustic-enhancement
+   git checkout -b feature/playback-enhancement
    ```
-3. Commit your changes following clear conventional commits:
+3. **Commit changes** using clear commit messages:
    ```bash
-   git commit -m "feat(player): add volume normalization curve"
+   git commit -m "feat(player): optimize volume normalization curves"
    ```
-4. Run the quality gate to ensure all checks pass:
+4. **Run the quality gate**:
    ```bash
    python scripts/ai_quality_gate.py --profile fast
    ```
-5. Push to your branch and open a Pull Request.
+5. **Open a Pull Request** describing your changes and verification steps.
 
 ---
 
@@ -291,9 +293,9 @@ We welcome community contributions, bug fixes, and feature improvements!
 
 <table align="center">
   <tr>
-    <td align="center" width="120">
+    <td align="center" width="110">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=160&w=160&fit=cover&mask=circle" width="80" alt="LUC4N3X" />
+        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=160&w=160&fit=cover&mask=circle" width="75" alt="LUC4N3X" />
       </a>
     </td>
     <td>
@@ -324,5 +326,5 @@ This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**
 This project is not affiliated with, sponsored by, or endorsed by Google LLC, YouTube, or Alphabet Inc.
 
 <div align="center">
-  <sub>Crafted with passion for pure sound. If you love Levyra, star the repository on GitHub! ⭐</sub>
+  <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub.</sub>
 </div>
