@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-17T01:56:56Z",
+  "generatedAt": "2026-08-17T07:18:15Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -6409,8 +6409,8 @@
         },
         {
           "position": 24,
-          "id": "levyra-d43d31dade0c776df2b4",
-          "title": "Danza Kuduro - Version MTO",
+          "id": "levyra-4e26311d711db463763b",
+          "title": "Danza Kuduro",
           "artists": [
             {
               "name": "Lucenzo"
@@ -6420,12 +6420,12 @@
             }
           ],
           "album": {
-            "name": "Emigrante Del Mundo (Remastered)",
-            "releaseDate": "2011-12-19"
+            "name": "Danza Kuduro 2019 (Luigi Ramirez Remix)",
+            "releaseDate": "2019-05-24"
           },
-          "durationMs": 216352,
+          "durationMs": 196099,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dd6b19d30e8b2531c625fbc4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e735b1d6f3b7d27654794d44"
         },
         {
           "position": 25,
@@ -7999,12 +7999,6 @@
           },
           "durationMs": 141692,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "Xb6zpm3U1NU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -10465,11 +10459,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 42,
@@ -10506,14 +10500,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -15010,7 +14996,7 @@
         },
         {
           "position": 30,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -15018,8 +15004,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15029,7 +15015,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 31,
@@ -16888,7 +16874,7 @@
         },
         {
           "position": 16,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16896,12 +16882,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 17,
@@ -20775,7 +20761,7 @@
             "confidence": 100,
             "artistBrowseId": "UCGKXb1syicud01CJOOFRykg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e691217483df8798445c82e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02613aaa3ae566d9f36008aed0"
         },
         {
           "position": 50,
@@ -22875,6 +22861,12 @@
           },
           "durationMs": 170880,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "7wJsfALKRR8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCraxhuo4vXXMMgXJ6Gil4Eg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024b56a34b0c2b3798fd46f855"
         },
         {
@@ -27977,14 +27969,6 @@
           },
           "durationMs": 204068,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BF2_ipR1OI0",
-            "audioConfidence": 100,
-            "videoId": "lY5V4hSLWY8",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -28743,12 +28727,6 @@
           },
           "durationMs": 157959,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "DGIGqbBAm3c",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2-rG7DMkCdDL3lE15wUrSw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021f50eee9553ec21741a42c38"
         },
         {
@@ -30192,6 +30170,12 @@
           },
           "durationMs": 185000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "H9xu9cvtGIg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCIMmuidNJdncfMEelOU08Fg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0237f636fa384b48481241cbd3"
         },
         {

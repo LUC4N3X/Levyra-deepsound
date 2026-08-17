@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-17T01:56:56Z",
+  "generatedAt": "2026-08-17T07:18:15Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -1095,9 +1095,9 @@
       "scope": "track"
     },
     {
-      "song": "Danza Kuduro - Version MTO",
+      "song": "Danza Kuduro",
       "artist": "Lucenzo, Don Omar",
-      "album": "Emigrante Del Mundo (Remastered)",
+      "album": "Danza Kuduro 2019 (Luigi Ramirez Remix)",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/4fa14c7e45094b21aaae2ed578b589ae.cnvs.mp4",
       "scope": "track"
     },
@@ -1795,6 +1795,13 @@
       "scope": "track"
     },
     {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Jij Hebt Mij",
       "artist": "Kevin, Roxy Dekker",
       "album": "Jij Hebt Mij",
@@ -2397,6 +2404,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Superlim & silvertejp",
       "artist": "Molly Sandén, Miriam Bryant",
       "album": "Superlim & silvertejp",
@@ -2702,6 +2716,13 @@
       "artist": "Yzomandias, P T K, Luca Brassi10x, Le Winter",
       "album": "Painkillers",
       "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/7910898279034c3ab9e4d96f6a9a5e6c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Danza Kuduro - Version MTO",
+      "artist": "Lucenzo, Don Omar",
+      "album": "Emigrante Del Mundo (Remastered)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/4fa14c7e45094b21aaae2ed578b589ae.cnvs.mp4",
       "scope": "track"
     },
     {
