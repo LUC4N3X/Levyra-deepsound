@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
 import com.luc4n3x.levyra.player.LevyraYoutubeDataSource
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
@@ -25,6 +26,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -38,6 +41,30 @@ internal fun offlineContinuousDownloadProgress(bytesCached: Long, contentLength:
     return (12 + ratio * 68.0).toInt().coerceIn(12, 80)
 }
 
+internal object OfflineCacheWriteLocks {
+    private class Entry {
+        val mutex = Mutex()
+        var users = 0
+    }
+
+    private val entries = ConcurrentHashMap<String, Entry>()
+
+    internal fun activeKeyCount(): Int = entries.size
+
+    suspend fun <T> withKey(key: String, block: suspend () -> T): T {
+        val entry = entries.compute(key) { _, existing ->
+            (existing ?: Entry()).also { it.users += 1 }
+        }!!
+        try {
+            return entry.mutex.withLock { block() }
+        } finally {
+            entries.compute(key) { _, existing ->
+                existing?.apply { users -= 1 }?.takeIf { it.users > 0 }
+            }
+        }
+    }
+}
+
 @UnstableApi
 internal class OfflineStreamPrefetcher(context: Context) {
     private val appContext = context.applicationContext
@@ -48,6 +75,7 @@ internal class OfflineStreamPrefetcher(context: Context) {
     ) = coroutineScope {
         val url = track.streamUrl.trim()
         if (url.isBlank()) throw IOException("Stream audio non disponibile")
+        val cacheKey = LevyraPlaybackCacheKey.offlineStream(track)
 
         val requestLength = AtomicLong(-1L)
         val cachedBytes = AtomicLong(0L)
@@ -69,41 +97,43 @@ internal class OfflineStreamPrefetcher(context: Context) {
 
         try {
             withContext(Dispatchers.IO) {
-                val cache = LevyraMediaCache.get(appContext)
-                val upstream = LevyraYoutubeDataSource.Factory(
-                    PlaybackNetworkStack.playbackFactory(appContext)
-                        .setDefaultRequestProperties(
-                            mapOf(
-                                "Accept" to "*/*",
-                                "Accept-Encoding" to "identity"
+                OfflineCacheWriteLocks.withKey(cacheKey) {
+                    val cache = LevyraMediaCache.get(appContext)
+                    val upstream = LevyraYoutubeDataSource.Factory(
+                        PlaybackNetworkStack.playbackFactory(appContext)
+                            .setDefaultRequestProperties(
+                                mapOf(
+                                    "Accept" to "*/*",
+                                    "Accept-Encoding" to "identity"
+                                )
                             )
-                        )
-                )
-                val sink = CacheDataSink.Factory()
-                    .setCache(cache)
-                    .setFragmentSize(CACHE_FRAGMENT_BYTES)
-                val source = CacheDataSource.Factory()
-                    .setCache(cache)
-                    .setUpstreamDataSourceFactory(upstream)
-                    .setCacheWriteDataSinkFactory(sink)
-                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-                    .createDataSource()
-                val dataSpec = DataSpec.Builder()
-                    .setUri(Uri.parse(url))
-                    .setKey(LevyraPlaybackCacheKey.stream(track))
-                    .setPosition(0L)
-                    .build()
-                val listener = CacheWriter.ProgressListener { length, bytes, _ ->
-                    if (length > 0L) requestLength.set(length)
-                    cachedBytes.set(bytes.coerceAtLeast(0L))
-                }
+                    )
+                    val sink = CacheDataSink.Factory()
+                        .setCache(cache)
+                        .setFragmentSize(CACHE_FRAGMENT_BYTES)
+                    val source = CacheDataSource.Factory()
+                        .setCache(cache)
+                        .setUpstreamDataSourceFactory(upstream)
+                        .setCacheWriteDataSinkFactory(sink)
+                        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                        .createDataSource()
+                    val dataSpec = DataSpec.Builder()
+                        .setUri(Uri.parse(url))
+                        .setKey(cacheKey)
+                        .setPosition(0L)
+                        .build()
+                    val listener = CacheWriter.ProgressListener { length, bytes, _ ->
+                        if (length > 0L) requestLength.set(length)
+                        cachedBytes.set(bytes.coerceAtLeast(0L))
+                    }
 
-                CacheWriter(
-                    source,
-                    dataSpec,
-                    ByteArray(CACHE_BUFFER_BYTES),
-                    listener
-                ).cache()
+                    CacheWriter(
+                        source,
+                        dataSpec,
+                        ByteArray(CACHE_BUFFER_BYTES),
+                        listener
+                    ).cache()
+                }
             }
             finished.set(true)
             progress(80)
@@ -145,7 +175,9 @@ internal class OfflineExportPipeline(
                 resolver.reportPlaybackFailure(
                     track = resolved,
                     isVideoMode = false,
-                    reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" }
+                    reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" },
+                    isOfflineExport = true,
+                    audioQuality = settings.resolverAudioQuality
                 )
                 resolved = resolve(track)
                 if (supportsContinuousPrefetch(resolved.streamUrl)) {

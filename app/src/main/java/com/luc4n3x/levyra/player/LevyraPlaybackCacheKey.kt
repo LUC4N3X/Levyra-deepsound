@@ -16,6 +16,13 @@ object LevyraPlaybackCacheKey {
         return "levyra:$id:stream-v2:${variant(track.streamUrl)}"
     }
 
+    fun offlineStream(track: Track): String {
+        val id = PlaybackSourceIdentity.sourceVideoId(track)
+            .ifBlank { stableId(track) }
+            .replace(':', '_')
+        return "levyra:$id:offline-v1:${variant(track.streamUrl)}"
+    }
+
     fun video(track: Track): String {
         val id = PlaybackSourceIdentity.sourceVideoId(track)
             .ifBlank { stableId(track) }
