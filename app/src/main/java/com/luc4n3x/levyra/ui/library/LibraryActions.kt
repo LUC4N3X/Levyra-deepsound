@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -35,7 +34,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -92,8 +90,7 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 @Composable
 internal fun LibraryOfflineSummary(
     bytes: Long,
-    activeCount: Int,
-    onOpenFolder: () -> Unit
+    activeCount: Int
 ) {
     val strings = LocalLevyraStrings.current
     Surface(
@@ -103,7 +100,7 @@ internal fun LibraryOfflineSummary(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -129,27 +126,6 @@ internal fun LibraryOfflineSummary(
                     ).filter(String::isNotBlank).joinToString(" · "),
                     color = LevyraMuted,
                     fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            TextButton(
-                onClick = onOpenFolder,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                modifier = Modifier.widthIn(max = 150.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.FolderOpen,
-                    contentDescription = null,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    strings.downloadsFolder,
-                    color = LevyraCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -440,7 +416,7 @@ internal fun AddTracksToPlaylistDialog(
                                 modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onAdd(playlist.id) })
                             ) {
                                 Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
+                                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
                                     Spacer(Modifier.width(10.dp))
                                     Text(
                                         playlist.name,
