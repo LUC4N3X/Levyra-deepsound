@@ -4183,6 +4183,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun searchAlbumDeduplicationKey(album: AlbumHit): String =
+        "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
+
     private suspend fun searchAlbumsForArtistQuery(
         query: String,
         raw: SearchResults,
@@ -4214,7 +4217,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     releaseType = release.releaseType
                 )
             }
-            .distinctBy(::albumRecommendationDeduplicationKey)
+            .distinctBy(::searchAlbumDeduplicationKey)
             .take(10)
             .toList()
         if (officialAlbums.isNotEmpty()) return officialAlbums
@@ -4226,7 +4229,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .toSet()
         return raw.albums
             .filterNot { album -> albumRecommendationTextKey(album.title) in songTitles }
-            .distinctBy(::albumRecommendationDeduplicationKey)
+            .distinctBy(::searchAlbumDeduplicationKey)
             .take(10)
     }
 
@@ -4583,7 +4586,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val searchData = current.searchData.copy(
                 topTrack = current.searchData.topTrack?.let(::withArtwork),
                 songs = current.searchData.songs.map(::withArtwork),
-                albums = current.searchData.albums.map(::withAlbumMetadata)
+                albums = current.searchData.albums
+                    .map(::withAlbumMetadata)
+                    .distinctBy(::searchAlbumDeduplicationKey)
             )
             val albumDetail = current.albumDetail?.let { detail ->
                 detail.copy(

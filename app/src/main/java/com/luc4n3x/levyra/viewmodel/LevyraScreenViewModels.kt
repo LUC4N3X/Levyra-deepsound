@@ -171,6 +171,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playNext(track: Track) = root.playNext(track)
     fun removeRecentSearch(track: Track) = root.removeRecentSearch(track)
+    fun refreshArtistSuggestions() = root.refreshHomeArtists()
     fun searchNow() = root.searchNow()
     fun searchNow(query: String) = root.searchNow(query)
     fun setQuery(query: String) = root.setQuery(query)
@@ -823,6 +824,8 @@ private data class SearchProjection(
     val downloadingTrackIds: Set<String>,
     val downloads: List<DownloadedTrack>,
     val favoriteIds: Set<String>,
+    val homeArtists: List<ArtistHit>,
+    val homeArtistsLoading: Boolean,
     val isPlaying: Boolean,
     val isResolving: Boolean,
     val isSearching: Boolean,
@@ -844,6 +847,8 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
     downloadingTrackIds = state.downloadingTrackIds,
     downloads = state.downloads,
     favoriteIds = state.favoriteIds,
+    homeArtists = state.homeArtists,
+    homeArtistsLoading = state.homeArtistsLoading,
     isPlaying = state.isPlaying,
     isResolving = state.isResolving,
     isSearching = state.isSearching,
