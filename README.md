@@ -264,6 +264,21 @@ cd desktop
 ./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
 ```
 
+### Versioning
+
+Android and Windows release cycles are independent:
+
+```properties
+# Android: gradle.properties
+levyraVersionName=2.3.20
+levyraVersionCode=2032000
+
+# Windows: desktop/version.properties
+levyraDesktopVersion=1.2.0
+```
+
+Version codes follow `major * 1_000_000 + minor * 10_000 + patch * 100 + build` (build range: 0 to 99).
+
 ---
 
 ## ✦ Privacy Blueprint & Permissions
