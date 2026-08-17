@@ -41,6 +41,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 
+data class OfflineDownloadBatchRef(
+    val key: String,
+    val title: String,
+    val kind: String,
+    val artworkUrl: String,
+    val position: Int
+)
+
 private object OfflineDownloadConcurrencyGate {
     private val mutex = Mutex()
     private var active = 0
@@ -306,7 +314,12 @@ class OfflineExportWorker(
         private const val NOTIFICATION_ID_RANGE = 5000
         private const val COMPLETED_TASK_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
 
-        suspend fun enqueue(context: Context, trackId: String, trackPayload: String): UUID {
+        suspend fun enqueue(
+            context: Context,
+            trackId: String,
+            trackPayload: String,
+            batch: OfflineDownloadBatchRef? = null
+        ): UUID {
             val appContext = context.applicationContext
             val workManager = WorkManager.getInstance(appContext)
             val uniqueName = uniqueNameFor(trackId)
@@ -340,7 +353,12 @@ class OfflineExportWorker(
                     workId = request.id.toString(),
                     error = "",
                     createdAt = previous?.createdAt ?: now,
-                    updatedAt = now
+                    updatedAt = now,
+                    batchKey = batch?.key ?: previous?.batchKey.orEmpty(),
+                    batchTitle = batch?.title ?: previous?.batchTitle.orEmpty(),
+                    batchKind = batch?.kind ?: previous?.batchKind.orEmpty(),
+                    batchArtworkUrl = batch?.artworkUrl ?: previous?.batchArtworkUrl.orEmpty(),
+                    batchPosition = batch?.position ?: previous?.batchPosition ?: 0
                 )
             )
             workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.REPLACE, request)

@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartRegion
 import com.luc4n3x.levyra.domain.DownloadedTrack
@@ -176,6 +177,10 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun searchNow(query: String) = root.searchNow(query)
     fun setQuery(query: String) = root.setQuery(query)
     fun setSearchFilter(filter: SearchFilter) = root.setSearchFilter(filter)
+    fun loadMoreSearchSection(filter: SearchFilter) = root.loadMoreSearchSection(filter)
+    fun playPlaylistHit(playlist: PlaylistHit) = root.playPlaylistHit(playlist)
+    fun exportPlaylistHit(playlist: PlaylistHit) = root.exportPlaylistHit(playlist)
+    fun exportAlbumHit(album: AlbumHit) = root.exportAlbumHit(album)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
 }
 
@@ -201,6 +206,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun addTracksToQueue(tracks: List<Track>) = root.addTracksToQueue(tracks)
     fun cancelDownload(taskKey: String) = root.cancelDownload(taskKey)
+    fun retryBatchDownload(batchKey: String) = root.retryBatchDownload(batchKey)
+    fun cancelBatchDownload(batchKey: String) = root.cancelBatchDownload(batchKey)
     fun closePlaylist() = root.closePlaylist()
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun createPlaylistWithTracks(name: String, tracks: List<Track>) = root.createPlaylistWithTracks(name, tracks)

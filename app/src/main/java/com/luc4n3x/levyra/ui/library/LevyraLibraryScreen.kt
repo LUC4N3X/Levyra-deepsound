@@ -530,6 +530,15 @@ internal fun LevyraLibraryScreen(
                             onOpenFolder = onOpenDownloads
                         )
                     }
+                    if (state.downloadBatches.isNotEmpty()) {
+                        items(state.downloadBatches, key = { "batch-${it.key}" }) { batch ->
+                            LibraryBatchDownloadRow(
+                                batch = batch,
+                                onRetry = { viewModel.retryBatchDownload(batch.key) },
+                                onCancel = { viewModel.cancelBatchDownload(batch.key) }
+                            )
+                        }
+                    }
                     if (state.downloadQueue.isNotEmpty()) {
                         item(key = "offline-queue-title") {
                             LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)

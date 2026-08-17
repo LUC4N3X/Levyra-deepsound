@@ -60,7 +60,20 @@ import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
+import com.luc4n3x.levyra.data.mergeSearchAlbums
+import com.luc4n3x.levyra.data.mergeSearchArtists
+import com.luc4n3x.levyra.data.mergeSearchPlaylists
+import com.luc4n3x.levyra.data.mergeSearchSongs
+import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.BatchDownload
+import com.luc4n3x.levyra.domain.BatchDownloadKind
+import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.batchDownloadKey
+import com.luc4n3x.levyra.domain.batchDownloadKindOf
+import com.luc4n3x.levyra.domain.batchDownloadProgress
+import com.luc4n3x.levyra.domain.batchDownloadState
+import com.luc4n3x.levyra.player.offline.work.OfflineDownloadBatchRef
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
@@ -158,12 +171,25 @@ import java.io.File
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
+
+private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
+private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
+
+private data class SearchSectionPage(
+    val songs: List<Track> = emptyList(),
+    val videos: List<Track> = emptyList(),
+    val albums: List<AlbumHit> = emptyList(),
+    val artists: List<ArtistHit> = emptyList(),
+    val playlists: List<PlaylistHit> = emptyList(),
+    val continuation: String = ""
+)
 
 private data class HomeArtistCandidate(
     val name: String,
@@ -529,6 +555,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
     private var searchJob: Job? = null
+    private val searchGeneration = AtomicInteger(0)
+    private val searchSectionJobs = mutableMapOf<SearchFilter, Job>()
     private var playlistImportJob: Job? = null
     private var sharedMediaJob: Job? = null
     private var playJob: Job? = null
@@ -1000,6 +1028,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startTicker()
         observeDownloads()
         observeDownloadTasks()
+        observeDownloadBatches()
         loadPlaylists()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
         refreshListeningPulse(force = true)
@@ -1008,6 +1037,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
         updateWidget()
+    }
+
+    private fun observeDownloadBatches() {
+        viewModelScope.launch {
+            offlineDownloadTasksDao.observeBatches().collectLatest { rows ->
+                val batches = rows.map { row ->
+                    BatchDownload(
+                        key = row.batchKey,
+                        kind = batchDownloadKindOf(row.batchKind),
+                        title = row.batchTitle,
+                        artworkUrl = row.batchArtworkUrl,
+                        total = row.total,
+                        completed = row.completed,
+                        failed = row.failed,
+                        active = row.active,
+                        progress = batchDownloadProgress(row.total, row.progressSum),
+                        state = batchDownloadState(row.total, row.completed, row.failed, row.active, row.progressSum)
+                    )
+                }
+                _state.update { it.copy(downloadBatches = batches) }
+            }
+        }
     }
 
     private fun observeDownloadTasks() {
@@ -3670,13 +3721,177 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun exportCurrentAlbum() {
         val detail = _state.value.albumDetail ?: return
-        exportTracksSequential(detail.tracks, "Album offline")
+        startBatchDownload(
+            kind = BatchDownloadKind.Album,
+            canonicalId = detail.album.browseId.ifBlank { detail.album.audioPlaylistId },
+            title = detail.album.title,
+            artworkUrl = detail.album.thumbnailUrl,
+            tracks = detail.tracks
+        )
+    }
+
+    fun exportAlbumHit(album: AlbumHit) {
+        viewModelScope.launch {
+            val detail = runCatchingPreservingCancellation {
+                providerRouter.albumDetail(album, _state.value.languageCode)
+            }.onFailure { Timber.w(it, "album batch download lookup failed") }.getOrNull()
+            val tracks = detail?.tracks.orEmpty()
+            if (tracks.isEmpty()) {
+                _state.update { it.copy(offlineExportMessage = albumBatchUnavailableMessage()) }
+                return@launch
+            }
+            startBatchDownload(
+                kind = BatchDownloadKind.Album,
+                canonicalId = album.browseId.ifBlank { album.audioPlaylistId },
+                title = album.title,
+                artworkUrl = album.thumbnailUrl,
+                tracks = tracks
+            )
+        }
     }
 
     fun exportOpenPlaylist() {
         val playlist = _state.value.openPlaylist ?: return
-        exportTracksSequential(playlist.tracks, "Playlist offline")
+        startBatchDownload(
+            kind = BatchDownloadKind.Playlist,
+            canonicalId = playlist.id,
+            title = playlist.name,
+            artworkUrl = playlist.coverUrl,
+            tracks = playlist.tracks
+        )
     }
+
+    fun exportPlaylistHit(playlist: PlaylistHit) {
+        val playlistId = playlist.playlistId.ifBlank { return }
+        viewModelScope.launch {
+            val detail = runCatchingPreservingCancellation {
+                providerRouter.playlist(playlistId, _state.value.languageCode, REMOTE_PLAYLIST_TRACK_LIMIT)
+            }.onFailure { Timber.w(it, "playlist batch download lookup failed") }.getOrNull()
+            val tracks = detail?.tracks.orEmpty()
+            if (tracks.isEmpty()) {
+                _state.update { it.copy(offlineExportMessage = playlistBatchUnavailableMessage()) }
+                return@launch
+            }
+            startBatchDownload(
+                kind = BatchDownloadKind.Playlist,
+                canonicalId = playlistId,
+                title = playlist.title.ifBlank { detail?.title.orEmpty() },
+                artworkUrl = playlist.thumbnailUrl.ifBlank { detail?.thumbnailUrl.orEmpty() },
+                tracks = tracks
+            )
+        }
+    }
+
+    fun playPlaylistHit(playlist: PlaylistHit) {
+        val playlistId = playlist.playlistId.ifBlank { return }
+        viewModelScope.launch {
+            val detail = runCatchingPreservingCancellation {
+                providerRouter.playlist(playlistId, _state.value.languageCode, REMOTE_PLAYLIST_TRACK_LIMIT)
+            }.onFailure { Timber.w(it, "playlist playback lookup failed") }.getOrNull()
+            val tracks = detail?.tracks.orEmpty()
+            if (tracks.isEmpty()) {
+                _state.update { it.copy(searchError = playlistBatchUnavailableMessage()) }
+                return@launch
+            }
+            _state.update { it.copy(tracks = mergeTracks(it.tracks, tracks)) }
+            playFrom(tracks, tracks.first())
+        }
+    }
+
+    fun retryBatchDownload(batchKey: String) {
+        if (batchKey.isBlank()) return
+        viewModelScope.launch {
+            val failed = withContext(Dispatchers.IO) {
+                offlineDownloadTasksDao.batchTasks(batchKey).filter { it.state == "FAILED" }
+            }
+            failed.forEach { task ->
+                OfflineExportWorker.enqueue(
+                    context = getApplication<Application>().applicationContext,
+                    trackId = task.taskKey,
+                    trackPayload = task.payload,
+                    batch = OfflineDownloadBatchRef(
+                        key = task.batchKey,
+                        title = task.batchTitle,
+                        kind = task.batchKind,
+                        artworkUrl = task.batchArtworkUrl,
+                        position = task.batchPosition
+                    )
+                )
+            }
+        }
+    }
+
+    fun cancelBatchDownload(batchKey: String) {
+        if (batchKey.isBlank()) return
+        viewModelScope.launch {
+            val appContext = getApplication<Application>().applicationContext
+            val tasks = withContext(Dispatchers.IO) { offlineDownloadTasksDao.batchTasks(batchKey) }
+            tasks.filter { it.state in ACTIVE_DOWNLOAD_STATES }.forEach { task ->
+                runCatchingPreservingCancellation { OfflineExportWorker.cancel(appContext, task.taskKey) }
+                    .onFailure { Timber.w(it, "batch child cancel failed") }
+            }
+            withContext(Dispatchers.IO) { offlineDownloadTasksDao.deleteBatch(batchKey) }
+        }
+    }
+
+    private fun startBatchDownload(
+        kind: BatchDownloadKind,
+        canonicalId: String,
+        title: String,
+        artworkUrl: String,
+        tracks: List<Track>
+    ) {
+        val batchKey = batchDownloadKey(kind, canonicalId, title)
+        if (batchKey.isBlank()) {
+            exportTracksSequential(tracks, title)
+            return
+        }
+        val currentState = _state.value
+        val pending = tracks
+            .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
+            .distinctBy { downloadKeyFor(it) }
+            .filterNot { track ->
+                currentState.downloadSettings.shouldSkipExistingDownload(
+                    trackId = track.id,
+                    downloadedTrackIds = currentState.downloadedTrackIds
+                )
+            }
+        val strings = LevyraStrings.forCode(currentState.languageCode)
+        if (pending.isEmpty()) {
+            _state.update { it.copy(offlineExportMessage = strings.alreadyOffline) }
+            return
+        }
+        viewModelScope.launch {
+            val appContext = getApplication<Application>().applicationContext
+            _state.update { it.copy(offlineExportMessage = strings.downloadsInProgress) }
+            pending.forEachIndexed { index, track ->
+                val downloadKey = downloadKeyFor(track)
+                val enqueued = runCatchingPreservingCancellation {
+                    withContext(Dispatchers.IO) {
+                        OfflineExportWorker.enqueue(
+                            context = appContext,
+                            trackId = downloadKey,
+                            trackPayload = TrackPayloadCodec.encode(track),
+                            batch = OfflineDownloadBatchRef(
+                                key = batchKey,
+                                title = title,
+                                kind = kind.name,
+                                artworkUrl = artworkUrl,
+                                position = index
+                            )
+                        )
+                    }
+                }.onFailure { error -> Timber.e(error, "batch download enqueue failed") }
+                if (enqueued.isSuccess) recordSmartDownload(track)
+            }
+        }
+    }
+
+    private fun albumBatchUnavailableMessage(): String =
+        LevyraStrings.forCode(_state.value.languageCode).albumTracksUnavailable
+
+    private fun playlistBatchUnavailableMessage(): String =
+        LevyraStrings.forCode(_state.value.languageCode).playlistEmpty
 
     fun exportTracks(tracks: List<Track>, label: String = "Selezione offline") {
         exportTracksSequential(tracks, label)
@@ -4120,37 +4335,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun runSearch(clean: String) {
         moveToTab(LevyraTab.Search, rememberCurrent = true)
-        _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
+        searchGeneration.incrementAndGet()
+        _state.update {
+            it.copy(
+                isSearching = true,
+                searchError = null,
+                searchSuggestions = emptyList(),
+                searchFilter = SearchFilter.All,
+                searchSectionContinuations = emptyMap(),
+                searchSectionLoading = emptySet()
+            )
+        }
         val result = runCatching {
             coroutineScope {
                 val rawSearch = async {
                     providerRouter.searchEverything(clean, _state.value.languageCode)
                 }
                 val exactArtistSearch = async {
-                    runCatching { artistRepository.artistHitFor(clean) }.getOrNull()
+                    runCatchingPreservingCancellation { artistRepository.artistHitFor(clean) }.getOrNull()
                 }
                 val raw = rawSearch.await()
-                val exactArtist = exactArtistSearch.await()
-                val generalCandidates = raw.artists.filterNot { candidate ->
-                    exactArtist != null &&
-                        candidate.browseId.isNotBlank() &&
-                        candidate.browseId.equals(exactArtist.browseId, ignoreCase = true)
-                }
-                val verifiedGeneralArtists = artistRepository.officialArtistHits(generalCandidates)
-                val officialArtists = mergeReliableArtistSearchResults(
-                    query = clean,
-                    exactArtist = exactArtist,
-                    verifiedArtists = verifiedGeneralArtists
-                )
-                val artistResolvedResults = enrichSearchTracksWithExactArtist(
-                    query = clean,
-                    results = raw,
-                    reliableArtists = officialArtists
-                )
-                artistResolvedResults.copy(
-                    artists = officialArtists,
-                    albums = searchAlbumsForArtistQuery(clean, artistResolvedResults, officialArtists)
-                )
+                enrichSearchOverview(clean, raw, exactArtistSearch.await())
             }
         }
         result.onSuccess { data ->
@@ -4233,8 +4438,131 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .take(10)
     }
 
+    private suspend fun enrichSearchOverview(
+        query: String,
+        raw: SearchResults,
+        exactArtist: ArtistHit?
+    ): SearchResults {
+        val generalCandidates = raw.artists.filterNot { candidate ->
+            exactArtist != null &&
+                candidate.browseId.isNotBlank() &&
+                candidate.browseId.equals(exactArtist.browseId, ignoreCase = true)
+        }
+        val officialArtists = runCatchingPreservingCancellation {
+            mergeReliableArtistSearchResults(
+                query = query,
+                exactArtist = exactArtist,
+                verifiedArtists = artistRepository.officialArtistHits(generalCandidates)
+            )
+        }.onFailure { Timber.w(it, "search artist verification failed") }.getOrNull()
+        val resolvedArtists = officialArtists ?: raw.artists
+        val artistResolvedResults = runCatchingPreservingCancellation {
+            enrichSearchTracksWithExactArtist(
+                query = query,
+                results = raw,
+                reliableArtists = resolvedArtists
+            )
+        }.onFailure { Timber.w(it, "search track artist enrichment failed") }.getOrDefault(raw)
+        val albums = runCatchingPreservingCancellation {
+            searchAlbumsForArtistQuery(query, artistResolvedResults, resolvedArtists)
+        }.onFailure { Timber.w(it, "search album refinement failed") }
+            .getOrDefault(artistResolvedResults.albums)
+        return artistResolvedResults.copy(
+            artists = resolvedArtists,
+            albums = albums,
+            failedSections = buildSet {
+                if (officialArtists == null && raw.artists.isEmpty()) add(SearchFilter.Artists)
+            }
+        )
+    }
+
     fun setSearchFilter(filter: SearchFilter) {
         _state.update { it.copy(searchFilter = filter) }
+        loadSearchSection(filter, initial = true)
+    }
+
+    fun loadMoreSearchSection(filter: SearchFilter) {
+        loadSearchSection(filter, initial = false)
+    }
+
+    private fun loadSearchSection(filter: SearchFilter, initial: Boolean) {
+        if (filter == SearchFilter.All) return
+        val snapshot = _state.value
+        val query = snapshot.query.trim()
+        if (query.length < 2) return
+        if (filter in snapshot.searchSectionLoading) return
+        if (searchSectionJobs[filter]?.isActive == true) return
+        val alreadyPaged = snapshot.searchSectionContinuations.containsKey(filter)
+        val continuation = snapshot.searchSectionContinuations[filter].orEmpty()
+        if (initial && alreadyPaged) return
+        if (!initial && (!alreadyPaged || continuation.isBlank())) return
+        val generation = searchGeneration.get()
+        _state.update { it.copy(searchSectionLoading = it.searchSectionLoading + filter) }
+        searchSectionJobs[filter] = viewModelScope.launch {
+            try {
+                val outcome = runCatching { fetchSearchSection(filter, query, continuation) }
+                if (generation != searchGeneration.get()) return@launch
+                outcome.onSuccess { page -> publishSearchSection(filter, page) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        Timber.w(error, "search section load failed filter=%s", filter)
+                        _state.update { state ->
+                            state.copy(
+                                searchData = state.searchData.copy(
+                                    failedSections = state.searchData.failedSections + filter
+                                )
+                            )
+                        }
+                    }
+            } finally {
+                _state.update { it.copy(searchSectionLoading = it.searchSectionLoading - filter) }
+            }
+        }
+    }
+
+    private suspend fun fetchSearchSection(
+        filter: SearchFilter,
+        query: String,
+        continuation: String
+    ): SearchSectionPage {
+        val language = _state.value.languageCode
+        return when (filter) {
+            SearchFilter.Songs -> repository.searchSongsPage(query, language, continuation)
+                .let { page -> SearchSectionPage(songs = page.items, continuation = page.continuation) }
+            SearchFilter.Videos -> repository.searchVideosPage(query, language, continuation)
+                .let { page -> SearchSectionPage(videos = page.items, continuation = page.continuation) }
+            SearchFilter.Albums -> repository.searchAlbumsPage(query, language, continuation)
+                .let { page -> SearchSectionPage(albums = page.items, continuation = page.continuation) }
+            SearchFilter.Artists -> repository.searchArtistsPage(query, language, continuation)
+                .let { page -> SearchSectionPage(artists = page.items, continuation = page.continuation) }
+            SearchFilter.Playlists -> repository.searchPlaylistsPage(query, language, continuation)
+                .let { page -> SearchSectionPage(playlists = page.items, continuation = page.continuation) }
+            SearchFilter.All -> SearchSectionPage()
+        }
+    }
+
+    private fun publishSearchSection(filter: SearchFilter, page: SearchSectionPage) {
+        _state.update { state ->
+            val data = state.searchData
+            val merged = when (filter) {
+                SearchFilter.Songs -> data.copy(songs = mergeSearchSongs(data.songs, page.songs))
+                SearchFilter.Videos -> data.copy(videos = mergeSearchSongs(data.videos, page.videos))
+                SearchFilter.Albums -> data.copy(albums = mergeSearchAlbums(data.albums, page.albums))
+                SearchFilter.Artists -> data.copy(artists = mergeSearchArtists(data.artists, page.artists))
+                SearchFilter.Playlists -> data.copy(playlists = mergeSearchPlaylists(data.playlists, page.playlists))
+                SearchFilter.All -> data
+            }
+            state.copy(
+                searchData = merged.copy(failedSections = merged.failedSections - filter),
+                searchResults = if (filter == SearchFilter.Songs) merged.songs else state.searchResults,
+                tracks = if (filter == SearchFilter.Songs || filter == SearchFilter.Videos) {
+                    mergeTracks(state.tracks, page.songs + page.videos)
+                } else {
+                    state.tracks
+                },
+                searchSectionContinuations = state.searchSectionContinuations + (filter to page.continuation)
+            )
+        }
     }
 
     fun searchAlbum(album: AlbumHit) {
