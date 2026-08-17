@@ -278,28 +278,23 @@ Levyra is built on strict zero-tracking principles: no advertising identifiers, 
 
 ## ✦ Contributing
 
-Contributions, optimizations, and translations are warmly welcomed:
+We welcome community contributions, bug fixes, localization, and performance enhancements.
 
-<table>
-<tr>
-<td width="25%" align="center">
-<strong>🌿 1. Branch</strong><br>
-<sub><code>git checkout -b feature/audio-tuner</code></sub>
-</td>
-<td width="25%" align="center">
-<strong>⚡ 2. Develop</strong><br>
-<sub>Clean code & unidirectional data flow</sub>
-</td>
-<td width="25%" align="center">
-<strong>🧪 3. Quality Gate</strong><br>
-<sub><code>python scripts/ai_quality_gate.py --profile fast</code></sub>
-</td>
-<td width="25%" align="center">
-<strong>🚀 4. Pull Request</strong><br>
-<sub>Open PR with test verification</sub>
-</td>
-</tr>
-</table>
+### Engineering Workflow
+
+1. **Fork & Branch**: Create a focused topic branch from `main`:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+2. **Architecture Contract**: Preserve unidirectional data flow (UDF), immutable Compose state, and low-latency audio pipelines.
+3. **Quality Gate**: Run repository validation before submitting:
+   ```bash
+   python scripts/ai_quality_gate.py --profile fast
+   ```
+4. **Pull Request**: Open a PR with a concise description of changes and test verification evidence.
+
+> [!TIP]
+> **Scope & Guidelines**: Keep pull requests focused on a single concern. For major architectural changes or new feature proposals, please open an [Issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) first to coordinate the implementation approach.
 
 ---
 
