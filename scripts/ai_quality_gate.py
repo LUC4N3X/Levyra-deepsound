@@ -237,9 +237,12 @@ def scan_patch(patch: str) -> list[str]:
     return scan_added_lines(added, "git-diff")
 
 
-def scan_untracked(paths: Iterable[str]) -> list[str]:
+def scan_untracked(paths: Iterable[str], allowlist: set[str] | None = None) -> list[str]:
     findings: list[str] = []
+    allowed = allowlist or set()
     for path in sorted(paths):
+        if path.replace("\\", "/") in allowed:
+            continue
         absolute = ROOT / path
         try:
             content = absolute.read_bytes()
@@ -498,7 +501,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         findings.extend(forbidden_path_findings(changed, allowlist))
         findings.extend(binary_diff_findings(base_commit, allowlist))
         findings.extend(scan_patch(collect_patch(base_commit)))
-        findings.extend(scan_untracked(untracked))
+        findings.extend(scan_untracked(untracked, allowlist))
         commands, blocked = build_commands(changed, args.profile)
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
         print(f"AI quality gate could not start: {exc}", file=sys.stderr)

@@ -4,6 +4,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from scripts.ai_quality_gate import find_bash
+
 ROOT = Path(__file__).resolve().parents[2]
 SETUP = ROOT / "scripts" / "setup-openclaw-levyra.sh"
 SKILL = ROOT / ".agents" / "skills" / "levyra-openclaw-orchestrator" / "SKILL.md"
@@ -11,7 +13,10 @@ SKILL = ROOT / ".agents" / "skills" / "levyra-openclaw-orchestrator" / "SKILL.md
 
 class OpenClawLevyraSetupTest(unittest.TestCase):
     def test_shell_syntax(self) -> None:
-        subprocess.run(["bash", "-n", str(SETUP)], check=True, cwd=ROOT)
+        bash = find_bash()
+        if not bash:
+            raise unittest.SkipTest("Bash is required for shell syntax test")
+        subprocess.run([bash, "-n", str(SETUP)], check=True, cwd=ROOT)
 
     def test_specialized_agents_and_boundaries(self) -> None:
         setup = SETUP.read_text(encoding="utf-8")
