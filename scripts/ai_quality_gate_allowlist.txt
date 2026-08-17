@@ -1,2 +1,3 @@
 # Exact repository-relative binary or generated paths explicitly approved by
 # the owner may be listed here, one per line. Keep this empty by default.
+docs/assets/levyra-ui-preview-2026.webp
