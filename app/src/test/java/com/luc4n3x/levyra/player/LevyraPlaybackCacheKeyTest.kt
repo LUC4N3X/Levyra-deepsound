@@ -59,6 +59,37 @@ class LevyraPlaybackCacheKeyTest {
         )
     }
 
+    @Test
+    fun offlineExportNeverSharesTheLiveStreamCacheKey() {
+        val muxedFallback = track("https://rr.example/videoplayback?itag=18&mime=video%2Fmp4&ratebypass=yes")
+        val audioMp4 = track("https://rr.example/videoplayback?itag=140&mime=audio%2Fmp4&ratebypass=yes")
+
+        assertNotEquals(
+            LevyraPlaybackCacheKey.stream(muxedFallback),
+            LevyraPlaybackCacheKey.offlineStream(muxedFallback)
+        )
+        assertNotEquals(
+            LevyraPlaybackCacheKey.stream(audioMp4),
+            LevyraPlaybackCacheKey.offlineStream(audioMp4)
+        )
+    }
+
+    @Test
+    fun offlineExportKeyStaysStableAcrossSignedUrlRefreshAndSplitsPerItag() {
+        val first = track("https://rr1---sn.example/videoplayback?expire=100&itag=18&sig=one")
+        val second = track("https://rr2---sn.example/videoplayback?expire=200&itag=18&sig=two")
+        val otherItag = track("https://rr2---sn.example/videoplayback?expire=200&itag=140&sig=two")
+
+        assertEquals(
+            LevyraPlaybackCacheKey.offlineStream(first),
+            LevyraPlaybackCacheKey.offlineStream(second)
+        )
+        assertNotEquals(
+            LevyraPlaybackCacheKey.offlineStream(second),
+            LevyraPlaybackCacheKey.offlineStream(otherItag)
+        )
+    }
+
     private fun track(streamUrl: String): Track = Track(
         id = "video-id",
         title = "Title",
