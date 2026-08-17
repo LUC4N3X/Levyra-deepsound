@@ -115,29 +115,46 @@ class OfflineDownloadPlaybackIsolationTest {
     }
 
     @Test
-    fun anOfflineFailureNeverQuarantinesTheStreamThePlayerIsUsing() {
+    fun everyExportFailureCarriesTheQualityItActuallyResolvedAt() {
+        val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
+        val pipeline = Files.readString(sourceFile("player/offline/OfflineExportPipeline.kt"))
+
+        assertEquals(1, occurrences(exporter, "audioQuality = settings.resolverAudioQuality"))
+        assertEquals(1, occurrences(pipeline, "audioQuality = settings.resolverAudioQuality"))
+    }
+
+    @Test
+    fun anOfflineFailureTargetsTheOfflineSourceMatchAndSparesTheVideoSelector() {
         val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
 
-        val guard = resolver.indexOf("if (!isOfflineExport) {")
-        val quarantine = resolver.indexOf("failedPlaybackUrls[it] = now + recovery.quarantineMs")
-
-        assertTrue(guard > 0)
-        assertTrue(quarantine > guard)
-        assertEquals(1, occurrences(resolver, "failedPlaybackUrls[it] = now + recovery.quarantineMs"))
-        assertTrue(resolver.contains("if (recovery.rotateCodec && !isOfflineExport)"))
         assertTrue(resolver.contains("preferMp4Audio = isOfflineExport"))
+        assertTrue(resolver.contains("audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality"))
+        assertTrue(resolver.contains("if (recovery.rotateCodec && !isOfflineExport)"))
         assertTrue(resolver.contains("invalidate(track, isVideoMode, isOfflineExport)"))
     }
 
     @Test
-    fun offlineResolutionKeepsItsOwnResolverCacheEntry() {
+    fun aDeadOfflineUrlIsStillQuarantinedSoTheRetryCanRotate() {
         val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
 
-        assertTrue(resolver.contains("offlineExport -> \"offline\""))
+        assertEquals(1, occurrences(resolver, "failedPlaybackUrls[it] = now + recovery.quarantineMs"))
+        assertFalse(resolver.contains("if (!isOfflineExport) {"))
+    }
+
+    @Test
+    fun offlineResolutionNeverEntersThePlaybackStreamCache() {
+        val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
+        val storeSignature = resolver.indexOf("private fun store(")
+        val skip = resolver.indexOf("if (preferMp4Audio) return", storeSignature)
+        val storeKey = resolver.indexOf("val key = cacheKey(requestedTrack, isVideoMode, audioQuality)", storeSignature)
+
+        assertTrue(storeSignature > 0)
+        assertTrue(skip > storeSignature)
+        assertTrue(storeKey > skip)
         assertTrue(resolver.contains("store(track, resolved, isVideoMode, audioQuality, preferMp4Audio)"))
         assertTrue(resolver.contains("store(track, alternate, isVideoMode, audioQuality, preferMp4Audio)"))
         assertTrue(resolver.contains("store(track, restored, isVideoMode, audioQuality, preferMp4Audio)"))
-        assertTrue(resolver.contains("key.contains(\"_offline_\", ignoreCase = true)"))
+        assertTrue(resolver.contains("if (offlineExport) return"))
     }
 
     private fun occurrences(source: String, needle: String): Int =

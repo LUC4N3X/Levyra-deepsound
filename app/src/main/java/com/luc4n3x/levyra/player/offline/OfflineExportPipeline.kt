@@ -146,7 +146,8 @@ internal class OfflineExportPipeline(
                     track = resolved,
                     isVideoMode = false,
                     reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" },
-                    isOfflineExport = true
+                    isOfflineExport = true,
+                    audioQuality = settings.resolverAudioQuality
                 )
                 resolved = resolve(track)
                 if (supportsContinuousPrefetch(resolved.streamUrl)) {

@@ -418,14 +418,16 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun invalidate(track: Track, isVideoMode: Boolean = false, offlineExport: Boolean = false) {
-        remove(cacheKey(track, isVideoMode, selectedAudioQuality, offlineExport))
+        if (offlineExport) return
+        remove(cacheKey(track, isVideoMode))
     }
 
     fun reportPlaybackFailure(
         track: Track,
         isVideoMode: Boolean,
         reason: String,
-        isOfflineExport: Boolean = false
+        isOfflineExport: Boolean = false,
+        audioQuality: String? = null
     ) {
         if (isLocalPlaybackTrack(track)) {
             resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
@@ -448,11 +450,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
         val recovery = resilienceEngine.recoveryPlan(reason)
-        if (!isOfflineExport) {
-            listOf(track.streamUrl, track.videoStreamUrl)
-                .filter { it.isNotBlank() }
-                .forEach { failedPlaybackUrls[it] = now + recovery.quarantineMs }
-        }
+        listOf(track.streamUrl, track.videoStreamUrl)
+            .filter { it.isNotBlank() }
+            .forEach { failedPlaybackUrls[it] = now + recovery.quarantineMs }
         if (recovery.rotateClient) {
             profileFromSource(track.source)?.let { profile ->
                 recordClientFailure(profile, null, PlaybackBlockedException(reason))
@@ -474,7 +474,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 sourceMatchStore.recordFailure(
                     track = track,
                     videoMode = isVideoMode,
-                    audioQuality = selectedAudioQuality,
+                    audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
                     quarantineMs = sourceMatchQuarantineMs,
                     preferMp4Audio = isOfflineExport
                 )
@@ -1544,8 +1544,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     streamUrl = streamUrl,
                     playbackManifest = manifest
                 )
-                val audioCache = key.contains("_audio_", ignoreCase = true) ||
-                    key.contains("_offline_", ignoreCase = true)
+                val audioCache = key.contains("_audio_", ignoreCase = true)
                 if (track != null && streamUrl.isNotBlank() && now < expiresAt && streamStillFresh(streamUrl) && (!audioCache || isPlayableAudioUrl(streamUrl))) {
                     streamCache[key] = CachedStream(track, expiresAt)
                 } else {
@@ -1562,11 +1561,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         resolvedTrack: Track,
         isVideoMode: Boolean = false,
         audioQuality: String = selectedAudioQuality,
-        offlineExport: Boolean = false
+        preferMp4Audio: Boolean = false
     ) {
+        if (preferMp4Audio) return
         if (resolvedTrack.streamUrl.isBlank() || !streamStillFresh(resolvedTrack.streamUrl)) return
         if (!isVideoMode && !isPlayableAudioUrl(resolvedTrack.streamUrl)) return
-        val key = cacheKey(requestedTrack, isVideoMode, audioQuality, offlineExport)
+        val key = cacheKey(requestedTrack, isVideoMode, audioQuality)
         val expiresAt = resolvedTrack.playbackManifest?.expiresAtMs
             ?.takeIf { it > System.currentTimeMillis() }
             ?.let { minOf(it, expiresAtFor(resolvedTrack.streamUrl)) }
@@ -1706,17 +1706,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun cacheKey(
         track: Track,
         isVideoMode: Boolean = false,
-        audioQuality: String = selectedAudioQuality,
-        offlineExport: Boolean = false
+        audioQuality: String = selectedAudioQuality
     ): String {
         val base = PlaybackSourceIdentity.canonicalKey(track)
         val quality = normalizeAudioQuality(audioQuality).lowercase()
-        val mode = when {
-            isVideoMode -> "video"
-            offlineExport -> "offline"
-            else -> "audio"
-        }
-        return "${base}_${mode}_$quality"
+        return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_$quality"
     }
 
     private suspend fun resolveWithInnerTube(

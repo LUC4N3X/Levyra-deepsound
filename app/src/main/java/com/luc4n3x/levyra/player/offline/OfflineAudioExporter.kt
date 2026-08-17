@@ -385,7 +385,8 @@ class OfflineAudioExporter(
                         track = playable,
                         isVideoMode = false,
                         reason = firstError.message.orEmpty().ifBlank { "offline export source rejected" },
-                        isOfflineExport = true
+                        isOfflineExport = true,
+                        audioQuality = settings.resolverAudioQuality
                     )
                     releaseOfflineCacheSeed(playable)
                 }
@@ -671,11 +672,10 @@ class OfflineAudioExporter(
         return File(workspace, "resume-$safeKey.${container.extension}.part")
     }
 
-    private fun offlineSeedCacheKeys(track: Track): List<String> {
-        val offlineKey = LevyraPlaybackCacheKey.offlineStream(track)
-        val playbackKey = LevyraPlaybackCacheKey.stream(track)
-        return if (offlineKey == playbackKey) listOf(offlineKey) else listOf(offlineKey, playbackKey)
-    }
+    private fun offlineSeedCacheKeys(track: Track): List<String> = listOf(
+        LevyraPlaybackCacheKey.offlineStream(track),
+        LevyraPlaybackCacheKey.stream(track)
+    )
 
     private fun releaseOfflineCacheSeed(track: Track) {
         runCatching { LevyraMediaCache.get(context).removeResource(LevyraPlaybackCacheKey.offlineStream(track)) }
