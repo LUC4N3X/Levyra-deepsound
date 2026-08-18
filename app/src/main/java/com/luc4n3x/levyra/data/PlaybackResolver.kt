@@ -731,24 +731,24 @@ class PlaybackResolver private constructor(private val context: Context) {
             throw PlaybackBlockedException(reason)
         }
 
-        val resolved = resolveAudioFast(track, errors, preferMp4Audio, audioQuality)
-        if (resolved != null) {
-            store(track, resolved, isVideoMode, audioQuality, preferMp4Audio)
-            persistResolvedSource(track, resolved, isVideoMode, audioQuality, 96, preferMp4Audio)
-            return@withContext resolved
-        }
-
         if (!preferMp4Audio) {
-            val reelAudioFallback = runCatchingPreservingCancellation {
+            val reelAudio = runCatchingPreservingCancellation {
                 resolveAudioWithAndroidReel(track, audioQuality)
             }.onFailure { error ->
                 errors += "Android Reel audio: ${error.playbackDiagnostic()}"
             }.getOrNull()
-            if (reelAudioFallback != null) {
-                store(track, reelAudioFallback, isVideoMode, audioQuality, preferMp4Audio)
-                persistResolvedSource(track, reelAudioFallback, isVideoMode, audioQuality, 88, preferMp4Audio)
-                return@withContext reelAudioFallback
+            if (reelAudio != null) {
+                store(track, reelAudio, isVideoMode, audioQuality, preferMp4Audio)
+                persistResolvedSource(track, reelAudio, isVideoMode, audioQuality, 96, preferMp4Audio)
+                return@withContext reelAudio
             }
+        }
+
+        val resolved = resolveAudioFast(track, errors, preferMp4Audio, audioQuality)
+        if (resolved != null) {
+            store(track, resolved, isVideoMode, audioQuality, preferMp4Audio)
+            persistResolvedSource(track, resolved, isVideoMode, audioQuality, 90, preferMp4Audio)
+            return@withContext resolved
         }
 
         val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio, audioQuality)
