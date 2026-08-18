@@ -2,7 +2,7 @@
 
 <img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
 
-### Hear every layer. No limits.
+# Hear every layer. No limits.
 
 **A native music player, stream extractor, and private offline vault for Android & Windows.**
 
