@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-17T18:59:50Z",
+  "generatedAt": "2026-08-18T01:52:59Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -334,7 +334,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -539,13 +539,6 @@
       "artist": "Ravyn Lenae",
       "album": "Bird's Eye",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/103a5d76e07444bb96da0c5f65b33bee.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1785,13 +1778,6 @@
       "artist": "Rutger van Barneveld",
       "album": "Zomer, Zon & Strand",
       "url": "https://canvaz.scdn.co/upload/artist/5N0fvYueADU53qanvPfmV7/video/f8855fa148a54b50b207946c220b44e0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Midnight Sun",
-      "artist": "Zara Larsson",
-      "album": "Midnight Sun",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3451,6 +3437,13 @@
       "artist": "HANRORO",
       "album": "Take-off",
       "url": "https://canvaz.scdn.co/upload/artist/5wVJpXzuKV6Xj7Yhsf2uYx/video/3ad782c9fd444280890f1a41d144962d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "RUDE!",
+      "artist": "Hearts2Hearts",
+      "album": "RUDE!",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
       "scope": "track"
     },
     {
