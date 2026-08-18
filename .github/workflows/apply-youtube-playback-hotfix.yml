@@ -1,0 +1,43 @@
+name: Apply YouTube playback hotfix
+
+on:
+  push:
+    branches:
+      - fix/youtube-potoken-playback-20260818
+    paths:
+      - scripts/apply_youtube_playback_hotfix.py
+      - .github/workflows/apply-youtube-playback-hotfix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/youtube-potoken-playback-20260818
+          fetch-depth: 0
+
+      - name: Apply focused playback patch
+        run: python3 scripts/apply_youtube_playback_hotfix.py
+
+      - name: Validate patch shape
+        run: |
+          git diff --check
+          git diff -- app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt app/src/main/java/com/luc4n3x/levyra/data/LevyraStreamHedge.kt app/src/main/java/com/luc4n3x/levyra/data/NewPipeRuntime.kt
+
+      - name: Remove one-shot tooling
+        run: |
+          rm -f scripts/apply_youtube_playback_hotfix.py
+          rm -f .github/workflows/apply-youtube-playback-hotfix.yml
+
+      - name: Commit hotfix
+        run: |
+          git config user.name "Luca"
+          git config user.email "luca.testing96@gmail.com"
+          git add -A
+          git commit -m "fix(playback): restore attested YouTube streams"
+          git push origin HEAD:fix/youtube-potoken-playback-20260818
