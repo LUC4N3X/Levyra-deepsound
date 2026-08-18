@@ -39,6 +39,33 @@ internal data class PlaybackTraceEvent(
     val detail: String
 )
 
+private val playbackHttpStatusPattern = Regex(
+    """\b(?:http(?:\s+status)?|status(?:\s+code)?)\s*[:=]?\s*(403|410|429)\b""",
+    RegexOption.IGNORE_CASE
+)
+
+internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
+    val value = raw.lowercase(Locale.ROOT)
+    val httpStatus = playbackHttpStatusPattern.find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return when {
+        httpStatus == 403 ||
+            value.contains("forbidden") ||
+            value.contains("confirm you're not a bot") ||
+            value.contains("confirm you’re not a bot") ||
+            value.contains("confirm you are not a bot") ||
+            value.contains("sign in to confirm") ||
+            value.contains("accedi per confermare") -> PlaybackFailureKind.Forbidden
+        httpStatus == 410 || value.contains("gone") -> PlaybackFailureKind.Gone
+        httpStatus == 429 || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
+        value.contains("expired") || value.contains("scadut") || value.contains("stream non valido") -> PlaybackFailureKind.ExpiredUrl
+        value.contains("signature") || value.contains("n-transform") || value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.Signature
+        value.contains("decoder") || value.contains("codec") || value.contains("format") -> PlaybackFailureKind.Decoder
+        value.contains("timeout") || value.contains("timed out") || value.contains("lento") -> PlaybackFailureKind.Timeout
+        value.contains("network") || value.contains("socket") || value.contains("dns") || value.contains("connection") || value.contains("host") -> PlaybackFailureKind.Network
+        else -> PlaybackFailureKind.Unknown
+    }
+}
+
 internal class PlaybackResilienceEngine(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val events = ArrayDeque<PlaybackTraceEvent>(MAX_EVENTS)
@@ -91,7 +118,7 @@ internal class PlaybackResilienceEngine(context: Context) {
                 profile = profile,
                 mode = mode,
                 latencyMs = latencyMs?.coerceAtLeast(1L) ?: 0L,
-                outcome = classify(detail).name,
+                outcome = classifyPlaybackFailureReason(detail).name,
                 detail = sanitize(detail)
             ),
             persist = true
@@ -106,7 +133,7 @@ internal class PlaybackResilienceEngine(context: Context) {
                 profile = "active",
                 mode = if (videoMode) "video" else "audio",
                 latencyMs = 0L,
-                outcome = classify(reason).name,
+                outcome = classifyPlaybackFailureReason(reason).name,
                 detail = "${trackId.take(20)} ${sanitize(reason)}".trim()
             ),
             persist = true
@@ -114,7 +141,7 @@ internal class PlaybackResilienceEngine(context: Context) {
     }
 
     fun recoveryPlan(reason: String): PlaybackRecoveryPlan {
-        return when (classify(reason)) {
+        return when (classifyPlaybackFailureReason(reason)) {
             PlaybackFailureKind.Forbidden,
             PlaybackFailureKind.Gone,
             PlaybackFailureKind.RateLimited -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
@@ -141,21 +168,6 @@ internal class PlaybackResilienceEngine(context: Context) {
         }
         root.put("trace", trace)
         return root.toString(2)
-    }
-
-    private fun classify(raw: String): PlaybackFailureKind {
-        val value = raw.lowercase(Locale.ROOT)
-        return when {
-            value.contains("403") || value.contains("forbidden") -> PlaybackFailureKind.Forbidden
-            value.contains("410") || value.contains("gone") -> PlaybackFailureKind.Gone
-            value.contains("429") || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
-            value.contains("expired") || value.contains("scadut") || value.contains("stream non valido") -> PlaybackFailureKind.ExpiredUrl
-            value.contains("signature") || value.contains("n-transform") || value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.Signature
-            value.contains("decoder") || value.contains("codec") || value.contains("format") -> PlaybackFailureKind.Decoder
-            value.contains("timeout") || value.contains("timed out") || value.contains("lento") -> PlaybackFailureKind.Timeout
-            value.contains("network") || value.contains("socket") || value.contains("dns") || value.contains("connection") || value.contains("host") -> PlaybackFailureKind.Network
-            else -> PlaybackFailureKind.Unknown
-        }
     }
 
     private fun sanitize(value: String): String {

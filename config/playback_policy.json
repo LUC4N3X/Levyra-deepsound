@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "revision": 2026081801,
+  "audioStrategy": [
+    "REEL_MUXED",
+    "PERSISTED",
+    "DIRECT",
+    "SEARCH"
+  ],
+  "videoStrategy": [
+    "PERSISTED",
+    "STANDARD",
+    "REEL"
+  ],
+  "androidReelClientVersion": "21.03.36",
+  "clients": {}
+}
