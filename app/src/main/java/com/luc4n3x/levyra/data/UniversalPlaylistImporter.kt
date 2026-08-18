@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedPlaylist
 import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
 import com.luc4n3x.levyra.domain.Track
 import java.io.IOException
@@ -470,6 +471,48 @@ class UniversalPlaylistImporter(
         return persistPlaylist(name, playableTracks, requestedCount)
     }
 
+    suspend fun resolveSharedPlaylistTracks(
+        playlist: LevyraSharedPlaylist,
+        languageCode: String = "en"
+    ): List<Track> = withContext(Dispatchers.IO) {
+        resolveImportedTracks(sharedPlaylistTracks(playlist), languageCode)
+    }
+
+    suspend fun importSharedPlaylist(
+        playlist: LevyraSharedPlaylist,
+        customName: String? = null,
+        languageCode: String = "en"
+    ): PlaylistImportResult = withContext(Dispatchers.IO) {
+        if (!jsonImportTrackCountAccepted(playlist.tracks.size)) {
+            return@withContext PlaylistImportResult.Failure(
+                PlaylistImportFailureKind.TOO_LARGE,
+                MAX_JSON_IMPORT_TRACKS
+            )
+        }
+        val rawTracks = sharedPlaylistTracks(playlist)
+        if (rawTracks.isEmpty()) {
+            return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.INVALID_INPUT)
+        }
+        try {
+            val playableTracks = resolveImportedTracks(rawTracks, languageCode)
+            if (playableTracks.isEmpty()) {
+                return@withContext PlaylistImportResult.Failure(PlaylistImportFailureKind.NO_MATCHES)
+            }
+            val name = customName?.ifBlank { null }
+                ?: playlist.title.ifBlank { null }
+                ?: "Levyra Playlist"
+            persistPlaylist(name, playableTracks, rawTracks.size)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: IOException) {
+            Timber.w(error, "Shared playlist import network failure")
+            PlaylistImportResult.Failure(PlaylistImportFailureKind.NETWORK)
+        } catch (error: Throwable) {
+            Timber.w(error, "Shared playlist import failure")
+            PlaylistImportResult.Failure(PlaylistImportFailureKind.NOT_AVAILABLE)
+        }
+    }
+
     private suspend fun resolveImportedTracks(tracks: List<Track>, languageCode: String): List<Track> {
         val limiter = Semaphore(IMPORT_RESOLUTION_CONCURRENCY)
         return coroutineScope {
@@ -514,6 +557,38 @@ class UniversalPlaylistImporter(
         val candidates = youtubeRepository.search(query, IMPORT_CANDIDATE_LIMIT, languageCode)
         return bestPlaylistImportCandidate(title, artist, durationMs, candidates)
     }
+
+    private fun sharedPlaylistTracks(playlist: LevyraSharedPlaylist): List<Track> = playlist.tracks
+        .asSequence()
+        .filter { it.id.isNotBlank() }
+        .distinctBy { it.id }
+        .take(MAX_JSON_IMPORT_TRACKS)
+        .map { shared ->
+            Track(
+                id = shared.id,
+                title = shared.title.ifBlank { shared.id },
+                artist = shared.artist,
+                album = "",
+                durationMs = 0L,
+                streamUrl = "",
+                videoUrl = if (YOUTUBE_VIDEO_ID.matches(shared.id)) {
+                    "https://www.youtube.com/watch?v=${shared.id}"
+                } else {
+                    ""
+                },
+                thumbnailUrl = "",
+                largeThumbnailUrl = "",
+                source = "Levyra playlist",
+                moodTags = setOf("music", "shared"),
+                energy = 50,
+                vocal = 50,
+                replayScore = 50,
+                cacheScore = 50,
+                accentStart = 0,
+                accentEnd = 0
+            )
+        }
+        .toList()
 
     private fun parseJsonArrayToTracks(array: JSONArray, outTracks: MutableList<Track>) {
         val boundedLength = minOf(array.length(), MAX_JSON_IMPORT_TRACKS)

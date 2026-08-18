@@ -97,6 +97,12 @@
                 <data android:scheme="https" android:host="youtube-nocookie.com" />
                 <data android:scheme="https" android:host="www.youtube-nocookie.com" />
             </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="levyra" android:host="playlist" />
+            </intent-filter>
         </activity>
 
         <receiver

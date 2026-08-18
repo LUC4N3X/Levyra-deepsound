@@ -606,6 +606,15 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
+        val reel = runCatchingPreservingCancellation {
+            resolveVideoWithAndroidReel(track.copy(streamUrl = "", videoStreamUrl = ""))
+        }.onFailure { error ->
+            Timber.d(error, "Offline Android Reel primary unavailable")
+        }.getOrNull()
+        val reelManifest = reel?.playbackManifest
+        if (reel != null && reelManifest != null && supportsOfflineExport(reelManifest)) {
+            return preserveEditorialArtwork(track, reel)
+        }
         val resolved = resolveInternal(
             track = track,
             isVideoMode = false,

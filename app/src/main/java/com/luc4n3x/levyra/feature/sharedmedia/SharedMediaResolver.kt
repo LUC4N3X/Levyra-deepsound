@@ -14,13 +14,15 @@ import java.io.IOException
 
 class SharedMediaResolver(
     private val providerRouter: LevyraProviderRouter,
-    private val client: OkHttpClient = LevyraHttpClientFactory.media()
+    private val client: OkHttpClient = LevyraHttpClientFactory.media(),
+    private val sharedPlaylistTracks: suspend (LevyraSharedPlaylist, String) -> List<Track> = { _, _ -> emptyList() }
 ) {
     suspend fun resolve(request: SharedMediaRequest, languageCode: String): SharedMediaPreview = withContext(Dispatchers.IO) {
         when (request.kind) {
             SharedMediaKind.Video -> resolveVideo(request)
             SharedMediaKind.Playlist -> resolvePlaylist(request, languageCode)
             SharedMediaKind.Album -> resolveAlbum(request, languageCode)
+            SharedMediaKind.LevyraPlaylist -> resolveLevyraPlaylist(request, languageCode)
             SharedMediaKind.Artist, SharedMediaKind.Channel, SharedMediaKind.Search -> resolveSearch(request, languageCode)
             SharedMediaKind.Unsupported -> SharedMediaPreview(
                 request = request,
@@ -31,6 +33,58 @@ class SharedMediaResolver(
                 error = "Levyra accetta link YouTube e YouTube Music"
             )
         }
+    }
+
+    private suspend fun resolveLevyraPlaylist(
+        request: SharedMediaRequest,
+        languageCode: String
+    ): SharedMediaPreview {
+        val italian = languageCode.equals("it", ignoreCase = true)
+        val decoded = LevyraPlaylistShareCodec.decode(request.sharedPlaylistPayload)
+        if (decoded is LevyraPlaylistDecodeResult.Failure) {
+            return SharedMediaPreview(
+                request = request,
+                title = if (italian) "Playlist Levyra non valida" else "Invalid Levyra playlist",
+                subtitle = "",
+                thumbnailUrl = "",
+                tracks = emptyList(),
+                error = sharedPlaylistErrorMessage(decoded.error, italian)
+            )
+        }
+        val playlist = (decoded as LevyraPlaylistDecodeResult.Success).playlist
+        val tracks = sharedPlaylistTracks(playlist, languageCode)
+        val fallbackTitle = if (italian) "Playlist Levyra" else "Levyra playlist"
+        val countLabel = if (italian) "brani" else "songs"
+        return SharedMediaPreview(
+            request = request,
+            title = playlist.title.ifBlank { fallbackTitle },
+            subtitle = if (tracks.size < playlist.tracks.size) {
+                "${tracks.size}/${playlist.tracks.size} $countLabel"
+            } else {
+                "${tracks.size} $countLabel"
+            },
+            thumbnailUrl = tracks.firstOrNull()?.largeThumbnailUrl.orEmpty(),
+            tracks = tracks,
+            error = if (tracks.isEmpty()) {
+                if (italian) "Nessun brano disponibile su questo dispositivo" else "No track is available on this device"
+            } else {
+                ""
+            }
+        )
+    }
+
+    private fun sharedPlaylistErrorMessage(error: LevyraPlaylistDecodeError, italian: Boolean): String = when (error) {
+        LevyraPlaylistDecodeError.UnsupportedVersion ->
+            if (italian) "Questa playlist richiede una versione più recente di Levyra" else "This playlist needs a newer Levyra version"
+        LevyraPlaylistDecodeError.TooLarge ->
+            if (italian) "Playlist troppo grande" else "Playlist too large"
+        LevyraPlaylistDecodeError.ChecksumMismatch ->
+            if (italian) "Il link condiviso è danneggiato" else "The shared link is damaged"
+        LevyraPlaylistDecodeError.Empty ->
+            if (italian) "La playlist condivisa è vuota" else "The shared playlist is empty"
+        LevyraPlaylistDecodeError.Malformed,
+        LevyraPlaylistDecodeError.NotLevyraPayload ->
+            if (italian) "Link Levyra non leggibile" else "Unreadable Levyra link"
     }
 
     private suspend fun resolveVideo(request: SharedMediaRequest): SharedMediaPreview {

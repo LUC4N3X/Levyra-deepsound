@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.BatchDownloadState
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
@@ -44,6 +45,22 @@ class ScreenProjectionCoverageTest {
         assertNotEquals(
             searchProjection(base),
             searchProjection(base.copy(searchData = SearchResults(failedSections = setOf(SearchFilter.Artists))))
+        )
+    }
+
+    @Test
+    fun `search projection reacts to recognition availability`() {
+        assertNotEquals(
+            searchProjection(base),
+            searchProjection(base.copy(recognitionAvailable = true))
+        )
+    }
+
+    @Test
+    fun `search projection reacts to recognition state`() {
+        assertNotEquals(
+            searchProjection(base),
+            searchProjection(base.copy(recognitionState = RecognitionState.Listening))
         )
     }
 

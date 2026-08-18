@@ -135,6 +135,9 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Explicit
 import androidx.compose.material.icons.rounded.Explore
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Equalizer
@@ -167,6 +170,10 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.LibraryAdd
+import androidx.compose.material.icons.rounded.Source
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
@@ -336,6 +343,8 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SmartMusicProfile
+import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
@@ -370,6 +379,8 @@ import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.LevyraLaunchActions
+import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatarSize
 import com.luc4n3x.levyra.ui.components.LevyraArtistItemWidth
@@ -1475,6 +1486,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onPlayNext = viewModel::playNextSharedMedia,
                     onQueue = viewModel::queueSharedMedia,
                     onDownload = viewModel::downloadSharedMedia,
+                    onImport = viewModel::importSharedPlaylist,
                     onDismiss = viewModel::dismissSharedMedia
                 )
             }
@@ -1701,6 +1713,7 @@ private fun SharedMediaPreviewDialog(
     onPlayNext: () -> Unit,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
+    onImport: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val italian = languageCode.equals("it", ignoreCase = true)
@@ -1828,6 +1841,17 @@ private fun SharedMediaPreviewDialog(
                                 primary = false,
                                 onClick = onQueue
                             )
+                        }
+                        if (preview.request.kind == SharedMediaKind.LevyraPlaylist) {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                SharedMediaAction(
+                                    modifier = Modifier.weight(1f),
+                                    icon = Icons.Rounded.LibraryAdd,
+                                    title = if (italian) "Importa" else "Import",
+                                    primary = false,
+                                    onClick = onImport
+                                )
+                            }
                         }
                     }
                 }
@@ -8819,6 +8843,11 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
         SearchHeader(
             query = state.query,
             isSearching = state.isSearching,
+            recognitionAvailable = state.recognitionAvailable,
+            recognitionBusy = state.recognitionState is RecognitionState.Listening ||
+                state.recognitionState is RecognitionState.Identifying,
+            onRecognize = viewModel::startMusicRecognition,
+            onCancelRecognition = viewModel::cancelMusicRecognition,
             onQuery = viewModel::setQuery,
             onSearch = { query ->
                 focusManager.clearFocus()
@@ -9104,6 +9133,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
 private fun SearchHeader(
     query: String,
     isSearching: Boolean,
+    recognitionAvailable: Boolean,
+    recognitionBusy: Boolean,
+    onRecognize: () -> Unit,
+    onCancelRecognition: () -> Unit,
     onQuery: (String) -> Unit,
     onSearch: (String) -> Unit,
     onClear: () -> Unit
@@ -9270,6 +9303,38 @@ private fun SearchHeader(
                 tint = LevyraText,
                 modifier = Modifier.size(20.dp)
             )
+        }
+
+        if (recognitionAvailable) {
+            val microphonePermission = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { granted ->
+                if (granted) onRecognize()
+            }
+            IconButton(
+                onClick = {
+                    if (recognitionBusy) {
+                        onCancelRecognition()
+                    } else if (
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        onRecognize()
+                    } else {
+                        microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.GraphicEq,
+                    contentDescription = strings.recognizeMusic,
+                    tint = if (recognitionBusy) LevyraCyan else LevyraText,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         IconButton(
@@ -10959,6 +11024,28 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         Text(LocalLevyraStrings.current.formatTrackCount(playlist.size), color = LevyraMuted, fontSize = 14.sp)
                     }
                     if (playlist.tracks.isNotEmpty()) {
+                        val shareContext = LocalContext.current
+                        val shareStrings = LocalLevyraStrings.current
+                        IconButton(
+                            onClick = {
+                                val link = viewModel.playlistShareLink(playlist)
+                                if (link != null) {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, playlist.name)
+                                        putExtra(Intent.EXTRA_TEXT, playlist.name + "\n" + link)
+                                    }
+                                    shareContext.startActivity(Intent.createChooser(intent, shareStrings.sharePlaylist))
+                                }
+                            }
+                        ) {
+                            Icon(
+                                Icons.Rounded.Share,
+                                contentDescription = shareStrings.sharePlaylist,
+                                tint = LevyraCyan,
+                                modifier = Modifier.size(25.dp)
+                            )
+                        }
                         IconButton(onClick = { viewModel.exportOpenPlaylist() }) {
                             Icon(Icons.Rounded.DownloadDone, contentDescription = LocalLevyraStrings.current.downloadPlaylist, tint = LevyraViolet, modifier = Modifier.size(27.dp))
                         }
@@ -11079,6 +11166,7 @@ private fun PlayerArtworkCanvas(
     animationsEnabled: Boolean,
     isPlaying: Boolean,
     cornerRadius: Dp,
+    canvasQuality: LevyraCanvasQuality,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -11110,6 +11198,7 @@ private fun PlayerArtworkCanvas(
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
                 presentation = MotionArtworkPresentation.Card,
+                quality = canvasQuality,
                 modifier = Modifier.fillMaxSize()
             ) {
                 if (artworkUrl.isNotBlank()) {
@@ -11149,6 +11238,7 @@ private fun PlayerImmersiveMotionCanvas(
     ambience: PlayerAmbience,
     animationsEnabled: Boolean,
     isPlaying: Boolean,
+    canvasQuality: LevyraCanvasQuality,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -11159,6 +11249,7 @@ private fun PlayerImmersiveMotionCanvas(
             isPlaying = isPlaying,
             cornerRadius = 0.dp,
             presentation = MotionArtworkPresentation.Immersive,
+            quality = canvasQuality,
             modifier = Modifier.fillMaxSize()
         ) {
             if (artworkUrl.isNotBlank()) {
@@ -12256,6 +12347,7 @@ private fun PlayerScreen(
                     ambience = ambience,
                     animationsEnabled = state.animationsEnabled,
                     isPlaying = state.isPlaying,
+                    canvasQuality = state.interfaceSettings.canvasQuality,
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
@@ -12385,6 +12477,7 @@ private fun PlayerScreen(
                         animationsEnabled = state.animationsEnabled && !state.isVideoMode,
                         isPlaying = state.isPlaying,
                         cornerRadius = artCorner,
+                        canvasQuality = state.interfaceSettings.canvasQuality,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
@@ -14585,6 +14678,45 @@ private fun SettingsOverlay(
                                     onCheckedChange = onMotionArtwork
                                 )
                             }
+                            if (motionArtworkEnabled) {
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.HighQuality,
+                                        title = strings.canvasQuality,
+                                        subtitle = strings.canvasQualitySubtitle,
+                                        options = listOf(
+                                            LevyraCanvasQuality.Auto.name to strings.canvasQualityAuto,
+                                            LevyraCanvasQuality.DataSaver.name to strings.canvasQualityDataSaver,
+                                            LevyraCanvasQuality.High.name to strings.canvasQualityHigh
+                                        ),
+                                        selected = interfaceSettings.canvasQuality.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(canvasQuality = LevyraCanvasQuality.from(value))
+                                            )
+                                        }
+                                    )
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.Source,
+                                        title = strings.canvasSource,
+                                        subtitle = strings.canvasSourceSubtitle,
+                                        options = listOf(
+                                            LevyraCanvasSource.Auto.name to strings.canvasSourceAuto,
+                                            LevyraCanvasSource.Community.name to strings.canvasSourceCommunity,
+                                            LevyraCanvasSource.Apple.name to strings.canvasSourceApple,
+                                            LevyraCanvasSource.Tidal.name to strings.canvasSourceTidal
+                                        ),
+                                        selected = interfaceSettings.canvasSource.name,
+                                        onSelect = { value ->
+                                            onInterfaceSettings(
+                                                interfaceSettings.copy(canvasSource = LevyraCanvasSource.from(value))
+                                            )
+                                        }
+                                    )
+                                }
+                            }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Album,
@@ -14701,6 +14833,19 @@ private fun SettingsOverlay(
                                     subtitle = strings.sponsorBlockSubtitle,
                                     checked = sponsorBlock,
                                     onCheckedChange = onSponsorBlock
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Subtitles,
+                                    title = strings.enhanceVideoMetadata,
+                                    subtitle = strings.enhanceVideoMetadataSubtitle,
+                                    checked = interfaceSettings.enhanceVideoMetadata,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(enhanceVideoMetadata = value)
+                                        )
+                                    }
                                 )
                             }
                             item {
