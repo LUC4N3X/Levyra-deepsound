@@ -138,7 +138,7 @@ Existing favorites, playlists, listening history, downloads, settings and playba
 ## Validation
 
 - The Android version name/code follow Levyra's existing monotonic formula and remain separate from Desktop versioning.
-- Gradle version fallbacks, README version wiring, release badges and Fastlane changelogs are aligned to 2.3.21 in the release bump.
+- Gradle version fallbacks, README version wiring, the Android platform badge and Fastlane changelogs are aligned to 2.3.21. The separate "Latest release" badge intentionally continues to reflect the most recently published GitHub release until 2.3.21 is actually released.
 - Levyra's Release Guard continues to verify Gradle, README, curated release-notes, F-Droid review-contract and Android publishing-workflow consistency before a release tag is accepted.
 - Feature changes summarized above were merged with their focused tests/review fixes where present in the repository history.
 - This metadata bump does not claim a new physical-device, Android Auto, notification, PiP or OEM verification run that has not actually been performed for the final 2.3.21 artifact.
