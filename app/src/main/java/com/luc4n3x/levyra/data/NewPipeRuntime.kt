@@ -4,6 +4,7 @@ import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,8 @@ import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.downloader.StreamingResponse
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
+import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -261,9 +264,34 @@ private class OkHttpNewPipeDownloader : Downloader() {
         }
     }
 
+    private fun isYoutubePlayerEndpoint(url: String): Boolean {
+        return url.startsWith("https://www.youtube.com/youtubei/v1/player") ||
+            url.startsWith("https://youtubei.googleapis.com/youtubei/v1/player")
+    }
+
     private fun toOkHttpRequest(request: Request): okhttp3.Request {
         val method = request.httpMethod().uppercase()
-        val data = request.dataToSend()
+        val rawData = request.dataToSend()
+        val data = if (
+            rawData != null &&
+            method == "POST" &&
+            isYoutubePlayerEndpoint(request.url())
+        ) {
+            try {
+                YoutubeParsingHelper.addSessionPoTokenToPlayerBody(
+                    rawData,
+                    NewPipe.getPreferredLocalization(),
+                    NewPipe.getPreferredContentCountry()
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "YouTube player PoToken decoration skipped")
+                rawData
+            }
+        } else {
+            rawData
+        }
         val body = when {
             method == "GET" || method == "HEAD" -> null
             data != null -> data.toRequestBody()
