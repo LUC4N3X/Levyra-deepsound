@@ -66,6 +66,27 @@ class YoutubeExtractorFallbackContractTest {
     }
 
     @Test
+    fun androidReelRequestAcceptsServerProvidedClientVersion() {
+        val body = buildAndroidReelRequestBody(
+            videoId = "abcdefghijk",
+            cpn = "ABCDEFGHIJKLMNOP",
+            hl = "it",
+            gl = "it",
+            visitorData = "visitor-123",
+            clientVersion = "21.04.00"
+        )
+
+        assertEquals(
+            "21.04.00",
+            body.getJSONObject("context").getJSONObject("client").getString("clientVersion")
+        )
+        assertEquals(
+            "com.google.android.youtube/21.04.00 (Linux; U; Android 15; IT) gzip",
+            androidReelUserAgent("it", "21.04.00")
+        )
+    }
+
+    @Test
     fun androidReelFormatsAreReadOnlyFromNestedPlayerResponse() {
         val expected = JSONArray().put(JSONObject().put("itag", 18))
         val response = JSONObject()

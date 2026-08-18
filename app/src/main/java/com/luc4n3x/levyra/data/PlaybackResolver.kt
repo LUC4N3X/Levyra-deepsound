@@ -110,7 +110,6 @@ internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track 
 }
 
 private const val YOUTUBE_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-private const val ANDROID_REEL_CLIENT_VERSION = "21.03.36"
 private const val MAX_YOUTUBE_JSON_RESPONSE_BYTES = 8L * 1024L * 1024L
 private val youtubeNonceRandom = SecureRandom()
 
@@ -124,9 +123,12 @@ internal fun visionOsUserAgent(countryCode: String): String {
     return "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X; $country)"
 }
 
-internal fun androidReelUserAgent(countryCode: String): String {
+internal fun androidReelUserAgent(
+    countryCode: String,
+    clientVersion: String = PlaybackCompatibilityPolicy.DEFAULT_ANDROID_REEL_CLIENT_VERSION
+): String {
     val country = normalizedYoutubeCountryCode(countryCode)
-    return "com.google.android.youtube/$ANDROID_REEL_CLIENT_VERSION (Linux; U; Android 15; $country) gzip"
+    return "com.google.android.youtube/$clientVersion (Linux; U; Android 15; $country) gzip"
 }
 
 internal fun applyVisionOsClientIdentity(client: JSONObject): JSONObject {
@@ -142,11 +144,12 @@ internal fun applyVisionOsClientIdentity(client: JSONObject): JSONObject {
 internal fun buildAndroidReelContext(
     hl: String,
     gl: String,
-    visitorData: String
+    visitorData: String,
+    clientVersion: String = PlaybackCompatibilityPolicy.DEFAULT_ANDROID_REEL_CLIENT_VERSION
 ): JSONObject {
     val client = JSONObject()
         .put("clientName", "ANDROID")
-        .put("clientVersion", ANDROID_REEL_CLIENT_VERSION)
+        .put("clientVersion", clientVersion)
         .put("clientScreen", "WATCH")
         .put("platform", "MOBILE")
         .put("osName", "Android")
@@ -172,10 +175,11 @@ internal fun buildAndroidReelRequestBody(
     cpn: String,
     hl: String,
     gl: String,
-    visitorData: String
+    visitorData: String,
+    clientVersion: String = PlaybackCompatibilityPolicy.DEFAULT_ANDROID_REEL_CLIENT_VERSION
 ): JSONObject {
     return JSONObject()
-        .put("context", buildAndroidReelContext(hl, gl, visitorData))
+        .put("context", buildAndroidReelContext(hl, gl, visitorData, clientVersion))
         .put(
             "playerRequest",
             JSONObject()
@@ -268,6 +272,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val playbackSecurity = YoutubePlaybackSecurity.getInstance(context)
+    private val playbackPolicyStore = PlaybackCompatibilityPolicyStore(context, youtubeHttpClient)
     private val resilienceEngine = PlaybackResilienceEngine(context)
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -312,10 +317,29 @@ class PlaybackResolver private constructor(private val context: Context) {
     init {
         restoreCache()
         restoreClientHealth()
+        refreshPlaybackPolicyInBackground(force = true, reason = "startup")
     }
 
     fun setAudioQuality(value: String) {
         selectedAudioQuality = normalizeAudioQuality(value)
+    }
+
+    private fun refreshPlaybackPolicyInBackground(force: Boolean, reason: String) {
+        if (!force && !playbackPolicyStore.needsRefresh()) return
+        resolveScope.launch {
+            val changed = runCatchingPreservingCancellation {
+                playbackPolicyStore.refresh(force = force, reason = reason)
+            }.onFailure { error ->
+                Timber.w(error, "Playback compatibility policy refresh failed reason=%s", reason)
+            }.getOrDefault(false)
+            if (changed) clearResolvedStreamCaches()
+        }
+    }
+
+    private suspend fun clearResolvedStreamCaches() {
+        streamCache.clear()
+        prefs.edit().clear().apply()
+        sourceMatchStore.clearOnline()
     }
 
     private fun normalizeAudioQuality(value: String): String {
@@ -339,7 +363,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val request = Request.Builder()
                 .url(url)
                 .head()
-                .header("User-Agent", profiles.first().userAgent)
+                .header("User-Agent", effectiveProfiles().firstOrNull()?.userAgent ?: profiles.first().userAgent)
                 .build()
             youtubeHttpClient.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
@@ -461,6 +485,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (recovery.refreshSecurity) {
             YoutubeLocalDecoder.notifyStreamRejected(track.source)
             resolveScope.launch {
+                val policyChanged = runCatchingPreservingCancellation {
+                    playbackPolicyStore.refreshAfterRejection()
+                }.onFailure { error ->
+                    Timber.w(error, "Playback compatibility policy rejection refresh failed")
+                }.getOrDefault(false)
+                if (policyChanged) clearResolvedStreamCaches()
                 runCatchingPreservingCancellation {
                     playbackSecurity.rotateIfNeeded(PlaybackBlockedException(reason))
                 }.onFailure { error ->
@@ -597,6 +627,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         audioQuality: String,
         reuseProvidedStream: Boolean
     ): Track = coroutineScope {
+        if (requestKind == "playback") {
+            refreshPlaybackPolicyInBackground(force = false, reason = "resolve")
+        }
         if (isLocalPlaybackTrack(track)) {
             if (!isLocalPlaybackUri(track.streamUrl)) {
                 throw PlaybackBlockedException("File offline non disponibile per ${track.title}")
@@ -677,67 +710,37 @@ class PlaybackResolver private constructor(private val context: Context) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (!preferMp4Audio && !isVideoMode) {
-            val reelAudio = runCatchingPreservingCancellation {
-                resolveVideoWithAndroidReel(track)
-            }.onFailure { error ->
-                errors += "Android Reel audio: ${error.playbackDiagnostic()}"
-            }.getOrNull()
-            if (reelAudio != null) {
-                store(track, reelAudio, isVideoMode, audioQuality, preferMp4Audio)
-                persistResolvedSource(track, reelAudio, isVideoMode, audioQuality, 96, preferMp4Audio)
-                return@withContext reelAudio
-            }
+            val resolved = resolveAudioByCompatibilityPolicy(track, audioQuality, errors)
+            if (resolved != null) return@withContext resolved
+
+            val reason = errors.firstOrNull { it.startsWith("LevyraExtractor:") }
+                ?: errors.firstOrNull {
+                    it.contains("age", true) ||
+                        it.contains("anonymous", true) ||
+                        it.contains("login", true) ||
+                        it.contains("accedi", true)
+                }
+                ?: errors.firstOrNull()
+                ?: "Stream non disponibile"
+            Timber.w(
+                "audio resolve failed offlineExport=false policyRevision=%d errors=%s",
+                playbackPolicyStore.current().revision,
+                errors.joinToString(" | ").take(900)
+            )
+            throw PlaybackBlockedException(reason)
         }
 
-        restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
-            store(track, restored, isVideoMode, audioQuality, preferMp4Audio)
-            return@withContext restored
+        if (preferMp4Audio) {
+            restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
+                store(track, restored, isVideoMode, audioQuality, preferMp4Audio)
+                return@withContext restored
+            }
         }
 
         if (isVideoMode) {
-            val resolved = coroutineScope {
-                val winner = CompletableDeferred<Track?>()
-                val extractorJob = launch {
-                    delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
-                    if (winner.isCompleted) return@launch
-                    val result = runCatchingPreservingCancellation { resolveVideoWithLevyraExtractor(track, audioQuality) }
-                    result.onSuccess { winner.complete(it) }
-                        .onFailure { error ->
-                            errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
-                        }
-                }
-                val innerTubeJob = launch {
-                    delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
-                    if (winner.isCompleted) return@launch
-                    val stream = runCatchingPreservingCancellation { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
-                    if (stream != null) {
-                        winner.complete(track.withDirectStream(stream))
-                    }
-                }
-                launch {
-                    extractorJob.join()
-                    innerTubeJob.join()
-                    winner.complete(null)
-                }
-                val result = winner.await()
-                coroutineContext.cancelChildren()
-                result
-            }
-            if (resolved != null) {
-                store(track, resolved, isVideoMode, audioQuality)
-                persistResolvedSource(track, resolved, isVideoMode, audioQuality, 92, preferMp4Audio)
-                return@withContext resolved
-            }
-            val reelFallback = runCatchingPreservingCancellation {
-                resolveVideoWithAndroidReel(track)
-            }.onFailure { error ->
-                errors += "Android Reel: ${error.playbackDiagnostic()}"
-            }.getOrNull()
-            if (reelFallback != null) {
-                store(track, reelFallback, isVideoMode, audioQuality)
-                persistResolvedSource(track, reelFallback, isVideoMode, audioQuality, 78, preferMp4Audio)
-                return@withContext reelFallback
-            }
+            val resolved = resolveVideoByCompatibilityPolicy(track, audioQuality, errors)
+            if (resolved != null) return@withContext resolved
+
             val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
                 ?: errors.firstOrNull()
                 ?: "Video non disponibile"
@@ -770,6 +773,149 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException(reason)
     }
 
+    private suspend fun resolveAudioByCompatibilityPolicy(
+        track: Track,
+        audioQuality: String,
+        errors: MutableList<String>
+    ): Track? {
+        val policy = playbackPolicyStore.current()
+        for (strategy in policy.audioStrategies) {
+            currentCoroutineContext().ensureActive()
+            val resolved = when (strategy) {
+                PlaybackAudioStrategy.REEL_MUXED -> runCatchingPreservingCancellation {
+                    resolveVideoWithAndroidReel(track)
+                }.onFailure { error ->
+                    errors += "Android Reel muxed: ${error.playbackDiagnostic()}"
+                }.getOrNull()
+
+                PlaybackAudioStrategy.REEL_AUDIO -> runCatchingPreservingCancellation {
+                    resolveAudioWithAndroidReel(track, audioQuality)
+                }.onFailure { error ->
+                    errors += "Android Reel audio: ${error.playbackDiagnostic()}"
+                }.getOrNull()
+
+                PlaybackAudioStrategy.PERSISTED -> restorePersistentSource(
+                    track = track,
+                    isVideoMode = false,
+                    preferMp4Audio = false,
+                    audioQuality = audioQuality,
+                    errors = errors
+                )
+
+                PlaybackAudioStrategy.DIRECT -> resolveAudioFast(
+                    track = track,
+                    errors = errors,
+                    preferMp4Audio = false,
+                    audioQuality = audioQuality
+                )
+
+                PlaybackAudioStrategy.SEARCH -> resolveAudioWithSearchFallback(
+                    track = track,
+                    errors = errors,
+                    preferMp4Audio = false,
+                    audioQuality = audioQuality
+                )
+            }
+            if (resolved != null) {
+                store(track, resolved, false, audioQuality, false)
+                val confidence = when (strategy) {
+                    PlaybackAudioStrategy.REEL_MUXED,
+                    PlaybackAudioStrategy.REEL_AUDIO -> 96
+                    PlaybackAudioStrategy.DIRECT -> 90
+                    PlaybackAudioStrategy.SEARCH -> 84
+                    PlaybackAudioStrategy.PERSISTED -> null
+                }
+                confidence?.let {
+                    persistResolvedSource(track, resolved, false, audioQuality, it, false)
+                }
+                return resolved
+            }
+        }
+        return null
+    }
+
+    private suspend fun resolveVideoByCompatibilityPolicy(
+        track: Track,
+        audioQuality: String,
+        errors: MutableList<String>
+    ): Track? {
+        val policy = playbackPolicyStore.current()
+        for (strategy in policy.videoStrategies) {
+            currentCoroutineContext().ensureActive()
+            val resolved = when (strategy) {
+                PlaybackVideoStrategy.PERSISTED -> restorePersistentSource(
+                    track = track,
+                    isVideoMode = true,
+                    preferMp4Audio = false,
+                    audioQuality = audioQuality,
+                    errors = errors
+                )
+
+                PlaybackVideoStrategy.STANDARD -> resolveStandardVideo(track, audioQuality, errors)
+                PlaybackVideoStrategy.REEL -> runCatchingPreservingCancellation {
+                    resolveVideoWithAndroidReel(track)
+                }.onFailure { error ->
+                    errors += "Android Reel: ${error.playbackDiagnostic()}"
+                }.getOrNull()
+            }
+            if (resolved != null) {
+                store(track, resolved, true, audioQuality)
+                val confidence = when (strategy) {
+                    PlaybackVideoStrategy.PERSISTED -> null
+                    PlaybackVideoStrategy.STANDARD -> 92
+                    PlaybackVideoStrategy.REEL -> 78
+                }
+                confidence?.let {
+                    persistResolvedSource(
+                        original = track,
+                        resolved = resolved,
+                        isVideoMode = true,
+                        audioQuality = audioQuality,
+                        confidence = it,
+                        preferMp4Audio = false
+                    )
+                }
+                return resolved
+            }
+        }
+        return null
+    }
+
+    private suspend fun resolveStandardVideo(
+        track: Track,
+        audioQuality: String,
+        errors: MutableList<String>
+    ): Track? = coroutineScope {
+        val winner = CompletableDeferred<Track?>()
+        val extractorJob = launch {
+            delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
+            if (winner.isCompleted) return@launch
+            val result = runCatchingPreservingCancellation {
+                resolveVideoWithLevyraExtractor(track, audioQuality)
+            }
+            result.onSuccess { winner.complete(it) }
+                .onFailure { error ->
+                    errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
+                }
+        }
+        val innerTubeJob = launch {
+            delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
+            if (winner.isCompleted) return@launch
+            val stream = runCatchingPreservingCancellation {
+                hedgedInnerTube(track, errors, true, audioQuality)
+            }.getOrNull()
+            if (stream != null) winner.complete(track.withDirectStream(stream))
+        }
+        launch {
+            extractorJob.join()
+            innerTubeJob.join()
+            winner.complete(null)
+        }
+        val result = winner.await()
+        coroutineContext.cancelChildren()
+        result
+    }
+
     private suspend fun resolveAudioWithAndroidReel(
         track: Track,
         audioQuality: String
@@ -778,10 +924,11 @@ class PlaybackResolver private constructor(private val context: Context) {
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
         val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
-        val userAgent = androidReelUserAgent(locale.gl)
+        val reelClientVersion = playbackPolicyStore.current().androidReelClientVersion
+        val userAgent = androidReelUserAgent(locale.gl, reelClientVersion)
         val cachedVisitorData = playbackSecurity.cachedSession().visitorData
         val visitorData = runCatchingPreservingCancellation {
-            fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent)
+            fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent, reelClientVersion)
         }.getOrNull().orEmpty().ifBlank { cachedVisitorData }
         currentCoroutineContext().ensureActive()
 
@@ -792,7 +939,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             cpn = cpn,
             hl = locale.hl,
             gl = locale.gl,
-            visitorData = visitorData
+            visitorData = visitorData,
+            clientVersion = reelClientVersion
         ).toString()
         val endpoint = "https://youtubei.googleapis.com/youtubei/v1/reel/reel_item_watch" +
             "?prettyPrint=false&t=$tParameter&id=$sourceVideoId&\$fields=playerResponse"
@@ -967,10 +1115,11 @@ class PlaybackResolver private constructor(private val context: Context) {
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
         val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
-        val userAgent = androidReelUserAgent(locale.gl)
+        val reelClientVersion = playbackPolicyStore.current().androidReelClientVersion
+        val userAgent = androidReelUserAgent(locale.gl, reelClientVersion)
         val cachedVisitorData = playbackSecurity.cachedSession().visitorData
         val visitorData = runCatchingPreservingCancellation {
-            fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent)
+            fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent, reelClientVersion)
         }.getOrNull().orEmpty().ifBlank { cachedVisitorData }
         currentCoroutineContext().ensureActive()
 
@@ -981,7 +1130,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             cpn = cpn,
             hl = locale.hl,
             gl = locale.gl,
-            visitorData = visitorData
+            visitorData = visitorData,
+            clientVersion = reelClientVersion
         ).toString()
         val endpoint = "https://youtubei.googleapis.com/youtubei/v1/reel/reel_item_watch" +
             "?prettyPrint=false&t=$tParameter&id=$sourceVideoId&\$fields=playerResponse"
@@ -1076,10 +1226,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun fetchAndroidReelVisitorData(
         hl: String,
         gl: String,
-        userAgent: String
+        userAgent: String,
+        clientVersion: String
     ): String {
         val body = JSONObject()
-            .put("context", buildAndroidReelContext(hl, gl, ""))
+            .put("context", buildAndroidReelContext(hl, gl, "", clientVersion))
             .toString()
         val request = Request.Builder()
             .url("https://youtubei.googleapis.com/youtubei/v1/visitor_id?prettyPrint=false")
@@ -1627,17 +1778,42 @@ class PlaybackResolver private constructor(private val context: Context) {
         result
     }
 
+    private fun effectiveProfiles(): List<ClientProfile> {
+        val overrides = playbackPolicyStore.current().clientOverrides
+        val effective = profiles.mapNotNull { base ->
+            val override = overrides[base.clientName]
+            if (override?.enabled == false) return@mapNotNull null
+            val version = override?.clientVersion ?: base.clientVersion
+            base.copy(
+                clientVersion = version,
+                userAgent = if (version == base.clientVersion) {
+                    base.userAgent
+                } else {
+                    base.userAgent.replace(base.clientVersion, version)
+                },
+                tier = override?.priority ?: base.tier,
+                requiresPoToken = override?.requiresPoToken ?: base.requiresPoToken
+            )
+        }
+        return effective.ifEmpty { profiles }
+    }
+
     private fun profileFromSource(source: String): ClientProfile? {
         val normalized = source.lowercase()
-        return profiles.firstOrNull { profile ->
+        return effectiveProfiles().firstOrNull { profile ->
+            normalized.contains(profile.label.lowercase()) || normalized.contains(profile.clientName.lowercase())
+        } ?: profiles.firstOrNull { profile ->
             normalized.contains(profile.label.lowercase()) || normalized.contains(profile.clientName.lowercase())
         }
     }
 
     private fun orderedProfiles(): List<ClientProfile> {
         val now = System.currentTimeMillis()
-        val available = profiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
-        val candidates = if (available.isNotEmpty()) available else profiles
+        val configured = effectiveProfiles()
+        val available = configured.filter { profile ->
+            (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now
+        }
+        val candidates = if (available.isNotEmpty()) available else configured
         val sorted = candidates.sortedWith(
             compareByDescending<ClientProfile> { it.requiresPoToken }
                 .thenByDescending { profile -> clientHealth[profile.clientName]?.score ?: 50.0 }

@@ -96,4 +96,8 @@ internal class PlaybackSourceMatchStore(
     ) {
         dao.delete(PlaybackSourceIdentity.matchKey(track, videoMode, audioQuality, preferMp4Audio))
     }
+
+    suspend fun clearOnline() {
+        dao.deleteOnlineMatches()
+    }
 }
