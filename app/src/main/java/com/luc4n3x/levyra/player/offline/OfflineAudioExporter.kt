@@ -275,6 +275,49 @@ internal fun isUnsupportedOfflineAudioSource(error: Throwable): Boolean {
     return false
 }
 
+internal fun isRejectedOfflinePlaybackSource(error: Throwable): Boolean {
+    val rejectedStatus = Regex(
+        """\b(?:HTTP|Response code)\s*:?\s*(403|410|429)\b""",
+        RegexOption.IGNORE_CASE
+    )
+    var current: Throwable? = error
+    while (current != null) {
+        val message = current.message.orEmpty()
+        val value = message.lowercase(Locale.US)
+        if (
+            rejectedStatus.containsMatchIn(message) ||
+            value.contains("sign in to confirm") ||
+            value.contains("confirm you're not a bot") ||
+            value.contains("confirm you’re not a bot") ||
+            value.contains("confirm you are not a bot") ||
+            value.contains("accedi per confermare") ||
+            value.contains("potoken") ||
+            value.contains("po token") ||
+            value.contains("n-transform") ||
+            value.contains("signature")
+        ) {
+            return true
+        }
+        current = current.cause
+    }
+    return false
+}
+
+internal fun offlineRangeConcurrency(url: String, requested: Int): Int {
+    val safeRequested = requested.coerceAtLeast(1)
+    return if (url.contains("googlevideo.com", ignoreCase = true)) {
+        minOf(safeRequested, 4)
+    } else {
+        safeRequested
+    }
+}
+
+internal fun shouldUseParallelOfflineRanges(source: String, url: String): Boolean {
+    val hasPoToken = url.toHttpUrlOrNull()?.queryParameter("pot")?.isNotBlank() == true ||
+        Regex("(?:[?&])pot=", RegexOption.IGNORE_CASE).containsMatchIn(url)
+    return !source.contains("Android Reel", ignoreCase = true) && !hasPoToken
+}
+
 internal fun audioContentLengthFromRangeHeader(contentRange: String): Long {
     return contentRange.substringAfterLast('/', "")
         .trim()
@@ -380,7 +423,7 @@ class OfflineAudioExporter(
                 if (firstError is CancellationException) throw firstError
                 val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
                 if (!canRefresh) throw firstError
-                if (isUnsupportedOfflineAudioSource(firstError)) {
+                if (isUnsupportedOfflineAudioSource(firstError) || isRejectedOfflinePlaybackSource(firstError)) {
                     resolver.reportPlaybackFailure(
                         track = playable,
                         isVideoMode = false,
@@ -452,7 +495,7 @@ class OfflineAudioExporter(
                 return downloadAudioAttempt(track, workspace, useRange)
             } catch (error: IOException) {
                 lastError = error
-                if (isUnsupportedOfflineAudioSource(error)) throw error
+                if (isUnsupportedOfflineAudioSource(error) || isRejectedOfflinePlaybackSource(error)) throw error
                 if (index < rangeAttempts.lastIndex) delay(350L * (index + 1))
             }
         }
@@ -514,7 +557,11 @@ class OfflineAudioExporter(
                 }
             }
         }
-        val parallelRanges = if (!useRange && existingBytes == 0L) {
+        val parallelRanges = if (
+            !useRange &&
+                existingBytes == 0L &&
+                shouldUseParallelOfflineRanges(track.source, sourceUrl)
+        ) {
             planParallelAudioRanges(
                 contentLength = expectedLength,
                 chunkSize = parallelChunkSize,
@@ -774,11 +821,14 @@ class OfflineAudioExporter(
         val temp = existingFile ?: File(workspace, "raw-${System.nanoTime()}.${container.extension}")
         val downloadedBytes = AtomicLong(initialDownloadedBytes.coerceIn(0L, targetLength))
         val lastProgress = AtomicInteger(downloadProgress(downloadedBytes.get(), targetLength))
-        val concurrency = minOf(
-            parallelAudioConcurrency(targetLength),
-            settings.maxParallelFragments,
-            ranges.size.coerceAtLeast(1)
-        ).coerceAtLeast(1)
+        val concurrency = offlineRangeConcurrency(
+            track.streamUrl,
+            minOf(
+                parallelAudioConcurrency(targetLength),
+                settings.maxParallelFragments,
+                ranges.size.coerceAtLeast(1)
+            ).coerceAtLeast(1)
+        )
         val limiter = Semaphore(concurrency)
         try {
             if (existingFile == null) {
