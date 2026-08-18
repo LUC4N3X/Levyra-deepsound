@@ -76,7 +76,7 @@ class LevyraStreamHedgeTest {
     }
 
     @Test
-    fun playbackInnerTubeFallbackStartsInsideTapLatencyBudget() {
+    fun playbackInnerTubeStartsInsideTapLatencyBudget() {
         assertTrue(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = false) <= 120L)
     }
 
