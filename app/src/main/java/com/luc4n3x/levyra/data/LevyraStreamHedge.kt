@@ -11,11 +11,12 @@ import java.util.concurrent.atomic.AtomicInteger
 internal object LevyraResolverLatency {
     const val INNER_TUBE_HEDGE_BUDGET_MS = 35L
     private const val AUDIO_INNER_TUBE_FALLBACK_MS = 0L
-    private const val VIDEO_INNER_TUBE_FALLBACK_MS = 2_500L
+    private const val VIDEO_INNER_TUBE_FALLBACK_MS = 0L
     private const val OFFLINE_INNER_TUBE_FALLBACK_MS = 2_500L
 
     fun extractorHedgeDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
-        return 0L
+        if (preferMp4Audio) return 0L
+        return if (isVideoMode) 900L else 600L
     }
 
     fun innerTubeFallbackDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
