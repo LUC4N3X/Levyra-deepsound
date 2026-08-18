@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.motion
 
 import android.content.Context
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -36,9 +37,12 @@ class MotionArtworkEngine(context: Context) {
     private val inFlight = mutableMapOf<String, CompletableDeferred<MotionArtwork?>>()
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    suspend fun resolve(track: Track): MotionArtwork? {
+    suspend fun resolve(
+        track: Track,
+        source: LevyraCanvasSource = LevyraCanvasSource.Auto
+    ): MotionArtwork? {
         if (!networkPolicy.canResolveCurrent()) return null
-        val identityKey = MotionArtworkIdentityKey.create(track)
+        val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(track), source)
         val runtime = MotionArtworkRuntime.snapshot()
         when (val cached = repository.get(identityKey, runtime.epoch)) {
             is MotionArtworkCacheResult.Hit -> return cached.artwork
@@ -52,7 +56,9 @@ class MotionArtworkEngine(context: Context) {
                 inFlight[requestKey] = shared
                 lookupScope.launch {
                     try {
-                        shared.complete(resolveFresh(track, identityKey, runtime.epoch, runtime.value))
+                        shared.complete(
+                            resolveFresh(track, identityKey, runtime.epoch, runtime.value, source)
+                        )
                     } catch (error: CancellationException) {
                         shared.completeExceptionally(error)
                     } catch (error: Throwable) {
@@ -71,16 +77,20 @@ class MotionArtworkEngine(context: Context) {
         return deferred.await()
     }
 
-    suspend fun prefetchNext(track: Track?) {
+    suspend fun prefetchNext(
+        track: Track?,
+        source: LevyraCanvasSource = LevyraCanvasSource.Auto
+    ) {
         if (track == null || !networkPolicy.canPrefetchNext()) return
-        resolve(track)
+        resolve(track, source)
     }
 
     private suspend fun resolveFresh(
         track: Track,
         identityKey: String,
         configEpoch: Long,
-        config: MotionArtworkConfig
+        config: MotionArtworkConfig,
+        source: LevyraCanvasSource
     ): MotionArtwork? {
         when (val cached = repository.get(identityKey, configEpoch)) {
             is MotionArtworkCacheResult.Hit -> return cached.artwork
@@ -88,8 +98,9 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Miss -> Unit
         }
         val identity = MotionTrackIdentity.from(track)
-        val providers = providersFor(configEpoch, config)
-        val providerRanks = config.providerOrder.withIndex().associate { it.value to it.index }
+        val providerOrder = motionArtworkProviderOrder(config.providerOrder, source)
+        val providers = providersFor(configEpoch, config).filter { it.id in providerOrder }
+        val providerRanks = providerOrder.withIndex().associate { it.value to it.index }
         val outcomes = supervisorScope {
             providers.map { provider ->
                 async {
@@ -211,6 +222,22 @@ class MotionArtworkEngine(context: Context) {
         activeProviders
     }
 
+}
+
+internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
+    if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"
+
+internal fun motionArtworkProviderOrder(
+    configuredOrder: List<String>,
+    source: LevyraCanvasSource
+): List<String> {
+    val forced = when (source) {
+        LevyraCanvasSource.Auto -> return configuredOrder
+        LevyraCanvasSource.Community -> "community-canvas"
+        LevyraCanvasSource.Apple -> "apple-motion"
+        LevyraCanvasSource.Tidal -> "tidal-video-cover"
+    }
+    return configuredOrder.filter { it == forced }
 }
 
 internal data class MotionArtworkRankedCandidate(
