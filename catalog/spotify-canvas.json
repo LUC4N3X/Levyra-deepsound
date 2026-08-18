@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-18T07:06:54Z",
+  "generatedAt": "2026-08-18T13:10:58Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -334,7 +334,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -539,13 +539,6 @@
       "artist": "Ravyn Lenae",
       "album": "Bird's Eye",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/103a5d76e07444bb96da0c5f65b33bee.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1750,6 +1743,13 @@
       "artist": "Samuel Welten",
       "album": "Echte Liefde Is Te Koop",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/33798fd3ba194b588a9a821efd8bd382.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3447,13 +3447,6 @@
       "scope": "track"
     },
     {
-      "song": "RUDE!",
-      "artist": "Hearts2Hearts",
-      "album": "RUDE!",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Less than a Lover",
       "artist": "JENNIE",
       "album": "Less than a Lover",
@@ -4543,6 +4536,13 @@
       "artist": "Nipsey Hussle, Bino Rideaux",
       "album": "PROLIFIC",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/62ecfb02c1254464b7bf13b3429aeba8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sunshine",
+      "artist": "Jungle",
+      "album": "Sunshine",
+      "url": "https://canvaz.scdn.co/upload/artist/59oA5WbbQvomJz2BuRG071/video/6ba690090926467fb1c56bdbf7ffebfe.cnvs.mp4",
       "scope": "track"
     },
     {
