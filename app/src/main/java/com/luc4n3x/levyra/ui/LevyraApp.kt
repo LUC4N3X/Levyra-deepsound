@@ -257,6 +257,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -11097,11 +11098,13 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
 
 @Composable
 private fun PlayerImmersiveBackdrop(
+    artworkUrl: String,
     ambience: PlayerAmbience,
     isPlaying: Boolean,
+    animationsEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val animationsEnabled = LocalAnimationsEnabled.current
+    val context = LocalContext.current
     val tint = animateColorAsState(
         targetValue = ambience.tint,
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
@@ -11123,39 +11126,190 @@ private fun PlayerImmersiveBackdrop(
         label = "player-backdrop-glow"
     )
 
-    Box(
-        modifier = modifier.drawBehind {
-            if (size.minDimension <= 0f) return@drawBehind
-            val elevatedColor = elevated.value
-            val baseColor = base.value
-            drawRect(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.00f to elevatedColor,
-                        0.38f to elevatedColor.playerAmbienceMix(baseColor, 0.58f),
-                        0.72f to baseColor.playerAmbienceMix(elevatedColor, 0.16f),
-                        1.00f to baseColor
-                    )
-                )
-            )
-            val glowAmount = glow.value
-            val center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.21f)
-            val radius = size.width * 1.02f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        tint.value.copy(alpha = 0.30f * glowAmount),
-                        tint.value.copy(alpha = 0.09f * glowAmount),
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = radius
-                ),
-                radius = radius,
-                center = center
-            )
+    val infiniteTransition = rememberInfiniteTransition(label = "player-ambient-motion")
+    val anchorRotation by if (animationsEnabled) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = -360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(75000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "player-ambient-anchor-rot"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+    val fastRotation by if (animationsEnabled) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(45000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "player-ambient-accent-rot"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val ambientMatrix = remember { createPlayerAmbientColorMatrix() }
+    val ambientColorFilter = remember(ambientMatrix) { ColorFilter.colorMatrix(ambientMatrix) }
+
+    Box(modifier = modifier) {
+        Box(modifier = Modifier.fillMaxSize().background(base.value))
+
+        if (artworkUrl.isNotBlank()) {
+            AnimatedContent(
+                targetState = artworkUrl,
+                transitionSpec = {
+                    if (animationsEnabled) {
+                        fadeIn(tween(650)) togetherWith fadeOut(tween(650))
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "player-ambient-mesh"
+            ) { url ->
+                if (url.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = 1.65f
+                                scaleY = 1.65f
+                            }
+                    ) {
+                        val ambientImageRequest = remember(context, url) {
+                            ImageRequest.Builder(context)
+                                .data(url)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .crossfade(true)
+                                .build()
+                        }
+
+                        AsyncImage(
+                            model = ambientImageRequest,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            colorFilter = ambientColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(72.dp)
+                                .graphicsLayer { rotationZ = anchorRotation }
+                        )
+
+                        AsyncImage(
+                            model = ambientImageRequest,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.TopStart,
+                            colorFilter = ambientColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(84.dp)
+                                .graphicsLayer {
+                                    rotationZ = fastRotation
+                                    alpha = 0.55f
+                                }
+                        )
+
+                        AsyncImage(
+                            model = ambientImageRequest,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.BottomEnd,
+                            colorFilter = ambientColorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(84.dp)
+                                .graphicsLayer {
+                                    rotationZ = anchorRotation * 0.7f
+                                    alpha = 0.45f
+                                }
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(base.value.copy(alpha = 0.30f))
+                        )
+                    }
+                }
+            }
         }
-    )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    if (size.minDimension <= 0f) return@drawBehind
+                    val baseColor = base.value
+                    val elevatedColor = elevated.value
+                    val tintColor = tint.value
+                    val glowAmount = glow.value
+
+                    if (artworkUrl.isBlank()) {
+                        drawRect(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.00f to elevatedColor,
+                                    0.38f to elevatedColor.playerAmbienceMix(baseColor, 0.58f),
+                                    0.72f to baseColor.playerAmbienceMix(elevatedColor, 0.16f),
+                                    1.00f to baseColor
+                                )
+                            )
+                        )
+                        val center = Offset(size.width * 0.5f, size.height * 0.21f)
+                        val radius = size.width * 1.02f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    tintColor.copy(alpha = 0.30f * glowAmount),
+                                    tintColor.copy(alpha = 0.09f * glowAmount),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = radius
+                            ),
+                            radius = radius,
+                            center = center
+                        )
+                    } else {
+                        drawRect(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.00f to baseColor.copy(alpha = 0.65f),
+                                    0.15f to baseColor.copy(alpha = 0.20f),
+                                    0.35f to Color.Transparent,
+                                    0.55f to Color.Transparent,
+                                    0.70f to baseColor.copy(alpha = 0.42f),
+                                    0.85f to baseColor.copy(alpha = 0.82f),
+                                    1.00f to baseColor
+                                )
+                            )
+                        )
+                        val center = Offset(size.width * 0.5f, size.height * 0.26f)
+                        val radius = size.width * 0.85f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    tintColor.copy(alpha = 0.15f * glowAmount),
+                                    tintColor.copy(alpha = 0.04f * glowAmount),
+                                    Color.Transparent
+                                ),
+                                center = center,
+                                radius = radius
+                            ),
+                            radius = radius,
+                            center = center
+                        )
+                    }
+                }
+        )
+    }
 }
 
 @Composable
@@ -11299,14 +11453,15 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.72f),
-                        0.09f to baseColor.copy(alpha = 0.30f),
-                        0.19f to Color.Transparent,
-                        0.50f to Color.Transparent,
-                        0.57f to controlColor.copy(alpha = 0.55f),
-                        0.63f to controlColor.copy(alpha = 0.92f),
-                        0.68f to controlColor,
-                        0.86f to controlColor.playerAmbienceMix(baseColor, 0.55f),
+                        0.00f to baseColor.copy(alpha = 0.75f),
+                        0.06f to baseColor.copy(alpha = 0.45f),
+                        0.14f to baseColor.copy(alpha = 0.15f),
+                        0.22f to Color.Transparent,
+                        0.48f to Color.Transparent,
+                        0.58f to controlColor.copy(alpha = 0.25f),
+                        0.68f to controlColor.copy(alpha = 0.68f),
+                        0.78f to controlColor.copy(alpha = 0.92f),
+                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
                         1.00f to baseColor
                     )
                 )
@@ -12195,8 +12350,92 @@ private fun PlayerScreen(
     val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
     val hapticFeedback = LocalHapticFeedback.current
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val rawPrimaryTarget = track?.let { Color(it.accentStart) } ?: LevyraCyan
-    val rawSecondaryTarget = track?.let { Color(it.accentEnd) } ?: LevyraViolet
+    val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
+    val fallbackPalette = remember(track?.accentStart, track?.accentEnd) {
+        ArtworkPalette(track?.accentStart ?: LevyraCyan.toArgb(), track?.accentEnd ?: LevyraViolet.toArgb())
+    }
+    val paletteKey = remember(track?.id, track?.thumbnailUrl, track?.largeThumbnailUrl) {
+        if (track != null) {
+            ArtworkPaletteCache.key(
+                trackId = track.id,
+                thumbnailUrl = track.thumbnailUrl,
+                largeThumbnailUrl = track.largeThumbnailUrl
+            )
+        } else ""
+    }
+    val memoryPalette = remember(paletteKey) {
+        if (paletteKey.isNotBlank()) ArtworkPaletteCache.peek(paletteKey) else null
+    }
+    val artworkPaletteState = remember(paletteKey) {
+        mutableStateOf(memoryPalette ?: fallbackPalette)
+    }
+    var cacheLookupComplete by remember(paletteKey) {
+        mutableStateOf(memoryPalette != null)
+    }
+    var paletteExtractionStarted by remember(paletteKey) {
+        mutableStateOf(memoryPalette != null)
+    }
+
+    LaunchedEffect(paletteKey) {
+        if (paletteKey.isNotBlank() && memoryPalette == null) {
+            val persistedPalette = ArtworkPaletteCache.load(playerContext, paletteKey)
+            if (persistedPalette != null) {
+                artworkPaletteState.value = persistedPalette
+                paletteExtractionStarted = true
+            }
+            cacheLookupComplete = true
+        }
+    }
+
+    LaunchedEffect(paletteKey, cacheLookupComplete) {
+        if (paletteKey.isBlank() || !cacheLookupComplete || paletteExtractionStarted) return@LaunchedEffect
+        val currentTrack = track ?: return@LaunchedEffect
+        val artUrl = artworkUrl.ifBlank {
+            currentTrack.largeThumbnailUrl.ifBlank { currentTrack.thumbnailUrl }
+        }
+        if (artUrl.isBlank()) return@LaunchedEffect
+        paletteExtractionStarted = true
+        withContext(Dispatchers.IO) {
+            val imageLoader = coil3.SingletonImageLoader.get(playerContext)
+            val request = ImageRequest.Builder(playerContext)
+                .data(LevyraArtworkCache.small(artUrl))
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .build()
+            val bitmap = runCatching {
+                imageLoader.execute(request).image?.toBitmap()
+            }.getOrNull()
+            if (bitmap != null) {
+                val extracted = withContext(Dispatchers.Default) {
+                    val sample = if (bitmap.width > 96 || bitmap.height > 96) {
+                        android.graphics.Bitmap.createScaledBitmap(bitmap, 96, 96, true)
+                    } else bitmap
+                    val paletteBitmap = if (sample.config == android.graphics.Bitmap.Config.ARGB_8888) {
+                        sample
+                    } else {
+                        sample.copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: sample
+                    }
+                    try {
+                        ArtworkPaletteCache.extract(
+                            bitmap = paletteBitmap,
+                            fallbackStart = fallbackPalette.start,
+                            fallbackEnd = fallbackPalette.end
+                        )
+                    } finally {
+                        if (paletteBitmap !== sample) paletteBitmap.recycle()
+                        if (sample !== bitmap) sample.recycle()
+                        bitmap.recycle()
+                    }
+                }
+                artworkPaletteState.value = extracted
+                ArtworkPaletteCache.store(playerContext, paletteKey, extracted)
+            }
+        }
+    }
+
+    val activePalette = artworkPaletteState.value
+    val rawPrimaryTarget = Color(activePalette.start)
+    val rawSecondaryTarget = Color(activePalette.end)
     val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
         harmonizePlayerAccents(rawPrimaryTarget, rawSecondaryTarget)
     }
@@ -12204,12 +12443,12 @@ private fun PlayerScreen(
     val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
         targetValue = primaryTarget,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (state.animationsEnabled) tween(650, easing = LinearOutSlowInEasing) else snap(),
         label = "player-primary-color"
     )
     val secondary by animateColorAsState(
         targetValue = secondaryTarget,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (state.animationsEnabled) tween(650, easing = LinearOutSlowInEasing) else snap(),
         label = "player-secondary-color"
     )
     val primaryContent = remember(primary) {
@@ -12237,7 +12476,6 @@ private fun PlayerScreen(
             repeat = strings.repeat
         )
     }
-    val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
@@ -12328,8 +12566,10 @@ private fun PlayerScreen(
         )
 
         PlayerImmersiveBackdrop(
+            artworkUrl = artworkUrl,
             ambience = ambience,
             isPlaying = state.isPlaying,
+            animationsEnabled = state.animationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
         AnimatedVisibility(
@@ -17776,8 +18016,49 @@ private fun MiniPlayer(
     val gesturesEnabled = model.gesturesEnabled
     val strings = LocalLevyraStrings.current
     val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val accentStart = Color(track.accentStart)
-    val accentEnd = Color(track.accentEnd)
+    val context = LocalContext.current
+    val fallbackPalette = remember(track.accentStart, track.accentEnd) {
+        ArtworkPalette(track.accentStart, track.accentEnd)
+    }
+    val paletteKey = remember(track.id, track.thumbnailUrl, track.largeThumbnailUrl) {
+        ArtworkPaletteCache.key(
+            trackId = track.id,
+            thumbnailUrl = track.thumbnailUrl,
+            largeThumbnailUrl = track.largeThumbnailUrl
+        )
+    }
+    val memoryPalette = remember(paletteKey) {
+        ArtworkPaletteCache.peek(paletteKey)
+    }
+    val artworkPaletteState = remember(paletteKey) {
+        mutableStateOf(memoryPalette ?: fallbackPalette)
+    }
+
+    LaunchedEffect(paletteKey) {
+        if (memoryPalette == null) {
+            val persistedPalette = ArtworkPaletteCache.load(context, paletteKey)
+            if (persistedPalette != null) {
+                artworkPaletteState.value = persistedPalette
+            }
+        }
+    }
+
+    val activePalette = artworkPaletteState.value
+    val targetAccentStart = Color(activePalette.start)
+    val targetAccentEnd = Color(activePalette.end)
+    val harmonizedTargets = remember(targetAccentStart, targetAccentEnd) {
+        harmonizePlayerAccents(targetAccentStart, targetAccentEnd)
+    }
+    val accentStart by animateColorAsState(
+        targetValue = harmonizedTargets.primary,
+        animationSpec = if (animated) tween(550, easing = LinearOutSlowInEasing) else snap(),
+        label = "mini-accent-start"
+    )
+    val accentEnd by animateColorAsState(
+        targetValue = harmonizedTargets.secondary,
+        animationSpec = if (animated) tween(550, easing = LinearOutSlowInEasing) else snap(),
+        label = "mini-accent-end"
+    )
     val ambience = remember(accentStart, accentEnd) {
         playerAmbienceOf(accentStart, accentEnd)
     }
@@ -17815,14 +18096,14 @@ private fun MiniPlayer(
     Surface(
         color = Color.Transparent,
         shape = containerShape,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.09f)),
+        border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.10f)),
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 20.dp,
                 shape = containerShape,
                 clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
+                ambientColor = ambience.tint.copy(alpha = 0.22f),
                 spotColor = Color.Black.copy(alpha = 0.75f)
             )
             .playerAxisDragGestures(
@@ -17841,7 +18122,13 @@ private fun MiniPlayer(
     ) {
         Column(
             modifier = Modifier.background(
-                Brush.horizontalGradient(listOf(miniSurfaceLeading, miniSurfaceTrailing))
+                Brush.horizontalGradient(
+                    listOf(
+                        miniSurfaceLeading,
+                        miniSurfaceLeading.playerAmbienceMix(miniSurfaceTrailing, 0.45f),
+                        miniSurfaceTrailing
+                    )
+                )
             )
         ) {
             Row(

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorMatrix
 
 @Immutable
 internal data class PlayerAmbience(
@@ -11,10 +12,10 @@ internal data class PlayerAmbience(
     val base: Color
 )
 
-private const val AmbienceTintLevel = 0.30f
-private const val AmbienceElevatedLevel = 0.085f
-private const val AmbienceControlLevel = 0.090f
-private const val AmbienceBaseLevel = 0.042f
+private const val AmbienceTintLevel = 0.32f
+private const val AmbienceElevatedLevel = 0.088f
+private const val AmbienceControlLevel = 0.092f
+private const val AmbienceBaseLevel = 0.040f
 
 internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience {
     val blended = primary.playerAmbienceMix(secondary, 0.5f)
@@ -24,6 +25,24 @@ internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience 
         control = blended.playerAmbienceDesaturate(0.20f).playerAmbienceTone(AmbienceControlLevel),
         base = blended.playerAmbienceDesaturate(0.34f).playerAmbienceTone(AmbienceBaseLevel)
     )
+}
+
+internal fun createPlayerAmbientColorMatrix(
+    saturation: Float = 1.35f,
+    minBrightness: Float = 0.0f,
+    maxBrightness: Float = 0.58f
+): ColorMatrix {
+    val matrix = ColorMatrix().apply { setToSaturation(saturation) }
+    val scale = (maxBrightness - minBrightness).coerceAtLeast(0f)
+    val offset = minBrightness
+    for (row in 0 until 3) {
+        val startIndex = row * 5
+        for (col in 0 until 4) {
+            matrix.values[startIndex + col] = matrix.values[startIndex + col] * scale
+        }
+        matrix.values[startIndex + 4] = matrix.values[startIndex + 4] * scale + offset
+    }
+    return matrix
 }
 
 internal fun Color.playerAmbienceMix(other: Color, amount: Float): Color {
