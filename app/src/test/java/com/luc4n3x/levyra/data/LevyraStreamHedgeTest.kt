@@ -60,8 +60,19 @@ class LevyraStreamHedgeTest {
     }
 
     @Test
-    fun playbackExtractorStartsInsideLowLatencyBudget() {
-        assertTrue(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = false) <= 40L)
+    fun playbackExtractorIsDelayedBehindAttestedResolver() {
+        val innerTubeDelay = LevyraResolverLatency.innerTubeFallbackDelayMs(
+            isVideoMode = false,
+            preferMp4Audio = false
+        )
+        val extractorDelay = LevyraResolverLatency.extractorHedgeDelayMs(
+            isVideoMode = false,
+            preferMp4Audio = false
+        )
+
+        assertEquals(0L, innerTubeDelay)
+        assertEquals(600L, extractorDelay)
+        assertTrue(extractorDelay > innerTubeDelay)
     }
 
     @Test
