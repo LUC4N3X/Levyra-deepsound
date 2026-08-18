@@ -44,6 +44,23 @@ class OfflineExportPipelineTest {
     }
 
     @Test
+    fun offlinePipelineAcceptsOnlyCompleteAndroidReelSources() {
+        val muxedReel = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=18&" +
+            "mime=video%2Fmp4&ratebypass=yes&clen=15857332"
+        val attestedAudio = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=140&" +
+            "mime=audio%2Fmp4&gir=yes&clen=3168361&pot=token-value"
+        val legacyMp4 = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=140&" +
+            "mime=audio%2Fmp4&gir=yes&clen=3168361&ratebypass=yes&c=ANDROID_VR"
+        val incompleteReel = "https://rr3---sn-example.googlevideo.com/videoplayback?itag=140&" +
+            "mime=audio%2Fmp4&gir=yes&clen=3168361"
+
+        assertTrue(isAllowedOfflineReelSource("YouTube Android Reel", "", muxedReel))
+        assertTrue(isAllowedOfflineReelSource("", "YouTube Android Reel Audio", attestedAudio))
+        assertFalse(isAllowedOfflineReelSource("YouTube Android VR", "LevyraExtractor", legacyMp4))
+        assertFalse(isAllowedOfflineReelSource("YouTube Android Reel Audio", "", incompleteReel))
+    }
+
+    @Test
     fun pipelineUsesMedia3CacheWriterAndYoutubeAwareDataSource() {
         val source = Files.readString(sourceFile("player/offline/OfflineExportPipeline.kt"))
 
