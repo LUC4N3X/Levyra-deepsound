@@ -54,6 +54,9 @@ interface PlaybackSourceMatchDao {
     @Query("DELETE FROM playback_source_matches WHERE matchKey = :matchKey")
     suspend fun delete(matchKey: String)
 
+    @Query("DELETE FROM playback_source_matches WHERE mode IN ('audio', 'video')")
+    suspend fun deleteOnlineMatches(): Int
+
     @Query("DELETE FROM playback_source_matches WHERE updatedAt < :olderThan AND successCount = 0")
     suspend fun deleteUnusedOlderThan(olderThan: Long): Int
 }
