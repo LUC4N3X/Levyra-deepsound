@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Banner" width="490" />
+<img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
 
 # Levyra
 
