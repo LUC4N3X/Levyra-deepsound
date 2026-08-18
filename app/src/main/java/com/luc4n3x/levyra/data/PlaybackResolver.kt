@@ -676,6 +676,19 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
+        if (!preferMp4Audio) {
+            val reelAudio = runCatchingPreservingCancellation {
+                resolveAudioWithAndroidReel(track, audioQuality)
+            }.onFailure { error ->
+                errors += "Android Reel audio: ${error.playbackDiagnostic()}"
+            }.getOrNull()
+            if (reelAudio != null) {
+                store(track, reelAudio, isVideoMode, audioQuality, preferMp4Audio)
+                persistResolvedSource(track, reelAudio, isVideoMode, audioQuality, 96, preferMp4Audio)
+                return@withContext reelAudio
+            }
+        }
+
         restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
             store(track, restored, isVideoMode, audioQuality, preferMp4Audio)
             return@withContext restored
@@ -729,19 +742,6 @@ class PlaybackResolver private constructor(private val context: Context) {
                 ?: errors.firstOrNull()
                 ?: "Video non disponibile"
             throw PlaybackBlockedException(reason)
-        }
-
-        if (!preferMp4Audio) {
-            val reelAudio = runCatchingPreservingCancellation {
-                resolveAudioWithAndroidReel(track, audioQuality)
-            }.onFailure { error ->
-                errors += "Android Reel audio: ${error.playbackDiagnostic()}"
-            }.getOrNull()
-            if (reelAudio != null) {
-                store(track, reelAudio, isVideoMode, audioQuality, preferMp4Audio)
-                persistResolvedSource(track, reelAudio, isVideoMode, audioQuality, 96, preferMp4Audio)
-                return@withContext reelAudio
-            }
         }
 
         val resolved = resolveAudioFast(track, errors, preferMp4Audio, audioQuality)
