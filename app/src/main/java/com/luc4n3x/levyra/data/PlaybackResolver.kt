@@ -300,7 +300,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private val profiles = listOf(
         ClientProfile("VISIONOS", "1.02", "Apple Vision Pro", visionOsUserAgent("US"), false, 0L, 0, false),
-        ClientProfile("ANDROID_VR", "1.65.10", "Android VR", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip", true, 0L, 1, false),
+        ClientProfile("ANDROID_VR", "1.65.10", "Android VR", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; Quest 3 Build/SQ3A.220605.009.A1) gzip", true, 0L, 1, true),
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 2, false),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 3, false),
         ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 4, false),
@@ -460,6 +460,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         if (recovery.refreshSecurity) {
             YoutubeLocalDecoder.notifyStreamRejected(track.source)
+            resolveScope.launch {
+                runCatchingPreservingCancellation {
+                    playbackSecurity.rotateIfNeeded(PlaybackBlockedException(reason))
+                }.onFailure { error ->
+                    Timber.w(error, "YouTube playback security refresh failed")
+                }
+            }
         }
         if (recovery.rotateCodec && !isOfflineExport) {
             videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
@@ -1427,7 +1434,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val available = profiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
         val candidates = if (available.isNotEmpty()) available else profiles
         val sorted = candidates.sortedWith(
-            compareByDescending<ClientProfile> { profile -> clientHealth[profile.clientName]?.score ?: 50.0 }
+            compareByDescending<ClientProfile> { it.requiresPoToken }
+                .thenByDescending { profile -> clientHealth[profile.clientName]?.score ?: 50.0 }
                 .thenBy { profile -> clientHealth[profile.clientName]?.averageLatencyMs ?: Long.MAX_VALUE }
                 .thenBy { it.tier }
         )
@@ -1656,7 +1664,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun verifyDirectAudioUrlFast(url: String): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
-        if (isTrustedGoogleVideoUrl(url)) return true
+        if (isTrustedGoogleVideoUrl(url) && url.containsQueryParameter("pot")) return true
         val request = Request.Builder()
             .url(url)
             .get()
@@ -1776,7 +1784,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         } else {
             null
         }
-        val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
+        val endpointHost = if (profile.clientName == "ANDROID_VR") {
+            "https://youtubei.googleapis.com"
+        } else {
+            "https://www.youtube.com"
+        }
+        val endpoint = "$endpointHost/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(
             videoId = sourceVideoId,
             profile = profile,
