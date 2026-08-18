@@ -96,6 +96,18 @@ class OfflineDownloadReliabilityContractTest {
     }
 
     @Test
+    fun offlineResolutionPrefersTheWorkingReelMuxedRouteBeforeLegacyMp4Fallbacks() {
+        val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
+        val offlineStart = resolver.indexOf("suspend fun resolveForOffline")
+        val reel = resolver.indexOf("resolveVideoWithAndroidReel", offlineStart)
+        val legacy = resolver.indexOf("val resolved = resolveInternal", offlineStart)
+
+        assertTrue(offlineStart >= 0)
+        assertTrue(reel > offlineStart)
+        assertTrue(legacy > reel)
+    }
+
+    @Test
     fun theFailingStreamUrlReachesQuarantineSoTheNextResolveCanRotate() {
         val player = Files.readString(sourceFile("player/LevyraPlayer.kt"))
         val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))

@@ -23,8 +23,17 @@ object SharedMediaIntentParser {
     }
 
     fun parseText(rawText: String): SharedMediaRequest? {
-        val cleanText = rawText.trim().take(8_192)
+        val cleanText = rawText.trim().take(LevyraPlaylistShareCodec.MAX_ENCODED_CHARS + 1_024)
         if (cleanText.isBlank()) return null
+        val sharedPlaylistPayload = LevyraPlaylistShareCodec.extractPayload(cleanText)
+        if (sharedPlaylistPayload != null) {
+            return SharedMediaRequest(
+                rawText = "",
+                url = "",
+                kind = SharedMediaKind.LevyraPlaylist,
+                sharedPlaylistPayload = sharedPlaylistPayload
+            )
+        }
         val rawUrl = urlRegex.find(cleanText)?.value?.trimEnd('.', ',', ';', ')', ']', '}')
         if (rawUrl == null) {
             return SharedMediaRequest(

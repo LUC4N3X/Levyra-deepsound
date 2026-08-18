@@ -125,6 +125,21 @@ import com.luc4n3x.levyra.feature.providers.LevyraNativePlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
 import com.luc4n3x.levyra.feature.providers.MemoryCatalogProvider
 import com.luc4n3x.levyra.feature.providers.YoutubeMusicCatalogProvider
+import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
+import com.luc4n3x.levyra.feature.dearrow.DeArrowApi
+import com.luc4n3x.levyra.feature.dearrow.DeArrowRepository
+import com.luc4n3x.levyra.feature.dearrow.DEARROW_VIDEO_ID_PATTERN
+import com.luc4n3x.levyra.feature.dearrow.VideoMetadata
+import com.luc4n3x.levyra.feature.dearrow.VideoMetadataEnhancer
+import com.luc4n3x.levyra.feature.recognition.MicrophoneCapture
+import com.luc4n3x.levyra.feature.recognition.MusicRecognitionController
+import com.luc4n3x.levyra.feature.recognition.NoOpRecognitionProvider
+import com.luc4n3x.levyra.feature.recognition.RecognitionProvider
+import com.luc4n3x.levyra.feature.recognition.RecognitionSearchQuery
+import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import com.luc4n3x.levyra.feature.sharedmedia.LevyraPlaylistDecodeResult
+import com.luc4n3x.levyra.feature.sharedmedia.LevyraPlaylistShareCodec
+import com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedTrack
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
@@ -261,6 +276,9 @@ internal fun LevyraUiState.withPublishedSamples(
     isSamplesLoading = loading,
     samplesLoadFailed = failed
 )
+
+private const val MAX_DEARROW_VIDEOS = 30
+private const val DEARROW_CONCURRENCY = 4
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
 
@@ -512,7 +530,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             LevyraNativePlaybackProvider(resolver)
         )
     )
-    private val sharedMediaResolver = SharedMediaResolver(providerRouter)
+    private val playlistImporter by lazy {
+        com.luc4n3x.levyra.data.UniversalPlaylistImporter(
+            context = getApplication<Application>().applicationContext,
+            playlistStore = playlistStore,
+            youtubeRepository = repository
+        )
+    }
+    private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
+    private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
+    private val recognitionProvider: RecognitionProvider = NoOpRecognitionProvider
+    private val recognitionController by lazy {
+        MusicRecognitionController(
+            audioCapture = MicrophoneCapture(getApplication<Application>().applicationContext),
+            provider = recognitionProvider
+        )
+    }
+    private val sharedMediaResolver = SharedMediaResolver(
+        providerRouter = providerRouter,
+        sharedPlaylistTracks = { playlist, languageCode ->
+            playlistImporter.resolveSharedPlaylistTracks(playlist, languageCode)
+        }
+    )
     private val returnYoutubeDislikeRepository = ReturnYoutubeDislikeRepository()
     private val youtubeCommentsRepository = YoutubeCommentsRepository()
     private val moodEngine = MoodEngine()
@@ -552,7 +591,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
             backupSettings = startupSettings.backupSettings,
-            playbackDiagnostics = resolver.playbackDiagnostics()
+            playbackDiagnostics = resolver.playbackDiagnostics(),
+            recognitionAvailable = recognitionProvider !== NoOpRecognitionProvider
         )
     )
     private var searchJob: Job? = null
@@ -560,6 +600,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val searchSectionJobs = mutableMapOf<SearchFilter, Job>()
     private var playlistImportJob: Job? = null
     private var sharedMediaJob: Job? = null
+    private var recognitionCollectorJob: Job? = null
+    private var videoMetadataJob: Job? = null
     private var playJob: Job? = null
     private var modeSwitchJob: Job? = null
     private var streamRecoveryJob: Job? = null
@@ -1587,11 +1629,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { current ->
                     current.copy(offlineExportMessage = playlistImportStartedMessage(current.languageCode))
                 }
-                val importer = com.luc4n3x.levyra.data.UniversalPlaylistImporter(
-                    context = getApplication<Application>().applicationContext,
-                    playlistStore = playlistStore,
-                    youtubeRepository = repository
-                )
+                val importer = playlistImporter
                 when (val result = importer.importFromUrlOrJson(input, languageCode = importLanguage)) {
                     is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
                         _state.update { current ->
@@ -1623,6 +1661,162 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         playlistImportJob = job
+    }
+
+    fun playlistShareLink(playlist: com.luc4n3x.levyra.domain.Playlist): String? =
+        LevyraPlaylistShareCodec.encodeLink(
+            title = playlist.name,
+            tracks = playlist.tracks.map { track ->
+                LevyraSharedTrack(id = track.id, title = track.title, artist = track.artist)
+            }
+        )
+
+    fun importSharedPlaylist() {
+        val preview = _state.value.sharedMediaPreview ?: return
+        if (preview.request.kind != SharedMediaKind.LevyraPlaylist) return
+        if (playlistImportJob?.isActive == true) {
+            _state.update { current ->
+                current.copy(offlineExportMessage = playlistImportAlreadyRunningMessage(current.languageCode))
+            }
+            return
+        }
+        val decoded = LevyraPlaylistShareCodec.decode(preview.request.sharedPlaylistPayload)
+        if (decoded !is LevyraPlaylistDecodeResult.Success) {
+            _state.update { current ->
+                current.copy(
+                    offlineExportMessage = playlistImportFailureMessage(
+                        current.languageCode,
+                        PlaylistImportFailureKind.INVALID_INPUT,
+                        null
+                    )
+                )
+            }
+            return
+        }
+        dismissSharedMedia()
+        var job: Job? = null
+        job = viewModelScope.launch {
+            val importLanguage = _state.value.languageCode
+            try {
+                _state.update { current ->
+                    current.copy(offlineExportMessage = playlistImportStartedMessage(current.languageCode))
+                }
+                when (
+                    val result = playlistImporter.importSharedPlaylist(
+                        playlist = decoded.playlist,
+                        languageCode = importLanguage
+                    )
+                ) {
+                    is com.luc4n3x.levyra.data.PlaylistImportResult.Success -> {
+                        _state.update { current ->
+                            current.copy(
+                                offlineExportMessage = playlistImportSuccessMessage(
+                                    current.languageCode,
+                                    result.importedCount,
+                                    result.requestedCount,
+                                    result.playlist.name
+                                )
+                            )
+                        }
+                        loadPlaylists()
+                    }
+                    is com.luc4n3x.levyra.data.PlaylistImportResult.Failure -> {
+                        _state.update { current ->
+                            current.copy(
+                                offlineExportMessage = playlistImportFailureMessage(
+                                    current.languageCode,
+                                    result.kind,
+                                    result.limit
+                                )
+                            )
+                        }
+                    }
+                }
+            } finally {
+                if (playlistImportJob === job) playlistImportJob = null
+            }
+        }
+        playlistImportJob = job
+    }
+
+    private fun enhanceVideoSection(
+        videos: List<Track>,
+        languageCode: String,
+        requestGeneration: Long,
+        publish: (List<Track>) -> Unit
+    ) {
+        if (!_state.value.interfaceSettings.enhanceVideoMetadata) {
+            videoMetadataJob?.cancel()
+            videoMetadataJob = null
+            return
+        }
+        val candidates = videos.filter { DEARROW_VIDEO_ID_PATTERN.matches(it.id) }.take(MAX_DEARROW_VIDEOS)
+        if (candidates.isEmpty()) return
+        videoMetadataJob?.cancel()
+        videoMetadataJob = viewModelScope.launch(Dispatchers.IO) {
+            val limiter = kotlinx.coroutines.sync.Semaphore(DEARROW_CONCURRENCY)
+            val enhanced = candidates.map { track ->
+                async {
+                    limiter.withPermit {
+                        val original = VideoMetadata(
+                            videoId = track.id,
+                            title = track.title,
+                            thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+                        )
+                        val updated = runCatchingPreservingCancellation {
+                            videoMetadataEnhancer.enhance(original)
+                        }.getOrDefault(original)
+                        if (updated == original) null else track.id to updated
+                    }
+                }
+            }.awaitAll().filterNotNull().toMap()
+            if (enhanced.isEmpty() || !isActive) return@launch
+            withContext(Dispatchers.Main.immediate) {
+                val current = _state.value
+                if (
+                    !isActive ||
+                    musicVideosRequestGeneration != requestGeneration ||
+                    current.languageCode != languageCode ||
+                    !current.interfaceSettings.enhanceVideoMetadata
+                ) {
+                    return@withContext
+                }
+                publish(
+                    videos.map { track ->
+                        val update = enhanced[track.id] ?: return@map track
+                        track.copy(
+                            title = update.title,
+                            thumbnailUrl = update.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                            largeThumbnailUrl = update.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    fun startMusicRecognition() {
+        if (!_state.value.recognitionAvailable) return
+        if (recognitionCollectorJob == null) {
+            recognitionCollectorJob = viewModelScope.launch {
+                recognitionController.state.collect { recognitionState ->
+                    _state.update { it.copy(recognitionState = recognitionState) }
+                    if (recognitionState is RecognitionState.Result) {
+                        val query = RecognitionSearchQuery.from(recognitionState.result)
+                        if (query.isNotBlank()) {
+                            setQuery(query)
+                            searchNow(query)
+                        }
+                    }
+                }
+            }
+        }
+        recognitionController.start()
+    }
+
+    fun cancelMusicRecognition() {
+        recognitionController.cancel()
+        _state.update { it.copy(recognitionState = RecognitionState.Idle) }
     }
 
     fun renamePlaylist(playlistId: String, name: String) {
@@ -2714,9 +2908,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setInterfaceSettings(value: LevyraInterfaceSettings) {
         val normalized = value.normalized()
+        val previous = _state.value.interfaceSettings
         preferences.setInterfaceSettings(normalized)
         LevyraTypographyController.apply(normalized.fontPreset)
         _state.update { it.copy(interfaceSettings = normalized) }
+        if (previous.canvasSource != normalized.canvasSource) {
+            motionArtworkJob?.cancel()
+            motionArtworkRequestKey = null
+            motionArtworkPrefetchJob?.cancel()
+            _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
+            _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+        }
+        if (previous.enhanceVideoMetadata != normalized.enhanceVideoMetadata) {
+            videoMetadataJob?.cancel()
+            videoMetadataJob = null
+            if (_state.value.exploreSamples.isNotEmpty()) {
+                ensureMusicVideosLoaded(force = true)
+            }
+        }
     }
 
     fun setDownloadSettings(value: LevyraDownloadSettings) {
@@ -5465,6 +5674,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateSamplesState(languageCode) { current ->
             current.withPublishedSamples(resolvedFeedTracks, loading = false, failed = false)
         }
+        enhanceVideoSection(
+            videos = resolvedFeedTracks,
+            languageCode = languageCode,
+            requestGeneration = requestGeneration
+        ) { enhanced ->
+            updateSamplesState(languageCode) { current ->
+                current.withPublishedSamples(enhanced, loading = false, failed = false)
+            }
+        }
         withContext(Dispatchers.IO) {
             shortsCache.save(
                 languageCode = languageCode,
@@ -6433,7 +6651,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkRequestKey = expectedKey
         motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val resolved = runCatching { motionArtworkEngine.resolve(current) }
+                val resolved = runCatching {
+                    motionArtworkEngine.resolve(current, _state.value.interfaceSettings.canvasSource)
+                }
                     .onFailure { error ->
                         if (error is CancellationException) throw error
                         Timber.d(error, "Motion artwork resolve failed for %s", current.id)
@@ -6469,7 +6689,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!isActive || queueEngine.state.value.generation != generation) return@launch
             val active = _state.value.currentTrack ?: return@launch
             if (MotionArtworkIdentityKey.create(active) != currentKey) return@launch
-            runCatching { motionArtworkEngine.prefetchNext(next) }
+            runCatching {
+                motionArtworkEngine.prefetchNext(next, _state.value.interfaceSettings.canvasSource)
+            }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
@@ -7472,6 +7694,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     override fun onCleared() {
         LevyraWidgetBridge.clear()
+        if (recognitionCollectorJob != null) {
+            recognitionCollectorJob?.cancel()
+            recognitionController.cancel()
+        }
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
         audioSettingsPersistJob?.cancel()
         audioSettingsPersistence.flush()
@@ -7516,6 +7742,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         chartCatalogPrimeJob?.cancel()
         homeSnapshotJob?.cancel()
         musicVideosJob?.cancel()
+        videoMetadataJob?.cancel()
+        if (deArrowRepository.isInitialized()) deArrowRepository.value.close()
         super.onCleared()
     }
 }

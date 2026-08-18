@@ -27,6 +27,21 @@ class MotionArtworkNetworkPolicy(context: Context) {
             return powerManager?.isPowerSaveMode != true && activityManager?.isLowRamDevice != true
         }
 
+        fun conditions(context: Context): MotionCanvasConditions {
+            val appContext = context.applicationContext
+            val powerManager = appContext.getSystemService(PowerManager::class.java)
+            val activityManager = appContext.getSystemService(ActivityManager::class.java)
+            val connectivity = appContext.getSystemService(ConnectivityManager::class.java)
+            val capabilities = connectivity?.activeNetwork?.let(connectivity::getNetworkCapabilities)
+            return MotionCanvasConditions(
+                unmetered = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == true,
+                dataSaverActive = connectivity?.restrictBackgroundStatus ==
+                    ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
+                batterySaverActive = powerManager?.isPowerSaveMode == true,
+                lowRamDevice = activityManager?.isLowRamDevice == true
+            )
+        }
+
         fun canUseMotionArtwork(context: Context): Boolean {
             val appContext = context.applicationContext
             if (!canAnimateLocally(appContext)) return false

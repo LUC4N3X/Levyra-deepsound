@@ -54,6 +54,9 @@ data class LevyraUiState(
     val showSettings: Boolean = false,
     val animationsEnabled: Boolean = true,
     val motionArtworkEnabled: Boolean = true,
+    val recognitionAvailable: Boolean = false,
+    val recognitionState: com.luc4n3x.levyra.feature.recognition.RecognitionState =
+        com.luc4n3x.levyra.feature.recognition.RecognitionState.Idle,
     val dynamicColor: Boolean = true,
     val userName: String = "",
     val languageCode: String = "en",

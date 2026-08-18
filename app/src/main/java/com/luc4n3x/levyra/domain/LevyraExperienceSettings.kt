@@ -1,5 +1,28 @@
 package com.luc4n3x.levyra.domain
 
+enum class LevyraCanvasQuality {
+    Auto,
+    DataSaver,
+    High;
+
+    companion object {
+        fun from(value: String): LevyraCanvasQuality =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Auto
+    }
+}
+
+enum class LevyraCanvasSource {
+    Auto,
+    Community,
+    Apple,
+    Tidal;
+
+    companion object {
+        fun from(value: String): LevyraCanvasSource =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Auto
+    }
+}
+
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,
     val showPersonalOrbit: Boolean = true,
@@ -11,7 +34,10 @@ data class LevyraInterfaceSettings(
     val fontPreset: LevyraFontPreset = LevyraFontPreset.Outfit,
     val playerGesturesEnabled: Boolean = true,
     val doubleTapSeekSeconds: Int = 10,
-    val longPressSpeed: Float = 2f
+    val longPressSpeed: Float = 2f,
+    val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
+    val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
+    val enhanceVideoMetadata: Boolean = false
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),

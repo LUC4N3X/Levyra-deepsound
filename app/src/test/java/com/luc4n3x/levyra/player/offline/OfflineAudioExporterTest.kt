@@ -48,6 +48,46 @@ class OfflineAudioExporterTest {
     }
 
     @Test
+    fun rejectedYoutubePlaybackSourcesForceFreshResolution() {
+        assertTrue(isRejectedOfflinePlaybackSource(IOException("Download audio fallito: HTTP 403")))
+        assertTrue(isRejectedOfflinePlaybackSource(IOException("Range audio non supportato: HTTP 410")))
+        assertTrue(isRejectedOfflinePlaybackSource(IOException("Response code: 429")))
+        assertTrue(isRejectedOfflinePlaybackSource(IOException("Sign in to confirm you're not a bot")))
+        assertTrue(isRejectedOfflinePlaybackSource(IOException("PoToken rejected")))
+        assertFalse(isRejectedOfflinePlaybackSource(IOException("timeout while reading stream")))
+        assertFalse(isRejectedOfflinePlaybackSource(IOException("HTTP 500")))
+    }
+
+    @Test
+    fun googleVideoRangeFanoutIsCappedForPlaybackRiskControl() {
+        assertEquals(4, offlineRangeConcurrency("https://rr1---sn.googlevideo.com/videoplayback", 20))
+        assertEquals(2, offlineRangeConcurrency("https://rr1---sn.googlevideo.com/videoplayback", 2))
+        assertEquals(20, offlineRangeConcurrency("https://example.com/audio.m4a", 20))
+    }
+
+    @Test
+    fun reelAndPoTokenDownloadsUseSerialResumableTransfer() {
+        assertFalse(
+            shouldUseParallelOfflineRanges(
+                "YouTube Android Reel · preferred",
+                "https://rr1---sn.googlevideo.com/videoplayback?itag=18"
+            )
+        )
+        assertFalse(
+            shouldUseParallelOfflineRanges(
+                "YouTube",
+                "https://rr1---sn.googlevideo.com/videoplayback?itag=140&pot=proof"
+            )
+        )
+        assertTrue(
+            shouldUseParallelOfflineRanges(
+                "YouTube Android VR",
+                "https://rr1---sn.googlevideo.com/videoplayback?itag=140&ratebypass=yes"
+            )
+        )
+    }
+
+    @Test
     fun exporterNeverFallsBackToTheDownloadsCollection() {
         val source = sequenceOf(
             Path.of("app/src/main/java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt"),

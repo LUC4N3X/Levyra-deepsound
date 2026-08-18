@@ -35,6 +35,7 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -177,6 +178,8 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun searchNow() = root.searchNow()
     fun searchNow(query: String) = root.searchNow(query)
     fun setQuery(query: String) = root.setQuery(query)
+    fun startMusicRecognition() = root.startMusicRecognition()
+    fun cancelMusicRecognition() = root.cancelMusicRecognition()
     fun setSearchFilter(filter: SearchFilter) = root.setSearchFilter(filter)
     fun loadMoreSearchSection(filter: SearchFilter) = root.loadMoreSearchSection(filter)
     fun playPlaylistHit(playlist: PlaylistHit) = root.playPlaylistHit(playlist)
@@ -840,6 +843,8 @@ internal data class SearchProjection(
     val languageCode: String,
     val playlists: List<Playlist>,
     val query: String,
+    val recognitionAvailable: Boolean,
+    val recognitionState: RecognitionState,
     val recentSearches: List<Track>,
     val searchData: SearchResults,
     val searchError: String?,
@@ -865,6 +870,8 @@ internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchPr
     languageCode = state.languageCode,
     playlists = state.playlists,
     query = state.query,
+    recognitionAvailable = state.recognitionAvailable,
+    recognitionState = state.recognitionState,
     recentSearches = state.recentSearches,
     searchData = state.searchData,
     searchError = state.searchError,

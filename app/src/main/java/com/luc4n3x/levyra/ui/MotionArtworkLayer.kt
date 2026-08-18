@@ -47,8 +47,13 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
+import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
+import com.luc4n3x.levyra.feature.motion.MotionCanvasConditions
+import com.luc4n3x.levyra.feature.motion.MotionCanvasProfile
+import com.luc4n3x.levyra.feature.motion.MotionCanvasQualityPolicy
+import com.luc4n3x.levyra.feature.motion.MotionCanvasSurface
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -67,17 +72,29 @@ internal fun MotionArtworkLayer(
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
     presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
+    quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
     val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
-    var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation) {
+    val surface = when (presentation) {
+        MotionArtworkPresentation.Card -> MotionCanvasSurface.Card
+        MotionArtworkPresentation.Immersive -> MotionCanvasSurface.Immersive
+    }
+    val profile = remember(quality, presentation, environment.conditions) {
+        MotionCanvasQualityPolicy.profile(
+            quality = quality,
+            surface = surface,
+            conditions = environment.conditions
+        )
+    }
+    var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
         mutableStateOf(false)
     }
-    var videoReady by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation) {
+    var videoReady by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
         mutableStateOf(false)
     }
-    var videoRetryCount by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation) {
+    var videoRetryCount by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
         mutableStateOf(0)
     }
     val videoArtwork = artwork?.takeIf {
@@ -147,6 +164,7 @@ internal fun MotionArtworkLayer(
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
                 presentation = presentation,
+                profile = profile,
                 onFirstFrame = {
                     videoReady = true
                     videoRetryCount = 0
@@ -229,11 +247,16 @@ private fun rememberMotionArtworkEnvironment(observe: Boolean): MotionArtworkEnv
     }
     return remember(context, observe, revision) {
         if (!observe) {
-            MotionArtworkEnvironment(remoteAllowed = false, localAllowed = false)
+            MotionArtworkEnvironment(
+                remoteAllowed = false,
+                localAllowed = false,
+                conditions = MotionArtworkNetworkPolicy.conditions(context)
+            )
         } else {
             MotionArtworkEnvironment(
                 remoteAllowed = MotionArtworkNetworkPolicy.canUseMotionArtwork(context),
-                localAllowed = MotionArtworkNetworkPolicy.canAnimateLocally(context)
+                localAllowed = MotionArtworkNetworkPolicy.canAnimateLocally(context),
+                conditions = MotionArtworkNetworkPolicy.conditions(context)
             )
         }
     }
@@ -351,6 +374,7 @@ private fun MotionArtworkVideo(
     isPlaying: Boolean,
     cornerRadius: Dp,
     presentation: MotionArtworkPresentation,
+    profile: MotionCanvasProfile,
     onFirstFrame: () -> Unit,
     onUnavailable: () -> Unit,
     modifier: Modifier
@@ -358,11 +382,13 @@ private fun MotionArtworkVideo(
     val context = LocalContext.current
     val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
     val currentOnUnavailable by rememberUpdatedState(onUnavailable)
-    var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) {
+    var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         mutableStateOf(false)
     }
-    var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) { mutableStateOf(false) }
-    var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) {
+    var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
+        mutableStateOf(false)
+    }
+    var videoSize by remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         mutableStateOf(VideoSize.UNKNOWN)
     }
     var surfaceSize by remember { mutableStateOf(IntSize.Zero) }
@@ -370,23 +396,16 @@ private fun MotionArtworkVideo(
         MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
         MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
     }
-    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation) {
-        val decodeLimit = when (presentation) {
-            MotionArtworkPresentation.Card -> CARD_MAX_VIDEO_DIMENSION
-            MotionArtworkPresentation.Immersive -> IMMERSIVE_MAX_VIDEO_DIMENSION
-        }
-        val bitrateLimit = when (presentation) {
-            MotionArtworkPresentation.Card -> CARD_MAX_VIDEO_BITRATE
-            MotionArtworkPresentation.Immersive -> IMMERSIVE_MAX_VIDEO_BITRATE
-        }
+    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
             trackSelectionParameters = trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-                .setViewportSize(decodeLimit, decodeLimit, false)
-                .setMaxVideoSize(decodeLimit, decodeLimit)
-                .setMaxVideoBitrate(bitrateLimit)
+                .setViewportSize(profile.maxDimensionPx, profile.maxDimensionPx, false)
+                .setMaxVideoSize(profile.maxDimensionPx, profile.maxDimensionPx)
+                .setMaxVideoBitrate(profile.maxBitrateBps)
+                .setForceHighestSupportedBitrate(profile.forceHighestSupportedBitrate)
                 .build()
         }
     }
@@ -468,7 +487,8 @@ private fun MotionArtworkVideo(
 
 private data class MotionArtworkEnvironment(
     val remoteAllowed: Boolean,
-    val localAllowed: Boolean
+    val localAllowed: Boolean,
+    val conditions: MotionCanvasConditions
 )
 
 private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 11_000
@@ -481,7 +501,3 @@ private const val VIDEO_FADE_IN_MS = 620
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
 private const val VIDEO_RETRY_DELAY_MS = 4_000L
 private const val MAX_VIDEO_RETRIES = 1
-private const val CARD_MAX_VIDEO_DIMENSION = 1_280
-private const val IMMERSIVE_MAX_VIDEO_DIMENSION = 1_920
-private const val CARD_MAX_VIDEO_BITRATE = 4_000_000
-private const val IMMERSIVE_MAX_VIDEO_BITRATE = 8_000_000
