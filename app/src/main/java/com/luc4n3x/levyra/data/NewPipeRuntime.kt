@@ -4,6 +4,7 @@ import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,7 @@ import org.schabi.newpipe.extractor.downloader.StreamingResponse
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -275,11 +277,18 @@ private class OkHttpNewPipeDownloader : Downloader() {
             method == "POST" &&
             isYoutubePlayerEndpoint(request.url())
         ) {
-            YoutubeParsingHelper.addSessionPoTokenToPlayerBody(
-                rawData,
-                NewPipe.getPreferredLocalization(),
-                NewPipe.getPreferredContentCountry()
-            )
+            try {
+                YoutubeParsingHelper.addSessionPoTokenToPlayerBody(
+                    rawData,
+                    NewPipe.getPreferredLocalization(),
+                    NewPipe.getPreferredContentCountry()
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "YouTube player PoToken decoration skipped")
+                rawData
+            }
         } else {
             rawData
         }

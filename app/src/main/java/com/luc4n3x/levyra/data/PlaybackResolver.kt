@@ -676,9 +676,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
-        if (!preferMp4Audio) {
+        if (!preferMp4Audio && !isVideoMode) {
             val reelAudio = runCatchingPreservingCancellation {
-                resolveAudioWithAndroidReel(track, audioQuality)
+                resolveVideoWithAndroidReel(track)
             }.onFailure { error ->
                 errors += "Android Reel audio: ${error.playbackDiagnostic()}"
             }.getOrNull()
