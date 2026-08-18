@@ -35,6 +35,19 @@ internal fun supportsContinuousPrefetch(streamUrl: String): Boolean {
     return isMp4AudioExportUrl(streamUrl) && YoutubeStreamCapability.servesCompleteStream(streamUrl)
 }
 
+internal fun isAllowedOfflineReelSource(
+    source: String,
+    manifestProvider: String,
+    streamUrl: String
+): Boolean {
+    val reelIdentity = source.contains("Android Reel", ignoreCase = true) ||
+        manifestProvider.contains("Android Reel", ignoreCase = true)
+    return reelIdentity &&
+        streamUrl.isNotBlank() &&
+        isSupportedOfflineSource("", streamUrl) &&
+        YoutubeStreamCapability.servesCompleteStream(streamUrl)
+}
+
 internal fun offlineContinuousDownloadProgress(bytesCached: Long, contentLength: Long): Int {
     if (contentLength <= 0L) return 12
     val ratio = bytesCached.coerceIn(0L, contentLength).toDouble() / contentLength.toDouble()
@@ -203,6 +216,15 @@ internal class OfflineExportPipeline(
             settings.resolverAudioQuality
         )
         if (resolved.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
+        if (
+            !isAllowedOfflineReelSource(
+                source = resolved.source,
+                manifestProvider = resolved.playbackManifest?.provider.orEmpty(),
+                streamUrl = resolved.streamUrl
+            )
+        ) {
+            throw IOException("Download non disponibile: nessuna sorgente Android Reel compatibile")
+        }
         return resolved
     }
 }
