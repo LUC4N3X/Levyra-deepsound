@@ -3,14 +3,22 @@ package com.luc4n3x.levyra.desktop.core.localmusic
 internal object OggTagReader {
 
     private const val HEADER_WINDOW = 256 * 1024
+    private const val EXTENDED_HEADER_WINDOW = 10 * 1024 * 1024
     private const val TAIL_WINDOW = 64 * 1024
     private const val OPUS_SAMPLE_RATE = 48_000
 
     fun read(file: TagFile): AudioTags {
-        val head = file.readAt(0L, HEADER_WINDOW)
+        var head = file.readAt(0L, HEADER_WINDOW)
         if (!head.startsWithAscii("OggS")) return AudioTags()
         val serial = head.u32le(14)
-        val packets = collectPackets(head, serial, limit = 3)
+        var packets = collectPackets(head, serial, limit = 3)
+        if (packets.size < 2 && file.length > head.size) {
+            val extendedSize = minOf(file.length, EXTENDED_HEADER_WINDOW.toLong()).toInt()
+            if (extendedSize > head.size) {
+                head = file.readAt(0L, extendedSize)
+                packets = collectPackets(head, serial, limit = 3)
+            }
+        }
         if (packets.isEmpty()) return AudioTags()
 
         val identification = packets[0]
