@@ -279,7 +279,8 @@ data class AppUpdateInfo(
     val releaseUrl: String,
     val assetName: String,
     val directApk: Boolean,
-    val isNewer: Boolean
+    val isNewer: Boolean,
+    val assetSizeBytes: Long = 0L
 )
 
 fun Track.smartWeightFor(mood: Mood?): Int {

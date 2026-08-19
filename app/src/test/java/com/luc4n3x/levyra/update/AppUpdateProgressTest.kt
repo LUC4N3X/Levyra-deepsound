@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.update
 
 import com.luc4n3x.levyra.ui.isLaunchableUpdateTarget
+import com.luc4n3x.levyra.ui.update.formatUpdateReleaseDate
+import com.luc4n3x.levyra.ui.update.updateMetaLine
 import com.luc4n3x.levyra.ui.update.levyraUpdateNoteLines
 import java.nio.file.Files
 import java.nio.file.Path
@@ -128,6 +130,35 @@ class AppUpdateProgressTest {
     }
 
     @Test
+    fun releaseMetaLineOmitsWhatIsNotKnown() {
+        assertEquals(
+            "31.8 MB",
+            updateMetaLine(publishedAt = "", assetSizeBytes = 33_345_536L, languageCode = "it")
+        )
+        assertEquals(
+            "31.8 MB",
+            updateMetaLine(publishedAt = "not-a-date", assetSizeBytes = 33_345_536L, languageCode = "it")
+        )
+        assertTrue(
+            updateMetaLine(publishedAt = "2026-04-22T04:56:00Z", assetSizeBytes = 0L, languageCode = "it")
+                .contains("2026")
+        )
+        assertEquals("", updateMetaLine(publishedAt = "", assetSizeBytes = 0L, languageCode = "it"))
+        assertTrue(
+            updateMetaLine(publishedAt = "2026-04-22T04:56:00Z", assetSizeBytes = 33_345_536L, languageCode = "it")
+                .endsWith(" · 31.8 MB")
+        )
+    }
+
+    @Test
+    fun malformedReleaseDatesNeverCrashTheUpdateScreen() {
+        assertNull(formatUpdateReleaseDate("", "it"))
+        assertNull(formatUpdateReleaseDate("   ", "it"))
+        assertNull(formatUpdateReleaseDate("22/04/2026", "it"))
+        assertNotNull(formatUpdateReleaseDate("2026-04-22T04:56:00Z", "en"))
+    }
+
+    @Test
     fun fdroidBuildKeepsTheGithubUpdaterDisabled() {
         val buildFile = repositoryFile("app/build.gradle.kts")
         val installer = repositoryFile("app/src/main/java/com/luc4n3x/levyra/update/AppUpdateInstaller.kt")
@@ -142,7 +173,8 @@ class AppUpdateProgressTest {
         assertTrue(Files.readString(viewModel).contains("!BuildConfig.UPSTREAM_UPDATES_ENABLED"))
         val activitySource = Files.readString(activity)
         assertTrue(activitySource.contains("!BuildConfig.UPSTREAM_UPDATES_ENABLED"))
-        assertTrue(activitySource.contains("if (BuildConfig.UPSTREAM_UPDATES_ENABLED && !pipMode.value)"))
+        assertTrue(activitySource.contains("BuildConfig.UPSTREAM_UPDATES_ENABLED &&"))
+        assertTrue(activitySource.contains("!activityUiState.showOnboarding"))
     }
 
     private fun repositoryFile(relativePath: String): Path = sequenceOf(

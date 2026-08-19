@@ -88,7 +88,8 @@ class AppUpdateRepository(context: Context) {
             releaseUrl = releaseUrl.ifBlank { assetDownloadUrl },
             assetName = assetName,
             directApk = directApk,
-            isNewer = LevyraVersionComparator.compare(latestVersion, current) > 0
+            isNewer = LevyraVersionComparator.compare(latestVersion, current) > 0,
+            assetSizeBytes = selected?.sizeBytes?.coerceAtLeast(0L) ?: 0L
         )
         return InstallableAppUpdate(
             info = info,
