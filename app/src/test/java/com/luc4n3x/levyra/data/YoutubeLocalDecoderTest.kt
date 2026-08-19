@@ -463,6 +463,50 @@ class YoutubeLocalDecoderTest {
         )
     }
 
+    @Test
+    fun streamRejectionSkippedOrNetworkFailureNeverInvalidatesPlayerSource() {
+        val skipped = YoutubeStreamRejectionActionPolicy.decide(
+            YoutubeStreamRefreshResult.SKIPPED,
+            generationMatches = true
+        )
+        val networkFailure = YoutubeStreamRejectionActionPolicy.decide(
+            YoutubeStreamRefreshResult.NETWORK_FAILURE,
+            generationMatches = true
+        )
+
+        assertFalse(skipped.invalidatePlayerSource)
+        assertFalse(skipped.invalidateRuntime)
+        assertFalse(networkFailure.invalidatePlayerSource)
+        assertFalse(networkFailure.invalidateRuntime)
+    }
+
+    @Test
+    fun streamRejectionChangedOrUnchangedInvalidatesPlayerSourceWhenGenerationMatches() {
+        val changed = YoutubeStreamRejectionActionPolicy.decide(
+            YoutubeStreamRefreshResult.CHANGED,
+            generationMatches = true
+        )
+        val unchanged = YoutubeStreamRejectionActionPolicy.decide(
+            YoutubeStreamRefreshResult.UNCHANGED,
+            generationMatches = true
+        )
+
+        assertTrue(changed.invalidatePlayerSource)
+        assertTrue(changed.invalidateRuntime)
+        assertTrue(unchanged.invalidatePlayerSource)
+        assertTrue(unchanged.invalidateRuntime)
+    }
+
+    @Test
+    fun streamRejectionWithStaleGenerationInvalidatesNothing() {
+        YoutubeStreamRefreshResult.entries.forEach { result ->
+            val action = YoutubeStreamRejectionActionPolicy.decide(result, generationMatches = false)
+
+            assertFalse(result.name, action.invalidatePlayerSource)
+            assertFalse(result.name, action.invalidateRuntime)
+        }
+    }
+
     private fun parityResource(name: String): String {
         val resource = requireNotNull(javaClass.classLoader?.getResource("config-parity/$name"))
         return resource.readText()

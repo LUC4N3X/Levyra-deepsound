@@ -220,8 +220,14 @@ class OfflineDownloadPlaybackIsolationTest {
     fun aDeadOfflineUrlIsStillQuarantinedSoTheRetryCanRotate() {
         val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
 
-        assertEquals(1, occurrences(resolver, "failedPlaybackUrls[it] = now + recovery.quarantineMs"))
-        assertFalse(resolver.contains("if (!isOfflineExport) {"))
+        val recoveryStart = resolver.indexOf("val recovery = resilienceEngine.recoveryPlan(reason)")
+        val rotateClient = resolver.indexOf("if (recovery.rotateClient)", recoveryStart)
+        val quarantineBlock = resolver.substring(recoveryStart, rotateClient)
+
+        assertTrue(recoveryStart > 0)
+        assertTrue(rotateClient > recoveryStart)
+        assertEquals(1, occurrences(quarantineBlock, "failedPlaybackUrls[it] = now + recovery.quarantineMs"))
+        assertFalse(quarantineBlock.contains("if (!isOfflineExport)"))
     }
 
     @Test

@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.media3.datasource.cache.CacheSpan
 import com.luc4n3x.levyra.data.LyricsMatcher
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.YoutubeStreamCapability
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -229,6 +230,53 @@ internal fun audioContentTypeFromUrl(url: String): String {
         .orEmpty()
 }
 
+internal fun audioItagFromUrl(url: String): String {
+    return url.toHttpUrlOrNull()
+        ?.queryParameter("itag")
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?: Regex("(?:[?&])itag=(\\d+)").find(url)?.groupValues?.getOrNull(1)
+        ?: ""
+}
+
+internal data class OfflineStreamIdentity(
+    val videoId: String,
+    val itag: String,
+    val contentLength: Long,
+    val mimeType: String
+)
+
+internal fun offlineStreamIdentity(url: String, videoId: String): OfflineStreamIdentity {
+    return OfflineStreamIdentity(
+        videoId = videoId.trim(),
+        itag = audioItagFromUrl(url),
+        contentLength = audioContentLengthFromUrl(url),
+        mimeType = audioContentTypeFromUrl(url)
+    )
+}
+
+internal fun serializeOfflineStreamIdentity(identity: OfflineStreamIdentity): String {
+    return listOf(identity.videoId, identity.itag, identity.contentLength.toString(), identity.mimeType)
+        .joinToString("\n")
+}
+
+internal fun parseOfflineStreamIdentity(raw: String): OfflineStreamIdentity? {
+    val parts = raw.split("\n")
+    if (parts.size < 4) return null
+    val contentLength = parts[2].toLongOrNull() ?: return null
+    return OfflineStreamIdentity(videoId = parts[0], itag = parts[1], contentLength = contentLength, mimeType = parts[3])
+}
+
+internal fun resumableBytesForStreamIdentity(
+    existingBytes: Long,
+    storedIdentity: OfflineStreamIdentity?,
+    currentIdentity: OfflineStreamIdentity
+): Long {
+    if (existingBytes <= 0L) return 0L
+    if (storedIdentity == null) return 0L
+    return if (storedIdentity == currentIdentity) existingBytes else 0L
+}
+
 internal fun isMp4AudioExportUrl(url: String): Boolean {
     val clean = url.trim().lowercase(Locale.US)
     val path = clean.substringBefore('?').substringBefore('#')
@@ -277,7 +325,7 @@ internal fun isUnsupportedOfflineAudioSource(error: Throwable): Boolean {
 
 internal fun isRejectedOfflinePlaybackSource(error: Throwable): Boolean {
     val rejectedStatus = Regex(
-        """\b(?:HTTP|Response code)\s*:?\s*(403|410|429)\b""",
+        """\b(?:HTTP|Response code)\s*:?\s*(403|404|410|416|429)\b""",
         RegexOption.IGNORE_CASE
     )
     var current: Throwable? = error
@@ -476,6 +524,7 @@ class OfflineAudioExporter(
                 )
             } finally {
                 runCatching { downloaded.file.delete() }
+                runCatching { resumeIdentitySidecar(downloaded.file).delete() }
                 if (audioFile != downloaded.file) runCatching { audioFile.delete() }
                 embeddedFile?.file
                     ?.takeIf { it != downloaded.file && it != audioFile }
@@ -520,7 +569,16 @@ class OfflineAudioExporter(
             offlineSourceDiagnostics(sourceUrl)
         )
         val partial = resumablePartialFile(workspace, container)
-        val existingBytes = partial.takeIf { settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
+        val identityFile = resumeIdentitySidecar(partial)
+        val currentIdentity = offlineStreamIdentity(sourceUrl, PlaybackSourceIdentity.sourceVideoId(track))
+        val storedBytes = partial.takeIf { settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
+        val existingBytes = if (storedBytes > 0L) {
+            val resumeBytes = resumableBytesForStreamIdentity(storedBytes, readResumeIdentity(identityFile), currentIdentity)
+            if (resumeBytes == 0L) discardPartial(partial, identityFile)
+            resumeBytes
+        } else {
+            0L
+        }
         ensureStorageAvailable(workspace, expectedLength, existingBytes, requiresAudioExtraction)
         if (expectedLength > 0L && existingBytes == expectedLength) {
             reportProgress(82)
@@ -622,7 +680,8 @@ class OfflineAudioExporter(
             }
             val append = rangeStart > 0L
             val baseBytes = if (append) rangeStart else 0L
-            if (!append && partial.exists()) runCatching { partial.delete() }
+            if (!append) discardPartial(partial, identityFile)
+            writeResumeIdentity(identityFile, currentIdentity)
             val contentRangeTotal = contentRange.substringAfterLast('/').toLongOrNull() ?: -1L
             val targetLength = when {
                 contentRangeTotal > 0L -> contentRangeTotal
@@ -660,7 +719,7 @@ class OfflineAudioExporter(
                 DownloadedAudio(partial, container, requiresAudioExtraction)
             } catch (error: IOException) {
                 currentCoroutineContext().ensureActive()
-                if (!settings.resumable) runCatching { partial.delete() }
+                if (!settings.resumable) discardPartial(partial, identityFile)
                 throw error
             }
         }
@@ -717,6 +776,24 @@ class OfflineAudioExporter(
     private fun resumablePartialFile(workspace: File, container: AudioContainer): File {
         val safeKey = offlineDownloadTaskFileKey(taskKey.ifBlank { "${System.nanoTime()}" })
         return File(workspace, "resume-$safeKey.${container.extension}.part")
+    }
+
+    private fun resumeIdentitySidecar(partial: File): File {
+        return File(partial.parentFile, "${partial.name}.id")
+    }
+
+    private fun readResumeIdentity(identityFile: File): OfflineStreamIdentity? {
+        if (!identityFile.isFile) return null
+        return runCatching { parseOfflineStreamIdentity(identityFile.readText(Charsets.UTF_8)) }.getOrNull()
+    }
+
+    private fun writeResumeIdentity(identityFile: File, identity: OfflineStreamIdentity) {
+        runCatching { identityFile.writeText(serializeOfflineStreamIdentity(identity), Charsets.UTF_8) }
+    }
+
+    private fun discardPartial(partial: File, identityFile: File) {
+        runCatching { partial.delete() }
+        runCatching { identityFile.delete() }
     }
 
     private fun offlineSeedCacheKeys(track: Track): List<String> = listOf(
@@ -881,6 +958,7 @@ class OfflineAudioExporter(
                 limiter = limiter
             )
             if (failures.isEmpty()) return
+            firstRejectedRangeFailure(failures)?.let { throw it }
             lastFailures = failures
             if (batch < PARALLEL_BATCH_RETRY_COUNT - 1) {
                 pending = failures.flatMap { failure ->
@@ -930,17 +1008,9 @@ class OfflineAudioExporter(
         lastProgress: AtomicInteger,
         targetLength: Long
     ) {
-        var lastError: IOException? = null
-        repeat(RANGE_RETRY_COUNT) { attempt ->
-            try {
-                downloadAudioRangeAttempt(url, range, outputFile, downloadedBytes, lastProgress, targetLength)
-                return
-            } catch (error: IOException) {
-                lastError = error
-                if (attempt < RANGE_RETRY_COUNT - 1) delay(RANGE_RETRY_DELAY_MS * (attempt + 1L))
-            }
+        retryRangeDownload(RANGE_RETRY_COUNT, RANGE_RETRY_DELAY_MS, { millis -> delay(millis) }) {
+            downloadAudioRangeAttempt(url, range, outputFile, downloadedBytes, lastProgress, targetLength)
         }
-        throw lastError ?: IOException("Range audio non riuscito")
     }
 
     private suspend fun downloadAudioRangeAttempt(
@@ -1463,7 +1533,9 @@ class OfflineAudioExporter(
     private fun cleanupWorkspace(workspace: File) {
         val now = System.currentTimeMillis()
         workspace.listFiles()?.forEach { file ->
-            val retention = if (file.name.startsWith("resume-") && file.name.endsWith(".part")) {
+            val isResumeArtifact = file.name.startsWith("resume-") &&
+                (file.name.endsWith(".part") || file.name.endsWith(".part.id"))
+            val retention = if (isResumeArtifact) {
                 TimeUnit.DAYS.toMillis(7)
             } else {
                 TimeUnit.HOURS.toMillis(2)
@@ -1477,7 +1549,7 @@ class OfflineAudioExporter(
             val workspace = File(context.applicationContext.cacheDir, "levyra_offline_export")
             val prefix = "resume-${offlineDownloadTaskFileKey(taskKey)}."
             workspace.listFiles()?.forEach { file ->
-                if (file.name.startsWith(prefix) && file.name.endsWith(".part")) {
+                if (file.name.startsWith(prefix) && (file.name.endsWith(".part") || file.name.endsWith(".part.id"))) {
                     runCatching { file.delete() }
                 }
             }
@@ -1528,10 +1600,34 @@ private data class CachedAudioSeed(
     val missingRanges: List<AudioDownloadRange>
 )
 
-private data class RangeDownloadFailure(
+internal data class RangeDownloadFailure(
     val range: AudioDownloadRange,
     val error: IOException
 )
+
+internal fun firstRejectedRangeFailure(failures: List<RangeDownloadFailure>): IOException? {
+    return failures.firstOrNull { isUnsupportedOfflineAudioSource(it.error) || isRejectedOfflinePlaybackSource(it.error) }?.error
+}
+
+internal suspend fun retryRangeDownload(
+    retryCount: Int,
+    retryDelayMs: Long,
+    sleep: suspend (Long) -> Unit,
+    attempt: suspend () -> Unit
+) {
+    var lastError: IOException? = null
+    repeat(retryCount) { attemptIndex ->
+        try {
+            attempt()
+            return
+        } catch (error: IOException) {
+            lastError = error
+            if (isUnsupportedOfflineAudioSource(error) || isRejectedOfflinePlaybackSource(error)) throw error
+            if (attemptIndex < retryCount - 1) sleep(retryDelayMs * (attemptIndex + 1L))
+        }
+    }
+    throw lastError ?: IOException("Range audio non riuscito")
+}
 
 private data class PreparedAudioFile(
     val file: File,
