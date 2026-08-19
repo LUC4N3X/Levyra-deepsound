@@ -156,7 +156,9 @@ internal class AppUpdateInstaller(
         .callTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
-    suspend fun prepareLatestUpdate(onProgress: (String, Int?) -> Unit): PreparedAppUpdate = withContext(Dispatchers.IO) {
+    suspend fun prepareLatestUpdate(
+        onProgress: (versionName: String, downloadedBytes: Long, totalBytes: Long?) -> Unit
+    ): PreparedAppUpdate = withContext(Dispatchers.IO) {
         if (!BuildConfig.UPSTREAM_UPDATES_ENABLED) {
             throw IllegalStateException("Upstream updates are disabled")
         }
@@ -173,7 +175,8 @@ internal class AppUpdateInstaller(
         if (finalFile.isFile) {
             try {
                 verifyDownloadedApk(finalFile, update)
-                onProgress(versionName, 100)
+                val cachedBytes = finalFile.length()
+                onProgress(versionName, cachedBytes, cachedBytes)
                 return@withContext PreparedAppUpdate(versionName, finalFile)
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -184,7 +187,9 @@ internal class AppUpdateInstaller(
 
         val initialUrl = validateLevyraUpdateUrl(update.assetDownloadUrl, initial = true)
             ?: throw IOException("Invalid Levyra update URL")
-        downloadToFile(initialUrl, update, partFile) { progress -> onProgress(versionName, progress) }
+        downloadToFile(initialUrl, update, partFile) { downloaded, total ->
+            onProgress(versionName, downloaded, total)
+        }
         if (!partFile.renameTo(finalFile)) {
             partFile.delete()
             throw IOException("Unable to finalize update APK")
@@ -198,7 +203,8 @@ internal class AppUpdateInstaller(
             finalFile.delete()
             throw error
         }
-        onProgress(versionName, 100)
+        val downloadedBytes = finalFile.length()
+        onProgress(versionName, downloadedBytes, downloadedBytes)
         PreparedAppUpdate(versionName, finalFile)
     }
 
@@ -206,7 +212,7 @@ internal class AppUpdateInstaller(
         initialUrl: HttpUrl,
         update: InstallableAppUpdate,
         destination: File,
-        onProgress: (Int?) -> Unit
+        onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit
     ) {
         var currentUrl = initialUrl
         var redirects = 0
@@ -251,9 +257,10 @@ internal class AppUpdateInstaller(
                 }
 
                 val expectedLength = update.assetSizeBytes.takeIf { it > 0L } ?: declaredLength
+                val reportedLength = expectedLength.takeIf { it > 0L }
                 var total = 0L
-                var lastProgress = -1
-                if (expectedLength <= 0L) onProgress(null)
+                var lastReportedBytes = 0L
+                onProgress(0L, reportedLength)
                 body.byteStream().use { input ->
                     destination.outputStream().buffered().use { output ->
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -265,17 +272,15 @@ internal class AppUpdateInstaller(
                             total += count
                             if (total > MAX_UPDATE_APK_BYTES) throw IOException("Update APK exceeded size limit")
                             output.write(buffer, 0, count)
-                            if (expectedLength > 0L) {
-                                val progress = ((total * 100L) / expectedLength).toInt().coerceIn(0, 99)
-                                if (progress != lastProgress) {
-                                    lastProgress = progress
-                                    onProgress(progress)
-                                }
+                            if (total - lastReportedBytes >= UPDATE_PROGRESS_STEP_BYTES) {
+                                lastReportedBytes = total
+                                onProgress(total, reportedLength)
                             }
                         }
                         output.flush()
                     }
                 }
+                onProgress(total, reportedLength)
                 if (total < 4_096L) throw IOException("Downloaded update is not a valid APK")
                 if (update.assetSizeBytes > 0L && total != update.assetSizeBytes) {
                     throw IOException("Downloaded update size does not match release metadata")
