@@ -24,9 +24,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +48,11 @@ import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalTrack
+import com.luc4n3x.levyra.desktop.core.model.Track
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private enum class LocalMusicTab {
     TRACKS,
@@ -64,20 +71,29 @@ fun LocalMusicScreen(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
+    val scope = rememberCoroutineScope()
     var tab by remember { mutableStateOf(LocalMusicTab.TRACKS) }
     var query by remember { mutableStateOf("") }
     var selectedAlbum by remember { mutableStateOf("") }
     var selectedArtist by remember { mutableStateOf("") }
+    var visible by remember(state.index) { mutableStateOf(state.index.tracks) }
+    var queue by remember(state.index) { mutableStateOf<List<Track>>(emptyList()) }
 
-    val visible = remember(state.index, query, tab, selectedAlbum, selectedArtist) {
-        when {
-            query.isNotBlank() -> state.index.search(query)
-            selectedAlbum.isNotEmpty() -> state.index.albumTracks(selectedAlbum)
-            selectedArtist.isNotEmpty() -> state.index.artistTracks(selectedArtist)
-            else -> state.index.tracks
+    LaunchedEffect(state.index, query, selectedAlbum, selectedArtist) {
+        if (query.isNotBlank()) delay(LOCAL_QUERY_DEBOUNCE_MS)
+        val derived = withContext(Dispatchers.Default) {
+            when {
+                query.isNotBlank() -> state.index.search(query)
+                selectedAlbum.isNotEmpty() -> state.index.albumTracks(selectedAlbum)
+                selectedArtist.isNotEmpty() -> state.index.artistTracks(selectedArtist)
+                else -> state.index.tracks
+            }
         }
+        val preparedQueue = withContext(Dispatchers.Default) { derived.map(LocalTrack::toTrack) }
+        visible = derived
+        queue = preparedQueue
     }
-    val queue = remember(visible) { visible.map(LocalTrack::toTrack) }
+
     val browsing = query.isBlank() && selectedAlbum.isEmpty() && selectedArtist.isEmpty()
 
     ScrollableColumn(
@@ -173,8 +189,12 @@ fun LocalMusicScreen(
                         count = album.trackCount,
                         onOpen = { selectedAlbum = album.key },
                         onPlay = {
-                            val tracks = state.index.albumTracks(album.key).map(LocalTrack::toTrack)
-                            if (tracks.isNotEmpty()) actions.onPlay(tracks, 0)
+                            scope.launch {
+                                val tracks = withContext(Dispatchers.Default) {
+                                    state.index.albumTracks(album.key).map(LocalTrack::toTrack)
+                                }
+                                if (tracks.isNotEmpty()) actions.onPlay(tracks, 0)
+                            }
                         }
                     )
                 }
@@ -191,8 +211,12 @@ fun LocalMusicScreen(
                         count = artist.trackCount,
                         onOpen = { selectedArtist = artist.key },
                         onPlay = {
-                            val tracks = state.index.artistTracks(artist.key).map(LocalTrack::toTrack)
-                            if (tracks.isNotEmpty()) actions.onPlay(tracks, 0)
+                            scope.launch {
+                                val tracks = withContext(Dispatchers.Default) {
+                                    state.index.artistTracks(artist.key).map(LocalTrack::toTrack)
+                                }
+                                if (tracks.isNotEmpty()) actions.onPlay(tracks, 0)
+                            }
                         }
                     )
                 }
@@ -229,12 +253,23 @@ fun LocalMusicScreen(
                 }
                 items(visible.size, key = { visible[it].id }) { index ->
                     val local = visible[index]
-                    val track = queue[index]
+                    val track = queue.getOrNull(index)?.takeIf {
+                        it.id == com.luc4n3x.levyra.desktop.core.localmusic.LocalMusicIdentity.trackId(local.id)
+                    } ?: local.toTrack()
                     TrackRow(
                         track = track,
                         isCurrent = track.id == actions.currentTrackId,
                         isFavorite = actions.isFavorite(track),
-                        onPlay = { actions.onPlay(queue, index) },
+                        onPlay = {
+                            scope.launch {
+                                val playQueue = if (queue.size == visible.size) {
+                                    queue
+                                } else {
+                                    withContext(Dispatchers.Default) { visible.map(LocalTrack::toTrack) }
+                                }
+                                if (index in playQueue.indices) actions.onPlay(playQueue, index)
+                            }
+                        },
                         onPlayNext = { actions.onPlayNext(track) },
                         onEnqueue = { actions.onEnqueue(track) },
                         onToggleFavorite = { actions.onToggleFavorite(track) },
@@ -421,3 +456,5 @@ private fun LocalCollectionRow(
         }
     }
 }
+
+private const val LOCAL_QUERY_DEBOUNCE_MS = 140L
