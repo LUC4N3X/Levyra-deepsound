@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.desktop.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +38,7 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.core.storage.LocalPlaylist
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PlaylistScreen(
     playlist: LocalPlaylist?,
@@ -128,7 +131,10 @@ fun PlaylistScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(onClick = onPlayAll, enabled = playlist.tracks.isNotEmpty()) {
                             Text(strings.playAll)
                         }
@@ -138,7 +144,7 @@ fun PlaylistScreen(
                         OutlinedButton(onClick = { renaming = !renaming }) {
                             Text(strings.playlistRename)
                         }
-                        OutlinedButton(onClick = onExport) {
+                        OutlinedButton(onClick = onExport, enabled = playlist.tracks.isNotEmpty()) {
                             Text(strings.playlistExport)
                         }
                         OutlinedButton(onClick = onDelete) {
