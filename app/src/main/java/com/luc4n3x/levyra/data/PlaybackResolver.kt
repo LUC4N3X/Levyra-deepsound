@@ -243,6 +243,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
         private const val LEVYRA_EXTRACTOR_PROVIDER = "LevyraExtractor"
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
+        private const val AUDIO_HEALTH_MODE = "audio"
+        private const val VIDEO_HEALTH_MODE = "video"
+        private const val MAX_STRATEGY_ORIGINS = 256
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]($YOUTUBE_VIDEO_ID_PATTERN)\\?["]""")
@@ -272,8 +275,14 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val playbackSecurity = YoutubePlaybackSecurity.getInstance(context)
-    private val playbackPolicyStore = PlaybackCompatibilityPolicyStore(context, youtubeHttpClient)
+    private val playbackPolicyStore = PlaybackCompatibilityPolicyStore(
+        context,
+        youtubeHttpClient,
+        BuildConfig.VERSION_CODE
+    )
     private val resilienceEngine = PlaybackResilienceEngine(context)
+    private val strategyHealth = PlaybackStrategyHealthStore(context)
+    private val strategyOriginByUrl = ConcurrentHashMap<String, PlaybackStrategyOrigin>()
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val fallbackTtlMs = 90L * 60L * 1000L
@@ -338,6 +347,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun clearResolvedStreamCaches() {
         streamCache.clear()
+        strategyOriginByUrl.clear()
         prefs.edit().clear().apply()
         sourceMatchStore.clearOnline()
     }
@@ -471,6 +481,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
         invalidate(track, isVideoMode, isOfflineExport)
         resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
+        if (!isOfflineExport) {
+            strategyOriginFor(track, isVideoMode)?.let { origin ->
+                strategyHealth.recordRuntimeFailure(
+                    mode = origin.mode,
+                    strategy = origin.strategy,
+                    kind = classifyPlaybackFailureReason(reason)
+                )
+            }
+        }
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
         val recovery = resilienceEngine.recoveryPlan(reason)
@@ -521,6 +540,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
+    private fun rememberStrategyOrigin(track: Track, mode: String, strategy: String) {
+        if (strategyOriginByUrl.size >= MAX_STRATEGY_ORIGINS) strategyOriginByUrl.clear()
+        val origin = PlaybackStrategyOrigin(mode, strategy)
+        listOf(track.streamUrl, track.videoStreamUrl)
+            .filter { it.isNotBlank() }
+            .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin }
+    }
+
+    private fun strategyOriginFor(track: Track, isVideoMode: Boolean): PlaybackStrategyOrigin? {
+        val expectedMode = if (isVideoMode) VIDEO_HEALTH_MODE else AUDIO_HEALTH_MODE
+        return listOf(track.videoStreamUrl, track.streamUrl)
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .mapNotNull { strategyOriginByUrl[strategyOriginKey(expectedMode, it)] }
+            .firstOrNull()
+    }
+
+    private fun strategyOriginKey(mode: String, url: String): String = "$mode\u0000$url"
+
     fun playbackDiagnostics(): String {
         val health = clientHealth.mapValues { (_, value) ->
             JSONObject()
@@ -531,7 +569,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .put("blockedUntilMs", value.blockedUntilMs)
                 .put("score", value.score)
         }
-        return resilienceEngine.diagnostics(health)
+        val diagnostics = JSONObject(resilienceEngine.diagnostics(health))
+        val strategyHealthJson = JSONObject()
+        strategyHealth.snapshot().forEach { (key, value) -> strategyHealthJson.put(key, value) }
+        diagnostics.put("strategyHealth", strategyHealthJson)
+        return diagnostics.toString(2)
     }
 
     private fun isLocalPlaybackTrack(track: Track): Boolean =
@@ -788,8 +830,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         errors: MutableList<String>
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for (strategy in policy.audioStrategies) {
+        for (strategy in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies)) {
             currentCoroutineContext().ensureActive()
+            val startedAt = System.currentTimeMillis()
+            val errorsBefore = errors.size
             val resolved = when (strategy) {
                 PlaybackAudioStrategy.REEL_MUXED -> runCatchingPreservingCancellation {
                     resolveVideoWithAndroidReel(track)
@@ -825,7 +869,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                     audioQuality = audioQuality
                 )
             }
+            val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
+                strategyHealth.recordSuccess(AUDIO_HEALTH_MODE, strategy.name, elapsedMs)
+                rememberStrategyOrigin(resolved, AUDIO_HEALTH_MODE, strategy.name)
                 store(track, resolved, false, audioQuality, false)
                 val confidence = when (strategy) {
                     PlaybackAudioStrategy.REEL_MUXED,
@@ -839,6 +886,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
                 return resolved
             }
+            val failureReason = synchronized(errors) { errors.toList() }
+        .drop(errorsBefore)
+        .lastOrNull()
+            strategyHealth.recordFailure(
+                AUDIO_HEALTH_MODE,
+                strategy.name,
+                elapsedMs,
+                failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
+            )
         }
         return null
     }
@@ -849,8 +905,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         errors: MutableList<String>
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for (strategy in policy.videoStrategies) {
+        for (strategy in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies)) {
             currentCoroutineContext().ensureActive()
+            val startedAt = System.currentTimeMillis()
+            val errorsBefore = errors.size
             val resolved = when (strategy) {
                 PlaybackVideoStrategy.PERSISTED -> restorePersistentSource(
                     track = track,
@@ -867,7 +925,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                     errors += "Android Reel: ${error.playbackDiagnostic()}"
                 }.getOrNull()
             }
+            val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
+                strategyHealth.recordSuccess(VIDEO_HEALTH_MODE, strategy.name, elapsedMs)
+                rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name)
                 store(track, resolved, true, audioQuality)
                 val confidence = when (strategy) {
                     PlaybackVideoStrategy.PERSISTED -> null
@@ -886,6 +947,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
                 return resolved
             }
+            val failureReason = synchronized(errors) { errors.toList() }
+        .drop(errorsBefore)
+        .lastOrNull()
+            strategyHealth.recordFailure(
+                VIDEO_HEALTH_MODE,
+                strategy.name,
+                elapsedMs,
+                failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
+            )
         }
         return null
     }
@@ -3144,6 +3214,11 @@ private data class DirectStream(
     val manifest: ResolvedPlaybackManifest,
     val loudnessDb: Float? = null,
     val perceptualLoudnessDb: Float? = null
+)
+
+private data class PlaybackStrategyOrigin(
+    val mode: String,
+    val strategy: String
 )
 
 private data class CachedStream(

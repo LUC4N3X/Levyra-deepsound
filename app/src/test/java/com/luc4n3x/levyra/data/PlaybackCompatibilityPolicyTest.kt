@@ -133,7 +133,8 @@ class PlaybackCompatibilityPolicyTest {
     }
 
     @Test
-    fun unsupportedStrategyRejectsWholeCandidate() {
+    fun unsupportedStrategyIsIgnoredInsteadOfRejectingTheWholeCandidate() {
+        val base = PlaybackCompatibilityPolicy.bundled()
         val parsed = PlaybackCompatibilityPolicyParser.parse(
             """
             {
@@ -142,10 +143,12 @@ class PlaybackCompatibilityPolicyTest {
               "audioStrategy": ["REMOTE_SCRIPT"]
             }
             """.trimIndent(),
-            PlaybackCompatibilityPolicy.bundled()
+            base
         )
 
-        assertNull(parsed)
+        assertNotNull(parsed)
+        assertFalse(parsed!!.audioStrategies.isEmpty())
+        assertEquals(base.audioStrategies, parsed.audioStrategies)
     }
 
     @Test
@@ -240,5 +243,68 @@ class PlaybackCompatibilityPolicyTest {
 
         assertEquals(parsed, roundTrip)
         assertFalse(roundTrip!!.audioStrategies.isEmpty())
+    }
+
+    @Test
+    fun unknownRemoteStrategyIsSkippedButKnownOnesAreAccepted() {
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026081802,
+              "audioStrategy": ["REEL_MUXED", "REMOTE_SCRIPT", "DIRECT"]
+            }
+            """.trimIndent(),
+            PlaybackCompatibilityPolicy.bundled()
+        )
+
+        assertNotNull(parsed)
+        assertEquals(
+            listOf(PlaybackAudioStrategy.REEL_MUXED, PlaybackAudioStrategy.DIRECT),
+            parsed!!.audioStrategies
+        )
+    }
+
+    @Test
+    fun allUnknownStrategiesFallBackToBaseListInsteadOfEmpty() {
+        val base = PlaybackCompatibilityPolicy.bundled()
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026081802,
+              "audioStrategy": ["REMOTE_SCRIPT", "ANOTHER_UNKNOWN"]
+            }
+            """.trimIndent(),
+            base
+        )
+
+        assertNotNull(parsed)
+        assertFalse(parsed!!.audioStrategies.isEmpty())
+        assertEquals(base.audioStrategies, parsed.audioStrategies)
+    }
+
+    @Test
+    fun expiredPolicyIsTreatedAsExpired() {
+        val expired = PlaybackCompatibilityPolicy.bundled().copy(expiresAt = 1_700_000_000_000L)
+        val notExpired = PlaybackCompatibilityPolicy.bundled().copy(expiresAt = 4_000_000_000_000L)
+        val neverExpires = PlaybackCompatibilityPolicy.bundled().copy(expiresAt = 0L)
+
+        assertTrue(expired.isExpired(nowMs = 1_800_000_000_000L))
+        assertFalse(notExpired.isExpired(nowMs = 1_800_000_000_000L))
+        assertFalse(neverExpires.isExpired(nowMs = 1_800_000_000_000L))
+    }
+
+    @Test
+    fun appVersionOutsideSupportedRangeIsRejected() {
+        val policy = PlaybackCompatibilityPolicy.bundled().copy(
+            minSupportedAppVersion = 10,
+            maxSupportedAppVersion = 20
+        )
+
+        assertFalse(isAppVersionSupported(policy, appVersionCode = 5))
+        assertFalse(isAppVersionSupported(policy, appVersionCode = 25))
+        assertTrue(isAppVersionSupported(policy, appVersionCode = 15))
+        assertTrue(isAppVersionSupported(policy, appVersionCode = 0))
     }
 }

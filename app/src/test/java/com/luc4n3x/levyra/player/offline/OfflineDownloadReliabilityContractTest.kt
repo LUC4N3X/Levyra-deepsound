@@ -179,7 +179,9 @@ class OfflineDownloadReliabilityContractTest {
 
         assertTrue(source.contains("if (written != range.length)"))
         assertTrue(source.contains("if (downloadedBytes.get() != targetLength || temp.length() != targetLength)"))
-        assertTrue(source.contains("repeat(RANGE_RETRY_COUNT)"))
+        assertTrue(source.contains("retryRangeDownload(RANGE_RETRY_COUNT, RANGE_RETRY_DELAY_MS"))
+        assertTrue(source.contains("repeat(retryCount)"))
+        assertTrue(source.contains("if (isUnsupportedOfflineAudioSource(error) || isRejectedOfflinePlaybackSource(error)) throw error"))
         assertTrue(source.contains("repeat(PARALLEL_BATCH_RETRY_COUNT)"))
         assertTrue(source.contains("Parallel offline download failed, falling back to serial"))
         assertTrue(source.contains("if (targetLength > 0L && total != targetLength)"))

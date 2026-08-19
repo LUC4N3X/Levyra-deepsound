@@ -31,6 +31,8 @@ docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md
                                   ChatGPT Project instructions source
 docs/ai/OPENCLAW.md               OpenClaw workspace and delegation
 docs/ai/WORKFLOW.md               clarification-to-release lifecycle
+docs/ai/YOUTUBE_PLAYBACK_RECOVERY_RUNBOOK.md
+                                  YouTube playback/download recovery operations
 ```
 
 Planning files remain distinct:

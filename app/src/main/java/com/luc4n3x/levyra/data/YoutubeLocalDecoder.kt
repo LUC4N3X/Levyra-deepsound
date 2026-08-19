@@ -217,6 +217,7 @@ private class YoutubeLocalDecoderEngine(
             val decoded = try {
                 decodeAttempt(playerId, missingSignatures, missingNs, forceRefresh = false)
             } catch (firstError: Throwable) {
+                if (firstError is CancellationException) throw firstError
                 if (firstError is YoutubeRendererBackoffException) throw firstError
                 Timber.w(firstError, "Local decoder first attempt failed for player %s", playerId)
                 invalidateRuntime()
@@ -225,6 +226,7 @@ private class YoutubeLocalDecoderEngine(
                 try {
                     decodeAttempt(playerId, missingSignatures, missingNs, forceRefresh = true)
                 } catch (secondError: Throwable) {
+                    if (secondError is CancellationException) throw secondError
                     if (secondError is YoutubeRendererBackoffException) throw secondError
                     secondError.addSuppressed(firstError)
                     throw ParsingException("Local decode failed for player $playerId", secondError)
@@ -282,19 +284,22 @@ private class YoutubeLocalDecoderEngine(
         ) {
             playerSource.rejectAnalyzedConfig(rejectedHash)
         }
-        when (configStore.refreshAfterStreamRejection()) {
-            YoutubeStreamRefreshResult.CHANGED -> {
-                decodeCache.clear()
-                decodeCacheEpoch = configStore.epoch
-                runtimeMutex.withLock {
-                    if (lastSuccessfulDecodeAtMs.get() == feedbackAt) invalidateRuntimeLocked()
-                }
-            }
-            YoutubeStreamRefreshResult.UNCHANGED -> runtimeMutex.withLock {
+        val refreshResult = configStore.refreshAfterStreamRejection()
+        if (refreshResult == YoutubeStreamRefreshResult.CHANGED) {
+            decodeCache.clear()
+            decodeCacheEpoch = configStore.epoch
+        }
+        val action = YoutubeStreamRejectionActionPolicy.decide(
+            refreshResult,
+            generationMatches = lastSuccessfulDecodeAtMs.get() == feedbackAt
+        )
+        if (action.invalidateRuntime) {
+            runtimeMutex.withLock {
                 if (lastSuccessfulDecodeAtMs.get() == feedbackAt) invalidateRuntimeLocked()
             }
-            YoutubeStreamRefreshResult.SKIPPED,
-            YoutubeStreamRefreshResult.NETWORK_FAILURE -> Unit
+        }
+        if (action.invalidatePlayerSource && lastSuccessfulDecodeAtMs.get() == feedbackAt) {
+            playerSource.invalidate()
         }
     }
 
@@ -1202,6 +1207,19 @@ internal object YoutubeLocalDecoderFeedbackPolicy {
         val normalized = source.lowercase()
         val relevantSource = normalized.contains("web") || normalized.contains("levyraextractor")
         return relevantSource && YoutubePlayerConfigStore.withinWindow(now, lastDecodeAtMs, FEEDBACK_WINDOW_MS)
+    }
+}
+
+internal data class YoutubeStreamRejectionAction(
+    val invalidateRuntime: Boolean,
+    val invalidatePlayerSource: Boolean
+)
+
+internal object YoutubeStreamRejectionActionPolicy {
+    fun decide(result: YoutubeStreamRefreshResult, generationMatches: Boolean): YoutubeStreamRejectionAction {
+        val actionable = generationMatches &&
+            (result == YoutubeStreamRefreshResult.CHANGED || result == YoutubeStreamRefreshResult.UNCHANGED)
+        return YoutubeStreamRejectionAction(invalidateRuntime = actionable, invalidatePlayerSource = actionable)
     }
 }
 
