@@ -5,20 +5,35 @@ import org.junit.Test
 
 class PlaybackFailureClassificationTest {
     @Test
-    fun antiBotAndSignInChallengesTriggerForbiddenRecovery() {
+    fun antiBotAndSignInChallengesTriggerLoginRequiredRecovery() {
         val messages = listOf(
             "Sign in to confirm you're not a bot",
             "Sign in to confirm you’re not a bot",
             "Please confirm you are not a bot",
-            "Accedi per confermare di essere umano"
+            "Accedi per confermare di essere umano",
+            "LOGIN_REQUIRED"
         )
 
         messages.forEach { message ->
             assertEquals(
-                PlaybackFailureKind.Forbidden,
+                PlaybackFailureKind.LoginRequired,
                 classifyPlaybackFailureReason(message)
             )
         }
+    }
+
+    @Test
+    fun ageRestrictionIsTrackSpecificRatherThanGlobalLoginFailure() {
+        assertEquals(
+            PlaybackFailureKind.ContentRestricted,
+            classifyPlaybackFailureReason("This video is age restricted")
+        )
+    }
+
+    @Test
+    fun responseCodeWordingIsClassifiedLikeHttpStatus() {
+        assertEquals(PlaybackFailureKind.Forbidden, classifyPlaybackFailureReason("Response code: 403"))
+        assertEquals(PlaybackFailureKind.RateLimited, classifyPlaybackFailureReason("Response code: 429"))
     }
 
     @Test
@@ -43,5 +58,48 @@ class PlaybackFailureClassificationTest {
         assertEquals(PlaybackFailureKind.Gone, classifyPlaybackFailureReason("HTTP 410"))
         assertEquals(PlaybackFailureKind.RateLimited, classifyPlaybackFailureReason("HTTP 429"))
         assertEquals(PlaybackFailureKind.Signature, classifyPlaybackFailureReason("PO Token rejected"))
+    }
+
+    @Test
+    fun notFoundStatusIsClassified() {
+        assertEquals(PlaybackFailureKind.NotFound, classifyPlaybackFailureReason("HTTP 404"))
+        assertEquals(PlaybackFailureKind.NotFound, classifyPlaybackFailureReason("status code: 404"))
+        assertEquals(PlaybackFailureKind.NotFound, classifyPlaybackFailureReason("Resource not found"))
+    }
+
+    @Test
+    fun rangeNotSatisfiableStatusIsClassified() {
+        assertEquals(PlaybackFailureKind.RangeNotSatisfiable, classifyPlaybackFailureReason("HTTP 416"))
+        assertEquals(
+            PlaybackFailureKind.RangeNotSatisfiable,
+            classifyPlaybackFailureReason("Range not satisfiable")
+        )
+    }
+
+    @Test
+    fun serverErrorStatusesAreClassified() {
+        assertEquals(PlaybackFailureKind.ServerError, classifyPlaybackFailureReason("HTTP 500"))
+        assertEquals(PlaybackFailureKind.ServerError, classifyPlaybackFailureReason("HTTP 502"))
+        assertEquals(PlaybackFailureKind.ServerError, classifyPlaybackFailureReason("HTTP 503"))
+        assertEquals(PlaybackFailureKind.ServerError, classifyPlaybackFailureReason("HTTP 504"))
+        assertEquals(PlaybackFailureKind.ServerError, classifyPlaybackFailureReason("Bad gateway"))
+        assertEquals(PlaybackFailureKind.ServerError, classifyPlaybackFailureReason("Service unavailable"))
+    }
+
+    @Test
+    fun truncatedResponsesAreClassified() {
+        assertEquals(PlaybackFailureKind.Truncated, classifyPlaybackFailureReason("Truncated response body"))
+        assertEquals(
+            PlaybackFailureKind.Truncated,
+            classifyPlaybackFailureReason("Unexpected end of stream")
+        )
+        assertEquals(PlaybackFailureKind.Truncated, classifyPlaybackFailureReason("Connection reset by peer"))
+        assertEquals(PlaybackFailureKind.Truncated, classifyPlaybackFailureReason("Premature end of content-length"))
+    }
+
+    @Test
+    fun genericConnectionFailuresStillClassifyAsNetwork() {
+        assertEquals(PlaybackFailureKind.Network, classifyPlaybackFailureReason("Connection refused"))
+        assertEquals(PlaybackFailureKind.Network, classifyPlaybackFailureReason("Unknown host"))
     }
 }

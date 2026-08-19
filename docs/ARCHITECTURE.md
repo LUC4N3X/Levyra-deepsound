@@ -263,20 +263,20 @@ files/diagnostics/artwork-startup-metrics.json
 ## 6. Playback resolver
  
 ### 6.1 Resolution entry
- 
-`PlaybackResolver` receives a `Track` and resolves a playable stream.
- 
+
+`PlaybackResolver` receives a `Track` and resolves a playable stream. Song and native-video requests use the server-driven compatibility policy as the allowlisted strategy order; local strategy health may reorder only strategies already allowed by that policy.
+
 ```text
 resolve(track)
-├── validate cached stream URL
+├── validate local/persistent state where the selected strategy allows it
 ├── join existing in-flight Deferred
-└── create immediate race
-    ├── LevyraExtractor
-    └── InnerTube resolver
+├── read the last-known-good compatibility policy
+├── apply local strategy-health ordering
+└── resolve through the first healthy policy strategy
 ```
- 
-The first valid result wins. Losing work is cancelled when safe.
- 
+
+Individual strategies may still hedge LevyraExtractor and InnerTube work internally. The first valid result wins and losing work is cancelled when safe.
+
 ### 6.2 In-flight deduplication
  
 Concurrent requests for the same media key share one `Deferred`.
@@ -308,20 +308,30 @@ Start     immediate
  
 It remains first even when dynamic client-health ranking is active.
  
-### 6.4 Client health
- 
+### 6.4 Client and strategy health
+
 The resolver tracks per-client:
- 
+
 - successes;
 - consecutive failures;
 - average latency;
 - temporary blocks;
 - last update time.
- 
-Dynamic health can delay unhealthy fallback clients, but it does not demote Android VR.
- 
-### 6.5 Protected URL processing
- 
+
+It also keeps local, privacy-preserving health for the higher-level audio and video strategies. Server policy remains the authority for which strategies are allowed; local health can only reorder that allowlist. Repeated resolution failures open a temporary circuit, while a hard runtime rejection such as `403`, `410`, `429`, `LOGIN_REQUIRED`, or a signature/PO-Token failure can quarantine the strategy immediately. Open strategies remain last-resort fallbacks and become half-open after cooldown.
+
+The URL that reached Media3 is associated in memory with the strategy that produced it, so a later player-side rejection is charged to the correct strategy instead of being mistaken for a successful resolve.
+
+Dynamic client health can delay unhealthy fallback clients, but it does not demote Android VR inside the standard InnerTube client path.
+
+### 6.5 Server-driven compatibility policy
+
+`PlaybackCompatibilityPolicyStore` fetches the bounded JSON policy from the Levyra repository with short timeouts, ETag support, no redirects, monotonic revisions, and a bundled last-resort policy. Unknown future strategy names are ignored rather than executed. The policy may constrain audio/video strategy order, known client overrides, Android Reel client version, expiry, and supported Android version-code range; it cannot provide executable code or arbitrary endpoints.
+
+Expired, malformed, downgraded, or app-incompatible policies do not replace the last usable built-in behavior. Rejected playback can force a policy refresh without putting the fetch on the direct tap-to-play critical path.
+
+### 6.6 Protected URL processing
+
 Selected formats may contain `signatureCipher`, `s`, or `n`.
  
 Processing order:
@@ -626,21 +636,26 @@ Workers use retry policies for eligible network failures and reject incomplete m
 ### Offline source eligibility
 
 A googlevideo `videoplayback` URL without `ratebypass` and without a
-proof-of-origin token serves roughly the first mebibyte and then answers `403`
-for every continuation request. `YoutubeStreamCapability.servesCompleteStream`
-identifies those sources. Playback skips them, the export path refuses to select
-or replay them, and the sequential cache prefetch is limited to sources that can
-stream to the end. Every remaining download runs through bounded parallel range
-requests.
+proof-of-origin token can serve only an initial portion before later requests are
+rejected. `YoutubeStreamCapability.servesCompleteStream` identifies sources that
+can serve the complete object. The effective offline pipeline accepts only
+complete Android Reel-derived sources and rejects legacy MP4 resolver results
+before prefetch or file transfer begins.
 
-When no audio-only MP4 source qualifies, the export reuses the progressive muxed
-MP4 the player already streams and reduces it to its audio track with
-`androidx.media3:media3-transformer` (`OfflineAudioTrackExtractor`). The
-extraction runs on device, keeps the AAC audio, and produces the same `.m4a`
-output the tagger and MediaStore steps expect.
- 
+Reel/PO-Token downloads use a serial resumable transfer instead of aggressive
+parallel fan-out. If a URL is rejected, the exporter stops retrying that exact
+URL, reports it to playback recovery, resolves a fresh source, and resumes only
+when the stored partial-file identity still matches the source video ID, itag,
+content length, and MIME type. A mismatched or identity-less partial is discarded
+instead of being appended to a different representation.
+
+When the selected Reel source is a progressive muxed MP4, the export reduces it
+to its audio track with `androidx.media3:media3-transformer`
+(`OfflineAudioTrackExtractor`). The extraction runs on device, keeps the AAC
+audio, and produces the same `.m4a` output the tagger and MediaStore steps expect.
+
 ---
- 
+
 ## 15. Local persistence
  
 Room stores structured application state including:
