@@ -178,6 +178,7 @@ object LevyraThemes {
 
 private val activePaletteState = mutableStateOf(LevyraThemes.cosmic)
 private val activeFontPresetState = mutableStateOf(LevyraFontPreset.Outfit)
+private val activePureBlackState = mutableStateOf(false)
 
 object LevyraTypographyController {
     fun apply(preset: LevyraFontPreset) {
@@ -204,8 +205,12 @@ object LevyraThemeController {
                 tinted(base, Color(moodAccentStart), Color(moodAccentEnd))
             else -> base
         }
-        val palette = if (pureBlack) asPureBlack(tinted) else tinted
+        val pureBlackActive = pureBlack && !tinted.isLight
+        val palette = if (pureBlackActive) asPureBlack(tinted) else tinted
 
+        if (activePureBlackState.value != pureBlackActive) {
+            activePureBlackState.value = pureBlackActive
+        }
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
         }
@@ -279,8 +284,7 @@ val LevyraMuted: Color
     get() = activePaletteState.value.muted
 
 val LevyraIsPureBlack: Boolean
-    get() = !activePaletteState.value.isLight && activePaletteState.value.black == Color.Black &&
-        activePaletteState.value.ink == Color.Black
+    get() = activePureBlackState.value
 
 val LevyraGlass: Color
     get() = when {
