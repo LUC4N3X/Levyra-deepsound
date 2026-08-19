@@ -22,7 +22,7 @@ data class LocalTrack(
     val title: String = "",
     val artist: String = "",
     val albumArtist: String = "",
-    val album = "",
+    val album: String = "",
     val genre: String = "",
     val year: Int = 0,
     val trackNumber: Int = 0,
