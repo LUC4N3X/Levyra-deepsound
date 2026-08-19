@@ -14,8 +14,8 @@ class LocalLibraryIndex private constructor(
         val album: String
     )
 
-    val albums: List<LocalAlbum> by lazy { buildAlbums() }
-    val artists: List<LocalArtist> by lazy { buildArtists() }
+    val albums: List<LocalAlbum> = buildAlbums()
+    val artists: List<LocalArtist> = buildArtists()
 
     fun search(query: String, limit: Int = DEFAULT_SEARCH_LIMIT): List<LocalTrack> {
         val terms = query.lowercase(Locale.ROOT).split(' ').filter { it.isNotBlank() }
