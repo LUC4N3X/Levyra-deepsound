@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -22,6 +23,19 @@ class ContainerTagReaderTest {
         assertEquals(48_000, tags.sampleRateHz)
         assertEquals("Opus", tags.codec)
         assertEquals(187_000L, tags.durationMs)
+    }
+
+    @Test
+    fun readsOpusMetadataBlockPictureWithoutTruncatingIt() {
+        val file = write(
+            "artwork.opus",
+            opus(durationSeconds = 30, picture = AudioTagBuilders.JPEG_BYTES)
+        )
+
+        val tags = AudioTagReader.read(file)
+
+        assertEquals("image/jpeg", tags.artwork?.mimeType)
+        assertEquals(AudioTagBuilders.JPEG_BYTES.toList(), tags.artwork?.bytes?.toList())
     }
 
     @Test
@@ -45,7 +59,7 @@ class ContainerTagReaderTest {
         assertEquals("image/jpeg", tags.artwork?.mimeType)
     }
 
-    private fun opus(durationSeconds: Int): ByteArray {
+    private fun opus(durationSeconds: Int, picture: ByteArray? = null): ByteArray {
         val serial = 0x11223344
         val head = ByteArrayOutputStream()
         head.write(AudioTagBuilders.ascii("OpusHead"))
@@ -55,7 +69,11 @@ class ContainerTagReaderTest {
         head.write(AudioTagBuilders.leShort(0))
         head.write(byteArrayOf(0))
 
-        val comments = listOf("TITLE=Sundowner", "ARTIST=Jon Hopkins", "ALBUM=Ritual")
+        val comments = mutableListOf("TITLE=Sundowner", "ARTIST=Jon Hopkins", "ALBUM=Ritual")
+        picture?.let { artwork ->
+            val encoded = Base64.getEncoder().encodeToString(AudioTagBuilders.flacPictureBlock(artwork))
+            comments += "METADATA_BLOCK_PICTURE=$encoded"
+        }
         val tags = ByteArrayOutputStream()
         tags.write(AudioTagBuilders.ascii("OpusTags"))
         val vendor = AudioTagBuilders.ascii("levyra-test")
