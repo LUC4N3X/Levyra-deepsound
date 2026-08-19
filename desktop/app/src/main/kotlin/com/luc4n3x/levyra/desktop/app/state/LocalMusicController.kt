@@ -18,6 +18,7 @@ import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchService
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,8 +58,10 @@ class LocalMusicController(
     private val scanner = LocalLibraryScanner(LocalArtworkCache(paths.localArtworkCache).prepare())
     private val internalState = MutableStateFlow(LocalMusicUiState())
     private val watchSignals = Channel<Unit>(Channel.CONFLATED)
+    private val scanSignals = Channel<Unit>(Channel.CONFLATED)
+    private val deepScanPending = AtomicBoolean(false)
 
-    private var scanJob: Job? = null
+    private var scanWorkerJob: Job? = null
     private var watchJob: Job? = null
     private var debounceJob: Job? = null
 
@@ -67,12 +71,19 @@ class LocalMusicController(
         scope.launch {
             store.data.collect { data ->
                 val index = withContext(Dispatchers.Default) { LocalLibraryIndex.of(data.tracks) }
-                internalState.value = internalState.value.copy(
-                    folders = data.folders,
-                    index = index,
-                    lastScanAtMs = data.lastScanAtMs,
-                    unavailableCount = data.tracks.count { !it.available }
-                )
+                internalState.update { state ->
+                    state.copy(
+                        folders = data.folders,
+                        index = index,
+                        lastScanAtMs = data.lastScanAtMs,
+                        unavailableCount = data.tracks.count { !it.available }
+                    )
+                }
+            }
+        }
+        scanWorkerJob = scope.launch {
+            for (signal in scanSignals) {
+                runScan(deep = deepScanPending.getAndSet(false))
             }
         }
         debounceJob = scope.launch {
@@ -102,6 +113,7 @@ class LocalMusicController(
 
     fun removeFolder(folderId: String) {
         store.removeFolder(folderId)
+        rescan(deep = false)
         restartWatcher()
     }
 
@@ -110,36 +122,37 @@ class LocalMusicController(
     }
 
     fun rescan(deep: Boolean) {
-        if (scanJob?.isActive == true) return
+        if (deep) deepScanPending.set(true)
+        scanSignals.trySend(Unit)
+    }
+
+    private suspend fun runScan(deep: Boolean) {
         val folders = store.current.folders
         if (folders.isEmpty()) {
             store.replaceTracks(emptyList())
+            internalState.update { it.copy(scanning = false, progress = LocalScanProgress()) }
             return
         }
-        internalState.value = internalState.value.copy(scanning = true, progress = LocalScanProgress())
-        scanJob = scope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    scanner.scan(
-                        folders = folders,
-                        existing = store.current.tracks,
-                        deep = deep,
-                        onProgress = { progress ->
-                            internalState.value = internalState.value.copy(progress = progress)
-                        }
-                    )
-                }
-                store.replaceTracks(result.tracks)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Exception) {
-                DesktopDiagnostics.background("local library scan", error)
-            } finally {
-                internalState.value = internalState.value.copy(
-                    scanning = false,
-                    progress = LocalScanProgress()
+        internalState.update { it.copy(scanning = true, progress = LocalScanProgress()) }
+        try {
+            val existing = store.current.tracks
+            val result = withContext(Dispatchers.IO) {
+                scanner.scan(
+                    folders = folders,
+                    existing = existing,
+                    deep = deep,
+                    onProgress = { progress ->
+                        internalState.update { it.copy(progress = progress) }
+                    }
                 )
             }
+            store.replaceTracks(result.tracks)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            DesktopDiagnostics.background("local library scan", error)
+        } finally {
+            internalState.update { it.copy(scanning = false, progress = LocalScanProgress()) }
         }
     }
 
@@ -202,8 +215,9 @@ class LocalMusicController(
     fun shutdown() {
         debounceJob?.cancel()
         watchJob?.cancel()
-        scanJob?.cancel()
+        scanWorkerJob?.cancel()
         watchSignals.close()
+        scanSignals.close()
     }
 
     private fun restartWatcher() {
