@@ -35,11 +35,13 @@ class AdaptivePlaybackPolicy(context: Context) {
             !unmetered -> 2
             else -> 3
         }
-        val primeCount = when {
-            videoMode -> 1
-            constrained -> 1
-            else -> 1
-        }
+        val primeCount = queuePrefetchPrimeDepth(
+            resolveCount = resolveCount,
+            videoMode = videoMode,
+            lowRam = lowRam,
+            powerConstrained = constrained,
+            unmetered = unmetered
+        )
         val primeBytes = when {
             videoMode && constrained -> 192L * 1024L
             videoMode -> 384L * 1024L

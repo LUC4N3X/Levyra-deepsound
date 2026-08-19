@@ -52,6 +52,8 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
+import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
@@ -201,6 +203,10 @@ class PlaybackService : MediaLibraryService() {
 
         fun clearPreparedQueueNext() {
             activeService?.clearPreparedQueueNextInternal()
+        }
+
+        fun clearPreparedQueueNextIfStale() {
+            activeService?.clearPreparedQueueNextIfStaleInternal()
         }
 
         fun consumePreparedQueueNext(trackId: String) {
@@ -366,6 +372,7 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onPlayerError(error: PlaybackException) {
                 updatePlaybackProtection(player)
+                discardIncompatiblePlaybackCache(error)
                 scheduleServiceRecovery(error)
             }
 
@@ -891,6 +898,29 @@ class PlaybackService : MediaLibraryService() {
         cancelServicePrefetch()
     }
 
+    private fun clearPreparedQueueNextIfStaleInternal() {
+        val currentIdentity = queueEngine.state.value.currentTrack?.let(::playbackQueueIdentity)
+        val nextIdentity = queueEngine.upcoming(1).firstOrNull()?.let(::playbackQueueIdentity)
+        if (currentIdentity == null || nextIdentity == null) {
+            clearPreparedQueueNextInternal()
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        preparedQueueNext = preparedQueueNext
+            ?.takeIf { it.resolved.streamUrl.isNotBlank() }
+            ?.takeIf { prepared ->
+                queuePrecacheMatchesTarget(
+                    preparedTargetIdentity = prepared.targetIdentity,
+                    requestedTargetIdentity = nextIdentity,
+                    preparedAtElapsedMs = prepared.preparedAtElapsedMs,
+                    nowElapsedMs = now,
+                    maxAgeMs = PREPARED_QUEUE_MAX_AGE_MS
+                )
+            }
+            ?.copy(sourceIdentity = currentIdentity)
+        if (servicePrefetchTargetIdentity != nextIdentity) cancelServicePrefetch()
+    }
+
     private fun consumePreparedQueueNextInternal(trackId: String) {
         val prepared = preparedQueueNext ?: return
         if (!queuePrecacheMatchesTrackId(prepared.targetTrackId, prepared.resolved.id, trackId)) return
@@ -1414,6 +1444,29 @@ class PlaybackService : MediaLibraryService() {
         val positionMs: Long
     )
 
+    private fun discardIncompatiblePlaybackCache(error: PlaybackException) {
+        val reason = playbackFailureReasonOf(error)
+        val plan = playbackRecoveryPlanFor(classifyPlaybackFailureReason(reason))
+        if (!plan.invalidateCache) return
+        val track = queueEngine.state.value.currentTrack ?: return
+        if (isLocalPlaybackTrack(track)) return
+        val videoMode = mediaSession?.player?.currentMediaItem
+            ?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
+        val keys = if (videoMode) {
+            setOf(LevyraPlaybackCacheKey.video(track))
+        } else {
+            setOf(LevyraPlaybackCacheKey.stream(track))
+        }
+        serviceScope.launch(Dispatchers.IO) {
+            val cache = runCatching { LevyraMediaCache.get(this@PlaybackService) }.getOrNull() ?: return@launch
+            keys.forEach { key ->
+                if (removePlaybackCacheResource(cache, key)) {
+                    Timber.w("Discarded unplayable cache entry key=%s", key)
+                }
+            }
+        }
+    }
+
     private fun scheduleServiceRecovery(error: PlaybackException) {
         val plan = serviceRecoveryPlan() ?: return
         serviceRecoveryJob = serviceScope.launch {
@@ -1608,6 +1661,15 @@ class PlaybackService : MediaLibraryService() {
         stopSelfResult(startId)
     }
 
+    private suspend fun hasCompletePlaybackCache(track: Track, videoMode: Boolean): Boolean {
+        if (videoMode || isLocalPlaybackTrack(track) || track.streamUrl.isBlank()) return false
+        return withContext(Dispatchers.IO) {
+            val cache = runCatching { LevyraMediaCache.get(this@PlaybackService) }.getOrNull()
+                ?: return@withContext false
+            isPlaybackResourceFullyCached(cache, LevyraPlaybackCacheKey.stream(track))
+        }
+    }
+
     private suspend fun restoreCurrentPlayback(positionMs: Long, preferFreshResolution: Boolean): Boolean {
         val player = mediaSession?.player ?: return false
         if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) return false
@@ -1624,6 +1686,10 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
             isLocalMediaItem(currentItem) -> currentItem
+            preferFreshResolution && queueTrack != null && hasCompletePlaybackCache(queueTrack, videoMode) -> {
+                Timber.d("Background recovery replayed a complete cache entry")
+                LevyraMediaItemFactory.build(queueTrack, videoMode)
+            }
             preferFreshResolution && queueTrack != null && hasInternetCapableNetwork() -> {
                 val resolved = withContext(Dispatchers.IO) {
                     runCatching { resolveQueueTrack(queueTrack) }

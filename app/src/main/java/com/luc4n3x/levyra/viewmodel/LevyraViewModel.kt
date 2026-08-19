@@ -152,6 +152,7 @@ import com.luc4n3x.levyra.player.AdaptivePlaybackPolicy
 import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackWarmup
+import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
@@ -2024,6 +2025,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         queueEngine.setRepeatMode(mode)
         player.setRepeatOne(mode == RepeatMode.One)
+        refreshQueuePrefetch()
     }
 
     fun toggleVideoMode() {
@@ -2075,6 +2077,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 prefetchAlternateMode(resolved, targetMode)
+                refreshQueuePrefetch()
                 if (_state.value.selectedTab == LevyraTab.Player) {
                     refreshYoutubeEngagement(resolved)
                 }
@@ -6626,7 +6629,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun refreshQueuePrefetch() {
         prefetchJob?.cancel()
-        PlaybackService.clearPreparedQueueNext()
+        PlaybackService.clearPreparedQueueNextIfStale()
         val current = _state.value.currentTrack
         if (current != null && !isLocalPlaybackTrack(current)) prefetchLyricsAround(current)
         if (current != null && !isLocalPlaybackTrack(current)) prefetchNextMotionArtwork(current)
@@ -6762,12 +6765,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
-        PlaybackService.clearPreparedQueueNext()
+        PlaybackService.clearPreparedQueueNextIfStale()
         if (isLocalPlaybackTrack(playable) || !lyricsNetworkProfile().connected) return
-        val generation = queueEngine.state.value.generation
+        val queueSnapshot = queueEngine.state.value
+        val repeatsSingleTrack = queueSnapshot.repeatMode == RepeatMode.One
+        val generation = queueSnapshot.generation
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
             val plan = adaptivePlaybackPolicy.current(_state.value.isVideoMode)
-            val candidates = queueEngine.upcoming(plan.resolveCount)
+            val upcoming = if (repeatsSingleTrack) emptyList() else queueEngine.upcoming(plan.resolveCount)
+            val candidates = upcoming
                 .filterNot { samePlayableTrack(it, playable) }
                 .distinctBy { playbackIdentity(it) }
             if (candidates.isEmpty()) {
@@ -6794,7 +6800,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                 if (_state.value.isVideoMode) {
                                     runCatching { playbackWarmup.primeVideo(resolved) }
                                 } else {
-                                    runCatching { playbackWarmup.prime(resolved, plan.primeBytes) }
+                                    val tierBytes = queuePrefetchPrimeBytes(index, plan.primeBytes)
+                                    if (tierBytes > 0L) {
+                                        runCatching { playbackWarmup.prime(resolved, tierBytes) }
+                                    }
                                     if (index == 0 && !plan.lowRam && !plan.powerConstrained) {
                                         PlaybackService.prepareQueueNext(resolved)
                                     }
