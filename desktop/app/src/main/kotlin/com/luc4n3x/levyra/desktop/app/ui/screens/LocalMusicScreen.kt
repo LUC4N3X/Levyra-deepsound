@@ -47,6 +47,7 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.util.Format
+import com.luc4n3x.levyra.desktop.core.localmusic.LocalMusicIdentity
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalTrack
 import com.luc4n3x.levyra.desktop.core.model.Track
 import kotlinx.coroutines.Dispatchers
@@ -254,7 +255,7 @@ fun LocalMusicScreen(
                 items(visible.size, key = { visible[it].id }) { index ->
                     val local = visible[index]
                     val track = queue.getOrNull(index)?.takeIf {
-                        it.id == com.luc4n3x.levyra.desktop.core.localmusic.LocalMusicIdentity.trackId(local.id)
+                        it.id == LocalMusicIdentity.trackId(local.id)
                     } ?: local.toTrack()
                     TrackRow(
                         track = track,
@@ -322,7 +323,7 @@ private fun LocalMusicToolbar(
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "${state.trackCount} · ${state.index.albums.size} · ${state.index.artists.size}",
+                text = "${state.trackCount} ${strings.filterSongs} · ${state.index.albums.size} ${strings.filterAlbums} · ${state.index.artists.size} ${strings.filterArtists}",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
