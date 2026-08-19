@@ -13,11 +13,17 @@ internal enum class PlaybackFailureKind {
     Forbidden,
     Gone,
     RateLimited,
+    NotFound,
+    RangeNotSatisfiable,
+    ServerError,
+    LoginRequired,
+    ContentRestricted,
     ExpiredUrl,
     Signature,
     Decoder,
     Network,
     Timeout,
+    Truncated,
     Unknown
 }
 
@@ -40,26 +46,41 @@ internal data class PlaybackTraceEvent(
 )
 
 private val playbackHttpStatusPattern = Regex(
-    """\b(?:http(?:\s+status)?|status(?:\s+code)?)\s*[:=]?\s*(403|410|429)\b""",
+    """\b(?:http(?:\s+status)?|status(?:\s+code)?|response\s+code)\s*[:=]?\s*(403|404|410|416|429|500|502|503|504)\b""",
     RegexOption.IGNORE_CASE
 )
+
+private val serverErrorHttpStatuses = setOf(500, 502, 503, 504)
 
 internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
     val value = raw.lowercase(Locale.ROOT)
     val httpStatus = playbackHttpStatusPattern.find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
     return when {
-        httpStatus == 403 ||
-            value.contains("forbidden") ||
+        value.contains("login_required") ||
             value.contains("confirm you're not a bot") ||
             value.contains("confirm you’re not a bot") ||
             value.contains("confirm you are not a bot") ||
             value.contains("sign in to confirm") ||
-            value.contains("accedi per confermare") -> PlaybackFailureKind.Forbidden
+            value.contains("accedi per confermare") -> PlaybackFailureKind.LoginRequired
+        value.contains("age restrict") ||
+            value.contains("age-restrict") -> PlaybackFailureKind.ContentRestricted
+        httpStatus == 403 || value.contains("forbidden") -> PlaybackFailureKind.Forbidden
         httpStatus == 410 || value.contains("gone") -> PlaybackFailureKind.Gone
         httpStatus == 429 || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
+        httpStatus == 404 || value.contains("not found") -> PlaybackFailureKind.NotFound
+        httpStatus == 416 || value.contains("range not satisfiable") -> PlaybackFailureKind.RangeNotSatisfiable
+        httpStatus in serverErrorHttpStatuses ||
+            value.contains("server error") ||
+            value.contains("service unavailable") ||
+            value.contains("bad gateway") ||
+            value.contains("gateway timeout") -> PlaybackFailureKind.ServerError
         value.contains("expired") || value.contains("scadut") || value.contains("stream non valido") -> PlaybackFailureKind.ExpiredUrl
         value.contains("signature") || value.contains("n-transform") || value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.Signature
         value.contains("decoder") || value.contains("codec") || value.contains("format") -> PlaybackFailureKind.Decoder
+        value.contains("truncated") ||
+            value.contains("unexpected end of stream") ||
+            value.contains("connection reset") ||
+            value.contains("premature end") -> PlaybackFailureKind.Truncated
         value.contains("timeout") || value.contains("timed out") || value.contains("lento") -> PlaybackFailureKind.Timeout
         value.contains("network") || value.contains("socket") || value.contains("dns") || value.contains("connection") || value.contains("host") -> PlaybackFailureKind.Network
         else -> PlaybackFailureKind.Unknown
@@ -144,7 +165,13 @@ internal class PlaybackResilienceEngine(context: Context) {
         return when (classifyPlaybackFailureReason(reason)) {
             PlaybackFailureKind.Forbidden,
             PlaybackFailureKind.Gone,
-            PlaybackFailureKind.RateLimited -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+            PlaybackFailureKind.RateLimited,
+            PlaybackFailureKind.LoginRequired -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+            PlaybackFailureKind.ContentRestricted -> PlaybackRecoveryPlan(true, false, false, false, 0L)
+            PlaybackFailureKind.NotFound,
+            PlaybackFailureKind.RangeNotSatisfiable -> PlaybackRecoveryPlan(true, false, false, false, 60_000L)
+            PlaybackFailureKind.ServerError,
+            PlaybackFailureKind.Truncated -> PlaybackRecoveryPlan(true, false, false, false, 30_000L)
             PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, true, false, false, 2L * 60L * 1000L)
             PlaybackFailureKind.Signature -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
             PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)

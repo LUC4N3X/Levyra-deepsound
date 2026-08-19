@@ -48,7 +48,10 @@ internal data class PlaybackCompatibilityPolicy(
     val audioStrategies: List<PlaybackAudioStrategy>,
     val videoStrategies: List<PlaybackVideoStrategy>,
     val androidReelClientVersion: String,
-    val clientOverrides: Map<String, PlaybackClientOverride>
+    val clientOverrides: Map<String, PlaybackClientOverride>,
+    val expiresAt: Long,
+    val minSupportedAppVersion: Int,
+    val maxSupportedAppVersion: Int
 ) {
     companion object {
         const val SCHEMA = 1
@@ -70,7 +73,10 @@ internal data class PlaybackCompatibilityPolicy(
                 PlaybackVideoStrategy.REEL
             ),
             androidReelClientVersion = DEFAULT_ANDROID_REEL_CLIENT_VERSION,
-            clientOverrides = emptyMap()
+            clientOverrides = emptyMap(),
+            expiresAt = 0L,
+            minSupportedAppVersion = 0,
+            maxSupportedAppVersion = 0
         )
     }
 
@@ -91,12 +97,17 @@ internal data class PlaybackCompatibilityPolicy(
             .put("videoStrategy", JSONArray(videoStrategies.map { it.name }))
             .put("androidReelClientVersion", androidReelClientVersion)
             .put("clients", clients)
+            .put("expiresAt", expiresAt)
+            .put("minSupportedAppVersion", minSupportedAppVersion)
+            .put("maxSupportedAppVersion", maxSupportedAppVersion)
             .toString()
     }
 }
 
 internal object PlaybackCompatibilityPolicyParser {
     private val clientVersionPattern = Regex("^[A-Za-z0-9._-]{1,32}$")
+    private const val MIN_PLAUSIBLE_EXPIRES_AT_MS = 946_684_800_000L
+    private const val MAX_PLAUSIBLE_EXPIRES_AT_MS = 4_102_444_800_000L
     private val knownClients = setOf(
         "VISIONOS",
         "ANDROID_VR",
@@ -118,12 +129,12 @@ internal object PlaybackCompatibilityPolicyParser {
             require(revision > 0L)
 
             val audioStrategies = if (root.has("audioStrategy")) {
-                parseEnumArray<PlaybackAudioStrategy>(root.getJSONArray("audioStrategy"))
+                parseEnumArray(root.getJSONArray("audioStrategy"), base.audioStrategies)
             } else {
                 base.audioStrategies
             }
             val videoStrategies = if (root.has("videoStrategy")) {
-                parseEnumArray<PlaybackVideoStrategy>(root.getJSONArray("videoStrategy"))
+                parseEnumArray(root.getJSONArray("videoStrategy"), base.videoStrategies)
             } else {
                 base.videoStrategies
             }
@@ -145,27 +156,55 @@ internal object PlaybackCompatibilityPolicyParser {
             }
             require(knownClients.any { clientOverrides[it]?.enabled != false })
 
+            val expiresAt = if (root.has("expiresAt")) {
+                requiredLong(root, "expiresAt").also {
+                    require(it == 0L || it in MIN_PLAUSIBLE_EXPIRES_AT_MS..MAX_PLAUSIBLE_EXPIRES_AT_MS)
+                }
+            } else {
+                base.expiresAt
+            }
+
+            val minSupportedAppVersion = if (root.has("minSupportedAppVersion")) {
+                requiredInt(root, "minSupportedAppVersion").also { require(it >= 0) }
+            } else {
+                base.minSupportedAppVersion
+            }
+            val maxSupportedAppVersion = if (root.has("maxSupportedAppVersion")) {
+                requiredInt(root, "maxSupportedAppVersion").also { require(it >= 0) }
+            } else {
+                base.maxSupportedAppVersion
+            }
+            require(
+                minSupportedAppVersion == 0 ||
+                    maxSupportedAppVersion == 0 ||
+                    minSupportedAppVersion <= maxSupportedAppVersion
+            )
+
             PlaybackCompatibilityPolicy(
                 schema = schema,
                 revision = revision,
                 audioStrategies = audioStrategies,
                 videoStrategies = videoStrategies,
                 androidReelClientVersion = reelVersion,
-                clientOverrides = clientOverrides
+                clientOverrides = clientOverrides,
+                expiresAt = expiresAt,
+                minSupportedAppVersion = minSupportedAppVersion,
+                maxSupportedAppVersion = maxSupportedAppVersion
             )
         }.getOrNull()
     }
 
-    private inline fun <reified T : Enum<T>> parseEnumArray(array: JSONArray): List<T> {
+    private inline fun <reified T : Enum<T>> parseEnumArray(array: JSONArray, fallback: List<T>): List<T> {
         require(array.length() in 1..16)
         val values = ArrayList<T>(array.length())
         repeat(array.length()) { index ->
             val raw = array.get(index)
             require(raw is String)
-            values += enumValueOf<T>(raw)
+            val parsedValue = runCatching { enumValueOf<T>(raw) }.getOrNull()
+            if (parsedValue != null) values += parsedValue
         }
         require(values.distinct().size == values.size)
-        return values
+        return values.ifEmpty { fallback }
     }
 
     private fun parseClientOverrides(clients: JSONObject): Map<String, PlaybackClientOverride> {
@@ -204,6 +243,12 @@ internal object PlaybackCompatibilityPolicyParser {
         return raw
     }
 
+    private fun requiredInt(value: JSONObject, key: String): Int {
+        val longValue = requiredLong(value, key)
+        require(longValue in Int.MIN_VALUE..Int.MAX_VALUE)
+        return longValue.toInt()
+    }
+
     private fun optionalBoolean(value: JSONObject, key: String): Boolean? {
         if (!value.has(key) || value.isNull(key)) return null
         val raw = value.get(key)
@@ -228,9 +273,21 @@ internal object PlaybackCompatibilityPolicyParser {
     }
 }
 
+internal fun PlaybackCompatibilityPolicy.isExpired(nowMs: Long = System.currentTimeMillis()): Boolean {
+    return expiresAt != 0L && expiresAt <= nowMs
+}
+
+internal fun isAppVersionSupported(policy: PlaybackCompatibilityPolicy, appVersionCode: Int): Boolean {
+    if (appVersionCode == 0) return true
+    val belowMin = policy.minSupportedAppVersion != 0 && appVersionCode < policy.minSupportedAppVersion
+    val aboveMax = policy.maxSupportedAppVersion != 0 && appVersionCode > policy.maxSupportedAppVersion
+    return !belowMin && !aboveMax
+}
+
 internal class PlaybackCompatibilityPolicyStore(
     context: Context,
-    httpClient: OkHttpClient
+    httpClient: OkHttpClient,
+    private val appVersionCode: Int = 0
 ) {
     private val preferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val mutex = Mutex()
@@ -250,10 +307,13 @@ internal class PlaybackCompatibilityPolicyStore(
     @Volatile
     private var checkedAtMs: Long = preferences.getLong(KEY_CHECKED_AT_MS, 0L)
 
-    fun current(): PlaybackCompatibilityPolicy = currentPolicy.get()
+    fun current(): PlaybackCompatibilityPolicy {
+        val policy = currentPolicy.get()
+        return if (policy.isExpired()) bundledPolicy else policy
+    }
 
     fun needsRefresh(nowMs: Long = System.currentTimeMillis()): Boolean {
-        val stale = checkedAtMs <= 0L || nowMs - checkedAtMs >= REFRESH_TTL_MS
+        val stale = currentPolicy.get().isExpired(nowMs) || checkedAtMs <= 0L || nowMs - checkedAtMs >= REFRESH_TTL_MS
         if (!stale) return false
         val lastAttempt = lastAttemptAtMs.get()
         return lastAttempt <= 0L || nowMs - lastAttempt >= FAILED_FETCH_BACKOFF_MS
@@ -319,6 +379,21 @@ internal class PlaybackCompatibilityPolicyStore(
                 Timber.w("Playback compatibility policy payload rejected reason=%s", reason)
                 return false
             }
+            if (candidate.isExpired()) {
+                markCheckedWithoutEtagChange()
+                Timber.w("Playback compatibility policy expired revision=%d", candidate.revision)
+                return false
+            }
+            if (!isAppVersionSupported(candidate, appVersionCode)) {
+                markCheckedWithoutEtagChange()
+                Timber.w(
+                    "Playback compatibility policy app version %d outside supported range [%d,%d]",
+                    appVersionCode,
+                    candidate.minSupportedAppVersion,
+                    candidate.maxSupportedAppVersion
+                )
+                return false
+            }
             if (candidate.revision < before.revision) {
                 markCheckedWithoutEtagChange()
                 Timber.w(
@@ -351,6 +426,8 @@ internal class PlaybackCompatibilityPolicyStore(
         val raw = preferences.getString(KEY_POLICY_JSON, "").orEmpty()
         if (raw.isBlank()) return bundledPolicy
         val cached = PlaybackCompatibilityPolicyParser.parse(raw, bundledPolicy) ?: return bundledPolicy
+        if (cached.isExpired()) return bundledPolicy
+        if (!isAppVersionSupported(cached, appVersionCode)) return bundledPolicy
         return cached.takeIf { it.revision >= bundledPolicy.revision } ?: bundledPolicy
     }
 

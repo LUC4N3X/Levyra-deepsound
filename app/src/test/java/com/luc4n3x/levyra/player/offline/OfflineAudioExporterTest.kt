@@ -7,6 +7,7 @@ import java.nio.file.Path
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class OfflineAudioExporterTest {
@@ -228,5 +229,185 @@ class OfflineAudioExporterTest {
     fun taskKeysProduceStableSafePartialFileNames() {
         assertEquals("track_id_with_spaces", offlineDownloadTaskFileKey(" track id with spaces "))
         assertEquals("unknown", offlineDownloadTaskFileKey(""))
+    }
+
+    @Test
+    fun differingItagProducesADifferentStreamIdentity() {
+        val a = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4&expire=1",
+            "abcdefghijk"
+        )
+        val b = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=251&clen=1000&mime=audio%2Fmp4&expire=1",
+            "abcdefghijk"
+        )
+
+        assertFalse(a == b)
+    }
+
+    @Test
+    fun differingContentLengthProducesADifferentStreamIdentity() {
+        val a = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4&expire=1",
+            "abcdefghijk"
+        )
+        val b = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=2000&mime=audio%2Fmp4&expire=1",
+            "abcdefghijk"
+        )
+
+        assertFalse(a == b)
+    }
+
+    @Test
+    fun aResignedUrlWithTheSameItagClenAndMimeProducesTheSameStreamIdentity() {
+        val original = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4&expire=1000&sig=aaa",
+            "abcdefghijk"
+        )
+        val refreshed = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4&expire=9999&sig=zzz",
+            "abcdefghijk"
+        )
+
+        assertEquals(original, refreshed)
+    }
+
+    @Test
+    fun mismatchedStreamIdentityDiscardsAndRestartsFromZero() {
+        val stored = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4",
+            "abcdefghijk"
+        )
+        val current = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=251&clen=1000&mime=audio%2Fwebm",
+            "abcdefghijk"
+        )
+
+        assertEquals(0L, resumableBytesForStreamIdentity(existingBytes = 4096L, storedIdentity = stored, currentIdentity = current))
+    }
+
+    @Test
+    fun matchingStreamIdentityResumesAtTheExistingByteCount() {
+        val stored = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4&expire=1",
+            "abcdefghijk"
+        )
+        val current = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4&expire=2",
+            "abcdefghijk"
+        )
+
+        assertEquals(4096L, resumableBytesForStreamIdentity(existingBytes = 4096L, storedIdentity = stored, currentIdentity = current))
+    }
+
+    @Test
+    fun unknownMissingSidecarIdentityIsTreatedAsUnsafeAndDiscarded() {
+        val current = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4",
+            "abcdefghijk"
+        )
+
+        assertEquals(
+            0L,
+            resumableBytesForStreamIdentity(existingBytes = 4096L, storedIdentity = null, currentIdentity = current)
+        )
+    }
+
+    @Test
+    fun streamIdentitySurvivesSerializeAndParseRoundTrip() {
+        val identity = offlineStreamIdentity(
+            "https://rr1---sn.googlevideo.com/videoplayback?itag=140&clen=1000&mime=audio%2Fmp4",
+            "abcdefghijk"
+        )
+
+        assertEquals(identity, parseOfflineStreamIdentity(serializeOfflineStreamIdentity(identity)))
+    }
+
+    @Test
+    fun rejectionErrorsAbortRangeRetryAfterTheFirstAttempt() = runBlocking {
+        var attempts = 0
+
+        val error = runCatching {
+            retryRangeDownload(
+                retryCount = 3,
+                retryDelayMs = 10L,
+                sleep = { fail("rejection must not trigger a retry sleep") }
+            ) {
+                attempts++
+                throw IOException("Range audio non supportato: HTTP 403")
+            }
+        }.exceptionOrNull()
+
+        assertEquals(1, attempts)
+        assertTrue(error is IOException)
+        assertTrue(isRejectedOfflinePlaybackSource(error as IOException))
+    }
+
+    @Test
+    fun staleRangeStatusesAbortRetryImmediately() = runBlocking {
+        listOf(404, 416).forEach { status ->
+            var attempts = 0
+            val error = runCatching {
+                retryRangeDownload(
+                    retryCount = 3,
+                    retryDelayMs = 10L,
+                    sleep = { fail("stale source must not trigger retry sleep") }
+                ) {
+                    attempts++
+                    throw IOException("Range audio non supportato: HTTP $status")
+                }
+            }.exceptionOrNull()
+
+            assertEquals(1, attempts)
+            assertTrue(error is IOException)
+            assertTrue(isRejectedOfflinePlaybackSource(error as IOException))
+        }
+    }
+
+    @Test
+    fun transientRangeErrorsConsumeAllConfiguredRetries() = runBlocking {
+        var attempts = 0
+        var sleeps = 0
+
+        val error = runCatching {
+            retryRangeDownload(
+                retryCount = 3,
+                retryDelayMs = 10L,
+                sleep = { sleeps++ }
+            ) {
+                attempts++
+                throw IOException("timeout while reading stream")
+            }
+        }.exceptionOrNull()
+
+        assertEquals(3, attempts)
+        assertEquals(2, sleeps)
+        assertTrue(error is IOException)
+    }
+
+    @Test
+    fun aRejectedRangeFailureIsDetectedAmongOtherFailures() {
+        val range = AudioDownloadRange(0L, 1023L)
+        val failures = listOf(
+            RangeDownloadFailure(range, IOException("timeout while reading stream")),
+            RangeDownloadFailure(range, IOException("Range audio non supportato: HTTP 429"))
+        )
+
+        val rejected = firstRejectedRangeFailure(failures)
+
+        assertTrue(rejected != null)
+        assertTrue(isRejectedOfflinePlaybackSource(rejected as IOException))
+    }
+
+    @Test
+    fun onlyTransientRangeFailuresDoNotShortCircuitTheBatch() {
+        val range = AudioDownloadRange(0L, 1023L)
+        val failures = listOf(
+            RangeDownloadFailure(range, IOException("timeout while reading stream")),
+            RangeDownloadFailure(range, IOException("connection reset"))
+        )
+
+        assertEquals(null, firstRejectedRangeFailure(failures))
     }
 }
