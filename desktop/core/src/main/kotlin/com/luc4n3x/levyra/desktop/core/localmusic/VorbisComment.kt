@@ -34,9 +34,13 @@ internal object VorbisComment {
     }
 
     private fun apply(tags: AudioTags, rawKey: String, rawValue: String): AudioTags {
+        val key = rawKey.uppercase()
+        if (key == "METADATA_BLOCK_PICTURE") {
+            return tags.copy(artwork = tags.artwork ?: decodePicture(rawValue.trim()))
+        }
         val value = TagText.clean(rawValue)
         if (value.isEmpty()) return tags
-        return when (rawKey.uppercase()) {
+        return when (key) {
             "TITLE" -> tags.copy(title = tags.title.ifBlank { value })
             "ARTIST" -> tags.copy(artist = tags.artist.ifBlank { value })
             "ALBUMARTIST", "ALBUM ARTIST" -> tags.copy(albumArtist = tags.albumArtist.ifBlank { value })
@@ -50,9 +54,6 @@ internal object VorbisComment {
             )
             "DISCNUMBER" -> tags.copy(
                 discNumber = if (tags.discNumber > 0) tags.discNumber else TagText.leadingNumber(value)
-            )
-            "METADATA_BLOCK_PICTURE" -> tags.copy(
-                artwork = tags.artwork ?: decodePicture(value)
             )
             else -> tags
         }
