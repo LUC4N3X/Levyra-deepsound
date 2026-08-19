@@ -86,14 +86,16 @@ internal class AppUpdateSpeedTracker {
     private var smoothed: Double? = null
 
     val bytesPerSecond: Double?
-        get() = smoothed
+        @Synchronized get() = smoothed
 
+    @Synchronized
     fun reset() {
         anchorAtMs = null
         anchorBytes = 0L
         smoothed = null
     }
 
+    @Synchronized
     fun sample(downloadedBytes: Long, atElapsedMs: Long): Double? {
         val anchor = anchorAtMs
         if (anchor == null || downloadedBytes < anchorBytes) {

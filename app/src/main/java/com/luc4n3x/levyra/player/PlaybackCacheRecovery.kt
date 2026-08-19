@@ -14,6 +14,20 @@ internal const val PLAYBACK_STREAM_READ_RETRIES = 2
 internal fun playbackCacheIsComplete(contentLength: Long, cachedLength: Long): Boolean =
     contentLength > 0L && cachedLength >= contentLength
 
+internal fun playbackCacheKeysToDiscard(
+    streamKey: String,
+    videoKey: String,
+    videoMode: Boolean,
+    hasSeparateVideoStream: Boolean
+): Set<String> = buildSet {
+    if (videoMode && !hasSeparateVideoStream) {
+        add(videoKey)
+    } else {
+        add(streamKey)
+        if (videoMode) add(videoKey)
+    }
+}
+
 internal fun isRecoverableStreamEnd(error: Throwable): Boolean {
     var current: Throwable? = error
     var depth = 0

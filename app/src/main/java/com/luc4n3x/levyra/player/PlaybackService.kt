@@ -1452,11 +1452,12 @@ class PlaybackService : MediaLibraryService() {
         if (isLocalPlaybackTrack(track)) return
         val videoMode = mediaSession?.player?.currentMediaItem
             ?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
-        val keys = if (videoMode) {
-            setOf(LevyraPlaybackCacheKey.video(track))
-        } else {
-            setOf(LevyraPlaybackCacheKey.stream(track))
-        }
+        val keys = playbackCacheKeysToDiscard(
+            streamKey = LevyraPlaybackCacheKey.stream(track),
+            videoKey = LevyraPlaybackCacheKey.video(track),
+            videoMode = videoMode,
+            hasSeparateVideoStream = track.videoStreamUrl.isNotBlank()
+        )
         serviceScope.launch(Dispatchers.IO) {
             val cache = runCatching { LevyraMediaCache.get(this@PlaybackService) }.getOrNull() ?: return@launch
             keys.forEach { key ->

@@ -33,6 +33,26 @@ class PlaybackCacheRecoveryTest {
     }
 
     @Test
+    fun discardedKeysMatchTheKeysThePlaybackModeActuallyUses() {
+        assertEquals(
+            setOf("stream"),
+            playbackCacheKeysToDiscard("stream", "video", videoMode = false, hasSeparateVideoStream = false)
+        )
+        assertEquals(
+            setOf("stream"),
+            playbackCacheKeysToDiscard("stream", "video", videoMode = false, hasSeparateVideoStream = true)
+        )
+        assertEquals(
+            setOf("video"),
+            playbackCacheKeysToDiscard("stream", "video", videoMode = true, hasSeparateVideoStream = false)
+        )
+        assertEquals(
+            setOf("stream", "video"),
+            playbackCacheKeysToDiscard("stream", "video", videoMode = true, hasSeparateVideoStream = true)
+        )
+    }
+
+    @Test
     fun prematureStreamEndIsResumable() {
         assertTrue(isRecoverableStreamEnd(ProtocolException("unexpected end of stream")))
         assertTrue(isRecoverableStreamEnd(EOFException()))

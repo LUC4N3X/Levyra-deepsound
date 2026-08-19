@@ -29,6 +29,7 @@ import android.app.Activity
 import android.content.ClipData
 import android.media.AudioManager
 import android.content.Intent
+import com.luc4n3x.levyra.update.AppUpdateContract
 import android.net.Uri
 import android.os.PowerManager
 import android.widget.Toast
@@ -1524,7 +1525,20 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         }
                     },
                     onCheckUpdates = { viewModel.checkForUpdates(silent = false) },
-                    onDownloadUpdate = { state.updateInfo?.let { openExternalUrl(toastContext, it.downloadUrl, currentStrings) } },
+                    onDownloadUpdate = {
+                        state.updateInfo?.let { info ->
+                            val target = info.downloadUrl.trim()
+                            if (isLaunchableUpdateTarget(target)) {
+                                openExternalUrl(toastContext, target, currentStrings)
+                            } else {
+                                Toast.makeText(
+                                    toastContext,
+                                    currentStrings.updateLinkUnavailable,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
                     onCreateBackup = { createBackupLauncher.launch("levyra-backup-${System.currentTimeMillis()}.zip") },
                     onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
                     onPauseDownload = viewModel::pauseDownload,
@@ -3813,6 +3827,9 @@ private fun compactReleaseNotes(notes: String): String {
         .joinToString(" · ")
     return clean.ifBlank { "General improvements and bug fixes." }
 }
+
+internal fun isLaunchableUpdateTarget(url: String): Boolean =
+    AppUpdateContract.matches(Intent.ACTION_VIEW, url) || url.startsWith("https://", ignoreCase = true)
 
 private fun openExternalUrl(
     context: android.content.Context,

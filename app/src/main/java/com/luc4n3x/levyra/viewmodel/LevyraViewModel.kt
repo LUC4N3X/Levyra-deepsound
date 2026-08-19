@@ -6798,11 +6798,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             }
                             if (resolved != null && index < plan.primeCount && queueEngine.state.value.generation == generation) {
                                 if (_state.value.isVideoMode) {
-                                    runCatching { playbackWarmup.primeVideo(resolved) }
+                                    runCatchingPreservingCancellation { playbackWarmup.primeVideo(resolved) }
                                 } else {
                                     val tierBytes = queuePrefetchPrimeBytes(index, plan.primeBytes)
                                     if (tierBytes > 0L) {
-                                        runCatching { playbackWarmup.prime(resolved, tierBytes) }
+                                        runCatchingPreservingCancellation {
+                                            playbackWarmup.prime(resolved, tierBytes)
+                                        }
                                     }
                                     if (index == 0 && !plan.lowRam && !plan.powerConstrained) {
                                         PlaybackService.prepareQueueNext(resolved)

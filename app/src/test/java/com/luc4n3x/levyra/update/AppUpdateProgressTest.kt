@@ -1,9 +1,11 @@
 package com.luc4n3x.levyra.update
 
+import com.luc4n3x.levyra.ui.isLaunchableUpdateTarget
 import com.luc4n3x.levyra.ui.update.levyraUpdateNoteLines
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -112,6 +114,17 @@ class AppUpdateProgressTest {
             version = "2.4.1"
         )
         assertEquals(listOf("Faster skips", "cache recovery", "Details"), lines)
+    }
+
+    @Test
+    fun settingsDownloadOnlyLaunchesHttpsOrTheInternalInstallHandoff() {
+        assertTrue(isLaunchableUpdateTarget("https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"))
+        assertTrue(isLaunchableUpdateTarget(AppUpdateContract.INSTALL_URI))
+        assertFalse(isLaunchableUpdateTarget("http://github.com/LUC4N3X/Levyra-deepsound/releases"))
+        assertFalse(isLaunchableUpdateTarget("javascript:alert(1)"))
+        assertFalse(isLaunchableUpdateTarget("file:///data/local/tmp/evil.apk"))
+        assertFalse(isLaunchableUpdateTarget("levyra-internal://updates/other"))
+        assertFalse(isLaunchableUpdateTarget(""))
     }
 
     @Test
