@@ -4,7 +4,7 @@ import java.util.Base64
 
 internal object VorbisComment {
 
-    private const val MAX_COMMENT_BYTES = 4 * 1024 * 1024
+    private const val MAX_COMMENT_BYTES = 9 * 1024 * 1024
 
     fun parse(block: ByteArray, offset: Int = 0): AudioTags {
         var cursor = offset
