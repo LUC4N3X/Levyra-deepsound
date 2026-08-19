@@ -39,6 +39,22 @@ class ContainerTagReaderTest {
     }
 
     @Test
+    fun expandsTheOggHeaderWindowForLargeEmbeddedArtwork() {
+        val largeArtwork = ByteArray(320 * 1024)
+        AudioTagBuilders.JPEG_BYTES.copyInto(largeArtwork)
+        val file = write(
+            "large-artwork.opus",
+            opus(durationSeconds = 45, picture = largeArtwork)
+        )
+
+        val tags = AudioTagReader.read(file)
+
+        assertEquals("image/jpeg", tags.artwork?.mimeType)
+        assertEquals(largeArtwork.size, tags.artwork?.bytes?.size)
+        assertEquals(AudioTagBuilders.JPEG_BYTES.toList(), tags.artwork?.bytes?.take(AudioTagBuilders.JPEG_BYTES.size))
+    }
+
+    @Test
     fun readsMp4ItemListAndSampleDescription() {
         val file = write("song.m4a", mp4())
 
@@ -87,20 +103,59 @@ class ContainerTagReaderTest {
         }
 
         val output = ByteArrayOutputStream()
-        output.write(oggPage(serial, 0, 0L, head.toByteArray()))
-        output.write(oggPage(serial, 1, 0L, tags.toByteArray()))
-        output.write(oggPage(serial, 2, 48_000L * durationSeconds, ByteArray(64)))
+        var sequence = 0
+        output.write(oggPacketPages(serial, sequence, 0L, head.toByteArray()).single())
+        sequence += 1
+        val tagPages = oggPacketPages(serial, sequence, 0L, tags.toByteArray())
+        tagPages.forEach(output::write)
+        sequence += tagPages.size
+        output.write(oggPacketPages(serial, sequence, 48_000L * durationSeconds, ByteArray(64)).single())
         return output.toByteArray()
     }
 
-    private fun oggPage(serial: Int, sequence: Int, granule: Long, payload: ByteArray): ByteArray {
-        val segments = ArrayList<Int>()
-        var remaining = payload.size
-        while (remaining >= 255) {
-            segments.add(255)
-            remaining -= 255
+    private fun oggPacketPages(
+        serial: Int,
+        startSequence: Int,
+        granule: Long,
+        payload: ByteArray
+    ): List<ByteArray> {
+        if (payload.isEmpty()) return listOf(oggPage(serial, startSequence, granule, intArrayOf(0), payload))
+        val pages = ArrayList<ByteArray>()
+        var offset = 0
+        var sequence = startSequence
+        while (offset < payload.size) {
+            val remaining = payload.size - offset
+            val take = minOf(remaining, MAX_OGG_PAGE_PAYLOAD)
+            val isLast = take == remaining
+            val fullSegments = take / 255
+            val tail = take % 255
+            val segmentLengths = ArrayList<Int>(255)
+            repeat(fullSegments) { segmentLengths.add(255) }
+            if (isLast) {
+                if (tail > 0) {
+                    segmentLengths.add(tail)
+                } else if (segmentLengths.size < 255) {
+                    segmentLengths.add(0)
+                }
+            }
+            val pageGranule = if (isLast) granule else 0L
+            val pagePayload = payload.copyOfRange(offset, offset + take)
+            pages += oggPage(serial, sequence, pageGranule, segmentLengths.toIntArray(), pagePayload)
+            offset += take
+            sequence += 1
         }
-        segments.add(remaining)
+        return pages
+    }
+
+    private fun oggPage(
+        serial: Int,
+        sequence: Int,
+        granule: Long,
+        segments: IntArray,
+        payload: ByteArray
+    ): ByteArray {
+        require(segments.size <= 255)
+        require(segments.sum() == payload.size)
         val page = ByteArrayOutputStream()
         page.write(AudioTagBuilders.ascii("OggS"))
         page.write(byteArrayOf(0, 0))
@@ -192,5 +247,9 @@ class ContainerTagReaderTest {
         Files.write(file, bytes)
         file.toFile().deleteOnExit()
         return file
+    }
+
+    private companion object {
+        const val MAX_OGG_PAGE_PAYLOAD = 255 * 255
     }
 }
