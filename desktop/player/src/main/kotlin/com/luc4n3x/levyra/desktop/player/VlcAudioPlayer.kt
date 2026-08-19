@@ -108,11 +108,15 @@ class VlcAudioPlayer private constructor(
 
     override fun startPrepared(): Boolean {
         if (released.get()) return false
-        return runCatching {
-            requestedPaused = false
-            mediaPlayer.controls().setPause(false)
-            true
+        val started = runCatching {
+            mediaPlayer.controls().start()
         }.getOrDefault(false)
+        if (started) {
+            requestedPaused = false
+        } else {
+            loadedUrl = ""
+        }
+        return started
     }
 
     override fun createCompanion(): AudioPlayer? {
