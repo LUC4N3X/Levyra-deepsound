@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-19T13:11:51Z",
+  "generatedAt": "2026-08-19T18:55:52Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -432,7 +432,7 @@
     {
       "song": "Iris",
       "artist": "The Goo Goo Dolls",
-      "album": "Dizzy up the Girl",
+      "album": "Stay with You",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
@@ -560,6 +560,13 @@
       "artist": "Prospa, Cloonee",
       "album": "Free Your Mind",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Dizzy up the Girl",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3191,7 +3198,7 @@
       "song": "Yes! 東京",
       "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, 原因は自分にある。, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
       "album": "Yes! 東京",
-      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/3953062be6004b639f24ab7584be01b0.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/2d69c2de03f74201b47c838c3d108a09.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3430,13 +3437,6 @@
       "artist": "HANRORO",
       "album": "Take-off",
       "url": "https://canvaz.scdn.co/upload/artist/5wVJpXzuKV6Xj7Yhsf2uYx/video/3ad782c9fd444280890f1a41d144962d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "RUDE!",
-      "artist": "Hearts2Hearts",
-      "album": "RUDE!",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
       "scope": "track"
     },
     {
