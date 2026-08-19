@@ -37,10 +37,12 @@ class M3uPlaylistTest {
     fun resolvesRelativeEntriesAgainstThePlaylistDirectory() {
         val base = Path.of("C:/Music/Sets")
         val relative = M3uPlaylist.resolve(M3uEntry(location = "album/01.flac"), base)
+        val windowsRelative = M3uPlaylist.resolve(M3uEntry(location = "album\\02.flac"), base)
         val absolute = M3uPlaylist.resolve(M3uEntry(location = "C:/Music/other.flac"), base)
         val remote = M3uPlaylist.resolve(M3uEntry(location = "https://example.org/a.mp3"), base)
 
         assertEquals(Path.of("C:/Music/Sets/album/01.flac").normalize(), relative)
+        assertEquals(Path.of("C:/Music/Sets/album/02.flac").normalize(), windowsRelative)
         assertEquals(Path.of("C:/Music/other.flac").normalize(), absolute)
         assertNull(remote)
     }
@@ -51,8 +53,8 @@ class M3uPlaylistTest {
         val drivePath = M3uPlaylist.resolve(M3uEntry(location = "D:\\Music\\track.flac"), base)
         val uncPath = M3uPlaylist.resolve(M3uEntry(location = "\\\\server\\share\\track.flac"), base)
 
-        assertEquals(Path.of("D:\\Music\\track.flac").normalize(), drivePath)
-        assertEquals(Path.of("\\\\server\\share\\track.flac").normalize(), uncPath)
+        assertEquals(Path.of("D:/Music/track.flac").normalize(), drivePath)
+        assertEquals(Path.of("//server/share/track.flac").normalize(), uncPath)
     }
 
     @Test
