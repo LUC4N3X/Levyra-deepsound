@@ -267,6 +267,12 @@
     "0fc21ed0": { "sig": "m4(17,6228,INPUT)", "nClass": "CF", "sts": 20682, "aliases": ["23dbd474"] },
     "4dea4dd7": { "sig": "m4(17,6228,INPUT)", "nClass": "CF", "sts": 20682, "aliases": ["3524b9d0"] },
     "c74cbcd6": { "sig": "BW(26,6906,INPUT)", "nClass": "kw", "sts": 20677, "aliases": ["869ac409"] },
-    "b5405e98": { "sig": "m4(17,6228,INPUT)", "nClass": "CF", "sts": 20682, "aliases": ["bf17ac4e"] }
+    "b5405e98": { "sig": "m4(17,6228,INPUT)", "nClass": "CF", "sts": 20682, "aliases": ["bf17ac4e"] },
+    "0d4fa194": { "sig": "ns(17,6228,INPUT)", "nClass": "eC", "sts": 20682, "aliases": ["770f5996"] },
+    "5dfc4ff9": { "sig": "i_(17,6228,INPUT)", "nClass": "CF", "sts": 20682, "aliases": ["3c2fdf6b"] },
+    "b7e47813": { "sig": "ns(17,6228,INPUT)", "nClass": "eC", "sts": 20682, "aliases": ["3afe01bd"] },
+    "ba0148a0": { "sig": "ns(17,6228,INPUT)", "nClass": "eC", "sts": 20682, "aliases": ["f2a2fdc9"] },
+    "4881310a": { "sig": "Af(1,5321,INPUT)", "nClass": "cU", "sts": 20683, "aliases": ["e1b99e73"] },
+    "1003891b": { "sig": "Af(1,5321,INPUT)", "nClass": "cU", "sts": 20683, "aliases": ["78283a48"] }
   }
 }
