@@ -2,115 +2,101 @@
 
 ## Active phase
 
-**Name:** Local intelligence, automatic recovery, templated car UI, and real audio transitions
+**Name:** Desktop owned-music playback and Android surface control
 
-**Roadmap tracks:** Track 1 - Playback critical path; Track 2 - Persistence, offline use, and recovery; Track 3 - Responsive, accessible interface
+**Roadmap tracks:** Track 1 - Playback critical path; Track 2 - Persistence, offline use, and recovery; Track 3 - Responsive, accessible interface; Track 5 - Windows Desktop reliability
 
-**Status:** Implementation and available local checks complete; draft PR pending
-**Scope:** Add local smart playlists, opt-in automatic backups, an Android Auto Car App templated surface, and service-owned real crossfade/AutoMix. Preserve classic Android Auto, the explicit audio/video choice, the persistent queue, existing backup compatibility, user data, Android/Desktop versions, signing, packaging, and release behavior.
+**Status:** Implementation and available local checks complete; pull request open, device checks pending
+**Scope:** Add Desktop audio output-device selection, equalizer presets, a local music library, M3U transfer and a dual-player transition, plus an Android pure black mode and one haptic owner. Preserve the online catalog, downloads, queue, session restore, favorites, playlists, history, settings, localization, Android/Desktop versions, signing, packaging and release behavior.
 
 ## Verified current behavior and rationale
 
-- The Library already exposed recent and most-played smart cards, but recent
-  history was deduplicated before `LibraryCatalog` counted it. Every play count
-  was therefore one and the most-played ordering was not meaningful.
-- Manual backup/restore already produced checksum-verified archives and restored
-  transactionally, but no periodic scheduler, atomic automatic destination, or
-  retention policy existed.
-- `AndroidAutoLibrary` already exposed a rich Media3 browse tree through
-  `PlaybackService`; no Car App templated UI consumed it.
-- ViewModel crossfade faded one player down, changed source, and faded the same
-  player up. The streams never overlapped, so it was not a real crossfade.
+- Desktop played through whatever output libvlc selected; there was no device
+  list, no persisted choice and no recovery when a device disappeared.
+- The Desktop equalizer exposed ten raw sliders with no curated curves and no
+  preamp headroom rule.
+- Desktop had no notion of owned local files: only resolved online streams and
+  its own downloads were playable.
+- Desktop track changes stopped the media player and opened the next stream, so
+  every change paid the resolve and open latency and no overlap was possible.
+- Android shipped an AMOLED palette, but choosing it replaced the accents of the
+  palette the user had selected; there was no orthogonal pure black option.
+- Android haptics were raw `performHapticFeedback` calls in two files with no
+  user control and inconsistent feedback types.
 
 ## Acceptance criteria
 
-- Most-played ranks 30-day local listening time, play count, and recency without
-  persisting resolved stream URLs or introducing a second catalog.
-- Recent, favorites, offline, playlists, downloads, and existing Library actions
-  remain unchanged.
-- Automatic backup is opt-in; frequency, charging constraint, and bounded
-  retention are user configurable.
-- Automatic archives reuse the existing payload/checksum format, exclude audio,
-  finalize atomically in app-private storage, and keep manual export/restore
-  backward compatible.
-- Classic MediaBrowser Android Auto remains available.
-- The templated Car App surface exposes Home, Download, Favorites, Playlists,
-  browse, search, queue, and now-playing using the existing MediaSession and
-  `AndroidAutoLibrary`.
-- Release car hosts are validated; arbitrary hosts are permitted only in debug.
-- Audio-mode crossfade overlaps two real ExoPlayers with equal-power gains.
-- AutoMix adapts bounded duration only from local energy/vocal metadata.
-- Queue generation and identity prevent stale transition publication.
-- Pause, seek, queue mutation, repeat-one, native-video mode, low-RAM pressure,
-  and lifecycle cleanup cancel the secondary player.
-- MediaSession, notification, queue, background service, and Android Auto return
-  to the primary player after handoff.
+- The Desktop output device list, selection, persistence, live apply, fallback
+  to the system default and recovery all work without restarting the app.
+- Equalizer presets never exceed the available headroom and a manual band edit
+  resolves to Custom without a second stored source of truth.
+- The local library indexes owned files, survives moves by marking vanished
+  files unavailable, and never routes a local track through the online
+  resolver.
+- M3U import matches files against the local index first and export round-trips
+  back into the same entries.
+- The dual-player transition advances the queue only when the prepared track
+  still matches the queue, and cancels on seek, pause, manual change, queue
+  mutation and shutdown.
+- Android pure black leaves the normal dark theme untouched and is opt-in.
+- Haptic feedback has one owner and one user preference.
 - No Room migration, account, cookie, private token, telemetry, tracking,
-  permission expansion, version change, Desktop change, merge, tag, or release.
+  permission expansion, version change, merge, tag or release.
 
 ## Work items
 
-- [x] Implement and test deterministic local most-played ranking.
-- [x] Implement DataStore backup settings and backward-compatible serialization.
-- [x] Implement WorkManager scheduling, atomic archive creation, and retention.
-- [x] Add automatic-backup settings UI.
-- [x] Add Car App dependencies, manifest service, platform-token handshake, tabs,
-  browse, search, queue, and now-playing templates.
-- [x] Implement service-owned dual-player equal-power transition and AutoMix
-  planning with independent DSP processors.
-- [x] Remove the old single-player pseudo-crossfade path.
-- [x] Add focused smart-playlist, backup-retention, and AutoMix tests.
-- [x] Run focused unit tests and debug Kotlin compilation.
-- [x] Run the full Android unit suite and record its four out-of-scope failures.
-- [x] Run debug lint and debug assembly.
-- [ ] Run release assembly where local signing/configuration permits.
-- [x] Complete final security and diff review.
-- [x] Prepare the authorized branch and draft pull-request handoff.
-- [ ] Verify Android Auto templates on DHU or a compatible head unit.
-- [ ] Verify real audio overlap, pause/seek/skip, notification, lock screen,
-  repeat, shuffle, EQ/normalization, low-memory cancellation, and native video
-  on a physical device.
+- [x] Desktop audio output device selection with availability watch.
+- [x] Desktop equalizer presets with derived preamp headroom.
+- [x] Desktop local music library: tag reader, scanner, watcher, index, screen.
+- [x] Desktop M3U import and export.
+- [x] Desktop dual-player transition with equal-power crossfade.
+- [x] Android pure black mode and centralized haptics.
+- [x] Focused unit tests for the new pure logic.
+- [x] `desktop/gradlew check` after every Desktop change.
+- [x] `:app:compileDebugKotlin` and `:app:testDebugUnitTest`.
+- [x] `python scripts/ai_quality_gate.py --profile fast` before every commit.
+- [ ] Run `python scripts/ai_quality_gate.py --profile full`.
+- [ ] Run `:app:lintRelease` and release assembly where signing inputs permit.
+- [ ] Verify real libvlc output-device switching, hot-plug and crossfade on
+  Windows with a physical audio device.
+- [ ] Verify a large local library scan, the filesystem watcher and playback of
+  every supported container on Windows.
+- [ ] Verify Android pure black and haptics on a physical device.
 
 ## Current validation evidence
 
-- `:app:compileDebugKotlin`: passed locally with Android SDK configured through
-  `ANDROID_HOME`.
-- Focused `:app:testDebugUnitTest` selectors for smart playlists, automatic
-  backup retention, AutoMix, and Library catalog: passed locally.
-- Full `:app:testDebugUnitTest`: 624 tests executed, with four failures in
-  untouched areas (`AlbumRecommendationPolicyTest`, two
-  `YoutubeLocalDecoderTest` fixtures, and `PlayerExpansionTest`).
-- `:app:lintDebug`: passed locally.
-- `:app:assembleDebug`: passed locally.
-- `:app:lintRelease`: blocked before execution by the repository's required
-  `YOUTUBE_INNERTUBE_API_KEY` gate. The F-Droid release lint path is blocked by
-  the unavailable JDK 21 toolchain.
-- `git diff --check`: passed at the current working state.
-- Physical-device audio, Android Auto host, notification/lock-screen, memory
-  pressure, and automatic WorkManager execution checks remain unverified.
-- The previous Home identity phase recorded implementation completion but its
-  reported final-head CI/device checks were not reclassified as passed here.
+- `desktop/gradlew check` with a JDK 21 toolchain: passed after every Desktop
+  commit.
+- `:app:compileDebugKotlin`: passed locally.
+- `:app:testDebugUnitTest`: 1108 tests, 1 failure
+  (`DirectAudioFallbackContractTest.strictCandidateProbeIsLimitedToNormalAudioFallback`),
+  identical to the pre-change baseline recorded on `main`.
+- `python scripts/ai_quality_gate.py --profile fast`: passed before each commit.
+- `:app:lintRelease` and release assembly: not run.
+- Real libvlc playback, output-device hot-plug, crossfade audio, large library
+  scans, the filesystem watcher, Android device rendering and haptics remain
+  unverified.
 
 ## Preserved behavior
 
-- The explicit song/audio versus native-video selection is unchanged.
-- Static artwork, downloads, favorites, playlists, queue, lyrics, history,
-  settings, localization, onboarding, sessions, and backup restore remain.
-- Direct playback remains the critical path; transition preparation is bounded,
-  cancellable, and disabled on low-RAM devices and native video.
-- Android and Desktop versions, packages, artifacts, signing, tags, and releases
+- Online catalog, search, downloads, queue, session restore, favorites,
+  playlists, lyrics, history, settings, localization and onboarding are
+  unchanged.
+- Direct playback stays the critical path: scanning, watching, tag reading and
+  transition preparation are bounded, cancellable and off the UI thread.
+- Android and Desktop versions, packages, artifacts, signing, tags and releases
   remain independent and unchanged.
 
 ## Rollback boundary
 
-Revert the smart-playlist projection, automatic-backup settings/worker, Car App
-surface/dependencies, dual-player transition planner/service integration, tests,
-attribution, and planning documentation as one Android-only change. No Room
-migration or durable data rollback is required; unknown DataStore keys are
-ignored by older builds and existing backup schema readers remain compatible.
+Revert the Desktop `localmusic` package, the output-device and transition code
+in the player module and playback controller, the Desktop settings additions,
+the Android pure black and haptics change, tests and this planning file as one
+change. Local data is additive: `localmusic.json` is a new file and unknown
+preference keys are ignored by older builds.
 
 ## Update rule
 
-Record CI, review, DHU, physical-device, merge, and release status only from
-direct evidence. Replace this phase when a new reviewable task begins instead
-of accumulating unrelated work.
+Record CI, review, physical-device, merge and release status only from direct
+evidence. Replace this phase when a new reviewable task begins instead of
+accumulating unrelated work.
