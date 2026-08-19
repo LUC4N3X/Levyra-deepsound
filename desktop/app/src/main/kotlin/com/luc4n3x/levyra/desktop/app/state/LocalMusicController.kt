@@ -12,9 +12,11 @@ import com.luc4n3x.levyra.desktop.core.localmusic.LocalScanProgress
 import com.luc4n3x.levyra.desktop.core.localmusic.M3uPlaylist
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchService
 import java.util.concurrent.TimeUnit
@@ -202,14 +204,35 @@ class LocalMusicController(
 
     suspend fun writePlaylistFile(file: Path, name: String, tracks: List<Track>): Boolean =
         withContext(Dispatchers.IO) {
-            val target = if (file.toString().substringAfterLast('.', "").isBlank()) {
-                file.resolveSibling(file.fileName.toString() + "." + M3uPlaylist.EXTENSION)
+            val fileName = file.fileName?.toString().orEmpty()
+            if (fileName.isBlank()) return@withContext false
+            val target = if (fileName.substringAfterLast('.', "").isBlank()) {
+                file.resolveSibling("$fileName.${M3uPlaylist.EXTENSION}")
             } else {
                 file
             }
-            runCatching {
-                Files.writeString(target, M3uPlaylist.render(name, tracks))
-            }.isSuccess
+            var temporary: Path? = null
+            try {
+                val parent = target.toAbsolutePath().parent ?: return@withContext false
+                Files.createDirectories(parent)
+                temporary = Files.createTempFile(parent, ".${target.fileName}.", ".tmp")
+                Files.writeString(temporary, M3uPlaylist.render(name, tracks))
+                try {
+                    Files.move(
+                        temporary,
+                        target,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE
+                    )
+                } catch (_: AtomicMoveNotSupportedException) {
+                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
+                }
+                true
+            } catch (_: Exception) {
+                false
+            } finally {
+                temporary?.let { runCatching { Files.deleteIfExists(it) } }
+            }
         }
 
     fun shutdown() {
