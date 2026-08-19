@@ -57,11 +57,11 @@ import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.DiscoverScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.HomeScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.LibraryScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.LocalMusicScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.NowPlayingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.OnboardingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SearchScreen
-import com.luc4n3x.levyra.desktop.app.ui.screens.LocalMusicScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
 import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
@@ -72,10 +72,13 @@ import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
 import java.awt.Desktop
+import java.io.File
 import java.nio.file.Path
 import javax.swing.JFileChooser
+import javax.swing.JOptionPane
 import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -95,12 +98,18 @@ fun LevyraRoot(model: LevyraAppModel) {
     val search by model.catalogController.search.collectAsState()
     val collection by model.catalogController.collection.collectAsState()
     val discover by model.discoverController.discover.collectAsState()
-    val localSearchResults = remember(localMusic.index, search.query) {
-        if (search.query.length < 2) {
-            emptyList()
+    var localSearchResults by remember { mutableStateOf<List<Track>>(emptyList()) }
+
+    LaunchedEffect(localMusic.index, search.query) {
+        val query = search.query
+        if (query.length < 2) {
+            localSearchResults = emptyList()
         } else {
-            localMusic.index.search(search.query, limit = LOCAL_SEARCH_PREVIEW_LIMIT)
-                .map { it.toTrack() }
+            delay(LOCAL_SEARCH_DEBOUNCE_MS)
+            localSearchResults = withContext(Dispatchers.Default) {
+                localMusic.index.search(query, limit = LOCAL_SEARCH_PREVIEW_LIMIT)
+                    .map { it.toTrack() }
+            }
         }
     }
 
@@ -398,7 +407,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                         scope.launch {
                                                             val selected = choosePlaylistFile(
                                                                 save = true,
-                                                                suggestedName = target.name
+                                                                suggestedName = target.name,
+                                                                overwriteTitle = strings.playlistExport,
+                                                                overwriteAction = strings.save
                                                             )
                                                             if (selected.isBlank()) return@launch
                                                             val written = model.localMusicController
@@ -672,22 +683,48 @@ private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
     sleepRemainingMs = 0L
 )
 
-private suspend fun choosePlaylistFile(save: Boolean, suggestedName: String): String =
-    withContext(Dispatchers.Swing) {
-        val chooser = JFileChooser()
-        chooser.fileSelectionMode = JFileChooser.FILES_ONLY
-        chooser.isMultiSelectionEnabled = false
-        chooser.fileFilter = FileNameExtensionFilter("M3U", "m3u", "m3u8")
-        if (suggestedName.isNotBlank()) {
-            chooser.selectedFile = java.io.File(suggestedName)
-        }
-        val result = if (save) chooser.showSaveDialog(null) else chooser.showOpenDialog(null)
-        if (result == JFileChooser.APPROVE_OPTION) {
-            chooser.selectedFile?.absolutePath.orEmpty()
-        } else {
-            ""
+private suspend fun choosePlaylistFile(
+    save: Boolean,
+    suggestedName: String,
+    overwriteTitle: String = "",
+    overwriteAction: String = ""
+): String = withContext(Dispatchers.Swing) {
+    val chooser = object : JFileChooser() {
+        override fun approveSelection() {
+            if (dialogType == SAVE_DIALOG) {
+                val selected = selectedFile ?: return
+                val target = playlistTarget(selected)
+                selectedFile = target
+                if (target.exists()) {
+                    val result = JOptionPane.showConfirmDialog(
+                        this,
+                        "${overwriteAction.ifBlank { approveButtonText.orEmpty() }} ${target.name}?",
+                        overwriteTitle.ifBlank { dialogTitle.orEmpty() },
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                    )
+                    if (result != JOptionPane.YES_OPTION) return
+                }
+            }
+            super.approveSelection()
         }
     }
+    chooser.fileSelectionMode = JFileChooser.FILES_ONLY
+    chooser.isMultiSelectionEnabled = false
+    chooser.fileFilter = FileNameExtensionFilter("M3U", "m3u", "m3u8")
+    if (suggestedName.isNotBlank()) {
+        chooser.selectedFile = File(suggestedName)
+    }
+    val result = if (save) chooser.showSaveDialog(null) else chooser.showOpenDialog(null)
+    if (result == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile?.absolutePath.orEmpty()
+    } else {
+        ""
+    }
+}
+
+private fun playlistTarget(file: File): File =
+    if (file.extension.isBlank()) File(file.parentFile, "${file.name}.m3u8") else file
 
 private suspend fun chooseDirectory(): String = withContext(Dispatchers.Swing) {
     val chooser = JFileChooser()
@@ -717,10 +754,11 @@ private suspend fun verifyVlc(
 private suspend fun openDirectory(path: String) = withContext(Dispatchers.IO) {
     runCatching {
         if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().open(java.io.File(path))
+            Desktop.getDesktop().open(File(path))
         }
     }
     Unit
 }
 
 private const val LOCAL_SEARCH_PREVIEW_LIMIT = 6
+private const val LOCAL_SEARCH_DEBOUNCE_MS = 140L
