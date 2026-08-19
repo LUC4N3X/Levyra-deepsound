@@ -21,17 +21,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -41,7 +40,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -50,6 +48,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
@@ -60,8 +59,11 @@ import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.ui.update.LevyraUpdateBanner
+import com.luc4n3x.levyra.ui.update.LevyraUpdatePhase
 import com.luc4n3x.levyra.update.AppUpdateContract
 import com.luc4n3x.levyra.update.AppUpdateInstaller
+import com.luc4n3x.levyra.update.AppUpdateSpeedTracker
 import com.luc4n3x.levyra.update.PreparedAppUpdate
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
@@ -74,13 +76,25 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+private fun resolveUpdateBannerPhase(
+    downloadPhase: LevyraUpdatePhase,
+    updateInfo: AppUpdateInfo?,
+    showUpdatePrompt: Boolean
+): LevyraUpdatePhase = when {
+    downloadPhase !is LevyraUpdatePhase.Idle -> downloadPhase
+    showUpdatePrompt && updateInfo != null && updateInfo.isNewer -> LevyraUpdatePhase.Available(updateInfo)
+    else -> LevyraUpdatePhase.Idle
+}
+
 private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
     val isPlaying: Boolean,
     val showSettings: Boolean,
     val showOnboarding: Boolean,
     val languageCode: String,
-    val recentListenCount: Int
+    val recentListenCount: Int,
+    val updateInfo: AppUpdateInfo?,
+    val showUpdatePrompt: Boolean
 )
 
 private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
@@ -89,23 +103,19 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
     showSettings = showSettings,
     showOnboarding = showOnboarding,
     languageCode = languageCode,
-    recentListenCount = recentListens.size
+    recentListenCount = recentListens.size,
+    updateInfo = updateInfo,
+    showUpdatePrompt = showUpdatePrompt
 )
-
-private sealed interface InAppUpdateUiState {
-    data object Idle : InAppUpdateUiState
-    data class Downloading(
-        val versionName: String,
-        val progress: Int?
-    ) : InAppUpdateUiState
-}
 
 class MainActivity : ComponentActivity() {
     private val pipMode = mutableStateOf(false)
     private val viewModel: LevyraViewModel by viewModels()
-    private val updateUiState = mutableStateOf<InAppUpdateUiState>(InAppUpdateUiState.Idle)
+    private val updatePhase = mutableStateOf<LevyraUpdatePhase>(LevyraUpdatePhase.Idle)
+    private val updateSpeedTracker = AppUpdateSpeedTracker()
     private val updateInstaller by lazy { AppUpdateInstaller(applicationContext) }
     private var updateJob: Job? = null
+    private var updateRequestToken = 0L
     private var pendingUpdate: PreparedAppUpdate? = null
 
     private val unknownSourcesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -185,11 +195,34 @@ class MainActivity : ComponentActivity() {
                         listenedPlaybackMs = listenedPlaybackMs
                     )
                 )
-                InAppUpdateDialog(
-                    state = updateUiState.value,
-                    strings = LevyraStrings.forCode(activityUiState.languageCode),
-                    onCancel = ::cancelInAppUpdate
-                )
+                if (BuildConfig.UPSTREAM_UPDATES_ENABLED && !pipMode.value) {
+                    val bannerPhase = resolveUpdateBannerPhase(
+                        downloadPhase = updatePhase.value,
+                        updateInfo = activityUiState.updateInfo,
+                        showUpdatePrompt = activityUiState.showUpdatePrompt
+                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                        AnimatedVisibility(
+                            visible = bannerPhase !is LevyraUpdatePhase.Idle,
+                            enter = fadeIn() + slideInVertically { it / 2 },
+                            exit = fadeOut() + slideOutVertically { it / 2 }
+                        ) {
+                            LevyraUpdateBanner(
+                                phase = bannerPhase,
+                                strings = LevyraStrings.forCode(activityUiState.languageCode),
+                                onUpdate = {
+                                    activityUiState.updateInfo?.let(::startUpdateFromBanner)
+                                },
+                                onCancel = ::cancelInAppUpdate,
+                                onRetry = ::retryInAppUpdate,
+                                onDismiss = ::dismissUpdateBanner,
+                                modifier = Modifier
+                                    .navigationBarsPadding()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -243,25 +276,38 @@ class MainActivity : ComponentActivity() {
 
     private fun beginInAppUpdate() {
         if (!BuildConfig.UPSTREAM_UPDATES_ENABLED || updateJob?.isActive == true) return
+        val fallbackVersion = viewModel.state.value.updateInfo?.latestVersionName.orEmpty()
+        updateSpeedTracker.reset()
+        val requestToken = ++updateRequestToken
+        updatePhase.value = LevyraUpdatePhase.Preparing(fallbackVersion)
+        val startedAtMs = SystemClock.elapsedRealtime()
         lateinit var job: Job
         job = lifecycleScope.launch {
             try {
-                val prepared = updateInstaller.prepareLatestUpdate { versionName, progress ->
+                val prepared = updateInstaller.prepareLatestUpdate { versionName, downloaded, total ->
+                    val nowMs = SystemClock.elapsedRealtime()
+                    val speed = updateSpeedTracker.sample(downloaded, nowMs)
                     runOnUiThread {
-                        updateUiState.value = InAppUpdateUiState.Downloading(versionName, progress)
+                        if (updateRequestToken != requestToken) return@runOnUiThread
+                        updatePhase.value = LevyraUpdatePhase.Downloading(
+                            versionName = versionName,
+                            downloadedBytes = downloaded,
+                            totalBytes = total,
+                            bytesPerSecond = speed,
+                            elapsedMs = nowMs - startedAtMs
+                        )
                     }
                 }
                 pendingUpdate = prepared
-                updateUiState.value = InAppUpdateUiState.Idle
+                updatePhase.value = LevyraUpdatePhase.Ready(prepared.versionName)
                 requestPackageInstall(prepared)
             } catch (cancelled: CancellationException) {
-                updateUiState.value = InAppUpdateUiState.Idle
+                updatePhase.value = LevyraUpdatePhase.Idle
                 throw cancelled
             } catch (error: Throwable) {
                 Timber.w(error, "In-app update failed")
                 pendingUpdate = null
-                updateUiState.value = InAppUpdateUiState.Idle
-                showUpdateFailure()
+                updatePhase.value = LevyraUpdatePhase.Failed(fallbackVersion)
             } finally {
                 if (updateJob === job) updateJob = null
             }
@@ -272,14 +318,56 @@ class MainActivity : ComponentActivity() {
     private fun cancelInAppUpdate() {
         val job = updateJob
         updateJob = null
+        updateRequestToken++
         pendingUpdate = null
-        updateUiState.value = InAppUpdateUiState.Idle
+        updateSpeedTracker.reset()
+        updatePhase.value = LevyraUpdatePhase.Idle
         job?.cancel()
+    }
+
+    private fun startUpdateFromBanner(update: AppUpdateInfo) {
+        if (AppUpdateContract.matches(Intent.ACTION_VIEW, update.downloadUrl)) {
+            beginInAppUpdate()
+            return
+        }
+        val target = update.downloadUrl.trim().takeIf { it.startsWith("https://", ignoreCase = true) }
+        if (target == null) {
+            showUpdateFailure()
+            return
+        }
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target))) }
+            .onFailure {
+                Timber.w(it, "Unable to open update page")
+                showUpdateFailure()
+            }
+    }
+
+    private fun dismissUpdateBanner() {
+        when (updatePhase.value) {
+            is LevyraUpdatePhase.Idle,
+            is LevyraUpdatePhase.Available -> viewModel.dismissUpdatePrompt()
+            else -> {
+                pendingUpdate = null
+                updatePhase.value = LevyraUpdatePhase.Idle
+                viewModel.dismissUpdatePrompt()
+            }
+        }
+    }
+
+    private fun retryInAppUpdate() {
+        val prepared = pendingUpdate
+        if (prepared != null) {
+            requestPackageInstall(prepared)
+            return
+        }
+        updatePhase.value = LevyraUpdatePhase.Idle
+        beginInAppUpdate()
     }
 
     private fun requestPackageInstall(prepared: PreparedAppUpdate) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
             pendingUpdate = prepared
+            updatePhase.value = LevyraUpdatePhase.PermissionRequired(prepared.versionName)
             val settingsIntent = Intent(
                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                 Uri.parse("package:$packageName")
@@ -288,7 +376,7 @@ class MainActivity : ComponentActivity() {
                 .onFailure {
                     Timber.w(it, "Unable to open unknown-source settings")
                     pendingUpdate = null
-                    showUpdateFailure()
+                    updatePhase.value = LevyraUpdatePhase.Failed(prepared.versionName)
                 }
             return
         }
@@ -297,8 +385,9 @@ class MainActivity : ComponentActivity() {
 
     private fun resumePendingUpdateInstall() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
-            pendingUpdate = null
-            showUpdateFailure()
+            updatePhase.value = pendingUpdate
+                ?.let { LevyraUpdatePhase.PermissionRequired(it.versionName) }
+                ?: LevyraUpdatePhase.Idle
             return
         }
         val prepared = pendingUpdate
@@ -315,18 +404,20 @@ class MainActivity : ComponentActivity() {
         }.getOrElse {
             Timber.w(it, "Unable to expose update APK")
             pendingUpdate = null
-            showUpdateFailure()
+            updatePhase.value = LevyraUpdatePhase.Failed(prepared.versionName)
             return
         }
+        updatePhase.value = LevyraUpdatePhase.Installing(prepared.versionName)
         val installIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
             clipData = ClipData.newRawUri("Levyra update", apkUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         runCatching { startActivity(installIntent) }
+            .onSuccess { updatePhase.value = LevyraUpdatePhase.Idle }
             .onFailure {
                 Timber.w(it, "Unable to launch Android package installer")
-                showUpdateFailure()
+                updatePhase.value = LevyraUpdatePhase.Failed(prepared.versionName)
             }
         pendingUpdate = null
     }
@@ -398,40 +489,4 @@ class MainActivity : ComponentActivity() {
     private fun configureFastImageLoader() {
         LevyraArtworkCache.configure(this)
     }
-}
-
-@Composable
-private fun InAppUpdateDialog(
-    state: InAppUpdateUiState,
-    strings: LevyraStrings,
-    onCancel: () -> Unit
-) {
-    val downloading = state as? InAppUpdateUiState.Downloading ?: return
-    AlertDialog(
-        onDismissRequest = {},
-        confirmButton = {
-            TextButton(onClick = onCancel) {
-                Text(strings.cancel)
-            }
-        },
-        title = {
-            Text(
-                text = downloading.versionName.ifBlank { strings.updates }.let { version ->
-                    if (version == strings.updates) version else "LEVYRA $version"
-                },
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                CircularProgressIndicator()
-                Text(
-                    text = downloading.progress?.let { "${strings.update} · $it%" } ?: strings.updateDescription
-                )
-            }
-        }
-    )
 }

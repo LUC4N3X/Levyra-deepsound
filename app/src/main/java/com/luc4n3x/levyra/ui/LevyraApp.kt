@@ -29,6 +29,7 @@ import android.app.Activity
 import android.content.ClipData
 import android.media.AudioManager
 import android.content.Intent
+import com.luc4n3x.levyra.update.AppUpdateContract
 import android.net.Uri
 import android.os.PowerManager
 import android.widget.Toast
@@ -1183,7 +1184,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showUpdatePrompt || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.sharedMediaPreview != null) {
@@ -1524,7 +1525,20 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         }
                     },
                     onCheckUpdates = { viewModel.checkForUpdates(silent = false) },
-                    onDownloadUpdate = { state.updateInfo?.let { openExternalUrl(toastContext, it.downloadUrl, currentStrings) } },
+                    onDownloadUpdate = {
+                        state.updateInfo?.let { info ->
+                            val target = info.downloadUrl.trim()
+                            if (isLaunchableUpdateTarget(target)) {
+                                openExternalUrl(toastContext, target, currentStrings)
+                            } else {
+                                Toast.makeText(
+                                    toastContext,
+                                    currentStrings.updateLinkUnavailable,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
                     onCreateBackup = { createBackupLauncher.launch("levyra-backup-${System.currentTimeMillis()}.zip") },
                     onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
                     onPauseDownload = viewModel::pauseDownload,
@@ -1579,19 +1593,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onGapless = viewModel::setGaplessEnabled,
                     onClose = viewModel::closeAudioQualityPanel
                 )
-            }
-
-            AnimatedVisibility(visible = state.showUpdatePrompt && state.updateInfo?.isNewer == true, enter = overlayEnter, exit = overlayExit) {
-                state.updateInfo?.let { update ->
-                    UpdateAvailableOverlay(
-                        update = update,
-                        onDownload = {
-                            openExternalUrl(toastContext, update.downloadUrl, currentStrings)
-                            viewModel.dismissUpdatePrompt()
-                        },
-                        onLater = viewModel::dismissUpdatePrompt
-                    )
-                }
             }
 
             AnimatedVisibility(visible = state.showQueue, enter = overlayEnter, exit = overlayExit) {
@@ -3817,216 +3818,6 @@ private fun ReleaseRadarRow(
     }
 }
 
-@Composable
-private fun UpdateAvailableOverlay(
-    update: AppUpdateInfo,
-    onDownload: () -> Unit,
-    onLater: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val notes = remember(update.releaseNotes, update.latestVersionName) {
-        cleanedUpdateNotes(update.releaseNotes, update.latestVersionName)
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.86f))
-            .consumeOverlayTouches()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            color = Color(0xFF0A1020),
-            shape = RoundedCornerShape(30.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.88f)
-                .shadow(28.dp, RoundedCornerShape(30.dp), clip = false)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(116.dp)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        LevyraCyan.copy(alpha = 0.72f),
-                                        Color(0xFF6B7CFF).copy(alpha = 0.62f),
-                                        LevyraViolet.copy(alpha = 0.72f)
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(170.dp)
-                                .offset(x = (-72).dp, y = (-48).dp)
-                                .blur(42.dp)
-                                .background(Color.White.copy(alpha = 0.16f), CircleShape)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(150.dp)
-                                .offset(x = 96.dp, y = 44.dp)
-                                .blur(48.dp)
-                                .background(LevyraCyan.copy(alpha = 0.22f), CircleShape)
-                        )
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("LEVYRA", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
-                            Surface(color = Color.Black.copy(alpha = 0.28f), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
-                                Text(strings.newUpdate, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), letterSpacing = 1.4.sp)
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(
-                                    text = "${strings.versionLabel} ${update.latestVersionName}",
-                                    color = Color.White,
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Black,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Surface(color = LevyraCyan.copy(alpha = 0.16f), shape = RoundedCornerShape(999.dp), border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.42f))) {
-                                    Text("APK", color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), letterSpacing = 0.8.sp)
-                                }
-                            }
-                            Text(
-                                text = update.releaseTitle.ifBlank { strings.updateDescription },
-                                color = LevyraMuted,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                lineHeight = 17.sp,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Surface(
-                            color = Color.White.copy(alpha = 0.045f),
-                            shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(modifier = Modifier.size(8.dp).background(LevyraCyan, CircleShape))
-                                Text(strings.updateDescription, color = LevyraText.copy(alpha = 0.86f), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(strings.whatsNew, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                            if (notes.isEmpty()) {
-                                UpdateNoteCard(strings.updateDescription)
-                            } else {
-                                notes.forEach { note ->
-                                    UpdateNoteCard(note)
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                color = Color.White.copy(alpha = 0.04f),
-                                shape = RoundedCornerShape(17.dp),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)),
-                                modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onLater)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(strings.later, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            Surface(
-                                color = LevyraCyan,
-                                shape = RoundedCornerShape(17.dp),
-                                modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onDownload)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(strings.update, color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun UpdateNoteCard(note: String) {
-    Surface(
-        color = Color.White.copy(alpha = 0.055f),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(modifier = Modifier.size(6.dp).background(LevyraCyan, CircleShape))
-            Text(note, color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-private fun cleanedUpdateNotes(notes: String, version: String): List<String> {
-    val versionKey = version.trim().lowercase()
-    return notes
-        .lineSequence()
-        .map { it.trim() }
-        .map { raw ->
-            raw
-                .replace(Regex("^#{1,6}\\s*"), "")
-                .replace(Regex("^[-*•]+\\s*"), "")
-                .replace(Regex("\\*\\*([^*]+)\\*\\*")) { match -> match.groupValues[1] }
-                .replace(Regex("`([^`]+)`")) { match -> match.groupValues[1] }
-                .replace(Regex("\\[([^\\]]+)]\\(([^)]+)\\)")) { match -> match.groupValues[1] }
-                .replace("__", "")
-                .replace("**", "")
-                .trim()
-        }
-        .filter { line -> line.isNotBlank() && line != "---" && line.any { it.isLetterOrDigit() } }
-        .filterNot { line ->
-            val lower = line.lowercase()
-            lower == "novità" ||
-                lower == "changelog" ||
-                lower.startsWith("levyra v$versionKey") ||
-                lower.startsWith("levyra $versionKey") ||
-                lower.startsWith("versione $versionKey")
-        }
-        .distinct()
-        .take(12)
-        .toList()
-}
-
 private fun compactReleaseNotes(notes: String): String {
     val clean = notes
         .lineSequence()
@@ -4036,6 +3827,9 @@ private fun compactReleaseNotes(notes: String): String {
         .joinToString(" · ")
     return clean.ifBlank { "General improvements and bug fixes." }
 }
+
+internal fun isLaunchableUpdateTarget(url: String): Boolean =
+    AppUpdateContract.matches(Intent.ACTION_VIEW, url) || url.startsWith("https://", ignoreCase = true)
 
 private fun openExternalUrl(
     context: android.content.Context,

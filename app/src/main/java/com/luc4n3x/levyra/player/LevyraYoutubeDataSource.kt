@@ -1,18 +1,25 @@
 package com.luc4n3x.levyra.player
 
 import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+import timber.log.Timber
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicLong
 
 @UnstableApi
 class LevyraYoutubeDataSource private constructor(
     private val delegate: DataSource
 ) : DataSource {
+    private var openedSpec: DataSpec? = null
+    private var bytesReadSinceOpen = 0L
+    private var readRetries = 0
+
     companion object {
         private val requestNumber = AtomicLong(1L)
     }
@@ -30,6 +37,13 @@ class LevyraYoutubeDataSource private constructor(
     }
 
     override fun open(dataSpec: DataSpec): Long {
+        openedSpec = dataSpec
+        bytesReadSinceOpen = 0L
+        readRetries = 0
+        return openDelegate(dataSpec)
+    }
+
+    private fun openDelegate(dataSpec: DataSpec): Long {
         val originalUrl = dataSpec.uri.toString()
         if (!isYoutubeMediaUrl(dataSpec.uri)) return delegate.open(dataSpec)
         val adaptedUri = appendRequestNumber(dataSpec.uri)
@@ -46,7 +60,40 @@ class LevyraYoutubeDataSource private constructor(
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-        return delegate.read(buffer, offset, length)
+        while (true) {
+            try {
+                val read = delegate.read(buffer, offset, length)
+                if (read > 0) bytesReadSinceOpen += read
+                return read
+            } catch (error: IOException) {
+                if (!isRecoverableStreamEnd(error) || !resumeAfterStreamEnd()) throw error
+            }
+        }
+    }
+
+    private fun resumeAfterStreamEnd(): Boolean {
+        val original = openedSpec ?: return false
+        if (readRetries >= PLAYBACK_STREAM_READ_RETRIES) return false
+        if (Thread.currentThread().isInterrupted) return false
+        val remaining = if (original.length == C.LENGTH_UNSET.toLong()) {
+            C.LENGTH_UNSET.toLong()
+        } else {
+            (original.length - bytesReadSinceOpen).coerceAtLeast(0L)
+        }
+        if (remaining == 0L) return false
+        readRetries++
+        val resumeSpec = original.buildUpon()
+            .setPosition(original.position + bytesReadSinceOpen)
+            .setLength(remaining)
+            .build()
+        runCatching { delegate.close() }
+        return try {
+            openDelegate(resumeSpec)
+            true
+        } catch (retryFailure: IOException) {
+            Timber.d(retryFailure, "stream resume failed")
+            false
+        }
     }
 
     override fun getUri(): Uri? = delegate.uri
@@ -54,6 +101,9 @@ class LevyraYoutubeDataSource private constructor(
     override fun getResponseHeaders(): Map<String, List<String>> = delegate.responseHeaders
 
     override fun close() {
+        openedSpec = null
+        bytesReadSinceOpen = 0L
+        readRetries = 0
         delegate.close()
     }
 
