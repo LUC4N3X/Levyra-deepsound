@@ -8,10 +8,10 @@ internal object VorbisComment {
 
     fun parse(block: ByteArray, offset: Int = 0): AudioTags {
         var cursor = offset
-        if (cursor + 4 > block.size) return AudioTags()
+        if (cursor < 0 || cursor > block.size - 4) return AudioTags()
         val vendorLength = block.u32le(cursor).toInt()
         cursor += 4
-        if (vendorLength < 0 || cursor + vendorLength + 4 > block.size) return AudioTags()
+        if (vendorLength < 0 || vendorLength > block.size - cursor - 4) return AudioTags()
         cursor += vendorLength
         val count = block.u32le(cursor).toInt()
         cursor += 4
@@ -19,10 +19,10 @@ internal object VorbisComment {
 
         var tags = AudioTags()
         repeat(count) {
-            if (cursor + 4 > block.size) return tags
+            if (cursor > block.size - 4) return tags
             val length = block.u32le(cursor).toInt()
             cursor += 4
-            if (length < 0 || length > MAX_COMMENT_BYTES || cursor + length > block.size) return tags
+            if (length < 0 || length > MAX_COMMENT_BYTES || length > block.size - cursor) return tags
             val entry = block.utf8(cursor, length)
             cursor += length
             val separator = entry.indexOf('=')
@@ -74,16 +74,16 @@ internal object FlacPicture {
         var cursor = 4
         val mimeLength = block.u32be(cursor).toInt()
         cursor += 4
-        if (mimeLength < 0 || cursor + mimeLength + 4 > block.size) return null
+        if (mimeLength < 0 || mimeLength > block.size - cursor - 4) return null
         val declaredMime = block.ascii(cursor, mimeLength)
         cursor += mimeLength
         val descriptionLength = block.u32be(cursor).toInt()
         cursor += 4
-        if (descriptionLength < 0 || cursor + descriptionLength + 20 > block.size) return null
+        if (descriptionLength < 0 || descriptionLength > block.size - cursor - 20) return null
         cursor += descriptionLength + 16
         val dataLength = block.u32be(cursor).toInt()
         cursor += 4
-        if (dataLength <= 0 || dataLength > MAX_PICTURE_BYTES || cursor + dataLength > block.size) {
+        if (dataLength <= 0 || dataLength > MAX_PICTURE_BYTES || dataLength > block.size - cursor) {
             return null
         }
         val bytes = block.copyOfRange(cursor, cursor + dataLength)
