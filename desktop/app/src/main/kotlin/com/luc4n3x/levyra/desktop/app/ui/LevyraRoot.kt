@@ -72,7 +72,9 @@ import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
 import java.awt.Desktop
+import java.nio.file.Path
 import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -390,6 +392,29 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                         playlist?.let {
                                                             model.libraryStore.removeFromPlaylist(it.id, trackId)
                                                         }
+                                                    },
+                                                    onExport = {
+                                                        val target = playlist ?: return@PlaylistScreen
+                                                        scope.launch {
+                                                            val selected = choosePlaylistFile(
+                                                                save = true,
+                                                                suggestedName = target.name
+                                                            )
+                                                            if (selected.isBlank()) return@launch
+                                                            val written = model.localMusicController
+                                                                .writePlaylistFile(
+                                                                    Path.of(selected),
+                                                                    target.name,
+                                                                    target.tracks
+                                                                )
+                                                            model.notify(
+                                                                if (written) {
+                                                                    strings.playlistExport
+                                                                } else {
+                                                                    strings.retry
+                                                                }
+                                                            )
+                                                        }
                                                     }
                                                 )
                                             }
@@ -537,11 +562,34 @@ private fun LibraryHost(
 ) {
     val downloads by model.downloadController.downloads.collectAsState()
     val scope = rememberCoroutineScope()
+    val strings = LocalStrings.current
     LibraryScreen(
         library = library,
         downloads = downloads,
         actions = actions,
         onOpenPlaylist = model::openPlaylist,
+        onImportPlaylist = {
+            scope.launch {
+                val selected = choosePlaylistFile(save = false, suggestedName = "")
+                if (selected.isBlank()) return@launch
+                val file = Path.of(selected)
+                val (tracks, result) = model.localMusicController.readPlaylistFile(file)
+                if (tracks.isEmpty()) {
+                    model.notify(strings.searchNoResults)
+                    return@launch
+                }
+                val name = file.fileName.toString().substringBeforeLast('.')
+                val playlistId = model.libraryStore.createPlaylist(name)
+                model.libraryStore.addToPlaylist(playlistId, tracks)
+                model.notify(
+                    if (result.skipped > 0) {
+                        "${result.matched} · ${strings.playlistSkippedEntries}: ${result.skipped}"
+                    } else {
+                        "${strings.playlistImport}: ${result.matched}"
+                    }
+                )
+            }
+        },
         onClearHistory = model.libraryStore::clearHistory,
         onOpenDownloadsFolder = {
             scope.launch { openDirectory(model.paths.downloadsDirectory.toString()) }
@@ -623,6 +671,23 @@ private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
     positionMs = 0L,
     sleepRemainingMs = 0L
 )
+
+private suspend fun choosePlaylistFile(save: Boolean, suggestedName: String): String =
+    withContext(Dispatchers.Swing) {
+        val chooser = JFileChooser()
+        chooser.fileSelectionMode = JFileChooser.FILES_ONLY
+        chooser.isMultiSelectionEnabled = false
+        chooser.fileFilter = FileNameExtensionFilter("M3U", "m3u", "m3u8")
+        if (suggestedName.isNotBlank()) {
+            chooser.selectedFile = java.io.File(suggestedName)
+        }
+        val result = if (save) chooser.showSaveDialog(null) else chooser.showOpenDialog(null)
+        if (result == JFileChooser.APPROVE_OPTION) {
+            chooser.selectedFile?.absolutePath.orEmpty()
+        } else {
+            ""
+        }
+    }
 
 private suspend fun chooseDirectory(): String = withContext(Dispatchers.Swing) {
     val chooser = JFileChooser()

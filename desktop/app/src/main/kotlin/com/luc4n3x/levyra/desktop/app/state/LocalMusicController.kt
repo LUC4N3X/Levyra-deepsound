@@ -1,12 +1,16 @@
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.app.DesktopDiagnostics
+import com.luc4n3x.levyra.desktop.core.localmusic.AudioTagReader
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalArtworkCache
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalFolder
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalLibraryIndex
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalLibraryScanner
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalLibraryStore
+import com.luc4n3x.levyra.desktop.core.localmusic.LocalMusicIdentity
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalScanProgress
+import com.luc4n3x.levyra.desktop.core.localmusic.M3uPlaylist
+import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -26,6 +30,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+data class PlaylistTransferResult(
+    val matched: Int,
+    val skipped: Int
+)
 
 data class LocalMusicUiState(
     val folders: List<LocalFolder> = emptyList(),
@@ -133,6 +142,62 @@ class LocalMusicController(
             }
         }
     }
+
+    suspend fun readPlaylistFile(file: Path): Pair<List<Track>, PlaylistTransferResult> =
+        withContext(Dispatchers.IO) {
+            val content = runCatching { Files.readString(file) }.getOrNull()
+                ?: return@withContext emptyList<Track>() to PlaylistTransferResult(0, 0)
+            val baseDirectory = file.parent
+            val known = internalState.value.index.tracks.associateBy {
+                LocalMusicIdentity.normalizeKey(it.path)
+            }
+            val tracks = ArrayList<Track>()
+            var skipped = 0
+            M3uPlaylist.parse(content).forEach { entry ->
+                val resolved = M3uPlaylist.resolve(entry, baseDirectory)
+                if (resolved == null || !Files.isRegularFile(resolved)) {
+                    skipped += 1
+                    return@forEach
+                }
+                val indexed = known[LocalMusicIdentity.normalizeKey(resolved.toString())]
+                if (indexed != null) {
+                    tracks.add(indexed.toTrack())
+                    return@forEach
+                }
+                if (!AudioTagReader.isSupported(resolved)) {
+                    skipped += 1
+                    return@forEach
+                }
+                val tags = AudioTagReader.read(resolved)
+                tracks.add(
+                    Track(
+                        id = LocalMusicIdentity.trackId(
+                            LocalMusicIdentity.hashOf(resolved.toString())
+                        ),
+                        title = tags.title.ifBlank { entry.title },
+                        artist = tags.artist.ifBlank { entry.artist },
+                        album = tags.album,
+                        videoUrl = "",
+                        durationMs = if (tags.durationMs > 0L) tags.durationMs else entry.durationMs,
+                        offlinePath = resolved.toString(),
+                        offlineMediaLabel = tags.codec
+                    )
+                )
+            }
+            tracks to PlaylistTransferResult(matched = tracks.size, skipped = skipped)
+        }
+
+    suspend fun writePlaylistFile(file: Path, name: String, tracks: List<Track>): Boolean =
+        withContext(Dispatchers.IO) {
+            val target = if (file.toString().substringAfterLast('.', "").isBlank()) {
+                file.resolveSibling(file.fileName.toString() + "." + M3uPlaylist.EXTENSION)
+            } else {
+                file
+            }
+            runCatching {
+                Files.writeString(target, M3uPlaylist.render(name, tracks))
+            }.isSuccess
+        }
 
     fun shutdown() {
         debounceJob?.cancel()

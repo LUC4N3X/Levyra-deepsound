@@ -46,6 +46,7 @@ fun PlaylistScreen(
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onRemoveTrack: (String) -> Unit,
+    onExport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
@@ -136,6 +137,9 @@ fun PlaylistScreen(
                         }
                         OutlinedButton(onClick = { renaming = !renaming }) {
                             Text(strings.playlistRename)
+                        }
+                        OutlinedButton(onClick = onExport) {
+                            Text(strings.playlistExport)
                         }
                         OutlinedButton(onClick = onDelete) {
                             Text(strings.playlistDelete)

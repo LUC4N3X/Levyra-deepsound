@@ -43,7 +43,10 @@ data class DesktopExtraStrings(
     val localMusicScanning: String,
     val localMusicMissingFiles: String,
     val localMusicForgetMissing: String,
-    val localMusicRemoveFolder: String
+    val localMusicRemoveFolder: String,
+    val playlistImport: String,
+    val playlistExport: String,
+    val playlistSkippedEntries: String
 )
 
 internal object DesktopExtras {
@@ -114,7 +117,10 @@ internal object DesktopExtras {
         localMusicScanning = value(entries, tag, "localMusicScanning"),
         localMusicMissingFiles = value(entries, tag, "localMusicMissingFiles"),
         localMusicForgetMissing = value(entries, tag, "localMusicForgetMissing"),
-        localMusicRemoveFolder = value(entries, tag, "localMusicRemoveFolder")
+        localMusicRemoveFolder = value(entries, tag, "localMusicRemoveFolder"),
+        playlistImport = value(entries, tag, "playlistImport"),
+        playlistExport = value(entries, tag, "playlistExport"),
+        playlistSkippedEntries = value(entries, tag, "playlistSkippedEntries")
     )
 
     private fun value(entries: Properties, tag: String, key: String): String {
