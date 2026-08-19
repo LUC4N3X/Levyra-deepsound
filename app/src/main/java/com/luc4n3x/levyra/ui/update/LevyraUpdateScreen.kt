@@ -64,8 +64,8 @@ fun LevyraUpdateScreen(
     val notes = remember(update.releaseNotes, update.latestVersionName) {
         levyraUpdateNoteLines(update.releaseNotes, update.latestVersionName)
     }
-    val meta = remember(update.publishedAt, update.assetSizeBytes, languageCode) {
-        updateMetaLine(update.publishedAt, update.assetSizeBytes, languageCode)
+    val meta = remember(update.publishedAtEpochMs, update.assetSizeBytes, languageCode) {
+        updateMetaLine(update.publishedAtEpochMs, update.assetSizeBytes, languageCode)
     }
 
     Column(
@@ -194,19 +194,19 @@ fun LevyraUpdateScreen(
     }
 }
 
-internal fun updateMetaLine(publishedAt: String, assetSizeBytes: Long, languageCode: String): String {
+internal fun updateMetaLine(publishedAtEpochMs: Long, assetSizeBytes: Long, languageCode: String): String {
     val parts = mutableListOf<String>()
-    formatUpdateReleaseDate(publishedAt, languageCode)?.let(parts::add)
+    formatUpdateReleaseDate(publishedAtEpochMs, languageCode)?.let(parts::add)
     if (assetSizeBytes > 0L) parts += formatUpdateBytes(assetSizeBytes)
     return parts.joinToString(separator = " · ")
 }
 
-internal fun formatUpdateReleaseDate(publishedAt: String, languageCode: String): String? {
-    val raw = publishedAt.trim().takeIf { it.isNotBlank() } ?: return null
+internal fun formatUpdateReleaseDate(publishedAtEpochMs: Long, languageCode: String): String? {
+    if (publishedAtEpochMs <= 0L) return null
     return runCatching {
         val locale = Locale.forLanguageTag(languageCode.ifBlank { "en" })
         DateTimeFormatter.ofPattern("d MMM yyyy", locale)
             .withZone(ZoneId.systemDefault())
-            .format(Instant.parse(raw))
+            .format(Instant.ofEpochMilli(publishedAtEpochMs))
     }.getOrNull()
 }

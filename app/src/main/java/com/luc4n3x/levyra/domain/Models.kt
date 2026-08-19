@@ -274,7 +274,7 @@ data class AppUpdateInfo(
     val latestTag: String,
     val releaseTitle: String,
     val releaseNotes: String,
-    val publishedAt: String,
+    val publishedAtEpochMs: Long,
     val downloadUrl: String,
     val releaseUrl: String,
     val assetName: String,

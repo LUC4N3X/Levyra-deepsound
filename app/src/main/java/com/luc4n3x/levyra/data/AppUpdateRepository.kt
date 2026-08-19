@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.update.AppUpdateContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import java.time.Instant
 import org.json.JSONObject
 
 internal data class InstallableAppUpdate(
@@ -83,7 +84,7 @@ class AppUpdateRepository(context: Context) {
             latestTag = latestTag.ifBlank { latestVersion },
             releaseTitle = releaseTitle,
             releaseNotes = notes,
-            publishedAt = root.optString("published_at"),
+            publishedAtEpochMs = parseUpdatePublishedAt(root.optString("published_at")),
             downloadUrl = downloadUrl,
             releaseUrl = releaseUrl.ifBlank { assetDownloadUrl },
             assetName = assetName,
@@ -143,4 +144,12 @@ class AppUpdateRepository(context: Context) {
             abi = LevyraUpdateSelector.inferAbi(name)
         )
     }
+}
+
+internal fun parseUpdatePublishedAt(raw: String): Long {
+    val value = raw.trim()
+    if (value.isBlank()) return 0L
+    return runCatching { Instant.parse(value).toEpochMilli() }
+        .getOrDefault(0L)
+        .coerceAtLeast(0L)
 }

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.update
 
+import com.luc4n3x.levyra.data.parseUpdatePublishedAt
 import com.luc4n3x.levyra.ui.isLaunchableUpdateTarget
 import com.luc4n3x.levyra.ui.update.formatUpdateReleaseDate
 import com.luc4n3x.levyra.ui.update.updateMetaLine
@@ -131,31 +132,39 @@ class AppUpdateProgressTest {
 
     @Test
     fun releaseMetaLineOmitsWhatIsNotKnown() {
+        val published = parseUpdatePublishedAt("2026-04-22T04:56:00Z")
         assertEquals(
             "31.8 MB",
-            updateMetaLine(publishedAt = "", assetSizeBytes = 33_345_536L, languageCode = "it")
-        )
-        assertEquals(
-            "31.8 MB",
-            updateMetaLine(publishedAt = "not-a-date", assetSizeBytes = 33_345_536L, languageCode = "it")
+            updateMetaLine(publishedAtEpochMs = 0L, assetSizeBytes = 33_345_536L, languageCode = "it")
         )
         assertTrue(
-            updateMetaLine(publishedAt = "2026-04-22T04:56:00Z", assetSizeBytes = 0L, languageCode = "it")
+            updateMetaLine(publishedAtEpochMs = published, assetSizeBytes = 0L, languageCode = "it")
                 .contains("2026")
         )
-        assertEquals("", updateMetaLine(publishedAt = "", assetSizeBytes = 0L, languageCode = "it"))
+        assertEquals(
+            "",
+            updateMetaLine(publishedAtEpochMs = 0L, assetSizeBytes = 0L, languageCode = "it")
+        )
         assertTrue(
-            updateMetaLine(publishedAt = "2026-04-22T04:56:00Z", assetSizeBytes = 33_345_536L, languageCode = "it")
+            updateMetaLine(publishedAtEpochMs = published, assetSizeBytes = 33_345_536L, languageCode = "it")
                 .endsWith(" · 31.8 MB")
         )
     }
 
     @Test
+    fun publishedDatesAreParsedAndValidatedOffTheUiThread() {
+        assertEquals(0L, parseUpdatePublishedAt(""))
+        assertEquals(0L, parseUpdatePublishedAt("   "))
+        assertEquals(0L, parseUpdatePublishedAt("22/04/2026"))
+        assertEquals(0L, parseUpdatePublishedAt("2026-04-22"))
+        assertTrue(parseUpdatePublishedAt("2026-04-22T04:56:00Z") > 0L)
+    }
+
+    @Test
     fun malformedReleaseDatesNeverCrashTheUpdateScreen() {
-        assertNull(formatUpdateReleaseDate("", "it"))
-        assertNull(formatUpdateReleaseDate("   ", "it"))
-        assertNull(formatUpdateReleaseDate("22/04/2026", "it"))
-        assertNotNull(formatUpdateReleaseDate("2026-04-22T04:56:00Z", "en"))
+        assertNull(formatUpdateReleaseDate(0L, "it"))
+        assertNull(formatUpdateReleaseDate(-1L, "it"))
+        assertNotNull(formatUpdateReleaseDate(parseUpdatePublishedAt("2026-04-22T04:56:00Z"), "en"))
     }
 
     @Test
