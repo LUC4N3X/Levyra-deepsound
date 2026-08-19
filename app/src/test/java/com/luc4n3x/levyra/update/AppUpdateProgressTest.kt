@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.update
 
+import com.luc4n3x.levyra.data.parseUpdatePublishedAt
 import com.luc4n3x.levyra.ui.isLaunchableUpdateTarget
+import com.luc4n3x.levyra.ui.update.formatUpdateReleaseDate
+import com.luc4n3x.levyra.ui.update.updateMetaLine
 import com.luc4n3x.levyra.ui.update.levyraUpdateNoteLines
 import java.nio.file.Files
 import java.nio.file.Path
@@ -128,6 +131,43 @@ class AppUpdateProgressTest {
     }
 
     @Test
+    fun releaseMetaLineOmitsWhatIsNotKnown() {
+        val published = parseUpdatePublishedAt("2026-04-22T04:56:00Z")
+        assertEquals(
+            "31.8 MB",
+            updateMetaLine(publishedAtEpochMs = 0L, assetSizeBytes = 33_345_536L, languageCode = "it")
+        )
+        assertTrue(
+            updateMetaLine(publishedAtEpochMs = published, assetSizeBytes = 0L, languageCode = "it")
+                .contains("2026")
+        )
+        assertEquals(
+            "",
+            updateMetaLine(publishedAtEpochMs = 0L, assetSizeBytes = 0L, languageCode = "it")
+        )
+        assertTrue(
+            updateMetaLine(publishedAtEpochMs = published, assetSizeBytes = 33_345_536L, languageCode = "it")
+                .endsWith(" · 31.8 MB")
+        )
+    }
+
+    @Test
+    fun publishedDatesAreParsedAndValidatedOffTheUiThread() {
+        assertEquals(0L, parseUpdatePublishedAt(""))
+        assertEquals(0L, parseUpdatePublishedAt("   "))
+        assertEquals(0L, parseUpdatePublishedAt("22/04/2026"))
+        assertEquals(0L, parseUpdatePublishedAt("2026-04-22"))
+        assertTrue(parseUpdatePublishedAt("2026-04-22T04:56:00Z") > 0L)
+    }
+
+    @Test
+    fun malformedReleaseDatesNeverCrashTheUpdateScreen() {
+        assertNull(formatUpdateReleaseDate(0L, "it"))
+        assertNull(formatUpdateReleaseDate(-1L, "it"))
+        assertNotNull(formatUpdateReleaseDate(parseUpdatePublishedAt("2026-04-22T04:56:00Z"), "en"))
+    }
+
+    @Test
     fun fdroidBuildKeepsTheGithubUpdaterDisabled() {
         val buildFile = repositoryFile("app/build.gradle.kts")
         val installer = repositoryFile("app/src/main/java/com/luc4n3x/levyra/update/AppUpdateInstaller.kt")
@@ -142,7 +182,8 @@ class AppUpdateProgressTest {
         assertTrue(Files.readString(viewModel).contains("!BuildConfig.UPSTREAM_UPDATES_ENABLED"))
         val activitySource = Files.readString(activity)
         assertTrue(activitySource.contains("!BuildConfig.UPSTREAM_UPDATES_ENABLED"))
-        assertTrue(activitySource.contains("if (BuildConfig.UPSTREAM_UPDATES_ENABLED && !pipMode.value)"))
+        assertTrue(activitySource.contains("BuildConfig.UPSTREAM_UPDATES_ENABLED &&"))
+        assertTrue(activitySource.contains("!activityUiState.showOnboarding"))
     }
 
     private fun repositoryFile(relativePath: String): Path = sequenceOf(

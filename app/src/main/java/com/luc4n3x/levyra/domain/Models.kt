@@ -274,12 +274,13 @@ data class AppUpdateInfo(
     val latestTag: String,
     val releaseTitle: String,
     val releaseNotes: String,
-    val publishedAt: String,
+    val publishedAtEpochMs: Long,
     val downloadUrl: String,
     val releaseUrl: String,
     val assetName: String,
     val directApk: Boolean,
-    val isNewer: Boolean
+    val isNewer: Boolean,
+    val assetSizeBytes: Long = 0L
 )
 
 fun Track.smartWeightFor(mood: Mood?): Int {
