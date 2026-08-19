@@ -17,6 +17,7 @@ class LocalLibraryStore(
 
     val current: LocalLibraryData get() = state.value
 
+    @Synchronized
     fun addFolder(path: String): LocalFolder? {
         val normalized = runCatching { Path.of(path.trim()).toAbsolutePath().normalize().toString() }
             .getOrNull()
