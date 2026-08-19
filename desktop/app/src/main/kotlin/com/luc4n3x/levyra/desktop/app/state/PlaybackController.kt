@@ -398,7 +398,7 @@ class PlaybackController(
     }
 
     private suspend fun resolvePlayable(track: Track): Track? {
-        if (track.videoUrl.isNotBlank()) return track
+        if (track.offlinePath.isNotBlank() || track.videoUrl.isNotBlank()) return track
         val located = try {
             catalog.findPlayable(track)
         } catch (cancellation: CancellationException) {

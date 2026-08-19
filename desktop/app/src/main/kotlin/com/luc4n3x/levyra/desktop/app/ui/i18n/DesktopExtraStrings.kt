@@ -33,7 +33,17 @@ data class DesktopExtraStrings(
     val equalizerPresetClassical: String,
     val equalizerPresetAcoustic: String,
     val equalizerPresetNight: String,
-    val equalizerPresetCustom: String
+    val equalizerPresetCustom: String,
+    val localMusic: String,
+    val localMusicSubtitle: String,
+    val localMusicAddFolder: String,
+    val localMusicEmptyTitle: String,
+    val localMusicScan: String,
+    val localMusicDeepScan: String,
+    val localMusicScanning: String,
+    val localMusicMissingFiles: String,
+    val localMusicForgetMissing: String,
+    val localMusicRemoveFolder: String
 )
 
 internal object DesktopExtras {
@@ -94,7 +104,17 @@ internal object DesktopExtras {
         equalizerPresetClassical = value(entries, tag, "equalizerPresetClassical"),
         equalizerPresetAcoustic = value(entries, tag, "equalizerPresetAcoustic"),
         equalizerPresetNight = value(entries, tag, "equalizerPresetNight"),
-        equalizerPresetCustom = value(entries, tag, "equalizerPresetCustom")
+        equalizerPresetCustom = value(entries, tag, "equalizerPresetCustom"),
+        localMusic = value(entries, tag, "localMusic"),
+        localMusicSubtitle = value(entries, tag, "localMusicSubtitle"),
+        localMusicAddFolder = value(entries, tag, "localMusicAddFolder"),
+        localMusicEmptyTitle = value(entries, tag, "localMusicEmptyTitle"),
+        localMusicScan = value(entries, tag, "localMusicScan"),
+        localMusicDeepScan = value(entries, tag, "localMusicDeepScan"),
+        localMusicScanning = value(entries, tag, "localMusicScanning"),
+        localMusicMissingFiles = value(entries, tag, "localMusicMissingFiles"),
+        localMusicForgetMissing = value(entries, tag, "localMusicForgetMissing"),
+        localMusicRemoveFolder = value(entries, tag, "localMusicRemoveFolder")
     )
 
     private fun value(entries: Properties, tag: String, key: String): String {

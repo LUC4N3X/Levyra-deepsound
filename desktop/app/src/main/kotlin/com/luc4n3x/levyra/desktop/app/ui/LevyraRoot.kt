@@ -61,6 +61,7 @@ import com.luc4n3x.levyra.desktop.app.ui.screens.NowPlayingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.OnboardingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SearchScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.LocalMusicScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
 import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
@@ -82,6 +83,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LevyraRoot(model: LevyraAppModel) {
     val settings by model.settings.collectAsState()
+    val localMusic by model.localMusicController.state.collectAsState()
     val audioOutputDevices by model.playbackController.audioOutputDevices.collectAsState()
     val audioOutputDeviceMissing by model.playbackController.audioOutputDeviceMissing.collectAsState()
     val library by model.library.collectAsState()
@@ -91,6 +93,14 @@ fun LevyraRoot(model: LevyraAppModel) {
     val search by model.catalogController.search.collectAsState()
     val collection by model.catalogController.collection.collectAsState()
     val discover by model.discoverController.discover.collectAsState()
+    val localSearchResults = remember(localMusic.index, search.query) {
+        if (search.query.length < 2) {
+            emptyList()
+        } else {
+            localMusic.index.search(search.query, limit = LOCAL_SEARCH_PREVIEW_LIMIT)
+                .map { it.toTrack() }
+        }
+    }
 
     val chromePlaybackFlow = remember(model) {
         model.playbackController.state
@@ -157,10 +167,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                 )
             },
             onToggleFavorite = { track ->
-                model.toggleFavorite(track.copy(offlinePath = "", offlineMediaLabel = ""))
+                model.toggleFavorite(track.asLibraryEntry())
             },
             onAddToPlaylist = { track ->
-                pendingPlaylistTrack = track.copy(offlinePath = "", offlineMediaLabel = "")
+                pendingPlaylistTrack = track.asLibraryEntry()
             }
         )
     }
@@ -302,7 +312,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 onFilterChange = model.catalogController::setFilter,
                                                 onLoadMore = model.catalogController::loadMoreSearch,
                                                 onOpenCollection = model::openCollection,
-                                                onClearRecent = model.libraryStore::clearRecentSearches
+                                                onClearRecent = model.libraryStore::clearRecentSearches,
+                                                localResults = localSearchResults
                                             )
 
                                             Destination.COLLECTION -> CollectionScreen(
@@ -332,6 +343,22 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 model = model,
                                                 library = library,
                                                 actions = actions
+                                            )
+
+                                            Destination.LOCAL_MUSIC -> LocalMusicScreen(
+                                                state = localMusic,
+                                                actions = actions,
+                                                onAddFolder = {
+                                                    scope.launch {
+                                                        val selected = chooseDirectory()
+                                                        if (selected.isNotBlank()) {
+                                                            model.localMusicController.addFolder(selected)
+                                                        }
+                                                    }
+                                                },
+                                                onRemoveFolder = model.localMusicController::removeFolder,
+                                                onRescan = model.localMusicController::rescan,
+                                                onForgetMissing = model.localMusicController::forgetUnavailable
                                             )
 
                                             Destination.PLAYLIST -> {
@@ -573,7 +600,7 @@ private fun PlayerBarHost(
         onToggleQueue = model::toggleQueue,
         onToggleFavorite = {
             playback.current?.let { track ->
-                model.toggleFavorite(track.copy(offlinePath = "", offlineMediaLabel = ""))
+                model.toggleFavorite(track.asLibraryEntry())
             }
         },
         onSpeedChange = model.playbackController::setSpeed,
@@ -630,3 +657,5 @@ private suspend fun openDirectory(path: String) = withContext(Dispatchers.IO) {
     }
     Unit
 }
+
+private const val LOCAL_SEARCH_PREVIEW_LIMIT = 6

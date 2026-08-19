@@ -22,6 +22,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
+import java.io.File
 
 @Composable
 fun Artwork(
@@ -37,7 +38,7 @@ fun Artwork(
             null
         } else {
             ImageRequest.Builder(context)
-                .data(url)
+                .data(if (url.startsWith("http", ignoreCase = true)) url else File(url))
                 .crossfade(false)
                 .build()
         }
