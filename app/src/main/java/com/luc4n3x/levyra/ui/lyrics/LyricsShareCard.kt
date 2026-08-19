@@ -4,17 +4,19 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import androidx.core.content.FileProvider
+import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.Track
 import java.io.File
 import java.io.FileOutputStream
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -43,8 +45,12 @@ internal object LyricsShareCard {
         if (!directory.exists() && !directory.mkdirs()) return@withContext null
         prune(directory)
 
+        val cover = LevyraArtworkCache.localFile(context, track, highRes = true)
+            ?.takeIf(File::isFile)
+            ?.let { file -> runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() }
         val file = File(directory, "lyrics-${System.currentTimeMillis()}.png")
-        val bitmap = render(track, text)
+        val bitmap = render(track, text, cover)
+        cover?.recycle()
         val written = runCatching {
             FileOutputStream(file).use { output ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
@@ -73,7 +79,7 @@ internal object LyricsShareCard {
         }
     }
 
-    private fun render(track: Track, selectedLyrics: String): Bitmap {
+    private fun render(track: Track, selectedLyrics: String, cover: Bitmap?): Bitmap {
         val bitmap = Bitmap.createBitmap(CARD_SIZE, CARD_SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val accentStart = opaque(track.accentStart, Color.rgb(38, 178, 214))
@@ -116,7 +122,6 @@ internal object LyricsShareCard {
             color = Color.argb(190, 255, 255, 255)
             textSize = 37f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-            letterSpacingCompat(0.16f)
         }
         canvas.drawText(BRAND, 150f, 176f, brandPaint)
 
@@ -130,8 +135,10 @@ internal object LyricsShareCard {
             textSize = 34f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
         }
-        drawEllipsized(canvas, track.title.ifBlank { BRAND }, titlePaint, 150f, 266f, CARD_SIZE - 300f)
-        drawEllipsized(canvas, track.artist, artistPaint, 150f, 318f, CARD_SIZE - 300f)
+        val metadataWidth = if (cover != null) 820f else CARD_SIZE - 300f
+        drawEllipsized(canvas, track.title.ifBlank { BRAND }, titlePaint, 150f, 266f, metadataWidth)
+        drawEllipsized(canvas, track.artist, artistPaint, 150f, 318f, metadataWidth)
+        if (cover != null) drawCover(canvas, cover)
 
         val rawLines = selectedLyrics.lineSequence()
             .map(String::trim)
@@ -158,8 +165,23 @@ internal object LyricsShareCard {
             textSize = 27f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
         }
-        canvas.drawText("Lyrics shared from Levyra", 150f, CARD_SIZE - 146f, footerPaint)
+        canvas.drawText(BRAND, 150f, CARD_SIZE - 146f, footerPaint)
         return bitmap
+    }
+
+    private fun drawCover(canvas: Canvas, cover: Bitmap) {
+        val target = RectF(CARD_SIZE - 444f, 144f, CARD_SIZE - 144f, 444f)
+        val path = Path().apply { addRoundRect(target, 42f, 42f, Path.Direction.CW) }
+        canvas.save()
+        canvas.clipPath(path)
+        canvas.drawBitmap(cover, null, target, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+        canvas.restore()
+        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+            color = Color.argb(70, 255, 255, 255)
+        }
+        canvas.drawRoundRect(target, 42f, 42f, border)
     }
 
     private fun fitLyrics(
@@ -251,10 +273,4 @@ internal object LyricsShareCard {
         Color.green(color),
         Color.blue(color)
     )
-
-    @Suppress("UNUSED_PARAMETER")
-    private fun Paint.letterSpacingCompat(value: Float) {
-        // android.graphics.Paint has no portable letterSpacing property; keep
-        // branding stable without depending on a TextPaint/Layout stack.
-    }
 }
