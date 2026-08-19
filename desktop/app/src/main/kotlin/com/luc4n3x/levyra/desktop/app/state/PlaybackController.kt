@@ -80,7 +80,6 @@ class PlaybackController(
     private val outputDeviceMissingState = MutableStateFlow(false)
 
     private val playerScope = CoroutineScope(scope.coroutineContext + SupervisorJob())
-
     private val transitionLock = Any()
 
     private var player: AudioPlayer? = null
@@ -89,6 +88,8 @@ class PlaybackController(
     private var prepareJob: Job? = null
     private var preparedTrackId: String = ""
     private var preparedTransitionMs: Long = 0L
+    private var preparedStreamLabel: String = ""
+    private var handoffAttemptedTrackId: String = ""
     private var transitionActive: Boolean = false
     private var playbackJob: Job? = null
     private var eventJob: Job? = null
@@ -310,6 +311,7 @@ class PlaybackController(
             return
         }
         player?.setMuted(muted)
+        companionPlayer?.setMuted(muted)
         internalState.update { state -> state.copy(muted = muted) }
     }
 
@@ -328,6 +330,7 @@ class PlaybackController(
     }
 
     fun sleepAtEndOfTrack() {
+        cancelTransition()
         sleepJob?.cancel()
         internalState.update { state ->
             state.copy(sleepTimer = SleepTimerState.endOfTrack(), sleepRemainingMs = 0L)
@@ -561,12 +564,14 @@ class PlaybackController(
         if (!settingsStore.current.preloadNextTrack) return
         val current = internalState.value
         if (current.status != PlaybackStatus.PLAYING) return
+        if (current.sleepTimer.mode == SleepTimerMode.END_OF_TRACK) return
         val playing = current.queue.current ?: return
         val next = PrefetchPlanner.handoffTrack(current.queue) ?: return
         if (next.id == preparedTrackId) {
             maybeStartCrossfade(current.positionMs, current.durationMs)
             return
         }
+        if (next.id == handoffAttemptedTrackId) return
         if (prepareJob?.isActive == true) return
         val transitionMs = CrossfadePlanner.transitionDurationMs(
             requestedMs = settingsStore.current.crossfadeMs,
@@ -578,6 +583,7 @@ class PlaybackController(
         if (current.positionMs < CrossfadePlanner.prepareThresholdMs(current.durationMs, transitionMs)) {
             return
         }
+        handoffAttemptedTrackId = next.id
         prepareJob = playerScope.launch { prepareCompanion(next, transitionMs) }
     }
 
@@ -598,8 +604,14 @@ class PlaybackController(
         companion.setMuted(internalState.value.muted)
         val equalizer = settings.equalizer
         companion.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
-        companion.applyOutputDevice(settings.audioOutputDeviceId)
+        companion.applyOutputDevice(effectiveOutputDeviceId(settings.audioOutputDeviceId))
         companion.setSpeed(DesktopSettings.normalizeSpeed(settings.playbackSpeed))
+        val enriched = playable.copy(
+            title = resolved.title.ifBlank { playable.title },
+            artist = resolved.artist.ifBlank { playable.artist },
+            artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
+            durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
+        )
         val published = synchronized(transitionLock) {
             if (
                 transitionActive ||
@@ -609,6 +621,7 @@ class PlaybackController(
             } else {
                 preparedTrackId = next.id
                 preparedTransitionMs = transitionMs
+                preparedStreamLabel = resolved.label
                 true
             }
         }
@@ -616,9 +629,7 @@ class PlaybackController(
             runCatching { companion.stop() }
             return
         }
-        if (playable.videoUrl != next.videoUrl) {
-            updateTrackMetadata(playable)
-        }
+        updateTrackMetadata(enriched)
     }
 
     private suspend fun resolveHandoffTrack(next: Track): Track? {
@@ -677,7 +688,13 @@ class PlaybackController(
         }
         companion.setMuted(internalState.value.muted)
         companion.setVolume(if (transitionMs > 0L) 0 else internalState.value.volume)
-        companion.startPrepared()
+        if (!companion.startPrepared()) {
+            abortTransition()
+            if (transitionMs <= 0L) {
+                next(automatic = true)
+            }
+            return
+        }
         if (transitionMs > 0L) {
             val steps = (transitionMs / CrossfadePlanner.STEP_MS).toInt().coerceAtLeast(1)
             for (step in 1..steps) {
@@ -695,10 +712,25 @@ class PlaybackController(
         completeTransition()
     }
 
+    private fun abortTransition() {
+        val companion: AudioPlayer?
+        synchronized(transitionLock) {
+            transitionActive = false
+            preparedTrackId = ""
+            preparedTransitionMs = 0L
+            preparedStreamLabel = ""
+            handoffAttemptedTrackId = ""
+            companion = companionPlayer
+        }
+        runCatching { companion?.stop() }
+        player?.setVolume(internalState.value.volume)
+    }
+
     private fun completeTransition() {
         val incoming: AudioPlayer
         val outgoing: AudioPlayer?
         val advanced: PlayerQueue
+        val streamLabel: String
         synchronized(transitionLock) {
             if (!transitionActive) return
             val candidateCompanion = companionPlayer
@@ -712,6 +744,8 @@ class PlaybackController(
                 transitionActive = false
                 preparedTrackId = ""
                 preparedTransitionMs = 0L
+                preparedStreamLabel = ""
+                handoffAttemptedTrackId = ""
                 runCatching { candidateCompanion.stop() }
                 player?.setVolume(internalState.value.volume)
                 return
@@ -719,10 +753,13 @@ class PlaybackController(
             incoming = candidateCompanion
             advanced = candidate
             outgoing = player
+            streamLabel = preparedStreamLabel
             player = incoming
             companionPlayer = outgoing
             preparedTrackId = ""
             preparedTransitionMs = 0L
+            preparedStreamLabel = ""
+            handoffAttemptedTrackId = ""
             transitionActive = false
         }
         runCatching { outgoing?.stop() }
@@ -741,7 +778,8 @@ class PlaybackController(
                 status = PlaybackStatus.PLAYING,
                 preparingTrackId = "",
                 positionMs = pendingResumeMs,
-                durationMs = if (duration > 0L) duration else advanced.current?.durationMs ?: 0L
+                durationMs = if (duration > 0L) duration else advanced.current?.durationMs ?: 0L,
+                streamLabel = streamLabel
             )
         }
         advanced.current?.let(libraryStore::recordPlayback)
@@ -756,6 +794,8 @@ class PlaybackController(
             transitionActive = false
             preparedTrackId = ""
             preparedTransitionMs = 0L
+            preparedStreamLabel = ""
+            handoffAttemptedTrackId = ""
             companion = companionPlayer
         }
         transitionJob?.cancel()
@@ -820,6 +860,7 @@ class PlaybackController(
     }
 
     private fun pauseForSleepTimer() {
+        cancelTransition()
         val settled = internalState.value.status in SETTLED_STATUSES
         if (settled) {
             player?.pause()
@@ -969,9 +1010,19 @@ class PlaybackController(
                     val devices = runCatching { active.outputDevices() }.getOrDefault(emptyList())
                     if (devices.isNotEmpty()) {
                         outputDevicesState.value = devices
+                        val wasMissing = outputDeviceMissingState.value
                         val missing = isSelectedOutputDeviceMissing(devices)
-                        if (!missing && outputDeviceMissingState.value) {
-                            active.applyOutputDevice(settingsStore.current.audioOutputDeviceId)
+                        when {
+                            missing && !wasMissing -> {
+                                active.applyOutputDevice(AudioOutputDevice.SYSTEM_DEFAULT_ID)
+                                companionPlayer?.applyOutputDevice(AudioOutputDevice.SYSTEM_DEFAULT_ID)
+                            }
+
+                            !missing && wasMissing -> {
+                                val selected = settingsStore.current.audioOutputDeviceId
+                                active.applyOutputDevice(selected)
+                                companionPlayer?.applyOutputDevice(selected)
+                            }
                         }
                         outputDeviceMissingState.value = missing
                     }
@@ -980,6 +1031,9 @@ class PlaybackController(
             }
         }
     }
+
+    private fun effectiveOutputDeviceId(selected: String): String =
+        if (outputDeviceMissingState.value) AudioOutputDevice.SYSTEM_DEFAULT_ID else selected
 
     private fun isSelectedOutputDeviceMissing(devices: List<AudioOutputDevice>): Boolean {
         val selected = settingsStore.current.audioOutputDeviceId
