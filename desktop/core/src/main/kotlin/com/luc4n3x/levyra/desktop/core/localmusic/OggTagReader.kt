@@ -22,8 +22,14 @@ internal object OggTagReader {
         if (packets.isEmpty()) return AudioTags()
 
         val identification = packets[0]
+        val isOpus = identification.startsWithAscii("OpusHead")
+        val opusPreSkip = if (isOpus && identification.size >= 12) {
+            identification.u8(10) or (identification.u8(11) shl 8)
+        } else {
+            0
+        }
         var tags = when {
-            identification.startsWithAscii("OpusHead") -> opusIdentification(identification)
+            isOpus -> opusIdentification(identification)
             identification.size > 7 && identification.startsWithAscii("vorbis", 1) ->
                 vorbisIdentification(identification)
             else -> return AudioTags()
@@ -40,7 +46,12 @@ internal object OggTagReader {
         val granule = lastGranulePosition(file, serial)
         if (granule > 0L && tags.sampleRateHz > 0) {
             val rate = if (tags.codec == "Opus") OPUS_SAMPLE_RATE else tags.sampleRateHz
-            tags = tags.copy(durationMs = granule * 1000L / rate)
+            val playableSamples = if (tags.codec == "Opus") {
+                (granule - opusPreSkip.toLong()).coerceAtLeast(0L)
+            } else {
+                granule
+            }
+            tags = tags.copy(durationMs = playableSamples * 1000L / rate)
         }
         if (tags.durationMs > 0L) {
             val bitrate = (file.length * 8L / tags.durationMs).toInt()
@@ -108,7 +119,10 @@ internal object OggTagReader {
         var index = 0
         while (index + 27 <= tail.size) {
             if (tail.startsWithAscii("OggS", index) && tail.u32le(index + 14) == serial) {
-                granule = tail.u64le(index + 6)
+                val candidate = tail.u64le(index + 6)
+                if (candidate >= 0L) {
+                    granule = candidate
+                }
                 index += 27
             } else {
                 index += 1
