@@ -21,6 +21,10 @@ interface AudioPlayer : AutoCloseable {
 
     fun applyEqualizer(enabled: Boolean, preamp: Float, amps: List<Float>)
 
+    fun outputDevices(): List<AudioOutputDevice>
+
+    fun applyOutputDevice(deviceId: String)
+
     fun setSpeed(speed: Float): Boolean
 
     fun positionMs(): Long

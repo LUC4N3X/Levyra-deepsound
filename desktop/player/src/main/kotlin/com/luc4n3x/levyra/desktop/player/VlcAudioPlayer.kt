@@ -28,6 +28,9 @@ class VlcAudioPlayer private constructor(
     private var lastPublishedTimeMs: Long = Long.MIN_VALUE
     private var lastTimePublishNanos: Long = 0L
 
+    @Volatile
+    private var selectedOutputDeviceId: String = AudioOutputDevice.SYSTEM_DEFAULT_ID
+
     override val events: SharedFlow<PlayerEvent> = eventFlow.asSharedFlow()
 
     init {
@@ -82,6 +85,7 @@ class VlcAudioPlayer private constructor(
             }
         }
         mediaPlayer.media().play(url, *options.toTypedArray())
+        pushOutputDevice()
     }
 
     override fun resume() {
@@ -133,6 +137,24 @@ class VlcAudioPlayer private constructor(
         }
     }
 
+    override fun outputDevices(): List<AudioOutputDevice> {
+        if (released.get()) return emptyList()
+        val devices = runCatching { mediaPlayer.audio().outputDevices() }.getOrNull().orEmpty()
+        return AudioOutputDevice.sanitize(
+            devices.map { device ->
+                AudioOutputDevice(
+                    id = device.deviceId.orEmpty(),
+                    label = device.longName.orEmpty()
+                )
+            }
+        )
+    }
+
+    override fun applyOutputDevice(deviceId: String) {
+        selectedOutputDeviceId = deviceId.trim()
+        pushOutputDevice()
+    }
+
     override fun setSpeed(speed: Float): Boolean {
         if (released.get()) return false
         return runCatching {
@@ -167,6 +189,14 @@ class VlcAudioPlayer private constructor(
         lastPublishedTimeMs = positionMs
         lastTimePublishNanos = now
         emit(PlayerEvent.TimeChanged(positionMs))
+    }
+
+    private fun pushOutputDevice() {
+        if (released.get()) return
+        val target = selectedOutputDeviceId
+        runCatching {
+            mediaPlayer.audio().setOutputDevice(null, target.ifEmpty { null })
+        }
     }
 
     private fun resetTimeThrottle(positionMs: Long) {

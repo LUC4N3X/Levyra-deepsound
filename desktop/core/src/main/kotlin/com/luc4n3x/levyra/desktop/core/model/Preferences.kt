@@ -130,6 +130,7 @@ data class DesktopSettings(
     val globalMediaKeys: Boolean = true,
     val playbackSpeed: Float = DEFAULT_SPEED,
     val vlcDirectory: String = "",
+    val audioOutputDeviceId: String = "",
     val equalizer: EqualizerSettings = EqualizerSettings()
 ) {
     fun sanitized(): DesktopSettings = copy(
@@ -141,11 +142,13 @@ data class DesktopSettings(
         volume = volume.coerceIn(0, 100),
         playbackSpeed = normalizeSpeed(playbackSpeed),
         vlcDirectory = vlcDirectory.trim(),
+        audioOutputDeviceId = audioOutputDeviceId.trim().take(MAX_OUTPUT_DEVICE_ID_LENGTH),
         equalizer = equalizer.sanitized()
     )
 
     companion object {
         const val MAX_DISPLAY_NAME_LENGTH = 40
+        const val MAX_OUTPUT_DEVICE_ID_LENGTH = 512
         const val MIN_SPEED = 0.5f
         const val MAX_SPEED = 2f
         const val DEFAULT_SPEED = 1f

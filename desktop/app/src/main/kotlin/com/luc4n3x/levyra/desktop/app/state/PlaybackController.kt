@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.desktop.core.storage.SessionStore
 import com.luc4n3x.levyra.desktop.core.storage.SettingsStore
 import com.luc4n3x.levyra.desktop.core.stream.ResolvedAudio
 import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
+import com.luc4n3x.levyra.desktop.player.AudioOutputDevice
 import com.luc4n3x.levyra.desktop.player.AudioPlayer
 import com.luc4n3x.levyra.desktop.player.AudioPlayerUnavailableException
 import com.luc4n3x.levyra.desktop.player.PlaybackStatus
@@ -74,6 +75,8 @@ class PlaybackController(
         )
     )
     private val messageFlow = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    private val outputDevicesState = MutableStateFlow<List<AudioOutputDevice>>(emptyList())
+    private val outputDeviceMissingState = MutableStateFlow(false)
 
     private val playerScope = CoroutineScope(scope.coroutineContext + SupervisorJob())
 
@@ -83,6 +86,7 @@ class PlaybackController(
     private var persistJob: Job? = null
     private var prefetchJob: Job? = null
     private var sleepJob: Job? = null
+    private var outputDeviceJob: Job? = null
     private var prefetchedTrackId: String = ""
     private var retriedTrackId: String = ""
     private var consecutiveFailures: Int = 0
@@ -91,6 +95,8 @@ class PlaybackController(
 
     val state: StateFlow<PlaybackUiState> = internalState.asStateFlow()
     val messages: SharedFlow<String> = messageFlow.asSharedFlow()
+    val audioOutputDevices: StateFlow<List<AudioOutputDevice>> = outputDevicesState.asStateFlow()
+    val audioOutputDeviceMissing: StateFlow<Boolean> = outputDeviceMissingState.asStateFlow()
 
     init {
         playerScope.launch {
@@ -106,6 +112,27 @@ class PlaybackController(
                 .map { DesktopSettings.normalizeSpeed(it.playbackSpeed) }
                 .distinctUntilChanged()
                 .collect { speed -> applySpeed(speed) }
+        }
+        playerScope.launch {
+            settingsStore.settings
+                .map { it.audioOutputDeviceId }
+                .distinctUntilChanged()
+                .collect { deviceId ->
+                    outputDeviceMissingState.value = false
+                    player?.applyOutputDevice(deviceId)
+                }
+        }
+    }
+
+    fun refreshAudioOutputDevices(createEngine: Boolean = false) {
+        playerScope.launch {
+            val active = if (createEngine) ensurePlayer() else player
+            if (active == null) return@launch
+            val devices = runCatching { active.outputDevices() }.getOrDefault(emptyList())
+            if (devices.isNotEmpty()) {
+                outputDevicesState.value = devices
+                outputDeviceMissingState.value = isSelectedOutputDeviceMissing(devices)
+            }
         }
     }
 
@@ -325,6 +352,7 @@ class PlaybackController(
         playbackJob?.cancel()
         prefetchJob?.cancel()
         sleepJob?.cancel()
+        outputDeviceJob?.cancel()
         eventJob?.cancel()
         saveSessionNow()
         runCatching { player?.stop() }
@@ -606,8 +634,10 @@ class PlaybackController(
             player = created
             observeEvents(created)
             startPersistLoop()
+            startOutputDeviceWatch()
             val equalizer = settingsStore.current.equalizer
             created.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
+            created.applyOutputDevice(settingsStore.current.audioOutputDeviceId)
             applySpeed(settingsStore.current.playbackSpeed, created)
             internalState.update { state -> state.copy(unavailableReason = "") }
             created
@@ -684,6 +714,33 @@ class PlaybackController(
         skipAfterFailure(track)
     }
 
+    private fun startOutputDeviceWatch() {
+        if (outputDeviceJob?.isActive == true) return
+        outputDeviceJob = playerScope.launch {
+            while (isActive) {
+                val active = player
+                if (active != null) {
+                    val devices = runCatching { active.outputDevices() }.getOrDefault(emptyList())
+                    if (devices.isNotEmpty()) {
+                        outputDevicesState.value = devices
+                        val missing = isSelectedOutputDeviceMissing(devices)
+                        if (!missing && outputDeviceMissingState.value) {
+                            active.applyOutputDevice(settingsStore.current.audioOutputDeviceId)
+                        }
+                        outputDeviceMissingState.value = missing
+                    }
+                }
+                delay(OUTPUT_DEVICE_POLL_MS)
+            }
+        }
+    }
+
+    private fun isSelectedOutputDeviceMissing(devices: List<AudioOutputDevice>): Boolean {
+        val selected = settingsStore.current.audioOutputDeviceId
+        if (selected.isEmpty()) return false
+        return devices.none { it.id == selected }
+    }
+
     private fun startPersistLoop() {
         if (persistJob?.isActive == true) return
         persistJob = playerScope.launch {
@@ -718,6 +775,7 @@ class PlaybackController(
     private companion object {
         const val RESTART_THRESHOLD_MS = 4_000L
         const val PERSIST_INTERVAL_MS = 15_000L
+        const val OUTPUT_DEVICE_POLL_MS = 8_000L
         const val SLEEP_TICK_MS = 1_000L
         val SETTLED_STATUSES = setOf(PlaybackStatus.PLAYING, PlaybackStatus.PAUSED)
         const val MAX_QUEUE_SIZE = 200

@@ -82,6 +82,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LevyraRoot(model: LevyraAppModel) {
     val settings by model.settings.collectAsState()
+    val audioOutputDevices by model.playbackController.audioOutputDevices.collectAsState()
+    val audioOutputDeviceMissing by model.playbackController.audioOutputDeviceMissing.collectAsState()
     val library by model.library.collectAsState()
     val destination by model.destination.collectAsState()
     val queueVisible by model.queueVisible.collectAsState()
@@ -375,6 +377,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 dataDirectory = model.paths.root.toString(),
                                                 vlcStatus = vlcStatus,
                                                 appVersion = AppInfo.version(),
+                                                audioOutputDevices = audioOutputDevices,
+                                                audioOutputDeviceMissing = audioOutputDeviceMissing,
                                                 onUpdate = model::updateSettings,
                                                 onBrowseVlc = {
                                                     scope.launch {
@@ -397,6 +401,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     scope.launch {
                                                         openDirectory(model.paths.root.toString())
                                                     }
+                                                },
+                                                onRefreshAudioOutputDevices = { createEngine ->
+                                                    model.playbackController.refreshAudioOutputDevices(createEngine)
                                                 }
                                             )
                                         }

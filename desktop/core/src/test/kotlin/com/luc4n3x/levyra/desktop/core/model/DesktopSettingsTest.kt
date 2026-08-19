@@ -7,6 +7,19 @@ import org.junit.Test
 
 class DesktopSettingsTest {
     @Test
+    fun audioOutputDeviceIdIsTrimmedAndBounded() {
+        val long = "x".repeat(DesktopSettings.MAX_OUTPUT_DEVICE_ID_LENGTH + 40)
+        assertEquals(
+            "{0.0.0}",
+            DesktopSettings(audioOutputDeviceId = "  {0.0.0}  ").sanitized().audioOutputDeviceId
+        )
+        assertEquals(
+            DesktopSettings.MAX_OUTPUT_DEVICE_ID_LENGTH,
+            DesktopSettings(audioOutputDeviceId = long).sanitized().audioOutputDeviceId.length
+        )
+    }
+
+    @Test
     fun languageCatalogMatchesAndroidSupportedLanguages() {
         assertEquals(26, AppLanguage.entries.size)
         assertEquals(

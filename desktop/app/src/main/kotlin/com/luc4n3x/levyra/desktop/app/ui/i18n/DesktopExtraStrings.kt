@@ -15,7 +15,13 @@ data class DesktopExtraStrings(
     val mediaKeysBody: String,
     val shortcuts: String,
     val seek: String,
-    val miniPlayer: String
+    val miniPlayer: String,
+    val audioOutput: String,
+    val audioOutputBody: String,
+    val audioOutputSystemDefault: String,
+    val audioOutputRefresh: String,
+    val audioOutputUnavailable: String,
+    val audioOutputEmpty: String
 )
 
 internal object DesktopExtras {
@@ -58,7 +64,13 @@ internal object DesktopExtras {
         mediaKeysBody = value(entries, tag, "mediaKeysBody"),
         shortcuts = value(entries, tag, "shortcuts"),
         seek = value(entries, tag, "seek"),
-        miniPlayer = value(entries, tag, "miniPlayer")
+        miniPlayer = value(entries, tag, "miniPlayer"),
+        audioOutput = value(entries, tag, "audioOutput"),
+        audioOutputBody = value(entries, tag, "audioOutputBody"),
+        audioOutputSystemDefault = value(entries, tag, "audioOutputSystemDefault"),
+        audioOutputRefresh = value(entries, tag, "audioOutputRefresh"),
+        audioOutputUnavailable = value(entries, tag, "audioOutputUnavailable"),
+        audioOutputEmpty = value(entries, tag, "audioOutputEmpty")
     )
 
     private fun value(entries: Properties, tag: String, key: String): String {

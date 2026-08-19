@@ -18,6 +18,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,8 @@ import com.luc4n3x.levyra.desktop.app.ui.components.CountryPicker
 import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
 import com.luc4n3x.levyra.desktop.app.ui.components.LanguagePicker
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
+import com.luc4n3x.levyra.desktop.app.ui.components.LevyraOption
+import com.luc4n3x.levyra.desktop.app.ui.components.LevyraOptionPicker
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
@@ -41,6 +44,7 @@ import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
 import com.luc4n3x.levyra.desktop.core.model.PreferredCodec
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
+import com.luc4n3x.levyra.desktop.player.AudioOutputDevice
 
 @Composable
 fun SettingsScreen(
@@ -48,13 +52,20 @@ fun SettingsScreen(
     dataDirectory: String,
     vlcStatus: String,
     appVersion: String,
+    audioOutputDevices: List<AudioOutputDevice>,
+    audioOutputDeviceMissing: Boolean,
     onUpdate: ((DesktopSettings) -> DesktopSettings) -> Unit,
     onBrowseVlc: () -> Unit,
     onVerifyVlc: () -> Unit,
     onOpenDataFolder: () -> Unit,
+    onRefreshAudioOutputDevices: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
+
+    LaunchedEffect(Unit) {
+        onRefreshAudioOutputDevices(false)
+    }
 
     ScrollableColumn(
         modifier = modifier.fillMaxSize(),
@@ -192,6 +203,66 @@ fun SettingsScreen(
                     checked = settings.autoplayRadio,
                     onCheckedChange = { value -> onUpdate { it.copy(autoplayRadio = value) } }
                 )
+                SettingsRow(
+                    title = strings.settingsAudioOutput,
+                    body = strings.settingsAudioOutputBody
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val options = buildList {
+                            add(
+                                LevyraOption(
+                                    id = AudioOutputDevice.SYSTEM_DEFAULT_ID,
+                                    label = strings.audioOutputSystemDefault
+                                )
+                            )
+                            audioOutputDevices.forEach { device ->
+                                add(LevyraOption(id = device.id, label = device.label))
+                            }
+                            if (
+                                settings.audioOutputDeviceId.isNotEmpty() &&
+                                audioOutputDevices.none { it.id == settings.audioOutputDeviceId }
+                            ) {
+                                add(
+                                    LevyraOption(
+                                        id = settings.audioOutputDeviceId,
+                                        label = settings.audioOutputDeviceId,
+                                        supporting = strings.audioOutputEmpty
+                                    )
+                                )
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            LevyraOptionPicker(
+                                label = strings.settingsAudioOutput,
+                                options = options,
+                                selectedId = settings.audioOutputDeviceId,
+                                contentDescription = strings.settingsAudioOutputBody,
+                                onSelect = { value ->
+                                    onUpdate { it.copy(audioOutputDeviceId = value) }
+                                }
+                            )
+                            OutlinedButton(onClick = { onRefreshAudioOutputDevices(true) }) {
+                                Text(strings.audioOutputRefresh)
+                            }
+                        }
+                        if (audioOutputDeviceMissing) {
+                            Text(
+                                text = strings.audioOutputUnavailable,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else if (audioOutputDevices.isEmpty()) {
+                            Text(
+                                text = strings.audioOutputEmpty,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
 
