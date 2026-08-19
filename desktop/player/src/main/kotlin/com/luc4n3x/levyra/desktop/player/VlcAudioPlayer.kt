@@ -28,9 +28,14 @@ class VlcAudioPlayer private constructor(
 
     private var lastPublishedTimeMs: Long = Long.MIN_VALUE
     private var lastTimePublishNanos: Long = 0L
+    private var loadedUrl: String = ""
+    private var requestedPaused: Boolean = false
 
     @Volatile
     private var selectedOutputDeviceId: String = AudioOutputDevice.SYSTEM_DEFAULT_ID
+
+    @Volatile
+    private var appliedOutputDeviceId: String? = null
 
     override val events: SharedFlow<PlayerEvent> = eventFlow.asSharedFlow()
 
@@ -45,10 +50,12 @@ class VlcAudioPlayer private constructor(
             }
 
             override fun playing(mediaPlayer: MediaPlayer) {
+                requestedPaused = false
                 emit(PlayerEvent.Playing)
             }
 
             override fun paused(mediaPlayer: MediaPlayer) {
+                requestedPaused = true
                 emit(PlayerEvent.Paused)
             }
 
@@ -57,10 +64,13 @@ class VlcAudioPlayer private constructor(
             }
 
             override fun finished(mediaPlayer: MediaPlayer) {
+                loadedUrl = ""
+                requestedPaused = false
                 emit(PlayerEvent.Finished)
             }
 
             override fun error(mediaPlayer: MediaPlayer) {
+                loadedUrl = ""
                 emit(PlayerEvent.Failed("Riproduzione interrotta da VLC"))
             }
 
@@ -69,31 +79,37 @@ class VlcAudioPlayer private constructor(
             }
 
             override fun lengthChanged(mediaPlayer: MediaPlayer, newLength: Long) {
-                emit(PlayerEvent.LengthChanged(newLength.coerceAtLeast(0L)))
+                emit(PlayerEvent.LengthChanged(newLength.coerceAtLeast(0L))
             }
         })
     }
 
     override fun play(url: String, startAtMs: Long) {
         if (released.get()) return
+        loadedUrl = url
+        requestedPaused = false
         resetTimeThrottle(startAtMs)
-        mediaPlayer.media().play(url, *mediaOptions(startAtMs))
         pushOutputDevice()
+        mediaPlayer.media().play(url, *mediaOptions(startAtMs))
     }
 
     override fun prepare(url: String, startAtMs: Long): Boolean {
         if (released.get()) return false
+        loadedUrl = url
+        requestedPaused = true
         resetTimeThrottle(startAtMs)
+        pushOutputDevice()
         val started = runCatching {
             mediaPlayer.media().startPaused(url, *mediaOptions(startAtMs))
         }.getOrDefault(false)
-        if (started) pushOutputDevice()
+        if (!started) loadedUrl = ""
         return started
     }
 
     override fun startPrepared(): Boolean {
         if (released.get()) return false
         return runCatching {
+            requestedPaused = false
             mediaPlayer.controls().setPause(false)
             true
         }.getOrDefault(false)
@@ -103,7 +119,9 @@ class VlcAudioPlayer private constructor(
         if (released.get()) return null
         val retained = sharedFactory.retain() ?: return null
         return runCatching {
-            VlcAudioPlayer(retained, nativePath)
+            VlcAudioPlayer(retained, nativePath).also { companion ->
+                companion.applyOutputDevice(selectedOutputDeviceId)
+            }
         }.getOrElse {
             retained.release()
             null
@@ -121,16 +139,20 @@ class VlcAudioPlayer private constructor(
 
     override fun resume() {
         if (released.get()) return
+        requestedPaused = false
         mediaPlayer.controls().setPause(false)
     }
 
     override fun pause() {
         if (released.get()) return
+        requestedPaused = true
         mediaPlayer.controls().setPause(true)
     }
 
     override fun stop() {
         if (released.get()) return
+        loadedUrl = ""
+        requestedPaused = false
         mediaPlayer.controls().stop()
     }
 
@@ -170,20 +192,30 @@ class VlcAudioPlayer private constructor(
 
     override fun outputDevices(): List<AudioOutputDevice> {
         if (released.get()) return emptyList()
-        val devices = runCatching { mediaPlayer.audio().outputDevices() }.getOrNull().orEmpty()
-        return AudioOutputDevice.sanitize(
-            devices.map { device ->
-                AudioOutputDevice(
-                    id = device.deviceId.orEmpty(),
-                    label = device.longName.orEmpty()
-                )
+        val devices = runCatching {
+            sharedFactory.factory.audio().audioOutputs().flatMap { output ->
+                output.devices.map { device ->
+                    AudioOutputDevice.create(
+                        outputName = output.name.orEmpty(),
+                        deviceId = device.deviceId.orEmpty(),
+                        label = device.longName.orEmpty().ifBlank { output.description.orEmpty() }
+                    )
+                }
             }
-        )
+        }.getOrDefault(emptyList())
+        return AudioOutputDevice.sanitize(devices)
     }
 
     override fun applyOutputDevice(deviceId: String) {
-        selectedOutputDeviceId = deviceId.trim()
-        pushOutputDevice()
+        if (released.get()) return
+        val target = deviceId.trim()
+        if (selectedOutputDeviceId == target && appliedOutputDeviceId == target) return
+        selectedOutputDeviceId = target
+        if (loadedUrl.isBlank()) {
+            pushOutputDevice()
+            return
+        }
+        restartLoadedMediaForOutputChange()
     }
 
     override fun setSpeed(speed: Float): Boolean {
@@ -201,8 +233,33 @@ class VlcAudioPlayer private constructor(
 
     override fun close() {
         if (!released.compareAndSet(false, true)) return
+        loadedUrl = ""
         runCatching { mediaPlayer.release() }
         sharedFactory.release()
+    }
+
+    private fun restartLoadedMediaForOutputChange() {
+        val url = loadedUrl
+        if (url.isBlank() || released.get()) {
+            pushOutputDevice()
+            return
+        }
+        val resumeAtMs = positionMs()
+        val resumePaused = requestedPaused
+        runCatching { mediaPlayer.controls().stop() }
+        pushOutputDevice()
+        resetTimeThrottle(resumeAtMs)
+        val restarted = runCatching {
+            if (resumePaused) {
+                mediaPlayer.media().startPaused(url, *mediaOptions(resumeAtMs))
+            } else {
+                mediaPlayer.media().play(url, *mediaOptions(resumeAtMs))
+            }
+        }.getOrDefault(false)
+        if (!restarted) {
+            loadedUrl = ""
+            emit(PlayerEvent.Failed("Impossibile riaprire l'uscita audio selezionata"))
+        }
     }
 
     private fun publishTimeChanged(positionMs: Long) {
@@ -224,9 +281,13 @@ class VlcAudioPlayer private constructor(
 
     private fun pushOutputDevice() {
         if (released.get()) return
-        val target = selectedOutputDeviceId
+        val selection = AudioOutputDevice.fromPersistedId(selectedOutputDeviceId)
         runCatching {
-            mediaPlayer.audio().setOutputDevice(null, target.ifEmpty { null })
+            mediaPlayer.audio().setOutputDevice(
+                selection.outputName.ifEmpty { null },
+                selection.deviceId.ifEmpty { null }
+            )
+            appliedOutputDeviceId = selectedOutputDeviceId
         }
     }
 
