@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,12 +15,11 @@ import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 
 class VlcAudioPlayer private constructor(
-    private val factory: MediaPlayerFactory,
-    val nativePath: String,
-    private val ownsFactory: Boolean = true
+    private val sharedFactory: SharedMediaPlayerFactory,
+    val nativePath: String
 ) : AudioPlayer {
 
-    private val mediaPlayer: MediaPlayer = factory.mediaPlayers().newMediaPlayer()
+    private val mediaPlayer: MediaPlayer = sharedFactory.factory.mediaPlayers().newMediaPlayer()
     private val released = AtomicBoolean(false)
     private val eventFlow = MutableSharedFlow<PlayerEvent>(
         replay = 0,
@@ -101,9 +101,13 @@ class VlcAudioPlayer private constructor(
 
     override fun createCompanion(): AudioPlayer? {
         if (released.get()) return null
+        val retained = sharedFactory.retain() ?: return null
         return runCatching {
-            VlcAudioPlayer(factory, nativePath, ownsFactory = false)
-        }.getOrNull()
+            VlcAudioPlayer(retained, nativePath)
+        }.getOrElse {
+            retained.release()
+            null
+        }
     }
 
     private fun mediaOptions(startAtMs: Long): Array<String> = buildList {
@@ -154,7 +158,7 @@ class VlcAudioPlayer private constructor(
             return
         }
         runCatching {
-            val equalizer = factory.equalizer().newEqualizer()
+            val equalizer = sharedFactory.factory.equalizer().newEqualizer()
             equalizer.setPreamp(preamp)
             val bandCount = equalizer.bandCount()
             for (band in 0 until bandCount) {
@@ -198,9 +202,7 @@ class VlcAudioPlayer private constructor(
     override fun close() {
         if (!released.compareAndSet(false, true)) return
         runCatching { mediaPlayer.release() }
-        if (ownsFactory) {
-            runCatching { factory.release() }
-        }
+        sharedFactory.release()
     }
 
     private fun publishTimeChanged(positionMs: Long) {
@@ -235,6 +237,32 @@ class VlcAudioPlayer private constructor(
 
     private fun emit(event: PlayerEvent) {
         eventFlow.tryEmit(event)
+    }
+
+    private class SharedMediaPlayerFactory private constructor(
+        val factory: MediaPlayerFactory
+    ) {
+        private val references = AtomicInteger(1)
+        private val factoryReleased = AtomicBoolean(false)
+
+        fun retain(): SharedMediaPlayerFactory? {
+            while (true) {
+                val current = references.get()
+                if (current <= 0) return null
+                if (references.compareAndSet(current, current + 1)) return this
+            }
+        }
+
+        fun release() {
+            val remaining = references.decrementAndGet()
+            if (remaining == 0 && factoryReleased.compareAndSet(false, true)) {
+                runCatching { factory.release() }
+            }
+        }
+
+        companion object {
+            fun create(factory: MediaPlayerFactory): SharedMediaPlayerFactory = SharedMediaPlayerFactory(factory)
+        }
     }
 
     companion object {
@@ -272,7 +300,16 @@ class VlcAudioPlayer private constructor(
                     error
                 )
             }
-            return VlcAudioPlayer(factory, discovery.path)
+            val sharedFactory = SharedMediaPlayerFactory.create(factory)
+            return try {
+                VlcAudioPlayer(sharedFactory, discovery.path)
+            } catch (error: Throwable) {
+                sharedFactory.release()
+                throw AudioPlayerUnavailableException(
+                    "Impossibile creare il player libvlc da ${discovery.path}: ${error.message.orEmpty()}",
+                    error
+                )
+            }
         }
     }
 }
