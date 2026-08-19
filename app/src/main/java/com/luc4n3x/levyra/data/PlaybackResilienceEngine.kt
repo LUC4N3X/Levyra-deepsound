@@ -14,6 +14,7 @@ internal enum class PlaybackFailureKind {
     Gone,
     RateLimited,
     NotFound,
+    ResourceMissing,
     RangeNotSatisfiable,
     ServerError,
     LoginRequired,
@@ -32,7 +33,8 @@ internal data class PlaybackRecoveryPlan(
     val rotateClient: Boolean,
     val rotateCodec: Boolean,
     val refreshSecurity: Boolean,
-    val quarantineMs: Long
+    val quarantineMs: Long,
+    val invalidateCache: Boolean = false
 )
 
 internal data class PlaybackTraceEvent(
@@ -67,6 +69,12 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
         httpStatus == 403 || value.contains("forbidden") -> PlaybackFailureKind.Forbidden
         httpStatus == 410 || value.contains("gone") -> PlaybackFailureKind.Gone
         httpStatus == 429 || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
+        httpStatus == null && (
+            value.contains("enoent") ||
+                value.contains("no such file") ||
+                value.contains("file not found") ||
+                value.contains("filenotfoundexception")
+            ) -> PlaybackFailureKind.ResourceMissing
         httpStatus == 404 || value.contains("not found") -> PlaybackFailureKind.NotFound
         httpStatus == 416 || value.contains("range not satisfiable") -> PlaybackFailureKind.RangeNotSatisfiable
         httpStatus in serverErrorHttpStatuses ||
@@ -85,6 +93,39 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
         value.contains("network") || value.contains("socket") || value.contains("dns") || value.contains("connection") || value.contains("host") -> PlaybackFailureKind.Network
         else -> PlaybackFailureKind.Unknown
     }
+}
+
+internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecoveryPlan = when (kind) {
+    PlaybackFailureKind.Forbidden,
+    PlaybackFailureKind.Gone,
+    PlaybackFailureKind.RateLimited,
+    PlaybackFailureKind.LoginRequired -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.ContentRestricted -> PlaybackRecoveryPlan(true, false, false, false, 0L)
+    PlaybackFailureKind.NotFound -> PlaybackRecoveryPlan(true, false, false, false, 60_000L)
+    PlaybackFailureKind.RangeNotSatisfiable -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 60_000L,
+        invalidateCache = true
+    )
+    PlaybackFailureKind.ResourceMissing -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 0L,
+        invalidateCache = true
+    )
+    PlaybackFailureKind.ServerError,
+    PlaybackFailureKind.Truncated -> PlaybackRecoveryPlan(true, false, false, false, 30_000L)
+    PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, true, false, false, 2L * 60L * 1000L)
+    PlaybackFailureKind.Signature -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)
+    PlaybackFailureKind.Timeout,
+    PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, true, false, false, 45_000L)
+    PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, true, true, false, 20_000L)
 }
 
 internal class PlaybackResilienceEngine(context: Context) {
@@ -161,25 +202,8 @@ internal class PlaybackResilienceEngine(context: Context) {
         )
     }
 
-    fun recoveryPlan(reason: String): PlaybackRecoveryPlan {
-        return when (classifyPlaybackFailureReason(reason)) {
-            PlaybackFailureKind.Forbidden,
-            PlaybackFailureKind.Gone,
-            PlaybackFailureKind.RateLimited,
-            PlaybackFailureKind.LoginRequired -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
-            PlaybackFailureKind.ContentRestricted -> PlaybackRecoveryPlan(true, false, false, false, 0L)
-            PlaybackFailureKind.NotFound,
-            PlaybackFailureKind.RangeNotSatisfiable -> PlaybackRecoveryPlan(true, false, false, false, 60_000L)
-            PlaybackFailureKind.ServerError,
-            PlaybackFailureKind.Truncated -> PlaybackRecoveryPlan(true, false, false, false, 30_000L)
-            PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, true, false, false, 2L * 60L * 1000L)
-            PlaybackFailureKind.Signature -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
-            PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)
-            PlaybackFailureKind.Timeout,
-            PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, true, false, false, 45_000L)
-            PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, true, true, false, 20_000L)
-        }
-    }
+    fun recoveryPlan(reason: String): PlaybackRecoveryPlan =
+        playbackRecoveryPlanFor(classifyPlaybackFailureReason(reason))
 
     fun diagnostics(clientHealth: Map<String, JSONObject>): String {
         val eventSnapshot = synchronized(eventLock) { events.toList() }
