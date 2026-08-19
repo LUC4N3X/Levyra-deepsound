@@ -149,7 +149,7 @@ class LocalMusicController(
                 ?: return@withContext emptyList<Track>() to PlaylistTransferResult(0, 0)
             val baseDirectory = file.parent
             val known = internalState.value.index.tracks.associateBy {
-                LocalMusicIdentity.normalizeKey(it.path)
+                LocalMusicIdentity.normalizePathKey(it.path)
             }
             val tracks = ArrayList<Track>()
             var skipped = 0
@@ -159,7 +159,7 @@ class LocalMusicController(
                     skipped += 1
                     return@forEach
                 }
-                val indexed = known[LocalMusicIdentity.normalizeKey(resolved.toString())]
+                val indexed = known[LocalMusicIdentity.normalizePathKey(resolved.toString())]
                 if (indexed != null) {
                     tracks.add(indexed.toTrack())
                     return@forEach
@@ -213,15 +213,40 @@ class LocalMusicController(
         watchJob = scope.launch(Dispatchers.IO) {
             val service = runCatching { FileSystems.getDefault().newWatchService() }.getOrNull()
                 ?: return@launch
+            val watched = HashSet<String>()
             try {
                 var registered = 0
                 folders.forEach { folder ->
-                    registered += register(service, runCatching { Path.of(folder.path) }.getOrNull(), registered)
+                    registered += register(
+                        service = service,
+                        root = runCatching { Path.of(folder.path) }.getOrNull(),
+                        alreadyRegistered = registered,
+                        watched = watched
+                    )
                 }
                 while (isActive) {
                     val key = service.poll(WATCH_POLL_MS, TimeUnit.MILLISECONDS) ?: continue
+                    val parent = key.watchable() as? Path
                     val events = key.pollEvents()
-                    key.reset()
+                    if (parent != null && registered < MAX_WATCHED_DIRECTORIES) {
+                        events.forEach { event ->
+                            if (event.kind() != StandardWatchEventKinds.ENTRY_CREATE) return@forEach
+                            val relative = event.context() as? Path ?: return@forEach
+                            val created = parent.resolve(relative)
+                            if (Files.isDirectory(created)) {
+                                registered += register(
+                                    service = service,
+                                    root = created,
+                                    alreadyRegistered = registered,
+                                    watched = watched
+                                )
+                            }
+                        }
+                    }
+                    val valid = key.reset()
+                    if (!valid && parent != null) {
+                        watched.remove(LocalMusicIdentity.normalizePathKey(parent.toString()))
+                    }
                     if (events.isNotEmpty()) {
                         watchSignals.trySend(Unit)
                     }
@@ -236,22 +261,38 @@ class LocalMusicController(
         }
     }
 
-    private fun register(service: WatchService, root: Path?, alreadyRegistered: Int): Int {
-        if (root == null || !Files.isDirectory(root)) return 0
+    private fun register(
+        service: WatchService,
+        root: Path?,
+        alreadyRegistered: Int,
+        watched: MutableSet<String>
+    ): Int {
+        if (root == null || !Files.isDirectory(root) || alreadyRegistered >= MAX_WATCHED_DIRECTORIES) return 0
         var count = 0
+        val remaining = MAX_WATCHED_DIRECTORIES - alreadyRegistered
         runCatching {
             Files.walk(root, MAX_WATCH_DEPTH).use { stream ->
                 stream.filter { Files.isDirectory(it) }
-                    .limit((MAX_WATCHED_DIRECTORIES - alreadyRegistered).toLong().coerceAtLeast(0L))
+                    .filter { directory ->
+                        LocalMusicIdentity.normalizePathKey(directory.toString()) !in watched
+                    }
+                    .limit(remaining.toLong())
                     .forEach { directory ->
-                        runCatching {
+                        val identity = LocalMusicIdentity.normalizePathKey(directory.toString())
+                        if (!watched.add(identity)) return@forEach
+                        val registered = runCatching {
                             directory.register(
                                 service,
                                 StandardWatchEventKinds.ENTRY_CREATE,
                                 StandardWatchEventKinds.ENTRY_DELETE,
                                 StandardWatchEventKinds.ENTRY_MODIFY
                             )
+                            true
+                        }.getOrDefault(false)
+                        if (registered) {
                             count += 1
+                        } else {
+                            watched.remove(identity)
                         }
                     }
             }
