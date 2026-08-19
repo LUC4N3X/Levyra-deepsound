@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
+import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -4489,11 +4490,27 @@ private fun LyricsOverlay(
                                 selected = false,
                                 icon = Icons.Rounded.Share,
                                 onClick = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, selectedLyricsText())
+                                    val selectedText = selectedLyricsText()
+                                    val selectedTrack = track
+                                    if (selectedTrack == null) {
+                                        val fallback = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, selectedText)
+                                        }
+                                        shareContext.startActivity(Intent.createChooser(fallback, strings.shareVia))
+                                    } else {
+                                        clipboardScope.launch {
+                                            val shareIntent = LyricsShareCard.createShareIntent(
+                                                context = shareContext,
+                                                track = selectedTrack,
+                                                selectedLyrics = selectedText
+                                            ) ?: Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_TEXT, selectedText)
+                                            }
+                                            shareContext.startActivity(Intent.createChooser(shareIntent, strings.shareVia))
+                                        }
                                     }
-                                    shareContext.startActivity(Intent.createChooser(intent, strings.shareVia))
                                 }
                             )
                             LyricsControlChip(
