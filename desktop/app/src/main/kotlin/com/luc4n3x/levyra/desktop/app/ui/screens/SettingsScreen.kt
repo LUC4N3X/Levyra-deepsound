@@ -346,6 +346,21 @@ fun SettingsScreen(
                     options = DesktopSettings.SPEED_STEPS.map { step -> step to Format.speed(step) },
                     onSelect = { value -> onUpdate { it.copy(playbackSpeed = value) } }
                 )
+                ChoiceRow(
+                    title = strings.crossfade,
+                    body = strings.crossfadeBody,
+                    selected = DesktopSettings.normalizeCrossfade(settings.crossfadeMs),
+                    options = DesktopSettings.CROSSFADE_STEPS_MS.map { step ->
+                        step to if (step == 0) strings.sleepTimerOff else "${step / 1_000}s"
+                    },
+                    onSelect = { value -> onUpdate { it.copy(crossfadeMs = value) } }
+                )
+                SettingsToggle(
+                    title = strings.smartCrossfade,
+                    body = strings.smartCrossfadeBody,
+                    checked = settings.smartCrossfade,
+                    onCheckedChange = { value -> onUpdate { it.copy(smartCrossfade = value) } }
+                )
                 SettingsToggle(
                     title = strings.settingsPreloadNext,
                     body = strings.settingsPreloadNextBody,

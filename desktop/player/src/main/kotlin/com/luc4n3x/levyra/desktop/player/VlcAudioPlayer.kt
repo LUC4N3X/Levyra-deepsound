@@ -15,7 +15,8 @@ import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 
 class VlcAudioPlayer private constructor(
     private val factory: MediaPlayerFactory,
-    val nativePath: String
+    val nativePath: String,
+    private val ownsFactory: Boolean = true
 ) : AudioPlayer {
 
     private val mediaPlayer: MediaPlayer = factory.mediaPlayers().newMediaPlayer()
@@ -76,17 +77,43 @@ class VlcAudioPlayer private constructor(
     override fun play(url: String, startAtMs: Long) {
         if (released.get()) return
         resetTimeThrottle(startAtMs)
-        val options = buildList {
-            add(":http-user-agent=${ExtractorHttp.DESKTOP_USER_AGENT}")
-            add(":http-referrer=https://www.youtube.com/")
-            add(":no-video")
-            if (startAtMs > 0L) {
-                add(":start-time=%.3f".format(Locale.ROOT, startAtMs / 1000.0))
-            }
-        }
-        mediaPlayer.media().play(url, *options.toTypedArray())
+        mediaPlayer.media().play(url, *mediaOptions(startAtMs))
         pushOutputDevice()
     }
+
+    override fun prepare(url: String, startAtMs: Long): Boolean {
+        if (released.get()) return false
+        resetTimeThrottle(startAtMs)
+        val started = runCatching {
+            mediaPlayer.media().startPaused(url, *mediaOptions(startAtMs))
+        }.getOrDefault(false)
+        if (started) pushOutputDevice()
+        return started
+    }
+
+    override fun startPrepared(): Boolean {
+        if (released.get()) return false
+        return runCatching {
+            mediaPlayer.controls().setPause(false)
+            true
+        }.getOrDefault(false)
+    }
+
+    override fun createCompanion(): AudioPlayer? {
+        if (released.get()) return null
+        return runCatching {
+            VlcAudioPlayer(factory, nativePath, ownsFactory = false)
+        }.getOrNull()
+    }
+
+    private fun mediaOptions(startAtMs: Long): Array<String> = buildList {
+        add(":http-user-agent=${ExtractorHttp.DESKTOP_USER_AGENT}")
+        add(":http-referrer=https://www.youtube.com/")
+        add(":no-video")
+        if (startAtMs > 0L) {
+            add(":start-time=%.3f".format(Locale.ROOT, startAtMs / 1000.0))
+        }
+    }.toTypedArray()
 
     override fun resume() {
         if (released.get()) return
@@ -171,7 +198,9 @@ class VlcAudioPlayer private constructor(
     override fun close() {
         if (!released.compareAndSet(false, true)) return
         runCatching { mediaPlayer.release() }
-        runCatching { factory.release() }
+        if (ownsFactory) {
+            runCatching { factory.release() }
+        }
     }
 
     private fun publishTimeChanged(positionMs: Long) {

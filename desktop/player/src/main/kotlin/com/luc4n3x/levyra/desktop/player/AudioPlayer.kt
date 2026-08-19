@@ -7,6 +7,12 @@ interface AudioPlayer : AutoCloseable {
 
     fun play(url: String, startAtMs: Long = 0L)
 
+    fun prepare(url: String, startAtMs: Long = 0L): Boolean
+
+    fun startPrepared(): Boolean
+
+    fun createCompanion(): AudioPlayer?
+
     fun resume()
 
     fun pause()

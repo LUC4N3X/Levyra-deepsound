@@ -46,7 +46,11 @@ data class DesktopExtraStrings(
     val localMusicRemoveFolder: String,
     val playlistImport: String,
     val playlistExport: String,
-    val playlistSkippedEntries: String
+    val playlistSkippedEntries: String,
+    val crossfade: String,
+    val crossfadeBody: String,
+    val smartCrossfade: String,
+    val smartCrossfadeBody: String
 )
 
 internal object DesktopExtras {
@@ -120,7 +124,11 @@ internal object DesktopExtras {
         localMusicRemoveFolder = value(entries, tag, "localMusicRemoveFolder"),
         playlistImport = value(entries, tag, "playlistImport"),
         playlistExport = value(entries, tag, "playlistExport"),
-        playlistSkippedEntries = value(entries, tag, "playlistSkippedEntries")
+        playlistSkippedEntries = value(entries, tag, "playlistSkippedEntries"),
+        crossfade = value(entries, tag, "crossfade"),
+        crossfadeBody = value(entries, tag, "crossfadeBody"),
+        smartCrossfade = value(entries, tag, "smartCrossfade"),
+        smartCrossfadeBody = value(entries, tag, "smartCrossfadeBody")
     )
 
     private fun value(entries: Properties, tag: String, key: String): String {

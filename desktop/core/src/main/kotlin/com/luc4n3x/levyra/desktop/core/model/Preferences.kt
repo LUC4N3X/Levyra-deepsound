@@ -127,6 +127,8 @@ data class DesktopSettings(
     val resumeOnStartup: Boolean = true,
     val minimizeToTray: Boolean = true,
     val preloadNextTrack: Boolean = true,
+    val crossfadeMs: Int = 0,
+    val smartCrossfade: Boolean = true,
     val globalMediaKeys: Boolean = true,
     val playbackSpeed: Float = DEFAULT_SPEED,
     val vlcDirectory: String = "",
@@ -141,6 +143,7 @@ data class DesktopSettings(
             .toSet(),
         volume = volume.coerceIn(0, 100),
         playbackSpeed = normalizeSpeed(playbackSpeed),
+        crossfadeMs = normalizeCrossfade(crossfadeMs),
         vlcDirectory = vlcDirectory.trim(),
         audioOutputDeviceId = audioOutputDeviceId.trim().take(MAX_OUTPUT_DEVICE_ID_LENGTH),
         equalizer = equalizer.sanitized()
@@ -153,7 +156,14 @@ data class DesktopSettings(
         const val MAX_SPEED = 2f
         const val DEFAULT_SPEED = 1f
 
+        const val MAX_CROSSFADE_MS = 12_000
+
         val SPEED_STEPS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+        val CROSSFADE_STEPS_MS = listOf(0, 2_000, 4_000, 6_000, 8_000, 12_000)
+
+        fun normalizeCrossfade(value: Int): Int =
+            CROSSFADE_STEPS_MS.minByOrNull { kotlin.math.abs(it - value.coerceIn(0, MAX_CROSSFADE_MS)) }
+                ?: 0
 
         fun normalizeSpeed(value: Float): Float =
             if (value.isNaN()) DEFAULT_SPEED else value.coerceIn(MIN_SPEED, MAX_SPEED)
