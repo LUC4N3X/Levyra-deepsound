@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.desktop.core.localmusic
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import com.luc4n3x.levyra.desktop.core.storage.JsonFileStore
 import java.nio.file.Path
-import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,9 +22,9 @@ class LocalLibraryStore(
             .getOrNull()
             ?.takeIf { it.isNotBlank() }
             ?: return null
-        val key = LocalMusicIdentity.normalizeKey(normalized)
+        val key = LocalMusicIdentity.normalizePathKey(normalized)
         val existing = state.value.folders.firstOrNull {
-            LocalMusicIdentity.normalizeKey(it.path) == key
+            LocalMusicIdentity.normalizePathKey(it.path) == key
         }
         if (existing != null) return existing
         if (state.value.folders.size >= MAX_FOLDERS) return null
@@ -40,10 +39,9 @@ class LocalLibraryStore(
 
     fun removeFolder(folderId: String) = mutate { data ->
         val folder = data.folders.firstOrNull { it.id == folderId } ?: return@mutate data
-        val prefix = LocalMusicIdentity.normalizeKey(folder.path)
         data.copy(
             folders = data.folders.filterNot { it.id == folderId },
-            tracks = data.tracks.filterNot { it.path.lowercase(Locale.ROOT).startsWith(prefix) }
+            tracks = data.tracks.filterNot { LocalMusicIdentity.isWithin(it.path, folder.path) }
         )
     }
 
