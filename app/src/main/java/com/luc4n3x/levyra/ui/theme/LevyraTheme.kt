@@ -193,20 +193,33 @@ object LevyraThemeController {
         coverAccentStart: Int? = null,
         coverAccentEnd: Int? = null,
         moodAccentStart: Int? = null,
-        moodAccentEnd: Int? = null
+        moodAccentEnd: Int? = null,
+        pureBlack: Boolean = false
     ) {
         val base = LevyraThemes.byId(presetId)
-        val palette = when {
+        val tinted = when {
             base.followsCover && coverAccentStart != null && coverAccentEnd != null ->
                 tinted(base, Color(coverAccentStart), Color(coverAccentEnd))
             base.followsMood && moodAccentStart != null && moodAccentEnd != null ->
                 tinted(base, Color(moodAccentStart), Color(moodAccentEnd))
             else -> base
         }
+        val palette = if (pureBlack) asPureBlack(tinted) else tinted
 
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
         }
+    }
+
+    fun asPureBlack(base: LevyraPalette): LevyraPalette {
+        if (base.isLight) return base
+        return base.copy(
+            black = Color.Black,
+            ink = Color.Black,
+            panel = Color(0xFF0B0B0D),
+            panelSoft = Color(0xFF15151A),
+            outline = base.outline.copy(alpha = (base.outline.alpha + 0.12f).coerceAtMost(0.6f))
+        )
     }
 
     private fun tinted(
@@ -265,11 +278,15 @@ val LevyraText: Color
 val LevyraMuted: Color
     get() = activePaletteState.value.muted
 
+val LevyraIsPureBlack: Boolean
+    get() = !activePaletteState.value.isLight && activePaletteState.value.black == Color.Black &&
+        activePaletteState.value.ink == Color.Black
+
 val LevyraGlass: Color
-    get() = if (activePaletteState.value.isLight) {
-        Color(0x14101322)
-    } else {
-        Color(0x0FFFFFFF)
+    get() = when {
+        activePaletteState.value.isLight -> Color(0x14101322)
+        LevyraIsPureBlack -> Color(0x0AFFFFFF)
+        else -> Color(0x0FFFFFFF)
     }
 
 val LevyraGlassBorder: Color
@@ -315,7 +332,12 @@ private fun schemeFor(palette: LevyraPalette): ColorScheme {
             onSurface = palette.text,
             surfaceVariant = palette.panel,
             onSurfaceVariant = palette.muted,
-            outline = palette.outline
+            outline = palette.outline,
+            surfaceContainerLowest = palette.black,
+            surfaceContainerLow = palette.ink,
+            surfaceContainer = palette.panel,
+            surfaceContainerHigh = palette.panelSoft,
+            surfaceContainerHighest = palette.panelSoft
         )
     }
 }

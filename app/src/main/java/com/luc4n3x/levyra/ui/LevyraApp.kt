@@ -175,7 +175,9 @@ import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
@@ -263,7 +265,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -279,7 +280,6 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -404,7 +404,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.rememberLevyraHaptics
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.window.Dialog
@@ -1119,18 +1122,27 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         ExitTransition.None
     }
     val accentTrack = state.currentTrack ?: state.tracks.firstOrNull()
-    LaunchedEffect(state.themePreset, accentTrack?.accentStart, accentTrack?.accentEnd, state.selectedMood?.id) {
+    val pureBlack = state.interfaceSettings.pureBlack
+    LaunchedEffect(
+        state.themePreset,
+        accentTrack?.accentStart,
+        accentTrack?.accentEnd,
+        state.selectedMood?.id,
+        pureBlack
+    ) {
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
             accentTrack?.accentEnd,
             state.selectedMood?.accentStart,
-            state.selectedMood?.accentEnd
+            state.selectedMood?.accentEnd,
+            pureBlack
         )
     }
     val rootView = LocalView.current
-    LaunchedEffect(state.themePreset) {
-        val palette = LevyraThemes.byId(state.themePreset)
+    LaunchedEffect(state.themePreset, pureBlack) {
+        val base = LevyraThemes.byId(state.themePreset)
+        val palette = if (pureBlack) LevyraThemeController.asPureBlack(base) else base
         (rootView.context as? Activity)?.window?.let { window ->
             window.decorView.setBackgroundColor(palette.black.toArgb())
             WindowCompat.getInsetsController(window, rootView).apply {
@@ -1202,6 +1214,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLevyraStrings provides currentStrings,
+        LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -4090,7 +4103,7 @@ private fun LyricsOverlay(
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
     val accentEnd = if (track != null) Color(track.accentEnd) else LevyraViolet
     val listState = rememberLazyListState()
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
     val clipboard = LocalClipboard.current
     val clipboardScope = rememberCoroutineScope()
     val shareContext = LocalContext.current
@@ -4607,7 +4620,7 @@ private fun LyricsOverlay(
                         onClick = {
                             if (selectionMode) {
                                 selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (state.lyricsSynced) {
                                 onSeekToMs((line.startMs + lyricsOffsetMs).coerceAtLeast(0L))
                                 autoScrollEnabled = true
@@ -4616,10 +4629,10 @@ private fun LyricsOverlay(
                         onLongClick = {
                             if (selectionMode) {
                                 selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (state.lyricsSynced) {
                                 lyricsOffsetMs = state.positionMs - line.startMs
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
                                 autoScrollEnabled = true
                             }
                         }
@@ -7427,7 +7440,7 @@ private fun PersonalListeningShelf(
     onTrackActions: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
     val shelfTracks = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -7467,7 +7480,7 @@ private fun PersonalListeningShelf(
                                     onClick = { onPlay(track) },
                                     modifier = Modifier.weight(1f),
                                     onLongClick = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        haptics.perform(LevyraHapticAction.TrackSwipe)
                                         onTrackActions(track)
                                     },
                                     onLongClickLabel = strings.songOptions
@@ -11987,7 +12000,7 @@ private fun PlayerScreen(
     val playerContext = LocalContext.current
     val playerActivity = playerContext as? Activity
     val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
-    val hapticFeedback = LocalHapticFeedback.current
+    val hapticFeedback = LocalLevyraHaptics.current
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val rawPrimaryTarget = track?.let { Color(it.accentStart) } ?: LevyraCyan
     val rawSecondaryTarget = track?.let { Color(it.accentEnd) } ?: LevyraViolet
@@ -12307,7 +12320,7 @@ private fun PlayerScreen(
                         mediaActions = PlayerGestureMediaActions(
                             seekBy = { delta ->
                                 viewModel.seekBy(delta)
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
                                 mediaSeekFeedbackMs = delta
                                 mediaSeekFeedbackEvent += 1
                             },
@@ -12322,7 +12335,7 @@ private fun PlayerScreen(
                                 gestureFeedbackEvent += 1
                             },
                             haptic = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
                             },
                             collapse = collapseActions
                         ),
@@ -14578,6 +14591,15 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
+                                    icon = Icons.Rounded.DarkMode,
+                                    title = strings.pureBlack,
+                                    subtitle = strings.pureBlackSubtitle,
+                                    checked = interfaceSettings.pureBlack,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(pureBlack = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
                                     icon = Icons.Rounded.LocalFireDepartment,
                                     title = strings.top50Charts,
                                     subtitle = strings.showChartsCountry,
@@ -14588,6 +14610,15 @@ private fun SettingsOverlay(
                         }
                         "player" -> {
                             item { SettingsSectionLabel(strings.mobilePlayerSection) }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Vibration,
+                                    title = strings.hapticFeedback,
+                                    subtitle = strings.hapticFeedbackSubtitle,
+                                    checked = interfaceSettings.hapticFeedback,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(hapticFeedback = it)) }
+                                )
+                            }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Speed,
@@ -18795,7 +18826,7 @@ private fun BottomTabs(
 ) {
     val entries = rememberLevyraTabEntries()
     val animationsEnabled = LocalAnimationsEnabled.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
     val isLight = LevyraIsLight
     val accentStart = LevyraCyan
     val selectedIndex = entries.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
@@ -18900,7 +18931,7 @@ private fun BottomTabs(
                             accent = accentStart,
                             onClick = {
                                 if (!isSelected) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    haptics.perform(LevyraHapticAction.SeekSnap)
                                 }
                                 onSelect(entry.tab)
                             }

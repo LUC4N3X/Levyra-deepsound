@@ -33,11 +33,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -46,6 +44,8 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -72,7 +72,7 @@ fun PremiumSeekbar(
     contentDescription: String? = null
 ) {
     val density = LocalDensity.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
 
     var isDragging by remember { mutableStateOf(false) }
     var dragProgressFraction by remember { mutableFloatStateOf(0f) }
@@ -188,7 +188,7 @@ fun PremiumSeekbar(
                     detectTapGestures { offset ->
                         if (durationMs > 0L && size.width > 0) {
                             val fraction = seekbarFractionAt(offset.x, size.width.toFloat())
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.perform(LevyraHapticAction.SeekSnap)
                             onSeekTo(seekbarSeekMillis(fraction, durationMs))
                         }
                     }
@@ -199,11 +199,11 @@ fun PremiumSeekbar(
                         onDragStart = { offset ->
                             isDragging = true
                             dragProgressFraction = seekbarFractionAt(offset.x, size.width.toFloat())
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.perform(LevyraHapticAction.SeekSnap)
                         },
                         onDragEnd = {
                             isDragging = false
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            haptics.perform(LevyraHapticAction.SeekSnap)
                             onSeekTo(seekbarSeekMillis(dragProgressFraction, durationMs))
                         },
                         onDragCancel = { isDragging = false },
