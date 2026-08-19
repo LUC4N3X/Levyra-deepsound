@@ -46,6 +46,16 @@ class M3uPlaylistTest {
     }
 
     @Test
+    fun keepsWindowsAbsolutePathsAbsoluteOnNonWindowsTestHosts() {
+        val base = Path.of("/tmp/playlists")
+        val drivePath = M3uPlaylist.resolve(M3uEntry(location = "D:\\Music\\track.flac"), base)
+        val uncPath = M3uPlaylist.resolve(M3uEntry(location = "\\\\server\\share\\track.flac"), base)
+
+        assertEquals(Path.of("D:\\Music\\track.flac").normalize(), drivePath)
+        assertEquals(Path.of("\\\\server\\share\\track.flac").normalize(), uncPath)
+    }
+
+    @Test
     fun rendersLocalPathsAndRemoteUrlsWithExtinfLabels() {
         val rendered = M3uPlaylist.render(
             name = "Evening",
