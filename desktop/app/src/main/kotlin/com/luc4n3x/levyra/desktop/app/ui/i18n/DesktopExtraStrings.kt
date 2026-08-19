@@ -60,6 +60,7 @@ internal object DesktopExtras {
     fun supportedTags(): Set<String> = catalog.keys
 
     private const val RESOURCE = "/i18n/desktop-extras.properties"
+    private const val PRESET_TRANSLATIONS_RESOURCE = "/i18n/desktop-preset-translations.properties"
     private const val FALLBACK_TAG = "en"
 
     private val catalog: Map<String, DesktopExtraStrings> by lazy { load() }
@@ -73,13 +74,18 @@ internal object DesktopExtras {
         return tags.associateWith { tag -> bundle(entries, tag) }
     }
 
-    private fun readEntries(): Properties {
-        val stream = requireNotNull(DesktopExtras::class.java.getResourceAsStream(RESOURCE)) {
-            "Desktop extra strings resource not found: $RESOURCE"
+    private fun readEntries(): Properties = Properties().apply {
+        loadResource(RESOURCE, required = true)
+        loadResource(PRESET_TRANSLATIONS_RESOURCE, required = true)
+    }
+
+    private fun Properties.loadResource(resource: String, required: Boolean) {
+        val stream = DesktopExtras::class.java.getResourceAsStream(resource)
+        if (stream == null) {
+            require(!required) { "Desktop extra strings resource not found: $resource" }
+            return
         }
-        return Properties().apply {
-            stream.use { source -> load(InputStreamReader(source, StandardCharsets.UTF_8)) }
-        }
+        stream.use { source -> load(InputStreamReader(source, StandardCharsets.UTF_8)) }
     }
 
     private fun bundle(entries: Properties, tag: String): DesktopExtraStrings = DesktopExtraStrings(
