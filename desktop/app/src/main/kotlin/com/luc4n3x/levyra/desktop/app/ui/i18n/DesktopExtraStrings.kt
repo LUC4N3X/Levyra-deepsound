@@ -21,7 +21,19 @@ data class DesktopExtraStrings(
     val audioOutputSystemDefault: String,
     val audioOutputRefresh: String,
     val audioOutputUnavailable: String,
-    val audioOutputEmpty: String
+    val audioOutputEmpty: String,
+    val equalizerPreset: String,
+    val equalizerPresetFlat: String,
+    val equalizerPresetBassBoost: String,
+    val equalizerPresetVocal: String,
+    val equalizerPresetRock: String,
+    val equalizerPresetPop: String,
+    val equalizerPresetElectronic: String,
+    val equalizerPresetHipHop: String,
+    val equalizerPresetClassical: String,
+    val equalizerPresetAcoustic: String,
+    val equalizerPresetNight: String,
+    val equalizerPresetCustom: String
 )
 
 internal object DesktopExtras {
@@ -70,7 +82,19 @@ internal object DesktopExtras {
         audioOutputSystemDefault = value(entries, tag, "audioOutputSystemDefault"),
         audioOutputRefresh = value(entries, tag, "audioOutputRefresh"),
         audioOutputUnavailable = value(entries, tag, "audioOutputUnavailable"),
-        audioOutputEmpty = value(entries, tag, "audioOutputEmpty")
+        audioOutputEmpty = value(entries, tag, "audioOutputEmpty"),
+        equalizerPreset = value(entries, tag, "equalizerPreset"),
+        equalizerPresetFlat = value(entries, tag, "equalizerPresetFlat"),
+        equalizerPresetBassBoost = value(entries, tag, "equalizerPresetBassBoost"),
+        equalizerPresetVocal = value(entries, tag, "equalizerPresetVocal"),
+        equalizerPresetRock = value(entries, tag, "equalizerPresetRock"),
+        equalizerPresetPop = value(entries, tag, "equalizerPresetPop"),
+        equalizerPresetElectronic = value(entries, tag, "equalizerPresetElectronic"),
+        equalizerPresetHipHop = value(entries, tag, "equalizerPresetHipHop"),
+        equalizerPresetClassical = value(entries, tag, "equalizerPresetClassical"),
+        equalizerPresetAcoustic = value(entries, tag, "equalizerPresetAcoustic"),
+        equalizerPresetNight = value(entries, tag, "equalizerPresetNight"),
+        equalizerPresetCustom = value(entries, tag, "equalizerPresetCustom")
     )
 
     private fun value(entries: Properties, tag: String, key: String): String {

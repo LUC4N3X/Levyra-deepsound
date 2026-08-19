@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import com.luc4n3x.levyra.desktop.core.model.EqualizerPreset
 import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
 import com.luc4n3x.levyra.desktop.core.model.PreferredCodec
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
@@ -281,6 +282,37 @@ fun SettingsScreen(
                         onUpdate { it.copy(equalizer = it.equalizer.copy(enabled = value)) }
                     }
                 )
+                SettingsRow(title = strings.equalizerPreset) {
+                    val activeId = EqualizerPreset.selectedId(settings.equalizer)
+                    val options = buildList {
+                        EqualizerPreset.entries.forEach { preset ->
+                            add(
+                                LevyraOption(
+                                    id = preset.id,
+                                    label = equalizerPresetLabel(preset)
+                                )
+                            )
+                        }
+                        if (activeId == EqualizerPreset.CUSTOM_ID) {
+                            add(
+                                LevyraOption(
+                                    id = EqualizerPreset.CUSTOM_ID,
+                                    label = strings.equalizerPresetCustom
+                                )
+                            )
+                        }
+                    }
+                    LevyraOptionPicker(
+                        label = strings.equalizerPreset,
+                        options = options,
+                        selectedId = activeId,
+                        contentDescription = strings.settingsEqualizerBody,
+                        onSelect = { value ->
+                            val preset = EqualizerPreset.fromId(value) ?: return@LevyraOptionPicker
+                            onUpdate { it.copy(equalizer = preset.applyTo(it.equalizer)) }
+                        }
+                    )
+                }
                 EqualizerBars(
                     amps = settings.equalizer.amps,
                     accent = LocalAccentColor.current,
@@ -557,5 +589,22 @@ private fun SettingsToggle(
             }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun equalizerPresetLabel(preset: EqualizerPreset): String {
+    val strings = LocalStrings.current
+    return when (preset) {
+        EqualizerPreset.FLAT -> strings.equalizerPresetFlat
+        EqualizerPreset.BASS_BOOST -> strings.equalizerPresetBassBoost
+        EqualizerPreset.VOCAL -> strings.equalizerPresetVocal
+        EqualizerPreset.ROCK -> strings.equalizerPresetRock
+        EqualizerPreset.POP -> strings.equalizerPresetPop
+        EqualizerPreset.ELECTRONIC -> strings.equalizerPresetElectronic
+        EqualizerPreset.HIP_HOP -> strings.equalizerPresetHipHop
+        EqualizerPreset.CLASSICAL -> strings.equalizerPresetClassical
+        EqualizerPreset.ACOUSTIC -> strings.equalizerPresetAcoustic
+        EqualizerPreset.NIGHT -> strings.equalizerPresetNight
     }
 }
