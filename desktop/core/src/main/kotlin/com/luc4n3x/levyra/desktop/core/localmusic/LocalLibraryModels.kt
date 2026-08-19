@@ -22,7 +22,7 @@ data class LocalTrack(
     val title: String = "",
     val artist: String = "",
     val albumArtist: String = "",
-    val album: String = "",
+    val album = "",
     val genre: String = "",
     val year: Int = 0,
     val trackNumber: Int = 0,
@@ -111,6 +111,26 @@ object LocalMusicIdentity {
 
     fun normalizeKey(value: String): String = value.trim().lowercase(Locale.ROOT)
 
+    fun normalizePathKey(value: String): String {
+        var normalized = value.trim().replace('\\', '/').lowercase(Locale.ROOT)
+        while (normalized.length > 1 && normalized.endsWith('/') && !isDriveRoot(normalized)) {
+            normalized = normalized.dropLast(1)
+        }
+        return normalized
+    }
+
+    fun isWithin(path: String, root: String): Boolean {
+        val candidate = normalizePathKey(path)
+        val base = normalizePathKey(root)
+        if (candidate.isEmpty() || base.isEmpty()) return false
+        if (candidate == base) return true
+        val prefix = if (base.endsWith('/')) base else "$base/"
+        return candidate.startsWith(prefix)
+    }
+
     fun albumKey(album: String, albumArtist: String): String =
         "${normalizeKey(album)}|${normalizeKey(albumArtist)}"
+
+    private fun isDriveRoot(value: String): Boolean =
+        value.length == 3 && value[0].isLetter() && value[1] == ':' && value[2] == '/'
 }
