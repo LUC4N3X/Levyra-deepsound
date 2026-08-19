@@ -79,7 +79,7 @@ class VlcAudioPlayer private constructor(
             }
 
             override fun lengthChanged(mediaPlayer: MediaPlayer, newLength: Long) {
-                emit(PlayerEvent.LengthChanged(newLength.coerceAtLeast(0L))
+                emit(PlayerEvent.LengthChanged(newLength.coerceAtLeast(0L)))
             }
         })
     }
