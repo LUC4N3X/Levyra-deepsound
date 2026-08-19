@@ -21,18 +21,23 @@ class LocalArtworkCache(private val directory: Path) {
         val name = "${digest(artwork.bytes)}.$extension"
         val target = directory.resolve(name)
         if (Files.isRegularFile(target)) return target.toString()
-        return runCatching {
-            val temporary = directory.resolve("$name.tmp")
+        var temporary: Path? = null
+        return try {
+            temporary = Files.createTempFile(directory, "$name.", ".tmp")
             Files.write(temporary, artwork.bytes)
             Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
             target.toString()
-        }.getOrDefault("")
+        } catch (_: Exception) {
+            ""
+        } finally {
+            temporary?.let { runCatching { Files.deleteIfExists(it) } }
+        }
     }
 
     fun folderCover(directoryPath: Path): String {
         val key = directoryPath.toString().lowercase(Locale.ROOT)
         knownDirectoryCovers[key]?.let { return it }
-        val resolved = findFolderCover(directoryPath)
+        val resolved = findFolderCover(directoryPath) ?: return ""
         knownDirectoryCovers[key] = resolved
         return resolved
     }
@@ -41,14 +46,14 @@ class LocalArtworkCache(private val directory: Path) {
         knownDirectoryCovers.clear()
     }
 
-    private fun findFolderCover(directoryPath: Path): String {
+    private fun findFolderCover(directoryPath: Path): String? {
         val candidates = runCatching {
             Files.list(directoryPath).use { stream ->
                 stream.filter { Files.isRegularFile(it) }
                     .limit(MAX_DIRECTORY_ENTRIES)
                     .toList()
             }
-        }.getOrDefault(emptyList())
+        }.getOrNull() ?: return null
         if (candidates.isEmpty()) return ""
         var best: Path? = null
         var bestRank = Int.MAX_VALUE
