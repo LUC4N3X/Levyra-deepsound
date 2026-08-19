@@ -34,11 +34,12 @@ class LocalLibraryScanner(
         onProgress: (LocalScanProgress) -> Unit = {}
     ): LocalScanResult {
         artwork.clearDirectoryCache()
-        val previous = existing.associateBy { LocalMusicIdentity.normalizeKey(it.path) }
+        val previous = existing.associateBy { LocalMusicIdentity.normalizePathKey(it.path) }
         val files = ArrayList<Pair<LocalFolder, Path>>()
+        val seenPaths = HashSet<String>()
         folders.forEach { folder ->
             coroutineContext.ensureActive()
-            collectFiles(folder, files)
+            collectFiles(folder, files, seenPaths)
         }
         onProgress(LocalScanProgress(processed = 0, total = files.size))
 
@@ -49,7 +50,7 @@ class LocalLibraryScanner(
         var failed = 0
         files.forEachIndexed { index, (folder, file) ->
             coroutineContext.ensureActive()
-            val key = LocalMusicIdentity.normalizeKey(file.toString())
+            val key = LocalMusicIdentity.normalizePathKey(file.toString())
             val attributes = runCatching {
                 Files.size(file) to Files.getLastModifiedTime(file).toMillis()
             }.getOrNull()
@@ -62,7 +63,7 @@ class LocalLibraryScanner(
                     known != null &&
                     known.fileSize == size &&
                     known.modifiedAtMs == modified
-                if (unchanged && known != null) {
+                if (unchanged) {
                     scanned[key] = known.copy(available = true, folderId = folder.id)
                     reused += 1
                 } else {
@@ -107,10 +108,8 @@ class LocalLibraryScanner(
         )
     }
 
-    private fun belongsToScannedFolders(track: LocalTrack, folders: List<LocalFolder>): Boolean {
-        val path = LocalMusicIdentity.normalizeKey(track.path)
-        return folders.any { folder -> path.startsWith(LocalMusicIdentity.normalizeKey(folder.path)) }
-    }
+    private fun belongsToScannedFolders(track: LocalTrack, folders: List<LocalFolder>): Boolean =
+        folders.any { folder -> LocalMusicIdentity.isWithin(track.path, folder.path) }
 
     private fun read(
         folder: LocalFolder,
@@ -149,14 +148,21 @@ class LocalLibraryScanner(
         )
     }
 
-    private fun collectFiles(folder: LocalFolder, target: MutableList<Pair<LocalFolder, Path>>) {
+    private fun collectFiles(
+        folder: LocalFolder,
+        target: MutableList<Pair<LocalFolder, Path>>,
+        seenPaths: MutableSet<String>
+    ) {
+        if (target.size >= MAX_FILES) return
         val root = runCatching { Path.of(folder.path) }.getOrNull() ?: return
         if (!Files.isDirectory(root)) return
+        val remaining = (MAX_FILES - target.size).toLong()
         runCatching {
             Files.walk(root, MAX_DEPTH).use { stream ->
                 stream.filter { Files.isRegularFile(it) }
                     .filter(AudioTagReader::isSupported)
-                    .limit(MAX_FILES)
+                    .filter { file -> seenPaths.add(LocalMusicIdentity.normalizePathKey(file.toString())) }
+                    .limit(remaining)
                     .forEach { file -> target.add(folder to file) }
             }
         }
@@ -164,7 +170,7 @@ class LocalLibraryScanner(
 
     companion object {
         private const val MAX_DEPTH = 12
-        private const val MAX_FILES = 200_000L
+        private const val MAX_FILES = 200_000
         private const val PROGRESS_STEP = 25
 
         private val TRACK_ORDER = compareBy<LocalTrack>(
