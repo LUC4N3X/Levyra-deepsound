@@ -2122,9 +2122,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         return true
     }
 
-    private suspend fun verifyDirectAudioUrlFast(url: String): Boolean {
+    private suspend fun verifyDirectAudioUrlFast(
+        url: String,
+        trustAttestedGoogleVideo: Boolean = true
+    ): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
-        if (isTrustedGoogleVideoUrl(url) && url.containsQueryParameter("pot")) return true
+        if (trustAttestedGoogleVideo && isTrustedGoogleVideoUrl(url) && url.containsQueryParameter("pot")) return true
         val request = Request.Builder()
             .url(url)
             .get()
@@ -2328,7 +2331,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                     streamingPoToken = poTokens?.streamingToken,
                     transformThrottling = profile.clientName.startsWith("WEB")
                 )
-                if (url.isBlank() || isPlaybackUrlBlocked(url)) continue
+                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
+                if (!isVideoMode && !preferMp4Audio &&
+                    !verifyDirectAudioUrlFast(url, trustAttestedGoogleVideo = false)
+                ) continue
                 bestAudioUrl = url
                 bestAudioLabel = label
                 bestAudioFormat = format
