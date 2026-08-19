@@ -18,6 +18,7 @@ import android.util.Rational
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -61,6 +62,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.update.LevyraUpdateBanner
 import com.luc4n3x.levyra.ui.update.LevyraUpdatePhase
+import com.luc4n3x.levyra.ui.update.LevyraUpdateScreen
 import com.luc4n3x.levyra.update.AppUpdateContract
 import com.luc4n3x.levyra.update.AppUpdateInstaller
 import com.luc4n3x.levyra.update.AppUpdateSpeedTracker
@@ -76,15 +78,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-private fun resolveUpdateBannerPhase(
-    downloadPhase: LevyraUpdatePhase,
-    updateInfo: AppUpdateInfo?,
-    showUpdatePrompt: Boolean
-): LevyraUpdatePhase = when {
-    downloadPhase !is LevyraUpdatePhase.Idle -> downloadPhase
-    showUpdatePrompt && updateInfo != null && updateInfo.isNewer -> LevyraUpdatePhase.Available(updateInfo)
-    else -> LevyraUpdatePhase.Idle
-}
 
 private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
@@ -195,21 +188,22 @@ class MainActivity : ComponentActivity() {
                         listenedPlaybackMs = listenedPlaybackMs
                     )
                 )
-                if (BuildConfig.UPSTREAM_UPDATES_ENABLED && !pipMode.value) {
-                    val bannerPhase = resolveUpdateBannerPhase(
-                        downloadPhase = updatePhase.value,
-                        updateInfo = activityUiState.updateInfo,
-                        showUpdatePrompt = activityUiState.showUpdatePrompt
-                    )
+                if (
+                    BuildConfig.UPSTREAM_UPDATES_ENABLED &&
+                    !pipMode.value &&
+                    !activityUiState.showOnboarding
+                ) {
+                    val updateStrings = LevyraStrings.forCode(activityUiState.languageCode)
+                    val phase = updatePhase.value
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                         AnimatedVisibility(
-                            visible = bannerPhase !is LevyraUpdatePhase.Idle,
+                            visible = phase !is LevyraUpdatePhase.Idle,
                             enter = fadeIn() + slideInVertically { it / 2 },
                             exit = fadeOut() + slideOutVertically { it / 2 }
                         ) {
                             LevyraUpdateBanner(
-                                phase = bannerPhase,
-                                strings = LevyraStrings.forCode(activityUiState.languageCode),
+                                phase = phase,
+                                strings = updateStrings,
                                 onUpdate = {
                                     activityUiState.updateInfo?.let(::startUpdateFromBanner)
                                 },
@@ -219,6 +213,25 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .navigationBarsPadding()
                                     .padding(horizontal = 14.dp, vertical = 12.dp)
+                            )
+                        }
+                    }
+                    val available = activityUiState.updateInfo
+                        ?.takeIf { activityUiState.showUpdatePrompt && it.isNewer }
+                        ?.takeIf { phase is LevyraUpdatePhase.Idle }
+                    AnimatedVisibility(
+                        visible = available != null,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        available?.let { info ->
+                            BackHandler { viewModel.dismissUpdatePrompt() }
+                            LevyraUpdateScreen(
+                                update = info,
+                                strings = updateStrings,
+                                languageCode = activityUiState.languageCode,
+                                onUpdate = { startUpdateFromBanner(info) },
+                                onLater = viewModel::dismissUpdatePrompt
                             )
                         }
                     }
