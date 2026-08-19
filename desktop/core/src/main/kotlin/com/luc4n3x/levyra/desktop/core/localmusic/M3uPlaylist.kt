@@ -18,6 +18,8 @@ object M3uPlaylist {
 
     const val EXTENSION = "m3u8"
     private const val MAX_ENTRIES = 20_000
+    private val WINDOWS_DRIVE_ABSOLUTE = Regex("^[A-Za-z]:[\\\\/].+")
+    private val WINDOWS_UNC_ABSOLUTE = Regex("^(?:\\\\\\\\|//)[^\\\\/]+[\\\\/][^\\\\/]+(?:[\\\\/].*)?$")
 
     fun parse(content: String): List<M3uEntry> {
         val entries = ArrayList<M3uEntry>()
@@ -67,9 +69,12 @@ object M3uPlaylist {
 
     fun resolve(entry: M3uEntry, baseDirectory: Path?): Path? {
         if (entry.isRemote) return null
-        val raw = entry.location.replace('/', java.io.File.separatorChar)
+        val rawLocation = entry.location.trim()
+        if (rawLocation.isEmpty()) return null
+        val raw = rawLocation.replace('/', java.io.File.separatorChar)
         val candidate = runCatching { Path.of(raw) }.getOrNull() ?: return null
-        val resolved = if (candidate.isAbsolute || baseDirectory == null) {
+        val windowsAbsolute = WINDOWS_DRIVE_ABSOLUTE.matches(rawLocation) || WINDOWS_UNC_ABSOLUTE.matches(rawLocation)
+        val resolved = if (candidate.isAbsolute || windowsAbsolute || baseDirectory == null) {
             candidate
         } else {
             baseDirectory.resolve(candidate)
