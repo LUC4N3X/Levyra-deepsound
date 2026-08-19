@@ -80,8 +80,8 @@ class ContainerTagReaderTest {
         val head = ByteArrayOutputStream()
         head.write(AudioTagBuilders.ascii("OpusHead"))
         head.write(byteArrayOf(1, 2))
-        head.write(AudioTagBuilders.leShort(312))
-        head.write(AudioTagBuilders.leInt(48_000))
+        head.write(AudioTagBuilders.leShort(OPUS_PRE_SKIP))
+        head.write(AudioTagBuilders.leInt(OPUS_SAMPLE_RATE))
         head.write(AudioTagBuilders.leShort(0))
         head.write(byteArrayOf(0))
 
@@ -109,7 +109,8 @@ class ContainerTagReaderTest {
         val tagPages = oggPacketPages(serial, sequence, 0L, tags.toByteArray())
         tagPages.forEach(output::write)
         sequence += tagPages.size
-        output.write(oggPacketPages(serial, sequence, 48_000L * durationSeconds, ByteArray(64)).single())
+        val finalGranule = OPUS_SAMPLE_RATE.toLong() * durationSeconds + OPUS_PRE_SKIP
+        output.write(oggPacketPages(serial, sequence, finalGranule, ByteArray(64)).single())
         return output.toByteArray()
     }
 
@@ -251,5 +252,7 @@ class ContainerTagReaderTest {
 
     private companion object {
         const val MAX_OGG_PAGE_PAYLOAD = 255 * 255
+        const val OPUS_SAMPLE_RATE = 48_000
+        const val OPUS_PRE_SKIP = 312
     }
 }
