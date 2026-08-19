@@ -27,6 +27,7 @@ internal object MpegAudioReader {
         val sampleRateIndex = (header shr 10).toInt() and 0x03
         val channelMode = (header shr 6).toInt() and 0x03
 
+        if (layerBits == 0) return AudioTags()
         val versionRow = when (versionBits) {
             3 -> 0
             2 -> 1
