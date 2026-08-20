@@ -32,3 +32,5 @@ jobs:
           git add app desktop
           git commit -m "fix: harden player cold start and desktop transitions"
           git push origin HEAD:feature/desktop-audio-and-local-library
+
+# Temporary workflow: removed immediately after the scoped patch is applied.
