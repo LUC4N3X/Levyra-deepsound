@@ -49,14 +49,18 @@ internal object LyricsShareCard {
             ?.takeIf(File::isFile)
             ?.let { file -> runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() }
         val file = File(directory, "lyrics-${System.currentTimeMillis()}.png")
-        val bitmap = render(track, text, cover)
-        cover?.recycle()
-        val written = runCatching {
+        var bitmap: Bitmap? = null
+        val written = try {
+            bitmap = render(track, text, cover)
             FileOutputStream(file).use { output ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
             }
-        }.getOrDefault(false)
-        bitmap.recycle()
+        } catch (_: Exception) {
+            false
+        } finally {
+            cover?.recycle()
+            bitmap?.recycle()
+        }
         if (!written || !file.isFile || file.length() <= 0L) {
             runCatching { file.delete() }
             return@withContext null

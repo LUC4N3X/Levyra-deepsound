@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.core.localmusic
 
 import com.luc4n3x.levyra.desktop.core.model.Track
+import java.net.URI
 import java.nio.file.Path
 
 data class M3uEntry(
@@ -83,6 +84,17 @@ object M3uPlaylist {
         location.startsWith("//") ||
             (location.length >= 3 && location[0].isLetter() && location[1] == ':' && location[2] == '/')
 
+    fun youtubeVideoId(entry: M3uEntry): String {
+        if (!entry.isRemote) return ""
+        val uri = runCatching { URI(entry.location.trim()) }.getOrNull() ?: return ""
+        if (!uri.scheme.equals("https", ignoreCase = true) && !uri.scheme.equals("http", ignoreCase = true)) {
+            return ""
+        }
+        val host = uri.host.orEmpty().lowercase()
+        if (host !in YOUTUBE_HOSTS) return ""
+        return Track.videoIdOf(entry.location).takeIf { YOUTUBE_VIDEO_ID.matches(it) }.orEmpty()
+    }
+
     fun render(name: String, tracks: List<Track>): String = buildString {
         append("#EXTM3U")
         append(LINE_SEPARATOR)
@@ -106,4 +118,14 @@ object M3uPlaylist {
         if (track.artist.isBlank()) track.title else "${track.artist} - ${track.title}"
 
     private const val LINE_SEPARATOR = "\n"
+    private val YOUTUBE_HOSTS = setOf(
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "music.youtube.com",
+        "youtu.be",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com"
+    )
+    private val YOUTUBE_VIDEO_ID = Regex("[A-Za-z0-9_-]{11}")
 }

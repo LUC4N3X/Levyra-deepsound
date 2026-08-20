@@ -40,9 +40,13 @@ class LocalLibraryStore(
 
     fun removeFolder(folderId: String) = mutate { data ->
         val folder = data.folders.firstOrNull { it.id == folderId } ?: return@mutate data
+        val remainingFolders = data.folders.filterNot { it.id == folderId }
         data.copy(
-            folders = data.folders.filterNot { it.id == folderId },
-            tracks = data.tracks.filterNot { LocalMusicIdentity.isWithin(it.path, folder.path) }
+            folders = remainingFolders,
+            tracks = data.tracks.filter { track ->
+                !LocalMusicIdentity.isWithin(track.path, folder.path) ||
+                    remainingFolders.any { remaining -> LocalMusicIdentity.isWithin(track.path, remaining.path) }
+            }
         )
     }
 

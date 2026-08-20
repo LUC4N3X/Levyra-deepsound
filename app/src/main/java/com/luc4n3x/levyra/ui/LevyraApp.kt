@@ -320,6 +320,8 @@ import coil3.compose.AsyncImage
 import coil3.toBitmap
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.request.bitmapConfig
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
@@ -10929,208 +10931,97 @@ private fun PlayerImmersiveBackdrop(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val tint = animateColorAsState(
-        targetValue = ambience.tint,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-backdrop-tint"
+    val primary = animateColorAsState(
+        targetValue = ambience.primary,
+        animationSpec = if (animationsEnabled) tween(900, easing = LinearOutSlowInEasing) else snap(),
+        label = "player-backdrop-primary"
     )
-    val elevated = animateColorAsState(
-        targetValue = ambience.elevated,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-backdrop-elevated"
+    val secondary = animateColorAsState(
+        targetValue = ambience.secondary,
+        animationSpec = if (animationsEnabled) tween(900, easing = LinearOutSlowInEasing) else snap(),
+        label = "player-backdrop-secondary"
     )
     val base = animateColorAsState(
         targetValue = ambience.base,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
+        animationSpec = if (animationsEnabled) tween(900, easing = LinearOutSlowInEasing) else snap(),
         label = "player-backdrop-base"
     )
-    val glow = animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.74f,
-        animationSpec = if (animationsEnabled) tween(600, easing = FastOutSlowInEasing) else snap(),
-        label = "player-backdrop-glow"
+    val imageAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0.72f else 0.58f,
+        animationSpec = if (animationsEnabled) tween(500, easing = FastOutSlowInEasing) else snap(),
+        label = "player-backdrop-image-alpha"
     )
-
-    val infiniteTransition = rememberInfiniteTransition(label = "player-ambient-motion")
-    val anchorRotation by if (animationsEnabled) {
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = -360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(75000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "player-ambient-anchor-rot"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
-    val fastRotation by if (animationsEnabled) {
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(45000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "player-ambient-accent-rot"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
-
     val ambientMatrix = remember { createPlayerAmbientColorMatrix() }
     val ambientColorFilter = remember(ambientMatrix) { ColorFilter.colorMatrix(ambientMatrix) }
 
     Box(modifier = modifier) {
         Box(modifier = Modifier.fillMaxSize().background(base.value))
-
         if (artworkUrl.isNotBlank()) {
             AnimatedContent(
                 targetState = artworkUrl,
                 transitionSpec = {
                     if (animationsEnabled) {
-                        fadeIn(tween(650)) togetherWith fadeOut(tween(650))
+                        fadeIn(tween(440, easing = LinearOutSlowInEasing)) togetherWith
+                            fadeOut(tween(300, easing = FastOutSlowInEasing))
                     } else {
                         EnterTransition.None togetherWith ExitTransition.None
                     }
                 },
-                label = "player-ambient-mesh"
+                label = "player-backdrop-artwork"
             ) { url ->
-                if (url.isNotBlank()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = 1.65f
-                                scaleY = 1.65f
-                            }
-                    ) {
-                        val ambientImageRequest = remember(context, url) {
-                            ImageRequest.Builder(context)
-                                .data(url)
-                                .diskCachePolicy(CachePolicy.ENABLED)
-                                .memoryCachePolicy(CachePolicy.ENABLED)
-                                .crossfade(true)
-                                .build()
-                        }
-
-                        AsyncImage(
-                            model = ambientImageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            colorFilter = ambientColorFilter,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(72.dp)
-                                .graphicsLayer { rotationZ = anchorRotation }
-                        )
-
-                        AsyncImage(
-                            model = ambientImageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopStart,
-                            colorFilter = ambientColorFilter,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(84.dp)
-                                .graphicsLayer {
-                                    rotationZ = fastRotation
-                                    alpha = 0.55f
-                                }
-                        )
-
-                        AsyncImage(
-                            model = ambientImageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.BottomEnd,
-                            colorFilter = ambientColorFilter,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .blur(84.dp)
-                                .graphicsLayer {
-                                    rotationZ = anchorRotation * 0.7f
-                                    alpha = 0.45f
-                                }
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(base.value.copy(alpha = 0.30f))
-                        )
-                    }
+                val ambientImageRequest = remember(context, url) {
+                    ImageRequest.Builder(context)
+                        .data(LevyraArtworkCache.large(url))
+                        .size(512, 512)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .crossfade(false)
+                        .build()
                 }
+                AsyncImage(
+                    model = ambientImageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = ambientColorFilter,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(52.dp)
+                        .graphicsLayer {
+                            scaleX = 1.12f
+                            scaleY = 1.12f
+                            alpha = imageAlpha
+                        }
+                )
             }
         }
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .drawBehind {
-                    if (size.minDimension <= 0f) return@drawBehind
-                    val baseColor = base.value
-                    val elevatedColor = elevated.value
-                    val tintColor = tint.value
-                    val glowAmount = glow.value
-
-                    if (artworkUrl.isBlank()) {
-                        drawRect(
-                            Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.00f to elevatedColor,
-                                    0.38f to elevatedColor.playerAmbienceMix(baseColor, 0.58f),
-                                    0.72f to baseColor.playerAmbienceMix(elevatedColor, 0.16f),
-                                    1.00f to baseColor
-                                )
+                    val animatedPrimary = primary.value
+                    val animatedSecondary = secondary.value
+                    val animatedBase = base.value
+                    drawRect(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.00f to animatedBase.copy(alpha = 0.90f),
+                                0.18f to animatedPrimary.copy(alpha = 0.26f),
+                                0.54f to Color.Transparent,
+                                0.78f to animatedSecondary.copy(alpha = 0.22f),
+                                1.00f to Color.Black.copy(alpha = 0.88f)
                             )
                         )
-                        val center = Offset(size.width * 0.5f, size.height * 0.21f)
-                        val radius = size.width * 1.02f
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    tintColor.copy(alpha = 0.30f * glowAmount),
-                                    tintColor.copy(alpha = 0.09f * glowAmount),
-                                    Color.Transparent
-                                ),
-                                center = center,
-                                radius = radius
+                    )
+                    drawRect(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                animatedPrimary.copy(alpha = 0.20f),
+                                Color.Transparent
                             ),
-                            radius = radius,
-                            center = center
+                            center = Offset(size.width * 0.20f, size.height * 0.16f),
+                            radius = size.maxDimension * 0.82f
                         )
-                    } else {
-                        drawRect(
-                            Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.00f to baseColor.copy(alpha = 0.65f),
-                                    0.15f to baseColor.copy(alpha = 0.20f),
-                                    0.35f to Color.Transparent,
-                                    0.55f to Color.Transparent,
-                                    0.70f to baseColor.copy(alpha = 0.42f),
-                                    0.85f to baseColor.copy(alpha = 0.82f),
-                                    1.00f to baseColor
-                                )
-                            )
-                        )
-                        val center = Offset(size.width * 0.5f, size.height * 0.26f)
-                        val radius = size.width * 0.85f
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    tintColor.copy(alpha = 0.15f * glowAmount),
-                                    tintColor.copy(alpha = 0.04f * glowAmount),
-                                    Color.Transparent
-                                ),
-                                center = center,
-                                radius = radius
-                            ),
-                            radius = radius,
-                            center = center
-                        )
-                    }
+                    )
                 }
         )
     }
@@ -12223,33 +12114,24 @@ private fun PlayerScreen(
             val imageLoader = coil3.SingletonImageLoader.get(playerContext)
             val request = ImageRequest.Builder(playerContext)
                 .data(LevyraArtworkCache.small(artUrl))
+                .size(96, 96)
+                .allowHardware(false)
+                .bitmapConfig(android.graphics.Bitmap.Config.ARGB_8888)
                 .diskCachePolicy(CachePolicy.ENABLED)
-                .memoryCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.DISABLED)
                 .build()
             val bitmap = runCatching {
                 imageLoader.execute(request).image?.toBitmap()
             }.getOrNull()
             if (bitmap != null) {
+                // Coil can return the BitmapImage's backing bitmap from toBitmap().
+                // Treat the result as borrowed: never recycle a bitmap that the loader/cache may own.
                 val extracted = withContext(Dispatchers.Default) {
-                    val sample = if (bitmap.width > 96 || bitmap.height > 96) {
-                        android.graphics.Bitmap.createScaledBitmap(bitmap, 96, 96, true)
-                    } else bitmap
-                    val paletteBitmap = if (sample.config == android.graphics.Bitmap.Config.ARGB_8888) {
-                        sample
-                    } else {
-                        sample.copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: sample
-                    }
-                    try {
-                        ArtworkPaletteCache.extract(
-                            bitmap = paletteBitmap,
-                            fallbackStart = fallbackPalette.start,
-                            fallbackEnd = fallbackPalette.end
-                        )
-                    } finally {
-                        if (paletteBitmap !== sample) paletteBitmap.recycle()
-                        if (sample !== bitmap) sample.recycle()
-                        bitmap.recycle()
-                    }
+                    ArtworkPaletteCache.extract(
+                        bitmap = bitmap,
+                        fallbackStart = fallbackPalette.start,
+                        fallbackEnd = fallbackPalette.end
+                    )
                 }
                 artworkPaletteState.value = extracted
                 ArtworkPaletteCache.store(playerContext, paletteKey, extracted)
@@ -12381,7 +12263,8 @@ private fun PlayerScreen(
             state.animationsEnabled &&
             playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
-            track != null
+            track != null &&
+            state.motionArtwork != null
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
         val immersiveMotionAlpha by animateFloatAsState(
             targetValue = if (immersiveArtworkEnabled) 1f else 0f,

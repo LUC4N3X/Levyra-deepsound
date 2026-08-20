@@ -58,6 +58,21 @@ class M3uPlaylistTest {
     }
 
     @Test
+    fun acceptsOnlyYouTubeRemoteEntriesForRoundTrip() {
+        assertEquals(
+            "dQw4w9WgXcQ",
+            M3uPlaylist.youtubeVideoId(
+                M3uEntry(location = "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+            )
+        )
+        assertEquals(
+            "dQw4w9WgXcQ",
+            M3uPlaylist.youtubeVideoId(M3uEntry(location = "https://youtu.be/dQw4w9WgXcQ"))
+        )
+        assertEquals("", M3uPlaylist.youtubeVideoId(M3uEntry(location = "https://example.org/watch?v=dQw4w9WgXcQ")))
+    }
+
+    @Test
     fun rendersLocalPathsAndRemoteUrlsWithExtinfLabels() {
         val rendered = M3uPlaylist.render(
             name = "Evening",

@@ -169,6 +169,23 @@ class LocalMusicController(
             val tracks = ArrayList<Track>()
             var skipped = 0
             M3uPlaylist.parse(content).forEach { entry ->
+                if (entry.isRemote) {
+                    val videoId = M3uPlaylist.youtubeVideoId(entry)
+                    if (videoId.isBlank()) {
+                        skipped += 1
+                    } else {
+                        tracks.add(
+                            Track(
+                                id = videoId,
+                                title = entry.title.ifBlank { videoId },
+                                artist = entry.artist,
+                                videoUrl = Track.watchUrlOf(videoId),
+                                durationMs = entry.durationMs
+                            )
+                        )
+                    }
+                    return@forEach
+                }
                 val resolved = M3uPlaylist.resolve(entry, baseDirectory)
                 if (resolved == null || !Files.isRegularFile(resolved)) {
                     skipped += 1
@@ -282,7 +299,8 @@ class LocalMusicController(
                     }
                     val valid = key.reset()
                     if (!valid && parent != null) {
-                        watched.remove(LocalMusicIdentity.normalizePathKey(parent.toString()))
+                        val removed = watched.remove(LocalMusicIdentity.normalizePathKey(parent.toString()))
+                        if (removed) registered = (registered - 1).coerceAtLeast(0)
                     }
                     if (events.isNotEmpty()) {
                         watchSignals.trySend(Unit)
@@ -341,7 +359,7 @@ class LocalMusicController(
         const val STARTUP_SCAN_DELAY_MS = 6_000L
         const val WATCH_DEBOUNCE_MS = 2_500L
         const val WATCH_POLL_MS = 1_000L
-        const val MAX_WATCH_DEPTH = 8
+        const val MAX_WATCH_DEPTH = 12
         const val MAX_WATCHED_DIRECTORIES = 4_000
     }
 }

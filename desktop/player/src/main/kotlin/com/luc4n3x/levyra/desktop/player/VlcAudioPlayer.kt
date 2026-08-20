@@ -28,7 +28,11 @@ class VlcAudioPlayer private constructor(
 
     private var lastPublishedTimeMs: Long = Long.MIN_VALUE
     private var lastTimePublishNanos: Long = 0L
+
+    @Volatile
     private var loadedUrl: String = ""
+
+    @Volatile
     private var requestedPaused: Boolean = false
 
     @Volatile
