@@ -20,6 +20,25 @@ jobs:
         with:
           ref: feature/desktop-audio-and-local-library
           fetch-depth: 0
+      - name: Align patch anchors with current head
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/review_hardening_pr424.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'import_anchor = "import coil3.request.CachePolicy\\nimport coil3.request.ImageRequest\\nimport coil3.request.crossfade\\n"',
+              'import_anchor = "import coil3.toBitmap\\nimport coil3.request.CachePolicy\\nimport coil3.request.ImageRequest\\nimport coil3.request.crossfade\\n"',
+              1,
+          )
+          text = text.replace(
+              '        "import coil3.request.CachePolicy\\n"\n',
+              '        "import coil3.toBitmap\\n"\n        "import coil3.request.CachePolicy\\n"\n',
+              1,
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
       - name: Apply review hardening
         run: python3 .github/scripts/review_hardening_pr424.py
       - name: Validate diff
