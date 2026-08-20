@@ -5,7 +5,7 @@ import com.luc4n3x.levyra.desktop.core.model.Track
 object PrefetchPlanner {
     const val LEAD_MS = 45_000L
 
-    fun nextTrack(queue: PlayerQueue): Track? {
+    fun handoffTrack(queue: PlayerQueue): Track? {
         if (queue.items.isEmpty() || queue.index < 0) return null
         if (queue.repeat == RepeatMode.ONE) return null
         val nextIndex = queue.index + 1
@@ -15,6 +15,11 @@ object PrefetchPlanner {
             else -> null
         } ?: return null
         if (candidate.id == queue.current?.id) return null
+        return candidate
+    }
+
+    fun nextTrack(queue: PlayerQueue): Track? {
+        val candidate = handoffTrack(queue) ?: return null
         if (candidate.offlinePath.isNotBlank()) return null
         return candidate
     }

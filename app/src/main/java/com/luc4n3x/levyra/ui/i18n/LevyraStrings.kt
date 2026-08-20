@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.ui.i18n
 
 import androidx.compose.runtime.compositionLocalOf
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import java.text.NumberFormat
+import java.util.Locale
 
 class LevyraStrings private constructor(
     val code: String,
@@ -555,6 +557,10 @@ class LevyraStrings private constructor(
     val mobilePlayerSection: String get() = value("mobilePlayerSection")
     val advancedGestures: String get() = value("advancedGestures")
     val advancedGesturesSubtitle: String get() = value("advancedGesturesSubtitle")
+    val pureBlack: String get() = value("pureBlack")
+    val pureBlackSubtitle: String get() = value("pureBlackSubtitle")
+    val hapticFeedback: String get() = value("hapticFeedback")
+    val hapticFeedbackSubtitle: String get() = value("hapticFeedbackSubtitle")
     val doubleTapSeek: String get() = value("doubleTapSeek")
     val doubleTapSeekSubtitle: String get() = value("doubleTapSeekSubtitle")
     val longPress: String get() = value("longPress")
@@ -592,6 +598,46 @@ class LevyraStrings private constructor(
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
     val activeIndicator: String get() = value("activeIndicator")
+    fun formatReplayPeriod(days: Int): String {
+        val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(days.coerceAtLeast(0))
+        val unit = when (LevyraLanguageCatalog.normalize(code)) {
+            "it" -> "gg"
+            "es" -> "d"
+            "fr" -> "j"
+            "de" -> "T."
+            "pt" -> "dias"
+            "nl" -> "dagen"
+            "pl" -> "dni"
+            "ro" -> "zile"
+            "el" -> "ημέρες"
+            "sv" -> "dagar"
+            "da" -> "dage"
+            "cs" -> "dní"
+            "uk", "ru" -> "дн."
+            "tr" -> "gün"
+            "ar" -> "يومًا"
+            "zh" -> "天"
+            "ja" -> "日"
+            "ko" -> "일"
+            "hi" -> "दिन"
+            "id" -> "hari"
+            "vi" -> "ngày"
+            "th" -> "วัน"
+            "fil" -> "araw"
+            "he" -> "ימים"
+            else -> "days"
+        }
+        val compact = LevyraLanguageCatalog.normalize(code) in setOf("zh", "ja", "ko")
+        return directionalValue(if (compact) "$value$unit" else "$value $unit")
+    }
+
+    fun formatPlayCount(count: Int): String {
+        val formatted = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(count.coerceAtLeast(0))
+        return directionalValue("$formatted×")
+    }
+
     fun formatTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
         return when (code) {
@@ -990,7 +1036,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
         private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
         private val canvasKeys = setOf(
             "canvasQuality",
@@ -1372,6 +1418,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBILE PLAYER",
             "advancedGestures" to "Advanced gestures",
             "advancedGesturesSubtitle" to "Double tap, long press, brightness and volume",
+            "pureBlack" to "Pure black",
+            "pureBlackSubtitle" to "True black backgrounds for OLED screens",
+            "hapticFeedback" to "Haptic feedback",
+            "hapticFeedbackSubtitle" to "A short vibration on key actions",
             "doubleTapSeek" to "Double-tap seek",
             "doubleTapSeekSubtitle" to "Skip duration on the left and right",
             "longPress" to "Long press",
@@ -1763,6 +1813,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "PLAYER MOBILE",
             "advancedGestures" to "Gesture avanzate",
             "advancedGesturesSubtitle" to "Doppio tap, pressione prolungata, luminosità e volume",
+            "pureBlack" to "Nero puro",
+            "pureBlackSubtitle" to "Sfondi realmente neri per schermi OLED",
+            "hapticFeedback" to "Feedback aptico",
+            "hapticFeedbackSubtitle" to "Una breve vibrazione sulle azioni chiave",
             "doubleTapSeek" to "Salto con doppio tap",
             "doubleTapSeekSubtitle" to "Durata del salto a sinistra e a destra",
             "longPress" to "Pressione prolungata",
@@ -2154,6 +2208,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "REPRODUCTOR MÓVIL",
             "advancedGestures" to "Gestos avanzados",
             "advancedGesturesSubtitle" to "Doble toque, pulsación prolongada, brillo y volumen",
+            "pureBlack" to "Negro puro",
+            "pureBlackSubtitle" to "Fondos totalmente negros para pantallas OLED",
+            "hapticFeedback" to "Respuesta háptica",
+            "hapticFeedbackSubtitle" to "Una vibración breve en las acciones clave",
             "doubleTapSeek" to "Salto con doble toque",
             "doubleTapSeekSubtitle" to "Duración del salto a la izquierda y a la derecha",
             "longPress" to "Pulsación prolongada",
@@ -2545,6 +2603,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "LECTEUR MOBILE",
             "advancedGestures" to "Gestes avancés",
             "advancedGesturesSubtitle" to "Double toucher, appui prolongé, luminosité et volume",
+            "pureBlack" to "Noir absolu",
+            "pureBlackSubtitle" to "Fonds vraiment noirs pour écrans OLED",
+            "hapticFeedback" to "Retour haptique",
+            "hapticFeedbackSubtitle" to "Une brève vibration sur les actions clés",
             "doubleTapSeek" to "Saut par double toucher",
             "doubleTapSeekSubtitle" to "Durée du saut à gauche et à droite",
             "longPress" to "Appui prolongé",
@@ -2936,6 +2998,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBILER PLAYER",
             "advancedGestures" to "Erweiterte Gesten",
             "advancedGesturesSubtitle" to "Doppeltippen, langes Drücken, Helligkeit und Lautstärke",
+            "pureBlack" to "Reines Schwarz",
+            "pureBlackSubtitle" to "Wirklich schwarze Hintergründe für OLED-Displays",
+            "hapticFeedback" to "Haptisches Feedback",
+            "hapticFeedbackSubtitle" to "Kurze Vibration bei wichtigen Aktionen",
             "doubleTapSeek" to "Sprung per Doppeltippen",
             "doubleTapSeekSubtitle" to "Sprungdauer nach links und rechts",
             "longPress" to "Langes Drücken",
@@ -3327,6 +3393,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "LEITOR MÓVEL",
             "advancedGestures" to "Gestos avançados",
             "advancedGesturesSubtitle" to "Toque duplo, pressão prolongada, brilho e volume",
+            "pureBlack" to "Preto puro",
+            "pureBlackSubtitle" to "Fundos realmente pretos para ecrãs OLED",
+            "hapticFeedback" to "Resposta tátil",
+            "hapticFeedbackSubtitle" to "Uma vibração curta nas ações principais",
             "doubleTapSeek" to "Salto com toque duplo",
             "doubleTapSeekSubtitle" to "Duração do salto para a esquerda e para a direita",
             "longPress" to "Pressão prolongada",
@@ -3718,6 +3788,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBIELE SPELER",
             "advancedGestures" to "Geavanceerde gebaren",
             "advancedGesturesSubtitle" to "Dubbeltikken, lang indrukken, helderheid en volume",
+            "pureBlack" to "Puur zwart",
+            "pureBlackSubtitle" to "Echt zwarte achtergronden voor OLED-schermen",
+            "hapticFeedback" to "Haptische feedback",
+            "hapticFeedbackSubtitle" to "Een korte trilling bij belangrijke acties",
             "doubleTapSeek" to "Springen met dubbeltik",
             "doubleTapSeekSubtitle" to "Sprongduur links en rechts",
             "longPress" to "Lang indrukken",
@@ -4109,6 +4183,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "ODTWARZACZ MOBILNY",
             "advancedGestures" to "Zaawansowane gesty",
             "advancedGesturesSubtitle" to "Podwójne dotknięcie, przytrzymanie, jasność i głośność",
+            "pureBlack" to "Czysta czerń",
+            "pureBlackSubtitle" to "Naprawdę czarne tła dla ekranów OLED",
+            "hapticFeedback" to "Wibracje dotykowe",
+            "hapticFeedbackSubtitle" to "Krótka wibracja przy kluczowych akcjach",
             "doubleTapSeek" to "Przewijanie podwójnym dotknięciem",
             "doubleTapSeekSubtitle" to "Czas przeskoku po lewej i prawej stronie",
             "longPress" to "Przytrzymanie",
@@ -4500,6 +4578,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "PLAYER MOBIL",
             "advancedGestures" to "Gesturi avansate",
             "advancedGesturesSubtitle" to "Atingere dublă, apăsare lungă, luminozitate și volum",
+            "pureBlack" to "Negru pur",
+            "pureBlackSubtitle" to "Fundaluri complet negre pentru ecrane OLED",
+            "hapticFeedback" to "Feedback haptic",
+            "hapticFeedbackSubtitle" to "O vibrație scurtă la acțiunile importante",
             "doubleTapSeek" to "Derulare prin atingere dublă",
             "doubleTapSeekSubtitle" to "Durata saltului în stânga și în dreapta",
             "longPress" to "Apăsare lungă",
@@ -4891,6 +4973,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "PLAYER ΓΙΑ ΚΙΝΗΤΑ",
             "advancedGestures" to "Σύνθετες χειρονομίες",
             "advancedGesturesSubtitle" to "Διπλό πάτημα, παρατεταμένο πάτημα, φωτεινότητα και ένταση",
+            "pureBlack" to "Καθαρό μαύρο",
+            "pureBlackSubtitle" to "Πραγματικά μαύρα φόντα για οθόνες OLED",
+            "hapticFeedback" to "Απτική ανάδραση",
+            "hapticFeedbackSubtitle" to "Σύντομη δόνηση στις βασικές ενέργειες",
             "doubleTapSeek" to "Μετακίνηση με διπλό πάτημα",
             "doubleTapSeekSubtitle" to "Διάρκεια μετακίνησης αριστερά και δεξιά",
             "longPress" to "Παρατεταμένο πάτημα",
@@ -5282,6 +5368,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBILSPELARE",
             "advancedGestures" to "Avancerade gester",
             "advancedGesturesSubtitle" to "Dubbeltryck, långtryck, ljusstyrka och volym",
+            "pureBlack" to "Rent svart",
+            "pureBlackSubtitle" to "Helsvarta bakgrunder för OLED-skärmar",
+            "hapticFeedback" to "Haptisk återkoppling",
+            "hapticFeedbackSubtitle" to "En kort vibration vid viktiga handlingar",
             "doubleTapSeek" to "Spola med dubbeltryck",
             "doubleTapSeekSubtitle" to "Hopplängd på vänster och höger sida",
             "longPress" to "Långtryck",
@@ -5673,6 +5763,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBILAFSPILLER",
             "advancedGestures" to "Avancerede bevægelser",
             "advancedGesturesSubtitle" to "Dobbelttryk, langt tryk, lysstyrke og lydstyrke",
+            "pureBlack" to "Rent sort",
+            "pureBlackSubtitle" to "Helt sorte baggrunde til OLED-skærme",
+            "hapticFeedback" to "Haptisk feedback",
+            "hapticFeedbackSubtitle" to "En kort vibration ved vigtige handlinger",
             "doubleTapSeek" to "Søg med dobbelttryk",
             "doubleTapSeekSubtitle" to "Springlængde i venstre og højre side",
             "longPress" to "Langt tryk",
@@ -6064,6 +6158,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBILNÍ PŘEHRÁVAČ",
             "advancedGestures" to "Pokročilá gesta",
             "advancedGesturesSubtitle" to "Dvojité klepnutí, dlouhé stisknutí, jas a hlasitost",
+            "pureBlack" to "Čistá černá",
+            "pureBlackSubtitle" to "Skutečně černá pozadí pro OLED displeje",
+            "hapticFeedback" to "Haptická odezva",
+            "hapticFeedbackSubtitle" to "Krátká vibrace u klíčových akcí",
             "doubleTapSeek" to "Posun dvojitým klepnutím",
             "doubleTapSeekSubtitle" to "Délka skoku vlevo a vpravo",
             "longPress" to "Dlouhé stisknutí",
@@ -6455,6 +6553,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "МОБІЛЬНИЙ ПРОГРАВАЧ",
             "advancedGestures" to "Розширені жести",
             "advancedGesturesSubtitle" to "Подвійний дотик, довге натискання, яскравість і гучність",
+            "pureBlack" to "Чистий чорний",
+            "pureBlackSubtitle" to "Справді чорні фони для OLED-екранів",
+            "hapticFeedback" to "Тактильний відгук",
+            "hapticFeedbackSubtitle" to "Коротка вібрація на ключових діях",
             "doubleTapSeek" to "Перемотування подвійним дотиком",
             "doubleTapSeekSubtitle" to "Тривалість переходу ліворуч і праворуч",
             "longPress" to "Довге натискання",
@@ -6846,6 +6948,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "МОБИЛЬНЫЙ ПРОИГРЫВАТЕЛЬ",
             "advancedGestures" to "Расширенные жесты",
             "advancedGesturesSubtitle" to "Двойное касание, удержание, яркость и громкость",
+            "pureBlack" to "Чистый чёрный",
+            "pureBlackSubtitle" to "По-настоящему чёрные фоны для OLED-экранов",
+            "hapticFeedback" to "Тактильный отклик",
+            "hapticFeedbackSubtitle" to "Короткая вибрация при ключевых действиях",
             "doubleTapSeek" to "Перемотка двойным касанием",
             "doubleTapSeekSubtitle" to "Интервал перехода слева и справа",
             "longPress" to "Удержание",
@@ -7237,6 +7343,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "MOBİL OYNATICI",
             "advancedGestures" to "Gelişmiş hareketler",
             "advancedGesturesSubtitle" to "Çift dokunma, uzun basma, parlaklık ve ses",
+            "pureBlack" to "Saf siyah",
+            "pureBlackSubtitle" to "OLED ekranlar için gerçek siyah arka planlar",
+            "hapticFeedback" to "Dokunsal geri bildirim",
+            "hapticFeedbackSubtitle" to "Önemli işlemlerde kısa titreşim",
             "doubleTapSeek" to "Çift dokunarak atlama",
             "doubleTapSeekSubtitle" to "Sol ve sağ taraftaki atlama süresi",
             "longPress" to "Uzun basma",
@@ -7628,6 +7738,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "مشغّل الهاتف",
             "advancedGestures" to "إيماءات متقدمة",
             "advancedGesturesSubtitle" to "النقر المزدوج والضغط المطوّل والسطوع ومستوى الصوت",
+            "pureBlack" to "أسود نقي",
+            "pureBlackSubtitle" to "خلفيات سوداء حقيقية لشاشات OLED",
+            "hapticFeedback" to "استجابة لمسية",
+            "hapticFeedbackSubtitle" to "اهتزاز قصير عند الإجراءات المهمة",
             "doubleTapSeek" to "تقديم أو ترجيع بالنقر المزدوج",
             "doubleTapSeekSubtitle" to "مدة التخطي في الجهتين اليسرى واليمنى",
             "longPress" to "الضغط المطوّل",
@@ -8019,6 +8133,10 @@ class LevyraStrings private constructor(
             "mobilePlayerSection" to "移动播放器",
             "advancedGestures" to "高级手势",
             "advancedGesturesSubtitle" to "双击、长按、亮度与音量",
+            "pureBlack" to "纯黑",
+            "pureBlackSubtitle" to "为 OLED 屏幕使用纯黑背景",
+            "hapticFeedback" to "触感反馈",
+            "hapticFeedbackSubtitle" to "关键操作时的轻微震动",
             "doubleTapSeek" to "双击快进或快退",
             "doubleTapSeekSubtitle" to "左右两侧的跳转时长",
             "longPress" to "长按",

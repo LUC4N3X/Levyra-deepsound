@@ -59,6 +59,14 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun replayValuesUseTheSelectedLocale() {
+        assertEquals("30 days", LevyraStrings.forCode("en").formatReplayPeriod(30))
+        assertEquals("30 gg", LevyraStrings.forCode("it").formatReplayPeriod(30))
+        assertEquals("30日", LevyraStrings.forCode("ja").formatReplayPeriod(30))
+        assertEquals("1,234×", LevyraStrings.forCode("en").formatPlayCount(1_234))
+    }
+
+    @Test
     fun dutchBundleDoesNotLeakItalianSearchCopy() {
         val strings = LevyraStrings.forCode("nl")
         assertEquals("Recente zoekopdrachten", strings.recentSearches)
