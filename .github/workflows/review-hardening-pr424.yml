@@ -1,0 +1,34 @@
+name: Review Hardening PR 424
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/scripts/review_hardening_pr424.py
+      - .github/workflows/review-hardening-pr424.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/desktop-audio-and-local-library
+          fetch-depth: 0
+      - name: Apply review hardening
+        run: python3 .github/scripts/review_hardening_pr424.py
+      - name: Validate diff
+        run: git diff --check
+      - name: Commit hardening
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app desktop
+          git commit -m "fix: harden player cold start and desktop transitions"
+          git push origin HEAD:feature/desktop-audio-and-local-library
