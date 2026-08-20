@@ -15,7 +15,46 @@ data class DesktopExtraStrings(
     val mediaKeysBody: String,
     val shortcuts: String,
     val seek: String,
-    val miniPlayer: String
+    val miniPlayer: String,
+    val audioOutput: String,
+    val audioOutputBody: String,
+    val audioOutputSystemDefault: String,
+    val audioOutputRefresh: String,
+    val audioOutputUnavailable: String,
+    val audioOutputEmpty: String,
+    val equalizerPreset: String,
+    val equalizerPresetFlat: String,
+    val equalizerPresetBassBoost: String,
+    val equalizerPresetVocal: String,
+    val equalizerPresetRock: String,
+    val equalizerPresetPop: String,
+    val equalizerPresetElectronic: String,
+    val equalizerPresetHipHop: String,
+    val equalizerPresetClassical: String,
+    val equalizerPresetAcoustic: String,
+    val equalizerPresetNight: String,
+    val equalizerPresetCustom: String,
+    val localMusic: String,
+    val localMusicSubtitle: String,
+    val localMusicAddFolder: String,
+    val localMusicEmptyTitle: String,
+    val localMusicScan: String,
+    val localMusicDeepScan: String,
+    val localMusicScanning: String,
+    val localMusicMissingFiles: String,
+    val localMusicForgetMissing: String,
+    val localMusicRemoveFolder: String,
+    val playlistImport: String,
+    val playlistExport: String,
+    val playlistOverwriteTitle: String,
+    val playlistOverwriteConfirm: String,
+    val playlistExportSuccess: String,
+    val playlistExportFailed: String,
+    val playlistSkippedEntries: String,
+    val crossfade: String,
+    val crossfadeBody: String,
+    val smartCrossfade: String,
+    val smartCrossfadeBody: String
 )
 
 internal object DesktopExtras {
@@ -25,6 +64,7 @@ internal object DesktopExtras {
     fun supportedTags(): Set<String> = catalog.keys
 
     private const val RESOURCE = "/i18n/desktop-extras.properties"
+    private const val PRESET_TRANSLATIONS_RESOURCE = "/i18n/desktop-preset-translations.properties"
     private const val FALLBACK_TAG = "en"
 
     private val catalog: Map<String, DesktopExtraStrings> by lazy { load() }
@@ -38,13 +78,18 @@ internal object DesktopExtras {
         return tags.associateWith { tag -> bundle(entries, tag) }
     }
 
-    private fun readEntries(): Properties {
-        val stream = requireNotNull(DesktopExtras::class.java.getResourceAsStream(RESOURCE)) {
-            "Desktop extra strings resource not found: $RESOURCE"
+    private fun readEntries(): Properties = Properties().apply {
+        loadResource(RESOURCE, required = true)
+        loadResource(PRESET_TRANSLATIONS_RESOURCE, required = true)
+    }
+
+    private fun Properties.loadResource(resource: String, required: Boolean) {
+        val stream = DesktopExtras::class.java.getResourceAsStream(resource)
+        if (stream == null) {
+            require(!required) { "Desktop extra strings resource not found: $resource" }
+            return
         }
-        return Properties().apply {
-            stream.use { source -> load(InputStreamReader(source, StandardCharsets.UTF_8)) }
-        }
+        stream.use { source -> load(InputStreamReader(source, StandardCharsets.UTF_8)) }
     }
 
     private fun bundle(entries: Properties, tag: String): DesktopExtraStrings = DesktopExtraStrings(
@@ -58,7 +103,46 @@ internal object DesktopExtras {
         mediaKeysBody = value(entries, tag, "mediaKeysBody"),
         shortcuts = value(entries, tag, "shortcuts"),
         seek = value(entries, tag, "seek"),
-        miniPlayer = value(entries, tag, "miniPlayer")
+        miniPlayer = value(entries, tag, "miniPlayer"),
+        audioOutput = value(entries, tag, "audioOutput"),
+        audioOutputBody = value(entries, tag, "audioOutputBody"),
+        audioOutputSystemDefault = value(entries, tag, "audioOutputSystemDefault"),
+        audioOutputRefresh = value(entries, tag, "audioOutputRefresh"),
+        audioOutputUnavailable = value(entries, tag, "audioOutputUnavailable"),
+        audioOutputEmpty = value(entries, tag, "audioOutputEmpty"),
+        equalizerPreset = value(entries, tag, "equalizerPreset"),
+        equalizerPresetFlat = value(entries, tag, "equalizerPresetFlat"),
+        equalizerPresetBassBoost = value(entries, tag, "equalizerPresetBassBoost"),
+        equalizerPresetVocal = value(entries, tag, "equalizerPresetVocal"),
+        equalizerPresetRock = value(entries, tag, "equalizerPresetRock"),
+        equalizerPresetPop = value(entries, tag, "equalizerPresetPop"),
+        equalizerPresetElectronic = value(entries, tag, "equalizerPresetElectronic"),
+        equalizerPresetHipHop = value(entries, tag, "equalizerPresetHipHop"),
+        equalizerPresetClassical = value(entries, tag, "equalizerPresetClassical"),
+        equalizerPresetAcoustic = value(entries, tag, "equalizerPresetAcoustic"),
+        equalizerPresetNight = value(entries, tag, "equalizerPresetNight"),
+        equalizerPresetCustom = value(entries, tag, "equalizerPresetCustom"),
+        localMusic = value(entries, tag, "localMusic"),
+        localMusicSubtitle = value(entries, tag, "localMusicSubtitle"),
+        localMusicAddFolder = value(entries, tag, "localMusicAddFolder"),
+        localMusicEmptyTitle = value(entries, tag, "localMusicEmptyTitle"),
+        localMusicScan = value(entries, tag, "localMusicScan"),
+        localMusicDeepScan = value(entries, tag, "localMusicDeepScan"),
+        localMusicScanning = value(entries, tag, "localMusicScanning"),
+        localMusicMissingFiles = value(entries, tag, "localMusicMissingFiles"),
+        localMusicForgetMissing = value(entries, tag, "localMusicForgetMissing"),
+        localMusicRemoveFolder = value(entries, tag, "localMusicRemoveFolder"),
+        playlistImport = value(entries, tag, "playlistImport"),
+        playlistExport = value(entries, tag, "playlistExport"),
+        playlistOverwriteTitle = value(entries, tag, "playlistOverwriteTitle"),
+        playlistOverwriteConfirm = value(entries, tag, "playlistOverwriteConfirm"),
+        playlistExportSuccess = value(entries, tag, "playlistExportSuccess"),
+        playlistExportFailed = value(entries, tag, "playlistExportFailed"),
+        playlistSkippedEntries = value(entries, tag, "playlistSkippedEntries"),
+        crossfade = value(entries, tag, "crossfade"),
+        crossfadeBody = value(entries, tag, "crossfadeBody"),
+        smartCrossfade = value(entries, tag, "smartCrossfade"),
+        smartCrossfadeBody = value(entries, tag, "smartCrossfadeBody")
     )
 
     private fun value(entries: Properties, tag: String, key: String): String {

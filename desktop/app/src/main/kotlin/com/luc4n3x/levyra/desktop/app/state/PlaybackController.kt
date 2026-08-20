@@ -13,19 +13,26 @@ import com.luc4n3x.levyra.desktop.core.storage.SessionStore
 import com.luc4n3x.levyra.desktop.core.storage.SettingsStore
 import com.luc4n3x.levyra.desktop.core.stream.ResolvedAudio
 import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
+import com.luc4n3x.levyra.desktop.player.AudioOutputDevice
 import com.luc4n3x.levyra.desktop.player.AudioPlayer
 import com.luc4n3x.levyra.desktop.player.AudioPlayerUnavailableException
+import com.luc4n3x.levyra.desktop.player.CrossfadePlanner
 import com.luc4n3x.levyra.desktop.player.PlaybackStatus
 import com.luc4n3x.levyra.desktop.player.PlayerEvent
 import com.luc4n3x.levyra.desktop.player.PlayerQueue
 import com.luc4n3x.levyra.desktop.player.PrefetchPlanner
 import com.luc4n3x.levyra.desktop.player.RepeatMode
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -74,15 +81,28 @@ class PlaybackController(
         )
     )
     private val messageFlow = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    private val outputDevicesState = MutableStateFlow<List<AudioOutputDevice>>(emptyList())
+    private val outputDeviceMissingState = MutableStateFlow(false)
 
     private val playerScope = CoroutineScope(scope.coroutineContext + SupervisorJob())
+    private val transitionLock = Any()
 
     private var player: AudioPlayer? = null
+    private var companionPlayer: AudioPlayer? = null
+    private var transitionJob: Job? = null
+    private var transitionEventJob: Job? = null
+    private var prepareJob: Job? = null
+    private var preparedTrackId: String = ""
+    private var preparedTransitionMs: Long = 0L
+    private var preparedStreamLabel: String = ""
+    private var handoffAttemptedTrackId: String = ""
+    private var transitionActive: Boolean = false
     private var playbackJob: Job? = null
     private var eventJob: Job? = null
     private var persistJob: Job? = null
     private var prefetchJob: Job? = null
     private var sleepJob: Job? = null
+    private var outputDeviceJob: Job? = null
     private var prefetchedTrackId: String = ""
     private var retriedTrackId: String = ""
     private var consecutiveFailures: Int = 0
@@ -91,6 +111,8 @@ class PlaybackController(
 
     val state: StateFlow<PlaybackUiState> = internalState.asStateFlow()
     val messages: SharedFlow<String> = messageFlow.asSharedFlow()
+    val audioOutputDevices: StateFlow<List<AudioOutputDevice>> = outputDevicesState.asStateFlow()
+    val audioOutputDeviceMissing: StateFlow<Boolean> = outputDeviceMissingState.asStateFlow()
 
     init {
         playerScope.launch {
@@ -99,13 +121,40 @@ class PlaybackController(
                 .distinctUntilChanged()
                 .collect { equalizer ->
                     player?.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
+                    companionPlayer?.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
                 }
         }
         playerScope.launch {
             settingsStore.settings
                 .map { DesktopSettings.normalizeSpeed(it.playbackSpeed) }
                 .distinctUntilChanged()
-                .collect { speed -> applySpeed(speed) }
+                .collect { speed ->
+                    applySpeed(speed)
+                    companionPlayer?.setSpeed(speed)
+                }
+        }
+        playerScope.launch {
+            settingsStore.settings
+                .map { it.audioOutputDeviceId }
+                .distinctUntilChanged()
+                .collect { deviceId ->
+                    cancelTransition()
+                    outputDeviceMissingState.value = false
+                    player?.applyOutputDevice(deviceId)
+                    companionPlayer?.applyOutputDevice(deviceId)
+                }
+        }
+    }
+
+    fun refreshAudioOutputDevices(createEngine: Boolean = false) {
+        playerScope.launch {
+            val active = if (createEngine) ensurePlayer() else player
+            if (active == null) return@launch
+            val devices = runCatching { active.outputDevices() }.getOrDefault(emptyList())
+            if (devices.isNotEmpty()) {
+                outputDevicesState.value = devices
+                outputDeviceMissingState.value = isSelectedOutputDeviceMissing(devices)
+            }
         }
     }
 
@@ -146,6 +195,7 @@ class PlaybackController(
     }
 
     fun enqueueNext(tracks: List<Track>) {
+        cancelTransition()
         val queue = internalState.value.queue
         val wasEmpty = queue.isEmpty
         internalState.update { state -> state.copy(queue = queue.enqueueNext(tracks)) }
@@ -153,6 +203,7 @@ class PlaybackController(
     }
 
     fun enqueueLast(tracks: List<Track>) {
+        cancelTransition()
         val queue = internalState.value.queue
         val wasEmpty = queue.isEmpty
         internalState.update { state -> state.copy(queue = queue.enqueueLast(tracks)) }
@@ -167,6 +218,7 @@ class PlaybackController(
     }
 
     fun removeFromQueue(position: Int) {
+        cancelTransition()
         val previous = internalState.value.queue
         val playingRemoved = position == previous.index
         val queue = previous.removeAt(position)
@@ -179,6 +231,7 @@ class PlaybackController(
     }
 
     fun clearQueue() {
+        cancelTransition()
         internalState.update { state -> state.copy(queue = state.queue.clear()) }
         stop()
     }
@@ -188,6 +241,7 @@ class PlaybackController(
         if (current.queue.isEmpty) return
         when (current.status) {
             PlaybackStatus.PLAYING, PlaybackStatus.BUFFERING -> {
+                cancelTransition()
                 player?.pause()
                 internalState.update { state -> state.copy(status = PlaybackStatus.PAUSED) }
                 persistSession()
@@ -237,6 +291,7 @@ class PlaybackController(
     }
 
     fun seekTo(positionMs: Long) {
+        cancelTransition()
         val safe = positionMs.coerceAtLeast(0L)
         pendingResumeMs = safe
         player?.seekTo(safe)
@@ -249,8 +304,11 @@ class PlaybackController(
         if (safe > 0) {
             lastAudibleVolume = safe
         }
-        player?.setVolume(safe)
+        if (!transitionActive) {
+            player?.setVolume(safe)
+        }
         player?.setMuted(muted)
+        companionPlayer?.setMuted(muted)
         internalState.update { state -> state.copy(volume = safe, muted = muted) }
         settingsStore.update { it.copy(volume = safe) }
     }
@@ -263,6 +321,7 @@ class PlaybackController(
             return
         }
         player?.setMuted(muted)
+        companionPlayer?.setMuted(muted)
         internalState.update { state -> state.copy(muted = muted) }
     }
 
@@ -281,6 +340,7 @@ class PlaybackController(
     }
 
     fun sleepAtEndOfTrack() {
+        cancelTransition()
         sleepJob?.cancel()
         internalState.update { state ->
             state.copy(sleepTimer = SleepTimerState.endOfTrack(), sleepRemainingMs = 0L)
@@ -295,18 +355,21 @@ class PlaybackController(
     }
 
     fun toggleShuffle() {
+        cancelTransition()
         val queue = internalState.value.queue
         internalState.update { state -> state.copy(queue = queue.withShuffle(!queue.shuffle)) }
         persistSession()
     }
 
     fun cycleRepeat() {
+        cancelTransition()
         val queue = internalState.value.queue
         internalState.update { state -> state.copy(queue = queue.withRepeat(queue.repeat.next())) }
         persistSession()
     }
 
     fun stop() {
+        cancelTransition()
         playbackJob?.cancel()
         player?.stop()
         internalState.update { state ->
@@ -321,12 +384,19 @@ class PlaybackController(
     }
 
     fun shutdown() {
+        transitionJob?.cancel()
+        transitionEventJob?.cancel()
+        prepareJob?.cancel()
         persistJob?.cancel()
         playbackJob?.cancel()
         prefetchJob?.cancel()
         sleepJob?.cancel()
+        outputDeviceJob?.cancel()
         eventJob?.cancel()
         saveSessionNow()
+        runCatching { companionPlayer?.stop() }
+        runCatching { companionPlayer?.close() }
+        companionPlayer = null
         runCatching { player?.stop() }
         runCatching { player?.close() }
         player = null
@@ -335,6 +405,7 @@ class PlaybackController(
 
     private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false) {
         val track = internalState.value.queue.current ?: return
+        cancelTransition()
         playbackJob?.cancel()
         if (track.id != prefetchedTrackId) {
             prefetchJob?.cancel()
@@ -370,7 +441,7 @@ class PlaybackController(
     }
 
     private suspend fun resolvePlayable(track: Track): Track? {
-        if (track.videoUrl.isNotBlank()) return track
+        if (track.offlinePath.isNotBlank() || track.videoUrl.isNotBlank()) return track
         val located = try {
             catalog.findPlayable(track)
         } catch (cancellation: CancellationException) {
@@ -499,6 +570,336 @@ class PlaybackController(
         startCurrent(0L)
     }
 
+    private fun maybePrepareHandoff() {
+        if (transitionActive) return
+        if (!settingsStore.current.preloadNextTrack) return
+        val current = internalState.value
+        if (current.status != PlaybackStatus.PLAYING) return
+        if (current.sleepTimer.mode == SleepTimerMode.END_OF_TRACK) return
+        val playing = current.queue.current ?: return
+        val next = PrefetchPlanner.handoffTrack(current.queue) ?: return
+        if (next.id == preparedTrackId) {
+            maybeStartCrossfade(current.positionMs, current.durationMs)
+            return
+        }
+        val transitionMs = CrossfadePlanner.transitionDurationMs(
+            requestedMs = settingsStore.current.crossfadeMs,
+            smartCrossfade = settingsStore.current.smartCrossfade,
+            current = playing,
+            next = next,
+            currentDurationMs = current.durationMs
+        )
+        if (current.positionMs < CrossfadePlanner.prepareThresholdMs(current.durationMs, transitionMs)) {
+            return
+        }
+        val pending = synchronized(transitionLock) {
+            if (transitionActive || next.id == handoffAttemptedTrackId || prepareJob != null) {
+                null
+            } else {
+                playerScope.launch(start = CoroutineStart.LAZY) {
+                    prepareCompanion(next, transitionMs)
+                }.also { job ->
+                    handoffAttemptedTrackId = next.id
+                    prepareJob = job
+                }
+            }
+        } ?: return
+        pending.start()
+    }
+
+    private suspend fun prepareCompanion(next: Track, transitionMs: Long) {
+        val ownerJob = currentCoroutineContext()[Job]
+        var published = false
+        try {
+            val companion = ensureCompanion() ?: return
+            val settings = settingsStore.current
+            val playable = resolveHandoffTrack(next) ?: return
+            val resolved = try {
+                resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                DesktopDiagnostics.background("handoff resolve of ${next.title}", error)
+                return
+            }
+            if (!companion.prepare(resolved.url, 0L)) return
+            currentCoroutineContext().ensureActive()
+            companion.setVolume(0)
+            companion.setMuted(internalState.value.muted)
+            val equalizer = settings.equalizer
+            companion.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
+            companion.applyOutputDevice(effectiveOutputDeviceId(settings.audioOutputDeviceId))
+            companion.setSpeed(DesktopSettings.normalizeSpeed(settings.playbackSpeed))
+            val enriched = playable.copy(
+                title = resolved.title.ifBlank { playable.title },
+                artist = resolved.artist.ifBlank { playable.artist },
+                artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
+                durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
+            )
+            published = synchronized(transitionLock) {
+                if (
+                    prepareJob !== ownerJob ||
+                    transitionActive ||
+                    PrefetchPlanner.handoffTrack(internalState.value.queue)?.id != next.id
+                ) {
+                    false
+                } else {
+                    preparedTrackId = next.id
+                    preparedTransitionMs = transitionMs
+                    preparedStreamLabel = resolved.label
+                    true
+                }
+            }
+            if (!published) {
+                runCatching { companion.stop() }
+                return
+            }
+            updateTrackMetadata(enriched)
+        } finally {
+            synchronized(transitionLock) {
+                if (prepareJob === ownerJob) {
+                    prepareJob = null
+                    if (!published && handoffAttemptedTrackId == next.id) {
+                        handoffAttemptedTrackId = ""
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun resolveHandoffTrack(next: Track): Track? {
+        if (next.videoUrl.isNotBlank() || next.offlinePath.isNotBlank()) return next
+        return try {
+            catalog.findPlayable(next)?.let { located ->
+                next.copy(
+                    videoUrl = located.videoUrl,
+                    durationMs = if (located.durationMs > 0L) located.durationMs else next.durationMs
+                )
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            DesktopDiagnostics.background("handoff lookup of ${next.title}", error)
+            null
+        }
+    }
+
+    private fun ensureCompanion(): AudioPlayer? {
+        companionPlayer?.let { return it }
+        val created = runCatching { player?.createCompanion() }.getOrNull() ?: return null
+        companionPlayer = created
+        return created
+    }
+
+    private fun maybeStartCrossfade(positionMs: Long, durationMs: Long) {
+        val transitionMs = preparedTransitionMs
+        if (transitionMs <= 0L || durationMs <= 0L) return
+        if (positionMs < durationMs - transitionMs) return
+        startTransition(transitionMs)
+    }
+
+    private fun startPreparedHandoff(): Boolean = startTransition(0L)
+
+    private fun startTransition(transitionMs: Long): Boolean {
+        val started = synchronized(transitionLock) {
+            if (transitionActive || preparedTrackId.isEmpty() || companionPlayer == null) {
+                null
+            } else {
+                transitionActive = true
+                playerScope.launch(start = CoroutineStart.LAZY) {
+                    runTransition(transitionMs)
+                }.also { transitionJob = it }
+            }
+        } ?: return false
+        started.start()
+        return true
+    }
+
+    private suspend fun runTransition(transitionMs: Long) {
+        val ownerJob = currentCoroutineContext()[Job] ?: return
+        try {
+            runOwnedTransition(transitionMs, ownerJob)
+        } finally {
+            clearTransitionOwnership(ownerJob)
+        }
+    }
+
+    private suspend fun runOwnedTransition(transitionMs: Long, ownerJob: Job) {
+        val incomingFailure = AtomicReference<String?>(null)
+        val incomingFinished = AtomicBoolean(false)
+        val players = synchronized(transitionLock) {
+            if (transitionJob !== ownerJob || !transitionActive) return
+            val companion = companionPlayer
+            if (companion == null) {
+                transitionActive = false
+                return
+            }
+            val outgoing = player
+            transitionEventJob?.cancel()
+            transitionEventJob = playerScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                companion.events.collect { event ->
+                    when (event) {
+                        is PlayerEvent.Failed -> incomingFailure.compareAndSet(null, event.reason)
+                        is PlayerEvent.Finished -> incomingFinished.set(true)
+                        else -> Unit
+                    }
+                }
+            }
+            companion to outgoing
+        }
+        val (companion, outgoing) = players
+        companion.setMuted(internalState.value.muted)
+        companion.setVolume(if (transitionMs > 0L) 0 else internalState.value.volume)
+        if (!companion.startPrepared()) {
+            abortTransition(ownerJob)
+            if (transitionMs <= 0L) {
+                next(automatic = true)
+            }
+            return
+        }
+        if (transitionMs > 0L) {
+            val steps = (transitionMs / CrossfadePlanner.STEP_MS).toInt().coerceAtLeast(1)
+            for (step in 1..steps) {
+                val failureReason = incomingFailure.get()
+                if (failureReason != null || incomingFinished.get()) {
+                    abortTransition(ownerJob)
+                    messageFlow.tryEmit(failureReason ?: "Il brano successivo si è chiuso durante la transizione")
+                    return
+                }
+                val fraction = step.toFloat() / steps.toFloat()
+                val base = internalState.value.volume
+                outgoing?.setVolume(
+                    CrossfadePlanner.volumeFor(base, CrossfadePlanner.outgoingGain(fraction))
+                )
+                companion.setVolume(
+                    CrossfadePlanner.volumeFor(base, CrossfadePlanner.incomingGain(fraction))
+                )
+                delay(CrossfadePlanner.STEP_MS)
+            }
+        }
+        val failureReason = incomingFailure.get()
+        if (failureReason != null || incomingFinished.get()) {
+            abortTransition(ownerJob)
+            messageFlow.tryEmit(failureReason ?: "Il brano successivo si è chiuso durante la transizione")
+            return
+        }
+        completeTransition(ownerJob)
+    }
+
+    private fun abortTransition(ownerJob: Job) {
+        val companion: AudioPlayer?
+        synchronized(transitionLock) {
+            if (transitionJob !== ownerJob) return
+            transitionActive = false
+            preparedTrackId = ""
+            preparedTransitionMs = 0L
+            preparedStreamLabel = ""
+            handoffAttemptedTrackId = ""
+            companion = companionPlayer
+        }
+        runCatching { companion?.stop() }
+        player?.setVolume(internalState.value.volume)
+    }
+
+    private fun completeTransition(ownerJob: Job) {
+        val incoming: AudioPlayer
+        val outgoing: AudioPlayer?
+        val advanced: PlayerQueue
+        val streamLabel: String
+        synchronized(transitionLock) {
+            if (transitionJob !== ownerJob || !transitionActive) return
+            val candidateCompanion = companionPlayer
+            if (candidateCompanion == null) {
+                transitionActive = false
+                return
+            }
+            val expected = preparedTrackId
+            val candidate = internalState.value.queue.advance(automatic = true)
+            if (candidate == null || candidate.current?.id != expected) {
+                transitionActive = false
+                preparedTrackId = ""
+                preparedTransitionMs = 0L
+                preparedStreamLabel = ""
+                handoffAttemptedTrackId = ""
+                runCatching { candidateCompanion.stop() }
+                player?.setVolume(internalState.value.volume)
+                return
+            }
+            incoming = candidateCompanion
+            advanced = candidate
+            outgoing = player
+            streamLabel = preparedStreamLabel
+            player = incoming
+            companionPlayer = outgoing
+            preparedTrackId = ""
+            preparedTransitionMs = 0L
+            preparedStreamLabel = ""
+            handoffAttemptedTrackId = ""
+            transitionActive = false
+        }
+        runCatching { outgoing?.stop() }
+        outgoing?.setVolume(internalState.value.volume)
+        observeEvents(incoming)
+        incoming.setVolume(internalState.value.volume)
+        incoming.setMuted(internalState.value.muted)
+        applySpeed(settingsStore.current.playbackSpeed, incoming)
+        retriedTrackId = ""
+        consecutiveFailures = 0
+        pendingResumeMs = incoming.positionMs()
+        val duration = incoming.durationMs()
+        internalState.update { state ->
+            state.copy(
+                queue = advanced,
+                status = PlaybackStatus.PLAYING,
+                preparingTrackId = "",
+                positionMs = pendingResumeMs,
+                durationMs = if (duration > 0L) duration else advanced.current?.durationMs ?: 0L,
+                streamLabel = streamLabel
+            )
+        }
+        advanced.current?.let(libraryStore::recordPlayback)
+        persistSession()
+    }
+
+    private fun cancelTransition() {
+        val companion: AudioPlayer?
+        val pendingPrepare: Job?
+        val activeTransition: Job?
+        val eventCollector: Job?
+        val wasActive: Boolean
+        synchronized(transitionLock) {
+            wasActive = transitionActive
+            transitionActive = false
+            preparedTrackId = ""
+            preparedTransitionMs = 0L
+            preparedStreamLabel = ""
+            handoffAttemptedTrackId = ""
+            companion = companionPlayer
+            pendingPrepare = prepareJob
+            prepareJob = null
+            activeTransition = transitionJob
+            transitionJob = null
+            eventCollector = transitionEventJob
+            transitionEventJob = null
+        }
+        activeTransition?.cancel()
+        eventCollector?.cancel()
+        pendingPrepare?.cancel()
+        runCatching { companion?.stop() }
+        if (wasActive) {
+            player?.setVolume(internalState.value.volume)
+        }
+    }
+
+    private fun clearTransitionOwnership(ownerJob: Job) {
+        val eventCollector = synchronized(transitionLock) {
+            if (transitionJob !== ownerJob) return
+            transitionJob = null
+            transitionEventJob.also { transitionEventJob = null }
+        }
+        eventCollector?.cancel()
+    }
+
     private fun maybePrefetchNext() {
         if (!settingsStore.current.preloadNextTrack) return
         val current = internalState.value
@@ -553,6 +954,7 @@ class PlaybackController(
     }
 
     private fun pauseForSleepTimer() {
+        cancelTransition()
         val settled = internalState.value.status in SETTLED_STATUSES
         if (settled) {
             player?.pause()
@@ -606,8 +1008,10 @@ class PlaybackController(
             player = created
             observeEvents(created)
             startPersistLoop()
+            startOutputDeviceWatch()
             val equalizer = settingsStore.current.equalizer
             created.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
+            created.applyOutputDevice(settingsStore.current.audioOutputDeviceId)
             applySpeed(settingsStore.current.playbackSpeed, created)
             internalState.update { state -> state.copy(unavailableReason = "") }
             created
@@ -625,7 +1029,7 @@ class PlaybackController(
 
     private fun observeEvents(target: AudioPlayer) {
         eventJob?.cancel()
-        eventJob = playerScope.launch {
+        eventJob = playerScope.launch(start = CoroutineStart.UNDISPATCHED) {
             target.events.collect { event -> handleEvent(event) }
         }
     }
@@ -651,11 +1055,17 @@ class PlaybackController(
 
             is PlayerEvent.Stopped -> Unit
 
-            is PlayerEvent.Finished -> if (internalState.value.sleepTimer.mode == SleepTimerMode.END_OF_TRACK) {
-                cancelSleepTimer()
-                stop()
-            } else {
-                next(automatic = true)
+            is PlayerEvent.Finished -> when {
+                transitionActive -> Unit
+
+                internalState.value.sleepTimer.mode == SleepTimerMode.END_OF_TRACK -> {
+                    cancelSleepTimer()
+                    stop()
+                }
+
+                startPreparedHandoff() -> Unit
+
+                else -> next(automatic = true)
             }
 
             is PlayerEvent.Failed -> handleFailure(event.reason)
@@ -664,6 +1074,7 @@ class PlaybackController(
                 pendingResumeMs = event.positionMs
                 internalState.update { state -> state.copy(positionMs = event.positionMs) }
                 maybePrefetchNext()
+                maybePrepareHandoff()
             }
 
             is PlayerEvent.LengthChanged -> if (event.durationMs > 0L) {
@@ -682,6 +1093,46 @@ class PlaybackController(
         }
         messageFlow.tryEmit(reason)
         skipAfterFailure(track)
+    }
+
+    private fun startOutputDeviceWatch() {
+        if (outputDeviceJob?.isActive == true) return
+        outputDeviceJob = playerScope.launch {
+            while (isActive) {
+                val active = player
+                if (active != null) {
+                    val devices = runCatching { active.outputDevices() }.getOrDefault(emptyList())
+                    if (devices.isNotEmpty()) {
+                        outputDevicesState.value = devices
+                        val wasMissing = outputDeviceMissingState.value
+                        val missing = isSelectedOutputDeviceMissing(devices)
+                        when {
+                            missing && !wasMissing -> {
+                                active.applyOutputDevice(AudioOutputDevice.SYSTEM_DEFAULT_ID)
+                                companionPlayer?.applyOutputDevice(AudioOutputDevice.SYSTEM_DEFAULT_ID)
+                            }
+
+                            !missing && wasMissing -> {
+                                val selected = settingsStore.current.audioOutputDeviceId
+                                active.applyOutputDevice(selected)
+                                companionPlayer?.applyOutputDevice(selected)
+                            }
+                        }
+                        outputDeviceMissingState.value = missing
+                    }
+                }
+                delay(OUTPUT_DEVICE_POLL_MS)
+            }
+        }
+    }
+
+    private fun effectiveOutputDeviceId(selected: String): String =
+        if (outputDeviceMissingState.value) AudioOutputDevice.SYSTEM_DEFAULT_ID else selected
+
+    private fun isSelectedOutputDeviceMissing(devices: List<AudioOutputDevice>): Boolean {
+        val selected = settingsStore.current.audioOutputDeviceId
+        if (selected.isEmpty()) return false
+        return devices.none { it.id == selected }
     }
 
     private fun startPersistLoop() {
@@ -718,6 +1169,7 @@ class PlaybackController(
     private companion object {
         const val RESTART_THRESHOLD_MS = 4_000L
         const val PERSIST_INTERVAL_MS = 15_000L
+        const val OUTPUT_DEVICE_POLL_MS = 8_000L
         const val SLEEP_TICK_MS = 1_000L
         val SETTLED_STATUSES = setOf(PlaybackStatus.PLAYING, PlaybackStatus.PAUSED)
         const val MAX_QUEUE_SIZE = 200

@@ -7,6 +7,12 @@ interface AudioPlayer : AutoCloseable {
 
     fun play(url: String, startAtMs: Long = 0L)
 
+    fun prepare(url: String, startAtMs: Long = 0L): Boolean
+
+    fun startPrepared(): Boolean
+
+    fun createCompanion(): AudioPlayer?
+
     fun resume()
 
     fun pause()
@@ -20,6 +26,10 @@ interface AudioPlayer : AutoCloseable {
     fun setMuted(muted: Boolean)
 
     fun applyEqualizer(enabled: Boolean, preamp: Float, amps: List<Float>)
+
+    fun outputDevices(): List<AudioOutputDevice>
+
+    fun applyOutputDevice(deviceId: String)
 
     fun setSpeed(speed: Float): Boolean
 

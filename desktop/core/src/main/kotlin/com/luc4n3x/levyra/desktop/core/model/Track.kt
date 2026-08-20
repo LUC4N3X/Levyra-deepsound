@@ -17,6 +17,11 @@ data class Track(
     val hasArtwork: Boolean get() = artworkUrl.isNotBlank()
     val isOffline: Boolean get() = offlinePath.isNotBlank()
 
+    val isLocalFile: Boolean get() = offlinePath.isNotBlank() && videoUrl.isBlank()
+
+    fun asLibraryEntry(): Track =
+        if (isLocalFile) this else copy(offlinePath = "", offlineMediaLabel = "")
+
     val displaySubtitle: String
         get() = listOf(artist, album).filter { it.isNotBlank() }.joinToString(" · ")
 

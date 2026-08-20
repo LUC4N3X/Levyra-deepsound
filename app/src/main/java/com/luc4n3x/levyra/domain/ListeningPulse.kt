@@ -34,6 +34,19 @@ data class PulseDay(
     val listenedMs: Long
 )
 
+data class PulsePeriod(
+    val totalListenMs: Long = 0L,
+    val plays: Int = 0,
+    val distinctTracks: Int = 0,
+    val distinctArtists: Int = 0,
+    val completionRate: Int = 0,
+    val topTracks: List<PulseTrack> = emptyList(),
+    val topArtists: List<PulseArtist> = emptyList()
+) {
+    val totalMinutes: Long
+        get() = totalListenMs / 60_000L
+}
+
 data class ListeningPulse(
     val totalListenMs: Long = 0L,
     val plays: Int = 0,
@@ -41,9 +54,14 @@ data class ListeningPulse(
     val distinctArtists: Int = 0,
     val completionRate: Int = 0,
     val streakDays: Int = 0,
+    val longestStreakDays: Int = 0,
+    val activeDays: Int = 0,
     val peakHour: Int = -1,
+    val topDay: PulseDay? = null,
     val topTracks: List<PulseTrack> = emptyList(),
     val topArtists: List<PulseArtist> = emptyList(),
+    val last30Days: PulsePeriod = PulsePeriod(),
+    val last365Days: PulsePeriod = PulsePeriod(),
     val week: List<PulseDay> = emptyList()
 ) {
     val hasSignal: Boolean
@@ -62,9 +80,13 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
         val valid = events.filter { it.listenedMs >= MIN_LISTEN_MS && it.startedAt in 1..nowMs }
         if (valid.isEmpty()) return ListeningPulse(week = emptyWeek(nowMs))
 
+        val today = dayOf(nowMs)
         val totalListenMs = valid.sumOf { it.listenedMs }
         val completedCount = valid.count { it.completed }
         val byDay = valid.groupBy { dayOf(it.startedAt) }
+        val activeDates = byDay.keys
+        val days30 = valid.filter { dayOf(it.startedAt) >= today.minusDays(LAST_30_DAYS - 1L) }
+        val days365 = valid.filter { dayOf(it.startedAt) >= today.minusDays(LAST_365_DAYS - 1L) }
 
         return ListeningPulse(
             totalListenMs = totalListenMs,
@@ -72,11 +94,32 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
             distinctTracks = valid.map { trackKey(it) }.toSet().size,
             distinctArtists = valid.map { artistKey(it.artist) }.filter { it.isNotBlank() }.toSet().size,
             completionRate = (completedCount * 100) / valid.size,
-            streakDays = streak(byDay.keys, dayOf(nowMs)),
+            streakDays = streak(activeDates, today),
+            longestStreakDays = longestStreak(activeDates),
+            activeDays = activeDates.size,
             peakHour = peakHour(valid),
+            topDay = byDay.entries
+                .map { (date, dayEvents) -> PulseDay(date, dayEvents.sumOf { it.listenedMs }) }
+                .maxByOrNull { it.listenedMs },
             topTracks = topTracks(valid),
             topArtists = topArtists(valid),
+            last30Days = period(days30),
+            last365Days = period(days365),
             week = week(byDay, nowMs)
+        )
+    }
+
+    private fun period(events: List<ListenEvent>): PulsePeriod {
+        if (events.isEmpty()) return PulsePeriod()
+        val artists = events.map { artistKey(it.artist) }.filter { it.isNotBlank() }
+        return PulsePeriod(
+            totalListenMs = events.sumOf { it.listenedMs },
+            plays = events.size,
+            distinctTracks = events.map { trackKey(it) }.toSet().size,
+            distinctArtists = artists.toSet().size,
+            completionRate = (events.count { it.completed } * 100) / events.size,
+            topTracks = topTracks(events),
+            topArtists = topArtists(events)
         )
     }
 
@@ -126,6 +169,18 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
         return count
     }
 
+    private fun longestStreak(activeDays: Set<LocalDate>): Int {
+        if (activeDays.isEmpty()) return 0
+        val ordered = activeDays.sorted()
+        var longest = 1
+        var current = 1
+        for (index in 1 until ordered.size) {
+            current = if (ordered[index - 1].plusDays(1) == ordered[index]) current + 1 else 1
+            if (current > longest) longest = current
+        }
+        return longest
+    }
+
     private fun peakHour(events: List<ListenEvent>): Int =
         events.groupBy { Instant.ofEpochMilli(it.startedAt).atZone(zone).hour }
             .maxByOrNull { (_, group) -> group.sumOf { it.listenedMs } }
@@ -148,5 +203,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
         const val MIN_LISTEN_MS = 5_000L
         private const val TOP_LIMIT = 5
         private const val WEEK_DAYS = 7
+        private const val LAST_30_DAYS = 30L
+        private const val LAST_365_DAYS = 365L
     }
 }

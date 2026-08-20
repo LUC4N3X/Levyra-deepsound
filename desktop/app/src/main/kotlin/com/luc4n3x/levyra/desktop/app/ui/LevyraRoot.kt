@@ -57,6 +57,7 @@ import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.DiscoverScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.HomeScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.LibraryScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.LocalMusicScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.NowPlayingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.OnboardingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistScreen
@@ -71,8 +72,13 @@ import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
 import java.awt.Desktop
+import java.io.File
+import java.nio.file.Path
 import javax.swing.JFileChooser
+import javax.swing.JOptionPane
+import javax.swing.filechooser.FileNameExtensionFilter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -82,6 +88,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun LevyraRoot(model: LevyraAppModel) {
     val settings by model.settings.collectAsState()
+    val localMusic by model.localMusicController.state.collectAsState()
+    val audioOutputDevices by model.playbackController.audioOutputDevices.collectAsState()
+    val audioOutputDeviceMissing by model.playbackController.audioOutputDeviceMissing.collectAsState()
     val library by model.library.collectAsState()
     val destination by model.destination.collectAsState()
     val queueVisible by model.queueVisible.collectAsState()
@@ -89,6 +98,20 @@ fun LevyraRoot(model: LevyraAppModel) {
     val search by model.catalogController.search.collectAsState()
     val collection by model.catalogController.collection.collectAsState()
     val discover by model.discoverController.discover.collectAsState()
+    var localSearchResults by remember { mutableStateOf<List<Track>>(emptyList()) }
+
+    LaunchedEffect(localMusic.index, search.query) {
+        val query = search.query
+        if (query.length < 2) {
+            localSearchResults = emptyList()
+        } else {
+            delay(LOCAL_SEARCH_DEBOUNCE_MS)
+            localSearchResults = withContext(Dispatchers.Default) {
+                localMusic.index.search(query, limit = LOCAL_SEARCH_PREVIEW_LIMIT)
+                    .map { it.toTrack() }
+            }
+        }
+    }
 
     val chromePlaybackFlow = remember(model) {
         model.playbackController.state
@@ -155,10 +178,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                 )
             },
             onToggleFavorite = { track ->
-                model.toggleFavorite(track.copy(offlinePath = "", offlineMediaLabel = ""))
+                model.toggleFavorite(track.asLibraryEntry())
             },
             onAddToPlaylist = { track ->
-                pendingPlaylistTrack = track.copy(offlinePath = "", offlineMediaLabel = "")
+                pendingPlaylistTrack = track.asLibraryEntry()
             }
         )
     }
@@ -300,7 +323,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 onFilterChange = model.catalogController::setFilter,
                                                 onLoadMore = model.catalogController::loadMoreSearch,
                                                 onOpenCollection = model::openCollection,
-                                                onClearRecent = model.libraryStore::clearRecentSearches
+                                                onClearRecent = model.libraryStore::clearRecentSearches,
+                                                localResults = localSearchResults
                                             )
 
                                             Destination.COLLECTION -> CollectionScreen(
@@ -332,6 +356,22 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 actions = actions
                                             )
 
+                                            Destination.LOCAL_MUSIC -> LocalMusicScreen(
+                                                state = localMusic,
+                                                actions = actions,
+                                                onAddFolder = {
+                                                    scope.launch {
+                                                        val selected = chooseDirectory()
+                                                        if (selected.isNotBlank()) {
+                                                            model.localMusicController.addFolder(selected)
+                                                        }
+                                                    }
+                                                },
+                                                onRemoveFolder = model.localMusicController::removeFolder,
+                                                onRescan = model.localMusicController::rescan,
+                                                onForgetMissing = model.localMusicController::forgetUnavailable
+                                            )
+
                                             Destination.PLAYLIST -> {
                                                 val playlist = library.playlists.firstOrNull { it.id == openPlaylistId }
                                                 PlaylistScreen(
@@ -361,6 +401,31 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                         playlist?.let {
                                                             model.libraryStore.removeFromPlaylist(it.id, trackId)
                                                         }
+                                                    },
+                                                    onExport = {
+                                                        val target = playlist ?: return@PlaylistScreen
+                                                        scope.launch {
+                                                            val selected = choosePlaylistFile(
+                                                                save = true,
+                                                                suggestedName = target.name,
+                                                                overwriteTitle = strings.playlistOverwriteTitle,
+                                                                overwriteMessage = strings::formatPlaylistOverwriteConfirm
+                                                            )
+                                                            if (selected.isBlank()) return@launch
+                                                            val written = model.localMusicController
+                                                                .writePlaylistFile(
+                                                                    Path.of(selected),
+                                                                    target.name,
+                                                                    target.tracks
+                                                                )
+                                                            model.notify(
+                                                                if (written) {
+                                                                    strings.playlistExportSuccess
+                                                                } else {
+                                                                    strings.playlistExportFailed
+                                                                }
+                                                            )
+                                                        }
                                                     }
                                                 )
                                             }
@@ -375,6 +440,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 dataDirectory = model.paths.root.toString(),
                                                 vlcStatus = vlcStatus,
                                                 appVersion = AppInfo.version(),
+                                                audioOutputDevices = audioOutputDevices,
+                                                audioOutputDeviceMissing = audioOutputDeviceMissing,
                                                 onUpdate = model::updateSettings,
                                                 onBrowseVlc = {
                                                     scope.launch {
@@ -397,6 +464,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     scope.launch {
                                                         openDirectory(model.paths.root.toString())
                                                     }
+                                                },
+                                                onRefreshAudioOutputDevices = { createEngine ->
+                                                    model.playbackController.refreshAudioOutputDevices(createEngine)
                                                 }
                                             )
                                         }
@@ -503,11 +573,34 @@ private fun LibraryHost(
 ) {
     val downloads by model.downloadController.downloads.collectAsState()
     val scope = rememberCoroutineScope()
+    val strings = LocalStrings.current
     LibraryScreen(
         library = library,
         downloads = downloads,
         actions = actions,
         onOpenPlaylist = model::openPlaylist,
+        onImportPlaylist = {
+            scope.launch {
+                val selected = choosePlaylistFile(save = false, suggestedName = "")
+                if (selected.isBlank()) return@launch
+                val file = Path.of(selected)
+                val (tracks, result) = model.localMusicController.readPlaylistFile(file)
+                if (tracks.isEmpty()) {
+                    model.notify(strings.searchNoResults)
+                    return@launch
+                }
+                val name = file.fileName.toString().substringBeforeLast('.')
+                val playlistId = model.libraryStore.createPlaylist(name)
+                model.libraryStore.addToPlaylist(playlistId, tracks)
+                model.notify(
+                    if (result.skipped > 0) {
+                        "${result.matched} · ${strings.playlistSkippedEntries}: ${result.skipped}"
+                    } else {
+                        "${strings.playlistImport}: ${result.matched}"
+                    }
+                )
+            }
+        },
         onClearHistory = model.libraryStore::clearHistory,
         onOpenDownloadsFolder = {
             scope.launch { openDirectory(model.paths.downloadsDirectory.toString()) }
@@ -566,7 +659,7 @@ private fun PlayerBarHost(
         onToggleQueue = model::toggleQueue,
         onToggleFavorite = {
             playback.current?.let { track ->
-                model.toggleFavorite(track.copy(offlinePath = "", offlineMediaLabel = ""))
+                model.toggleFavorite(track.asLibraryEntry())
             }
         },
         onSpeedChange = model.playbackController::setSpeed,
@@ -589,6 +682,50 @@ private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
     positionMs = 0L,
     sleepRemainingMs = 0L
 )
+
+private suspend fun choosePlaylistFile(
+    save: Boolean,
+    suggestedName: String,
+    overwriteTitle: String = "",
+    overwriteMessage: ((String) -> String)? = null
+): String = withContext(Dispatchers.Swing) {
+    val chooser = object : JFileChooser() {
+        override fun approveSelection() {
+            if (dialogType == SAVE_DIALOG) {
+                val selected = selectedFile ?: return
+                val target = playlistTarget(selected)
+                selectedFile = target
+                if (target.exists()) {
+                    val result = JOptionPane.showConfirmDialog(
+                        this,
+                        overwriteMessage?.invoke(target.name)
+                            ?: "${approveButtonText.orEmpty()} ${target.name}?",
+                        overwriteTitle.ifBlank { dialogTitle.orEmpty() },
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                    )
+                    if (result != JOptionPane.YES_OPTION) return
+                }
+            }
+            super.approveSelection()
+        }
+    }
+    chooser.fileSelectionMode = JFileChooser.FILES_ONLY
+    chooser.isMultiSelectionEnabled = false
+    chooser.fileFilter = FileNameExtensionFilter("M3U", "m3u", "m3u8")
+    if (suggestedName.isNotBlank()) {
+        chooser.selectedFile = File(suggestedName)
+    }
+    val result = if (save) chooser.showSaveDialog(null) else chooser.showOpenDialog(null)
+    if (result == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile?.absolutePath.orEmpty()
+    } else {
+        ""
+    }
+}
+
+private fun playlistTarget(file: File): File =
+    if (file.extension.isBlank()) File(file.parentFile, "${file.name}.m3u8") else file
 
 private suspend fun chooseDirectory(): String = withContext(Dispatchers.Swing) {
     val chooser = JFileChooser()
@@ -618,8 +755,11 @@ private suspend fun verifyVlc(
 private suspend fun openDirectory(path: String) = withContext(Dispatchers.IO) {
     runCatching {
         if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().open(java.io.File(path))
+            Desktop.getDesktop().open(File(path))
         }
     }
     Unit
 }
+
+private const val LOCAL_SEARCH_PREVIEW_LIMIT = 6
+private const val LOCAL_SEARCH_DEBOUNCE_MS = 140L

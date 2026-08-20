@@ -8,7 +8,7 @@ import org.junit.Test
 class DirectAudioFallbackContractTest {
     @Test
     fun directAudioValidatesRankedCandidatesBeforeAcceptingOne() {
-        val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
+        val resolver = readSource("data/PlaybackResolver.kt")
         val function = resolver.indexOf("private suspend fun resolveWithInnerTubeOnce")
         val candidates = resolver.indexOf("val audioCandidates = buildList", function)
         val loop = resolver.indexOf("for ((format, _, label) in audioCandidates)", candidates)
@@ -27,7 +27,7 @@ class DirectAudioFallbackContractTest {
 
     @Test
     fun strictCandidateProbeIsLimitedToNormalAudioFallback() {
-        val resolver = Files.readString(sourceFile("data/PlaybackResolver.kt"))
+        val resolver = readSource("data/PlaybackResolver.kt")
 
         assertTrue(
             resolver.contains(
@@ -37,6 +37,9 @@ class DirectAudioFallbackContractTest {
         )
         assertTrue(resolver.contains("trustAttestedGoogleVideo: Boolean = true"))
     }
+
+    private fun readSource(relativePath: String): String =
+        Files.readString(sourceFile(relativePath)).replace("\r\n", "\n")
 
     private fun sourceFile(relativePath: String): Path {
         return sequenceOf(

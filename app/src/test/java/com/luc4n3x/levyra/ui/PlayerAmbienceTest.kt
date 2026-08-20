@@ -64,4 +64,40 @@ class PlayerAmbienceTest {
         assertEquals(0f, Color.Black.playerAmbienceMix(Color.White, -1f).red, 0.0001f)
         assertEquals(1f, Color.Black.playerAmbienceMix(Color.White, 4f).red, 0.0001f)
     }
+
+    @Test
+    fun `color matrix clamps brightness and applies saturation`() {
+        val matrix = createPlayerAmbientColorMatrix(
+            saturation = 1.30f,
+            minBrightness = 0.05f,
+            maxBrightness = 0.55f
+        )
+        assertEquals(20, matrix.values.size)
+        // Offset col is at indices 4, 9, 14
+        assertEquals(0.05f, matrix.values[4], 0.001f)
+        assertEquals(0.05f, matrix.values[9], 0.001f)
+        assertEquals(0.05f, matrix.values[14], 0.001f)
+        // Alpha row is unaffected (0, 0, 0, 1, 0)
+        assertEquals(1f, matrix.values[18], 0.0001f)
+    }
+
+    @Test
+    fun `ambience hierarchy invariance holds across extreme artwork palettes`() {
+        listOf(
+            Color.White to Color.White,
+            Color.Black to Color.Black,
+            Color.Red to Color.Red,
+            Color.Green to Color.Green,
+            Color.Blue to Color.Blue,
+            Color.Yellow to Color.Cyan,
+            Color.Magenta to Color.Yellow,
+            Color(0xFF101010) to Color(0xFF050505),
+            Color(0xFFFAFAFA) to Color(0xFFE0E0E0)
+        ).forEach { (primary, secondary) ->
+            val ambience = playerAmbienceOf(primary, secondary)
+            assertTrue("tint should be brighter than elevated for $primary", level(ambience.tint) > level(ambience.elevated))
+            assertTrue("elevated should be brighter than base for $primary", level(ambience.elevated) > level(ambience.base))
+            assertTrue("base must stay dark for $primary", level(ambience.base) < 0.05f)
+        }
+    }
 }

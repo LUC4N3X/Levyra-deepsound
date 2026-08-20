@@ -86,6 +86,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import java.text.NumberFormat
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 
@@ -634,6 +635,8 @@ internal fun LibraryListeningDashboard(
     val week = pulse.week.takeLast(7)
     val weekMinutes = week.sumOf { it.listenedMs } / 60_000L
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
+    val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
+    val percent = remember(locale) { NumberFormat.getPercentInstance(locale) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -660,16 +663,13 @@ internal fun LibraryListeningDashboard(
                 ) {
                     Surface(color = LevyraCyan.copy(alpha = 0.14f), shape = CircleShape) {
                         Icon(
-                            imageVector = Icons.Rounded.Insights,
+                            imageVector = Icons.Rounded.Replay,
                             contentDescription = null,
                             tint = LevyraCyan,
                             modifier = Modifier.padding(9.dp).size(18.dp)
                         )
                     }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
-                    ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(
                             text = strings.formatLibraryDuration(pulse.totalListenMs),
                             color = LevyraText,
@@ -679,25 +679,66 @@ internal fun LibraryListeningDashboard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = strings.pulseMinutes,
-                            color = LevyraMuted,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Text(strings.pulseMinutes, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.Person, artistCount.toString(), strings.statArtists, LevyraViolet)
-                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.MusicNote, trackCount.toString(), strings.statTracks, LevyraPink)
+                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.PlayArrow, number.format(pulse.plays), strings.pulsePlays, LevyraCyan)
+                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.Replay, number.format(pulse.streakDays), strings.pulseStreak, LevyraViolet)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.LibraryMusic, playlistCount.toString(), strings.playlists, LevyraCyan)
-                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.OfflinePin, offlineCount.toString(), strings.offline, Color(0xFFFFC857))
+                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.DoneAll, percent.format(pulse.completionRate / 100.0), strings.pulseCompletion, LevyraPink)
+                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.MusicNote, number.format(pulse.distinctTracks), strings.statTracks, Color(0xFFFFC857))
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ReplayPeriodMetric(
+                        modifier = Modifier.weight(1f),
+                        periodLabel = strings.formatReplayPeriod(30),
+                        minutes = pulse.last30Days.totalMinutes,
+                        plays = pulse.last30Days.plays,
+                        minuteLabel = strings.pulseMinuteShort,
+                        playLabel = strings.pulsePlays,
+                        accent = LevyraCyan,
+                        number = number
+                    )
+                    ReplayPeriodMetric(
+                        modifier = Modifier.weight(1f),
+                        periodLabel = strings.formatReplayPeriod(365),
+                        minutes = pulse.last365Days.totalMinutes,
+                        plays = pulse.last365Days.plays,
+                        minuteLabel = strings.pulseMinuteShort,
+                        playLabel = strings.pulsePlays,
+                        accent = LevyraViolet,
+                        number = number
+                    )
+                }
+
+                if (pulse.topTracks.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(strings.songsPlain, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        pulse.topTracks.take(3).forEachIndexed { index, track ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = (index + 1).toString().padStart(2, '0'),
+                                    color = LevyraCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(track.title, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(track.artist, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                Text(strings.formatPlayCount(track.plays), color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
 
@@ -708,7 +749,7 @@ internal fun LibraryListeningDashboard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(strings.pulseWeek, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                        Text("$weekMinutes ${strings.pulseMinuteShort}", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        Text("${number.format(weekMinutes)} ${strings.pulseMinuteShort}", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
                     }
                     LibraryWeekChart(pulse = pulse, locale = locale)
                 }
@@ -753,6 +794,31 @@ internal fun LibraryListeningDashboard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReplayPeriodMetric(
+    modifier: Modifier,
+    periodLabel: String,
+    minutes: Long,
+    plays: Int,
+    minuteLabel: String,
+    playLabel: String,
+    accent: Color,
+    number: NumberFormat
+) {
+    Surface(
+        modifier = modifier,
+        color = accent.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
+    ) {
+        Column(modifier = Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(periodLabel, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            Text("${number.format(minutes)} $minuteLabel", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Text("${number.format(plays)} $playLabel", color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }

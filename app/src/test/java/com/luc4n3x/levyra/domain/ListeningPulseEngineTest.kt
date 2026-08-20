@@ -125,6 +125,46 @@ class ListeningPulseEngineTest {
     }
 
     @Test
+    fun replayKeepsRollingThirtyAndThreeHundredSixtyFiveDayWindows() {
+        val events = listOf(
+            event(trackId = "recent", artist = "Recent", listenedMs = 60_000L, completed = true, startedAt = daysAgo(5)),
+            event(trackId = "month-old", artist = "Older", listenedMs = 120_000L, startedAt = daysAgo(40)),
+            event(trackId = "year-edge", artist = "Edge", listenedMs = 180_000L, startedAt = daysAgo(364)),
+            event(trackId = "outside", artist = "Outside", listenedMs = 240_000L, startedAt = daysAgo(366))
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals(60_000L, pulse.last30Days.totalListenMs)
+        assertEquals(1, pulse.last30Days.plays)
+        assertEquals(100, pulse.last30Days.completionRate)
+        assertEquals("recent", pulse.last30Days.topTracks.single().trackId)
+        assertEquals(360_000L, pulse.last365Days.totalListenMs)
+        assertEquals(3, pulse.last365Days.plays)
+        assertEquals(3, pulse.last365Days.distinctArtists)
+    }
+
+    @Test
+    fun replayReportsActiveDaysLongestStreakAndTopDay() {
+        val events = listOf(
+            event(trackId = "today", listenedMs = 30_000L, startedAt = daysAgo(0)),
+            event(trackId = "yesterday", listenedMs = 30_000L, startedAt = daysAgo(1)),
+            event(trackId = "a", listenedMs = 150_000L, startedAt = daysAgo(10)),
+            event(trackId = "b", listenedMs = 30_000L, startedAt = daysAgo(11)),
+            event(trackId = "c", listenedMs = 30_000L, startedAt = daysAgo(12)),
+            event(trackId = "d", listenedMs = 30_000L, startedAt = daysAgo(13))
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals(6, pulse.activeDays)
+        assertEquals(2, pulse.streakDays)
+        assertEquals(4, pulse.longestStreakDays)
+        assertEquals(daysAgo(10).let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }, pulse.topDay?.date)
+        assertEquals(150_000L, pulse.topDay?.listenedMs)
+    }
+
+    @Test
     fun weekBucketsCoverSevenDaysOldestFirst() {
         val events = listOf(
             event(trackId = "a", listenedMs = 60_000L, startedAt = daysAgo(0)),

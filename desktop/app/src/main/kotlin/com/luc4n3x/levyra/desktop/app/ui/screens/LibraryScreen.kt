@@ -63,6 +63,7 @@ fun LibraryScreen(
     downloads: DownloadData,
     actions: TrackActions,
     onOpenPlaylist: (String) -> Unit,
+    onImportPlaylist: () -> Unit,
     onClearHistory: () -> Unit,
     onOpenDownloadsFolder: () -> Unit,
     onCancelDownload: (String) -> Unit,
@@ -122,6 +123,11 @@ fun LibraryScreen(
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
+                if (selectedTab == LibraryTab.PLAYLISTS) {
+                    OutlinedButton(onClick = onImportPlaylist) {
+                        Text(strings.playlistImport)
+                    }
+                }
                 if (selectedTab == LibraryTab.DOWNLOADS) {
                     OutlinedButton(onClick = onOpenDownloadsFolder) {
                         Icon(

@@ -78,7 +78,11 @@ class DesktopStringsTest {
                 strings.settingsMediaKeysBody,
                 strings.settingsShortcuts,
                 strings.shortcutSeek,
-                strings.miniPlayer
+                strings.miniPlayer,
+                strings.playlistOverwriteTitle,
+                strings.playlistOverwriteConfirm,
+                strings.playlistExportSuccess,
+                strings.playlistExportFailed
             )
             assertTrue("Missing desktop label for ${language.tag}", desktopOnly.all { it.isNotBlank() })
             if (language != AppLanguage.ENGLISH && language != AppLanguage.FILIPINO) {
@@ -95,5 +99,10 @@ class DesktopStringsTest {
     fun rtlLanguagesRemainMarkedForBidirectionalLayout() {
         assertTrue(AppLanguage.ARABIC.isRtl)
         assertTrue(AppLanguage.HEBREW.isRtl)
+        assertTrue(
+            stringsFor(AppLanguage.ARABIC)
+                .formatPlaylistOverwriteConfirm("mix.m3u8")
+                .contains("\u2068mix.m3u8\u2069")
+        )
     }
 }

@@ -6688,7 +6688,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .firstOrNull { !samePlayableTrack(it, current) }
             ?: return
         motionArtworkPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(450L)
+            // Yield briefly to audible playback, then warm the next Canvas early enough that a
+            // queue transition can usually enter the immersive layer with the real asset ready.
+            delay(180L)
             if (!isActive || queueEngine.state.value.generation != generation) return@launch
             val active = _state.value.currentTrack ?: return@launch
             if (MotionArtworkIdentityKey.create(active) != currentKey) return@launch

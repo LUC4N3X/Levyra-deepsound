@@ -153,6 +153,7 @@ internal fun MotionArtworkLayer(
     Box(modifier = modifier) {
         MotionArtworkStaticFallback(
             animated = animateStatic,
+            presentation = presentation,
             cornerRadius = cornerRadius,
             alpha = { staticBedAlpha },
             modifier = Modifier.fillMaxSize(),
@@ -265,6 +266,7 @@ private fun rememberMotionArtworkEnvironment(observe: Boolean): MotionArtworkEnv
 @Composable
 private fun MotionArtworkStaticFallback(
     animated: Boolean,
+    presentation: MotionArtworkPresentation,
     cornerRadius: Dp,
     alpha: () -> Float,
     modifier: Modifier,
@@ -284,7 +286,12 @@ private fun MotionArtworkStaticFallback(
         label = "static-artwork-motion-amount"
     )
 
-    LaunchedEffect(animated) {
+    val immersive = presentation == MotionArtworkPresentation.Immersive
+    val zoomDurationMs = if (immersive) 14_000 else STATIC_ARTWORK_ZOOM_DURATION_MS
+    val horizontalDurationMs = if (immersive) 18_000 else STATIC_ARTWORK_HORIZONTAL_DURATION_MS
+    val verticalDurationMs = if (immersive) 21_000 else STATIC_ARTWORK_VERTICAL_DURATION_MS
+
+    LaunchedEffect(animated, presentation) {
         if (!animated) {
             coroutineScope {
                 launch {
@@ -313,11 +320,11 @@ private fun MotionArtworkStaticFallback(
                 while (isActive) {
                     zoomPhase.animateTo(
                         1f,
-                        tween(STATIC_ARTWORK_ZOOM_DURATION_MS, easing = FastOutSlowInEasing)
+                        tween(zoomDurationMs, easing = FastOutSlowInEasing)
                     )
                     zoomPhase.animateTo(
                         0f,
-                        tween(STATIC_ARTWORK_ZOOM_DURATION_MS, easing = FastOutSlowInEasing)
+                        tween(zoomDurationMs, easing = FastOutSlowInEasing)
                     )
                 }
             }
@@ -325,11 +332,11 @@ private fun MotionArtworkStaticFallback(
                 while (isActive) {
                     horizontalDrift.animateTo(
                         1f,
-                        tween(STATIC_ARTWORK_HORIZONTAL_DURATION_MS, easing = FastOutSlowInEasing)
+                        tween(horizontalDurationMs, easing = FastOutSlowInEasing)
                     )
                     horizontalDrift.animateTo(
                         -1f,
-                        tween(STATIC_ARTWORK_HORIZONTAL_DURATION_MS, easing = FastOutSlowInEasing)
+                        tween(horizontalDurationMs, easing = FastOutSlowInEasing)
                     )
                 }
             }
@@ -337,11 +344,11 @@ private fun MotionArtworkStaticFallback(
                 while (isActive) {
                     verticalDrift.animateTo(
                         -1f,
-                        tween(STATIC_ARTWORK_VERTICAL_DURATION_MS, easing = FastOutSlowInEasing)
+                        tween(verticalDurationMs, easing = FastOutSlowInEasing)
                     )
                     verticalDrift.animateTo(
                         1f,
-                        tween(STATIC_ARTWORK_VERTICAL_DURATION_MS, easing = FastOutSlowInEasing)
+                        tween(verticalDurationMs, easing = FastOutSlowInEasing)
                     )
                 }
             }
@@ -356,11 +363,16 @@ private fun MotionArtworkStaticFallback(
                 .graphicsLayer {
                     this.alpha = alpha()
                     val amount = motionAmount
-                    val scale = 1f + amount * (0.042f + zoomPhase.value * 0.022f)
+                    val baseZoom = if (immersive) 0.064f else 0.042f
+                    val pulseZoom = if (immersive) 0.030f else 0.022f
+                    val horizontalTravel = if (immersive) 0.026f else 0.016f
+                    val verticalTravel = if (immersive) 0.020f else 0.012f
+                    val scale = 1f + amount * (baseZoom + zoomPhase.value * pulseZoom)
                     scaleX = scale
                     scaleY = scale
-                    translationX = artworkSize.width * 0.016f * horizontalDrift.value * amount
-                    translationY = artworkSize.height * 0.012f * verticalDrift.value * amount
+                    translationX = artworkSize.width * horizontalTravel * horizontalDrift.value * amount
+                    translationY = artworkSize.height * verticalTravel * verticalDrift.value * amount
+                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.22f else 0f
                 }
         ) {
             content()

@@ -58,6 +58,7 @@ import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
+import com.luc4n3x.levyra.desktop.core.model.Track
 
 @Composable
 fun SearchScreen(
@@ -71,6 +72,7 @@ fun SearchScreen(
     onLoadMore: () -> Unit,
     onOpenCollection: (CollectionRef) -> Unit,
     onClearRecent: () -> Unit,
+    localResults: List<Track>,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
@@ -137,6 +139,14 @@ fun SearchScreen(
                     onClick = { onFilterChange(filter) }
                 )
             }
+        }
+
+        if (localResults.isNotEmpty()) {
+            LocalSearchResults(
+                tracks = localResults,
+                actions = actions,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
         }
 
         if (state.error.isNotBlank()) {
@@ -792,5 +802,41 @@ private fun artistInitials(name: String): String {
         parts.isEmpty() -> "L"
         parts.size == 1 -> parts.first().take(2).uppercase()
         else -> "${parts.first().first()}${parts.last().first()}".uppercase()
+    }
+}
+
+@Composable
+private fun LocalSearchResults(
+    tracks: List<Track>,
+    actions: TrackActions,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalStrings.current
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = strings.localMusic,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        tracks.forEachIndexed { index, track ->
+            TrackRow(
+                track = track,
+                isCurrent = track.id == actions.currentTrackId,
+                isFavorite = actions.isFavorite(track),
+                onPlay = { actions.onPlay(tracks, index) },
+                onPlayNext = { actions.onPlayNext(track) },
+                onEnqueue = { actions.onEnqueue(track) },
+                onToggleFavorite = { actions.onToggleFavorite(track) },
+                onAddToPlaylist = { actions.onAddToPlaylist(track) },
+                position = index + 1
+            )
+        }
     }
 }
