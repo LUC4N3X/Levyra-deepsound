@@ -1,0 +1,30 @@
+name: PR424 VLC HTTP option cleanup
+
+on:
+  push:
+    branches:
+      - feature/desktop-audio-and-local-library
+    paths:
+      - .github/workflows/remove-pr424-http-continuous.yml
+      - .github/scripts/remove_pr424_http_continuous.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/desktop-audio-and-local-library
+          fetch-depth: 0
+      - run: python3 .github/scripts/remove_pr424_http_continuous.py
+      - run: git diff --check && git diff -- desktop/player/src/main/kotlin/com/luc4n3x/levyra/desktop/player/VlcAudioPlayer.kt
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- desktop/player/src/main/kotlin/com/luc4n3x/levyra/desktop/player/VlcAudioPlayer.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(desktop): keep VLC VOD HTTP semantics"
+          git push origin HEAD:feature/desktop-audio-and-local-library
