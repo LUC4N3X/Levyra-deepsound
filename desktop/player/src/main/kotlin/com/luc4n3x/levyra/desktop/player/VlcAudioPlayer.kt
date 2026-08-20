@@ -299,9 +299,9 @@ class VlcAudioPlayer private constructor(
         resetTimeThrottle(resumeAtMs)
         val restarted = runCatching {
             if (resumePaused) {
-                mediaPlayer.media().startPaused(url, *mediaOptions(resumeAtMs))
+                mediaPlayer.media().startPaused(url, *mediaOptions(url, resumeAtMs))
             } else {
-                mediaPlayer.media().play(url, *mediaOptions(resumeAtMs))
+                mediaPlayer.media().play(url, *mediaOptions(url, resumeAtMs))
             }
         }.getOrDefault(false)
         if (!restarted) {
