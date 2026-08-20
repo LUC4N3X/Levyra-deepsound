@@ -1,0 +1,36 @@
+name: PR424 Desktop Googlevideo Parity Patch
+
+on:
+  push:
+    branches:
+      - feature/desktop-audio-and-local-library
+    paths:
+      - .github/workflows/patch-pr424-desktop-googlevideo.yml
+      - .github/scripts/patch_pr424_desktop_googlevideo.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/desktop-audio-and-local-library
+          fetch-depth: 0
+      - run: python3 .github/scripts/patch_pr424_desktop_googlevideo.py
+      - run: |
+          git diff --check
+          git diff -- \
+            desktop/player/src/main/kotlin/com/luc4n3x/levyra/desktop/player/VlcAudioPlayer.kt \
+            desktop/player/src/test/kotlin/com/luc4n3x/levyra/desktop/player/YoutubePlaybackUrlTest.kt
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            desktop/player/src/main/kotlin/com/luc4n3x/levyra/desktop/player/VlcAudioPlayer.kt \
+            desktop/player/src/test/kotlin/com/luc4n3x/levyra/desktop/player/YoutubePlaybackUrlTest.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(desktop): mirror Android googlevideo requests"
+          git push origin HEAD:feature/desktop-audio-and-local-library
