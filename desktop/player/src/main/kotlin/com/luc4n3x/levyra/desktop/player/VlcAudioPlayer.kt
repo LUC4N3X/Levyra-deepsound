@@ -201,7 +201,6 @@ class VlcAudioPlayer private constructor(
             youtube?.referrer?.let { add(":http-referrer=$it") }
             if (youtube != null) {
                 add(":http-reconnect")
-                add(":http-continuous")
             }
         }
         add(":no-video")
