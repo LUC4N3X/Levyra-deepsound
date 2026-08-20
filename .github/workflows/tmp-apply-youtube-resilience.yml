@@ -1,0 +1,34 @@
+name: Apply scoped YouTube resilience patch
+
+on:
+  push:
+    branches:
+      - feat/youtube-resilience-upstream-2026-08
+    paths:
+      - .github/workflows/tmp-apply-youtube-resilience.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Apply scoped patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "feat/youtube-resilience-upstream-2026-08"
+          cat .levyra-tmp/patches/patch-*.patch > "$RUNNER_TEMP/youtube-resilience.patch"
+          git apply --check "$RUNNER_TEMP/youtube-resilience.patch"
+          git apply --index "$RUNNER_TEMP/youtube-resilience.patch"
+          rm -rf .levyra-tmp
+          rm -f .github/workflows/tmp-apply-youtube-resilience.yml
+          git add -u
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(android): harden YouTube playback and metadata"
+          git push origin HEAD
