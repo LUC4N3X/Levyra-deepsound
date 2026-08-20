@@ -1,0 +1,45 @@
+name: PR424 Canvas Polish Patch
+
+on:
+  push:
+    branches:
+      - feature/desktop-audio-and-local-library
+    paths:
+      - .github/workflows/patch-pr424-canvas.yml
+      - .github/scripts/patch_pr424_canvas.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: feature/desktop-audio-and-local-library
+          fetch-depth: 0
+
+      - name: Apply focused Canvas transition patch
+        run: python3 .github/scripts/patch_pr424_canvas.py
+
+      - name: Validate patch shape
+        run: |
+          git diff --check
+          git diff --exit-code -- .github/workflows/patch-pr424-canvas.yml .github/scripts/patch_pr424_canvas.py
+          git diff -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+
+      - name: Commit focused fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(android): make Canvas transitions immediate"
+          git push origin HEAD:feature/desktop-audio-and-local-library
