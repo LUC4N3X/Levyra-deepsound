@@ -1,0 +1,39 @@
+name: PR424 Canvas Compile Fix
+
+on:
+  push:
+    branches:
+      - feature/desktop-audio-and-local-library
+    paths:
+      - .github/workflows/patch-pr424-canvas-compile.yml
+      - .github/scripts/patch_pr424_canvas_compile.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: feature/desktop-audio-and-local-library
+          fetch-depth: 0
+
+      - name: Apply focused compile fix
+        run: python3 .github/scripts/patch_pr424_canvas_compile.py
+
+      - name: Validate focused diff
+        run: |
+          git diff --check
+          git diff -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+
+      - name: Commit focused fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(android): complete immersive Canvas transition"
+          git push origin HEAD:feature/desktop-audio-and-local-library
