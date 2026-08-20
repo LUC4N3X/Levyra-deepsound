@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.player
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import java.net.URI
 import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -10,9 +11,45 @@ import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
+
+internal data class YoutubePlaybackHttpOptions(
+    val userAgent: String,
+    val referrer: String?
+)
+
+internal fun youtubePlaybackHttpOptions(url: String): YoutubePlaybackHttpOptions? {
+    val host = runCatching { URI(url).host.orEmpty().lowercase(Locale.ROOT) }.getOrDefault("")
+    val youtubeMedia = host.endsWith("googlevideo.com") ||
+        host.endsWith("youtube.com") ||
+        host.endsWith("youtube-nocookie.com") ||
+        host.endsWith("ytimg.com")
+    if (!youtubeMedia) return null
+
+    val userAgent = when {
+        runCatching { YoutubeParsingHelper.isIosStreamingUrl(url) }.getOrDefault(false) ->
+            YoutubeParsingHelper.getIosUserAgent(null)
+        runCatching { YoutubeParsingHelper.isAndroidStreamingUrl(url) }.getOrDefault(false) ->
+            YoutubeParsingHelper.getAndroidUserAgent(null)
+        else -> YOUTUBE_MOBILE_WEB_USER_AGENT
+    }
+    val web = runCatching { YoutubeParsingHelper.isWebStreamingUrl(url) }.getOrDefault(false)
+    val embedded = runCatching {
+        YoutubeParsingHelper.isTvHtml5SimplyEmbeddedPlayerStreamingUrl(url)
+    }.getOrDefault(false)
+    val referrer = when {
+        embedded -> "https://www.youtube.com/embed/"
+        web -> "https://www.youtube.com/"
+        else -> null
+    }
+    return YoutubePlaybackHttpOptions(userAgent, referrer)
+}
+
+private const val YOUTUBE_MOBILE_WEB_USER_AGENT =
+    "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
 
 class VlcAudioPlayer private constructor(
     private val sharedFactory: SharedMediaPlayerFactory,
@@ -94,7 +131,7 @@ class VlcAudioPlayer private constructor(
         requestedPaused = false
         resetTimeThrottle(startAtMs)
         pushOutputDevice()
-        mediaPlayer.media().play(url, *mediaOptions(startAtMs))
+        mediaPlayer.media().play(url, *mediaOptions(url, startAtMs))
     }
 
     override fun prepare(url: String, startAtMs: Long): Boolean {
@@ -104,7 +141,7 @@ class VlcAudioPlayer private constructor(
         resetTimeThrottle(startAtMs)
         pushOutputDevice()
         val started = runCatching {
-            mediaPlayer.media().startPaused(url, *mediaOptions(startAtMs))
+            mediaPlayer.media().startPaused(url, *mediaOptions(url, startAtMs))
         }.getOrDefault(false)
         if (!started) loadedUrl = ""
         return started
@@ -136,9 +173,12 @@ class VlcAudioPlayer private constructor(
         }
     }
 
-    private fun mediaOptions(startAtMs: Long): Array<String> = buildList {
-        add(":http-user-agent=${ExtractorHttp.DESKTOP_USER_AGENT}")
-        add(":http-referrer=https://www.youtube.com/")
+    private fun mediaOptions(url: String, startAtMs: Long): Array<String> = buildList {
+        if (url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)) {
+            val youtube = youtubePlaybackHttpOptions(url)
+            add(":http-user-agent=${youtube?.userAgent ?: ExtractorHttp.DESKTOP_USER_AGENT}")
+            youtube?.referrer?.let { add(":http-referrer=$it") }
+        }
         add(":no-video")
         if (startAtMs > 0L) {
             add(":start-time=%.3f".format(Locale.ROOT, startAtMs / 1000.0))

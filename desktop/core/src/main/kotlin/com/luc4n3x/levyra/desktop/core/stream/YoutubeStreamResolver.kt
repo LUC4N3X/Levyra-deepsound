@@ -24,6 +24,7 @@ class YoutubeStreamResolver(
 
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
     private val locks = ConcurrentHashMap<String, Mutex>()
+    private val rejectedUrls = ConcurrentHashMap<String, Long>()
 
     override suspend fun resolve(
         track: Track,
@@ -45,8 +46,17 @@ class YoutubeStreamResolver(
 
     override fun invalidate(track: Track) {
         val prefix = "${track.videoId}|"
-        cache.keys.removeIf { it.startsWith(prefix) }
+        val now = nowMillis()
+        cache.entries.forEach { (key, value) ->
+            if (key.startsWith(prefix)) {
+                if (value.url.startsWith("http://", true) || value.url.startsWith("https://", true)) {
+                    rejectedUrls[value.url] = now + REJECTED_URL_TTL_MS
+                }
+                cache.remove(key, value)
+            }
+        }
         locks.keys.removeIf { it.startsWith(prefix) }
+        rejectedUrls.entries.removeIf { it.value <= now }
     }
 
     private fun resolveOffline(track: Track): ResolvedAudio? {
@@ -73,7 +83,9 @@ class YoutubeStreamResolver(
         } catch (error: Exception) {
             throw StreamResolutionException("Impossibile leggere il brano da YouTube", error)
         }
-        val candidates = info.audioStreams.orEmpty().mapNotNull(::toCandidate)
+        val candidates = info.audioStreams.orEmpty()
+            .mapNotNull(::toCandidate)
+            .filterNot { isRejected(it.url) }
         val selected = AudioStreamSelector.select(candidates, quality, codec)
             ?: throw StreamResolutionException("Nessuno stream audio disponibile per ${track.title}")
         val artwork = info.thumbnails
@@ -92,6 +104,14 @@ class YoutubeStreamResolver(
         )
     }
 
+    private fun isRejected(url: String): Boolean {
+        val until = rejectedUrls[url] ?: return false
+        val now = nowMillis()
+        if (until > now) return true
+        rejectedUrls.remove(url, until)
+        return false
+    }
+
     private fun toCandidate(stream: AudioStream): AudioCandidate? {
         if (!stream.isUrl) return null
         val url = stream.content.orEmpty()
@@ -108,6 +128,7 @@ class YoutubeStreamResolver(
 
     private companion object {
         const val FRESHNESS_MARGIN_MS = 120_000L
+        const val REJECTED_URL_TTL_MS = 90_000L
 
         fun cacheKey(track: Track, quality: AudioQuality, codec: PreferredCodec): String =
             "${track.videoId}|${quality.name}|${codec.name}"
