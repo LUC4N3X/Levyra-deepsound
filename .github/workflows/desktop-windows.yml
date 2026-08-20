@@ -190,11 +190,25 @@ jobs:
           $remoteAssetsByName = @{}
 
           function Resolve-TagCommit([string]$tagName) {
-            git fetch --force $remote "refs/tags/$tagName:refs/tags/$tagName" *> $null
+            $tagRef = "refs/tags/$tagName"
+            $peeledRef = "$tagRef^{}"
+            $lines = @(git ls-remote --exit-code --tags $remote $tagRef $peeledRef 2>$null)
             if ($LASTEXITCODE -ne 0) { return $null }
-            $resolved = (git rev-list -n 1 $tagName).Trim()
+
+            $resolved = $null
+            foreach ($line in $lines) {
+              $parts = $line -split '\s+', 2
+              if ($parts.Count -ne 2) { continue }
+              if ($parts[1] -eq $tagRef) {
+                $resolved = $parts[0]
+              }
+              if ($parts[1] -eq $peeledRef) {
+                $resolved = $parts[0]
+                break
+              }
+            }
             if ([string]::IsNullOrWhiteSpace($resolved)) { return $null }
-            return $resolved
+            return $resolved.Trim()
           }
 
           function Get-FileDigest([string]$path) {
