@@ -223,6 +223,8 @@ When playback starts, Levyra looks for libvlc in this order:
 
 To distribute Levyra without requiring users to install VLC, copy `libvlc.dll`, `libvlccore.dll`, and the `plugins` directory from a 64-bit VLC installation into `desktop/app/resources/windows-x64/vlc/` before packaging.
 
+For online YouTube playback, the extractor still resolves the signed audio URL, but VLC reads it through a tokenized loopback session bound to `127.0.0.1`. The player bridge fetches the upstream stream in bounded byte ranges and forwards seek/range responses without buffering the whole track. Local files, offline downloads, and non-YouTube URLs bypass the bridge.
+
 ## Local Data
 
 Preferences, Library data, downloads, and artwork cache are stored in `%APPDATA%\Levyra` on Windows:

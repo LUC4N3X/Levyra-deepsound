@@ -21,6 +21,32 @@ import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 
+internal enum class CandidateResolutionFailure {
+    RESOLVE_FAILED,
+    STREAM_EXPIRED,
+    STREAM_PROBE_FAILED
+}
+
+internal data class CandidateResolution(
+    val candidate: AudioCandidate? = null,
+    val failure: CandidateResolutionFailure? = null
+)
+
+internal fun selectVerifiedCandidate(
+    rankedCandidates: List<AudioCandidate>,
+    isRejected: (String) -> Boolean,
+    isFresh: (String) -> Boolean,
+    verify: (String) -> Boolean
+): CandidateResolution {
+    val eligible = rankedCandidates.filterNot { isRejected(it.url) }
+    if (eligible.isEmpty()) return CandidateResolution(failure = CandidateResolutionFailure.RESOLVE_FAILED)
+    val fresh = eligible.filter { isFresh(it.url) }
+    if (fresh.isEmpty()) return CandidateResolution(failure = CandidateResolutionFailure.STREAM_EXPIRED)
+    val selected = fresh.firstOrNull { verify(it.url) }
+        ?: return CandidateResolution(failure = CandidateResolutionFailure.STREAM_PROBE_FAILED)
+    return CandidateResolution(candidate = selected)
+}
+
 class YoutubeStreamResolver(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val nowMillis: () -> Long = System::currentTimeMillis
@@ -91,15 +117,31 @@ class YoutubeStreamResolver(
         val info = try {
             StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         } catch (error: Exception) {
-            throw StreamResolutionException("Impossibile leggere il brano da YouTube", error)
+            throw StreamResolutionException("RESOLVE_FAILED: Impossibile leggere il brano da YouTube", error)
         }
-        val candidates = info.audioStreams.orEmpty()
+        val rankedCandidates = info.audioStreams.orEmpty()
             .mapNotNull(::toCandidate)
-            .filterNot { isRejected(it.url) }
             .filter(AudioStreamSelector::isPlayable)
             .sortedByDescending { candidate -> AudioStreamSelector.score(candidate, quality, codec) }
-        val selected = candidates.firstOrNull { candidate -> verifyDirectAudioUrlFast(candidate.url) }
-            ?: throw StreamResolutionException("Nessuno stream audio verificato disponibile per ${track.title}")
+        val resolution = selectVerifiedCandidate(
+            rankedCandidates = rankedCandidates,
+            isRejected = ::isRejected,
+            isFresh = ::isFreshPlaybackUrl,
+            verify = ::verifyDirectAudioUrlFast
+        )
+        val selected = resolution.candidate ?: when (resolution.failure) {
+            CandidateResolutionFailure.RESOLVE_FAILED -> throw StreamResolutionException(
+                "RESOLVE_FAILED: Nessuno stream audio disponibile per ${track.title}"
+            )
+
+            CandidateResolutionFailure.STREAM_EXPIRED -> throw StreamResolutionException(
+                "STREAM_EXPIRED: Gli stream disponibili sono scaduti"
+            )
+
+            CandidateResolutionFailure.STREAM_PROBE_FAILED, null -> throw StreamResolutionException(
+                "STREAM_PROBE_FAILED: Nessuno stream audio verificato disponibile per ${track.title}"
+            )
+        }
         val artwork = info.thumbnails
             .orEmpty()
             .maxByOrNull { it.width.coerceAtLeast(0) * it.height.coerceAtLeast(0) }
@@ -124,7 +166,7 @@ class YoutubeStreamResolver(
             .header("Range", "bytes=0-8191")
             .header("Accept", "*/*")
             .header("Accept-Encoding", "identity")
-            .header("User-Agent", STREAM_PROBE_USER_AGENT)
+            .header("User-Agent", ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
             .build()
         return runCatching {
             streamProbeClient.newCall(request).execute().use { response ->
@@ -167,8 +209,6 @@ class YoutubeStreamResolver(
     private companion object {
         const val FRESHNESS_MARGIN_MS = 120_000L
         const val REJECTED_URL_TTL_MS = 90_000L
-        const val STREAM_PROBE_USER_AGENT =
-            "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X; US)"
         val PROBE_REJECT_CODES = setOf(403, 404, 410, 416, 429)
 
         fun cacheKey(track: Track, quality: AudioQuality, codec: PreferredCodec): String =
