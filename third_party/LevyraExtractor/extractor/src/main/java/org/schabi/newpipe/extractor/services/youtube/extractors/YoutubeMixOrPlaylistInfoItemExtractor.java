@@ -17,6 +17,8 @@ import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubePlaylist
 import javax.annotation.Nonnull;
 
 public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemExtractor {
+    private static final String MIX_TITLE_PREFIX = "Mix - ";
+    private static final String ZULU_MIX_TITLE_PREFIX = "Imiksi - ";
     private final JsonObject mixInfoItem;
 
     public YoutubeMixOrPlaylistInfoItemExtractor(final JsonObject mixInfoItem) {
@@ -28,6 +30,10 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
         final String name = getTextFromObject(mixInfoItem.getObject("title"));
         if (isNullOrEmpty(name)) {
             throw new ParsingException("Could not get name");
+        }
+        if (getPlaylistType() != PlaylistInfo.PlaylistType.NORMAL
+                && name.startsWith(ZULU_MIX_TITLE_PREFIX)) {
+            return MIX_TITLE_PREFIX + name.substring(ZULU_MIX_TITLE_PREFIX.length());
         }
         return name;
     }
@@ -70,7 +76,9 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
 
     @Override
     public String getUploaderName() throws ParsingException {
-        // this will be "YouTube" for mixes
+        if (getPlaylistType() != PlaylistInfo.PlaylistType.NORMAL) {
+            return "YouTube";
+        }
         return YoutubeParsingHelper.getTextFromObject(mixInfoItem.getObject("longBylineText"));
     }
 

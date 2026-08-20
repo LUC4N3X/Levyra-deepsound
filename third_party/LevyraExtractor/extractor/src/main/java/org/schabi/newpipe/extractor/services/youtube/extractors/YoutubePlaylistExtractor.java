@@ -36,6 +36,7 @@ import org.schabi.newpipe.extractor.utils.Utils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -241,6 +242,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
     @Override
     public InfoItemsPage<StreamInfoItem> getInitialPage() throws IOException, ExtractionException {
         final StreamInfoItemsCollector collector = new StreamInfoItemsCollector(getServiceId());
+        final PlaylistContinuationContext continuationContext = currentContinuationContext();
         Page nextPage = null;
 
         final JsonArray contents = browseResponse.getObject("contents")
@@ -269,9 +271,9 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
             final JsonArray videosArray = videoPlaylistObject
                     .getObject(PLAYLIST_VIDEO_LIST_RENDERER)
                     .getArray("contents");
-            collectStreamsFrom(collector, videosArray);
+            collectStreamsFrom(collector, videosArray, continuationContext);
 
-            nextPage = getNextPageFrom(videosArray);
+            nextPage = getNextPageFrom(videosArray, continuationContext);
         } else {
             for (final Object content : contents) {
                 if (!(content instanceof JsonObject)) {
@@ -280,9 +282,9 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                 final JsonArray itemContents = ((JsonObject) content)
                         .getObject("itemSectionRenderer")
                         .getArray("contents");
-                collectStreamsFrom(collector, itemContents);
+                collectStreamsFrom(collector, itemContents, continuationContext);
                 if (nextPage == null) {
-                    nextPage = getNextPageFrom(itemContents);
+                    nextPage = getNextPageFrom(itemContents, continuationContext);
                 }
             }
         }
@@ -316,7 +318,7 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                     });
 
             // Get next page from sectionListRenderer level for richGridRenderer
-            nextPage = getNextPageFrom(contents);
+            nextPage = getNextPageFrom(contents, continuationContext);
         }
 
         return new InfoItemsPage<>(collector, nextPage);
@@ -342,13 +344,15 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                 .getObject("appendContinuationItemsAction")
                 .getArray("continuationItems");
 
-        collectStreamsFrom(collector, continuation);
+        final PlaylistContinuationContext continuationContext = contextFromPage(page);
+        collectStreamsFrom(collector, continuation, continuationContext);
 
-        return new InfoItemsPage<>(collector, getNextPageFrom(continuation));
+        return new InfoItemsPage<>(collector, getNextPageFrom(continuation, continuationContext));
     }
 
     @Nullable
-    private Page getNextPageFrom(final JsonArray contents)
+    private Page getNextPageFrom(final JsonArray contents,
+                                 @Nonnull final PlaylistContinuationContext continuationContext)
             throws IOException, ExtractionException {
         if (isNullOrEmpty(contents)) {
             return null;
@@ -401,22 +405,20 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                         .done())
                 .getBytes(StandardCharsets.UTF_8);
 
-        return new Page(YOUTUBEI_V1_URL + "browse?" + DISABLE_PRETTY_PRINT_PARAMETER, body);
+        return new Page(
+                YOUTUBEI_V1_URL + "browse?" + DISABLE_PRETTY_PRINT_PARAMETER,
+                String.valueOf(continuationContext.coursePlaylist),
+                Arrays.asList(continuationContext.uploaderName, continuationContext.uploaderUrl),
+                null,
+                body);
     }
 
     private void collectStreamsFrom(@Nonnull final StreamInfoItemsCollector collector,
-                                    @Nonnull final JsonArray videos) {
+                                    @Nonnull final JsonArray videos,
+                                    @Nonnull final PlaylistContinuationContext continuationContext) {
         final TimeAgoParser timeAgoParser = getTimeAgoParser();
-
-        String playlistUploaderName = null;
-        String playlistUploaderUrl = null;
-        try {
-            playlistUploaderName = getUploaderName();
-            playlistUploaderUrl = getUploaderUrl();
-        } catch (final Exception ignored) {
-        }
-        final String fallbackName = playlistUploaderName;
-        final String fallbackUrl = playlistUploaderUrl;
+        final String fallbackName = emptyToNull(continuationContext.uploaderName);
+        final String fallbackUrl = emptyToNull(continuationContext.uploaderUrl);
 
         // Handle traditional playlistVideoRenderer
         videos.stream()
@@ -442,7 +444,8 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                 .filter(video -> video.has("lockupViewModel"))
                 .map(video -> video.getObject("lockupViewModel"))
                 .forEachOrdered(lockup -> commitLockupStreamIfSupported(
-                        collector, lockup, timeAgoParser, fallbackName, fallbackUrl));
+                        collector, lockup, timeAgoParser, fallbackName, fallbackUrl,
+                        continuationContext.coursePlaylist));
 
         // Handle Shorts in richItemRenderer format (for continuation responses)
         videos.stream()
@@ -464,14 +467,16 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                 .filter(content -> content.has("lockupViewModel"))
                 .map(content -> content.getObject("lockupViewModel"))
                 .forEachOrdered(lockup -> commitLockupStreamIfSupported(
-                        collector, lockup, timeAgoParser, fallbackName, fallbackUrl));
+                        collector, lockup, timeAgoParser, fallbackName, fallbackUrl,
+                        continuationContext.coursePlaylist));
     }
 
     private void commitLockupStreamIfSupported(@Nonnull final StreamInfoItemsCollector collector,
                                                @Nonnull final JsonObject lockupViewModel,
                                                @Nonnull final TimeAgoParser timeAgoParser,
                                                @Nullable final String fallbackName,
-                                               @Nullable final String fallbackUrl) {
+                                               @Nullable final String fallbackUrl,
+                                               final boolean coursePlaylist) {
         final String contentType = lockupViewModel.getString("contentType");
         if (!"LOCKUP_CONTENT_TYPE_VIDEO".equals(contentType)
                 && !"LOCKUP_CONTENT_TYPE_EPISODE".equals(contentType)) {
@@ -487,6 +492,9 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
         collector.commit(new YoutubeLockupStreamInfoItemExtractor(lockupViewModel, timeAgoParser) {
             @Override
             public String getUploaderName() throws ParsingException {
+                if (coursePlaylist && fallbackName != null) {
+                    return fallbackName;
+                }
                 if (fallbackName == null) {
                     return super.getUploaderName();
                 }
@@ -502,6 +510,9 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
 
             @Override
             public String getUploaderUrl() throws ParsingException {
+                if (coursePlaylist && fallbackUrl != null) {
+                    return fallbackUrl;
+                }
                 if (fallbackUrl == null) {
                     return super.getUploaderUrl();
                 }
@@ -515,6 +526,72 @@ public class YoutubePlaylistExtractor extends PlaylistExtractor {
                 return fallbackUrl;
             }
         });
+    }
+
+    @Nonnull
+    private PlaylistContinuationContext currentContinuationContext() {
+        String uploaderName = EMPTY_STRING;
+        String uploaderUrl = EMPTY_STRING;
+        try {
+            uploaderName = getUploaderName();
+            uploaderUrl = getUploaderUrl();
+        } catch (final Exception ignored) {
+        }
+        return new PlaylistContinuationContext(
+                containsJsonValue(browseResponse, "engagement-panel-course-metadata"),
+                uploaderName,
+                uploaderUrl);
+    }
+
+    @Nonnull
+    private static PlaylistContinuationContext contextFromPage(@Nonnull final Page page) {
+        final List<String> ids = page.getIds();
+        final String uploaderName = ids != null && !ids.isEmpty() ? ids.get(0) : EMPTY_STRING;
+        final String uploaderUrl = ids != null && ids.size() > 1 ? ids.get(1) : EMPTY_STRING;
+        return new PlaylistContinuationContext(
+                Boolean.parseBoolean(page.getId()), uploaderName, uploaderUrl);
+    }
+
+    private static boolean containsJsonValue(@Nullable final Object node,
+                                             @Nonnull final String expected) {
+        if (expected.equals(node)) {
+            return true;
+        }
+        if (node instanceof JsonObject) {
+            for (final Object value : ((JsonObject) node).values()) {
+                if (containsJsonValue(value, expected)) {
+                    return true;
+                }
+            }
+        } else if (node instanceof JsonArray) {
+            for (final Object value : (JsonArray) node) {
+                if (containsJsonValue(value, expected)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Nullable
+    private static String emptyToNull(@Nullable final String value) {
+        return isNullOrEmpty(value) ? null : value;
+    }
+
+    private static final class PlaylistContinuationContext {
+        private final boolean coursePlaylist;
+        @Nonnull
+        private final String uploaderName;
+        @Nonnull
+        private final String uploaderUrl;
+
+        private PlaylistContinuationContext(final boolean coursePlaylist,
+                                            @Nullable final String uploaderName,
+                                            @Nullable final String uploaderUrl) {
+            this.coursePlaylist = coursePlaylist;
+            this.uploaderName = uploaderName == null ? EMPTY_STRING : uploaderName;
+            this.uploaderUrl = uploaderUrl == null ? EMPTY_STRING : uploaderUrl;
+        }
     }
 
     @Nonnull

@@ -18,13 +18,13 @@ class YoutubeExtractorFallbackContractTest {
         val client = applyVisionOsClientIdentity(JSONObject())
 
         assertEquals("Apple", client.getString("deviceMake"))
-        assertEquals("RealityDevice14,1", client.getString("deviceModel"))
+        assertEquals("RealityDevice17,1", client.getString("deviceModel"))
         assertEquals("visionOS", client.getString("osName"))
-        assertEquals("25.6.0.23O471", client.getString("osVersion"))
+        assertEquals("26.6.0.23O770", client.getString("osVersion"))
         assertEquals("MOBILE", client.getString("platform"))
         assertEquals("WATCH", client.getString("clientScreen"))
         assertEquals(
-            "com.google.visionos.youtube/1.02(RealityDevice14,1; U; CPU visionOS 25_6_0 like Mac OS X; IT)",
+            "com.google.visionos.youtube/1.04(RealityDevice17,1; U; CPU visionOS 26_6_0 like Mac OS X; IT)",
             visionOsUserAgent("it")
         )
     }
@@ -103,6 +103,32 @@ class YoutubeExtractorFallbackContractTest {
 
         assertEquals(1, formats.length())
         assertEquals(18, formats.getJSONObject(0).getInt("itag"))
+    }
+
+
+    @Test
+    fun directAudioSelectionStronglyPenalizesAutoDubbedTracks() {
+        val autoDubbed = JSONObject().put(
+            "audioTrack",
+            JSONObject().put("isAutoDubbed", true).put("audioIsDefault", true)
+        )
+        val originalDefault = JSONObject().put(
+            "audioTrack",
+            JSONObject().put("isAutoDubbed", false).put("audioIsDefault", true)
+        )
+
+        assertTrue(scoreYoutubeAudioTrackPreference(autoDubbed) < 0)
+        assertTrue(scoreYoutubeAudioTrackPreference(originalDefault) > 0)
+        assertTrue(
+            scoreYoutubeAudioTrackPreference(originalDefault) >
+                scoreYoutubeAudioTrackPreference(autoDubbed)
+        )
+    }
+
+    @Test
+    fun directAudioSelectionLeavesUnlabelledTracksNeutral() {
+        assertEquals(0, scoreYoutubeAudioTrackPreference(JSONObject()))
+        assertEquals(0, scoreYoutubeAudioTrackPreference(JSONObject().put("audioTrack", JSONObject())))
     }
 
     @Test
