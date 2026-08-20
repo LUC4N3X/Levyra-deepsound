@@ -1,0 +1,262 @@
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/AudioStream.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/AudioStream.java
+index 73699fb9..93e358db 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/AudioStream.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/AudioStream.java
+@@ -37,6 +37,8 @@ public final class AudioStream extends Stream {
+     private String audioTrackId;
+     private String audioTrackName;
+     private String audioLocale;
++    @Nullable
++    private AudioTrackType audioTrackType;
+ 
+     // Fields for DASH
+     private int itag = ITAG_NOT_AVAILABLE_OR_NOT_APPLICABLE;
+@@ -75,6 +77,8 @@ public final class AudioStream extends Stream {
+         private String audioTrackId;
+         private String audioTrackName;
+         private String audioLocale;
++        @Nullable
++        private AudioTrackType audioTrackType;
+         private long availableAt = AVAILABLE_AT_UNKNOWN;
+         @Nullable
+         private Serializable deliveryMethodInfo;
+@@ -261,6 +265,11 @@ public final class AudioStream extends Stream {
+             return this;
+         }
+ 
++        public Builder setAudioTrackType(@Nullable final AudioTrackType audioTrackType) {
++            this.audioTrackType = audioTrackType;
++            return this;
++        }
++
+         public Builder setAvailableAt(final long availableAt) {
+             this.availableAt = availableAt;
+             return this;
+@@ -305,7 +314,7 @@ public final class AudioStream extends Stream {
+ 
+             return new AudioStream(id, content, isUrl, mediaFormat, deliveryMethod, averageBitrate, codec,
+                     bitrate, initStart, initEnd, indexStart, indexEnd, manifestUrl, itagItem,
+-                    quality, audioTrackId, audioTrackName, audioLocale, availableAt,
++                    quality, audioTrackId, audioTrackName, audioLocale, audioTrackType, availableAt,
+                     deliveryMethodInfo);
+         }
+     }
+@@ -346,6 +355,7 @@ public final class AudioStream extends Stream {
+                         @Nullable final String audioTrackId,
+                         @Nullable final String audioTrackName,
+                         @Nullable final String audioLocale,
++                        @Nullable final AudioTrackType audioTrackType,
+                         final long availableAt,
+                         @Nullable final Serializable deliveryMethodInfo) {
+         super(id, content, isUrl, format, deliveryMethod, manifestUrl, availableAt,
+@@ -360,6 +370,11 @@ public final class AudioStream extends Stream {
+             this.indexStart = itagItem.getIndexStart();
+             this.indexEnd = itagItem.getIndexEnd();
+             this.codec = itagItem.getCodec();
++            this.audioTrackId = itagItem.getAudioTrackId();
++            this.audioTrackName = itagItem.getAudioTrackName();
++            this.audioLocale = itagItem.getAudioLocale() == null
++                    ? null : itagItem.getAudioLocale().toLanguageTag();
++            this.audioTrackType = itagItem.getAudioTrackType();
+         }
+         this.averageBitrate = averageBitrate;
+         if(quality != null) {
+@@ -377,9 +392,18 @@ public final class AudioStream extends Stream {
+             this.indexStart = indexStart;
+             this.indexEnd = indexEnd;
+         }
+-        this.audioTrackId = audioTrackId;
+-        this.audioTrackName = audioTrackName;
+-        this.audioLocale = audioLocale;
++        if (audioTrackId != null) {
++            this.audioTrackId = audioTrackId;
++        }
++        if (audioTrackName != null) {
++            this.audioTrackName = audioTrackName;
++        }
++        if (audioLocale != null) {
++            this.audioLocale = audioLocale;
++        }
++        if (audioTrackType != null) {
++            this.audioTrackType = audioTrackType;
++        }
+     }
+ 
+     /**
+@@ -389,7 +413,9 @@ public final class AudioStream extends Stream {
+     public boolean equalStats(final Stream cmp) {
+         return super.equalStats(cmp) && cmp instanceof AudioStream
+                 && averageBitrate == ((AudioStream) cmp).averageBitrate
+-                && Objects.equals(audioTrackId, ((AudioStream) cmp).audioTrackId);
++                && Objects.equals(audioTrackId, ((AudioStream) cmp).audioTrackId)
++                && audioTrackType == ((AudioStream) cmp).audioTrackType
++                && Objects.equals(audioLocale, ((AudioStream) cmp).audioLocale);
+     }
+ 
+     /**
+@@ -502,6 +528,11 @@ public final class AudioStream extends Stream {
+         return audioLocale;
+     }
+ 
++    @Nullable
++    public AudioTrackType getAudioTrackType() {
++        return audioTrackType;
++    }
++
+     /**
+      * {@inheritDoc}
+      */
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamExtractor.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamExtractor.java
+index 657e2c31..c00e34cd 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamExtractor.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamExtractor.java
+@@ -585,6 +585,18 @@ public abstract class StreamExtractor extends Extractor {
+         return Collections.emptyList();
+     }
+ 
++    /**
++     * Return structured song metadata when the service exposes it independently from the
++     * stream title and uploader.
++     *
++     * @return song metadata or {@code null} when unavailable or not applicable
++     * @throws ParsingException if the service response contains malformed metadata
++     */
++    @Nullable
++    public SongMetadata getSongMetadata() throws ParsingException {
++        return null;
++    }
++
+     /**
+      * The support information of the stream.
+      * see: https://framatube.org/videos/watch/ee408ec8-07cd-4e35-b884-fb681a4b9d37
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamInfo.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamInfo.java
+index 95cca51e..b36797a6 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamInfo.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/stream/StreamInfo.java
+@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
+ import java.util.concurrent.atomic.AtomicReferenceArray;
+ 
+ import javax.annotation.Nonnull;
++import javax.annotation.Nullable;
+ 
+ import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
+ 
+@@ -390,6 +391,11 @@ public class StreamInfo extends Info {
+         } catch (final Exception e) {
+             streamInfo.addError(e);
+         }
++        try {
++            streamInfo.setSongMetadata(extractor.getSongMetadata());
++        } catch (final Exception e) {
++            streamInfo.addError(e);
++        }
+         try {
+             streamInfo.setSupportInfo(extractor.getSupportInfo());
+         } catch (final Exception e) {
+@@ -504,6 +510,7 @@ public class StreamInfo extends Info {
+     private String supportInfo = "";
+     private Locale language = null;
+     private List<String> tags = new ArrayList<>();
++    private SongMetadata songMetadata;
+     private List<StreamSegment> streamSegments = new ArrayList<>();
+     private List<MetaInfo> metaInfo = new ArrayList<>();
+     private boolean supportComments;
+@@ -866,6 +873,15 @@ public class StreamInfo extends Info {
+         this.tags = tags;
+     }
+ 
++    @Nullable
++    public SongMetadata getSongMetadata() {
++        return songMetadata;
++    }
++
++    public void setSongMetadata(@Nullable final SongMetadata songMetadata) {
++        this.songMetadata = songMetadata;
++    }
++
+     public void setSupportInfo(final String support) {
+         this.supportInfo = support;
+     }
+diff --git a/app/src/main/java/com/luc4n3x/levyra/data/YoutubeSongMetadataEnrichment.kt b/app/src/main/java/com/luc4n3x/levyra/data/YoutubeSongMetadataEnrichment.kt
+new file mode 100644
+index 00000000..842515c1
+--- /dev/null
++++ b/app/src/main/java/com/luc4n3x/levyra/data/YoutubeSongMetadataEnrichment.kt
+@@ -0,0 +1,27 @@
++package com.luc4n3x.levyra.data
++
++import com.luc4n3x.levyra.domain.Track
++import org.schabi.newpipe.extractor.stream.SongMetadata
++
++internal fun Track.withYoutubeSongMetadata(metadata: SongMetadata?): Track {
++    if (metadata == null) return this
++
++    val extractedReleaseDate = metadata.releaseDate
++        ?.offsetDateTime()
++        ?.toLocalDate()
++        ?.toString()
++        .orEmpty()
++    val extractedDurationMs = metadata.duration?.toMillis()?.takeIf { it > 0L }
++
++    return copy(
++        title = title.ifBlank { metadata.title },
++        artist = artist.ifBlank { metadata.artist },
++        album = album.ifBlank { metadata.album.orEmpty() },
++        durationMs = durationMs.takeIf { it > 0L } ?: extractedDurationMs ?: durationMs,
++        releaseDate = releaseDate.ifBlank { extractedReleaseDate },
++        year = year.ifBlank { extractedReleaseDate.take(4) },
++        trackNumber = trackNumber.takeIf { it > 0 }
++            ?: metadata.track.takeIf { it > 0 }
++            ?: trackNumber
++    )
++}
+diff --git a/app/src/test/java/com/luc4n3x/levyra/data/PlaybackRecoveryBudgetContractTest.kt b/app/src/test/java/com/luc4n3x/levyra/data/PlaybackRecoveryBudgetContractTest.kt
+new file mode 100644
+index 00000000..267d5014
+--- /dev/null
++++ b/app/src/test/java/com/luc4n3x/levyra/data/PlaybackRecoveryBudgetContractTest.kt
+@@ -0,0 +1,44 @@
++package com.luc4n3x.levyra.data
++
++import java.nio.file.Files
++import java.nio.file.Path
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class PlaybackRecoveryBudgetContractTest {
++    @Test
++    fun mediaSourcesUseTheServiceRecoveryBudgetWithoutHiddenRetries() {
++        val service = readServiceSource()
++
++        assertTrue(service.contains("private object LevyraPlaybackLoadErrorHandlingPolicy"))
++        assertTrue(service.contains("getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long =\n        C.TIME_UNSET"))
++        assertTrue(service.contains("getMinimumLoadableRetryCount(dataType: Int): Int = 0"))
++        assertTrue(service.contains("HlsMediaSource.Factory(dataSourceFactory)\n                    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
++        assertTrue(service.contains("DashMediaSource.Factory(dataSourceFactory)\n                    .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
++        assertTrue(service.contains("ProgressiveMediaSource.Factory(dataSourceFactory)\n                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)"))
++    }
++
++    @Test
++    fun healthyPlaybackDoesNotRearmTheSameRecoveryBudget() {
++        val service = readPlayerSource("PlaybackService.kt")
++        val player = readPlayerSource("LevyraPlayer.kt")
++
++        assertFalse(service.contains("scheduleRecoveryReset"))
++        assertFalse(service.contains("recoveryResetJob"))
++        assertFalse(player.contains("recoveryResetJob"))
++        assertFalse(player.contains("delay(5_000L)\n                            if (connected.playbackState == Player.STATE_READY) recoveryAttempts = 0"))
++        assertTrue(service.contains("isTerminalPlaybackFailure(kind)"))
++        assertTrue(player.contains("isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))"))
++    }
++
++    private fun readServiceSource(): String = readPlayerSource("PlaybackService.kt")
++
++    private fun readPlayerSource(name: String): String =
++        Files.readString(sourceFile(name)).replace("\r\n", "\n")
++
++    private fun sourceFile(name: String): Path = sequenceOf(
++        Path.of("app/src/main/java/com/luc4n3x/levyra/player/$name"),
++        Path.of("src/main/java/com/luc4n3x/levyra/player/$name")
++    ).firstOrNull(Files::exists) ?: error("$name not found")
++}

@@ -1,0 +1,195 @@
+diff --git a/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java b/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java
+new file mode 100644
+index 00000000..d72ee1d9
+--- /dev/null
++++ b/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java
+@@ -0,0 +1,41 @@
++package org.schabi.newpipe.extractor.services.youtube.extractors;
++
++import com.grack.nanojson.JsonArray;
++import com.grack.nanojson.JsonObject;
++import com.grack.nanojson.JsonParser;
++
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++
++class YoutubeMusicUrlFallbackTest {
++    private static final JsonArray EMPTY_DESCRIPTION = new JsonArray();
++
++    @Test
++    void overlayWatchEndpointRecoversMissingPlaylistItemVideoId() throws Exception {
++        final JsonObject item = JsonParser.object().from("{"
++                + "\"overlay\":{\"musicItemThumbnailOverlayRenderer\":{\"content\":{"
++                + "\"musicPlayButtonRenderer\":{\"playNavigationEndpoint\":{"
++                + "\"watchEndpoint\":{\"videoId\":\"overlay1234\"}}}}}}}}"
++                + "}");
++
++        final YoutubeMusicSongOrVideoInfoItemExtractor extractor =
++                new YoutubeMusicSongOrVideoInfoItemExtractor(item, EMPTY_DESCRIPTION, "songs");
++
++        assertEquals("https://music.youtube.com/watch?v=overlay1234", extractor.getUrl());
++    }
++
++    @Test
++    void titleNavigationEndpointIsTheLastVideoIdFallback() throws Exception {
++        final JsonObject item = JsonParser.object().from("{"
++                + "\"flexColumns\":[{\"musicResponsiveListItemFlexColumnRenderer\":{"
++                + "\"text\":{\"runs\":[{\"navigationEndpoint\":{"
++                + "\"watchEndpoint\":{\"videoId\":\"title123456\"}}}]}}}]"
++                + "}");
++
++        final YoutubeMusicSongOrVideoInfoItemExtractor extractor =
++                new YoutubeMusicSongOrVideoInfoItemExtractor(item, EMPTY_DESCRIPTION, "songs");
++
++        assertEquals("https://www.youtube.com/watch?v=title123456", extractor.getUrl());
++    }
++}
+diff --git a/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubePlaylistContinuationContextTest.java b/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubePlaylistContinuationContextTest.java
+new file mode 100644
+index 00000000..d4cbbaad
+--- /dev/null
++++ b/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubePlaylistContinuationContextTest.java
+@@ -0,0 +1,54 @@
++package org.schabi.newpipe.extractor.services.youtube.extractors;
++
++import com.grack.nanojson.JsonObject;
++import com.grack.nanojson.JsonParser;
++
++import org.junit.jupiter.api.Test;
++import org.schabi.newpipe.extractor.Page;
++
++import java.lang.reflect.Field;
++import java.lang.reflect.Method;
++import java.nio.charset.StandardCharsets;
++import java.util.Arrays;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++class YoutubePlaylistContinuationContextTest {
++    @Test
++    void pageCarriesCourseAndUploaderContextAcrossFreshExtractorInstances() throws Exception {
++        final Page page = new Page(
++                "https://www.youtube.com/youtubei/v1/browse?prettyPrint=false",
++                "true",
++                Arrays.asList("Course Artist", "https://www.youtube.com/@course"),
++                null,
++                "{}".getBytes(StandardCharsets.UTF_8)
++        );
++        final Method method = YoutubePlaylistExtractor.class
++                .getDeclaredMethod("contextFromPage", Page.class);
++        method.setAccessible(true);
++        final Object context = method.invoke(null, page);
++
++        assertEquals(true, field(context, "coursePlaylist"));
++        assertEquals("Course Artist", field(context, "uploaderName"));
++        assertEquals("https://www.youtube.com/@course", field(context, "uploaderUrl"));
++    }
++
++    @Test
++    void courseMarkerDetectionWorksAtNestedContinuationDepth() throws Exception {
++        final JsonObject json = JsonParser.object().from("{\"a\":[{\"b\":{"
++                + "\"tag\":\"engagement-panel-course-metadata\"}}]}");
++        final Method method = YoutubePlaylistExtractor.class
++                .getDeclaredMethod("containsJsonValue", Object.class, String.class);
++        method.setAccessible(true);
++
++        assertTrue((Boolean) method.invoke(
++                null, json, "engagement-panel-course-metadata"));
++    }
++
++    private static Object field(final Object target, final String name) throws Exception {
++        final Field field = target.getClass().getDeclaredField(name);
++        field.setAccessible(true);
++        return field.get(target);
++    }
++}
+diff --git a/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrFormatIdentityTest.java b/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrFormatIdentityTest.java
+new file mode 100644
+index 00000000..f071dbce
+--- /dev/null
++++ b/third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrFormatIdentityTest.java
+@@ -0,0 +1,82 @@
++package org.schabi.newpipe.extractor.services.youtube.sabr;
++
++import com.grack.nanojson.JsonArray;
++import com.grack.nanojson.JsonParser;
++
++import org.junit.jupiter.api.Test;
++import org.schabi.newpipe.extractor.stream.AudioTrackType;
++
++import java.util.List;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertNotEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++class YoutubeSabrFormatIdentityTest {
++    private static final String ORIGINAL_XTAGS =
++            "ChEKBWFjb250EghvcmlnaW5hbAoNCgRsYW5nEgVlbi1VUw";
++    private static final String DUBBED_XTAGS =
++            "ChQKBWFjb250EgtkdWJiZWQtYXV0bwoKCgRsYW5nEgJhcg";
++
++    @Test
++    void sameItagAudioVariantsKeepDistinctInitializationIdentity() throws Exception {
++        final JsonArray formats = JsonParser.array().from("["
++                + audioFormat("en-US.1", ORIGINAL_XTAGS, true) + ","
++                + audioFormat("ar.1", DUBBED_XTAGS, false) + ","
++                + videoFormat()
++                + "]");
++        final List<YoutubeSabrFormat> parsed = YoutubeSabrFormat.parseAdaptiveFormats(formats);
++        final YoutubeSabrFormat original = parsed.get(0);
++        final YoutubeSabrFormat dubbed = parsed.get(1);
++
++        assertEquals(AudioTrackType.ORIGINAL, original.getAudioTrackType());
++        assertEquals("en-US", original.getAudioLocale());
++        assertTrue(original.isOriginalAudio());
++        assertEquals(AudioTrackType.DUBBED, dubbed.getAudioTrackType());
++        assertEquals("ar", dubbed.getAudioLocale());
++        assertTrue(dubbed.isAutoGeneratedAudio());
++        assertNotEquals(original.formatIdentity(), dubbed.formatIdentity());
++    }
++
++    @Test
++    void streamStateRejectsStateReuseAcrossSameItagLanguageVariants() throws Exception {
++        final JsonArray formats = JsonParser.array().from("["
++                + audioFormat("en-US.1", ORIGINAL_XTAGS, true) + ","
++                + audioFormat("ar.1", DUBBED_XTAGS, false) + ","
++                + videoFormat()
++                + "]");
++        final List<YoutubeSabrFormat> parsed = YoutubeSabrFormat.parseAdaptiveFormats(formats);
++        final YoutubeSabrStreamState state = new YoutubeSabrStreamState(parsed.get(0), parsed.get(2));
++
++        assertThrows(IllegalArgumentException.class, () -> state.getBufferedEndMs(parsed.get(1)));
++    }
++
++    private static String audioFormat(final String trackId, final String xtags,
++                                      final boolean isDefault) {
++        return "{"
++                + "\"itag\":251,"
++                + "\"lastModified\":\"1725000000\","
++                + "\"xtags\":\"" + xtags + "\","
++                + "\"mimeType\":\"audio/webm; codecs=\\\"opus\\\"\","
++                + "\"audioTrack\":{\"id\":\"" + trackId + "\","
++                + "\"displayName\":\"track\",\"audioIsDefault\":" + isDefault + "},"
++                + "\"bitrate\":128000,\"contentLength\":\"1000\","
++                + "\"approxDurationMs\":\"10000\","
++                + "\"initRange\":{\"start\":\"0\",\"end\":\"265\"},"
++                + "\"url\":\"https://r1---sn-example.googlevideo.com/videoplayback?itag=251\""
++                + "}";
++    }
++
++    private static String videoFormat() {
++        return "{"
++                + "\"itag\":137,\"lastModified\":\"1725000000\","
++                + "\"mimeType\":\"video/mp4; codecs=\\\"avc1.640028\\\"\","
++                + "\"qualityLabel\":\"1080p\",\"width\":1920,\"height\":1080,"
++                + "\"bitrate\":3000000,\"contentLength\":\"2000\","
++                + "\"approxDurationMs\":\"10000\","
++                + "\"initRange\":{\"start\":\"0\",\"end\":\"739\"},"
++                + "\"url\":\"https://r1---sn-example.googlevideo.com/videoplayback?itag=137\""
++                + "}";
++    }
++}

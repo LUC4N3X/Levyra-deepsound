@@ -1,0 +1,135 @@
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeChannelInfoItemExtractor.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeChannelInfoItemExtractor.java
+index 51d978de..e05746be 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeChannelInfoItemExtractor.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeChannelInfoItemExtractor.java
+@@ -34,6 +34,8 @@ import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+  */
+ 
+ public class YoutubeChannelInfoItemExtractor implements ChannelInfoItemExtractor {
++    private static final String TOPIC_SUFFIX = " - Topic";
++    private static final String ZULU_TOPIC_SUFFIX = " - Isihloko";
+     private final JsonObject channelInfoItem;
+     /**
+      * New layout:
+@@ -73,7 +75,12 @@ public class YoutubeChannelInfoItemExtractor implements ChannelInfoItemExtractor
+     @Override
+     public String getName() throws ParsingException {
+         try {
+-            return getTextFromObject(channelInfoItem.getObject("title"));
++            final String name = getTextFromObject(channelInfoItem.getObject("title"));
++            if (name != null && name.endsWith(ZULU_TOPIC_SUFFIX)) {
++                return name.substring(0, name.length() - ZULU_TOPIC_SUFFIX.length())
++                        + TOPIC_SUFFIX;
++            }
++            return name;
+         } catch (final Exception e) {
+             throw new ParsingException("Could not get name", e);
+         }
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistInfoItemExtractor.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistInfoItemExtractor.java
+index fc0daf72..6f48e157 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistInfoItemExtractor.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistInfoItemExtractor.java
+@@ -17,6 +17,8 @@ import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubePlaylist
+ import javax.annotation.Nonnull;
+ 
+ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemExtractor {
++    private static final String MIX_TITLE_PREFIX = "Mix - ";
++    private static final String ZULU_MIX_TITLE_PREFIX = "Imiksi - ";
+     private final JsonObject mixInfoItem;
+ 
+     public YoutubeMixOrPlaylistInfoItemExtractor(final JsonObject mixInfoItem) {
+@@ -29,6 +31,10 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
+         if (isNullOrEmpty(name)) {
+             throw new ParsingException("Could not get name");
+         }
++        if (getPlaylistType() != PlaylistInfo.PlaylistType.NORMAL
++                && name.startsWith(ZULU_MIX_TITLE_PREFIX)) {
++            return MIX_TITLE_PREFIX + name.substring(ZULU_MIX_TITLE_PREFIX.length());
++        }
+         return name;
+     }
+ 
+@@ -70,7 +76,9 @@ public class YoutubeMixOrPlaylistInfoItemExtractor implements PlaylistInfoItemEx
+ 
+     @Override
+     public String getUploaderName() throws ParsingException {
+-        // this will be "YouTube" for mixes
++        if (getPlaylistType() != PlaylistInfo.PlaylistType.NORMAL) {
++            return "YouTube";
++        }
+         return YoutubeParsingHelper.getTextFromObject(mixInfoItem.getObject("longBylineText"));
+     }
+ 
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistLockupInfoItemExtractor.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistLockupInfoItemExtractor.java
+index ab129bca..3b102671 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistLockupInfoItemExtractor.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMixOrPlaylistLockupInfoItemExtractor.java
+@@ -18,6 +18,8 @@ import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
+ import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.hasArtistOrVerifiedIconBadgeAttachment;
+ 
+ public class YoutubeMixOrPlaylistLockupInfoItemExtractor implements PlaylistInfoItemExtractor {
++    private static final String MIX_TITLE_PREFIX = "Mix - ";
++    private static final String ZULU_MIX_TITLE_PREFIX = "Imiksi - ";
+ 
+     @Nonnull
+     private final JsonObject lockupViewModel;
+@@ -66,6 +68,9 @@ public class YoutubeMixOrPlaylistLockupInfoItemExtractor implements PlaylistInfo
+ 
+     @Override
+     public String getUploaderName() throws ParsingException {
++        if (playlistType != PlaylistInfo.PlaylistType.NORMAL) {
++            return "YouTube";
++        }
+         return firstMetadataRow.getArray("metadataParts")
+                 .getObject(0)
+                 .getObject("text")
+@@ -138,8 +143,14 @@ public class YoutubeMixOrPlaylistLockupInfoItemExtractor implements PlaylistInfo
+ 
+     @Override
+     public String getName() throws ParsingException {
+-        return lockupMetadataViewModel.getObject("title")
++        final String name = lockupMetadataViewModel.getObject("title")
+                 .getString("content");
++        if (playlistType != PlaylistInfo.PlaylistType.NORMAL
++                && name != null
++                && name.startsWith(ZULU_MIX_TITLE_PREFIX)) {
++            return MIX_TITLE_PREFIX + name.substring(ZULU_MIX_TITLE_PREFIX.length());
++        }
++        return name;
+     }
+ 
+     @Override
+diff --git a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicSongOrVideoInfoItemExtractor.java b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicSongOrVideoInfoItemExtractor.java
+index 234e2f02..4477bd42 100644
+--- a/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicSongOrVideoInfoItemExtractor.java
++++ b/third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicSongOrVideoInfoItemExtractor.java
+@@ -39,6 +39,29 @@ public class YoutubeMusicSongOrVideoInfoItemExtractor implements StreamInfoItemE
+         if (!isNullOrEmpty(id)) {
+             return "https://music.youtube.com/watch?v=" + id;
+         }
++
++        final String overlayId = songOrVideoInfoItem.getObject("overlay")
++                .getObject("musicItemThumbnailOverlayRenderer")
++                .getObject("content")
++                .getObject("musicPlayButtonRenderer")
++                .getObject("playNavigationEndpoint")
++                .getObject("watchEndpoint")
++                .getString("videoId");
++        if (!isNullOrEmpty(overlayId)) {
++            return "https://music.youtube.com/watch?v=" + overlayId;
++        }
++
++        final String titleUrl = getUrlFromNavigationEndpoint(
++                songOrVideoInfoItem.getArray("flexColumns")
++                        .getObject(0)
++                        .getObject("musicResponsiveListItemFlexColumnRenderer")
++                        .getObject("text")
++                        .getArray("runs")
++                        .getObject(0)
++                        .getObject("navigationEndpoint"));
++        if (!isNullOrEmpty(titleUrl)) {
++            return titleUrl;
++        }
+         throw new ParsingException("Could not get URL");
+     }
+ 
