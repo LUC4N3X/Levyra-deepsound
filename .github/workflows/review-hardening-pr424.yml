@@ -25,6 +25,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
+          app = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          app_text = app.read_text(encoding='utf-8')
+          app_text = app_text.replace(
+              'import coil3.request.allowHardware\nimport coil3.request.bitmapConfig\n',
+              '',
+              1,
+          )
+          app.write_text(app_text, encoding='utf-8')
+
           path = Path('.github/scripts/review_hardening_pr424.py')
           text = path.read_text(encoding='utf-8')
           text = text.replace(
