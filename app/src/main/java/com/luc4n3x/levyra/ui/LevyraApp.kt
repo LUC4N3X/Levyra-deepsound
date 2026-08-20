@@ -12435,11 +12435,10 @@ private fun PlayerScreen(
                                 scaleY = artScale
                                 translationX = settledSwipeOffset
                                 translationY = artOffset.toPx()
-                                alpha = if (morphActive) {
+                                alpha = if (morphActive || immersiveArtworkEnabled) {
                                     0f
                                 } else {
-                                    playerSwipeContentAlpha(settledSwipeOffset, size.width) *
-                                        (1f - immersiveMotionAlpha)
+                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
                                 }
                             }
                     )
