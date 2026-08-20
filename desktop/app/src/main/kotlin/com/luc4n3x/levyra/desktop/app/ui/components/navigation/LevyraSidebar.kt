@@ -140,6 +140,12 @@ fun LevyraSidebar(
                 onClick = { onNavigate(Destination.LIBRARY) }
             )
             SidebarItem(
+                icon = OfflineIcons.Folder,
+                label = strings.localMusic,
+                selected = destination == Destination.LOCAL_MUSIC,
+                onClick = { onNavigate(Destination.LOCAL_MUSIC) }
+            )
+            SidebarItem(
                 icon = LevyraIcons.Disc,
                 label = strings.navNowPlaying,
                 selected = destination == Destination.NOW_PLAYING,

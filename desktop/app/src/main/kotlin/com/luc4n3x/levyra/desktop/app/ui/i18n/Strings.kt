@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.app.ui.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.luc4n3x.levyra.desktop.core.model.AppLanguage
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedLevyraStrings
 import java.time.LocalTime
 
@@ -198,11 +199,57 @@ data class LevyraStrings(
     val shortcutSeek: String,
     val shortcutVolume: String,
     val miniPlayer: String,
+    val settingsAudioOutput: String,
+    val settingsAudioOutputBody: String,
+    val audioOutputSystemDefault: String,
+    val audioOutputRefresh: String,
+    val audioOutputUnavailable: String,
+    val audioOutputEmpty: String,
+    val equalizerPreset: String,
+    val equalizerPresetFlat: String,
+    val equalizerPresetBassBoost: String,
+    val equalizerPresetVocal: String,
+    val equalizerPresetRock: String,
+    val equalizerPresetPop: String,
+    val equalizerPresetElectronic: String,
+    val equalizerPresetHipHop: String,
+    val equalizerPresetClassical: String,
+    val equalizerPresetAcoustic: String,
+    val equalizerPresetNight: String,
+    val equalizerPresetCustom: String,
+    val localMusic: String,
+    val localMusicSubtitle: String,
+    val localMusicAddFolder: String,
+    val localMusicEmptyTitle: String,
+    val localMusicScan: String,
+    val localMusicDeepScan: String,
+    val localMusicScanning: String,
+    val localMusicMissingFiles: String,
+    val localMusicForgetMissing: String,
+    val localMusicRemoveFolder: String,
+    val playlistImport: String,
+    val playlistExport: String,
+    val playlistOverwriteTitle: String,
+    val playlistOverwriteConfirm: String,
+    val playlistExportSuccess: String,
+    val playlistExportFailed: String,
+    val playlistSkippedEntries: String,
+    val crossfade: String,
+    val crossfadeBody: String,
+    val smartCrossfade: String,
+    val smartCrossfadeBody: String,
     val artistSubscribers: String,
     val cancel: String,
     val save: String,
     val close: String
-)
+) {
+    fun formatPlaylistOverwriteConfirm(fileName: String): String {
+        val safeName = fileName.trim().let { name ->
+            if (LevyraLanguageCatalog.isRtl(languageCode) && name.isNotBlank()) "\u2068$name\u2069" else name
+        }
+        return playlistOverwriteConfirm.replace("{name}", safeName)
+    }
+}
 
 fun stringsFor(
     language: AppLanguage,
@@ -404,6 +451,45 @@ fun stringsFor(
         shortcutSeek = extras.seek,
         shortcutVolume = shared.volume,
         miniPlayer = extras.miniPlayer,
+        settingsAudioOutput = extras.audioOutput,
+        settingsAudioOutputBody = extras.audioOutputBody,
+        audioOutputSystemDefault = extras.audioOutputSystemDefault,
+        audioOutputRefresh = extras.audioOutputRefresh,
+        audioOutputUnavailable = extras.audioOutputUnavailable,
+        audioOutputEmpty = extras.audioOutputEmpty,
+        equalizerPreset = extras.equalizerPreset,
+        equalizerPresetFlat = extras.equalizerPresetFlat,
+        equalizerPresetBassBoost = extras.equalizerPresetBassBoost,
+        equalizerPresetVocal = extras.equalizerPresetVocal,
+        equalizerPresetRock = extras.equalizerPresetRock,
+        equalizerPresetPop = extras.equalizerPresetPop,
+        equalizerPresetElectronic = extras.equalizerPresetElectronic,
+        equalizerPresetHipHop = extras.equalizerPresetHipHop,
+        equalizerPresetClassical = extras.equalizerPresetClassical,
+        equalizerPresetAcoustic = extras.equalizerPresetAcoustic,
+        equalizerPresetNight = extras.equalizerPresetNight,
+        equalizerPresetCustom = extras.equalizerPresetCustom,
+        localMusic = extras.localMusic,
+        localMusicSubtitle = extras.localMusicSubtitle,
+        localMusicAddFolder = extras.localMusicAddFolder,
+        localMusicEmptyTitle = extras.localMusicEmptyTitle,
+        localMusicScan = extras.localMusicScan,
+        localMusicDeepScan = extras.localMusicDeepScan,
+        localMusicScanning = extras.localMusicScanning,
+        localMusicMissingFiles = extras.localMusicMissingFiles,
+        localMusicForgetMissing = extras.localMusicForgetMissing,
+        localMusicRemoveFolder = extras.localMusicRemoveFolder,
+        playlistImport = extras.playlistImport,
+        playlistExport = extras.playlistExport,
+        playlistOverwriteTitle = extras.playlistOverwriteTitle,
+        playlistOverwriteConfirm = extras.playlistOverwriteConfirm,
+        playlistExportSuccess = extras.playlistExportSuccess,
+        playlistExportFailed = extras.playlistExportFailed,
+        playlistSkippedEntries = extras.playlistSkippedEntries,
+        crossfade = extras.crossfade,
+        crossfadeBody = extras.crossfadeBody,
+        smartCrossfade = extras.smartCrossfade,
+        smartCrossfadeBody = extras.smartCrossfadeBody,
         artistSubscribers = localizedSubscriberLabel(language.tag),
         cancel = shared.cancel,
         save = shared.save,

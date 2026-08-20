@@ -7,6 +7,32 @@ import org.junit.Test
 
 class DesktopSettingsTest {
     @Test
+    fun crossfadeIsSnappedToASupportedStep() {
+        assertEquals(0, DesktopSettings.normalizeCrossfade(-500))
+        assertEquals(0, DesktopSettings.normalizeCrossfade(500))
+        assertEquals(2_000, DesktopSettings.normalizeCrossfade(2_400))
+        assertEquals(6_000, DesktopSettings.normalizeCrossfade(5_500))
+        assertEquals(12_000, DesktopSettings.normalizeCrossfade(90_000))
+        assertEquals(
+            4_000,
+            DesktopSettings(crossfadeMs = 4_100).sanitized().crossfadeMs
+        )
+    }
+
+    @Test
+    fun audioOutputDeviceIdIsTrimmedAndBounded() {
+        val long = "x".repeat(DesktopSettings.MAX_OUTPUT_DEVICE_ID_LENGTH + 40)
+        assertEquals(
+            "{0.0.0}",
+            DesktopSettings(audioOutputDeviceId = "  {0.0.0}  ").sanitized().audioOutputDeviceId
+        )
+        assertEquals(
+            DesktopSettings.MAX_OUTPUT_DEVICE_ID_LENGTH,
+            DesktopSettings(audioOutputDeviceId = long).sanitized().audioOutputDeviceId.length
+        )
+    }
+
+    @Test
     fun languageCatalogMatchesAndroidSupportedLanguages() {
         assertEquals(26, AppLanguage.entries.size)
         assertEquals(

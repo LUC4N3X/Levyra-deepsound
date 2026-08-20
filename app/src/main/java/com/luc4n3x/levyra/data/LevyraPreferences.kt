@@ -128,6 +128,8 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_UI_CANVAS_QUALITY] = normalizedInterface.canvasQuality.name
             mutable[KEY_UI_CANVAS_SOURCE] = normalizedInterface.canvasSource.name
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
+            mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
+            mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
             mutable[KEY_DOWNLOAD_WIFI_ONLY] = normalizedDownloads.wifiOnly
             mutable[KEY_DOWNLOAD_CHARGING_ONLY] = normalizedDownloads.chargingOnly
             mutable[KEY_DOWNLOAD_RESUMABLE] = normalizedDownloads.resumable
@@ -257,6 +259,8 @@ class LevyraPreferences(context: Context) {
             it[KEY_UI_CANVAS_QUALITY] = normalized.canvasQuality.name
             it[KEY_UI_CANVAS_SOURCE] = normalized.canvasSource.name
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
+            it[KEY_UI_PURE_BLACK] = normalized.pureBlack
+            it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
         }
     }
 
@@ -533,7 +537,9 @@ class LevyraPreferences(context: Context) {
         longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f,
         canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
         canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
-        enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false
+        enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
+        pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
+        hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true
     ).normalized()
 
     private fun downloadSettingsFrom(preferences: Preferences): LevyraDownloadSettings = LevyraDownloadSettings(
@@ -722,6 +728,8 @@ class LevyraPreferences(context: Context) {
         val KEY_UI_CHARTS = booleanPreferencesKey("ui_show_charts")
         val KEY_UI_FONT_PRESET = stringPreferencesKey("ui_font_preset")
         val KEY_UI_PLAYER_GESTURES = booleanPreferencesKey("ui_player_gestures")
+        val KEY_UI_PURE_BLACK = booleanPreferencesKey("ui_pure_black")
+        val KEY_UI_HAPTIC_FEEDBACK = booleanPreferencesKey("ui_haptic_feedback")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
         val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")

@@ -18,6 +18,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,8 @@ import com.luc4n3x.levyra.desktop.app.ui.components.CountryPicker
 import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
 import com.luc4n3x.levyra.desktop.app.ui.components.LanguagePicker
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
+import com.luc4n3x.levyra.desktop.app.ui.components.LevyraOption
+import com.luc4n3x.levyra.desktop.app.ui.components.LevyraOptionPicker
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
@@ -38,9 +41,11 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import com.luc4n3x.levyra.desktop.core.model.EqualizerPreset
 import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
 import com.luc4n3x.levyra.desktop.core.model.PreferredCodec
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
+import com.luc4n3x.levyra.desktop.player.AudioOutputDevice
 
 @Composable
 fun SettingsScreen(
@@ -48,13 +53,20 @@ fun SettingsScreen(
     dataDirectory: String,
     vlcStatus: String,
     appVersion: String,
+    audioOutputDevices: List<AudioOutputDevice>,
+    audioOutputDeviceMissing: Boolean,
     onUpdate: ((DesktopSettings) -> DesktopSettings) -> Unit,
     onBrowseVlc: () -> Unit,
     onVerifyVlc: () -> Unit,
     onOpenDataFolder: () -> Unit,
+    onRefreshAudioOutputDevices: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
+
+    LaunchedEffect(Unit) {
+        onRefreshAudioOutputDevices(false)
+    }
 
     ScrollableColumn(
         modifier = modifier.fillMaxSize(),
@@ -192,6 +204,66 @@ fun SettingsScreen(
                     checked = settings.autoplayRadio,
                     onCheckedChange = { value -> onUpdate { it.copy(autoplayRadio = value) } }
                 )
+                SettingsRow(
+                    title = strings.settingsAudioOutput,
+                    body = strings.settingsAudioOutputBody
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val options = buildList {
+                            add(
+                                LevyraOption(
+                                    id = AudioOutputDevice.SYSTEM_DEFAULT_ID,
+                                    label = strings.audioOutputSystemDefault
+                                )
+                            )
+                            audioOutputDevices.forEach { device ->
+                                add(LevyraOption(id = device.id, label = device.label))
+                            }
+                            if (
+                                settings.audioOutputDeviceId.isNotEmpty() &&
+                                audioOutputDevices.none { it.id == settings.audioOutputDeviceId }
+                            ) {
+                                add(
+                                    LevyraOption(
+                                        id = settings.audioOutputDeviceId,
+                                        label = settings.audioOutputDeviceId,
+                                        supporting = strings.audioOutputEmpty
+                                    )
+                                )
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            LevyraOptionPicker(
+                                label = strings.settingsAudioOutput,
+                                options = options,
+                                selectedId = settings.audioOutputDeviceId,
+                                contentDescription = strings.settingsAudioOutputBody,
+                                onSelect = { value ->
+                                    onUpdate { it.copy(audioOutputDeviceId = value) }
+                                }
+                            )
+                            OutlinedButton(onClick = { onRefreshAudioOutputDevices(true) }) {
+                                Text(strings.audioOutputRefresh)
+                            }
+                        }
+                        if (audioOutputDeviceMissing) {
+                            Text(
+                                text = strings.audioOutputUnavailable,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else if (audioOutputDevices.isEmpty()) {
+                            Text(
+                                text = strings.audioOutputEmpty,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -210,6 +282,37 @@ fun SettingsScreen(
                         onUpdate { it.copy(equalizer = it.equalizer.copy(enabled = value)) }
                     }
                 )
+                SettingsRow(title = strings.equalizerPreset) {
+                    val activeId = EqualizerPreset.selectedId(settings.equalizer)
+                    val options = buildList {
+                        EqualizerPreset.entries.forEach { preset ->
+                            add(
+                                LevyraOption(
+                                    id = preset.id,
+                                    label = equalizerPresetLabel(preset)
+                                )
+                            )
+                        }
+                        if (activeId == EqualizerPreset.CUSTOM_ID) {
+                            add(
+                                LevyraOption(
+                                    id = EqualizerPreset.CUSTOM_ID,
+                                    label = strings.equalizerPresetCustom
+                                )
+                            )
+                        }
+                    }
+                    LevyraOptionPicker(
+                        label = strings.equalizerPreset,
+                        options = options,
+                        selectedId = activeId,
+                        contentDescription = strings.settingsEqualizerBody,
+                        onSelect = { value ->
+                            val preset = EqualizerPreset.fromId(value) ?: return@LevyraOptionPicker
+                            onUpdate { it.copy(equalizer = preset.applyTo(it.equalizer)) }
+                        }
+                    )
+                }
                 EqualizerBars(
                     amps = settings.equalizer.amps,
                     accent = LocalAccentColor.current,
@@ -242,6 +345,21 @@ fun SettingsScreen(
                     selected = DesktopSettings.normalizeSpeed(settings.playbackSpeed),
                     options = DesktopSettings.SPEED_STEPS.map { step -> step to Format.speed(step) },
                     onSelect = { value -> onUpdate { it.copy(playbackSpeed = value) } }
+                )
+                ChoiceRow(
+                    title = strings.crossfade,
+                    body = strings.crossfadeBody,
+                    selected = DesktopSettings.normalizeCrossfade(settings.crossfadeMs),
+                    options = DesktopSettings.CROSSFADE_STEPS_MS.map { step ->
+                        step to if (step == 0) strings.sleepTimerOff else "${step / 1_000}s"
+                    },
+                    onSelect = { value -> onUpdate { it.copy(crossfadeMs = value) } }
+                )
+                SettingsToggle(
+                    title = strings.smartCrossfade,
+                    body = strings.smartCrossfadeBody,
+                    checked = settings.smartCrossfade,
+                    onCheckedChange = { value -> onUpdate { it.copy(smartCrossfade = value) } }
                 )
                 SettingsToggle(
                     title = strings.settingsPreloadNext,
@@ -486,5 +604,22 @@ private fun SettingsToggle(
             }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun equalizerPresetLabel(preset: EqualizerPreset): String {
+    val strings = LocalStrings.current
+    return when (preset) {
+        EqualizerPreset.FLAT -> strings.equalizerPresetFlat
+        EqualizerPreset.BASS_BOOST -> strings.equalizerPresetBassBoost
+        EqualizerPreset.VOCAL -> strings.equalizerPresetVocal
+        EqualizerPreset.ROCK -> strings.equalizerPresetRock
+        EqualizerPreset.POP -> strings.equalizerPresetPop
+        EqualizerPreset.ELECTRONIC -> strings.equalizerPresetElectronic
+        EqualizerPreset.HIP_HOP -> strings.equalizerPresetHipHop
+        EqualizerPreset.CLASSICAL -> strings.equalizerPresetClassical
+        EqualizerPreset.ACOUSTIC -> strings.equalizerPresetAcoustic
+        EqualizerPreset.NIGHT -> strings.equalizerPresetNight
     }
 }

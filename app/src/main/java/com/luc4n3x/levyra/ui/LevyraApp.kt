@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
+import com.luc4n3x.levyra.ui.lyrics.LyricsShareCard
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -175,7 +176,9 @@ import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
@@ -258,12 +261,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -279,7 +282,6 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -318,6 +320,8 @@ import coil3.compose.AsyncImage
 import coil3.toBitmap
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.request.bitmapConfig
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
@@ -404,7 +408,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import com.luc4n3x.levyra.ui.theme.rememberLevyraHaptics
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.window.Dialog
@@ -1119,18 +1126,27 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         ExitTransition.None
     }
     val accentTrack = state.currentTrack ?: state.tracks.firstOrNull()
-    LaunchedEffect(state.themePreset, accentTrack?.accentStart, accentTrack?.accentEnd, state.selectedMood?.id) {
+    val pureBlack = state.interfaceSettings.pureBlack
+    LaunchedEffect(
+        state.themePreset,
+        accentTrack?.accentStart,
+        accentTrack?.accentEnd,
+        state.selectedMood?.id,
+        pureBlack
+    ) {
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
             accentTrack?.accentEnd,
             state.selectedMood?.accentStart,
-            state.selectedMood?.accentEnd
+            state.selectedMood?.accentEnd,
+            pureBlack
         )
     }
     val rootView = LocalView.current
-    LaunchedEffect(state.themePreset) {
-        val palette = LevyraThemes.byId(state.themePreset)
+    LaunchedEffect(state.themePreset, pureBlack) {
+        val base = LevyraThemes.byId(state.themePreset)
+        val palette = if (pureBlack) LevyraThemeController.asPureBlack(base) else base
         (rootView.context as? Activity)?.window?.let { window ->
             window.decorView.setBackgroundColor(palette.black.toArgb())
             WindowCompat.getInsetsController(window, rootView).apply {
@@ -1202,6 +1218,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLevyraStrings provides currentStrings,
+        LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -4090,7 +4107,7 @@ private fun LyricsOverlay(
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
     val accentEnd = if (track != null) Color(track.accentEnd) else LevyraViolet
     val listState = rememberLazyListState()
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
     val clipboard = LocalClipboard.current
     val clipboardScope = rememberCoroutineScope()
     val shareContext = LocalContext.current
@@ -4476,11 +4493,27 @@ private fun LyricsOverlay(
                                 selected = false,
                                 icon = Icons.Rounded.Share,
                                 onClick = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, selectedLyricsText())
+                                    val selectedText = selectedLyricsText()
+                                    val selectedTrack = track
+                                    if (selectedTrack == null) {
+                                        val fallback = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, selectedText)
+                                        }
+                                        shareContext.startActivity(Intent.createChooser(fallback, strings.shareVia))
+                                    } else {
+                                        clipboardScope.launch {
+                                            val shareIntent = LyricsShareCard.createShareIntent(
+                                                context = shareContext,
+                                                track = selectedTrack,
+                                                selectedLyrics = selectedText
+                                            ) ?: Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_TEXT, selectedText)
+                                            }
+                                            shareContext.startActivity(Intent.createChooser(shareIntent, strings.shareVia))
+                                        }
                                     }
-                                    shareContext.startActivity(Intent.createChooser(intent, strings.shareVia))
                                 }
                             )
                             LyricsControlChip(
@@ -4607,7 +4640,7 @@ private fun LyricsOverlay(
                         onClick = {
                             if (selectionMode) {
                                 selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (state.lyricsSynced) {
                                 onSeekToMs((line.startMs + lyricsOffsetMs).coerceAtLeast(0L))
                                 autoScrollEnabled = true
@@ -4616,10 +4649,10 @@ private fun LyricsOverlay(
                         onLongClick = {
                             if (selectionMode) {
                                 selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
                             } else if (state.lyricsSynced) {
                                 lyricsOffsetMs = state.positionMs - line.startMs
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptics.perform(LevyraHapticAction.TrackSwipe)
                                 autoScrollEnabled = true
                             }
                         }
@@ -7427,7 +7460,7 @@ private fun PersonalListeningShelf(
     onTrackActions: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
     val shelfTracks = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -7467,7 +7500,7 @@ private fun PersonalListeningShelf(
                                     onClick = { onPlay(track) },
                                     modifier = Modifier.weight(1f),
                                     onLongClick = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        haptics.perform(LevyraHapticAction.TrackSwipe)
                                         onTrackActions(track)
                                     },
                                     onLongClickLabel = strings.songOptions
@@ -10229,6 +10262,8 @@ private fun LibraryStatPill(icon: ImageVector, value: String, label: String, acc
 
 @Composable
 private fun ListeningPulseCard(pulse: ListeningPulse, strings: LevyraStrings) {
+    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
+    val percent = remember(locale) { java.text.NumberFormat.getPercentInstance(locale) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = CinematicGlass.copy(alpha = 0.6f),
@@ -10282,7 +10317,7 @@ private fun ListeningPulseCard(pulse: ListeningPulse, strings: LevyraStrings) {
                 PulseStat(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.TaskAlt,
-                    value = "${pulse.completionRate}%",
+                    value = percent.format(pulse.completionRate / 100.0),
                     label = strings.pulseCompletion,
                     accent = LevyraPink
                 )
@@ -10891,65 +10926,107 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
 
 @Composable
 private fun PlayerImmersiveBackdrop(
+    artworkUrl: String,
     ambience: PlayerAmbience,
     isPlaying: Boolean,
+    animationsEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val tint = animateColorAsState(
-        targetValue = ambience.tint,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-backdrop-tint"
+    val context = LocalContext.current
+    val primary = animateColorAsState(
+        targetValue = ambience.primary,
+        animationSpec = if (animationsEnabled) tween(900, easing = LinearOutSlowInEasing) else snap(),
+        label = "player-backdrop-primary"
     )
-    val elevated = animateColorAsState(
-        targetValue = ambience.elevated,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-backdrop-elevated"
+    val secondary = animateColorAsState(
+        targetValue = ambience.secondary,
+        animationSpec = if (animationsEnabled) tween(900, easing = LinearOutSlowInEasing) else snap(),
+        label = "player-backdrop-secondary"
     )
     val base = animateColorAsState(
         targetValue = ambience.base,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
+        animationSpec = if (animationsEnabled) tween(900, easing = LinearOutSlowInEasing) else snap(),
         label = "player-backdrop-base"
     )
-    val glow = animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.74f,
-        animationSpec = if (animationsEnabled) tween(600, easing = FastOutSlowInEasing) else snap(),
-        label = "player-backdrop-glow"
+    val imageAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0.72f else 0.58f,
+        animationSpec = if (animationsEnabled) tween(500, easing = FastOutSlowInEasing) else snap(),
+        label = "player-backdrop-image-alpha"
     )
+    val ambientMatrix = remember { createPlayerAmbientColorMatrix() }
+    val ambientColorFilter = remember(ambientMatrix) { ColorFilter.colorMatrix(ambientMatrix) }
 
-    Box(
-        modifier = modifier.drawBehind {
-            if (size.minDimension <= 0f) return@drawBehind
-            val elevatedColor = elevated.value
-            val baseColor = base.value
-            drawRect(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.00f to elevatedColor,
-                        0.38f to elevatedColor.playerAmbienceMix(baseColor, 0.58f),
-                        0.72f to baseColor.playerAmbienceMix(elevatedColor, 0.16f),
-                        1.00f to baseColor
-                    )
+    Box(modifier = modifier) {
+        Box(modifier = Modifier.fillMaxSize().background(base.value))
+        if (artworkUrl.isNotBlank()) {
+            AnimatedContent(
+                targetState = artworkUrl,
+                transitionSpec = {
+                    if (animationsEnabled) {
+                        fadeIn(tween(440, easing = LinearOutSlowInEasing)) togetherWith
+                            fadeOut(tween(300, easing = FastOutSlowInEasing))
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "player-backdrop-artwork"
+            ) { url ->
+                val ambientImageRequest = remember(context, url) {
+                    ImageRequest.Builder(context)
+                        .data(LevyraArtworkCache.large(url))
+                        .size(512, 512)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .crossfade(false)
+                        .build()
+                }
+                AsyncImage(
+                    model = ambientImageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = ambientColorFilter,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(52.dp)
+                        .graphicsLayer {
+                            scaleX = 1.12f
+                            scaleY = 1.12f
+                            alpha = imageAlpha
+                        }
                 )
-            )
-            val glowAmount = glow.value
-            val center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.21f)
-            val radius = size.width * 1.02f
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        tint.value.copy(alpha = 0.30f * glowAmount),
-                        tint.value.copy(alpha = 0.09f * glowAmount),
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = radius
-                ),
-                radius = radius,
-                center = center
-            )
+            }
         }
-    )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val animatedPrimary = primary.value
+                    val animatedSecondary = secondary.value
+                    val animatedBase = base.value
+                    drawRect(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.00f to animatedBase.copy(alpha = 0.90f),
+                                0.18f to animatedPrimary.copy(alpha = 0.26f),
+                                0.54f to Color.Transparent,
+                                0.78f to animatedSecondary.copy(alpha = 0.22f),
+                                1.00f to Color.Black.copy(alpha = 0.88f)
+                            )
+                        )
+                    )
+                    drawRect(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                animatedPrimary.copy(alpha = 0.20f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.20f, size.height * 0.16f),
+                            radius = size.maxDimension * 0.82f
+                        )
+                    )
+                }
+        )
+    }
 }
 
 @Composable
@@ -11093,14 +11170,15 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.72f),
-                        0.09f to baseColor.copy(alpha = 0.30f),
-                        0.19f to Color.Transparent,
-                        0.50f to Color.Transparent,
-                        0.57f to controlColor.copy(alpha = 0.55f),
-                        0.63f to controlColor.copy(alpha = 0.92f),
-                        0.68f to controlColor,
-                        0.86f to controlColor.playerAmbienceMix(baseColor, 0.55f),
+                        0.00f to baseColor.copy(alpha = 0.75f),
+                        0.06f to baseColor.copy(alpha = 0.45f),
+                        0.14f to baseColor.copy(alpha = 0.15f),
+                        0.22f to Color.Transparent,
+                        0.48f to Color.Transparent,
+                        0.58f to controlColor.copy(alpha = 0.25f),
+                        0.68f to controlColor.copy(alpha = 0.68f),
+                        0.78f to controlColor.copy(alpha = 0.92f),
+                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
                         1.00f to baseColor
                     )
                 )
@@ -11987,10 +12065,85 @@ private fun PlayerScreen(
     val playerContext = LocalContext.current
     val playerActivity = playerContext as? Activity
     val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
-    val hapticFeedback = LocalHapticFeedback.current
+    val hapticFeedback = LocalLevyraHaptics.current
     val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val rawPrimaryTarget = track?.let { Color(it.accentStart) } ?: LevyraCyan
-    val rawSecondaryTarget = track?.let { Color(it.accentEnd) } ?: LevyraViolet
+    val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
+    val fallbackPalette = remember(track?.accentStart, track?.accentEnd) {
+        ArtworkPalette(track?.accentStart ?: LevyraCyan.toArgb(), track?.accentEnd ?: LevyraViolet.toArgb())
+    }
+    val paletteKey = remember(track?.id, track?.thumbnailUrl, track?.largeThumbnailUrl) {
+        if (track != null) {
+            ArtworkPaletteCache.key(
+                trackId = track.id,
+                thumbnailUrl = track.thumbnailUrl,
+                largeThumbnailUrl = track.largeThumbnailUrl
+            )
+        } else ""
+    }
+    val memoryPalette = remember(paletteKey) {
+        if (paletteKey.isNotBlank()) ArtworkPaletteCache.peek(paletteKey) else null
+    }
+    val artworkPaletteState = remember(paletteKey) {
+        mutableStateOf(memoryPalette ?: fallbackPalette)
+    }
+    var cacheLookupComplete by remember(paletteKey) {
+        mutableStateOf(memoryPalette != null)
+    }
+    var paletteExtractionStarted by remember(paletteKey) {
+        mutableStateOf(memoryPalette != null)
+    }
+
+    LaunchedEffect(paletteKey) {
+        if (paletteKey.isNotBlank() && memoryPalette == null) {
+            val persistedPalette = ArtworkPaletteCache.load(playerContext, paletteKey)
+            if (persistedPalette != null) {
+                artworkPaletteState.value = persistedPalette
+                paletteExtractionStarted = true
+            }
+            cacheLookupComplete = true
+        }
+    }
+
+    LaunchedEffect(paletteKey, cacheLookupComplete) {
+        if (paletteKey.isBlank() || !cacheLookupComplete || paletteExtractionStarted) return@LaunchedEffect
+        val currentTrack = track ?: return@LaunchedEffect
+        val artUrl = artworkUrl.ifBlank {
+            currentTrack.largeThumbnailUrl.ifBlank { currentTrack.thumbnailUrl }
+        }
+        if (artUrl.isBlank()) return@LaunchedEffect
+        paletteExtractionStarted = true
+        withContext(Dispatchers.IO) {
+            val imageLoader = coil3.SingletonImageLoader.get(playerContext)
+            val request = ImageRequest.Builder(playerContext)
+                .data(LevyraArtworkCache.small(artUrl))
+                .size(96, 96)
+                .allowHardware(false)
+                .bitmapConfig(android.graphics.Bitmap.Config.ARGB_8888)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.DISABLED)
+                .build()
+            val bitmap = runCatching {
+                imageLoader.execute(request).image?.toBitmap()
+            }.getOrNull()
+            if (bitmap != null) {
+                // Coil can return the BitmapImage's backing bitmap from toBitmap().
+                // Treat the result as borrowed: never recycle a bitmap that the loader/cache may own.
+                val extracted = withContext(Dispatchers.Default) {
+                    ArtworkPaletteCache.extract(
+                        bitmap = bitmap,
+                        fallbackStart = fallbackPalette.start,
+                        fallbackEnd = fallbackPalette.end
+                    )
+                }
+                artworkPaletteState.value = extracted
+                ArtworkPaletteCache.store(playerContext, paletteKey, extracted)
+            }
+        }
+    }
+
+    val activePalette = artworkPaletteState.value
+    val rawPrimaryTarget = Color(activePalette.start)
+    val rawSecondaryTarget = Color(activePalette.end)
     val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
         harmonizePlayerAccents(rawPrimaryTarget, rawSecondaryTarget)
     }
@@ -11998,12 +12151,12 @@ private fun PlayerScreen(
     val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
         targetValue = primaryTarget,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (state.animationsEnabled) tween(650, easing = LinearOutSlowInEasing) else snap(),
         label = "player-primary-color"
     )
     val secondary by animateColorAsState(
         targetValue = secondaryTarget,
-        animationSpec = tween(700, easing = LinearOutSlowInEasing),
+        animationSpec = if (state.animationsEnabled) tween(650, easing = LinearOutSlowInEasing) else snap(),
         label = "player-secondary-color"
     )
     val primaryContent = remember(primary) {
@@ -12031,7 +12184,6 @@ private fun PlayerScreen(
             repeat = strings.repeat
         )
     }
-    val artworkUrl = track?.let(::preferredPlayerArtworkUrl).orEmpty()
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
@@ -12109,27 +12261,32 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
+        // Mount the immersive layer immediately in song mode. MotionArtworkLayer owns the
+        // animated static bed and crossfades to a real Canvas only after its first frame, so the
+        // player never has to flash a dead static state while remote artwork is resolving.
         val immersiveArtworkEnabled = state.motionArtworkEnabled &&
             state.animationsEnabled &&
             playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
             track != null
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
-        val immersiveMotionAlpha by animateFloatAsState(
-            targetValue = if (immersiveArtworkEnabled) 1f else 0f,
-            animationSpec = if (state.animationsEnabled) tween(520, easing = LinearOutSlowInEasing) else snap(),
-            label = "player-immersive-motion-alpha"
-        )
 
         PlayerImmersiveBackdrop(
+            // The immersive layer already draws the artwork bed. Avoid decoding/drawing a second
+            // fullscreen copy behind it; keep only the palette backdrop as the safety bed.
+            artworkUrl = if (immersiveArtworkEnabled) "" else artworkUrl,
             ambience = ambience,
             isPlaying = state.isPlaying,
+            animationsEnabled = state.animationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
         AnimatedVisibility(
-            visible = track != null && immersiveArtworkEnabled,
-            enter = if (state.animationsEnabled) fadeIn(tween(520, easing = LinearOutSlowInEasing)) else EnterTransition.None,
-            exit = if (state.animationsEnabled) fadeOut(tween(320, easing = LinearOutSlowInEasing)) else ExitTransition.None,
+            visible = immersiveArtworkEnabled,
+            // The generated artwork bed is the immediate first frame. A real Canvas performs its
+            // own first-frame crossfade inside MotionArtworkLayer, so an outer enter fade only
+            // reintroduces the static-to-motion flash we are trying to remove.
+            enter = EnterTransition.None,
+            exit = if (state.animationsEnabled) fadeOut(tween(260, easing = LinearOutSlowInEasing)) else ExitTransition.None,
             modifier = Modifier.fillMaxSize()
         ) {
             val canvasTrack = track ?: state.currentTrack
@@ -12280,11 +12437,10 @@ private fun PlayerScreen(
                                 scaleY = artScale
                                 translationX = settledSwipeOffset
                                 translationY = artOffset.toPx()
-                                alpha = if (morphActive) {
+                                alpha = if (morphActive || immersiveArtworkEnabled) {
                                     0f
                                 } else {
-                                    playerSwipeContentAlpha(settledSwipeOffset, size.width) *
-                                        (1f - immersiveMotionAlpha)
+                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
                                 }
                             }
                     )
@@ -12307,7 +12463,7 @@ private fun PlayerScreen(
                         mediaActions = PlayerGestureMediaActions(
                             seekBy = { delta ->
                                 viewModel.seekBy(delta)
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
                                 mediaSeekFeedbackMs = delta
                                 mediaSeekFeedbackEvent += 1
                             },
@@ -12322,7 +12478,7 @@ private fun PlayerScreen(
                                 gestureFeedbackEvent += 1
                             },
                             haptic = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                hapticFeedback.perform(LevyraHapticAction.TrackSwipe)
                             },
                             collapse = collapseActions
                         ),
@@ -14578,6 +14734,15 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
+                                    icon = Icons.Rounded.DarkMode,
+                                    title = strings.pureBlack,
+                                    subtitle = strings.pureBlackSubtitle,
+                                    checked = interfaceSettings.pureBlack,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(pureBlack = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
                                     icon = Icons.Rounded.LocalFireDepartment,
                                     title = strings.top50Charts,
                                     subtitle = strings.showChartsCountry,
@@ -14588,6 +14753,15 @@ private fun SettingsOverlay(
                         }
                         "player" -> {
                             item { SettingsSectionLabel(strings.mobilePlayerSection) }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Vibration,
+                                    title = strings.hapticFeedback,
+                                    subtitle = strings.hapticFeedbackSubtitle,
+                                    checked = interfaceSettings.hapticFeedback,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(hapticFeedback = it)) }
+                                )
+                            }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Speed,
@@ -17570,8 +17744,49 @@ private fun MiniPlayer(
     val gesturesEnabled = model.gesturesEnabled
     val strings = LocalLevyraStrings.current
     val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val accentStart = Color(track.accentStart)
-    val accentEnd = Color(track.accentEnd)
+    val context = LocalContext.current
+    val fallbackPalette = remember(track.accentStart, track.accentEnd) {
+        ArtworkPalette(track.accentStart, track.accentEnd)
+    }
+    val paletteKey = remember(track.id, track.thumbnailUrl, track.largeThumbnailUrl) {
+        ArtworkPaletteCache.key(
+            trackId = track.id,
+            thumbnailUrl = track.thumbnailUrl,
+            largeThumbnailUrl = track.largeThumbnailUrl
+        )
+    }
+    val memoryPalette = remember(paletteKey) {
+        ArtworkPaletteCache.peek(paletteKey)
+    }
+    val artworkPaletteState = remember(paletteKey) {
+        mutableStateOf(memoryPalette ?: fallbackPalette)
+    }
+
+    LaunchedEffect(paletteKey) {
+        if (memoryPalette == null) {
+            val persistedPalette = ArtworkPaletteCache.load(context, paletteKey)
+            if (persistedPalette != null) {
+                artworkPaletteState.value = persistedPalette
+            }
+        }
+    }
+
+    val activePalette = artworkPaletteState.value
+    val targetAccentStart = Color(activePalette.start)
+    val targetAccentEnd = Color(activePalette.end)
+    val harmonizedTargets = remember(targetAccentStart, targetAccentEnd) {
+        harmonizePlayerAccents(targetAccentStart, targetAccentEnd)
+    }
+    val accentStart by animateColorAsState(
+        targetValue = harmonizedTargets.primary,
+        animationSpec = if (animated) tween(550, easing = LinearOutSlowInEasing) else snap(),
+        label = "mini-accent-start"
+    )
+    val accentEnd by animateColorAsState(
+        targetValue = harmonizedTargets.secondary,
+        animationSpec = if (animated) tween(550, easing = LinearOutSlowInEasing) else snap(),
+        label = "mini-accent-end"
+    )
     val ambience = remember(accentStart, accentEnd) {
         playerAmbienceOf(accentStart, accentEnd)
     }
@@ -17609,14 +17824,14 @@ private fun MiniPlayer(
     Surface(
         color = Color.Transparent,
         shape = containerShape,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.09f)),
+        border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.10f)),
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 20.dp,
                 shape = containerShape,
                 clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.40f),
+                ambientColor = ambience.tint.copy(alpha = 0.22f),
                 spotColor = Color.Black.copy(alpha = 0.75f)
             )
             .playerAxisDragGestures(
@@ -17635,7 +17850,13 @@ private fun MiniPlayer(
     ) {
         Column(
             modifier = Modifier.background(
-                Brush.horizontalGradient(listOf(miniSurfaceLeading, miniSurfaceTrailing))
+                Brush.horizontalGradient(
+                    listOf(
+                        miniSurfaceLeading,
+                        miniSurfaceLeading.playerAmbienceMix(miniSurfaceTrailing, 0.45f),
+                        miniSurfaceTrailing
+                    )
+                )
             )
         ) {
             Row(
@@ -18795,7 +19016,7 @@ private fun BottomTabs(
 ) {
     val entries = rememberLevyraTabEntries()
     val animationsEnabled = LocalAnimationsEnabled.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalLevyraHaptics.current
     val isLight = LevyraIsLight
     val accentStart = LevyraCyan
     val selectedIndex = entries.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
@@ -18900,7 +19121,7 @@ private fun BottomTabs(
                             accent = accentStart,
                             onClick = {
                                 if (!isSelected) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    haptics.perform(LevyraHapticAction.SeekSnap)
                                 }
                                 onSelect(entry.tab)
                             }

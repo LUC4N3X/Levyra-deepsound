@@ -37,7 +37,9 @@ data class LevyraInterfaceSettings(
     val longPressSpeed: Float = 2f,
     val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
-    val enhanceVideoMetadata: Boolean = false
+    val enhanceVideoMetadata: Boolean = false,
+    val pureBlack: Boolean = false,
+    val hapticFeedback: Boolean = true
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),
