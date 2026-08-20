@@ -12259,30 +12259,32 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
+        // Mount the immersive layer immediately in song mode. MotionArtworkLayer owns the
+        // animated static bed and crossfades to a real Canvas only after its first frame, so the
+        // player never has to flash a dead static state while remote artwork is resolving.
         val immersiveArtworkEnabled = state.motionArtworkEnabled &&
             state.animationsEnabled &&
             playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
-            track != null &&
-            state.motionArtwork != null
+            track != null
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
-        val immersiveMotionAlpha by animateFloatAsState(
-            targetValue = if (immersiveArtworkEnabled) 1f else 0f,
-            animationSpec = if (state.animationsEnabled) tween(520, easing = LinearOutSlowInEasing) else snap(),
-            label = "player-immersive-motion-alpha"
-        )
 
         PlayerImmersiveBackdrop(
-            artworkUrl = artworkUrl,
+            // The immersive layer already draws the artwork bed. Avoid decoding/drawing a second
+            // fullscreen copy behind it; keep only the palette backdrop as the safety bed.
+            artworkUrl = if (immersiveArtworkEnabled) "" else artworkUrl,
             ambience = ambience,
             isPlaying = state.isPlaying,
             animationsEnabled = state.animationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
         AnimatedVisibility(
-            visible = track != null && immersiveArtworkEnabled,
-            enter = if (state.animationsEnabled) fadeIn(tween(520, easing = LinearOutSlowInEasing)) else EnterTransition.None,
-            exit = if (state.animationsEnabled) fadeOut(tween(320, easing = LinearOutSlowInEasing)) else ExitTransition.None,
+            visible = immersiveArtworkEnabled,
+            // The generated artwork bed is the immediate first frame. A real Canvas performs its
+            // own first-frame crossfade inside MotionArtworkLayer, so an outer enter fade only
+            // reintroduces the static-to-motion flash we are trying to remove.
+            enter = EnterTransition.None,
+            exit = if (state.animationsEnabled) fadeOut(tween(260, easing = LinearOutSlowInEasing)) else ExitTransition.None,
             modifier = Modifier.fillMaxSize()
         ) {
             val canvasTrack = track ?: state.currentTrack
