@@ -4,12 +4,14 @@ import com.luc4n3x.levyra.desktop.app.state.CatalogController
 import com.luc4n3x.levyra.desktop.app.state.DesktopUpdateController
 import com.luc4n3x.levyra.desktop.app.state.DiscoverController
 import com.luc4n3x.levyra.desktop.app.state.LevyraAppModel
+import com.luc4n3x.levyra.desktop.app.state.LocalMusicController
 import com.luc4n3x.levyra.desktop.app.state.LyricsController
 import com.luc4n3x.levyra.desktop.app.state.OfflineDownloadController
 import com.luc4n3x.levyra.desktop.app.state.PlaybackController
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.charts.ChartsRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
+import com.luc4n3x.levyra.desktop.core.localmusic.LocalLibraryStore
 import com.luc4n3x.levyra.desktop.core.lyrics.LyricsRepository
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStore
@@ -37,6 +39,7 @@ class AppContainer {
     val sessionStore: SessionStore = SessionStore.create(paths)
     val downloadStore: DownloadStore = DownloadStore.create(paths)
     val windowPlacementStore: WindowPlacementStore = WindowPlacementStore.create(paths)
+    val localLibraryStore: LocalLibraryStore = LocalLibraryStore.create(paths)
 
     private val initialSettings = settingsStore.current.also { settings ->
         ExtractorRuntime.ensureInitialized(settings.language, settings.contentCountry)
@@ -78,6 +81,12 @@ class AppContainer {
         }
     )
 
+    private val localMusicController = LocalMusicController(
+        scope = scope,
+        store = localLibraryStore,
+        paths = paths
+    )
+
     private val catalogController = CatalogController(
         scope = scope,
         catalog = catalogRepository,
@@ -103,7 +112,8 @@ class AppContainer {
         discoverController = discoverController,
         lyricsController = lyricsController,
         playbackController = playbackController,
-        downloadController = downloadController
+        downloadController = downloadController,
+        localMusicController = localMusicController
     )
 
     init {
@@ -113,6 +123,7 @@ class AppContainer {
     }
 
     fun shutdown() {
+        localMusicController.shutdown()
         updateController.shutdown()
         downloadController.shutdown()
         playbackController.shutdown()

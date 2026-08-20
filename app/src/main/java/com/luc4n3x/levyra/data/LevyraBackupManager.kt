@@ -307,6 +307,8 @@ class LevyraBackupManager(private val context: Context) {
         .put("playerGesturesEnabled", value.playerGesturesEnabled)
         .put("doubleTapSeekSeconds", value.doubleTapSeekSeconds)
         .put("longPressSpeed", value.longPressSpeed.toDouble())
+        .put("pureBlack", value.pureBlack)
+        .put("hapticFeedback", value.hapticFeedback)
 
     private fun parseInterfaceSettings(json: JSONObject?): LevyraInterfaceSettings {
         if (json == null) return LevyraInterfaceSettings()
@@ -321,7 +323,9 @@ class LevyraBackupManager(private val context: Context) {
             fontPreset = LevyraFontPreset.from(json.optString("fontPreset")),
             playerGesturesEnabled = json.optBoolean("playerGesturesEnabled", true),
             doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
-            longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat()
+            longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat(),
+            pureBlack = json.optBoolean("pureBlack", false),
+            hapticFeedback = json.optBoolean("hapticFeedback", true)
         ).normalized()
     }
 
