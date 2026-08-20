@@ -7,6 +7,7 @@ import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -50,6 +51,24 @@ internal fun youtubePlaybackHttpOptions(url: String): YoutubePlaybackHttpOptions
 
 private const val YOUTUBE_MOBILE_WEB_USER_AGENT =
     "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
+
+private val youtubeRequestNumber = AtomicLong(1L)
+
+internal fun youtubePlaybackUrl(url: String): String {
+    val uri = runCatching { URI(url) }.getOrNull() ?: return url
+    val host = uri.host.orEmpty().lowercase(Locale.ROOT)
+    val path = uri.path.orEmpty().lowercase(Locale.ROOT)
+    if (!host.endsWith("googlevideo.com") || !path.contains("videoplayback")) return url
+    if (path.endsWith(".m3u8") || path.endsWith(".mpd")) return url
+    if (Regex("(?:^|[?&])sq=", RegexOption.IGNORE_CASE).containsMatchIn(url)) return url
+    if (Regex("(?:^|[?&])rn=", RegexOption.IGNORE_CASE).containsMatchIn(url)) return url
+
+    val fragmentIndex = url.indexOf('#')
+    val base = if (fragmentIndex >= 0) url.substring(0, fragmentIndex) else url
+    val fragment = if (fragmentIndex >= 0) url.substring(fragmentIndex) else ""
+    val separator = if ('?' in base) '&' else '?'
+    return "$base${separator}rn=${youtubeRequestNumber.getAndIncrement()}$fragment"
+}
 
 class VlcAudioPlayer private constructor(
     private val sharedFactory: SharedMediaPlayerFactory,
@@ -127,21 +146,23 @@ class VlcAudioPlayer private constructor(
 
     override fun play(url: String, startAtMs: Long) {
         if (released.get()) return
-        loadedUrl = url
+        val playbackUrl = youtubePlaybackUrl(url)
+        loadedUrl = playbackUrl
         requestedPaused = false
         resetTimeThrottle(startAtMs)
         pushOutputDevice()
-        mediaPlayer.media().play(url, *mediaOptions(url, startAtMs))
+        mediaPlayer.media().play(playbackUrl, *mediaOptions(playbackUrl, startAtMs))
     }
 
     override fun prepare(url: String, startAtMs: Long): Boolean {
         if (released.get()) return false
-        loadedUrl = url
+        val playbackUrl = youtubePlaybackUrl(url)
+        loadedUrl = playbackUrl
         requestedPaused = true
         resetTimeThrottle(startAtMs)
         pushOutputDevice()
         val started = runCatching {
-            mediaPlayer.media().startPaused(url, *mediaOptions(url, startAtMs))
+            mediaPlayer.media().startPaused(playbackUrl, *mediaOptions(playbackUrl, startAtMs))
         }.getOrDefault(false)
         if (!started) loadedUrl = ""
         return started
@@ -178,6 +199,10 @@ class VlcAudioPlayer private constructor(
             val youtube = youtubePlaybackHttpOptions(url)
             add(":http-user-agent=${youtube?.userAgent ?: ExtractorHttp.DESKTOP_USER_AGENT}")
             youtube?.referrer?.let { add(":http-referrer=$it") }
+            if (youtube != null) {
+                add(":http-reconnect")
+                add(":http-continuous")
+            }
         }
         add(":no-video")
         if (startAtMs > 0L) {
