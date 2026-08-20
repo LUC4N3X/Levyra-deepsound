@@ -234,6 +234,8 @@ internal fun probeDirectAudioUrlFast(
             .build()
         val response = try {
             client.newCall(request).execute()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (_: Exception) {
             return false
         }

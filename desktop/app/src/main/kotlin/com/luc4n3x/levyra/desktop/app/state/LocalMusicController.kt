@@ -164,7 +164,13 @@ class LocalMusicController(
         withContext(Dispatchers.IO) {
             val content = try {
                 currentCoroutineContext().ensureActive()
-                Files.readString(file)
+                Files.newInputStream(file).use { input ->
+                    val bytes = input.readNBytes(MAX_PLAYLIST_BYTES + 1)
+                    if (bytes.size > MAX_PLAYLIST_BYTES) {
+                        return@withContext emptyList<Track>() to PlaylistTransferResult(0, 0)
+                    }
+                    bytes.toString(Charsets.UTF_8)
+                }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {
@@ -376,5 +382,6 @@ class LocalMusicController(
         const val WATCH_POLL_MS = 1_000L
         const val MAX_WATCH_DEPTH = 12
         const val MAX_WATCHED_DIRECTORIES = 4_000
+        const val MAX_PLAYLIST_BYTES = 8 * 1024 * 1024
     }
 }

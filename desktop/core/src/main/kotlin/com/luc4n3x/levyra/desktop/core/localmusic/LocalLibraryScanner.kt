@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
 import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
 
 data class LocalScanProgress(
@@ -147,7 +148,7 @@ class LocalLibraryScanner(
         )
     }
 
-    private fun collectFiles(
+    private suspend fun collectFiles(
         folder: LocalFolder,
         target: MutableList<Pair<LocalFolder, Path>>,
         seenPaths: MutableSet<String>
@@ -156,9 +157,13 @@ class LocalLibraryScanner(
         val root = runCatching { Path.of(folder.path) }.getOrNull() ?: return false
         if (!Files.isDirectory(root)) return false
         val remaining = (MAX_FILES - target.size).toLong()
-        return runCatching {
+        val scanContext = coroutineContext
+        return try {
             Files.walk(root, MAX_DEPTH).use { stream ->
-                stream.filter { Files.isRegularFile(it) }
+                stream.filter {
+                    scanContext.ensureActive()
+                    Files.isRegularFile(it)
+                }
                     .filter(AudioTagReader::isSupported)
                     .filter { file -> seenPaths.add(LocalMusicIdentity.normalizePathKey(file.toString())) }
                     .limit(remaining + 1L)
@@ -167,7 +172,11 @@ class LocalLibraryScanner(
             val reachedLimit = target.size > MAX_FILES
             if (reachedLimit) target.removeAt(target.lastIndex)
             !reachedLimit
-        }.getOrDefault(false)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            false
+        }
     }
 
     companion object {

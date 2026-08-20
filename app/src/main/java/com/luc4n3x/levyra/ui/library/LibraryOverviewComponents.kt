@@ -636,6 +636,7 @@ internal fun LibraryListeningDashboard(
     val weekMinutes = week.sumOf { it.listenedMs } / 60_000L
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
+    val percent = remember(locale) { NumberFormat.getPercentInstance(locale) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -688,7 +689,7 @@ internal fun LibraryListeningDashboard(
                         LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.Replay, number.format(pulse.streakDays), strings.pulseStreak, LevyraViolet)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.DoneAll, "${pulse.completionRate}%", strings.pulseCompletion, LevyraPink)
+                        LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.DoneAll, percent.format(pulse.completionRate / 100.0), strings.pulseCompletion, LevyraPink)
                         LibraryInsightMetric(Modifier.weight(1f), Icons.Rounded.MusicNote, number.format(pulse.distinctTracks), strings.statTracks, Color(0xFFFFC857))
                     }
                 }

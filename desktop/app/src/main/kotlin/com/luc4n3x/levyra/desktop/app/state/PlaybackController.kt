@@ -609,6 +609,7 @@ class PlaybackController(
 
     private suspend fun prepareCompanion(next: Track, transitionMs: Long) {
         val ownerJob = currentCoroutineContext()[Job]
+        var published = false
         try {
             val companion = ensureCompanion() ?: return
             val settings = settingsStore.current
@@ -635,7 +636,7 @@ class PlaybackController(
                 artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
                 durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
             )
-            val published = synchronized(transitionLock) {
+            published = synchronized(transitionLock) {
                 if (
                     prepareJob !== ownerJob ||
                     transitionActive ||
@@ -656,7 +657,12 @@ class PlaybackController(
             updateTrackMetadata(enriched)
         } finally {
             synchronized(transitionLock) {
-                if (prepareJob === ownerJob) prepareJob = null
+                if (prepareJob === ownerJob) {
+                    prepareJob = null
+                    if (!published && handoffAttemptedTrackId == next.id) {
+                        handoffAttemptedTrackId = ""
+                    }
+                }
             }
         }
     }

@@ -10262,6 +10262,8 @@ private fun LibraryStatPill(icon: ImageVector, value: String, label: String, acc
 
 @Composable
 private fun ListeningPulseCard(pulse: ListeningPulse, strings: LevyraStrings) {
+    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
+    val percent = remember(locale) { java.text.NumberFormat.getPercentInstance(locale) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = CinematicGlass.copy(alpha = 0.6f),
@@ -10315,7 +10317,7 @@ private fun ListeningPulseCard(pulse: ListeningPulse, strings: LevyraStrings) {
                 PulseStat(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.TaskAlt,
-                    value = "${pulse.completionRate}%",
+                    value = percent.format(pulse.completionRate / 100.0),
                     label = strings.pulseCompletion,
                     accent = LevyraPink
                 )
