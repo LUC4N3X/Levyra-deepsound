@@ -10,12 +10,15 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
@@ -56,6 +59,9 @@ class YoutubeStreamResolver(
     private val locks = ConcurrentHashMap<String, Mutex>()
     private val rejectedUrls = ConcurrentHashMap<String, Long>()
     private val streamProbeClient: OkHttpClient = ExtractorHttp.client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .dns(YoutubeStreamNetworkPolicy.validatingDns())
         .connectTimeout(450, TimeUnit.MILLISECONDS)
         .readTimeout(800, TimeUnit.MILLISECONDS)
         .writeTimeout(350, TimeUnit.MILLISECONDS)
@@ -116,6 +122,8 @@ class YoutubeStreamResolver(
     private fun fetch(track: Track, quality: AudioQuality, codec: PreferredCodec): ResolvedAudio {
         val info = try {
             StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (error: Exception) {
             throw StreamResolutionException("RESOLVE_FAILED: Impossibile leggere il brano da YouTube", error)
         }
@@ -159,24 +167,11 @@ class YoutubeStreamResolver(
     }
 
     private fun verifyDirectAudioUrlFast(url: String): Boolean {
-        if (url.isBlank() || !isFreshPlaybackUrl(url)) return false
-        val request = Request.Builder()
-            .url(url)
-            .get()
-            .header("Range", "bytes=0-8191")
-            .header("Accept", "*/*")
-            .header("Accept-Encoding", "identity")
-            .header("User-Agent", ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
-            .build()
-        return runCatching {
-            streamProbeClient.newCall(request).execute().use { response ->
-                if (response.code in PROBE_REJECT_CODES) return@use false
-                if (response.code !in 200..299 && response.code != 206) return@use false
-                val contentType = response.header("Content-Type").orEmpty().lowercase()
-                if (contentType.contains("text/html") || contentType.contains("application/json")) return@use false
-                response.peekBody(32L).bytes().isNotEmpty()
-            }
-        }.getOrDefault(false)
+        return probeDirectAudioUrlFast(
+            url = url,
+            client = streamProbeClient,
+            isFresh = ::isFreshPlaybackUrl
+        )
     }
 
     private fun isFreshPlaybackUrl(url: String): Boolean {
@@ -209,8 +204,6 @@ class YoutubeStreamResolver(
     private companion object {
         const val FRESHNESS_MARGIN_MS = 120_000L
         const val REJECTED_URL_TTL_MS = 90_000L
-        val PROBE_REJECT_CODES = setOf(403, 404, 410, 416, 429)
-
         fun cacheKey(track: Track, quality: AudioQuality, codec: PreferredCodec): String =
             "${track.videoId}|${quality.name}|${codec.name}"
 
@@ -221,3 +214,49 @@ class YoutubeStreamResolver(
         }
     }
 }
+
+internal fun probeDirectAudioUrlFast(
+    url: String,
+    client: OkHttpClient,
+    isFresh: (String) -> Boolean,
+    isAllowed: (HttpUrl) -> Boolean = YoutubeStreamNetworkPolicy::isAllowedUrl
+): Boolean {
+    var target = url.toHttpUrlOrNull() ?: return false
+    repeat(MAX_PROBE_REDIRECTS + 1) { redirectCount ->
+        if (!isFresh(target.toString()) || !isAllowed(target)) return false
+        val request = Request.Builder()
+            .url(target)
+            .get()
+            .header("Range", "bytes=0-8191")
+            .header("Accept", "*/*")
+            .header("Accept-Encoding", "identity")
+            .header("User-Agent", ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
+            .build()
+        val response = try {
+            client.newCall(request).execute()
+        } catch (_: Exception) {
+            return false
+        }
+        response.use {
+            if (it.code in PROBE_REJECT_CODES) return false
+            if (it.code in 300..399) {
+                val redirected = it.header("Location")?.let(target::resolve) ?: return false
+                if (redirectCount >= MAX_PROBE_REDIRECTS || !isAllowed(redirected)) return false
+                target = redirected
+                return@repeat
+            }
+            if (it.code !in 200..299 && it.code != 206) return false
+            val contentType = it.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase()
+            if (
+                contentType.startsWith("text/") ||
+                contentType == "application/json" ||
+                contentType == "application/xml"
+            ) return false
+            return it.peekBody(32L).bytes().isNotEmpty()
+        }
+    }
+    return false
+}
+
+private const val MAX_PROBE_REDIRECTS = 3
+private val PROBE_REJECT_CODES = setOf(403, 404, 410, 416, 429)

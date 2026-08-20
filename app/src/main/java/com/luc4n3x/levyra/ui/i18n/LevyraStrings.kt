@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.ui.i18n
 
 import androidx.compose.runtime.compositionLocalOf
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import java.text.NumberFormat
+import java.util.Locale
 
 class LevyraStrings private constructor(
     val code: String,
@@ -596,6 +598,46 @@ class LevyraStrings private constructor(
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
     val activeIndicator: String get() = value("activeIndicator")
+    fun formatReplayPeriod(days: Int): String {
+        val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(days.coerceAtLeast(0))
+        val unit = when (LevyraLanguageCatalog.normalize(code)) {
+            "it" -> "gg"
+            "es" -> "d"
+            "fr" -> "j"
+            "de" -> "T."
+            "pt" -> "dias"
+            "nl" -> "dagen"
+            "pl" -> "dni"
+            "ro" -> "zile"
+            "el" -> "ημέρες"
+            "sv" -> "dagar"
+            "da" -> "dage"
+            "cs" -> "dní"
+            "uk", "ru" -> "дн."
+            "tr" -> "gün"
+            "ar" -> "يومًا"
+            "zh" -> "天"
+            "ja" -> "日"
+            "ko" -> "일"
+            "hi" -> "दिन"
+            "id" -> "hari"
+            "vi" -> "ngày"
+            "th" -> "วัน"
+            "fil" -> "araw"
+            "he" -> "ימים"
+            else -> "days"
+        }
+        val compact = LevyraLanguageCatalog.normalize(code) in setOf("zh", "ja", "ko")
+        return directionalValue(if (compact) "$value$unit" else "$value $unit")
+    }
+
+    fun formatPlayCount(count: Int): String {
+        val formatted = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(count.coerceAtLeast(0))
+        return directionalValue("$formatted×")
+    }
+
     fun formatTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
         return when (code) {

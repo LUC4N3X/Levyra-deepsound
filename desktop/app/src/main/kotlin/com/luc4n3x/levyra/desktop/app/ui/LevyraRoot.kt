@@ -408,8 +408,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                             val selected = choosePlaylistFile(
                                                                 save = true,
                                                                 suggestedName = target.name,
-                                                                overwriteTitle = strings.playlistExport,
-                                                                overwriteAction = strings.save
+                                                                overwriteTitle = strings.playlistOverwriteTitle,
+                                                                overwriteMessage = strings::formatPlaylistOverwriteConfirm
                                                             )
                                                             if (selected.isBlank()) return@launch
                                                             val written = model.localMusicController
@@ -420,9 +420,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                                 )
                                                             model.notify(
                                                                 if (written) {
-                                                                    strings.playlistExport
+                                                                    strings.playlistExportSuccess
                                                                 } else {
-                                                                    strings.retry
+                                                                    strings.playlistExportFailed
                                                                 }
                                                             )
                                                         }
@@ -687,7 +687,7 @@ private suspend fun choosePlaylistFile(
     save: Boolean,
     suggestedName: String,
     overwriteTitle: String = "",
-    overwriteAction: String = ""
+    overwriteMessage: ((String) -> String)? = null
 ): String = withContext(Dispatchers.Swing) {
     val chooser = object : JFileChooser() {
         override fun approveSelection() {
@@ -698,7 +698,8 @@ private suspend fun choosePlaylistFile(
                 if (target.exists()) {
                     val result = JOptionPane.showConfirmDialog(
                         this,
-                        "${overwriteAction.ifBlank { approveButtonText.orEmpty() }} ${target.name}?",
+                        overwriteMessage?.invoke(target.name)
+                            ?: "${approveButtonText.orEmpty()} ${target.name}?",
                         overwriteTitle.ifBlank { dialogTitle.orEmpty() },
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE

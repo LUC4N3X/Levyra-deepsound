@@ -59,6 +59,20 @@ class AudioTagReaderTest {
     }
 
     @Test
+    fun ignoresMpegLayersNotSupportedByTheLayerThreeTables() {
+        val file = write(
+            "layer-two.mp3",
+            byteArrayOf(0xFF.toByte(), 0xFD.toByte(), 0x90.toByte(), 0x00) + ByteArray(64)
+        )
+
+        val tags = AudioTagReader.read(file)
+
+        assertEquals("", tags.codec)
+        assertEquals(0, tags.sampleRateHz)
+        assertEquals(0L, tags.durationMs)
+    }
+
+    @Test
     fun readsFlacStreamInfoCommentsAndPicture() {
         val file = write(
             "song.flac",

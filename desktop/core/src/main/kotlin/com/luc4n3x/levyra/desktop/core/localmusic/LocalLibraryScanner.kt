@@ -37,9 +37,10 @@ class LocalLibraryScanner(
         val previous = existing.associateBy { LocalMusicIdentity.normalizePathKey(it.path) }
         val files = ArrayList<Pair<LocalFolder, Path>>()
         val seenPaths = HashSet<String>()
+        val incompleteFolderIds = HashSet<String>()
         folders.forEach { folder ->
             coroutineContext.ensureActive()
-            collectFiles(folder, files, seenPaths)
+            if (!collectFiles(folder, files, seenPaths)) incompleteFolderIds += folder.id
         }
         onProgress(LocalScanProgress(processed = 0, total = files.size))
 
@@ -90,7 +91,8 @@ class LocalLibraryScanner(
         var missing = 0
         previous.forEach { (key, track) ->
             if (scanned.containsKey(key)) return@forEach
-            if (!belongsToScannedFolders(track, folders)) {
+            val owner = folders.firstOrNull { folder -> LocalMusicIdentity.isWithin(track.path, folder.path) }
+            if (owner == null || owner.id in incompleteFolderIds) {
                 scanned[key] = track
                 return@forEach
             }
@@ -107,9 +109,6 @@ class LocalLibraryScanner(
             failed = failed
         )
     }
-
-    private fun belongsToScannedFolders(track: LocalTrack, folders: List<LocalFolder>): Boolean =
-        folders.any { folder -> LocalMusicIdentity.isWithin(track.path, folder.path) }
 
     private fun read(
         folder: LocalFolder,
@@ -152,20 +151,23 @@ class LocalLibraryScanner(
         folder: LocalFolder,
         target: MutableList<Pair<LocalFolder, Path>>,
         seenPaths: MutableSet<String>
-    ) {
-        if (target.size >= MAX_FILES) return
-        val root = runCatching { Path.of(folder.path) }.getOrNull() ?: return
-        if (!Files.isDirectory(root)) return
+    ): Boolean {
+        if (target.size >= MAX_FILES) return false
+        val root = runCatching { Path.of(folder.path) }.getOrNull() ?: return false
+        if (!Files.isDirectory(root)) return false
         val remaining = (MAX_FILES - target.size).toLong()
-        runCatching {
+        return runCatching {
             Files.walk(root, MAX_DEPTH).use { stream ->
                 stream.filter { Files.isRegularFile(it) }
                     .filter(AudioTagReader::isSupported)
                     .filter { file -> seenPaths.add(LocalMusicIdentity.normalizePathKey(file.toString())) }
-                    .limit(remaining)
+                    .limit(remaining + 1L)
                     .forEach { file -> target.add(folder to file) }
             }
-        }
+            val reachedLimit = target.size > MAX_FILES
+            if (reachedLimit) target.removeAt(target.lastIndex)
+            !reachedLimit
+        }.getOrDefault(false)
     }
 
     companion object {

@@ -12,12 +12,20 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextDirectionHeuristics
+import android.text.TextPaint
+import android.text.TextUtils
 import androidx.core.content.FileProvider
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.Track
 import java.io.File
 import java.io.FileOutputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -45,16 +53,22 @@ internal object LyricsShareCard {
         if (!directory.exists() && !directory.mkdirs()) return@withContext null
         prune(directory)
 
+        currentCoroutineContext().ensureActive()
         val cover = LevyraArtworkCache.localFile(context, track, highRes = true)
             ?.takeIf(File::isFile)
-            ?.let { file -> runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() }
+            ?.let(::decodeCover)
         val file = File(directory, "lyrics-${System.currentTimeMillis()}.png")
         var bitmap: Bitmap? = null
         val written = try {
+            currentCoroutineContext().ensureActive()
             bitmap = render(track, text, cover)
             FileOutputStream(file).use { output ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
             }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: OutOfMemoryError) {
+            false
         } catch (_: Exception) {
             false
         } finally {
@@ -149,20 +163,18 @@ internal object LyricsShareCard {
             .filter(String::isNotBlank)
             .take(MAX_SELECTED_LINES)
             .toList()
-        val lyricPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val lyricPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
         val availableWidth = CARD_SIZE - 300f
         val availableHeight = CARD_SIZE - 570f
-        val wrapped = fitLyrics(rawLines, lyricPaint, availableWidth, availableHeight)
-        val lineHeight = lyricPaint.textSize * 1.28f
-        val blockHeight = wrapped.size * lineHeight
-        var y = ((CARD_SIZE + blockHeight) / 2f - blockHeight + 50f).coerceAtLeast(465f)
-        wrapped.forEach { line ->
-            canvas.drawText(line, 150f, y, lyricPaint)
-            y += lineHeight
-        }
+        val lyricsLayout = fitLyrics(rawLines.joinToString("\n"), lyricPaint, availableWidth, availableHeight)
+        val y = ((CARD_SIZE - lyricsLayout.height) / 2f + 50f).coerceAtLeast(465f)
+        canvas.save()
+        canvas.translate(150f, y)
+        lyricsLayout.draw(canvas)
+        canvas.restore()
 
         val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.argb(145, 255, 255, 255)
@@ -189,40 +201,58 @@ internal object LyricsShareCard {
     }
 
     private fun fitLyrics(
-        source: List<String>,
-        paint: Paint,
+        source: String,
+        paint: TextPaint,
         maxWidth: Float,
         maxHeight: Float
-    ): List<String> {
+    ): StaticLayout {
         var size = 70f
         while (size >= 42f) {
             paint.textSize = size
-            val wrapped = source.flatMap { wrap(it, paint, maxWidth) }
-            val height = wrapped.size * size * 1.28f
-            if (wrapped.size <= 12 && height <= maxHeight) return wrapped
+            val layout = buildLyricsLayout(source, paint, maxWidth.toInt())
+            if (layout.lineCount <= 12 && layout.height <= maxHeight) return layout
             size -= 4f
         }
         paint.textSize = 42f
-        return source.flatMap { wrap(it, paint, maxWidth) }.take(12)
+        return buildLyricsLayout(source, paint, maxWidth.toInt(), maxLines = 12)
     }
 
-    private fun wrap(text: String, paint: Paint, maxWidth: Float): List<String> {
-        if (text.isBlank()) return emptyList()
-        val words = text.split(Regex("\\s+")).filter(String::isNotBlank)
-        if (words.isEmpty()) return emptyList()
-        val lines = ArrayList<String>()
-        var current = StringBuilder()
-        words.forEach { word ->
-            val candidate = if (current.isEmpty()) word else "$current $word"
-            if (paint.measureText(candidate) <= maxWidth || current.isEmpty()) {
-                current = StringBuilder(candidate)
-            } else {
-                lines += current.toString()
-                current = StringBuilder(word)
-            }
+    private fun buildLyricsLayout(
+        text: String,
+        paint: TextPaint,
+        width: Int,
+        maxLines: Int = Int.MAX_VALUE
+    ): StaticLayout {
+        val builder = StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setTextDirection(TextDirectionHeuristics.FIRSTSTRONG_LTR)
+            .setIncludePad(false)
+            .setLineSpacing(0f, 1.28f)
+            .setMaxLines(maxLines)
+        if (maxLines != Int.MAX_VALUE) {
+            builder.setEllipsize(TextUtils.TruncateAt.END).setEllipsizedWidth(width)
         }
-        if (current.isNotEmpty()) lines += current.toString()
-        return lines
+        return builder.build()
+    }
+
+    private fun decodeCover(file: File): Bitmap? = try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = coverSampleSize(bounds.outWidth, bounds.outHeight)
+        }
+        BitmapFactory.decodeFile(file.absolutePath, options)
+    } catch (_: OutOfMemoryError) {
+        null
+    } catch (_: Exception) {
+        null
+    }
+
+    internal fun coverSampleSize(width: Int, height: Int): Int {
+        var sample = 1
+        while (maxOf(width, height) / sample > COVER_TARGET_SIZE * 2) sample *= 2
+        return sample
     }
 
     private fun drawEllipsized(
@@ -277,4 +307,6 @@ internal object LyricsShareCard {
         Color.green(color),
         Color.blue(color)
     )
+
+    private const val COVER_TARGET_SIZE = 300
 }

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.app.ui.i18n
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.luc4n3x.levyra.desktop.core.model.AppLanguage
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedLevyraStrings
 import java.time.LocalTime
 
@@ -228,6 +229,10 @@ data class LevyraStrings(
     val localMusicRemoveFolder: String,
     val playlistImport: String,
     val playlistExport: String,
+    val playlistOverwriteTitle: String,
+    val playlistOverwriteConfirm: String,
+    val playlistExportSuccess: String,
+    val playlistExportFailed: String,
     val playlistSkippedEntries: String,
     val crossfade: String,
     val crossfadeBody: String,
@@ -237,7 +242,14 @@ data class LevyraStrings(
     val cancel: String,
     val save: String,
     val close: String
-)
+) {
+    fun formatPlaylistOverwriteConfirm(fileName: String): String {
+        val safeName = fileName.trim().let { name ->
+            if (LevyraLanguageCatalog.isRtl(languageCode) && name.isNotBlank()) "\u2068$name\u2069" else name
+        }
+        return playlistOverwriteConfirm.replace("{name}", safeName)
+    }
+}
 
 fun stringsFor(
     language: AppLanguage,
@@ -469,6 +481,10 @@ fun stringsFor(
         localMusicRemoveFolder = extras.localMusicRemoveFolder,
         playlistImport = extras.playlistImport,
         playlistExport = extras.playlistExport,
+        playlistOverwriteTitle = extras.playlistOverwriteTitle,
+        playlistOverwriteConfirm = extras.playlistOverwriteConfirm,
+        playlistExportSuccess = extras.playlistExportSuccess,
+        playlistExportFailed = extras.playlistExportFailed,
         playlistSkippedEntries = extras.playlistSkippedEntries,
         crossfade = extras.crossfade,
         crossfadeBody = extras.crossfadeBody,

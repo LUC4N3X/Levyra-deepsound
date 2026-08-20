@@ -100,6 +100,24 @@ class LocalLibraryScannerTest {
     }
 
     @Test
+    fun unavailableFolderDoesNotMarkPreviouslyIndexedTracksMissing() = runTest {
+        val cacheRoot = Files.createTempDirectory("levyra-scan")
+        val unavailableRoot = cacheRoot.resolve("missing")
+        val folder = LocalFolder(id = "f1", path = unavailableRoot.toString())
+        val existing = LocalTrack(
+            id = "known",
+            path = unavailableRoot.resolve("01.flac").toString(),
+            folderId = folder.id,
+            available = true
+        )
+
+        val second = scanner(cacheRoot).scan(listOf(folder), listOf(existing))
+
+        assertEquals(0, second.missing)
+        assertTrue(second.tracks.single().available)
+    }
+
+    @Test
     fun folderCoverIsUsedWhenTheFileHasNoEmbeddedPicture() = runTest {
         val root = Files.createTempDirectory("levyra-scan")
         val folder = LocalFolder(id = "f1", path = root.toString())

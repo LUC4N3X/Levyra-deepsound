@@ -26,7 +26,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -160,8 +162,15 @@ class LocalMusicController(
 
     suspend fun readPlaylistFile(file: Path): Pair<List<Track>, PlaylistTransferResult> =
         withContext(Dispatchers.IO) {
-            val content = runCatching { Files.readString(file) }.getOrNull()
-                ?: return@withContext emptyList<Track>() to PlaylistTransferResult(0, 0)
+            val content = try {
+                currentCoroutineContext().ensureActive()
+                Files.readString(file)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                DesktopDiagnostics.background("playlist import from $file", error)
+                return@withContext emptyList<Track>() to PlaylistTransferResult(0, 0)
+            }
             val baseDirectory = file.parent
             val known = internalState.value.index.tracks.associateBy {
                 LocalMusicIdentity.normalizePathKey(it.path)
@@ -169,6 +178,7 @@ class LocalMusicController(
             val tracks = ArrayList<Track>()
             var skipped = 0
             M3uPlaylist.parse(content).forEach { entry ->
+                currentCoroutineContext().ensureActive()
                 if (entry.isRemote) {
                     val videoId = M3uPlaylist.youtubeVideoId(entry)
                     if (videoId.isBlank()) {
@@ -230,10 +240,12 @@ class LocalMusicController(
             }
             var temporary: Path? = null
             try {
+                currentCoroutineContext().ensureActive()
                 val parent = target.toAbsolutePath().parent ?: return@withContext false
                 Files.createDirectories(parent)
                 temporary = Files.createTempFile(parent, ".${target.fileName}.", ".tmp")
                 Files.writeString(temporary, M3uPlaylist.render(name, tracks))
+                currentCoroutineContext().ensureActive()
                 try {
                     Files.move(
                         temporary,
@@ -245,7 +257,10 @@ class LocalMusicController(
                     Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING)
                 }
                 true
-            } catch (_: Exception) {
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                DesktopDiagnostics.background("playlist export to $target", error)
                 false
             } finally {
                 temporary?.let { runCatching { Files.deleteIfExists(it) } }

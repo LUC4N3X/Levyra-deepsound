@@ -582,8 +582,6 @@ class PlaybackController(
             maybeStartCrossfade(current.positionMs, current.durationMs)
             return
         }
-        if (next.id == handoffAttemptedTrackId) return
-        if (prepareJob?.isActive == true) return
         val transitionMs = CrossfadePlanner.transitionDurationMs(
             requestedMs = settingsStore.current.crossfadeMs,
             smartCrossfade = settingsStore.current.smartCrossfade,
@@ -594,8 +592,19 @@ class PlaybackController(
         if (current.positionMs < CrossfadePlanner.prepareThresholdMs(current.durationMs, transitionMs)) {
             return
         }
-        handoffAttemptedTrackId = next.id
-        prepareJob = playerScope.launch { prepareCompanion(next, transitionMs) }
+        val pending = synchronized(transitionLock) {
+            if (transitionActive || next.id == handoffAttemptedTrackId || prepareJob != null) {
+                null
+            } else {
+                playerScope.launch(start = CoroutineStart.LAZY) {
+                    prepareCompanion(next, transitionMs)
+                }.also { job ->
+                    handoffAttemptedTrackId = next.id
+                    prepareJob = job
+                }
+            }
+        } ?: return
+        pending.start()
     }
 
     private suspend fun prepareCompanion(next: Track, transitionMs: Long) {
@@ -688,42 +697,55 @@ class PlaybackController(
     private fun startTransition(transitionMs: Long): Boolean {
         val started = synchronized(transitionLock) {
             if (transitionActive || preparedTrackId.isEmpty() || companionPlayer == null) {
-                false
+                null
             } else {
                 transitionActive = true
-                true
+                playerScope.launch(start = CoroutineStart.LAZY) {
+                    runTransition(transitionMs)
+                }.also { transitionJob = it }
             }
-        }
-        if (!started) return false
-        transitionJob = playerScope.launch { runTransition(transitionMs) }
+        } ?: return false
+        started.start()
         return true
     }
 
     private suspend fun runTransition(transitionMs: Long) {
-        val companion = companionPlayer
-        val outgoing = player
-        if (companion == null) {
-            synchronized(transitionLock) { transitionActive = false }
-            return
+        val ownerJob = currentCoroutineContext()[Job] ?: return
+        try {
+            runOwnedTransition(transitionMs, ownerJob)
+        } finally {
+            clearTransitionOwnership(ownerJob)
         }
+    }
+
+    private suspend fun runOwnedTransition(transitionMs: Long, ownerJob: Job) {
         val incomingFailure = AtomicReference<String?>(null)
         val incomingFinished = AtomicBoolean(false)
-        transitionEventJob?.cancel()
-        transitionEventJob = playerScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            companion.events.collect { event ->
-                when (event) {
-                    is PlayerEvent.Failed -> incomingFailure.compareAndSet(null, event.reason)
-                    is PlayerEvent.Finished -> incomingFinished.set(true)
-                    else -> Unit
+        val players = synchronized(transitionLock) {
+            if (transitionJob !== ownerJob || !transitionActive) return
+            val companion = companionPlayer
+            if (companion == null) {
+                transitionActive = false
+                return
+            }
+            val outgoing = player
+            transitionEventJob?.cancel()
+            transitionEventJob = playerScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                companion.events.collect { event ->
+                    when (event) {
+                        is PlayerEvent.Failed -> incomingFailure.compareAndSet(null, event.reason)
+                        is PlayerEvent.Finished -> incomingFinished.set(true)
+                        else -> Unit
+                    }
                 }
             }
+            companion to outgoing
         }
+        val (companion, outgoing) = players
         companion.setMuted(internalState.value.muted)
         companion.setVolume(if (transitionMs > 0L) 0 else internalState.value.volume)
         if (!companion.startPrepared()) {
-            transitionEventJob?.cancel()
-            transitionEventJob = null
-            abortTransition()
+            abortTransition(ownerJob)
             if (transitionMs <= 0L) {
                 next(automatic = true)
             }
@@ -734,9 +756,7 @@ class PlaybackController(
             for (step in 1..steps) {
                 val failureReason = incomingFailure.get()
                 if (failureReason != null || incomingFinished.get()) {
-                    transitionEventJob?.cancel()
-                    transitionEventJob = null
-                    abortTransition()
+                    abortTransition(ownerJob)
                     messageFlow.tryEmit(failureReason ?: "Il brano successivo si è chiuso durante la transizione")
                     return
                 }
@@ -753,18 +773,17 @@ class PlaybackController(
         }
         val failureReason = incomingFailure.get()
         if (failureReason != null || incomingFinished.get()) {
-            transitionEventJob?.cancel()
-            transitionEventJob = null
-            abortTransition()
+            abortTransition(ownerJob)
             messageFlow.tryEmit(failureReason ?: "Il brano successivo si è chiuso durante la transizione")
             return
         }
-        completeTransition()
+        completeTransition(ownerJob)
     }
 
-    private fun abortTransition() {
+    private fun abortTransition(ownerJob: Job) {
         val companion: AudioPlayer?
         synchronized(transitionLock) {
+            if (transitionJob !== ownerJob) return
             transitionActive = false
             preparedTrackId = ""
             preparedTransitionMs = 0L
@@ -776,13 +795,13 @@ class PlaybackController(
         player?.setVolume(internalState.value.volume)
     }
 
-    private fun completeTransition() {
+    private fun completeTransition(ownerJob: Job) {
         val incoming: AudioPlayer
         val outgoing: AudioPlayer?
         val advanced: PlayerQueue
         val streamLabel: String
         synchronized(transitionLock) {
-            if (!transitionActive) return
+            if (transitionJob !== ownerJob || !transitionActive) return
             val candidateCompanion = companionPlayer
             if (candidateCompanion == null) {
                 transitionActive = false
@@ -815,8 +834,6 @@ class PlaybackController(
         runCatching { outgoing?.stop() }
         outgoing?.setVolume(internalState.value.volume)
         observeEvents(incoming)
-        transitionEventJob?.cancel()
-        transitionEventJob = null
         incoming.setVolume(internalState.value.volume)
         incoming.setMuted(internalState.value.muted)
         applySpeed(settingsStore.current.playbackSpeed, incoming)
@@ -841,6 +858,8 @@ class PlaybackController(
     private fun cancelTransition() {
         val companion: AudioPlayer?
         val pendingPrepare: Job?
+        val activeTransition: Job?
+        val eventCollector: Job?
         val wasActive: Boolean
         synchronized(transitionLock) {
             wasActive = transitionActive
@@ -852,15 +871,27 @@ class PlaybackController(
             companion = companionPlayer
             pendingPrepare = prepareJob
             prepareJob = null
+            activeTransition = transitionJob
+            transitionJob = null
+            eventCollector = transitionEventJob
+            transitionEventJob = null
         }
-        transitionJob?.cancel()
-        transitionEventJob?.cancel()
-        transitionEventJob = null
+        activeTransition?.cancel()
+        eventCollector?.cancel()
         pendingPrepare?.cancel()
         runCatching { companion?.stop() }
         if (wasActive) {
             player?.setVolume(internalState.value.volume)
         }
+    }
+
+    private fun clearTransitionOwnership(ownerJob: Job) {
+        val eventCollector = synchronized(transitionLock) {
+            if (transitionJob !== ownerJob) return
+            transitionJob = null
+            transitionEventJob.also { transitionEventJob = null }
+        }
+        eventCollector?.cancel()
     }
 
     private fun maybePrefetchNext() {
