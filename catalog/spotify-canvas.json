@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-21T02:00:10Z",
+  "generatedAt": "2026-08-21T07:09:50Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -2390,6 +2390,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Vila med mig",
       "artist": "Humlan Djojj, Josefine Götestam",
       "album": "Sov med Humlan Djojj",
@@ -4112,6 +4119,13 @@
       "scope": "track"
     },
     {
+      "song": "Thiên Đường Với Người Thương",
+      "artist": "Phương Mỹ Chi, DTAP",
+      "album": "Thiên Đường Với Người Thương",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/af2bea3fad424323a6f8472590378a79.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Bạn Đời",
       "artist": "Karik, GDucky",
       "album": "421",
@@ -4497,10 +4511,108 @@
       "scope": "track"
     },
     {
-      "song": "I Can’t Wait",
-      "artist": "Phoebe Bridgers",
-      "album": "Lost Weekend",
-      "url": "https://canvaz.scdn.co/upload/licensor/3zQMAX3jvXrQSwvcazsqzQ/video/9083beebe770487fa712dd70371dcb68.cnvs.mp4",
+      "song": "Summer You Were Mine",
+      "artist": "STELLA LEFTY",
+      "album": "Long Way Home",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/0401c02be91d45fbbab6f2ba0391b761.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Constant Companion",
+      "artist": "Sam Smith",
+      "album": "Hazel Eyes",
+      "url": "https://canvaz.scdn.co/upload/artist/2wY79sveU1sp5g7SokKOiI/video/dd194bad889a4053b021d01364953df5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Indecision (feat. Daniel Caesar)",
+      "artist": "Rex Orange County, Daniel Caesar",
+      "album": "Indecision (feat. Daniel Caesar)",
+      "url": "https://canvaz.scdn.co/upload/artist/7pbDxGE6nQSZVfiFdq9lOL/video/b2273ae19b69432e8a62077131a345c6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "CARITA FELIZ",
+      "artist": "Myke Towers",
+      "album": "CARITA FELIZ",
+      "url": "https://canvaz.scdn.co/upload/artist/7iK8PXO48WeuP03g8YR51W/video/b38c12d292d44f3cb5161277c049f2fb.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Say Yes",
+      "artist": "Weezer",
+      "album": "Weezer",
+      "url": "https://canvaz.scdn.co/upload/artist/3jOstUTkEu2JkjvRdBA5Gu/video/3810c3e0dcab41df8450f93cbd7e41de.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Alyse",
+      "artist": "Shygirl",
+      "album": "Alyse",
+      "url": "https://canvaz.scdn.co/upload/licensor/0PpU8PcCrKiciHAMoUxASX/video/499f9190b8e546ea91dfaae281130009.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ugly things",
+      "artist": "Lizzy McAlpine",
+      "album": "Ugly things",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/121b531d5f1a4e2a8d8d9b531b803e02.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Some of Your Love",
+      "artist": "PARTYNEXTDOOR",
+      "album": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+      "url": "https://canvaz.scdn.co/upload/artist/2HPaUgqeutzr3jx5a9WyDV/video/21ce1a23ead24a3c9db48c86d0ab9552.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "GONE FISHING",
+      "artist": "Denzel Curry, Kenny Beats",
+      "album": "ii",
+      "url": "https://canvaz.scdn.co/upload/artist/6fxyWrfmjcbj5d12gXeiNV/video/1fafabb752c747e09b3a977c02158d7c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Bottle",
+      "artist": "Remi Wolf",
+      "album": "Bottle",
+      "url": "https://canvaz.scdn.co/upload/artist/0NB5HROxc8dDBXpkIi1v3d/video/d064e97897b14ef9a56df6b4a1370546.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "misunderstood",
+      "artist": "Lexi Jayde",
+      "album": "LOVER GIRL",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/e443272aac71475db3630f6409e2bad1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "MADRID",
+      "artist": "Farruko",
+      "album": "MADRID",
+      "url": "https://canvaz.scdn.co/upload/artist/329e4yvIujISKGKz1BZZbO/video/1b7e6b866b494d49b61854e973413631.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sunshine",
+      "artist": "Jungle",
+      "album": "Sunshine",
+      "url": "https://canvaz.scdn.co/upload/artist/59oA5WbbQvomJz2BuRG071/video/6ba690090926467fb1c56bdbf7ffebfe.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Lucky Ones",
+      "artist": "Topic, carteblanche",
+      "album": "Lucky Ones",
+      "url": "https://canvaz.scdn.co/upload/artist/0u6GtibW46tFX7koQ6uNJZ/video/2b9d9af0234345f0ae34f58f870157fd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ay Bendito (with Mora & Ovy On The Drums)",
+      "artist": "benny blanco, Mora, Ovy On The Drums",
+      "album": "Hermoso",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/dc576fb3d8c34bf6bc50f059049699bc.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4518,101 +4630,10 @@
       "scope": "track"
     },
     {
-      "song": "Mess",
-      "artist": "Jordan Davis",
-      "album": "Mess",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/602e8c85b3fb4eacafc344643a37644f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Ay Bendito (with Mora & Ovy On The Drums)",
-      "artist": "benny blanco, Mora, Ovy On The Drums",
-      "album": "Hermoso",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/dc576fb3d8c34bf6bc50f059049699bc.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "500 Horses",
-      "artist": "Nipsey Hussle, Bino Rideaux",
-      "album": "PROLIFIC",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/62ecfb02c1254464b7bf13b3429aeba8.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Sunshine",
-      "artist": "Jungle",
-      "album": "Sunshine",
-      "url": "https://canvaz.scdn.co/upload/artist/59oA5WbbQvomJz2BuRG071/video/6ba690090926467fb1c56bdbf7ffebfe.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Witch Doctor",
-      "artist": "Erykah Badu, The Alchemist",
-      "album": "Witch Doctor",
-      "url": "https://canvaz.scdn.co/upload/artist/7IfculRW2WXyzNQ8djX8WX/video/d940f81f686340878885a9894f97539f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "MYSTERY OF RAW",
-      "artist": "Michael Bibi, KETTAMA, Wu-Tang Clan",
-      "album": "MYSTERY OF RAW",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a1a6a27a66e24ad687e3cbfe3c2c3a9a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Hurt",
       "artist": "Icona Pop",
       "album": "Ritual",
       "url": "https://canvaz.scdn.co/upload/artist/1VBflYyxBhnDc9uVib98rw/video/84e45d213fb44b498c3ca0915f54ffed.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "I Lied, You Lied",
-      "artist": "Jorja Smith",
-      "album": "I Lied, You Lied",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/27d6b3548bab4db0b83be9453b6ca632.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "dance around it",
-      "artist": "Ashley Cooke",
-      "album": "ashley cooke",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/91da6a85c7144f9286f9b62bc9231b99.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Ten Over Ten",
-      "artist": "Royal Blood",
-      "album": "Ten Over Ten",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/bd3523e86b30492c92dd1b7786c704a0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Take Me Out To The Disco",
-      "artist": "Gus Dapperton",
-      "album": "Take Me Out To The Disco",
-      "url": "https://canvaz.scdn.co/upload/artist/6sHCvZe1PHrOAuYlwTLNH4/video/fb21fb0d065642f3a443eef4e078afde.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "DIFFERENCE [Feat. Yebba]",
-      "artist": "Denzel Curry, Kenny Beats, Yebba",
-      "album": "DIFFERENCE [Feat. Yebba]",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/70176be7680941bfa4c155137fb71933.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "MADRID",
-      "artist": "Farruko",
-      "album": "MADRID",
-      "url": "https://canvaz.scdn.co/upload/artist/329e4yvIujISKGKz1BZZbO/video/1b7e6b866b494d49b61854e973413631.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Constant Companion",
-      "artist": "Sam Smith",
-      "album": "Hazel Eyes",
-      "url": "https://canvaz.scdn.co/upload/artist/2wY79sveU1sp5g7SokKOiI/video/dd194bad889a4053b021d01364953df5.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4627,13 +4648,6 @@
       "artist": "Kasabian",
       "album": "NOTHING BETTER THAN THIS",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3b0e41294cb7409f926dc8cf24e17db3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Summer You Were Mine",
-      "artist": "STELLA LEFTY",
-      "album": "Long Way Home",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/0401c02be91d45fbbab6f2ba0391b761.cnvs.mp4",
       "scope": "track"
     },
     {
