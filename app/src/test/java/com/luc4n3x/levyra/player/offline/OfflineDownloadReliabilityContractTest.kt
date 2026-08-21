@@ -114,7 +114,7 @@ class OfflineDownloadReliabilityContractTest {
 
         assertTrue(player.contains("mediaItem.localConfiguration?.uri?.toString()"))
         assertTrue(player.contains("queueTrack.copy(streamUrl = playingUri)"))
-        assertTrue(resolver.contains("failedPlaybackUrls[it] = now + recovery.quarantineMs"))
+        assertTrue(resolver.contains("quarantinePlaybackUrl(it, now + recovery.quarantineMs, now)"))
         assertTrue(resolver.contains("!isPlaybackUrlBlocked(it.content)"))
     }
 
