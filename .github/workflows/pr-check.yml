@@ -28,7 +28,6 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import textwrap
 
           helper = Path('third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java')
           text = helper.read_text(encoding='utf-8')
@@ -36,17 +35,18 @@ jobs:
           end_marker = '\n\n    @Nullable\n    static SongMetadata parseSongMetadataText'
           start = text.index(start_marker)
           end = text.index(end_marker, start)
-          replacement = textwrap.indent(textwrap.dedent(r'''\
-          @Nullable
-          public static SongMetadata getSongMetadata(@Nonnull final Description description) {
-              if (description.getType() == Description.PLAIN_TEXT) {
-                  return parseSongMetadataText(description.getContent());
-              }
-              final String htmlWithParagraphBoundaries = description.getContent()
-                      .replaceAll("(?i)<br\\s*/?>", "$0\n")
-                      .replaceAll("(?i)</(?:p|div|li|h[1-6])>", "$0\n");
-              return parseSongMetadataText(Jsoup.parse(htmlWithParagraphBoundaries).wholeText());
-          }'''), '    ')
+          replacement = '\n'.join([
+              '    @Nullable',
+              '    public static SongMetadata getSongMetadata(@Nonnull final Description description) {',
+              '        if (description.getType() == Description.PLAIN_TEXT) {',
+              '            return parseSongMetadataText(description.getContent());',
+              '        }',
+              '        final String htmlWithParagraphBoundaries = description.getContent()',
+              '                .replaceAll("(?i)<br\\\\s*/?>", "$0\\n")',
+              '                .replaceAll("(?i)</(?:p|div|li|h[1-6])>", "$0\\n");',
+              '        return parseSongMetadataText(Jsoup.parse(htmlWithParagraphBoundaries).wholeText());',
+              '    }',
+          ])
           helper.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
 
           music_test = Path('third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java')
@@ -65,6 +65,9 @@ jobs:
           end_marker = '\n        }\n\n        @Override'
           start = text.index(start_marker, class_start)
           end = text.index(end_marker, start)
+          replacement = '\n'.join([
+              '            final String responseBody = ")]\'}\\n[[null,null,[[[";',
+          ])
           replacement = '''            final String responseBody = ")]}'\\n[[null,null,[[["
                       + String.join(",", Collections.nCopies(16, "null"))
                       + ",\\\"" + CLIENT_VERSION + "\\\"]]]]]";
