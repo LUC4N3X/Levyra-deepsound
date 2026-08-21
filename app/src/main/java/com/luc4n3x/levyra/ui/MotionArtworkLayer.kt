@@ -61,7 +61,8 @@ import kotlinx.coroutines.launch
 
 internal enum class MotionArtworkPresentation {
     Card,
-    Immersive
+    Immersive,
+    Stage
 }
 
 @Composable
@@ -79,7 +80,8 @@ internal fun MotionArtworkLayer(
     val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
     val surface = when (presentation) {
         MotionArtworkPresentation.Card -> MotionCanvasSurface.Card
-        MotionArtworkPresentation.Immersive -> MotionCanvasSurface.Immersive
+        MotionArtworkPresentation.Immersive,
+        MotionArtworkPresentation.Stage -> MotionCanvasSurface.Immersive
     }
     val profile = remember(quality, presentation, environment.conditions) {
         MotionCanvasQualityPolicy.profile(
@@ -140,8 +142,9 @@ internal fun MotionArtworkLayer(
         environment.localAllowed &&
         isPlaying &&
         !videoReady
+    val keepStaticBed = presentation == MotionArtworkPresentation.Stage
     val staticBedAlpha by animateFloatAsState(
-        targetValue = if (videoReady) 0f else 1f,
+        targetValue = if (videoReady && !keepStaticBed) 0f else 1f,
         animationSpec = tween(
             durationMillis = STATIC_ARTWORK_BED_FADE_MS,
             delayMillis = if (videoReady) VIDEO_FADE_IN_MS else 0,
@@ -286,7 +289,8 @@ private fun MotionArtworkStaticFallback(
         label = "static-artwork-motion-amount"
     )
 
-    val immersive = presentation == MotionArtworkPresentation.Immersive
+    val stage = presentation == MotionArtworkPresentation.Stage
+    val immersive = presentation == MotionArtworkPresentation.Immersive || stage
     val zoomDurationMs = if (immersive) 14_000 else STATIC_ARTWORK_ZOOM_DURATION_MS
     val horizontalDurationMs = if (immersive) 18_000 else STATIC_ARTWORK_HORIZONTAL_DURATION_MS
     val verticalDurationMs = if (immersive) 21_000 else STATIC_ARTWORK_VERTICAL_DURATION_MS
@@ -372,7 +376,7 @@ private fun MotionArtworkStaticFallback(
                     scaleY = scale
                     translationX = artworkSize.width * horizontalTravel * horizontalDrift.value * amount
                     translationY = artworkSize.height * verticalTravel * verticalDrift.value * amount
-                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.22f else 0f
+                    rotationZ = if (immersive && !stage) horizontalDrift.value * amount * 0.22f else 0f
                 }
         ) {
             content()
@@ -407,6 +411,7 @@ private fun MotionArtworkVideo(
     val maxZoom = when (presentation) {
         MotionArtworkPresentation.Card -> MotionArtworkCardMaxZoom
         MotionArtworkPresentation.Immersive -> MotionArtworkImmersiveMaxZoom
+        MotionArtworkPresentation.Stage -> MotionArtworkStageMaxZoom
     }
     val player = remember(artwork.identityKey, artwork.url, artwork.mimeType, presentation, profile) {
         ExoPlayer.Builder(context).build().apply {

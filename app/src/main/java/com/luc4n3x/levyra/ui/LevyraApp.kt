@@ -91,6 +91,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -115,6 +116,7 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -275,6 +277,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
@@ -11102,92 +11105,6 @@ private fun PlayerArtworkCanvas(
 }
 
 @Composable
-private fun PlayerImmersiveMotionCanvas(
-    track: Track,
-    artworkUrl: String,
-    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
-    ambience: PlayerAmbience,
-    animationsEnabled: Boolean,
-    isPlaying: Boolean,
-    canvasQuality: LevyraCanvasQuality,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    Box(modifier = modifier) {
-        MotionArtworkLayer(
-            artwork = motionArtwork,
-            enabled = animationsEnabled,
-            isPlaying = isPlaying,
-            cornerRadius = 0.dp,
-            presentation = MotionArtworkPresentation.Immersive,
-            quality = canvasQuality,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if (artworkUrl.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(artworkUrl)
-                        .crossfade(true)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-            }
-        }
-        PlayerCanvasFusionScrim(
-            ambience = ambience,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
-}
-
-@Composable
-private fun PlayerCanvasFusionScrim(
-    ambience: PlayerAmbience,
-    modifier: Modifier = Modifier
-) {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val base = animateColorAsState(
-        targetValue = ambience.base,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-canvas-fusion-base"
-    )
-    val control = animateColorAsState(
-        targetValue = ambience.control,
-        animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-canvas-fusion-control"
-    )
-    Box(
-        modifier = modifier.drawBehind {
-            if (size.minDimension <= 0f) return@drawBehind
-            val baseColor = base.value
-            val controlColor = control.value
-            drawRect(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.75f),
-                        0.06f to baseColor.copy(alpha = 0.45f),
-                        0.14f to baseColor.copy(alpha = 0.15f),
-                        0.22f to Color.Transparent,
-                        0.48f to Color.Transparent,
-                        0.58f to controlColor.copy(alpha = 0.25f),
-                        0.68f to controlColor.copy(alpha = 0.68f),
-                        0.78f to controlColor.copy(alpha = 0.92f),
-                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
-                        1.00f to baseColor
-                    )
-                )
-            )
-        }
-    )
-}
-
-@Composable
 private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
@@ -11198,7 +11115,7 @@ private fun PlayerModeSwitch(
     val strings = LocalLevyraStrings.current
     val selectedContent = remember(activeColorTarget) {
         Color.White.playerContentColor(
-            listOf(activeColorTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
+            listOf(activeColorTarget.copy(alpha = 0.92f).playerCompositeOver(PlayerDarkSurface))
         )
     }
     Row(
@@ -11206,9 +11123,9 @@ private fun PlayerModeSwitch(
             .selectableGroup()
             .playerGlass(
                 shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.35f),
-                borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.08f)
+                fill = LevyraPlayerDesign.HeaderScrim,
+                borderTop = LevyraPlayerDesign.HeaderEdgeTop,
+                borderBottom = LevyraPlayerDesign.HeaderEdgeBottom
             )
             .padding(3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -11246,14 +11163,23 @@ private fun PlayerModeSwitchTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
+        targetValue = if (selected) Color.White.copy(alpha = 0.10f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary,
+        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextTertiary,
         animationSpec = tabSpec,
         label = "player-mode-tab-content"
+    )
+    val markerAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = if (LocalAnimationsEnabled.current) {
+            LevyraPlayerDesign.standardTween(220)
+        } else {
+            snap()
+        },
+        label = "player-mode-tab-marker"
     )
     Box(
         modifier = Modifier
@@ -11264,25 +11190,39 @@ private fun PlayerModeSwitchTab(
             .then(
                 if (selected) {
                     Modifier
-                        .shadow(3.dp, CircleShape, clip = false)
                         .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), CircleShape)
                 } else {
                     Modifier.background(background, CircleShape)
                 }
             )
             .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .heightIn(min = 32.dp)
+            .padding(horizontal = 14.dp, vertical = 7.dp)
     ) {
-        Text(
-            text = label,
-            color = contentColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .graphicsLayer {
+                        alpha = markerAlpha
+                        val scale = 0.4f + 0.6f * markerAlpha
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .background(activeColor, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text(
+                text = label,
+                color = contentColor,
+                fontSize = 12.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                letterSpacing = 0.4.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -12234,6 +12174,12 @@ private fun PlayerScreen(
         label = "artwork-offset"
     )
 
+    val stageSettle by animateFloatAsState(
+        targetValue = if (state.isPlaying) 1f else 1.014f,
+        animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-stage-settle"
+    )
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -12261,57 +12207,19 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
-        // Mount the immersive layer immediately in song mode. MotionArtworkLayer owns the
-        // animated static bed and crossfades to a real Canvas only after its first frame, so the
-        // player never has to flash a dead static state while remote artwork is resolving.
-        val immersiveArtworkEnabled = state.motionArtworkEnabled &&
-            state.animationsEnabled &&
-            playerPane == LevyraPlayerPane.Stacked &&
+        val stageLayout = playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
-            track != null
-        val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
+            track != null &&
+            maxHeight >= 560.dp
+        val stageMotionArtwork = state.motionArtwork.takeIf { stageLayout && state.motionArtworkEnabled }
 
         PlayerImmersiveBackdrop(
-            // The immersive layer already draws the artwork bed. Avoid decoding/drawing a second
-            // fullscreen copy behind it; keep only the palette backdrop as the safety bed.
-            artworkUrl = if (immersiveArtworkEnabled) "" else artworkUrl,
+            artworkUrl = artworkUrl,
             ambience = ambience,
             isPlaying = state.isPlaying,
             animationsEnabled = state.animationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
-        AnimatedVisibility(
-            visible = immersiveArtworkEnabled,
-            // The generated artwork bed is the immediate first frame. A real Canvas performs its
-            // own first-frame crossfade inside MotionArtworkLayer, so an outer enter fade only
-            // reintroduces the static-to-motion flash we are trying to remove.
-            enter = EnterTransition.None,
-            exit = if (state.animationsEnabled) fadeOut(tween(260, easing = LinearOutSlowInEasing)) else ExitTransition.None,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val canvasTrack = track ?: state.currentTrack
-            if (canvasTrack != null) {
-                PlayerImmersiveMotionCanvas(
-                    track = canvasTrack,
-                    artworkUrl = artworkUrl,
-                    motionArtwork = immersiveMotionArtwork,
-                    ambience = ambience,
-                    animationsEnabled = state.animationsEnabled,
-                    isPlaying = state.isPlaying,
-                    canvasQuality = state.interfaceSettings.canvasQuality,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = if (morphActive) {
-                                0f
-                            } else {
-                                playerSwipeContentAlpha(settledSwipeOffset, size.width)
-                            }
-                            translationX = settledSwipeOffset * 0.32f
-                        }
-                )
-            }
-        }
 
         val headerBlock: @Composable () -> Unit = {
             val headerButtonSize = if (compactPlayer) {
@@ -12331,6 +12239,9 @@ private fun PlayerScreen(
                     contentDescription = strings.collapsePlayer,
                     size = headerButtonSize,
                     iconSize = if (compactPlayer) 22.dp else 24.dp,
+                    fill = LevyraPlayerDesign.HeaderScrim,
+                    borderTop = LevyraPlayerDesign.HeaderEdgeTop,
+                    borderBottom = LevyraPlayerDesign.HeaderEdgeBottom,
                     onClick = collapseActions.collapse
                 )
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -12347,9 +12258,9 @@ private fun PlayerScreen(
                             modifier = Modifier
                                 .playerGlass(
                                     shape = CircleShape,
-                                    fill = Color.Black.copy(alpha = 0.35f),
-                                    borderTop = Color.White.copy(alpha = 0.14f),
-                                    borderBottom = Color.White.copy(alpha = 0.08f)
+                                    fill = LevyraPlayerDesign.HeaderScrim,
+                                    borderTop = LevyraPlayerDesign.HeaderEdgeTop,
+                                    borderBottom = LevyraPlayerDesign.HeaderEdgeBottom
                                 )
                                 .padding(horizontal = 14.dp, vertical = 7.dp)
                         ) {
@@ -12381,71 +12292,15 @@ private fun PlayerScreen(
                     contentDescription = strings.options,
                     size = headerButtonSize,
                     iconSize = if (compactPlayer) 20.dp else 21.dp,
+                    fill = LevyraPlayerDesign.HeaderScrim,
+                    borderTop = LevyraPlayerDesign.HeaderEdgeTop,
+                    borderBottom = LevyraPlayerDesign.HeaderEdgeBottom,
                     onClick = { viewModel.openAudioQualityPanel() }
                 )
             }
         }
 
-        val mediaBlock: @Composable (Track) -> Unit = { activeTrack ->
-            Box(
-                modifier = if (playerPane == LevyraPlayerPane.SideBySide) {
-                    Modifier
-                        .size(width = artworkSize, height = artworkSize)
-                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
-                } else {
-                    Modifier
-                        .fillMaxHeight()
-                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
-                        .widthIn(max = maxWidth - playerHorizontalPadding * 2f)
-                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
-                }
-            ) {
-                if (state.isVideoMode && activeTrack.videoUrl.isNotBlank()) {
-                    LevyraVideoSurface(
-                        state = state,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 8.dp, vertical = 8.dp)
-                            .graphicsLayer {
-                                scaleX = artScale
-                                scaleY = artScale
-                                translationY = artOffset.toPx()
-                                shadowElevation = artShadow
-                                shape = RoundedCornerShape(artCorner)
-                                clip = true
-                            }
-                            .border(
-                                width = 1.dp,
-                                color = Color.White.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(artCorner)
-                            )
-                    )
-                } else {
-                    PlayerArtworkCanvas(
-                        track = activeTrack,
-                        artworkUrl = artworkUrl,
-                        motionArtwork = state.motionArtwork.takeUnless { immersiveArtworkEnabled },
-                        animationsEnabled = state.animationsEnabled && !state.isVideoMode,
-                        isPlaying = state.isPlaying,
-                        cornerRadius = artCorner,
-                        canvasQuality = state.interfaceSettings.canvasQuality,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
-                            .graphicsLayer {
-                                scaleX = artScale
-                                scaleY = artScale
-                                translationX = settledSwipeOffset
-                                translationY = artOffset.toPx()
-                                alpha = if (morphActive || immersiveArtworkEnabled) {
-                                    0f
-                                } else {
-                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
-                                }
-                            }
-                    )
-                }
-
+        val mediaOverlayBlock: @Composable BoxScope.(Track) -> Unit = { activeTrack ->
                 if (state.interfaceSettings.playerGesturesEnabled) {
                     PlayerGestureLayer(
                         config = PlayerGestureConfig(
@@ -12535,6 +12390,69 @@ private fun PlayerScreen(
                         }
                     }
                 }
+        }
+
+        val mediaBlock: @Composable (Track) -> Unit = { activeTrack ->
+            Box(
+                modifier = if (playerPane == LevyraPlayerPane.SideBySide) {
+                    Modifier
+                        .size(width = artworkSize, height = artworkSize)
+                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
+                } else {
+                    Modifier
+                        .fillMaxHeight()
+                        .aspectRatio(1f, matchHeightConstraintsFirst = true)
+                        .widthIn(max = maxWidth - playerHorizontalPadding * 2f)
+                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
+                }
+            ) {
+                if (state.isVideoMode && activeTrack.videoUrl.isNotBlank()) {
+                    LevyraVideoSurface(
+                        state = state,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp, vertical = 8.dp)
+                            .graphicsLayer {
+                                scaleX = artScale
+                                scaleY = artScale
+                                translationY = artOffset.toPx()
+                                shadowElevation = artShadow
+                                shape = RoundedCornerShape(artCorner)
+                                clip = true
+                            }
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = 0.18f),
+                                shape = RoundedCornerShape(artCorner)
+                            )
+                    )
+                } else {
+                    PlayerArtworkCanvas(
+                        track = activeTrack,
+                        artworkUrl = artworkUrl,
+                        motionArtwork = state.motionArtwork.takeUnless { stageLayout },
+                        animationsEnabled = state.animationsEnabled && !state.isVideoMode,
+                        isPlaying = state.isPlaying,
+                        cornerRadius = artCorner,
+                        canvasQuality = state.interfaceSettings.canvasQuality,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
+                            .graphicsLayer {
+                                scaleX = artScale
+                                scaleY = artScale
+                                translationX = settledSwipeOffset
+                                translationY = artOffset.toPx()
+                                alpha = if (morphActive) {
+                                    0f
+                                } else {
+                                    playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                                }
+                            }
+                    )
+                }
+
+                mediaOverlayBlock(activeTrack)
             }
         }
 
@@ -12745,6 +12663,114 @@ private fun PlayerScreen(
                         PlayerError(state.playerError)
                     }
                 }
+            }
+        } else if (stageLayout && track != null) {
+            val stageDensity = LocalDensity.current
+            var consoleHeightPx by remember { mutableStateOf(0) }
+            val fontScale = stageDensity.fontScale.coerceIn(1f, 1.5f)
+            val fallbackConsoleHeight = (if (compactPlayer) 300.dp else 336.dp) * fontScale
+            val consoleHeight = if (consoleHeightPx > 0) {
+                with(stageDensity) { consoleHeightPx.toDp() }
+            } else {
+                fallbackConsoleHeight
+            }
+            val stageMetrics = playerStageMetrics(
+                availableHeightDp = maxHeight.value,
+                consoleHeightDp = consoleHeight.value
+            )
+            val stageHeight = stageMetrics.stageHeightDp.dp
+            val consoleTop = (maxHeight - consoleHeight).coerceAtLeast(0.dp)
+            val stageWidthPx = with(stageDensity) { maxWidth.toPx() }
+
+            PlayerConsoleSurface(
+                ambience = ambience,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height((maxHeight - stageHeight).coerceAtLeast(0.dp))
+                    .align(Alignment.BottomCenter)
+            )
+            PlayerStage(
+                motionArtwork = stageMotionArtwork,
+                ambience = ambience,
+                animationsEnabled = state.animationsEnabled,
+                isPlaying = state.isPlaying,
+                canvasQuality = state.interfaceSettings.canvasQuality,
+                veilSettleFraction = stageMetrics.veilSettleFraction,
+                contentAlpha = {
+                    if (morphActive) 0f else playerSwipeContentAlpha(settledSwipeOffset, stageWidthPx)
+                },
+                contentTranslationX = { settledSwipeOffset },
+                contentScale = { stageSettle },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(stageHeight)
+                    .align(Alignment.TopCenter)
+                    .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full),
+                overlay = {
+                    mediaOverlayBlock(track)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter)
+                            .zIndex(30f)
+                            .statusBarsPadding()
+                            .padding(
+                                horizontal = playerHorizontalPadding,
+                                vertical = if (compactPlayer) 4.dp else 8.dp
+                            )
+                    ) {
+                        headerBlock()
+                    }
+                }
+            ) {
+                if (artworkUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(playerContext)
+                            .data(artworkUrl)
+                            .crossfade(true)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                }
+            }
+            PlayerStageHorizon(
+                ambience = ambience,
+                animationsEnabled = state.animationsEnabled,
+                isPlaying = state.isPlaying,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(top = consoleTop)
+                    .height(PlayerStageSpillHeight)
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = detailMaxWidth)
+                    .wrapContentHeight()
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { consoleHeightPx = it.height }
+                    .navigationBarsPadding()
+                    .padding(
+                        start = playerHorizontalPadding,
+                        end = playerHorizontalPadding,
+                        top = if (compactPlayer) 6.dp else 10.dp,
+                        bottom = if (compactPlayer) 10.dp else 16.dp
+                    )
+            ) {
+                metaBlock(track)
+                Spacer(modifier = Modifier.height(playerMetaSpacing))
+                timelineBlock()
+                Spacer(modifier = Modifier.height(playerControlSpacing))
+                transportBlock()
+                quickActionsBlock(track)
+                PlayerError(state.playerError)
             }
         } else {
             val isPortraitScrollable = maxHeight < 540.dp
