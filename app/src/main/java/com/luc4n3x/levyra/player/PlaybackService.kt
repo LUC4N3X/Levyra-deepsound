@@ -11,6 +11,8 @@ import android.media.AudioDeviceInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.app.ActivityManager
+import android.os.Debug
 import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
@@ -101,6 +103,9 @@ class PlaybackService : MediaLibraryService() {
     private var playbackWatchdogJob: Job? = null
     private var queueTransitionJob: Job? = null
     private var queueTransitionMonitorJob: Job? = null
+    private var memoryGuardJob: Job? = null
+    private var memoryGuardHighSamples = 0
+    private var lastMemoryRecycleElapsedMs = 0L
     private var transitionPlayer: ExoPlayer? = null
     private var currentAudioSettings = LevyraAudioSettings()
     private var currentAudioNormalization = false
@@ -345,6 +350,7 @@ class PlaybackService : MediaLibraryService() {
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 updatePlayerWakeMode(player, mediaItem)
+                applyPlaybackTrackSelection(player, mediaItem)
                 if (serviceRecoveryJob?.isActive != true && stickyRestoreJob?.isActive != true) {
                     serviceRecoveryExhausted = false
                     serviceRecoveryAttempts = 0
@@ -634,6 +640,7 @@ class PlaybackService : MediaLibraryService() {
         setMediaNotificationProvider(notificationProvider)
         activeService = this
         startQueueTransitionMonitor(player)
+        startMemoryGuard(player)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -1282,6 +1289,72 @@ class PlaybackService : MediaLibraryService() {
             player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
     }
 
+    private fun applyPlaybackTrackSelection(player: ExoPlayer, mediaItem: MediaItem?) {
+        val videoMode = mediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
+        val disableVideo = PlaybackTrackSelectionPolicy.disableVideoTracks(videoMode)
+        runCatching {
+            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, disableVideo)
+                .build()
+        }.onFailure { Timber.w(it, "Track selection update failed") }
+    }
+
+    private fun startMemoryGuard(player: ExoPlayer) {
+        memoryGuardJob?.cancel()
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memoryInfo = ActivityManager.MemoryInfo().also(activityManager::getMemoryInfo)
+        val threshold = PlaybackMemoryGuardPolicy.thresholdBytes(
+            totalDeviceMemoryBytes = memoryInfo.totalMem,
+            lowRamDevice = activityManager.isLowRamDevice
+        )
+        memoryGuardJob = serviceScope.launch {
+            while (isActive) {
+                delay(PlaybackMemoryGuardPolicy.SAMPLE_INTERVAL_MS)
+                if (!player.isPlaying) {
+                    memoryGuardHighSamples = 0
+                    continue
+                }
+                memoryGuardHighSamples = PlaybackMemoryGuardPolicy.nextHighSampleCount(
+                    current = memoryGuardHighSamples,
+                    nativeAllocatedBytes = Debug.getNativeHeapAllocatedSize(),
+                    thresholdBytes = threshold
+                )
+                val now = SystemClock.elapsedRealtime()
+                if (
+                    PlaybackMemoryGuardPolicy.shouldRecycle(
+                        highSamples = memoryGuardHighSamples,
+                        nowElapsedMs = now,
+                        lastRecycleElapsedMs = lastMemoryRecycleElapsedMs
+                    )
+                ) {
+                    memoryGuardHighSamples = 0
+                    lastMemoryRecycleElapsedMs = now
+                    recyclePlaybackPipeline(player, threshold)
+                }
+            }
+        }
+    }
+
+    private fun recyclePlaybackPipeline(player: ExoPlayer, thresholdBytes: Long) {
+        val item = player.currentMediaItem ?: return
+        val position = player.currentPosition.coerceAtLeast(0L)
+        val resumePlayback = player.playWhenReady
+        Timber.w(
+            "Native playback memory %d bytes above %d, recycling playback pipeline",
+            Debug.getNativeHeapAllocatedSize(),
+            thresholdBytes
+        )
+        cancelQueueTransition()
+        clearPreparedQueueNextInternal()
+        runCatching { player.stop() }.onFailure { Timber.w(it, "Memory guard stop failed") }
+        runCatching { player.clearMediaItems() }.onFailure { Timber.w(it, "Memory guard clear failed") }
+        runCatching {
+            player.setMediaItem(item, position)
+            player.prepare()
+            player.playWhenReady = resumePlayback
+        }.onFailure { Timber.w(it, "Memory guard playback restore failed") }
+    }
+
     private fun cancelQueueTransition() {
         queueTransitionJob?.cancel()
         queueTransitionJob = null
@@ -1330,6 +1403,7 @@ class PlaybackService : MediaLibraryService() {
         stickyRestoreJob?.cancel()
         playbackWatchdogJob?.cancel()
         cancelQueueTransition()
+        memoryGuardJob?.cancel()
         queueTransitionMonitorJob?.cancel()
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
