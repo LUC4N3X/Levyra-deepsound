@@ -92,9 +92,9 @@ object LevyraPlayerDesign {
     val GlassFill: Color = Color.White.copy(alpha = 0.08f)
     val GlassFillStrong: Color = Color.White.copy(alpha = 0.14f)
     val GlassFillSunken: Color = Color.Black.copy(alpha = 0.32f)
-    val HeaderScrim: Color = Color.Black.copy(alpha = 0.46f)
-    val HeaderEdgeTop: Color = Color.White.copy(alpha = 0.26f)
-    val HeaderEdgeBottom: Color = Color.White.copy(alpha = 0.12f)
+    val HeaderScrim: Color = Color.Black.copy(alpha = 0.36f)
+    val HeaderEdgeTop: Color = Color.White.copy(alpha = 0.22f)
+    val HeaderEdgeBottom: Color = Color.White.copy(alpha = 0.08f)
     val GlassBorderTop: Color = Color.White.copy(alpha = 0.14f)
     val GlassBorderBottom: Color = Color.White.copy(alpha = 0.06f)
 
