@@ -1,0 +1,1 @@
+Levyra 2.3.22 corregge la crescita anomala della memoria nativa durante la riproduzione musicale, rafforza playback, recovery e metadata YouTube, migliora la gestione delle sorgenti offline, amplia Replay e condivisione testi e rifinisce atmosfera del player, transizioni Canvas, modalità nero puro e feedback aptico.
