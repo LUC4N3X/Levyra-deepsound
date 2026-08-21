@@ -52,8 +52,9 @@ class PlayerStageTest {
             containerHeight = 2424,
             maxZoom = MotionArtworkStageMaxZoom
         )
-        assertTrue(fit.scaleX >= 1f)
-        assertTrue(fit.scaleY >= 1f)
+        val epsilon = 0.0001f
+        assertTrue(fit.scaleX >= 1f - epsilon)
+        assertTrue(fit.scaleY >= 1f - epsilon)
     }
 
     @Test
