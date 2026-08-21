@@ -15,8 +15,8 @@ class PlayerStageTest {
 
     @Test
     fun `stage height only depends on the layout, never on canvas availability`() {
-        val first = playerStageMetrics(availableHeightDp = 920f, consoleHeightDp = 336f)
-        val second = playerStageMetrics(availableHeightDp = 920f, consoleHeightDp = 336f)
+        val first = playerStageMetrics(availableHeightDp = 920f, consoleHeightDp = 450f)
+        val second = playerStageMetrics(availableHeightDp = 920f, consoleHeightDp = 450f)
         assertEquals(first.stageHeightDp, second.stageHeightDp, 0.0001f)
         assertEquals(920f * PlayerStageHeightFraction, first.stageHeightDp, 0.0001f)
     }
@@ -43,13 +43,13 @@ class PlayerStageTest {
     }
 
     @Test
-    fun `a nine by sixteen canvas covers a fullscreen stage without side bars`() {
+    fun `a nine by sixteen canvas covers the staged player area without side bars`() {
         val fit = motionArtworkFit(
             videoWidth = 1080,
             videoHeight = 1920,
             pixelWidthHeightRatio = 1f,
             containerWidth = 1080,
-            containerHeight = 2424,
+            containerHeight = 1406,
             maxZoom = MotionArtworkStageMaxZoom
         )
         val epsilon = 0.0001f
