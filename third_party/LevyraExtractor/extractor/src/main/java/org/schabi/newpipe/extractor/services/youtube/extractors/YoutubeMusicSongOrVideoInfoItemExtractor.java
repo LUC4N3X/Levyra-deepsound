@@ -39,6 +39,29 @@ public class YoutubeMusicSongOrVideoInfoItemExtractor implements StreamInfoItemE
         if (!isNullOrEmpty(id)) {
             return "https://music.youtube.com/watch?v=" + id;
         }
+
+        final String overlayId = songOrVideoInfoItem.getObject("overlay")
+                .getObject("musicItemThumbnailOverlayRenderer")
+                .getObject("content")
+                .getObject("musicPlayButtonRenderer")
+                .getObject("playNavigationEndpoint")
+                .getObject("watchEndpoint")
+                .getString("videoId");
+        if (!isNullOrEmpty(overlayId)) {
+            return "https://music.youtube.com/watch?v=" + overlayId;
+        }
+
+        final String titleUrl = getUrlFromNavigationEndpoint(
+                songOrVideoInfoItem.getArray("flexColumns")
+                        .getObject(0)
+                        .getObject("musicResponsiveListItemFlexColumnRenderer")
+                        .getObject("text")
+                        .getArray("runs")
+                        .getObject(0)
+                        .getObject("navigationEndpoint"));
+        if (!isNullOrEmpty(titleUrl)) {
+            return titleUrl;
+        }
         throw new ParsingException("Could not get URL");
     }
 

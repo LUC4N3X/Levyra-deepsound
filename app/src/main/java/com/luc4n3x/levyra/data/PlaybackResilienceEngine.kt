@@ -21,6 +21,8 @@ internal enum class PlaybackFailureKind {
     ContentRestricted,
     ExpiredUrl,
     Signature,
+    UnsupportedFormat,
+    MalformedContainer,
     Decoder,
     Network,
     Timeout,
@@ -84,6 +86,13 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
             value.contains("gateway timeout") -> PlaybackFailureKind.ServerError
         value.contains("expired") || value.contains("scadut") || value.contains("stream non valido") -> PlaybackFailureKind.ExpiredUrl
         value.contains("signature") || value.contains("n-transform") || value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.Signature
+        value.contains("unsupported format") ||
+            value.contains("format unsupported") ||
+            value.contains("unsupported media") -> PlaybackFailureKind.UnsupportedFormat
+        value.contains("malformed container") ||
+            value.contains("malformed media") ||
+            value.contains("unrecognized input format") ||
+            value.contains("unrecognizedinputformatexception") -> PlaybackFailureKind.MalformedContainer
         value.contains("decoder") || value.contains("codec") || value.contains("format") -> PlaybackFailureKind.Decoder
         value.contains("truncated") ||
             value.contains("unexpected end of stream") ||
@@ -122,11 +131,23 @@ internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecover
     PlaybackFailureKind.Truncated -> PlaybackRecoveryPlan(true, false, false, false, 30_000L)
     PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, true, false, false, 2L * 60L * 1000L)
     PlaybackFailureKind.Signature -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.UnsupportedFormat -> PlaybackRecoveryPlan(true, false, true, false, 0L)
+    PlaybackFailureKind.MalformedContainer -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 0L,
+        invalidateCache = true
+    )
     PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)
     PlaybackFailureKind.Timeout,
     PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, true, false, false, 45_000L)
     PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, true, true, false, 20_000L)
 }
+
+internal fun isTerminalPlaybackFailure(kind: PlaybackFailureKind): Boolean =
+    kind == PlaybackFailureKind.UnsupportedFormat || kind == PlaybackFailureKind.MalformedContainer
 
 internal class PlaybackResilienceEngine(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

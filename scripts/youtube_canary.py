@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 WATCH_MAX_BYTES = 5 * 1024 * 1024
 PLAYER_JS_MAX_BYTES = 10 * 1024 * 1024
 PLAYER_JSON_MAX_BYTES = 8 * 1024 * 1024
@@ -351,6 +351,10 @@ def _summarize_player_response(player: dict[str, Any]) -> dict[str, Any]:
     cipher_count = 0
     n_count = 0
     googlevideo_count = 0
+    muxed_video_count = 0
+    adaptive_video_count = 0
+    adaptive_audio_count = 0
+    max_adaptive_video_height = 0
     direct_probe_url = ""
     for item in all_formats:
         host, is_direct, is_cipher, has_n = _format_url_metadata(item)
@@ -362,6 +366,22 @@ def _summarize_player_response(player: dict[str, Any]) -> dict[str, Any]:
             if is_direct and not direct_probe_url:
                 direct_probe_url = str(item.get("url") or "")
 
+    for item in formats:
+        if str(item.get("mimeType") or "").lower().startswith("video/"):
+            muxed_video_count += 1
+    for item in adaptive:
+        mime_type = str(item.get("mimeType") or "").lower()
+        if mime_type.startswith("video/"):
+            adaptive_video_count += 1
+            try:
+                max_adaptive_video_height = max(
+                    max_adaptive_video_height, int(item.get("height") or 0)
+                )
+            except (TypeError, ValueError):
+                pass
+        elif mime_type.startswith("audio/"):
+            adaptive_audio_count += 1
+
     return {
         "playability_status": str(playability.get("status") or ""),
         "playability_reason": str(playability.get("reason") or "")[:240],
@@ -370,6 +390,10 @@ def _summarize_player_response(player: dict[str, Any]) -> dict[str, Any]:
         "formats": len(formats),
         "adaptive_formats": len(adaptive),
         "total_formats": len(all_formats),
+        "muxed_video_formats": muxed_video_count,
+        "adaptive_video_formats": adaptive_video_count,
+        "adaptive_audio_formats": adaptive_audio_count,
+        "max_adaptive_video_height": max_adaptive_video_height,
         "direct_urls": direct_count,
         "cipher_urls": cipher_count,
         "n_parameter_urls": n_count,
@@ -507,9 +531,18 @@ def _probe_sentinel(
                 initial_playability = initial.get("playabilityStatus")
                 if isinstance(initial_playability, dict):
                     initial_status = str(initial_playability.get("status") or "")
+            expects_adaptive_video = bool(sentinel.get("expect_adaptive_video", False))
+            adaptive_video_ok = (
+                not expects_adaptive_video or int(summary.get("adaptive_video_formats") or 0) > 0
+            )
             attempt_result.update(
                 {
-                    "ok": summary["playability_status"] == "OK" and summary["has_streaming_data"],
+                    "ok": (
+                        summary["playability_status"] == "OK"
+                        and summary["has_streaming_data"]
+                        and adaptive_video_ok
+                    ),
+                    "adaptive_video_ok": adaptive_video_ok,
                     "player_js": {
                         "host": _safe_host(js_url),
                         "sha256": js_sha256,
@@ -654,6 +687,19 @@ def _classify(
     config: dict[str, Any],
 ) -> dict[str, Any]:
     accepted = baseline.get("observation")
+    baseline_schema = baseline.get("schema")
+    if baseline_schema is None and isinstance(accepted, dict):
+        baseline_schema = accepted.get("schema")
+    if isinstance(accepted, dict) and baseline_schema != SCHEMA_VERSION:
+        return {
+            "decision": "blocked",
+            "severity": "warning",
+            "material_changes": [],
+            "informational_changes": [
+                f"Accepted baseline schema {baseline_schema!r} is incompatible with current schema "
+                f"{SCHEMA_VERSION}; accept a fresh observation before comparison."
+            ],
+        }
     if not isinstance(accepted, dict):
         required = [
             item for item in observation.get("sentinels", [])
@@ -730,6 +776,17 @@ def _classify(
             material_sentinels.add(name)
         if not access_blocked and int(old_player.get("total_formats") or 0) > 0 and int(new_player.get("total_formats") or 0) == 0:
             material.append(f"{name}: all formats disappeared")
+            material_sentinels.add(name)
+        if (
+            not access_blocked
+            and int(old_player.get("adaptive_video_formats") or 0) > 0
+            and int(new_player.get("adaptive_video_formats") or 0) == 0
+            and int(new_player.get("muxed_video_formats") or 0) > 0
+        ):
+            material.append(
+                f"{name}: adaptive video ladder disappeared while muxed video remains "
+                "(360p-cap risk)"
+            )
             material_sentinels.add(name)
 
         old_media = old_obs.get("media_probe") if isinstance(old_obs.get("media_probe"), dict) else {}

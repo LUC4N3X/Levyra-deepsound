@@ -31,8 +31,7 @@ internal class LevyraYoutubeSessionPoTokenProvider(context: Context) : YoutubeSe
             runBlocking {
                 withTimeout(PROVIDER_TIMEOUT_MS) {
                     val session = security.currentSessionRequired()
-                    val tokens = security.poTokensRequired(session.visitorData, session)
-                    tokens.playerToken
+                    security.playerPoTokenRequired(session)
                         .takeIf(String::isNotBlank)
                         ?.let { YoutubeSessionPoToken(session.visitorData, it) }
                 }

@@ -145,10 +145,7 @@ public final class YoutubeSabrStreamState {
 
     public boolean ingestInitializationData(@Nonnull final YoutubeSabrFormat format,
                                             @Nonnull final byte[] data) {
-        final FormatProgress progress = findProgressForItag(format.getItag());
-        if (progress == null) {
-            return false;
-        }
+        final FormatProgress progress = progressForFormat(format);
         progress.initReceived = true;
         progress.observeInitializationData(data);
         return true;
@@ -218,7 +215,7 @@ public final class YoutubeSabrStreamState {
     }
 
     public long getBufferedEndMs(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).getBufferedEndMs();
+        return progressForFormat(format).getBufferedEndMs();
     }
 
     public void setPlayerTimeMs(final long playerTimeMs) {
@@ -285,11 +282,11 @@ public final class YoutubeSabrStreamState {
     }
 
     boolean isInitialized(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).initReceived;
+        return progressForFormat(format).initReceived;
     }
 
     void resetInitialization(@Nonnull final YoutubeSabrFormat format) {
-        progressForItag(format.getItag()).initReceived = false;
+        progressForFormat(format).initReceived = false;
     }
 
     @Nullable
@@ -379,26 +376,26 @@ public final class YoutubeSabrStreamState {
     }
 
     public int getMaxSegment(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).maxSegment;
+        return progressForFormat(format).maxSegment;
     }
 
     public long getEndSegment(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).endSegment;
+        return progressForFormat(format).endSegment;
     }
 
     /** True only after initialization bytes yielded an exact per-segment time index. */
     public boolean hasSegmentIndex(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).segmentIndex != null;
+        return progressForFormat(format).segmentIndex != null;
     }
 
     public boolean isComplete(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).isComplete();
+        return progressForFormat(format).isComplete();
     }
 
     public void assumeBufferedUntil(@Nonnull final YoutubeSabrFormat format,
                                     final int endSegment) {
         if (endSegment > 0) {
-            progressForItag(format.getItag()).assumeBufferedUntil(endSegment);
+            progressForFormat(format).assumeBufferedUntil(endSegment);
         }
     }
 
@@ -409,7 +406,7 @@ public final class YoutubeSabrStreamState {
      */
     public void rewindBufferedTo(@Nonnull final YoutubeSabrFormat format, final int fromSegment) {
         if (fromSegment > 0) {
-            progressForItag(format.getItag()).rewindBufferedTo(fromSegment);
+            progressForFormat(format).rewindBufferedTo(fromSegment);
         }
     }
 
@@ -421,7 +418,7 @@ public final class YoutubeSabrStreamState {
      */
     public void jumpBufferedTo(@Nonnull final YoutubeSabrFormat format, final int fromSegment) {
         if (fromSegment > 0) {
-            progressForItag(format.getItag()).jumpBufferedTo(fromSegment);
+            progressForFormat(format).jumpBufferedTo(fromSegment);
         }
     }
 
@@ -719,25 +716,34 @@ public final class YoutubeSabrStreamState {
     }
 
     public long getAverageSegmentDurationMs(@Nonnull final YoutubeSabrFormat format) {
-        return progressForItag(format.getItag()).averageDurationMs;
+        return progressForFormat(format).averageDurationMs;
     }
 
     public long getSegmentStartMs(@Nonnull final YoutubeSabrFormat format,
                                   final int sequenceNumber) {
-        return progressForItag(format.getItag()).getSegmentStartMs(sequenceNumber);
+        return progressForFormat(format).getSegmentStartMs(sequenceNumber);
     }
 
     public long getSegmentEndMs(@Nonnull final YoutubeSabrFormat format,
                                  final int sequenceNumber) {
-        return progressForItag(format.getItag()).getSegmentEndMs(sequenceNumber);
+        return progressForFormat(format).getSegmentEndMs(sequenceNumber);
     }
 
     public int getSegmentNumberAtOrAfterTimeMs(@Nonnull final YoutubeSabrFormat format,
                                                final long timeMs) {
-        return progressForItag(format.getItag()).getSegmentNumberAtOrAfterTimeMs(timeMs);
+        return progressForFormat(format).getSegmentNumberAtOrAfterTimeMs(timeMs);
     }
 
     @Nonnull
+    private FormatProgress progressForFormat(@Nonnull final YoutubeSabrFormat format) {
+        final FormatProgress progress = progressForItag(format.getItag());
+        if (!progress.formatIdentity.equals(format.formatIdentity())) {
+            throw new IllegalArgumentException(
+                    "SABR format identity changed for itag " + format.getItag());
+        }
+        return progress;
+    }
+
     private FormatProgress progressForItag(final int itag) {
         final FormatProgress progress = findProgressForItag(itag);
         if (progress == null) {
@@ -787,6 +793,8 @@ public final class YoutubeSabrStreamState {
         private final long lastModified;
         @Nullable
         private final String xtags;
+        @Nonnull
+        private final String formatIdentity;
         // pump thread writes it, ExoPlayer loader threads read it. volatile so they actually see it.
         private volatile boolean initReceived;
         private volatile int maxSegment;
@@ -813,6 +821,7 @@ public final class YoutubeSabrStreamState {
             itag = format.getItag();
             lastModified = format.getLastModified();
             xtags = format.getXtags();
+            formatIdentity = format.formatIdentity();
         }
 
         private boolean observeMetadata(@Nonnull final SabrFormatInitializationMetadata metadata) {

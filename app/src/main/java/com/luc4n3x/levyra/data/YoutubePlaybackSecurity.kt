@@ -147,14 +147,15 @@ internal class YoutubePlaybackSecurity private constructor(
         tokenGenerator.invalidate()
     }
 
-    suspend fun poTokensRequired(
-        videoId: String,
-        session: YoutubeGuestSession
-    ): YoutubePoTokens {
-        require(videoId.isNotBlank() && session.visitorData.isNotBlank()) {
-            "PO Token binding and visitor identity are required"
+    suspend fun playerPoTokenRequired(session: YoutubeGuestSession): String {
+        require(session.visitorData.isNotBlank()) {
+            "PO Token visitor identity is required"
         }
-        return tokenGenerator.generate(videoId, session.visitorData, session.generation, FULL_WAIT_BUDGET_MS)
+        return tokenGenerator.playerToken(
+            session.visitorData,
+            session.generation,
+            FULL_WAIT_BUDGET_MS
+        )
     }
 
     suspend fun poTokensForPlayback(
@@ -385,6 +386,17 @@ private class YoutubeWebPoTokenGenerator(
 
     @Volatile
     private var replacement: PoTokenSession? = null
+
+    suspend fun playerToken(
+        visitorData: String,
+        generation: Long,
+        waitBudgetMs: Long
+    ): String = withPoTokenWaitBudget(waitBudgetMs) {
+        val session = session(visitorData, generation, discard = null)
+        val ready = awaitBuild(session)
+        refreshAheadIfStale(session, visitorData, generation)
+        ready.playerToken
+    }
 
     suspend fun generate(
         videoId: String,

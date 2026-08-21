@@ -11,6 +11,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
+import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
@@ -93,7 +95,6 @@ class LevyraPlayer(context: Context) {
     private var ignoreEndedFromManualStop = false
     private var recoveryInFlight = false
     private var recoveryAttempts = 0
-    private var recoveryResetJob: Job? = null
     private var invalidVideoRecoveryJob: Job? = null
     private var videoFrameWatchdogJob: Job? = null
     private var playbackGeneration = 0L
@@ -166,11 +167,6 @@ class LevyraPlayer(context: Context) {
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) {
-                        recoveryResetJob?.cancel()
-                        recoveryResetJob = scope.launch {
-                            delay(5_000L)
-                            if (connected.playbackState == Player.STATE_READY) recoveryAttempts = 0
-                        }
                         scheduleVideoFrameWatchdog()
                     }
                     if (playbackState != Player.STATE_ENDED) return
@@ -206,7 +202,8 @@ class LevyraPlayer(context: Context) {
                         onError?.invoke(message)
                         return
                     }
-                    if (isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null) {
+                    val terminalFailure = isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
+                    if (!terminalFailure && isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null) {
                         recoveryInFlight = true
                         recoveryAttempts++
                         val playWhenReadyBeforeError = connected.playWhenReady
@@ -345,7 +342,6 @@ class LevyraPlayer(context: Context) {
         invalidateDelayedVideoRecovery()
         recoveryInFlight = false
         recoveryAttempts = 0
-        recoveryResetJob?.cancel()
         sponsorJob?.cancel()
         sponsorJob = null
         clearLoadedState()
@@ -364,7 +360,6 @@ class LevyraPlayer(context: Context) {
         ignoreEndedFromManualStop = true
         recoveryInFlight = false
         recoveryAttempts = 0
-        recoveryResetJob?.cancel()
         sponsorJob?.cancel()
         sponsorJob = null
         clearLoadedState()
@@ -433,7 +428,6 @@ class LevyraPlayer(context: Context) {
         observedServicePlayer = null
         sponsorJob?.cancel()
         sponsorJob = null
-        recoveryResetJob?.cancel()
         scope.cancel()
         controller?.release()
         controller = null

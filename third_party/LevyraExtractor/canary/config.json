@@ -14,12 +14,14 @@
     {
       "name": "youtube-dl-test",
       "video_id": "BaW_jenozKc",
-      "required": true
+      "required": true,
+      "expect_adaptive_video": true
     },
     {
       "name": "iframe-api-demo",
       "video_id": "M7lc1UVf-VE",
-      "required": true
+      "required": true,
+      "expect_adaptive_video": true
     },
     {
       "name": "legacy-public",

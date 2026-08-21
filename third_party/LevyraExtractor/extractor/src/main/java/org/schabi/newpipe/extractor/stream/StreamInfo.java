@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
@@ -391,6 +392,11 @@ public class StreamInfo extends Info {
             streamInfo.addError(e);
         }
         try {
+            streamInfo.setSongMetadata(extractor.getSongMetadata());
+        } catch (final Exception e) {
+            streamInfo.addError(e);
+        }
+        try {
             streamInfo.setSupportInfo(extractor.getSupportInfo());
         } catch (final Exception e) {
             streamInfo.addError(e);
@@ -504,6 +510,7 @@ public class StreamInfo extends Info {
     private String supportInfo = "";
     private Locale language = null;
     private List<String> tags = new ArrayList<>();
+    private SongMetadata songMetadata;
     private List<StreamSegment> streamSegments = new ArrayList<>();
     private List<MetaInfo> metaInfo = new ArrayList<>();
     private boolean supportComments;
@@ -864,6 +871,15 @@ public class StreamInfo extends Info {
 
     public void setTags(final List<String> tags) {
         this.tags = tags;
+    }
+
+    @Nullable
+    public SongMetadata getSongMetadata() {
+        return songMetadata;
+    }
+
+    public void setSongMetadata(@Nullable final SongMetadata songMetadata) {
+        this.songMetadata = songMetadata;
     }
 
     public void setSupportInfo(final String support) {
