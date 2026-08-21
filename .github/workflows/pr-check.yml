@@ -45,10 +45,7 @@ jobs:
                       .replaceAll("(?i)</(?:p|div|li|h[1-6])>", "$0\\n");
               return parseSongMetadataText(Jsoup.parse(htmlWithParagraphBoundaries).wholeText());
           }'''
-          replacement = '\n'.join(line[4:] if line.startswith('    ') else line
-                                  for line in replacement.splitlines())
-          text = text[:start] + replacement + text[end:]
-          helper.write_text(text, encoding='utf-8')
+          helper.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
 
           music_test = Path('third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java')
           text = music_test.read_text(encoding='utf-8')
@@ -60,17 +57,18 @@ jobs:
 
           single = Path('third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrClientVersionSingleFlightTest.java')
           text = single.read_text(encoding='utf-8')
-          old = '''            return new Response(200, "OK", Collections.emptyMap(),
-                      "\\\"INNERTUBE_CONTEXT_CLIENT_VERSION\\\":\\\"" + CLIENT_VERSION + "\\\"",
-                      null, "https://www.youtube.com/sw.js");'''
-          new = '''            final String responseBody = ")]}'\\n[[null,null,[[["
+          class_marker = '    private static final class BlockingDownloader extends Downloader {'
+          class_start = text.index(class_marker)
+          start_marker = '            return new Response(200, "OK", Collections.emptyMap(),'
+          end_marker = '\n        }\n\n        @Override'
+          start = text.index(start_marker, class_start)
+          end = text.index(end_marker, start)
+          replacement = '''            final String responseBody = ")]}'\\n[[null,null,[[["
                       + String.join(",", Collections.nCopies(16, "null"))
                       + ",\\\"" + CLIENT_VERSION + "\\\"]]]]]";
               return new Response(200, "OK", Collections.emptyMap(), responseBody,
                       null, "https://www.youtube.com/sw.js_data");'''
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected one stale client-version fixture, found {text.count(old)}')
-          single.write_text(text.replace(old, new), encoding='utf-8')
+          single.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
           PY
 
       - name: Setup Java
