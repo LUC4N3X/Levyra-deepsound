@@ -25,12 +25,12 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 internal const val PlayerStageHeightFraction = 0.72f
 internal const val PlayerStageMinOverlapDp = 56f
-internal val PlayerStageSpillHeight: Dp = 124.dp
+internal val PlayerStageSpillHeight: Dp = 108.dp
 
-private const val StageTopScrimEnd = 0.22f
-private const val StageVeilLead = 0.46f
-private const val StageVeilKnee = 0.60f
-private const val StageSideVignetteAlpha = 0.16f
+private const val StageTopScrimEnd = 0.20f
+private const val StageVeilLead = 0.42f
+private const val StageVeilKnee = 0.58f
+private const val StageSideVignetteAlpha = 0.10f
 
 @Immutable
 internal data class PlayerStageMetrics(
@@ -68,14 +68,10 @@ internal fun PlayerStage(
     overlay: @Composable BoxScope.() -> Unit = {},
     staticArtwork: @Composable () -> Unit
 ) {
-    val veil = ambience.base
-    val accent = ambience.primary.playerAmbienceMix(ambience.secondary, 0.34f)
-    val handoff = veil.playerAmbienceMix(accent, 0.18f)
     val settle = veilSettleFraction.coerceIn(0.35f, 0.98f)
-    val veilStart = (settle - StageVeilLead).coerceIn(0.10f, settle)
+    val veilStart = (settle - StageVeilLead).coerceIn(0.08f, settle)
     val veilKnee = (veilStart + (settle - veilStart) * StageVeilKnee).coerceIn(veilStart, settle)
-    val glowPeak = (settle + 0.015f).coerceIn(0f, 1f)
-    val glowTail = (settle + 0.10f).coerceIn(glowPeak, 1f)
+    val paletteVeil = ambience.base.playerAmbienceMix(ambience.control, 0.34f)
 
     Box(modifier = modifier) {
         Box(
@@ -95,32 +91,10 @@ internal fun PlayerStage(
                         brush = Brush.horizontalGradient(
                             colorStops = arrayOf(
                                 0.00f to Color.Black.copy(alpha = StageSideVignetteAlpha),
-                                0.18f to Color.Transparent,
-                                0.82f to Color.Transparent,
-                                1.00f to Color.Black.copy(alpha = StageSideVignetteAlpha * 0.80f)
+                                0.14f to Color.Transparent,
+                                0.86f to Color.Transparent,
+                                1.00f to Color.Black.copy(alpha = StageSideVignetteAlpha)
                             )
-                        )
-                    )
-
-                    drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                accent.copy(alpha = 0.12f),
-                                ambience.primary.copy(alpha = 0.05f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.24f, size.height * settle * 0.92f),
-                            radius = size.maxDimension * 0.62f
-                        )
-                    )
-                    drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                ambience.secondary.copy(alpha = 0.08f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.78f, size.height * settle * 0.82f),
-                            radius = size.maxDimension * 0.48f
                         )
                     )
 
@@ -129,29 +103,40 @@ internal fun PlayerStage(
                             colorStops = arrayOf(
                                 0.00f to Color.Transparent,
                                 veilStart to Color.Transparent,
-                                veilKnee to handoff.copy(alpha = 0.14f),
-                                (veilKnee + (settle - veilKnee) * 0.56f) to handoff.copy(alpha = 0.42f),
-                                settle to handoff.copy(alpha = 0.78f),
-                                1.00f to handoff.copy(alpha = 0.92f)
+                                veilKnee to paletteVeil.copy(alpha = 0.18f),
+                                (veilKnee + (settle - veilKnee) * 0.58f) to paletteVeil.copy(alpha = 0.50f),
+                                settle to paletteVeil.copy(alpha = 0.82f),
+                                1.00f to paletteVeil.copy(alpha = 0.92f)
                             )
                         )
                     )
+
                     drawRect(
-                        brush = Brush.verticalGradient(
-                            colorStops = arrayOf(
-                                0.00f to Color.Transparent,
-                                (settle - 0.05f).coerceIn(0f, 1f) to Color.Transparent,
-                                glowPeak to Color.White.copy(alpha = 0.035f),
-                                glowTail to Color.Transparent,
-                                1.00f to Color.Transparent
-                            )
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                ambience.primary.copy(alpha = 0.065f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.25f, size.height * settle),
+                            radius = size.maxDimension * 0.54f
                         )
                     )
                     drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                ambience.secondary.copy(alpha = 0.050f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.78f, size.height * settle),
+                            radius = size.maxDimension * 0.44f
+                        )
+                    )
+
+                    drawRect(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
-                                0.00f to Color.Black.copy(alpha = 0.46f),
-                                0.08f to Color.Black.copy(alpha = 0.18f),
+                                0.00f to Color.Black.copy(alpha = 0.40f),
+                                0.07f to Color.Black.copy(alpha = 0.14f),
                                 StageTopScrimEnd to Color.Transparent
                             )
                         )
@@ -181,84 +166,42 @@ internal fun PlayerConsoleSurface(
     val base = ambience.base
     val control = ambience.control
     val elevated = ambience.elevated
-    val mist = base.playerAmbienceMix(control, 0.54f)
-    val deep = elevated.playerAmbienceMix(control, 0.24f)
-    val bloom = ambience.primary.playerAmbienceMix(ambience.secondary, 0.40f)
+    val upper = base.playerAmbienceMix(control, 0.28f)
+    val lower = elevated.playerAmbienceMix(base, 0.52f)
+
     Box(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
+
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to base,
-                        0.18f to mist,
-                        0.54f to elevated.playerAmbienceMix(mist, 0.18f),
-                        0.84f to deep,
-                        1.00f to deep.playerAmbienceMix(base, 0.16f)
+                        0.00f to upper.copy(alpha = 0.76f),
+                        0.22f to upper.copy(alpha = 0.82f),
+                        0.62f to lower.copy(alpha = 0.90f),
+                        1.00f to lower.copy(alpha = 0.96f)
                     )
                 )
             )
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.00f to Color.White.copy(alpha = 0.06f),
-                        0.10f to Color.White.copy(alpha = 0.022f),
-                        0.26f to Color.Transparent,
-                        1.00f to Color.Transparent
-                    )
-                )
-            )
+
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ambience.primary.copy(alpha = 0.15f),
-                        ambience.primary.copy(alpha = 0.05f),
+                        ambience.primary.copy(alpha = 0.09f),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.18f, size.height * 0.06f),
-                    radius = size.maxDimension * 0.82f
+                    center = Offset(size.width * 0.20f, 0f),
+                    radius = size.width * 0.72f
                 )
             )
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ambience.secondary.copy(alpha = 0.11f),
+                        ambience.secondary.copy(alpha = 0.07f),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.82f, size.height * 0.18f),
-                    radius = size.maxDimension * 0.64f
-                )
-            )
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        bloom.copy(alpha = 0.10f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.50f, size.height * 0.76f),
-                    radius = size.maxDimension * 0.48f
-                )
-            )
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colorStops = arrayOf(
-                        0.00f to Color.Transparent,
-                        0.24f to ambience.primary.copy(alpha = 0.035f),
-                        0.52f to bloom.copy(alpha = 0.055f),
-                        0.80f to ambience.secondary.copy(alpha = 0.030f),
-                        1.00f to Color.Transparent
-                    )
-                ),
-                topLeft = Offset(0f, size.height * 0.26f),
-                size = Size(size.width, size.height * 0.44f)
-            )
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.00f to Color.Transparent,
-                        0.82f to Color.Transparent,
-                        1.00f to Color.Black.copy(alpha = 0.10f)
-                    )
+                    radius = size.width * 0.62f
                 )
             )
         }
@@ -272,59 +215,27 @@ internal fun PlayerStageHorizon(
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val accent = ambience.primary
-    val secondary = ambience.secondary
-    val blend = accent.playerAmbienceMix(secondary, 0.42f)
     val intensity by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.65f,
-        animationSpec = if (animationsEnabled) tween(720, easing = LevyraPlayerDesign.Standard) else snap(),
+        targetValue = if (isPlaying) 1f else 0.72f,
+        animationSpec = if (animationsEnabled) tween(620, easing = LevyraPlayerDesign.Standard) else snap(),
         label = "player-stage-horizon"
     )
+
     Box(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
+
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to Color.White.copy(alpha = 0.038f * intensity),
-                        0.18f to Color.Transparent,
-                        1.00f to Color.Transparent
-                    )
-                )
-            )
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        accent.copy(alpha = 0.13f * intensity),
-                        accent.copy(alpha = 0.04f * intensity),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.26f, 0f),
-                    radius = size.width * 0.70f
-                )
-            )
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        secondary.copy(alpha = 0.10f * intensity),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.74f, 0f),
-                    radius = size.width * 0.56f
-                )
-            )
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.28f to blend.copy(alpha = 0.05f * intensity),
-                        0.52f to Color.White.copy(alpha = 0.03f * intensity),
-                        0.76f to blend.copy(alpha = 0.04f * intensity),
+                        0.14f to ambience.base.copy(alpha = 0.12f * intensity),
+                        0.42f to ambience.base.copy(alpha = 0.06f * intensity),
                         1.00f to Color.Transparent
                     )
                 ),
                 topLeft = Offset.Zero,
-                size = Size(size.width, size.height * 0.58f)
+                size = Size(size.width, size.height)
             )
         }
     )
