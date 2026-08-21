@@ -57,8 +57,9 @@ class PlayerStageTest {
     }
 
     @Test
-    fun `the immersive crop budget is left untouched`() {
+    fun `the crop budgets stay pinned`() {
         assertEquals(1.32f, MotionArtworkImmersiveMaxZoom, 0.0001f)
         assertEquals(2.6f, MotionArtworkCardMaxZoom, 0.0001f)
+        assertEquals(1.56f, MotionArtworkStageMaxZoom, 0.0001f)
     }
 }

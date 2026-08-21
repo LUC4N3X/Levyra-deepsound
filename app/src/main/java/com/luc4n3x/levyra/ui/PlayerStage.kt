@@ -37,14 +37,6 @@ internal data class PlayerStageMetrics(
     val veilSettleFraction: Float
 )
 
-/**
- * Resolves how tall the stage is and where its veil has to be fully settled.
- *
- * The stage keeps one constant height whether a Canvas is rendering or only static artwork is
- * available, so the composition never resizes when motion artwork arrives or disappears. The veil
- * finishes exactly where the console content starts, which is what lets the image hand over to the
- * player surface without a visible seam on any screen size.
- */
 internal fun playerStageMetrics(
     availableHeightDp: Float,
     consoleHeightDp: Float
@@ -60,15 +52,6 @@ internal fun playerStageMetrics(
     return PlayerStageMetrics(stageHeightDp = stage, veilSettleFraction = settle)
 }
 
-/**
- * The cinematic stage: one large, edge-to-edge surface that hosts either a Canvas or the static
- * artwork.
- *
- * Motion artwork and static artwork share the same frame and the same veil, so the player reads as
- * one composition in both cases. The veil is derived from the live artwork palette and resolves to
- * the exact colour the console is painted with, so the image melts into the player surface instead
- * of sitting on top of it like a wallpaper.
- */
 @Composable
 internal fun PlayerStage(
     motionArtwork: MotionArtwork?,
@@ -139,12 +122,6 @@ internal fun PlayerStage(
     }
 }
 
-/**
- * The surface the stage hands the image over to.
- *
- * It starts on the exact veil colour so the two layers read as one continuous material, then loses
- * a little light toward the bottom so the transport still sits on the darkest part of the screen.
- */
 @Composable
 internal fun PlayerConsoleSurface(
     ambience: PlayerAmbience,
@@ -181,13 +158,6 @@ internal fun PlayerConsoleSurface(
     )
 }
 
-/**
- * The horizon: the one structural line of the composition.
- *
- * It marks where the image world ends and the information world begins, and it is the only place
- * the live accent colour is allowed to touch the console. Its brightness follows playback, so the
- * seam breathes with the track instead of being static decoration.
- */
 @Composable
 internal fun PlayerStageHorizon(
     ambience: PlayerAmbience,
