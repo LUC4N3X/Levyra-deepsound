@@ -51,6 +51,9 @@ class YoutubeCanaryTest(unittest.TestCase):
         }
         summary = canary._summarize_player_response(player)
         self.assertEqual(2, summary["total_formats"])
+        self.assertEqual(1, summary["muxed_video_formats"])
+        self.assertEqual(0, summary["adaptive_video_formats"])
+        self.assertEqual(1, summary["adaptive_audio_formats"])
         self.assertEqual(1, summary["direct_urls"])
         self.assertEqual(1, summary["cipher_urls"])
         self.assertEqual(2, summary["n_parameter_urls"])
@@ -91,6 +94,44 @@ class YoutubeCanaryTest(unittest.TestCase):
         )
         self.assertEqual("none", decision["decision"])
         self.assertTrue(any("player JS hash changed" in item for item in decision["informational_changes"]))
+
+    def test_adaptive_video_ladder_disappearing_is_material(self):
+        before = self._observation(js="a", ok=True, formats=8, adaptive_video=5, muxed_video=1)
+        after = self._observation(js="b", ok=True, formats=2, adaptive_video=0, muxed_video=1)
+        decision = canary._classify(
+            {"observation": before},
+            after,
+            {"thresholds": {"required_sentinel_regressions_for_repair": 1}},
+        )
+        self.assertEqual("repair", decision["decision"])
+        self.assertTrue(
+            any("adaptive video ladder disappeared" in item for item in decision["material_changes"])
+        )
+
+    def test_legacy_baseline_is_blocked_before_format_comparison(self):
+        legacy = self._observation(js="a", ok=True, formats=8, adaptive_video=5, muxed_video=1)
+        legacy["schema"] = 1
+        legacy["sentinels"][0]["observation"]["player"].pop("adaptive_video_formats", None)
+        legacy["sentinels"][0]["observation"]["player"].pop("muxed_video_formats", None)
+        after = self._observation(js="b", ok=True, formats=2, adaptive_video=0, muxed_video=1)
+
+        decision = canary._classify(
+            {"schema": 1, "observation": legacy},
+            after,
+            {"thresholds": {"required_sentinel_regressions_for_repair": 1}},
+        )
+
+        self.assertEqual("blocked", decision["decision"])
+        self.assertTrue(any("baseline schema" in item.lower() for item in decision["informational_changes"]))
+
+    def test_required_sentinels_expect_adaptive_video(self):
+        root = Path(__file__).resolve().parents[2]
+        config = json.loads(
+            (root / "third_party/LevyraExtractor/canary/config.json").read_text(encoding="utf-8")
+        )
+        required = [item for item in config["sentinels"] if item.get("required", True)]
+        self.assertTrue(required)
+        self.assertTrue(all(item.get("expect_adaptive_video") is True for item in required))
 
     def test_streaming_data_disappearing_triggers_repair(self):
         before = self._observation(js="a", ok=True, formats=2)
@@ -174,17 +215,20 @@ class YoutubeCanaryTest(unittest.TestCase):
             })()
             self.assertEqual(0, canary.command_accept(args))
             baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-            self.assertEqual(1, baseline["schema"])
+            self.assertEqual(canary.SCHEMA_VERSION, baseline["schema"])
             self.assertEqual("test", baseline["accepted_reason"])
             self.assertIn("observation", baseline)
 
     @staticmethod
-    def _observation(js, ok, formats, status="OK", streaming=True, range_ok=None):
+    def _observation(
+        js, ok, formats, status="OK", streaming=True, range_ok=None,
+        adaptive_video=1, muxed_video=1,
+    ):
         media = {"attempted": range_ok is not None}
         if range_ok is not None:
             media.update({"initial_ok": range_ok, "continuation_ok": True})
         return {
-            "schema": 1,
+            "schema": canary.SCHEMA_VERSION,
             "sentinels": [
                 {
                     "name": "stable",
@@ -199,6 +243,8 @@ class YoutubeCanaryTest(unittest.TestCase):
                             "playability_status": status,
                             "has_streaming_data": streaming,
                             "total_formats": formats,
+                            "adaptive_video_formats": adaptive_video if streaming else 0,
+                            "muxed_video_formats": muxed_video if streaming else 0,
                             "streaming_keys": ["formats"] if streaming else [],
                         },
                         "media_probe": media,

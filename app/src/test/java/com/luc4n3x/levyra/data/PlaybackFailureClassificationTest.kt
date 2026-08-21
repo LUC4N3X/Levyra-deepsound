@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackFailureClassificationTest {
@@ -102,4 +104,37 @@ class PlaybackFailureClassificationTest {
         assertEquals(PlaybackFailureKind.Network, classifyPlaybackFailureReason("Connection refused"))
         assertEquals(PlaybackFailureKind.Network, classifyPlaybackFailureReason("Unknown host"))
     }
+    @Test
+    fun structuralMediaFailuresAreTerminal() {
+        assertEquals(
+            PlaybackFailureKind.UnsupportedFormat,
+            classifyPlaybackFailureReason("Unsupported media format")
+        )
+        assertEquals(
+            PlaybackFailureKind.MalformedContainer,
+            classifyPlaybackFailureReason("UnrecognizedInputFormatException: malformed media")
+        )
+        assertTrue(isTerminalPlaybackFailure(PlaybackFailureKind.UnsupportedFormat))
+        assertTrue(isTerminalPlaybackFailure(PlaybackFailureKind.MalformedContainer))
+        assertFalse(isTerminalPlaybackFailure(PlaybackFailureKind.Network))
+    }
+
+    @Test
+    fun structuralMediaFailuresDoNotEnterNetworkRecoveryLoops() {
+        val unsupported = playbackRecoveryPlanFor(PlaybackFailureKind.UnsupportedFormat)
+        assertTrue(unsupported.invalidateStream)
+        assertTrue(unsupported.rotateCodec)
+        assertFalse(unsupported.rotateClient)
+        assertFalse(unsupported.refreshSecurity)
+        assertEquals(0L, unsupported.quarantineMs)
+
+        val malformed = playbackRecoveryPlanFor(PlaybackFailureKind.MalformedContainer)
+        assertTrue(malformed.invalidateStream)
+        assertTrue(malformed.invalidateCache)
+        assertFalse(malformed.rotateCodec)
+        assertFalse(malformed.rotateClient)
+        assertFalse(malformed.refreshSecurity)
+        assertEquals(0L, malformed.quarantineMs)
+    }
+
 }
