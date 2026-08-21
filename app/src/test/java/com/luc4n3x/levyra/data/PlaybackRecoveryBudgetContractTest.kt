@@ -28,8 +28,13 @@ class PlaybackRecoveryBudgetContractTest {
         assertFalse(service.contains("recoveryResetJob"))
         assertFalse(player.contains("recoveryResetJob"))
         assertFalse(player.contains("delay(5_000L)\n                            if (connected.playbackState == Player.STATE_READY) recoveryAttempts = 0"))
-        assertTrue(service.contains("isTerminalPlaybackFailure(kind)"))
-        assertTrue(player.contains("isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))"))
+        assertTrue(
+            Regex("""if\s*\(\s*isTerminalPlaybackFailure\([^)]*\)\s*\)""").containsMatchIn(service)
+        )
+        assertTrue(
+            Regex("""isTerminalPlaybackFailure\(\s*classifyPlaybackFailureReason\(message\)\s*\)""")
+                .containsMatchIn(player)
+        )
     }
 
     private fun readServiceSource(): String = readPlayerSource("PlaybackService.kt")
