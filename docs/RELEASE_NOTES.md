@@ -1,147 +1,57 @@
-# Levyra 2.3.21
+# Levyra 2.3.22
 
 ## Highlights
 
-Levyra 2.3.21 is a broad Android update that brings together the work merged after 2.3.20: a redesigned Now Playing experience, substantially improved Canvas presentation, richer Search, album and playlist batch downloads, a cleaner Library, serverless playlist sharing, optional DeArrow video metadata, major offline-download fixes, and a stronger YouTube playback compatibility layer.
+Levyra 2.3.22 is an Android-focused reliability update built on top of 2.3.21. The main fix addresses the native-memory growth reported in issue #427, while the release also includes the YouTube playback hardening and Android experience work merged after 2.3.21.
 
-The release also hardens Levyra against recent YouTube stream-delivery, HTTP 403 and PoToken changes. Playback now has more reliable source selection and recovery paths, while a bounded server-driven compatibility policy can adjust already-implemented resolver/client choices without downloading executable code or silently changing Levyra's privacy and security model.
+## Playback and memory reliability
 
-## What's New
+- Fixed runaway native-memory growth during normal music playback and navigation that could eventually let Android kill the process.
+- Song mode no longer keeps an unnecessary video track selected when a muxed YouTube source is used for audio-only listening, avoiding needless decoder and buffer-pool pressure.
+- Added a device-aware native-memory guard that can recycle the playback pipeline after sustained pressure while preserving the current item, playback position, play state and queue.
+- Video Mode remains explicitly video-capable and is not downgraded by the music-playback memory fix.
+- Added stronger playback-cache recovery and bounded recovery behavior so stale or rejected sources are less likely to trap playback in repeated failures.
+- Improved strategy-health handling across the existing playback resolver so temporarily unhealthy YouTube paths can be deprioritized without bypassing Levyra's allowlisted compatibility policy.
 
-### Player, Canvas and Mini Player
+## YouTube compatibility
 
-- Reworked Now Playing around a single artwork-derived ambience so artwork, Canvas, metadata, timeline and controls read as one composition instead of stacked layers.
-- Refined the mini player with a calmer ambience-tinted surface, lighter chrome and a more deliberate progress treatment.
-- Improved transport hierarchy, spacing, contrast and player action placement.
-- Added Levyra's signature playback-wave polish to the timeline and media presentation while keeping animation tied to actual playback state.
-- Canvas now preserves the source aspect ratio instead of stretching motion artwork to the display.
-- Improved center-crop limits for unusually shaped Canvas sources so video remains proportional and blends into the surrounding ambience.
-- Increased the quality ceiling for immersive Canvas presentation while keeping a lighter budget for smaller artwork surfaces.
-- Improved selection of high-resolution Apple editorial motion artwork and matching for singles that have missing or generic album metadata.
-- Added smoother static-artwork to Canvas transitions and improved contrast behind title, artist, timeline and transport controls.
-- Added persistent Canvas quality preferences, including Auto, Data Saver and High.
-- Added persistent Canvas source preferences for the supported motion-artwork providers.
-- Added a hardened community/Spotify Canvas catalog path alongside Apple and Tidal fallbacks, with static artwork remaining the permanent fallback when no safe match exists.
+- Updated the local YouTube player configuration data used by Levyra's decoder/extractor paths.
+- Hardened playback and metadata extraction against current YouTube delivery behavior, including muxed audio identity, modern stream metadata and recovery from rejected sources.
+- Improved handling around PoToken/session-backed playback paths while preserving Levyra's existing privacy and security boundaries.
+- Strengthened the vendored LevyraExtractor integration for current YouTube stream, playlist and SABR metadata behavior.
 
-### Search and Discovery
+## Android experience updates
 
-- Search now treats songs, music videos, albums, artists and playlists as real separate entities.
-- Added Playlists and Videos as dedicated result categories.
-- Entity classification now follows YouTube Music navigation/page metadata instead of localized subtitle words, improving behavior across languages.
-- Added independent per-section pagination and loading/error state so "Show all" can expand one result type without inflating or blocking the whole search screen.
-- Improved canonical deduplication so the same album or entity returned through different endpoints does not appear repeatedly, while genuinely distinct releases remain separate.
-- Improved artist result handling, album deduplication and video artwork fallbacks.
-- Isolated artist verification, track enrichment and album refinement so a failure in one enrichment path does not erase otherwise valid search sections.
+- Expanded Listening Pulse with Replay-oriented listening views.
+- Added local lyrics share cards using Levyra's scoped file-sharing path.
+- Refined player ambience and Canvas transitions, including improved artwork-derived color treatment.
+- Added an opt-in pure-black appearance mode while keeping the existing AMOLED theme behavior distinct.
+- Centralized semantic haptic feedback behind a user-controlled setting.
+- Improved launcher-mask resources for safer adaptive-icon rendering across Android launchers.
 
-### Album and Playlist Batch Downloads
+## Downloads and offline handling
 
-- Album and playlist downloads are now grouped into persistent batches instead of behaving like unrelated per-track jobs.
-- Batch state includes aggregate progress, retry and cancellation behavior.
-- Batch children reuse the existing Room and WorkManager persistence path so progress can survive process recreation.
-- Completed and cancelled batches are kept out of the active Library surface while failed batches remain visible for retry.
-- Fixed batch membership and continuation edge cases found during review, including repeated continuation tokens and overlapping ownership of the same track.
-
-### Downloads and Offline Reliability
-
-- Fixed downloads that could stall around 4% before media bytes were actually transferred.
-- Fixed tracks that downloaded only on the second attempt because a rejected probe incorrectly discarded an otherwise valid export source.
-- Levyra can now reuse a complete progressive muxed MP4 when YouTube does not provide a usable audio-only stream, then extract the audio track locally with Media3 Transformer before normal tagging and MediaStore registration.
-- Improved HTTP range validation, stale-source rejection and bounded range planning for offline exports.
-- Fixed first-attempt download failures that could also interrupt or stall the track currently playing.
-- Offline export now uses cache/failure handling isolated from live playback so a failed download cannot incorrectly quarantine the healthy source used by the player.
-- Concurrent exports of the same track are coalesced around the cache writer instead of pulling the same bytes from upstream multiple times.
-- Improved cleanup and staging-space handling when a muxed source must be reduced to audio.
-
-### Library
-
-- Redesigned the Android Library around a clearer, more compact hierarchy while preserving existing actions.
-- Simplified the header, category navigation, search, sort and selection controls.
-- Rebuilt track-row hierarchy so title, artist and technical metadata are easier to scan.
-- Consolidated secondary actions into a cleaner overflow flow while preserving play, queue, playlist, download and delete behavior.
-- Improved single-download removal with confirmation and clearer empty states for an empty Library versus an empty search result.
-- Simplified the offline-download summary and fixed search-field clipping/layout issues.
-- Fixed Listening Pulse header wrapping and weekly-chart scaling issues.
-
-### Playlist Sharing
-
-- Added serverless Levyra playlist sharing through a versioned Levyra payload and `levyra://playlist` deep link.
-- Shared playlists carry bounded playlist metadata and track identities rather than private playback URLs.
-- Received playlists reuse Levyra's existing preview/import resolution flow and can be resolved against current playable sources before import.
-- Added integrity and size limits to keep shared payloads bounded and deterministic.
-
-### Video Metadata
-
-- Added an optional DeArrow-backed video metadata enhancement path.
-- When enabled, supported video items can use community-improved titles and thumbnails.
-- The setting is opt-in and is scoped to video metadata rather than rewriting normal music-track identity.
-
-## Playback Reliability
-
-### YouTube stream selection and recovery
-
-- Levyra now rejects adaptive GoogleVideo audio sources that cannot reliably serve a complete track instead of allowing playback to stop after the initial buffered portion.
-- When needed, playback can fall back to a complete progressive source while remaining in Song mode.
-- Improved handling of failed or no-op YouTube `n` transformations so a throttled URL is not published as if it were healthy.
-- Added/refined VisionOS and Android Reel paths and bounded Android Reel responses.
-- Improved quarantine behavior so the URL that actually failed is rejected on the next resolution attempt instead of immediately looping back into the same 403 source.
-- Fixed cases where native Video mode reused an audio-only cached source and produced audio over a blank video surface.
-- Preserved original song identity across Song -> Video -> Song round trips.
-
-### PoToken compatibility
-
-- Restored playback against newer YouTube anti-bot behavior using Levyra's existing PoToken infrastructure.
-- PoToken-capable/attested playback paths are preferred when the current response requires them.
-- Android Reel can act as a proven song fallback when ordinary audio candidates are stale or rejected.
-- The local YouTube player configuration and decoder paths have been synchronized with the current playback strategy.
-
-### Server-driven compatibility policy
-
-Levyra now includes a bounded server-driven playback compatibility policy. It may adjust only behavior that already exists in the APK, such as resolver strategy order, supported client enable/disable state, client priority, selected client versions and PoToken requirements for implemented clients.
-
-The policy cannot download executable code, inject arbitrary endpoints, add credentials, provide cookies or introduce a new playback implementation. Invalid policies are rejected and the last known-good policy remains available locally. Playback failures can request an early refresh so selected upstream compatibility changes do not always require an emergency APK.
-
-### Queue precache and crossfade
-
-- Improved reuse between queue precache, manual skip, auto-advance and crossfade preparation.
-- Already resolved upcoming tracks can be reused instead of resolving the same queue item repeatedly.
-- Crossfade preparation can reuse warmed data while the main MediaSession player remains the authoritative playback owner.
-
-## Platform and Dependency Updates
-
-- AndroidX Media3 moved from 1.10.1 to 1.11.0 across the Android media stack.
-- Compose BOM moved to the 2026.08 generation.
-- Baseline Profile tooling moved to the 1.5.0 release-candidate line.
-- Existing Android package identity, signing identity and Android/Desktop version separation remain unchanged.
-
-## Foundations Included in This Build
-
-The 2.3.21 development cycle also adds provider-abstracted foundations for music recognition and remote/Cast playback handoff. These are deliberately not advertised as active end-user services in the default build: the recognition path still requires a compatible backend, and the standard/F-Droid build does not ship a proprietary Cast backend. The abstractions are present so a future implementation can integrate without duplicating Levyra's player, queue or DSP state architecture.
-
-## F-Droid and Repository Hardening
-
-- Hardened the F-Droid dependency/network disclosure contract and added regression coverage against metadata drift.
-- Added the F-Droid download surface to the project documentation and refreshed the GitHub presentation assets.
-- Continued to keep the F-Droid build path separate from the signed GitHub update channel while sharing the same Android source version.
-- Added an autonomous YouTube canary/repair workflow foundation that can prepare repository repair work when repeated public playback evidence shows a genuine upstream regression; it does not automatically merge, tag or release an APK.
+- Improved offline export recovery and source validation around refreshed or rejected YouTube media URLs.
+- Preserved isolation between download failures and the active playback source so an export problem does not incorrectly poison healthy live playback state.
 
 ## Notes
 
-This is an Android-only version bump. Levyra Desktop remains independently versioned and released. No account system, advertising identifier, analytics pipeline or user-tracking system is introduced by 2.3.21.
+This is an Android-only version bump. Levyra Desktop remains independently versioned and is not changed by 2.3.22.
 
-Existing favorites, playlists, listening history, downloads, settings and playback state remain part of the compatibility contract. The batch-download persistence changes use the existing non-destructive Room migration path.
+Existing favorites, playlists, listening history, downloads, settings and playback state remain part of the compatibility contract. No account system, advertising identifier, analytics pipeline or user-tracking system is introduced by this release.
 
 ## Versioning
 
-- Version name: `2.3.21`
-- Version code: `2032100`
+- Version name: `2.3.22`
+- Version code: `2032200`
 
 ## Validation
 
-- The Android version name/code follow Levyra's existing monotonic formula and remain separate from Desktop versioning.
-- Gradle version fallbacks, README version wiring, the Android platform badge and Fastlane changelogs are aligned to 2.3.21. The separate "Latest release" badge intentionally continues to reflect the most recently published GitHub release until 2.3.21 is actually released.
-- Levyra's Release Guard continues to verify Gradle, README, curated release-notes, F-Droid review-contract and Android publishing-workflow consistency before a release tag is accepted.
-- Feature changes summarized above were merged with their focused tests/review fixes where present in the repository history.
-- This metadata bump does not claim a new physical-device, Android Auto, notification, PiP or OEM verification run that has not actually been performed for the final 2.3.21 artifact.
+- Android `versionName` and `versionCode` follow Levyra's existing monotonic version formula and remain separate from Desktop versioning.
+- `gradle.properties`, Android Gradle fallbacks, README version wiring, architecture metadata, the Android platform badge and Fastlane changelogs are aligned to 2.3.22.
+- The separate "Latest release" badge intentionally remains on the most recently published GitHub release until 2.3.22 is actually published.
+- The memory fix landed with focused policy coverage in the repository, and the broader Android playback work includes its corresponding regression tests where present in the merged history.
+- This metadata bump does not claim a new physical-device, Android Auto, notification, PiP or OEM verification run that has not actually been performed for the final 2.3.22 artifact.
 
 ## Upgrade notes
 
@@ -149,4 +59,4 @@ No manual migration is required. Existing libraries, favorites, playlists, liste
 
 ## Final note
 
-Levyra 2.3.21 is primarily about making the Android experience feel more complete without sacrificing the reliability underneath it: a cleaner player and Library, richer discovery and offline management, better Canvas presentation, and a substantially stronger playback layer for a YouTube environment that keeps changing.
+Levyra 2.3.22 is primarily about keeping long listening sessions stable while strengthening the playback layer underneath them. The most important change is the native-memory fix, backed by the YouTube resilience and Android experience improvements merged since 2.3.21.
