@@ -77,6 +77,7 @@ internal fun <T : Enum<T>> orderPlaybackStrategiesByHealth(
     nowMs: Long
 ): List<T> {
     if (strategies.size <= 1) return strategies
+    if (statsFor(strategies.first().name) == null) return strategies
     val hasHealthData = strategies.any { statsFor(it.name) != null }
     if (!hasHealthData) return strategies
 

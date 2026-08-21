@@ -46,6 +46,22 @@ class PlaybackStrategyHealthTest {
     }
 
     @Test
+    fun unseenPolicyFirstStrategyGetsCanaryBeforePreviouslyHealthyFallback() {
+        val strategies = listOf(SampleStrategy.InnerTube, SampleStrategy.WebEmbedded)
+        val statsMap = mapOf(
+            SampleStrategy.WebEmbedded.name to PlaybackStrategyStats(successes = 20)
+        )
+
+        val result = orderPlaybackStrategiesByHealth(
+            strategies = strategies,
+            statsFor = { statsMap[it] },
+            nowMs = 1_000L
+        )
+
+        assertEquals(strategies, result)
+    }
+
+    @Test
     fun threeConsecutiveForbiddenFailuresMovesStrategyToBack() {
         val now = 5_000_000L
         val failing = statsAfterConsecutiveFailures(
