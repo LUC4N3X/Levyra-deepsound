@@ -951,10 +951,13 @@ YoutubeParsingHelper {
 
     @Nullable
     public static SongMetadata getSongMetadata(@Nonnull final Description description) {
-        final String descriptionText = description.getType() == Description.PLAIN_TEXT
-                ? description.getContent()
-                : Jsoup.parse(description.getContent()).wholeText();
-        return parseSongMetadataText(descriptionText);
+        if (description.getType() == Description.PLAIN_TEXT) {
+            return parseSongMetadataText(description.getContent());
+        }
+        final String htmlWithParagraphBoundaries = description.getContent()
+                .replaceAll("(?i)<br\\s*/?>", "$0\n")
+                .replaceAll("(?i)</(?:p|div|li|h[1-6])>", "$0\n");
+        return parseSongMetadataText(Jsoup.parse(htmlWithParagraphBoundaries).wholeText());
     }
 
     @Nullable

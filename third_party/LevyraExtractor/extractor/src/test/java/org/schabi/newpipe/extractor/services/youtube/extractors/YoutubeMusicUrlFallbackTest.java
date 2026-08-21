@@ -16,7 +16,7 @@ class YoutubeMusicUrlFallbackTest {
         final JsonObject item = JsonParser.object().from("{"
                 + "\"overlay\":{\"musicItemThumbnailOverlayRenderer\":{\"content\":{"
                 + "\"musicPlayButtonRenderer\":{\"playNavigationEndpoint\":{"
-                + "\"watchEndpoint\":{\"videoId\":\"overlay1234\"}}}}}}}}"
+                + "\"watchEndpoint\":{\"videoId\":\"overlay1234\"}}}}}}"
                 + "}");
 
         final YoutubeMusicSongOrVideoInfoItemExtractor extractor =
