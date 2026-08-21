@@ -247,7 +247,6 @@ private fun PlayerSkipButton(
     iconSize: Dp,
     onClick: () -> Unit
 ) {
-    val shape = LevyraPlayerDesign.ShapeSm
     SpringIconButton(
         onClick = onClick,
         modifier = Modifier.sizeIn(
@@ -259,12 +258,12 @@ private fun PlayerSkipButton(
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
-                .background(Color.White.copy(alpha = 0.055f), shape)
+                .size(44.dp)
+                .background(Color.White.copy(alpha = 0.045f), CircleShape)
                 .border(
                     LevyraPlayerDesign.Hairline,
-                    Color.White.copy(alpha = 0.09f),
-                    shape
+                    Color.White.copy(alpha = 0.075f),
+                    CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -288,7 +287,7 @@ private fun PlayerModeToggleButton(
     onClick: () -> Unit
 ) {
     val activeTint = remember(accentTarget) {
-        Color(0xFF1DB954).playerMix(accentTarget, 0.35f)
+        accentTarget.playerMix(Color.White, 0.18f)
     }
     val tint by animateColorAsState(
         targetValue = if (active) activeTint else LevyraPlayerDesign.IconIdle,
@@ -301,12 +300,12 @@ private fun PlayerModeToggleButton(
         label = "player-toggle-indicator"
     )
     val surfaceColor by animateColorAsState(
-        targetValue = if (active) activeTint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
+        targetValue = if (active) activeTint.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.025f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
         label = "player-toggle-surface"
     )
     val surfaceBorder by animateColorAsState(
-        targetValue = if (active) activeTint.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.06f),
+        targetValue = if (active) activeTint.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.05f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
         label = "player-toggle-border"
     )
@@ -325,11 +324,11 @@ private fun PlayerModeToggleButton(
         Box(
             modifier = Modifier
                 .size(LevyraPlayerDesign.ModeSlot)
-                .background(surfaceColor, LevyraPlayerDesign.ShapeSm)
+                .background(surfaceColor, CircleShape)
                 .border(
                     LevyraPlayerDesign.Hairline,
                     surfaceBorder,
-                    LevyraPlayerDesign.ShapeSm
+                    CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -357,17 +356,21 @@ private fun playerPrimaryIconTransition(): ContentTransform =
             scaleOut(targetScale = 0.82f, animationSpec = LevyraPlayerDesign.standardTween(100)))
 
 private fun Modifier.playerPrimarySurface(
-    shape: Shape
+    shape: Shape,
+    surfaceColor: Color,
+    borderColor: Color
 ): Modifier = this
     .shadow(
         elevation = 10.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.35f),
-        spotColor = Color.Black.copy(alpha = 0.60f)
+        ambientColor = Color.Black.copy(alpha = 0.32f),
+        spotColor = Color.Black.copy(alpha = 0.52f)
     )
-    .background(
-        Color.White,
+    .background(surfaceColor, shape)
+    .border(
+        LevyraPlayerDesign.Hairline,
+        borderColor,
         shape
     )
 
@@ -407,13 +410,19 @@ private fun PlayerPrimaryButton(
 ) {
     val contentColor = LevyraPlayerDesign.PrimaryContent
     val haloColor = accentColor.playerMix(Color.White, 0.16f)
+    val surfaceColor = remember(accentColor) {
+        Color.White.playerMix(accentColor, 0.18f)
+    }
+    val borderColor = remember(accentColor) {
+        accentColor.playerMix(Color.White, 0.58f).copy(alpha = 0.46f)
+    }
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.22f else 0.10f,
+        targetValue = if (isPlaying) 0.28f else 0.13f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(260) else snap(),
         label = "player-primary-halo"
     )
     val corner by animateDpAsState(
-        targetValue = if (isPlaying) LevyraPlayerDesign.CornerMd else size * 0.5f,
+        targetValue = if (isPlaying) LevyraPlayerDesign.CornerLg else size * 0.5f,
         animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "player-primary-corner"
     )
@@ -427,12 +436,12 @@ private fun PlayerPrimaryButton(
             modifier = Modifier
                 .size(size)
                 .drawBehind {
-                    val radius = this.size.minDimension * 0.72f
+                    val radius = this.size.minDimension * 0.80f
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 haloColor.copy(alpha = haloAlpha),
-                                haloColor.copy(alpha = haloAlpha * 0.30f),
+                                haloColor.copy(alpha = haloAlpha * 0.26f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -443,7 +452,9 @@ private fun PlayerPrimaryButton(
                     )
                 }
                 .playerPrimarySurface(
-                    shape = RoundedCornerShape(corner)
+                    shape = RoundedCornerShape(corner),
+                    surfaceColor = surfaceColor,
+                    borderColor = borderColor
                 ),
             contentAlignment = Alignment.Center
         ) {
