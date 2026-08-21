@@ -1,0 +1,97 @@
+name: PR 428 repair
+
+on:
+  push:
+    branches:
+      - feat/youtube-resilience-upstream-2026-08
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/youtube-resilience-upstream-2026-08
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Patch metadata regressions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          helper = Path('third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java')
+          text = helper.read_text(encoding='utf-8')
+          old = '''    public static SongMetadata getSongMetadata(@Nonnull final Description description) {
+              final String descriptionText = description.getType() == Description.PLAIN_TEXT
+                      ? description.getContent()
+                      : Jsoup.parse(description.getContent()).wholeText();
+              return parseSongMetadataText(descriptionText);
+          }
+          '''
+          new = '''    public static SongMetadata getSongMetadata(@Nonnull final Description description) {
+              if (description.getType() == Description.PLAIN_TEXT) {
+                  return parseSongMetadataText(description.getContent());
+              }
+              final String htmlWithParagraphBoundaries = description.getContent()
+                      .replaceAll("(?i)(<br\\\\s*/?>)", "$1\\n")
+                      .replaceAll("(?i)(</(?:p|div|li|h[1-6])>)", "$1\\n");
+              return parseSongMetadataText(Jsoup.parse(htmlWithParagraphBoundaries).wholeText());
+          }
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('Expected getSongMetadata block not found exactly once')
+          helper.write_text(text.replace(old, new), encoding='utf-8')
+
+          music_test = Path('third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java')
+          text = music_test.read_text(encoding='utf-8')
+          old = '                + "\\\"watchEndpoint\\\":{\\\"videoId\\\":\\\"overlay1234\\\"}}}}}}}}"\n'
+          new = '                + "\\\"watchEndpoint\\\":{\\\"videoId\\\":\\\"overlay1234\\\"}}}}}}"\n'
+          if text.count(old) != 1:
+              raise SystemExit('Expected overlay JSON fixture not found exactly once')
+          music_test.write_text(text.replace(old, new), encoding='utf-8')
+
+          single_flight = Path('third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrClientVersionSingleFlightTest.java')
+          text = single_flight.read_text(encoding='utf-8')
+          old = '''            return new Response(200, "OK", Collections.emptyMap(),
+                      "\\\"INNERTUBE_CONTEXT_CLIENT_VERSION\\\":\\\"" + CLIENT_VERSION + "\\\"",
+                      null, "https://www.youtube.com/sw.js");
+          '''
+          new = '''            final String responseBody = ")]}'\\n[[null,null,[[["
+                      + String.join(",", Collections.nCopies(16, "null"))
+                      + ",\\\"" + CLIENT_VERSION + "\\\"]]]]]";
+              return new Response(200, "OK", Collections.emptyMap(), responseBody,
+                      null, "https://www.youtube.com/sw.js_data");
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('Expected client-version fixture not found exactly once')
+          single_flight.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Run extractor tests
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+
+      - name: Commit repair and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/pr428-repair.yml
+          git add \
+            third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java \
+            third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeMusicUrlFallbackTest.java \
+            third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrClientVersionSingleFlightTest.java
+          git diff --cached --check
+          git commit -m "fix(extractor): align metadata regression paths"
+          git push origin HEAD:feat/youtube-resilience-upstream-2026-08
