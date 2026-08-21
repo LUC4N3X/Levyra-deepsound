@@ -2,7 +2,9 @@ package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
@@ -20,6 +22,7 @@ internal const val PlayerStageHeightFraction = 1f
 internal const val PlayerStageMinOverlapDp = 56f
 internal val PlayerStageSpillHeight: Dp = 0.dp
 
+private const val StageInteractionHeightFraction = 0.72f
 private const val StageTopScrimEnd = 0.20f
 private const val StageVeilLead = 0.24f
 private const val StageVeilKnee = 0.50f
@@ -152,7 +155,13 @@ internal fun PlayerStage(
                 staticArtwork = staticArtwork
             )
         }
-        overlay()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(StageInteractionHeightFraction)
+        ) {
+            overlay()
+        }
     }
 }
 
