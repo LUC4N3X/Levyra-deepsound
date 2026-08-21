@@ -43,13 +43,13 @@ class PlayerStageTest {
     }
 
     @Test
-    fun `a nine by sixteen canvas covers the stage without leaving side bars`() {
+    fun `a nine by sixteen canvas covers a fullscreen stage without side bars`() {
         val fit = motionArtworkFit(
             videoWidth = 1080,
             videoHeight = 1920,
             pixelWidthHeightRatio = 1f,
             containerWidth = 1080,
-            containerHeight = 1745,
+            containerHeight = 2424,
             maxZoom = MotionArtworkStageMaxZoom
         )
         assertTrue(fit.scaleX >= 1f)
