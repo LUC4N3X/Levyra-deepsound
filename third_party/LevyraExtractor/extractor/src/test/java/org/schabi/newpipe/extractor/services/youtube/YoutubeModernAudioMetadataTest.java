@@ -35,6 +35,16 @@ class YoutubeModernAudioMetadataTest {
     }
 
     @Test
+    void parsesColonDelimitedXtagsAfterProtobufFallback() {
+        final String xtags = "acont=original:lang=en-US:label=Studio=Master";
+
+        assertEquals(AudioTrackType.ORIGINAL, YoutubeParsingHelper.extractAudioTrackType(xtags));
+        assertEquals("en-US", YoutubeParsingHelper.extractXtagsValue(xtags, "lang"));
+        assertEquals("Studio=Master", YoutubeParsingHelper.extractXtagsValue(xtags, "label"));
+        assertNull(YoutubeParsingHelper.extractXtagsValue(xtags, "missing"));
+    }
+
+    @Test
     void copyConstructorPreservesModernFormatMetadataAndIdentity() throws Exception {
         final ItagItem original = ItagItem.getItag(251);
         original.setAudioTrackId("en-US.1");

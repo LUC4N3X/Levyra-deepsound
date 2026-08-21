@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 WATCH_MAX_BYTES = 5 * 1024 * 1024
 PLAYER_JS_MAX_BYTES = 10 * 1024 * 1024
 PLAYER_JSON_MAX_BYTES = 8 * 1024 * 1024
@@ -687,6 +687,19 @@ def _classify(
     config: dict[str, Any],
 ) -> dict[str, Any]:
     accepted = baseline.get("observation")
+    baseline_schema = baseline.get("schema")
+    if baseline_schema is None and isinstance(accepted, dict):
+        baseline_schema = accepted.get("schema")
+    if isinstance(accepted, dict) and baseline_schema != SCHEMA_VERSION:
+        return {
+            "decision": "blocked",
+            "severity": "warning",
+            "material_changes": [],
+            "informational_changes": [
+                f"Accepted baseline schema {baseline_schema!r} is incompatible with current schema "
+                f"{SCHEMA_VERSION}; accept a fresh observation before comparison."
+            ],
+        }
     if not isinstance(accepted, dict):
         required = [
             item for item in observation.get("sentinels", [])

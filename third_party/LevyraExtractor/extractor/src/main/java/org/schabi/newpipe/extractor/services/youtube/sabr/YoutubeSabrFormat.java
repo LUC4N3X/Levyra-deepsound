@@ -516,10 +516,6 @@ public final class YoutubeSabrFormat implements Serializable {
         return type == AudioTrackType.ORIGINAL || (type == null && audioIsDefault);
     }
 
-    /**
-     * Identity used to prevent state or initialization bytes from leaking between variants that
-     * share the same itag.
-     */
     @Nonnull
     public String formatIdentity() {
         return itag + "|" + safe(audioTrackId) + "|" + safe(getAudioLocale()) + "|"

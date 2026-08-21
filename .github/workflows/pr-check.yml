@@ -5,36 +5,42 @@ on:
     branches:
       - main
       - master
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  review-fixes:
-    if: ${{ github.event.pull_request.number == 428 && github.head_ref == 'feat/youtube-resilience-upstream-2026-08' }}
+  android:
+    name: Lint, Full Tests and Release Compile
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 75
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: feat/youtube-resilience-upstream-2026-08
           fetch-depth: 0
-          persist-credentials: true
-
-      - name: Apply review fixes and restore repository contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 .github/pr428_review_patch.py
-          git checkout origin/main -- .github/workflows/pr-check.yml
-          rm .github/pr428_review_patch.py
 
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Setup Android SDK
         shell: bash
@@ -42,36 +48,189 @@ jobs:
           set -euo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" --channel=3 "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
 
-      - name: Repository script tests
-        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          cache-disabled: true
 
-      - name: Extractor tests
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
-
-      - name: Focused Android tests
-        run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.data.YoutubeExtractorFallbackContractTest' \
-            --tests 'com.luc4n3x.levyra.data.PlaybackRecoveryBudgetContractTest'
-
-      - name: Publish validated fixes
+      - name: Validate Build Inputs
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A \
-            .github/pr428_review_patch.py \
-            .github/workflows/pr-check.yml \
-            app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt \
-            app/src/test/java/com/luc4n3x/levyra/data/YoutubeExtractorFallbackContractTest.kt \
-            scripts/youtube_canary.py \
-            scripts/tests/test_youtube_canary.py \
-            third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java \
-            third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/YoutubeModernAudioMetadataTest.java \
-            third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/YoutubeSabrFormat.java
-          git diff --cached --check
-          git commit -m "fix(youtube): address review correctness findings"
-          git push origin HEAD:feat/youtube-resilience-upstream-2026-08
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/libs.versions.toml
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+
+      - name: AI Quality Gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            BASE_REF="origin/${GITHUB_BASE_REF}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          python3 scripts/validate_fdroid_review_contract.py
+          python3 scripts/ai_quality_gate.py --profile fast --base-ref "${BASE_REF}"
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Gradle Version
+        run: ./gradlew --no-daemon --version
+
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
+      - name: Extractor Unit Tests
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+
+      - name: Android Lint
+        run: ./gradlew --no-daemon :app:lintRelease
+
+      - name: Android and F-Droid Regression Unit Tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
+            --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriterTest' \
+            --tests 'com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
+            --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest' \
+            --tests 'com.luc4n3x.levyra.data.SponsorBlockRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.domain.LevyraAudioPresetsTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.*' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
+            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
+
+      - name: Android Full Unit Test Suite
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Release Compile
+        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+
+      - name: Upstream updater manifest contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM_APK="app/build/outputs/apk/release/app-release.apk"
+          APK_ANALYZER="${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer"
+          test -f "${UPSTREAM_APK}"
+          test -x "${APK_ANALYZER}"
+          "${APK_ANALYZER}" manifest print "${UPSTREAM_APK}" > /tmp/levyra-upstream-manifest.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          manifest = ET.parse('/tmp/levyra-upstream-manifest.xml').getroot()
+          android = '{http://schemas.android.com/apk/res/android}'
+          permissions = {
+              item.get(android + 'name')
+              for item in manifest.findall('uses-permission')
+          }
+          if 'android.permission.REQUEST_INSTALL_PACKAGES' not in permissions:
+              raise SystemExit('Upstream APK must request REQUEST_INSTALL_PACKAGES')
+
+          authorities = 'com.luc4n3x.levyra.update-files'
+          providers = [
+              item for item in manifest.findall('.//provider')
+              if item.get(android + 'authorities') == authorities
+          ]
+          if len(providers) != 1 or providers[0].get(android + 'enabled', 'true') != 'true':
+              raise SystemExit('Upstream APK must keep the GitHub update provider enabled')
+          PY
+
+      - name: Setup Java 21 for F-Droid
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: F-Droid Release Compile
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ""
+          LEVYRA_KEYSTORE_FILE: ""
+          LEVYRA_KEYSTORE_PASSWORD: ""
+          LEVYRA_KEY_ALIAS: ""
+          LEVYRA_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
+            -PlevyraFdroidBuild=true
+          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "${FDROID_APK}"
+          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
+            echo "F-Droid source build must remain unsigned."
+            exit 1
+          fi
+
+          APK_ANALYZER="${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer"
+          test -x "${APK_ANALYZER}"
+          "${APK_ANALYZER}" manifest print "${FDROID_APK}" > /tmp/levyra-fdroid-manifest.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          manifest = ET.parse('/tmp/levyra-fdroid-manifest.xml').getroot()
+          android = '{http://schemas.android.com/apk/res/android}'
+          permissions = {
+              item.get(android + 'name')
+              for item in manifest.findall('uses-permission')
+          }
+          if 'android.permission.REQUEST_INSTALL_PACKAGES' in permissions:
+              raise SystemExit('F-Droid APK must not request REQUEST_INSTALL_PACKAGES')
+
+          authorities = 'com.luc4n3x.levyra.update-files'
+          providers = [
+              item for item in manifest.findall('.//provider')
+              if item.get(android + 'authorities') == authorities
+          ]
+          if len(providers) != 1 or providers[0].get(android + 'enabled', 'true') != 'false':
+              raise SystemExit('F-Droid APK must keep the GitHub update provider disabled')
+          PY
+
+      - name: Collect Reports
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reports
+          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
+          if [ -d app/build/reports ]; then
+            cp -R app/build/reports artifacts/reports/app-build-reports
+          fi
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-reports-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: ignore

@@ -108,6 +108,22 @@ class YoutubeCanaryTest(unittest.TestCase):
             any("adaptive video ladder disappeared" in item for item in decision["material_changes"])
         )
 
+    def test_legacy_baseline_is_blocked_before_format_comparison(self):
+        legacy = self._observation(js="a", ok=True, formats=8, adaptive_video=5, muxed_video=1)
+        legacy["schema"] = 1
+        legacy["sentinels"][0]["observation"]["player"].pop("adaptive_video_formats", None)
+        legacy["sentinels"][0]["observation"]["player"].pop("muxed_video_formats", None)
+        after = self._observation(js="b", ok=True, formats=2, adaptive_video=0, muxed_video=1)
+
+        decision = canary._classify(
+            {"schema": 1, "observation": legacy},
+            after,
+            {"thresholds": {"required_sentinel_regressions_for_repair": 1}},
+        )
+
+        self.assertEqual("blocked", decision["decision"])
+        self.assertTrue(any("baseline schema" in item.lower() for item in decision["informational_changes"]))
+
     def test_required_sentinels_expect_adaptive_video(self):
         root = Path(__file__).resolve().parents[2]
         config = json.loads(
@@ -199,7 +215,7 @@ class YoutubeCanaryTest(unittest.TestCase):
             })()
             self.assertEqual(0, canary.command_accept(args))
             baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-            self.assertEqual(1, baseline["schema"])
+            self.assertEqual(canary.SCHEMA_VERSION, baseline["schema"])
             self.assertEqual("test", baseline["accepted_reason"])
             self.assertIn("observation", baseline)
 
@@ -212,7 +228,7 @@ class YoutubeCanaryTest(unittest.TestCase):
         if range_ok is not None:
             media.update({"initial_ok": range_ok, "continuation_ok": True})
         return {
-            "schema": 1,
+            "schema": canary.SCHEMA_VERSION,
             "sentinels": [
                 {
                     "name": "stable",

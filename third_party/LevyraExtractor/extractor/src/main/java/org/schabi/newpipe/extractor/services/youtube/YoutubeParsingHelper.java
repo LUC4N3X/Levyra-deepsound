@@ -862,6 +862,25 @@ YoutubeParsingHelper {
         if (isNullOrEmpty(xtags)) {
             return null;
         }
+        final String protobufValue = extractProtobufXtagsValue(xtags, wantedKey);
+        if (!isNullOrEmpty(protobufValue)) {
+            return protobufValue;
+        }
+        for (final String pair : xtags.split(":")) {
+            final int separator = pair.indexOf('=');
+            if (separator <= 0) {
+                continue;
+            }
+            if (wantedKey.equals(pair.substring(0, separator))) {
+                return pair.substring(separator + 1);
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String extractProtobufXtagsValue(@Nonnull final String xtags,
+                                                          @Nonnull final String wantedKey) {
         try {
             final String padded = xtags + "====".substring(0, (4 - xtags.length() % 4) % 4);
             final byte[] data = Base64.getUrlDecoder().decode(padded);
@@ -893,14 +912,14 @@ YoutubeParsingHelper {
                     if (length < 0 || length > pairEnd - position) {
                         return null;
                     }
-                    final String text = new String(data, position, (int) length,
+                    final String fieldValue = new String(data, position, (int) length,
                             StandardCharsets.UTF_8);
                     position += (int) length;
                     final int field = (int) (pairTag >>> 3);
                     if (field == 1) {
-                        key = text;
+                        key = fieldValue;
                     } else if (field == 2) {
-                        value = text;
+                        value = fieldValue;
                     }
                 }
                 if (wantedKey.equals(key)) {
