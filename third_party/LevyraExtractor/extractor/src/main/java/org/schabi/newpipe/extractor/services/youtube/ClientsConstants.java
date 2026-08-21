@@ -19,13 +19,13 @@ final class ClientsConstants {
      * The client version for InnerTube requests with the {@code WEB} client, used as the last
      * fallback if the extraction of the real one failed.
      */
-    static final String WEB_HARDCODED_CLIENT_VERSION = "2.20250122.04.00";
+    static final String WEB_HARDCODED_CLIENT_VERSION = "2.20260805.01.00";
 
     // WEB_REMIX (YouTube Music) client fields
 
     static final String WEB_REMIX_CLIENT_ID = "67";
     static final String WEB_REMIX_CLIENT_NAME = "WEB_REMIX";
-    static final String WEB_REMIX_HARDCODED_CLIENT_VERSION = "1.20250122.01.00";
+    static final String WEB_REMIX_HARDCODED_CLIENT_VERSION = "1.20260804.16.00";
 
     // TVHTML5 (YouTube on TVs and consoles using HTML5) client fields
     static final String TVHTML5_CLIENT_ID = "7";

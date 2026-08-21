@@ -37,6 +37,8 @@ public final class AudioStream extends Stream {
     private String audioTrackId;
     private String audioTrackName;
     private String audioLocale;
+    @Nullable
+    private AudioTrackType audioTrackType;
 
     // Fields for DASH
     private int itag = ITAG_NOT_AVAILABLE_OR_NOT_APPLICABLE;
@@ -75,6 +77,8 @@ public final class AudioStream extends Stream {
         private String audioTrackId;
         private String audioTrackName;
         private String audioLocale;
+        @Nullable
+        private AudioTrackType audioTrackType;
         private long availableAt = AVAILABLE_AT_UNKNOWN;
         @Nullable
         private Serializable deliveryMethodInfo;
@@ -261,6 +265,11 @@ public final class AudioStream extends Stream {
             return this;
         }
 
+        public Builder setAudioTrackType(@Nullable final AudioTrackType audioTrackType) {
+            this.audioTrackType = audioTrackType;
+            return this;
+        }
+
         public Builder setAvailableAt(final long availableAt) {
             this.availableAt = availableAt;
             return this;
@@ -305,7 +314,7 @@ public final class AudioStream extends Stream {
 
             return new AudioStream(id, content, isUrl, mediaFormat, deliveryMethod, averageBitrate, codec,
                     bitrate, initStart, initEnd, indexStart, indexEnd, manifestUrl, itagItem,
-                    quality, audioTrackId, audioTrackName, audioLocale, availableAt,
+                    quality, audioTrackId, audioTrackName, audioLocale, audioTrackType, availableAt,
                     deliveryMethodInfo);
         }
     }
@@ -346,6 +355,7 @@ public final class AudioStream extends Stream {
                         @Nullable final String audioTrackId,
                         @Nullable final String audioTrackName,
                         @Nullable final String audioLocale,
+                        @Nullable final AudioTrackType audioTrackType,
                         final long availableAt,
                         @Nullable final Serializable deliveryMethodInfo) {
         super(id, content, isUrl, format, deliveryMethod, manifestUrl, availableAt,
@@ -360,6 +370,11 @@ public final class AudioStream extends Stream {
             this.indexStart = itagItem.getIndexStart();
             this.indexEnd = itagItem.getIndexEnd();
             this.codec = itagItem.getCodec();
+            this.audioTrackId = itagItem.getAudioTrackId();
+            this.audioTrackName = itagItem.getAudioTrackName();
+            this.audioLocale = itagItem.getAudioLocale() == null
+                    ? null : itagItem.getAudioLocale().toLanguageTag();
+            this.audioTrackType = itagItem.getAudioTrackType();
         }
         this.averageBitrate = averageBitrate;
         if(quality != null) {
@@ -377,9 +392,18 @@ public final class AudioStream extends Stream {
             this.indexStart = indexStart;
             this.indexEnd = indexEnd;
         }
-        this.audioTrackId = audioTrackId;
-        this.audioTrackName = audioTrackName;
-        this.audioLocale = audioLocale;
+        if (audioTrackId != null) {
+            this.audioTrackId = audioTrackId;
+        }
+        if (audioTrackName != null) {
+            this.audioTrackName = audioTrackName;
+        }
+        if (audioLocale != null) {
+            this.audioLocale = audioLocale;
+        }
+        if (audioTrackType != null) {
+            this.audioTrackType = audioTrackType;
+        }
     }
 
     /**
@@ -389,7 +413,9 @@ public final class AudioStream extends Stream {
     public boolean equalStats(final Stream cmp) {
         return super.equalStats(cmp) && cmp instanceof AudioStream
                 && averageBitrate == ((AudioStream) cmp).averageBitrate
-                && Objects.equals(audioTrackId, ((AudioStream) cmp).audioTrackId);
+                && Objects.equals(audioTrackId, ((AudioStream) cmp).audioTrackId)
+                && audioTrackType == ((AudioStream) cmp).audioTrackType
+                && Objects.equals(audioLocale, ((AudioStream) cmp).audioLocale);
     }
 
     /**
@@ -500,6 +526,11 @@ public final class AudioStream extends Stream {
     @Nullable
     public String getAudioLocale() {
         return audioLocale;
+    }
+
+    @Nullable
+    public AudioTrackType getAudioTrackType() {
+        return audioTrackType;
     }
 
     /**
