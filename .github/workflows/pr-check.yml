@@ -65,9 +65,6 @@ jobs:
           end_marker = '\n        }\n\n        @Override'
           start = text.index(start_marker, class_start)
           end = text.index(end_marker, start)
-          replacement = '\n'.join([
-              '            final String responseBody = ")]\'}\\n[[null,null,[[[";',
-          ])
           replacement = '''            final String responseBody = ")]}'\\n[[null,null,[[["
                       + String.join(",", Collections.nCopies(16, "null"))
                       + ",\\\"" + CLIENT_VERSION + "\\\"]]]]]";
