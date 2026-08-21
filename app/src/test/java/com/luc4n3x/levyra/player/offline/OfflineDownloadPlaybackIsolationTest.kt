@@ -240,9 +240,21 @@ class OfflineDownloadPlaybackIsolationTest {
         assertTrue(storeSignature > 0)
         assertTrue(skip > storeSignature)
         assertTrue(storeKey > skip)
-        assertTrue(resolver.contains("store(track, resolved, isVideoMode, audioQuality, preferMp4Audio)"))
-        assertTrue(resolver.contains("store(track, alternate, isVideoMode, audioQuality, preferMp4Audio)"))
-        assertTrue(resolver.contains("store(track, restored, isVideoMode, audioQuality, preferMp4Audio)"))
+        assertTrue(
+            resolver.contains(
+                "store(track, resolved, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)"
+            )
+        )
+        assertTrue(
+            resolver.contains(
+                "store(track, alternate, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)"
+            )
+        )
+        assertTrue(
+            resolver.contains(
+                "store(track, restored, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)"
+            )
+        )
         assertTrue(resolver.contains("if (offlineExport) return"))
     }
 

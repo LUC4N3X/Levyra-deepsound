@@ -13,8 +13,13 @@ class PlaybackResourceLifecycleContractTest {
         val transitionStart = service.indexOf("private fun buildTransitionPlayer")
         val transitionEnd = service.indexOf("private suspend fun fadePlayers", transitionStart)
         val transition = service.substring(transitionStart, transitionEnd)
+        val videoRendererOverride = transition
+            .substringAfter("override fun buildVideoRenderers")
+            .substringBefore("override fun buildAudioSink")
 
         assertTrue(transition.contains("override fun buildVideoRenderers"))
+        assertTrue(Regex("""\)\s*=\s*Unit""").containsMatchIn(videoRendererOverride))
+        assertFalse(videoRendererOverride.contains("super.buildVideoRenderers"))
         assertTrue(service.contains("private fun releaseTransitionPlayer"))
         assertTrue(service.contains("releaseTransitionPlayer(secondary)"))
         assertTrue(service.contains("releaseTransitionPlayer()"))

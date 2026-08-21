@@ -26,6 +26,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
@@ -55,6 +57,7 @@ import java.security.SecureRandom
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
@@ -296,6 +299,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val streamCacheMutationLock = Any()
+    private val resolverGeneration = AtomicLong(0L)
     private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
     private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
@@ -315,6 +319,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val strategyHealth = PlaybackStrategyHealthStore(context)
     private val strategyOriginByUrl = ConcurrentHashMap<String, PlaybackStrategyOrigin>()
     private val sourceMatchStore = PlaybackSourceMatchStore(LevyraDatabase.get(context).playbackSourceMatchDao())
+    private val sourceMatchMutationMutex = Mutex()
     private val sourceMatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
@@ -377,12 +382,15 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private suspend fun clearResolvedStreamCaches() {
-        synchronized(streamCacheMutationLock) {
-            streamCache.clear()
-            prefs.edit().clear().apply()
+        sourceMatchMutationMutex.withLock {
+            synchronized(streamCacheMutationLock) {
+                resolverGeneration.incrementAndGet()
+                streamCache.clear()
+                prefs.edit().clear().apply()
+                strategyOriginByUrl.clear()
+            }
+            sourceMatchStore.clearOnline()
         }
-        strategyOriginByUrl.clear()
-        sourceMatchStore.clearOnline()
     }
 
     private fun normalizeAudioQuality(value: String): String {
@@ -573,12 +581,20 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun rememberStrategyOrigin(track: Track, mode: String, strategy: String) {
-        if (strategyOriginByUrl.size >= MAX_STRATEGY_ORIGINS) strategyOriginByUrl.clear()
-        val origin = PlaybackStrategyOrigin(mode, strategy)
-        listOf(track.streamUrl, track.videoStreamUrl)
-            .filter { it.isNotBlank() }
-            .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin }
+    private fun rememberStrategyOrigin(
+        track: Track,
+        mode: String,
+        strategy: String,
+        expectedGeneration: Long
+    ) {
+        synchronized(streamCacheMutationLock) {
+            if (resolverGeneration.get() != expectedGeneration) return
+            if (strategyOriginByUrl.size >= MAX_STRATEGY_ORIGINS) strategyOriginByUrl.clear()
+            val origin = PlaybackStrategyOrigin(mode, strategy)
+            listOf(track.streamUrl, track.videoStreamUrl)
+                .filter { it.isNotBlank() }
+                .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin }
+        }
     }
 
     private fun strategyOriginFor(track: Track, isVideoMode: Boolean): PlaybackStrategyOrigin? {
@@ -726,6 +742,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (requestKind == "playback") {
             refreshPlaybackPolicyInBackground(force = false, reason = "resolve")
         }
+        val expectedGeneration = resolverGeneration.get()
         if (isLocalPlaybackTrack(track)) {
             if (!isLocalPlaybackUri(track.streamUrl)) {
                 throw PlaybackBlockedException("File offline non disponibile per ${track.title}")
@@ -760,19 +777,28 @@ class PlaybackResolver private constructor(private val context: Context) {
                     preferMp4Audio = preferMp4Audio,
                     audioQuality = audioQuality,
                     errors = mutableListOf(),
-                    allowNetworkRefresh = false
-                )?.also { store(offlineTrack, it, isVideoMode, audioQuality, preferMp4Audio) }
+                    allowNetworkRefresh = false,
+                    expectedGeneration = expectedGeneration
+                )?.also {
+                    store(offlineTrack, it, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)
+                }
             }
             restored?.let { return@coroutineScope it }
             throw PlaybackBlockedException("Connessione Internet non disponibile")
         }
 
-        val key = "${cacheKey(track, isVideoMode, audioQuality)}_$requestKind"
+        val key = "${cacheKey(track, isVideoMode, audioQuality)}_${requestKind}_$expectedGeneration"
         Timber.d("resolver start kind=%s mode=%s id=%s quality=%s", requestKind, if (isVideoMode) "video" else "audio", track.id, audioQuality)
         return@coroutineScope singleFlight.run(key) {
             try {
                 withTimeout(timeoutMs) {
-                    resolveUncached(track.copy(streamUrl = "", videoStreamUrl = ""), isVideoMode, preferMp4Audio, audioQuality)
+                    resolveUncached(
+                        track.copy(streamUrl = "", videoStreamUrl = ""),
+                        isVideoMode,
+                        preferMp4Audio,
+                        audioQuality,
+                        expectedGeneration
+                    )
                 }
             } catch (error: TimeoutCancellationException) {
                 val label = if (requestKind == "offline") "Download" else "YouTube"
@@ -787,7 +813,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
             if (streamStillFresh(track.streamUrl)) {
-                store(track, track, isVideoMode)
+                store(track, track, isVideoMode, expectedGeneration = resolverGeneration.get())
                 return track
             }
             return null
@@ -801,12 +827,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         isVideoMode: Boolean = false,
         preferMp4Audio: Boolean = false,
-        audioQuality: String = selectedAudioQuality
+        audioQuality: String = selectedAudioQuality,
+        expectedGeneration: Long
     ): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (!preferMp4Audio && !isVideoMode) {
-            val resolved = resolveAudioByCompatibilityPolicy(track, audioQuality, errors)
+            val resolved = resolveAudioByCompatibilityPolicy(track, audioQuality, errors, expectedGeneration)
             if (resolved != null) return@withContext resolved
 
             val reason = errors.firstOrNull { it.startsWith("LevyraExtractor:") }
@@ -827,14 +854,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
 
         if (preferMp4Audio) {
-            restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
-                store(track, restored, isVideoMode, audioQuality, preferMp4Audio)
+            restorePersistentSource(
+                track,
+                isVideoMode,
+                preferMp4Audio,
+                audioQuality,
+                errors,
+                expectedGeneration = expectedGeneration
+            )?.let { restored ->
+                store(track, restored, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)
                 return@withContext restored
             }
         }
 
         if (isVideoMode) {
-            val resolved = resolveVideoByCompatibilityPolicy(track, audioQuality, errors)
+            val resolved = resolveVideoByCompatibilityPolicy(track, audioQuality, errors, expectedGeneration)
             if (resolved != null) return@withContext resolved
 
             val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
@@ -845,15 +879,31 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         val resolved = resolveAudioFast(track, errors, preferMp4Audio, audioQuality)
         if (resolved != null) {
-            store(track, resolved, isVideoMode, audioQuality, preferMp4Audio)
-            persistResolvedSource(track, resolved, isVideoMode, audioQuality, 90, preferMp4Audio)
+            store(track, resolved, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)
+            persistResolvedSource(
+                track,
+                resolved,
+                isVideoMode,
+                audioQuality,
+                90,
+                preferMp4Audio,
+                expectedGeneration
+            )
             return@withContext resolved
         }
 
         val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio, audioQuality)
         if (alternate != null) {
-            store(track, alternate, isVideoMode, audioQuality, preferMp4Audio)
-            persistResolvedSource(track, alternate, isVideoMode, audioQuality, 84, preferMp4Audio)
+            store(track, alternate, isVideoMode, audioQuality, preferMp4Audio, expectedGeneration)
+            persistResolvedSource(
+                track,
+                alternate,
+                isVideoMode,
+                audioQuality,
+                84,
+                preferMp4Audio,
+                expectedGeneration
+            )
             return@withContext alternate
         }
 
@@ -872,7 +922,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     private suspend fun resolveAudioByCompatibilityPolicy(
         track: Track,
         audioQuality: String,
-        errors: MutableList<String>
+        errors: MutableList<String>,
+        expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
         for (strategy in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies)) {
@@ -897,7 +948,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                     isVideoMode = false,
                     preferMp4Audio = false,
                     audioQuality = audioQuality,
-                    errors = errors
+                    errors = errors,
+                    expectedGeneration = expectedGeneration
                 )
 
                 PlaybackAudioStrategy.DIRECT -> resolveAudioFast(
@@ -917,8 +969,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(AUDIO_HEALTH_MODE, strategy.name, elapsedMs)
-                rememberStrategyOrigin(resolved, AUDIO_HEALTH_MODE, strategy.name)
-                store(track, resolved, false, audioQuality, false)
+                rememberStrategyOrigin(resolved, AUDIO_HEALTH_MODE, strategy.name, expectedGeneration)
+                store(track, resolved, false, audioQuality, false, expectedGeneration)
                 val confidence = when (strategy) {
                     PlaybackAudioStrategy.REEL_MUXED,
                     PlaybackAudioStrategy.REEL_AUDIO -> 96
@@ -927,7 +979,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                     PlaybackAudioStrategy.PERSISTED -> null
                 }
                 confidence?.let {
-                    persistResolvedSource(track, resolved, false, audioQuality, it, false)
+                    persistResolvedSource(
+                        track,
+                        resolved,
+                        false,
+                        audioQuality,
+                        it,
+                        false,
+                        expectedGeneration
+                    )
                 }
                 return resolved
             }
@@ -947,7 +1007,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     private suspend fun resolveVideoByCompatibilityPolicy(
         track: Track,
         audioQuality: String,
-        errors: MutableList<String>
+        errors: MutableList<String>,
+        expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
         for (strategy in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies)) {
@@ -960,7 +1021,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                     isVideoMode = true,
                     preferMp4Audio = false,
                     audioQuality = audioQuality,
-                    errors = errors
+                    errors = errors,
+                    expectedGeneration = expectedGeneration
                 )
 
                 PlaybackVideoStrategy.STANDARD -> resolveStandardVideo(track, audioQuality, errors)
@@ -973,8 +1035,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(VIDEO_HEALTH_MODE, strategy.name, elapsedMs)
-                rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name)
-                store(track, resolved, true, audioQuality)
+                rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name, expectedGeneration)
+                store(track, resolved, true, audioQuality, expectedGeneration = expectedGeneration)
                 val confidence = when (strategy) {
                     PlaybackVideoStrategy.PERSISTED -> null
                     PlaybackVideoStrategy.STANDARD -> 92
@@ -987,7 +1049,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                         isVideoMode = true,
                         audioQuality = audioQuality,
                         confidence = it,
-                        preferMp4Audio = false
+                        preferMp4Audio = false,
+                        expectedGeneration = expectedGeneration
                     )
                 }
                 return resolved
@@ -1432,7 +1495,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean,
         audioQuality: String,
         errors: MutableList<String>,
-        allowNetworkRefresh: Boolean = true
+        allowNetworkRefresh: Boolean = true,
+        expectedGeneration: Long
     ): Track? {
         val stored = runCatchingPreservingCancellation { sourceMatchStore.load(track, isVideoMode, audioQuality, preferMp4Audio) }
             .onFailure { error ->
@@ -1484,7 +1548,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             isVideoMode,
             audioQuality,
             stored.entity.confidence.coerceAtLeast(88),
-            preferMp4Audio
+            preferMp4Audio,
+            expectedGeneration
         )
         return rebased
     }
@@ -1603,16 +1668,20 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         audioQuality: String,
         confidence: Int,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        expectedGeneration: Long
     ) {
         val manifest = resolved.playbackManifest ?: return
         if (preferMp4Audio && !supportsOfflineExport(manifest)) return
-        try {
-            sourceMatchStore.save(original, resolved, isVideoMode, audioQuality, confidence, preferMp4Audio)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "persistent source match save failed")
+        sourceMatchMutationMutex.withLock {
+            if (resolverGeneration.get() != expectedGeneration) return
+            try {
+                sourceMatchStore.save(original, resolved, isVideoMode, audioQuality, confidence, preferMp4Audio)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "persistent source match save failed")
+            }
         }
     }
 
@@ -2015,7 +2084,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         resolvedTrack: Track,
         isVideoMode: Boolean = false,
         audioQuality: String = selectedAudioQuality,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        expectedGeneration: Long
     ) {
         if (preferMp4Audio) return
         if (resolvedTrack.streamUrl.isBlank() || !streamStillFresh(resolvedTrack.streamUrl)) return
@@ -2036,6 +2106,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .toString()
         }
         synchronized(streamCacheMutationLock) {
+            if (resolverGeneration.get() != expectedGeneration) return
             val editor = prefs.edit()
             var preferencesChanged = false
             expiringCacheKeysToRemove(
