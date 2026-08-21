@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-21T07:09:50Z",
+  "generatedAt": "2026-08-21T13:13:46Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1423,7 +1423,7 @@
         },
         {
           "position": 9,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1431,8 +1431,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1442,7 +1442,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 10,
@@ -2915,11 +2915,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 25,
@@ -5029,12 +5029,6 @@
           },
           "durationMs": 176213,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "O2tKlnfrLkY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -10043,6 +10037,14 @@
           },
           "durationMs": 212973,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "8_C6lXoGB5Y",
+            "audioConfidence": 100,
+            "videoId": "mrV8kK5t0V8",
+            "videoConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -10063,7 +10065,7 @@
           },
           "durationMs": 144491,
           "explicit": true,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0245f4ed63e14d4b05784d7ab9"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0278e8865721abd1694ac76a1a"
         },
         {
           "position": 24,
@@ -10453,6 +10455,14 @@
           },
           "durationMs": 204068,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BF2_ipR1OI0",
+            "audioConfidence": 100,
+            "videoId": "lY5V4hSLWY8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -14419,6 +14429,12 @@
           },
           "durationMs": 334053,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "eC4X_y21Qkw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -17273,7 +17289,7 @@
           },
           "durationMs": 155520,
           "explicit": true,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cb08eb80723fa9a0e9d02f4d"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023ffb4f4ede9c524c943f0bf3"
         },
         {
           "position": 36,
@@ -21872,12 +21888,6 @@
           },
           "durationMs": 141285,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "QbsbqekMkCU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCfCiP0obFQZOB6fJqN-eF8A"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022e6090052314604f93f1ebe4"
         },
         {
@@ -22167,8 +22177,6 @@
           "youtubeMusic": {
             "audioVideoId": "R5By6ms2a3Y",
             "audioConfidence": 100,
-            "videoId": "gmjZf_Nxlec",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCXYVQ1uTq-KQbPk6IQlXHnA"
           },
@@ -22176,20 +22184,20 @@
         },
         {
           "position": 17,
-          "id": "levyra-a76c2a1b79e00f8138a6",
-          "title": "RUDE! - Japanese Ver.",
+          "id": "levyra-c3df00c3dfd6b9d6d5ae",
+          "title": "RUDE!",
           "artists": [
             {
               "name": "Hearts2Hearts"
             }
           ],
           "album": {
-            "name": "ICONIC HEART",
-            "releaseDate": "2026-08-09"
+            "name": "RUDE!",
+            "releaseDate": "2026-02-20"
           },
           "durationMs": 200000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ccf2a687cd03daa7c9696e73"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d505bec2fbfee5857725d333"
         },
         {
           "position": 18,
@@ -22415,12 +22423,6 @@
           },
           "durationMs": 182000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "op05giODUE0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e5fd56cd91d38d69aec9a5a2"
         },
         {
@@ -25009,12 +25011,6 @@
           },
           "durationMs": 222706,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "M2QKS9tte9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -25192,12 +25188,6 @@
           },
           "durationMs": 240800,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "sUQb8fQ1egI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCnPlS1Ok2wmMcwC2qkZ0GKA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7105ffabf2ff9ddd265eab1"
         },
         {
@@ -25286,6 +25276,12 @@
           },
           "durationMs": 230130,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "MODbh7nKWmQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCM32L34TXX4f_l7f4tn6KGg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ac44521bc2da938d92b422f9"
         },
         {
@@ -26023,10 +26019,10 @@
           "durationMs": 234168,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "-zNB1BT2mi4",
+            "audioVideoId": "5q906vfrzyY",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCO2EZyzX5-X3Dc65bta6yDg"
+            "artistBrowseId": "UCjhtSjcSCUWbfFAWrp8Ow6w"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d6ebd978c7c460eaf3f75f85"
         },
@@ -26247,11 +26243,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 39,
@@ -27983,6 +27979,14 @@
           },
           "durationMs": 204068,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BF2_ipR1OI0",
+            "audioConfidence": 100,
+            "videoId": "lY5V4hSLWY8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -29710,6 +29714,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -29881,6 +29887,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -29938,6 +29950,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -30010,7 +30028,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -30018,17 +30036,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -30074,7 +30086,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -30108,7 +30120,7 @@
       "kind": "release",
       "market": "IT",
       "title": "New releases",
-      "description": "Nuovi brani dei Fontaines D.C., Farruko, KATSEYE, Jungle, HUGEL e tanti altri.",
+      "description": "Nuovi brani delle ultime due settimane dei Fontaines D.C., Farruko, KATSEYE, Jungle, HUGEL e tanti altri.",
       "totalSourceItems": 55,
       "tracks": [
         {
@@ -30248,12 +30260,6 @@
           },
           "durationMs": 202617,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "ebiwZCVlfrY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCorC9G_NU-iwKeV94AWQGsA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ed6ca415b4cbd65b8c42d778"
         },
         {
@@ -30299,6 +30305,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -30620,6 +30628,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -30791,6 +30801,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -30848,6 +30864,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -30920,7 +30942,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -30928,17 +30950,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -30984,7 +31000,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -31062,6 +31078,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -31233,6 +31251,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -31290,6 +31314,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -31362,7 +31392,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -31370,17 +31400,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -31426,7 +31450,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -31504,6 +31528,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -31675,6 +31701,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -31732,6 +31764,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -31804,7 +31842,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -31812,17 +31850,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -31868,7 +31900,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -31946,6 +31978,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -32117,6 +32151,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -32174,6 +32214,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -32246,7 +32292,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -32254,17 +32300,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -32310,7 +32350,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -32388,6 +32428,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -32559,6 +32601,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -32616,6 +32664,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -32688,7 +32742,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -32696,17 +32750,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -32752,7 +32800,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -32830,6 +32878,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -33001,6 +33051,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -33058,6 +33114,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -33130,7 +33192,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -33138,17 +33200,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -33194,7 +33250,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -33272,6 +33328,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -33443,6 +33501,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -33500,6 +33564,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -33572,7 +33642,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -33580,17 +33650,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -33636,7 +33700,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -33714,6 +33778,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -33885,6 +33951,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -33942,6 +34014,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -34014,7 +34092,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -34022,17 +34100,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -34078,7 +34150,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -34156,6 +34228,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -34327,6 +34401,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -34384,6 +34464,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -34456,7 +34542,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -34464,17 +34550,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -34520,7 +34600,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -34598,6 +34678,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -34769,6 +34851,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -34826,6 +34914,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -34898,7 +34992,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -34906,17 +35000,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -34962,7 +35050,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -35040,6 +35128,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -35211,6 +35301,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -35268,6 +35364,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -35340,7 +35442,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -35348,17 +35450,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -35404,7 +35500,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -35482,6 +35578,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -35653,6 +35751,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -35710,6 +35814,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -35782,7 +35892,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -35790,17 +35900,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -35846,7 +35950,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -35924,6 +36028,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -36095,6 +36201,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -36152,6 +36264,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -36224,7 +36342,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -36232,17 +36350,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -36288,7 +36400,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -36366,6 +36478,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -36537,6 +36651,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -36594,6 +36714,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -36666,7 +36792,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -36674,17 +36800,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -36730,7 +36850,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -36808,6 +36928,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -36979,6 +37101,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -37036,6 +37164,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -37108,7 +37242,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -37116,17 +37250,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -37172,7 +37300,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -37250,6 +37378,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -37421,6 +37551,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -37478,6 +37614,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -37550,7 +37692,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -37558,17 +37700,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -37614,7 +37750,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -37692,6 +37828,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -37863,6 +38001,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -37920,6 +38064,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -37992,7 +38142,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -38000,17 +38150,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -38056,7 +38200,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -38134,6 +38278,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -38305,6 +38451,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -38362,6 +38514,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -38434,7 +38592,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -38442,17 +38600,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -38498,7 +38650,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -38576,6 +38728,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -38747,6 +38901,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -38804,6 +38964,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -38876,7 +39042,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -38884,17 +39050,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -38940,7 +39100,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -39018,6 +39178,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -39189,6 +39351,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -39246,6 +39414,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -39318,7 +39492,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -39326,17 +39500,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -39382,7 +39550,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -39460,6 +39628,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -39631,6 +39801,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -39688,6 +39864,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -39760,7 +39942,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -39768,17 +39950,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -39824,7 +40000,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -39902,6 +40078,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -40073,6 +40251,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -40130,6 +40314,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -40202,7 +40392,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -40210,17 +40400,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -40266,7 +40450,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -40344,6 +40528,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -40515,6 +40701,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -40572,6 +40764,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -40644,7 +40842,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -40652,17 +40850,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -40708,7 +40900,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,
@@ -40786,6 +40978,8 @@
           "youtubeMusic": {
             "audioVideoId": "0VxqjIJv1t0",
             "audioConfidence": 100,
+            "videoId": "Mdi8Pty_-OU",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCgpBsaDW2n_6ruzht3wvP0A"
           },
@@ -40957,6 +41151,12 @@
           },
           "durationMs": 193573,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "keGOPpM08Yw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCB07DeQpv7GdeaVs-6tyn_A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ae0c4ff5ffdcb346c91bb4d6"
         },
         {
@@ -41014,6 +41214,12 @@
           },
           "durationMs": 231477,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Jk7bgiPe1U0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdSYTWbU6IWYrTieY5jB5TQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029e1128b0f3ecbe0f572e72cd"
         },
         {
@@ -41086,7 +41292,7 @@
         },
         {
           "position": 17,
-          "id": "levyra-b172ff3f83956b7dcafe",
+          "id": "levyra-c36005eda2576c3ad318",
           "title": "Some of Your Love",
           "artists": [
             {
@@ -41094,17 +41300,11 @@
             }
           ],
           "album": {
-            "name": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+            "name": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
             "releaseDate": "2026-08-21"
           },
           "durationMs": 159650,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "wpjdoqh3jcg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCV8G0JqlvVKkHxNyeog8Ftg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02279b3e89d5c179aeb939f588"
         },
         {
@@ -41150,7 +41350,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6dAIj2i3D0tOK5a-Wwy6Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020dd1d8263fb64a9fb801b0a2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a04323aeadf6c610d848f5a"
         },
         {
           "position": 20,

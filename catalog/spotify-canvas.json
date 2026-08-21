@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-21T07:09:50Z",
+  "generatedAt": "2026-08-21T13:13:46Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -327,7 +327,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -532,6 +532,13 @@
       "artist": "The Neighbourhood",
       "album": "I Love You.",
       "url": "https://canvaz.scdn.co/upload/artist/77SW9BnxLY8rJ0RciFqkHh/video/b1b4dc3baa884d92844ff776a131150f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1788,6 +1795,13 @@
       "scope": "track"
     },
     {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Maak Me Nou Niet Gek",
       "artist": "Lil Kleine, Samuel Welten, De Amsterdamse Zomer",
       "album": "Maak Me Nou Niet Gek",
@@ -2387,13 +2401,6 @@
       "artist": "Lovet, Victor Leksell",
       "album": "Atom",
       "url": "https://canvaz.scdn.co/upload/artist/2kSCHFK5uErN4BO7IkTrHK/video/f39a3f40f24744aeb9ba0e2e35e8fa69.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3468,6 +3475,13 @@
       "scope": "track"
     },
     {
+      "song": "RUDE!",
+      "artist": "Hearts2Hearts",
+      "album": "RUDE!",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "404 (New Era)",
       "artist": "KiiiKiii",
       "album": "Delulu Pack",
@@ -4119,13 +4133,6 @@
       "scope": "track"
     },
     {
-      "song": "Thiên Đường Với Người Thương",
-      "artist": "Phương Mỹ Chi, DTAP",
-      "album": "Thiên Đường Với Người Thương",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/af2bea3fad424323a6f8472590378a79.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Bạn Đời",
       "artist": "Karik, GDucky",
       "album": "421",
@@ -4532,6 +4539,13 @@
       "scope": "track"
     },
     {
+      "song": "Dancing",
+      "artist": "Jorja Smith",
+      "album": "What Are The Odds",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/15faf2eafcad4277a3c7a3cb9982f4a2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "CARITA FELIZ",
       "artist": "Myke Towers",
       "album": "CARITA FELIZ",
@@ -4562,7 +4576,7 @@
     {
       "song": "Some of Your Love",
       "artist": "PARTYNEXTDOOR",
-      "album": "PARTYNEXTDOOR 3 (P3) (10-YEAR EDITION)",
+      "album": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
       "url": "https://canvaz.scdn.co/upload/artist/2HPaUgqeutzr3jx5a9WyDV/video/21ce1a23ead24a3c9db48c86d0ab9552.cnvs.mp4",
       "scope": "track"
     },
