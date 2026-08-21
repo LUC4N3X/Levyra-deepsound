@@ -1,0 +1,1 @@
+Levyra 2.3.22 fixes runaway native memory during music playback, hardens YouTube playback, recovery and metadata extraction, improves offline source handling, expands Replay and lyrics sharing, and refines player ambience, Canvas transitions, pure-black mode and haptics.
