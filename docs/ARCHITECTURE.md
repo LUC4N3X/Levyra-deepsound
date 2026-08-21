@@ -277,6 +277,8 @@ resolve(track)
 
 Individual strategies may still hedge LevyraExtractor and InnerTube work internally. The first valid result wins and losing work is cancelled when safe.
 
+The bundled song policy tries the existing Reel audio-only formats before Reel muxed media, persisted URLs, direct resolution and search fallback. Muxed playback remains available for compatibility, but it is not the preferred Music Mode resource shape.
+
 ### 6.2 In-flight deduplication
  
 Concurrent requests for the same media key share one `Deferred`.
@@ -318,11 +320,13 @@ The resolver tracks per-client:
 - temporary blocks;
 - last update time.
 
-It also keeps local, privacy-preserving health for the higher-level audio and video strategies. Server policy remains the authority for which strategies are allowed; local health can only reorder that allowlist. Repeated resolution failures open a temporary circuit, while a hard runtime rejection such as `403`, `410`, `429`, `LOGIN_REQUIRED`, or a signature/PO-Token failure can quarantine the strategy immediately. Open strategies remain last-resort fallbacks and become half-open after cooldown.
+It also keeps local, privacy-preserving health for the higher-level audio and video strategies. Server policy remains the authority for which strategies are allowed; local health can only reorder that allowlist. A newly introduced first strategy receives one policy-order canary before historical health may reorder it. Repeated resolution failures open a temporary circuit, while a hard runtime rejection such as `403`, `410`, `429`, `LOGIN_REQUIRED`, or a signature/PO-Token failure can quarantine the strategy immediately. Open strategies remain last-resort fallbacks and become half-open after cooldown.
 
 The URL that reached Media3 is associated in memory with the strategy that produced it, so a later player-side rejection is charged to the correct strategy instead of being mistaken for a successful resolve.
 
 Dynamic client health can delay unhealthy fallback clients, but it does not demote Android VR inside the standard InnerTube client path.
+
+Resolved stream entries, failed-playback URL quarantine and rejected-video URL quarantine prune expired entries when updated and enforce fixed entry limits. The Media3 disk cache remains a separate bounded LRU owner.
 
 ### 6.5 Server-driven compatibility policy
 
@@ -544,7 +548,7 @@ The processor:
  
 ## 12. Media3 playback service
  
-`PlaybackService` owns the long-running ExoPlayer and MediaSession lifecycle.
+`PlaybackService` owns the long-running audible ExoPlayer, its audio processors and the MediaSession lifecycle.
  
 Responsibilities include:
  
@@ -558,7 +562,9 @@ Responsibilities include:
 - media-session commands;
 - player state publication to the application layer.
  
-The UI does not own ExoPlayer directly.
+The UI does not own audible playback. Decorative Canvas artwork is the narrow exception: its muted, audio-disabled ExoPlayer is owned by the mounted artwork layer and releases its listener, surface and player on disposal.
+
+The service memory guard samples native allocation outside the Main dispatcher, then returns to Main and revalidates the active playing instance before any player mutation. Recovery reuses the measured value and the existing primary ExoPlayer while restoring the current item, position and play intent.
 
 ### 12.1 Real crossfade and AutoMix
 
@@ -566,7 +572,9 @@ The UI does not own ExoPlayer directly.
 audio-mode track it resolves and prepares the next persistent-queue item in a
 secondary ExoPlayer that does not request audio focus. The secondary player has
 independent normalization, equalizer, spatial, limiter, and PCM processors
-configured from the same settings as the primary player.
+configured from the same settings as the primary player. Its renderer factory
+does not create video renderers, so muxed compatibility fallback cannot allocate
+a video decoder during an audio-mode overlap.
 
 The transition uses equal-power gains. After the overlap, the resolved queue
 item is selected once, the primary player resumes at the secondary player's
@@ -574,6 +582,9 @@ position, and a short handoff returns sole ownership to the MediaSession player.
 Queue generation and durable track identity cancel stale work. Pause, backward
 seek, queue mutation, repeat-one, native-video mode, low-memory pressure, and
 service destruction also cancel and release the secondary player.
+Cancellation and normal completion converge on one idempotent secondary cleanup
+path that clears the service reference before pausing, clearing and releasing the
+player.
 
 AutoMix changes only the bounded overlap duration, using local energy and vocal
 metadata. It does not claim beat, BPM, or key matching.

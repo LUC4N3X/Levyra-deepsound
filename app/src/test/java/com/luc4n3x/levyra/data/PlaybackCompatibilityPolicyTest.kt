@@ -14,6 +14,7 @@ class PlaybackCompatibilityPolicyTest {
 
         assertEquals(
             listOf(
+                PlaybackAudioStrategy.REEL_AUDIO,
                 PlaybackAudioStrategy.REEL_MUXED,
                 PlaybackAudioStrategy.PERSISTED,
                 PlaybackAudioStrategy.DIRECT,

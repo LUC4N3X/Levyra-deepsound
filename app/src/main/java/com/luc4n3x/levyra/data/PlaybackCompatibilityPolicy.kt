@@ -55,13 +55,14 @@ internal data class PlaybackCompatibilityPolicy(
 ) {
     companion object {
         const val SCHEMA = 1
-        const val BUNDLED_REVISION = 2026081801L
+        const val BUNDLED_REVISION = 2026082101L
         const val DEFAULT_ANDROID_REEL_CLIENT_VERSION = "21.03.36"
 
         fun bundled(): PlaybackCompatibilityPolicy = PlaybackCompatibilityPolicy(
             schema = SCHEMA,
             revision = BUNDLED_REVISION,
             audioStrategies = listOf(
+                PlaybackAudioStrategy.REEL_AUDIO,
                 PlaybackAudioStrategy.REEL_MUXED,
                 PlaybackAudioStrategy.PERSISTED,
                 PlaybackAudioStrategy.DIRECT,

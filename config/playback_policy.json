@@ -1,7 +1,8 @@
 {
   "schema": 1,
-  "revision": 2026081801,
+  "revision": 2026082101,
   "audioStrategy": [
+    "REEL_AUDIO",
     "REEL_MUXED",
     "PERSISTED",
     "DIRECT",
