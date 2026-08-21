@@ -14,8 +14,10 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -25,12 +27,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 internal const val PlayerStageHeightFraction = 0.58f
 internal const val PlayerStageMinOverlapDp = 32f
-internal val PlayerStageSpillHeight: Dp = 144.dp
+internal val PlayerStageSpillHeight: Dp = 176.dp
 
 private const val StageTopScrimEnd = 0.20f
-private const val StageVeilLead = 0.48f
-private const val StageVeilKnee = 0.56f
-private const val StageSideVignetteAlpha = 0.055f
+private const val StageSideVignetteAlpha = 0.045f
 
 @Immutable
 internal data class PlayerStageMetrics(
@@ -69,9 +69,11 @@ internal fun PlayerStage(
     staticArtwork: @Composable () -> Unit
 ) {
     val settle = veilSettleFraction.coerceIn(0.35f, 0.98f)
-    val veilStart = (settle - StageVeilLead).coerceIn(0.08f, settle)
-    val veilKnee = (veilStart + (settle - veilStart) * StageVeilKnee).coerceIn(veilStart, settle)
-    val handoff = ambience.base.playerAmbienceMix(ambience.control, 0.20f)
+    val fadeStart = (settle - 0.26f).coerceIn(0.58f, 0.72f)
+    val fadeSoft = (fadeStart + 0.10f).coerceAtMost(0.82f)
+    val fadeMid = (fadeStart + 0.18f).coerceAtMost(0.90f)
+    val fadeLow = (fadeStart + 0.25f).coerceAtMost(0.96f)
+    val handoff = ambience.base.playerAmbienceMix(ambience.control, 0.18f)
     val bloom = ambience.primary.playerAmbienceMix(ambience.secondary, 0.38f)
 
     Box(modifier = modifier) {
@@ -84,6 +86,7 @@ internal fun PlayerStage(
                     val scale = contentScale()
                     scaleX = scale
                     scaleY = scale
+                    compositingStrategy = CompositingStrategy.Offscreen
                 }
                 .drawWithContent {
                     drawContent()
@@ -103,13 +106,11 @@ internal fun PlayerStage(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0.00f to Color.Transparent,
-                                veilStart to Color.Transparent,
-                                (veilStart + (veilKnee - veilStart) * 0.42f) to handoff.copy(alpha = 0.035f),
-                                veilKnee to handoff.copy(alpha = 0.10f),
-                                (veilKnee + (settle - veilKnee) * 0.52f) to handoff.copy(alpha = 0.24f),
-                                settle to handoff.copy(alpha = 0.46f),
-                                (settle + (1f - settle) * 0.46f) to handoff.copy(alpha = 0.68f),
-                                1.00f to handoff.copy(alpha = 0.90f)
+                                fadeStart to Color.Transparent,
+                                fadeSoft to handoff.copy(alpha = 0.045f),
+                                fadeMid to handoff.copy(alpha = 0.10f),
+                                fadeLow to handoff.copy(alpha = 0.15f),
+                                1.00f to handoff.copy(alpha = 0.18f)
                             )
                         )
                     )
@@ -117,33 +118,47 @@ internal fun PlayerStage(
                     drawRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                bloom.copy(alpha = 0.075f),
-                                ambience.primary.copy(alpha = 0.025f),
+                                bloom.copy(alpha = 0.065f),
+                                ambience.primary.copy(alpha = 0.020f),
                                 Color.Transparent
                             ),
-                            center = Offset(size.width * 0.24f, size.height * 0.92f),
-                            radius = size.maxDimension * 0.58f
+                            center = Offset(size.width * 0.24f, size.height * 0.84f),
+                            radius = size.maxDimension * 0.62f
                         )
                     )
                     drawRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ambience.secondary.copy(alpha = 0.055f),
+                                ambience.secondary.copy(alpha = 0.045f),
                                 Color.Transparent
                             ),
                             center = Offset(size.width * 0.80f, size.height * 0.88f),
-                            radius = size.maxDimension * 0.46f
+                            radius = size.maxDimension * 0.50f
                         )
                     )
 
                     drawRect(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
-                                0.00f to Color.Black.copy(alpha = 0.36f),
-                                0.07f to Color.Black.copy(alpha = 0.11f),
+                                0.00f to Color.Black.copy(alpha = 0.34f),
+                                0.07f to Color.Black.copy(alpha = 0.10f),
                                 StageTopScrimEnd to Color.Transparent
                             )
                         )
+                    )
+
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.00f to Color.White,
+                                fadeStart to Color.White,
+                                fadeSoft to Color.White.copy(alpha = 0.94f),
+                                fadeMid to Color.White.copy(alpha = 0.70f),
+                                fadeLow to Color.White.copy(alpha = 0.34f),
+                                1.00f to Color.Transparent
+                            )
+                        ),
+                        blendMode = BlendMode.DstIn
                     )
                 }
         ) {
@@ -167,8 +182,8 @@ internal fun PlayerConsoleSurface(
     ambience: PlayerAmbience,
     modifier: Modifier = Modifier
 ) {
-    val handoff = ambience.base.playerAmbienceMix(ambience.control, 0.20f)
-    val lower = ambience.elevated.playerAmbienceMix(ambience.base, 0.48f)
+    val handoff = ambience.base.playerAmbienceMix(ambience.control, 0.18f)
+    val lower = ambience.elevated.playerAmbienceMix(ambience.base, 0.46f)
     val bloom = ambience.primary.playerAmbienceMix(ambience.secondary, 0.40f)
 
     Box(
@@ -178,10 +193,12 @@ internal fun PlayerConsoleSurface(
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to handoff.copy(alpha = 0.90f),
-                        0.24f to handoff.copy(alpha = 0.94f),
-                        0.62f to lower.copy(alpha = 0.96f),
-                        1.00f to lower
+                        0.00f to Color.Transparent,
+                        0.18f to handoff.copy(alpha = 0.035f),
+                        0.38f to handoff.copy(alpha = 0.11f),
+                        0.62f to lower.copy(alpha = 0.30f),
+                        0.82f to lower.copy(alpha = 0.52f),
+                        1.00f to lower.copy(alpha = 0.70f)
                     )
                 )
             )
@@ -189,32 +206,32 @@ internal fun PlayerConsoleSurface(
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ambience.primary.copy(alpha = 0.10f),
-                        ambience.primary.copy(alpha = 0.025f),
+                        ambience.primary.copy(alpha = 0.070f),
+                        ambience.primary.copy(alpha = 0.020f),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.18f, 0f),
-                    radius = size.width * 0.92f
+                    center = Offset(size.width * 0.18f, size.height * 0.06f),
+                    radius = size.width * 0.96f
                 )
             )
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ambience.secondary.copy(alpha = 0.075f),
+                        ambience.secondary.copy(alpha = 0.055f),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.84f, size.height * 0.16f),
-                    radius = size.width * 0.78f
+                    center = Offset(size.width * 0.84f, size.height * 0.20f),
+                    radius = size.width * 0.82f
                 )
             )
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        bloom.copy(alpha = 0.045f),
+                        bloom.copy(alpha = 0.035f),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.50f, size.height * 0.72f),
-                    radius = size.maxDimension * 0.62f
+                    center = Offset(size.width * 0.52f, size.height * 0.74f),
+                    radius = size.maxDimension * 0.64f
                 )
             )
         }
@@ -228,12 +245,12 @@ internal fun PlayerStageHorizon(
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val handoff = ambience.base.playerAmbienceMix(ambience.control, 0.20f)
-    val bloom = ambience.primary.playerAmbienceMix(ambience.secondary, 0.40f)
+    val mist = ambience.base.playerAmbienceMix(ambience.control, 0.16f)
+    val bloom = ambience.primary.playerAmbienceMix(ambience.secondary, 0.42f)
     val intensity by animateFloatAsState(
-        targetValue = if (isPlaying) 0.72f else 0.54f,
-        animationSpec = if (animationsEnabled) tween(720, easing = LevyraPlayerDesign.Standard) else snap(),
-        label = "player-stage-handoff"
+        targetValue = if (isPlaying) 0.60f else 0.46f,
+        animationSpec = if (animationsEnabled) tween(760, easing = LevyraPlayerDesign.Standard) else snap(),
+        label = "player-stage-ambient-mist"
     )
 
     Box(
@@ -244,10 +261,9 @@ internal fun PlayerStageHorizon(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.16f to handoff.copy(alpha = 0.025f * intensity),
-                        0.38f to handoff.copy(alpha = 0.075f * intensity),
-                        0.58f to handoff.copy(alpha = 0.14f * intensity),
-                        0.78f to handoff.copy(alpha = 0.075f * intensity),
+                        0.24f to mist.copy(alpha = 0.020f * intensity),
+                        0.48f to mist.copy(alpha = 0.060f * intensity),
+                        0.68f to mist.copy(alpha = 0.045f * intensity),
                         1.00f to Color.Transparent
                     )
                 ),
@@ -258,21 +274,21 @@ internal fun PlayerStageHorizon(
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        bloom.copy(alpha = 0.065f * intensity),
+                        bloom.copy(alpha = 0.050f * intensity),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.30f, size.height * 0.50f),
-                    radius = size.width * 0.82f
+                    center = Offset(size.width * 0.30f, size.height * 0.46f),
+                    radius = size.width * 0.88f
                 )
             )
             drawRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ambience.secondary.copy(alpha = 0.045f * intensity),
+                        ambience.secondary.copy(alpha = 0.038f * intensity),
                         Color.Transparent
                     ),
-                    center = Offset(size.width * 0.78f, size.height * 0.42f),
-                    radius = size.width * 0.66f
+                    center = Offset(size.width * 0.78f, size.height * 0.54f),
+                    radius = size.width * 0.72f
                 )
             )
         }
