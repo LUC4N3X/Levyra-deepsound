@@ -272,6 +272,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
         private const val AUDIO_HEALTH_MODE = "audio"
         private const val VIDEO_HEALTH_MODE = "video"
+        private const val MAX_STREAM_CACHE_ENTRIES = 128
+        private const val MAX_FAILED_PLAYBACK_URLS = 256
         private const val MAX_STRATEGY_ORIGINS = 256
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
@@ -293,10 +295,12 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val clientHealthPrefs = context.getSharedPreferences("levyra_innertube_client_health", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
+    private val streamCacheMutationLock = Any()
     private val resolveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val singleFlight = PlaybackSingleFlight<String, Track>(resolveScope)
     private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
     private val failedPlaybackUrls = ConcurrentHashMap<String, Long>()
+    private val failedPlaybackUrlsMutationLock = Any()
     private val youtubeEngagementCache = ConcurrentHashMap<String, CachedYoutubeEngagement>()
     private val videoSelector = LevyraVideoStreamSelector(context)
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
@@ -373,9 +377,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private suspend fun clearResolvedStreamCaches() {
-        streamCache.clear()
+        synchronized(streamCacheMutationLock) {
+            streamCache.clear()
+            prefs.edit().clear().apply()
+        }
         strategyOriginByUrl.clear()
-        prefs.edit().clear().apply()
         sourceMatchStore.clearOnline()
     }
 
@@ -522,7 +528,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val recovery = resilienceEngine.recoveryPlan(reason)
         listOf(track.streamUrl, track.videoStreamUrl)
             .filter { it.isNotBlank() }
-            .forEach { failedPlaybackUrls[it] = now + recovery.quarantineMs }
+            .forEach { quarantinePlaybackUrl(it, now + recovery.quarantineMs, now) }
         if (recovery.rotateClient) {
             profileFromSource(track.source)?.let { profile ->
                 recordClientFailure(profile, null, PlaybackBlockedException(reason))
@@ -658,6 +664,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (until > System.currentTimeMillis()) return true
         failedPlaybackUrls.remove(url, until)
         return false
+    }
+
+    private fun quarantinePlaybackUrl(url: String, untilMs: Long, nowMs: Long) {
+        synchronized(failedPlaybackUrlsMutationLock) {
+            expiringCacheKeysToRemove(
+                entries = failedPlaybackUrls,
+                nowMs = nowMs,
+                maxEntries = MAX_FAILED_PLAYBACK_URLS,
+                incomingKey = url
+            ).forEach(failedPlaybackUrls::remove)
+            failedPlaybackUrls[url] = untilMs
+        }
     }
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
@@ -1141,79 +1159,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
 
-        val formats = androidReelFormats(root)
-        val muxedCandidates = buildList {
-            for (i in 0 until formats.length()) {
-                val format = formats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                if (!mime.startsWith("video/", true)) continue
-                val url = format.resolveFormatUrl(
-                    videoId = sourceVideoId,
-                    streamingPoToken = null,
-                    transformThrottling = true
-                ).takeIf { it.isNotBlank() }
-                    ?.withQueryParameterReplacing("cpn", cpn)
-                    .orEmpty()
-                if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
-                add(
-                    Triple(
-                        format,
-                        url,
-                        if (format.optInt("itag", 0) == 18) Int.MIN_VALUE else format.optInt("bitrate", Int.MAX_VALUE)
-                    )
-                )
-            }
-        }.sortedBy { it.third }
-        var selectedMuxed: Triple<JSONObject, String, Int>? = null
-        for (candidate in muxedCandidates) {
-            if (verifyDirectAudioUrlFast(candidate.second)) {
-                selectedMuxed = candidate
-                break
-            }
-        }
-        val muxed = selectedMuxed
-            ?: throw YoutubePlayerRequestException(null, "Android Reel non ha restituito uno stream audio riproducibile")
-        val (muxedFormat, muxedUrl, _) = muxed
-        val details = playerResponse.optJSONObject("videoDetails")
-        val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L)
-            ?.takeIf { it > 0L }
-            ?: track.durationMs
-        val thumbnail = details
-            ?.optJSONObject("thumbnail")
-            ?.optJSONArray("thumbnails")
-            ?.bestThumbnail()
-            .orEmpty()
-            .ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
-        val muxedCandidate = LevyraVideoCandidate(
-            url = muxedUrl,
-            mimeType = muxedFormat.optString("mimeType").substringBefore(';'),
-            codec = codecFromMimeType(muxedFormat.optString("mimeType")),
-            width = muxedFormat.optInt("width", 0),
-            height = muxedFormat.optInt("height", 0),
-            fps = muxedFormat.optInt("fps", 0),
-            bitrate = muxedFormat.optInt("bitrate", 0),
-            itag = muxedFormat.optInt("itag", 0),
-            muxed = true,
-            label = "android-reel-audio-fallback"
-        )
-        val manifest = buildManifest(
-            sourceVideoId = sourceVideoId,
-            provider = "YouTube Android Reel Audio",
-            durationMs = duration,
-            selectedAudioUrl = muxedUrl,
-            selectedVideoUrl = "",
-            streams = listOf(videoDescriptor(muxedCandidate, true))
-        )
-        return track.withDirectStream(
-            DirectStream(
-                url = muxedUrl,
-                videoUrl = "",
-                durationMs = duration,
-                thumbnailUrl = thumbnail,
-                source = "YouTube Android Reel Audio · muxed fallback",
-                manifest = manifest
-            )
-        )
+        throw YoutubePlayerRequestException(null, "Android Reel non ha restituito uno stream solo audio riproducibile")
     }
 
     private suspend fun resolveVideoWithAndroidReel(track: Track): Track {
@@ -2030,8 +1976,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             val editor = prefs.edit()
             var modified = false
             prefs.all.forEach { (key, value) ->
-                val raw = value as? String ?: return@forEach
-                val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
+                val json = parsePersistedCacheEntry(value)
+                if (json == null) {
+                    editor.remove(key)
+                    modified = true
+                    return@forEach
+                }
                 val streamUrl = json.optString("streamUrl")
                 val expiresAt = json.optLong("expiresAt", json.optLong("at", 0L) + fallbackTtlMs)
                 val manifest = PlaybackManifestCodec.decode(json.optString("manifestJson"))
@@ -2046,6 +1996,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                     editor.remove(key)
                     modified = true
                 }
+            }
+            expiringCacheKeysToRemove(
+                entries = streamCache.mapValues { it.value.expiresAt },
+                nowMs = now,
+                maxEntries = MAX_STREAM_CACHE_ENTRIES
+            ).forEach { key ->
+                streamCache.remove(key)
+                editor.remove(key)
+                modified = true
             }
             if (modified) editor.apply()
         }
@@ -2066,19 +2025,43 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?.takeIf { it > System.currentTimeMillis() }
             ?.let { minOf(it, expiresAtFor(resolvedTrack.streamUrl)) }
             ?: expiresAtFor(resolvedTrack.streamUrl)
-        streamCache[key] = CachedStream(resolvedTrack, expiresAt)
-        if (isVideoMode || resolvedTrack.videoStreamUrl.isNotBlank()) return
-        val json = JSONObject()
-            .put("expiresAt", expiresAt)
-            .put("streamUrl", resolvedTrack.streamUrl)
-            .put("manifestJson", resolvedTrack.playbackManifest?.let(PlaybackManifestCodec::encode).orEmpty())
-            .put("track", TrackJson.toJson(resolvedTrack.copy(streamUrl = "", playbackManifest = null)))
-        prefs.edit().putString(key, json.toString()).apply()
+        val persistedValue = if (isVideoMode || resolvedTrack.videoStreamUrl.isNotBlank()) {
+            null
+        } else {
+            JSONObject()
+                .put("expiresAt", expiresAt)
+                .put("streamUrl", resolvedTrack.streamUrl)
+                .put("manifestJson", resolvedTrack.playbackManifest?.let(PlaybackManifestCodec::encode).orEmpty())
+                .put("track", TrackJson.toJson(resolvedTrack.copy(streamUrl = "", playbackManifest = null)))
+                .toString()
+        }
+        synchronized(streamCacheMutationLock) {
+            val editor = prefs.edit()
+            var preferencesChanged = false
+            expiringCacheKeysToRemove(
+                entries = streamCache.mapValues { it.value.expiresAt },
+                nowMs = System.currentTimeMillis(),
+                maxEntries = MAX_STREAM_CACHE_ENTRIES,
+                incomingKey = key
+            ).forEach { expiredKey ->
+                streamCache.remove(expiredKey)
+                editor.remove(expiredKey)
+                preferencesChanged = true
+            }
+            streamCache[key] = CachedStream(resolvedTrack, expiresAt)
+            if (persistedValue != null) {
+                editor.putString(key, persistedValue)
+                preferencesChanged = true
+            }
+            if (preferencesChanged) editor.apply()
+        }
     }
 
     private fun remove(key: String) {
-        streamCache.remove(key)
-        prefs.edit().remove(key).apply()
+        synchronized(streamCacheMutationLock) {
+            streamCache.remove(key)
+            prefs.edit().remove(key).apply()
+        }
     }
 
     private fun isFresh(expiresAt: Long): Boolean = System.currentTimeMillis() < expiresAt

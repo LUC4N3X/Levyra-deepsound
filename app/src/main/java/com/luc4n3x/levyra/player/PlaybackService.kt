@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.app.ActivityManager
 import android.os.Debug
 import android.os.Build
+import android.os.Handler
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
@@ -31,15 +32,18 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
@@ -82,6 +86,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import java.io.IOException
+import java.util.ArrayList
 
 @UnstableApi
 class PlaybackService : MediaLibraryService() {
@@ -110,6 +115,12 @@ class PlaybackService : MediaLibraryService() {
     private var transitionPlayer: ExoPlayer? = null
     private var currentAudioSettings = LevyraAudioSettings()
     private var currentAudioNormalization = false
+    private val normalizationProcessor = NormalizationAudioProcessor()
+    private val equalizerProcessor = LevyraEqualizerAudioProcessor()
+    private val spatialAudioProcessor = StereoSpatialAudioProcessor()
+    private val limiterProcessor = TruePeakLimiterAudioProcessor()
+    private val visualizerProcessor = VisualizerAudioProcessor()
+    private val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
     private lateinit var playbackWakeLock: PowerManager.WakeLock
     private lateinit var playbackStateStore: SharedPreferences
     private var serviceRecoveryAttempts = 0
@@ -185,6 +196,10 @@ class PlaybackService : MediaLibraryService() {
         @Volatile
         private var activeService: PlaybackService? = null
 
+        private val premiumAudioSettingsLock = Any()
+        private var pendingAudioSettings: LevyraAudioSettings? = null
+        private var pendingAudioNormalization = false
+
         @Volatile
         private var uiRecoveryAvailable = false
 
@@ -223,27 +238,16 @@ class PlaybackService : MediaLibraryService() {
         var isQueueTransitionInProgress: Boolean = false
             private set
 
-        val normalizationProcessor = NormalizationAudioProcessor()
-        val equalizerProcessor = LevyraEqualizerAudioProcessor()
-        val spatialAudioProcessor = StereoSpatialAudioProcessor()
-        val limiterProcessor = TruePeakLimiterAudioProcessor()
-        val visualizerProcessor = VisualizerAudioProcessor()
-        val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
-
         fun applyPremiumAudioSettings(
             settings: LevyraAudioSettings,
             audioNormalization: Boolean
         ) {
             val normalized = settings.normalized()
-            equalizerProcessor.enabled = normalized.equalizerEnabled
-            equalizerProcessor.setBandLevels(normalized.bandLevels)
-            equalizerProcessor.bassBoost = normalized.bassBoost
-            equalizerProcessor.preampDb = normalized.preampDb
-            spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
-            limiterProcessor.enabled = normalized.limiterEnabled &&
-                (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
-                    normalized.replayGainEnabled || audioNormalization)
-            activeService?.updateQueueTransitionSettings(normalized, audioNormalization)
+            synchronized(premiumAudioSettingsLock) {
+                pendingAudioSettings = normalized
+                pendingAudioNormalization = audioNormalization
+                activeService?.applyPremiumAudioSettingsInternal(normalized, audioNormalization)
+            }
         }
     }
 
@@ -251,6 +255,32 @@ class PlaybackService : MediaLibraryService() {
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
+
+    private fun applyPremiumAudioSettingsInternal(
+        settings: LevyraAudioSettings,
+        audioNormalization: Boolean
+    ) {
+        val normalized = settings.normalized()
+        normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled
+        equalizerProcessor.enabled = normalized.equalizerEnabled
+        equalizerProcessor.setBandLevels(normalized.bandLevels)
+        equalizerProcessor.bassBoost = normalized.bassBoost
+        equalizerProcessor.preampDb = normalized.preampDb
+        spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
+        limiterProcessor.enabled = normalized.limiterEnabled &&
+            (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
+                normalized.replayGainEnabled || audioNormalization)
+        updateQueueTransitionSettings(normalized, audioNormalization)
+    }
+
+    private fun activateServiceAndApplyPendingAudioSettings() {
+        synchronized(premiumAudioSettingsLock) {
+            activeService = this
+            pendingAudioSettings?.let { settings ->
+                applyPremiumAudioSettingsInternal(settings, pendingAudioNormalization)
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -348,8 +378,7 @@ class PlaybackService : MediaLibraryService() {
         currentAudioSettings = snapshot.audioSettings.normalized()
         currentAudioNormalization = snapshot.audioNormalization
         player.skipSilenceEnabled = snapshot.skipSilence
-        normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
-        applyPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
+        applyPremiumAudioSettingsInternal(snapshot.audioSettings, snapshot.audioNormalization)
         (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
         refreshAudioOutputProfile()
 
@@ -651,7 +680,7 @@ class PlaybackService : MediaLibraryService() {
 
         val notificationProvider = DefaultMediaNotificationProvider(this)
         setMediaNotificationProvider(notificationProvider)
-        activeService = this
+        activateServiceAndApplyPendingAudioSettings()
         startQueueTransitionMonitor(player)
         startMemoryGuard(player)
     }
@@ -1127,13 +1156,7 @@ class PlaybackService : MediaLibraryService() {
         } finally {
             isQueueTransitionInProgress = false
             primary.volume = 1f
-            if (transitionPlayer === secondary) {
-                transitionPlayer = null
-                secondary?.let { player ->
-                    runCatching { player.release() }
-                        .onFailure { Timber.w(it, "Queue crossfade secondary release failed") }
-                }
-            }
+            releaseTransitionPlayer(secondary)
         }
     }
 
@@ -1237,6 +1260,17 @@ class PlaybackService : MediaLibraryService() {
                     currentAudioSettings.replayGainEnabled || currentAudioNormalization)
         }
         val renderers = object : DefaultRenderersFactory(this) {
+            override fun buildVideoRenderers(
+                context: Context,
+                extensionRendererMode: Int,
+                mediaCodecSelector: MediaCodecSelector,
+                enableDecoderFallback: Boolean,
+                eventHandler: Handler,
+                eventListener: VideoRendererEventListener,
+                allowedVideoJoiningTimeMs: Long,
+                out: ArrayList<Renderer>
+            ) = Unit
+
             override fun buildAudioSink(
                 context: Context,
                 enableFloatOutput: Boolean,
@@ -1327,9 +1361,14 @@ class PlaybackService : MediaLibraryService() {
                     memoryGuardHighSamples = 0
                     continue
                 }
+                val nativeAllocatedBytes = withContext(Dispatchers.Default) { Debug.getNativeHeapAllocatedSize() }
+                if (activePlayer !== player || !player.isPlaying) {
+                    memoryGuardHighSamples = 0
+                    continue
+                }
                 memoryGuardHighSamples = PlaybackMemoryGuardPolicy.nextHighSampleCount(
                     current = memoryGuardHighSamples,
-                    nativeAllocatedBytes = Debug.getNativeHeapAllocatedSize(),
+                    nativeAllocatedBytes = nativeAllocatedBytes,
                     thresholdBytes = threshold
                 )
                 val now = SystemClock.elapsedRealtime()
@@ -1342,19 +1381,23 @@ class PlaybackService : MediaLibraryService() {
                 ) {
                     memoryGuardHighSamples = 0
                     lastMemoryRecycleElapsedMs = now
-                    recyclePlaybackPipeline(player, threshold)
+                    recyclePlaybackPipeline(player, threshold, nativeAllocatedBytes)
                 }
             }
         }
     }
 
-    private fun recyclePlaybackPipeline(player: ExoPlayer, thresholdBytes: Long) {
+    private fun recyclePlaybackPipeline(
+        player: ExoPlayer,
+        thresholdBytes: Long,
+        nativeAllocatedBytes: Long
+    ) {
         val item = player.currentMediaItem ?: return
         val position = player.currentPosition.coerceAtLeast(0L)
         val resumePlayback = player.playWhenReady
         Timber.w(
             "Native playback memory %d bytes above %d, recycling playback pipeline",
-            Debug.getNativeHeapAllocatedSize(),
+            nativeAllocatedBytes,
             thresholdBytes
         )
         cancelQueueTransition()
@@ -1371,16 +1414,21 @@ class PlaybackService : MediaLibraryService() {
     private fun cancelQueueTransition() {
         queueTransitionJob?.cancel()
         queueTransitionJob = null
-        val secondary = transitionPlayer
-        transitionPlayer = null
         isQueueTransitionInProgress = false
         activePlayer?.volume = 1f
-        secondary?.let { player ->
-            runCatching {
-                player.pause()
-                player.release()
-            }.onFailure { Timber.w(it, "Queue crossfade cancellation release failed") }
-        }
+        releaseTransitionPlayer()
+    }
+
+    private fun releaseTransitionPlayer(expected: ExoPlayer? = null) {
+        val player = transitionPlayer ?: return
+        if (expected != null && player !== expected) return
+        transitionPlayer = null
+        runCatching { player.pause() }
+            .onFailure { Timber.w(it, "Queue crossfade secondary pause failed") }
+        runCatching { player.clearMediaItems() }
+            .onFailure { Timber.w(it, "Queue crossfade secondary clear failed") }
+        runCatching { player.release() }
+            .onFailure { Timber.w(it, "Queue crossfade secondary release failed") }
     }
 
     override fun onTrimMemory(level: Int) {
@@ -1419,7 +1467,9 @@ class PlaybackService : MediaLibraryService() {
         queueTransitionMonitorJob?.cancel()
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
-        if (activeService === this) activeService = null
+        synchronized(premiumAudioSettingsLock) {
+            if (activeService === this) activeService = null
+        }
         if (::autoLibrary.isInitialized) autoLibrary.close()
         serviceScope.cancel()
         mediaSession?.run {

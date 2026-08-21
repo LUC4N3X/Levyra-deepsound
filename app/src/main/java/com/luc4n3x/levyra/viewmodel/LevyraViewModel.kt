@@ -2278,8 +2278,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(120L)
             audioSettingsPersistence.persist(normalized)
         }
-        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled =
-            audioNormalization || normalized.replayGainEnabled
         player.setPremiumAudioSettings(normalized, audioNormalization)
         player.setPlayback(normalized.playbackSpeed, normalized.pitch)
         _state.update { it.copy(audioSettings = normalized, playbackSpeed = normalized.playbackSpeed, audioNormalization = audioNormalization) }
@@ -3047,7 +3045,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setSkipSilence(snapshot.skipSilence)
         player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
         player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
-        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
         resolver.setAudioQuality(snapshot.audioQuality)
         withContext(Dispatchers.IO) {
             queueEngine.restore(

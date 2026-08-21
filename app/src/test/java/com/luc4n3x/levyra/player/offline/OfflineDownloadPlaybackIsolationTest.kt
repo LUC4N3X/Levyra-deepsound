@@ -226,7 +226,7 @@ class OfflineDownloadPlaybackIsolationTest {
 
         assertTrue(recoveryStart > 0)
         assertTrue(rotateClient > recoveryStart)
-        assertEquals(1, occurrences(quarantineBlock, "failedPlaybackUrls[it] = now + recovery.quarantineMs"))
+        assertEquals(1, occurrences(quarantineBlock, "quarantinePlaybackUrl(it, now + recovery.quarantineMs, now)"))
         assertFalse(quarantineBlock.contains("if (!isOfflineExport)"))
     }
 

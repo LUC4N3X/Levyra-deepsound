@@ -64,18 +64,32 @@ internal fun reliableVideoCandidate(
 ): LevyraVideoCandidate? = muxed ?: videoOnly
 
 internal class LevyraVideoStreamSelector(context: Context) {
+    private companion object {
+        const val MAX_REJECTED_URLS = 128
+    }
+
     private val appContext = context.applicationContext
     private val activityManager = appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val decoderCapabilities by lazy { readDecoderCapabilities() }
     private val rejectedUrls = ConcurrentHashMap<String, Long>()
+    private val rejectedUrlsMutationLock = Any()
 
     fun reportPlaybackFailure(url: String, reason: String) {
         if (url.isBlank()) return
         val lower = reason.lowercase()
         val ttl = if (lower.contains("decoder") || lower.contains("codec") || lower.contains("format")) 30L * 60L * 1000L else 2L * 60L * 1000L
-        rejectedUrls[url] = System.currentTimeMillis() + ttl
+        val now = System.currentTimeMillis()
+        synchronized(rejectedUrlsMutationLock) {
+            expiringCacheKeysToRemove(
+                entries = rejectedUrls,
+                nowMs = now,
+                maxEntries = MAX_REJECTED_URLS,
+                incomingKey = url
+            ).forEach(rejectedUrls::remove)
+            rejectedUrls[url] = now + ttl
+        }
     }
 
     fun select(
