@@ -101,9 +101,11 @@ class YoutubeSabrClientVersionSingleFlightTest {
                 Thread.currentThread().interrupt();
                 throw new IOException("Interrupted client-version fixture", e);
             }
-            return new Response(200, "OK", Collections.emptyMap(),
-                    "\"INNERTUBE_CONTEXT_CLIENT_VERSION\":\"" + CLIENT_VERSION + "\"",
-                    null, "https://www.youtube.com/sw.js");
+            final String responseBody = ")]}'\n[[null,null,[[["
+            + String.join(",", Collections.nCopies(16, "null"))
+            + ",\"" + CLIENT_VERSION + "\"]]]]]";
+    return new Response(200, "OK", Collections.emptyMap(), responseBody,
+            null, "https://www.youtube.com/sw.js_data");
         }
 
         @Override

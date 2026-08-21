@@ -18,6 +18,8 @@ import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.hasArtistOrVerifiedIconBadgeAttachment;
 
 public class YoutubeMixOrPlaylistLockupInfoItemExtractor implements PlaylistInfoItemExtractor {
+    private static final String MIX_TITLE_PREFIX = "Mix - ";
+    private static final String ZULU_MIX_TITLE_PREFIX = "Imiksi - ";
 
     @Nonnull
     private final JsonObject lockupViewModel;
@@ -66,6 +68,9 @@ public class YoutubeMixOrPlaylistLockupInfoItemExtractor implements PlaylistInfo
 
     @Override
     public String getUploaderName() throws ParsingException {
+        if (playlistType != PlaylistInfo.PlaylistType.NORMAL) {
+            return "YouTube";
+        }
         return firstMetadataRow.getArray("metadataParts")
                 .getObject(0)
                 .getObject("text")
@@ -138,8 +143,14 @@ public class YoutubeMixOrPlaylistLockupInfoItemExtractor implements PlaylistInfo
 
     @Override
     public String getName() throws ParsingException {
-        return lockupMetadataViewModel.getObject("title")
+        final String name = lockupMetadataViewModel.getObject("title")
                 .getString("content");
+        if (playlistType != PlaylistInfo.PlaylistType.NORMAL
+                && name != null
+                && name.startsWith(ZULU_MIX_TITLE_PREFIX)) {
+            return MIX_TITLE_PREFIX + name.substring(ZULU_MIX_TITLE_PREFIX.length());
+        }
+        return name;
     }
 
     @Override

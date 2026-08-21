@@ -586,6 +586,18 @@ public abstract class StreamExtractor extends Extractor {
     }
 
     /**
+     * Return structured song metadata when the service exposes it independently from the
+     * stream title and uploader.
+     *
+     * @return song metadata or {@code null} when unavailable or not applicable
+     * @throws ParsingException if the service response contains malformed metadata
+     */
+    @Nullable
+    public SongMetadata getSongMetadata() throws ParsingException {
+        return null;
+    }
+
+    /**
      * The support information of the stream.
      * see: https://framatube.org/videos/watch/ee408ec8-07cd-4e35-b884-fb681a4b9d37
      * (support button).

@@ -55,6 +55,7 @@ public final class VideoStream extends Stream {
     @Nullable private String audioTrackId;
     @Nullable private String audioTrackName;
     @Nullable private String audioLocale;
+    @Nullable private AudioTrackType audioTrackType;
 
     /**
      * Class to build {@link VideoStream} objects.
@@ -88,6 +89,8 @@ public final class VideoStream extends Stream {
         private String audioTrackName;
         @Nullable
         private String audioLocale;
+        @Nullable
+        private AudioTrackType audioTrackType;
         private long availableAt = AVAILABLE_AT_UNKNOWN;
         @Nullable
         private Serializable deliveryMethodInfo;
@@ -307,6 +310,11 @@ public final class VideoStream extends Stream {
             return this;
         }
 
+        public Builder setAudioTrackType(@Nullable final AudioTrackType audioTrackType) {
+            this.audioTrackType = audioTrackType;
+            return this;
+        }
+
         public Builder setAvailableAt(final long availableAt) {
             this.availableAt = availableAt;
             return this;
@@ -366,7 +374,7 @@ public final class VideoStream extends Stream {
             return new VideoStream(id, content, isUrl, mediaFormat, deliveryMethod, resolution, codec,
                     bitrate, initStart, initEnd, indexStart, indexEnd, width, height, fps,
                     isVideoOnly, manifestUrl, itagItem, audioTrackId, audioTrackName, audioLocale,
-                    availableAt, deliveryMethodInfo);
+                    audioTrackType, availableAt, deliveryMethodInfo);
         }
     }
 
@@ -408,6 +416,7 @@ public final class VideoStream extends Stream {
                         @Nullable final String audioTrackId,
                         @Nullable final String audioTrackName,
                         @Nullable final String audioLocale,
+                        @Nullable final AudioTrackType audioTrackType,
                         final long availableAt,
                         @Nullable final Serializable deliveryMethodInfo) {
         super(id, content, isUrl, format, deliveryMethod, manifestUrl, availableAt,
@@ -425,6 +434,7 @@ public final class VideoStream extends Stream {
             this.width = itagItem.getWidth();
             this.quality = itagItem.getQuality();
             this.fps = itagItem.getFps();
+            this.audioTrackType = itagItem.getAudioTrackType();
         }
         if (codec != null) {
             this.codec = codec;
@@ -452,6 +462,9 @@ public final class VideoStream extends Stream {
         this.audioTrackId = audioTrackId;
         this.audioTrackName = audioTrackName;
         this.audioLocale = audioLocale;
+        if (audioTrackType != null) {
+            this.audioTrackType = audioTrackType;
+        }
     }
 
     /**
@@ -464,7 +477,8 @@ public final class VideoStream extends Stream {
                 && resolution.equals(((VideoStream) cmp).resolution)
                 && isVideoOnly == ((VideoStream) cmp).isVideoOnly
                 && java.util.Objects.equals(audioTrackId,
-                        ((VideoStream) cmp).audioTrackId);
+                        ((VideoStream) cmp).audioTrackId)
+                && audioTrackType == ((VideoStream) cmp).audioTrackType;
     }
 
     /**
@@ -496,7 +510,7 @@ public final class VideoStream extends Stream {
     }
 
     /**
-     * Get the itag identifier of the stream.
+     * Get the itag identifier of the video stream.
      *
      * <p>
      * Always equals to {@link #ITAG_NOT_AVAILABLE_OR_NOT_APPLICABLE} for other streams than the
@@ -630,5 +644,10 @@ public final class VideoStream extends Stream {
     @Nullable
     public String getAudioLocale() {
         return audioLocale;
+    }
+
+    @Nullable
+    public AudioTrackType getAudioTrackType() {
+        return audioTrackType;
     }
 }
