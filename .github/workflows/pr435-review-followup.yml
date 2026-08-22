@@ -1,0 +1,81 @@
+name: PR 435 Review Follow-up
+
+on:
+  push:
+    branches:
+      - feature/redesign-player-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  apply-review-followups:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: feature/redesign-player-canvas
+          fetch-depth: 0
+
+      - name: Apply scoped review follow-ups
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          app = app_path.read_text(encoding='utf-8')
+          before = '''                            DropdownMenuItem(
+                                text = { Text(strings.motionArtwork, color = Color.White) },
+                                leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
+                                onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                            )'''
+          after = '''                            DropdownMenuItem(
+                                text = { Text(strings.motionArtwork, color = Color.White) },
+                                leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
+                                modifier = Modifier.semantics {
+                                    toggleableState = ToggleableState(state.motionArtworkEnabled)
+                                },
+                                onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                            )'''
+          if app.count(before) != 1:
+              raise SystemExit(f'Expected one Motion Artwork menu block, found {app.count(before)}')
+          if 'import androidx.compose.ui.state.ToggleableState' not in app or 'import androidx.compose.ui.semantics.toggleableState' not in app:
+              raise SystemExit('Required accessibility imports are missing')
+          app_path.write_text(app.replace(before, after, 1), encoding='utf-8')
+
+          motion_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt')
+          motion = motion_path.read_text(encoding='utf-8')
+          comments = [
+              '    // cinematic breathing: slow down the animation significantly\n',
+              '                // Add an ambient glow overlay to give a cinematic lighting effect\n',
+          ]
+          for comment in comments:
+              if motion.count(comment) != 1:
+                  raise SystemExit(f'Expected one review comment line, found {motion.count(comment)}: {comment.strip()}')
+              motion = motion.replace(comment, '', 1)
+          motion_path.write_text(motion, encoding='utf-8')
+          PY
+
+          git rm .github/workflows/pr435-review-followup.yml
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' \
+            '.github/workflows/pr435-review-followup.yml' \
+            'app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt' \
+            'app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt' | sort)"
+          test "${changed}" = "${expected}"
+
+      - name: Commit review follow-ups
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt
+          git diff --cached --check
+          git commit -m "fix(player): address review follow-ups"
+          git push origin HEAD:feature/redesign-player-canvas
