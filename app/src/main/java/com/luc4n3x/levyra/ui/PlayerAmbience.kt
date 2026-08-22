@@ -14,10 +14,10 @@ internal data class PlayerAmbience(
     val base: Color
 )
 
-private const val AmbienceTintLevel = 0.32f
+private const val AmbienceTintLevel = 0.28f
 private const val AmbienceElevatedLevel = 0.088f
 private const val AmbienceControlLevel = 0.092f
-private const val AmbienceBaseLevel = 0.09f
+private const val AmbienceBaseLevel = 0.07f
 
 internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience {
     val sourcePrimary = primary.copy(alpha = 1f)
@@ -26,7 +26,7 @@ internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience 
     return PlayerAmbience(
         primary = sourcePrimary,
         secondary = sourceSecondary,
-        tint = blended.playerAmbienceDesaturate(0.28f).playerAmbienceTone(AmbienceTintLevel),
+        tint = blended.playerAmbienceDesaturate(0.25f).playerAmbienceTone(AmbienceTintLevel),
         elevated = blended.playerAmbienceDesaturate(0.42f).playerAmbienceTone(AmbienceElevatedLevel),
         control = blended.playerAmbienceDesaturate(0.20f).playerAmbienceTone(AmbienceControlLevel),
         base = blended.playerAmbienceDesaturate(0.18f).playerAmbienceTone(AmbienceBaseLevel)
@@ -34,9 +34,9 @@ internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience 
 }
 
 internal fun createPlayerAmbientColorMatrix(
-    saturation: Float = 1.35f,
+    saturation: Float = 1.12f,
     minBrightness: Float = 0.0f,
-    maxBrightness: Float = 0.58f
+    maxBrightness: Float = 0.52f
 ): ColorMatrix {
     val matrix = ColorMatrix().apply { setToSaturation(saturation) }
     val scale = (maxBrightness - minBrightness).coerceAtLeast(0f)

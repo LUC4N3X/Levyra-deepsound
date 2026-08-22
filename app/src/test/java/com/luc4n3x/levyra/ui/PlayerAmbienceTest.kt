@@ -67,9 +67,9 @@ class PlayerAmbienceTest {
     @Test
     fun `color matrix clamps brightness and applies saturation`() {
         val matrix = createPlayerAmbientColorMatrix(
-            saturation = 1.30f,
+            saturation = 1.12f,
             minBrightness = 0.05f,
-            maxBrightness = 0.55f
+            maxBrightness = 0.52f
         )
         assertEquals(20, matrix.values.size)
         // Offset col is at indices 4, 9, 14

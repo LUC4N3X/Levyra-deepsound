@@ -11430,7 +11430,7 @@ private fun PlayerQuickActionsBar(
                 onDismissRequest = { optionsExpanded = false },
                 modifier = Modifier
                     .width(if (compact) 276.dp else 296.dp)
-                    .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                    .background(PlayerDarkSurface, LevyraPlayerDesign.ShapeMd)
             ) {
                 Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                     PlayerOptionsRow(
@@ -12242,7 +12242,8 @@ private fun PlayerScreen(
             state.animationsEnabled &&
             playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
-            track != null
+            track != null &&
+            state.motionArtwork != null
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
 
         PlayerImmersiveBackdrop(
@@ -12624,7 +12625,7 @@ private fun PlayerScreen(
                         onClick = { viewModel.toggleFavorite(activeTrack) }
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    var moreMenuExpanded by remember { mutableStateOf(false) }
+                    var moreMenuExpanded by remember(activeTrack.id) { mutableStateOf(false) }
                     Box {
                         PlayerGlassIconButton(
                             icon = Icons.Rounded.MoreVert,
@@ -12640,7 +12641,7 @@ private fun PlayerScreen(
                         DropdownMenu(
                             expanded = moreMenuExpanded,
                             onDismissRequest = { moreMenuExpanded = false },
-                            modifier = Modifier.background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                            modifier = Modifier.background(PlayerDarkSurface, LevyraPlayerDesign.ShapeMd)
                         ) {
                             DropdownMenuItem(
                                 text = { Text(strings.addToPlaylist, color = Color.White) },
