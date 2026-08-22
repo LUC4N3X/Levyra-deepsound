@@ -784,6 +784,11 @@ object LyricsMatcher {
     private val versionTerms = setOf(
         "live", "remix", "acoustic", "instrumental", "karaoke", "sped", "slowed", "nightcore", "remaster", "demo", "edit", "version", "cover"
     )
+    private val featuringSuffixRegex = Regex("(?i)\\b(feat(?:uring)?|ft\\.?|con|with)\\b.*$")
+    private val officialMetadataRegex = Regex("(?i)[(\\[][^)\\]]*(official|video|audio|lyrics?|visuali[sz]er|mv)[^)\\]]*[)\\]]")
+    private val combiningMarksRegex = Regex("\\p{M}+")
+    private val nonWordRegex = Regex("[^\\p{L}\\p{N} ]+")
+    private val whitespaceRegex = Regex("\\s+")
 
     fun similarity(left: String, right: String): Int {
         val normalizedLeft = normalize(left)
@@ -814,14 +819,14 @@ object LyricsMatcher {
 
     fun normalize(value: String): String {
         val withoutFeaturing = value
-            .replace(Regex("(?i)\\b(feat(?:uring)?|ft\\.?|con|with)\\b.*$"), " ")
-            .replace(Regex("(?i)[(\\[][^)\\]]*(official|video|audio|lyrics?|visuali[sz]er|mv)[^)\\]]*[)\\]]"), " ")
+            .replace(featuringSuffixRegex, " ")
+            .replace(officialMetadataRegex, " ")
         return Normalizer.normalize(withoutFeaturing, Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
+            .replace(combiningMarksRegex, "")
             .lowercase(Locale.ROOT)
             .replace("&", " and ")
-            .replace(Regex("[^\\p{L}\\p{N} ]+"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(nonWordRegex, " ")
+            .replace(whitespaceRegex, " ")
             .trim()
     }
 
