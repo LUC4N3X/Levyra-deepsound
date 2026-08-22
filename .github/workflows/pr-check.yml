@@ -110,6 +110,27 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
+      - name: Android and F-Droid Regression Unit Tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
+            --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
+            --tests 'com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriterTest' \
+            --tests 'com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeAlbumDeduplicationTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
+            --tests 'com.luc4n3x.levyra.data.UniversalPlaylistImporterTest' \
+            --tests 'com.luc4n3x.levyra.data.SponsorBlockRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.domain.LevyraAudioPresetsTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.*' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest' \
+            --tests 'com.luc4n3x.levyra.update.AppUpdateInstallerTest'
+
       - name: Android Full Unit Test Suite
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 
@@ -168,7 +189,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show HEAD^:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
+          git show 225fa89fb9ed07ab824f6d3313484e87d24caa4a:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
           git rm scripts/pr435_selector_patch.py
           git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/pr-check.yml
           git diff --cached --check
