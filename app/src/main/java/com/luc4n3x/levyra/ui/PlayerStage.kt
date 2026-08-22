@@ -62,8 +62,9 @@ internal fun PlayerStage(
     val settle = veilSettleFraction.coerceIn(0.35f, 0.98f)
     val fadeStart = (settle - 0.20f).coerceIn(0.58f, 0.70f)
     val fadeSoft = (fadeStart + 0.08f).coerceAtMost(0.78f)
-    val fadeMid = (fadeStart + 0.16f).coerceAtMost(0.86f)
-    val fadeDeep = (fadeStart + 0.25f).coerceAtMost(0.95f)
+    val fadeMid = (fadeStart + 0.16f).coerceAtMost(0.84f)
+    val fadeDeep = (fadeStart + 0.23f).coerceAtMost(0.88f)
+    val solidStart = (fadeStart + 0.30f).coerceAtMost(0.91f)
     val songColor = ambience.primary.playerAmbienceMix(ambience.secondary, 0.42f)
     val handoff = songColor.playerAmbienceMix(Color.Black, 0.60f)
     val deep = songColor.playerAmbienceMix(Color.Black, 0.74f)
@@ -98,9 +99,10 @@ internal fun PlayerStage(
                             colorStops = arrayOf(
                                 0.00f to Color.Transparent,
                                 fadeStart to Color.Transparent,
-                                fadeSoft to handoff.copy(alpha = 0.08f),
-                                fadeMid to handoff.copy(alpha = 0.26f),
-                                fadeDeep to deep.copy(alpha = 0.72f),
+                                fadeSoft to handoff.copy(alpha = 0.10f),
+                                fadeMid to handoff.copy(alpha = 0.32f),
+                                fadeDeep to deep.copy(alpha = 0.76f),
+                                solidStart to deep,
                                 1.00f to deep
                             )
                         )
@@ -148,7 +150,8 @@ internal fun PlayerConsoleSurface(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to deep,
-                        0.42f to deep,
+                        0.58f to deep,
+                        0.82f to deep.playerAmbienceMix(lower, 0.35f),
                         1.00f to lower
                     )
                 )
