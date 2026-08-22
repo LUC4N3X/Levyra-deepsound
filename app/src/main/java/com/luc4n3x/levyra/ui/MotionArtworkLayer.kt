@@ -385,6 +385,13 @@ private fun MotionArtworkStaticFallback(
         ) {
             content()
         }
+        if (!immersive) {
+            PlayerArtworkEffectsOverlay(
+                active = animated,
+                alpha = alpha,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
     }
 }
 
