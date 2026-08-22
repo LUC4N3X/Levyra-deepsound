@@ -188,52 +188,64 @@ fun PlayerTransportControls(
     val skipIconSize = if (compact) 34.dp else 38.dp
     val modeIconSize = if (compact) 20.dp else 22.dp
     val primaryIconSize = if (compact) 36.dp else 40.dp
+    val mainGap = if (compact) 22.dp else 28.dp
 
-    Row(
+    Box(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        contentAlignment = Alignment.Center
     ) {
-        PlayerModeToggleButton(
-            icon = Icons.Rounded.Shuffle,
-            contentDescription = labels.shuffle,
-            active = shuffleOn,
-            accentTarget = accents.primaryTarget,
-            iconSize = modeIconSize,
-            animated = animated,
-            onClick = onShuffle
-        )
-        PlayerSkipButton(
-            icon = Icons.Rounded.SkipPrevious,
-            contentDescription = labels.previous,
-            iconSize = skipIconSize,
-            onClick = onPrevious
-        )
-        PlayerPrimaryButton(
-            isPlaying = isPlaying,
-            isResolving = isResolving,
-            iconSize = primaryIconSize,
-            accentColor = accents.primaryTarget,
-            animated = animated,
-            playLabel = labels.play,
-            pauseLabel = labels.pause,
-            onClick = onToggle
-        )
-        PlayerSkipButton(
-            icon = Icons.Rounded.SkipNext,
-            contentDescription = labels.next,
-            iconSize = skipIconSize,
-            onClick = onNext
-        )
-        PlayerModeToggleButton(
-            icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-            contentDescription = labels.repeat,
-            active = repeatOn,
-            accentTarget = accents.secondaryTarget,
-            iconSize = modeIconSize,
-            animated = animated,
-            onClick = onRepeat
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            PlayerModeToggleButton(
+                icon = Icons.Rounded.Shuffle,
+                contentDescription = labels.shuffle,
+                active = shuffleOn,
+                accentTarget = accents.primaryTarget,
+                iconSize = modeIconSize,
+                animated = animated,
+                onClick = onShuffle
+            )
+            PlayerModeToggleButton(
+                icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                contentDescription = labels.repeat,
+                active = repeatOn,
+                accentTarget = accents.secondaryTarget,
+                iconSize = modeIconSize,
+                animated = animated,
+                onClick = onRepeat
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(mainGap)
+        ) {
+            PlayerSkipButton(
+                icon = Icons.Rounded.SkipPrevious,
+                contentDescription = labels.previous,
+                iconSize = skipIconSize,
+                onClick = onPrevious
+            )
+            PlayerPrimaryButton(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                iconSize = primaryIconSize,
+                accentColor = accents.primaryTarget,
+                animated = animated,
+                playLabel = labels.play,
+                pauseLabel = labels.pause,
+                onClick = onToggle
+            )
+            PlayerSkipButton(
+                icon = Icons.Rounded.SkipNext,
+                contentDescription = labels.next,
+                iconSize = skipIconSize,
+                onClick = onNext
+            )
+        }
     }
 }
 
@@ -275,7 +287,7 @@ private fun PlayerModeToggleButton(
         accentTarget.playerMix(Color.White, 0.40f)
     }
     val tint by animateColorAsState(
-        targetValue = if (active) activeTint else Color.White.copy(alpha = 0.46f),
+        targetValue = if (active) activeTint else Color.White.copy(alpha = 0.42f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-tint"
     )
@@ -357,9 +369,9 @@ private fun PlayerPrimaryButton(
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val halo = remember(accentColor) { accentColor.playerMix(Color.White, 0.22f) }
+    val halo = remember(accentColor) { accentColor.playerMix(Color.White, 0.18f) }
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.10f else 0.05f,
+        targetValue = if (isPlaying) 0.075f else 0.035f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(240) else snap(),
         label = "player-primary-halo"
     )
