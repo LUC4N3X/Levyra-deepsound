@@ -11189,6 +11189,7 @@ private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
     activeColorTarget: Color,
+    enabled: Boolean,
     onSong: () -> Unit,
     onVideo: () -> Unit
 ) {
@@ -11207,23 +11208,32 @@ private fun PlayerModeSwitch(
                 borderTop = Color.White.copy(alpha = 0.22f),
                 borderBottom = Color.White.copy(alpha = 0.12f)
             )
-            .shadow(elevation = 8.dp, shape = CircleShape, ambientColor = activeColorTarget.copy(alpha = 0.3f), spotColor = activeColorTarget.copy(alpha = 0.5f))
-            .padding(4.dp),
+            .shadow(
+                elevation = 8.dp,
+                shape = CircleShape,
+                ambientColor = activeColorTarget.copy(alpha = 0.30f),
+                spotColor = activeColorTarget.copy(alpha = 0.50f)
+            )
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         PlayerModeSwitchTab(
             label = strings.song,
             selected = !isVideoMode,
+            isVideoTab = false,
             activeColor = activeColor,
             selectedContent = selectedContent,
+            enabled = enabled,
             onClick = onSong
         )
         PlayerModeSwitchTab(
             label = strings.video,
             selected = isVideoMode,
+            isVideoTab = true,
             activeColor = activeColor,
             selectedContent = selectedContent,
+            enabled = enabled,
             onClick = onVideo
         )
     }
@@ -11233,57 +11243,87 @@ private fun PlayerModeSwitch(
 private fun PlayerModeSwitchTab(
     label: String,
     selected: Boolean,
+    isVideoTab: Boolean,
     activeColor: Color,
     selectedContent: Color,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val isSelected = selected
     val tabSpec: AnimationSpec<Color> = if (LocalAnimationsEnabled.current) {
         LevyraPlayerDesign.standardTween(180)
     } else {
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.35f) else Color.Transparent,
+        targetValue = if (selected) activeColor.copy(alpha = 0.42f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary.copy(alpha = 0.8f),
+        targetValue = if (selected) selectedContent else LevyraPlayerDesign.TextSecondary.copy(alpha = 0.82f),
         animationSpec = tabSpec,
         label = "player-mode-tab-content"
     )
     Box(
         modifier = Modifier
+            .height(LevyraPlayerDesign.MinimumTouchTarget)
             .semantics {
-                this.selected = isSelected
+                this.selected = selected
                 role = Role.Tab
             }
-            .then(
-                if (selected) {
-                    Modifier
-                        .shadow(4.dp, CircleShape, clip = false)
-                        .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.40f)), CircleShape)
-                } else {
-                    Modifier.background(background, CircleShape)
-                }
-            )
-            .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .pressable(enabled = enabled && !selected, onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = contentColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(
+            modifier = Modifier
+                .then(
+                    if (selected) {
+                        Modifier
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = CircleShape,
+                                clip = false,
+                                ambientColor = activeColor.copy(alpha = 0.30f),
+                                spotColor = activeColor.copy(alpha = 0.46f)
+                            )
+                            .background(background, CircleShape)
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)), CircleShape)
+                    } else {
+                        Modifier.background(background, CircleShape)
+                    }
+                )
+                .padding(horizontal = 11.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .background(
+                        if (selected) contentColor.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.06f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isVideoTab) Icons.Rounded.Videocam else Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = contentColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.2.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
-
 @Composable
 private fun LevyraControlPulseHandle(
     expanded: Boolean,
@@ -12337,6 +12377,7 @@ private fun PlayerScreen(
                             isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
                             activeColor = primary,
                             activeColorTarget = primaryTarget,
+                            enabled = !state.isResolving,
                             onSong = viewModel::toggleVideoMode,
                             onVideo = viewModel::toggleVideoMode
                         )
