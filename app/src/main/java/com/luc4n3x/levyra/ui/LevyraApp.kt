@@ -163,6 +163,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
@@ -11166,19 +11167,14 @@ private fun PlayerCanvasFusionScrim(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
             val baseColor = base.value
-            val controlColor = control.value
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.75f),
-                        0.06f to baseColor.copy(alpha = 0.45f),
-                        0.14f to baseColor.copy(alpha = 0.15f),
-                        0.22f to Color.Transparent,
+                        0.00f to Color.Transparent,
                         0.48f to Color.Transparent,
-                        0.58f to controlColor.copy(alpha = 0.25f),
-                        0.68f to controlColor.copy(alpha = 0.68f),
-                        0.78f to controlColor.copy(alpha = 0.92f),
-                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
+                        0.62f to baseColor.copy(alpha = 0.40f),
+                        0.76f to baseColor.copy(alpha = 0.85f),
+                        0.90f to baseColor.copy(alpha = 0.98f),
                         1.00f to baseColor
                     )
                 )
@@ -11192,40 +11188,35 @@ private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
     activeColorTarget: Color,
+    enabled: Boolean,
     onSong: () -> Unit,
     onVideo: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val selectedContent = remember(activeColorTarget) {
-        Color.White.playerContentColor(
-            listOf(activeColorTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
-        )
-    }
     Row(
         modifier = Modifier
             .selectableGroup()
             .playerGlass(
                 shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.35f),
-                borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.08f)
+                fill = Color.Black.copy(alpha = 0.20f),
+                borderTop = Color.White.copy(alpha = 0.12f),
+                borderBottom = Color.White.copy(alpha = 0.12f)
             )
             .padding(3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
         PlayerModeSwitchTab(
             label = strings.song,
             selected = !isVideoMode,
-            activeColor = activeColor,
-            selectedContent = selectedContent,
+            isVideoTab = false,
+            enabled = enabled,
             onClick = onSong
         )
         PlayerModeSwitchTab(
             label = strings.video,
             selected = isVideoMode,
-            activeColor = activeColor,
-            selectedContent = selectedContent,
+            isVideoTab = true,
+            enabled = enabled,
             onClick = onVideo
         )
     }
@@ -11235,13 +11226,12 @@ private fun PlayerModeSwitch(
 private fun PlayerModeSwitchTab(
     label: String,
     selected: Boolean,
-    activeColor: Color,
-    selectedContent: Color,
+    isVideoTab: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
-    val isSelected = selected
     val tabSpec: AnimationSpec<Color> = if (LocalAnimationsEnabled.current) {
-        LevyraPlayerDesign.standardTween(180)
+        tween(200)
     } else {
         snap()
     }
@@ -11251,38 +11241,49 @@ private fun PlayerModeSwitchTab(
         label = "player-mode-tab-background"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary,
+        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
         animationSpec = tabSpec,
         label = "player-mode-tab-content"
     )
+    val border = if (selected) BorderStroke(0.75.dp, Color.White.copy(alpha = 0.28f)) else null
+
     Box(
         modifier = Modifier
+            .height(32.dp)
             .semantics {
-                this.selected = isSelected
+                this.selected = selected
                 role = Role.Tab
             }
-            .then(
-                if (selected) {
-                    Modifier
-                        .shadow(3.dp, CircleShape, clip = false)
-                        .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
-                } else {
-                    Modifier.background(background, CircleShape)
-                }
-            )
-            .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .pressable(enabled = enabled && !selected, onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = contentColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        val rowModifier = if (border != null) {
+            Modifier.background(background, CircleShape).border(border, CircleShape)
+        } else {
+            Modifier.background(background, CircleShape)
+        }
+
+        Row(
+            modifier = rowModifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = if (isVideoTab) Icons.Rounded.Videocam else Icons.Rounded.MusicNote,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(13.dp)
+            )
+            Text(
+                text = label,
+                color = contentColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.4.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -11381,7 +11382,7 @@ private fun PlayerQuickActionsBar(
         PlayerQuickAction(
             icon = Icons.AutoMirrored.Rounded.QueueMusic,
             contentDescription = strings.queue,
-            tint = Color.White.copy(alpha = 0.76f),
+            tint = Color.White.copy(alpha = 0.55f),
             active = false,
             compact = compact,
             modifier = Modifier.weight(1f),
@@ -11390,7 +11391,7 @@ private fun PlayerQuickActionsBar(
         PlayerQuickAction(
             icon = Icons.AutoMirrored.Rounded.Subject,
             contentDescription = strings.lyrics,
-            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
+            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.55f),
             active = state.showLyrics,
             compact = compact,
             modifier = Modifier.weight(1f),
@@ -11403,7 +11404,7 @@ private fun PlayerQuickActionsBar(
                 isDownloaded -> strings.downloaded
                 else -> strings.download
             },
-            tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
+            tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.55f),
             active = state.isOfflineExporting || isDownloaded,
             busy = state.isOfflineExporting,
             enabled = !state.isOfflineExporting,
@@ -11418,7 +11419,7 @@ private fun PlayerQuickActionsBar(
             PlayerQuickAction(
                 icon = Icons.Rounded.Equalizer,
                 contentDescription = strings.options,
-                tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
+                tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.55f),
                 active = optionsActive || optionsExpanded,
                 compact = compact,
                 modifier = Modifier.fillMaxWidth(),
@@ -11429,7 +11430,7 @@ private fun PlayerQuickActionsBar(
                 onDismissRequest = { optionsExpanded = false },
                 modifier = Modifier
                     .width(if (compact) 276.dp else 296.dp)
-                    .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                    .background(PlayerDarkSurface, LevyraPlayerDesign.ShapeMd)
             ) {
                 Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                     PlayerOptionsRow(
@@ -11461,19 +11462,6 @@ private fun PlayerQuickAction(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val fill by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-fill"
-    )
-    val border by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.065f),
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-border"
-    )
-    val shape = LevyraPlayerDesign.ShapeSm
-
     Box(
         modifier = modifier
             .sizeIn(
@@ -11481,19 +11469,16 @@ private fun PlayerQuickAction(
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
             .semantics { this.contentDescription = contentDescription }
-            .pressable(enabled = enabled, pressedScale = 0.92f, onClick = onClick),
+            .pressable(enabled = enabled, pressedScale = 0.90f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Box(
-            modifier = Modifier
-                .size(if (compact) 38.dp else 40.dp)
-                .background(fill, shape)
-                .border(LevyraPlayerDesign.Hairline, border, shape),
+            modifier = Modifier.size(if (compact) 40.dp else 44.dp),
             contentAlignment = Alignment.Center
         ) {
             if (busy) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 17.dp else 18.dp),
+                    modifier = Modifier.size(if (compact) 18.dp else 20.dp),
                     strokeWidth = 2.dp,
                     color = tint
                 )
@@ -11502,7 +11487,7 @@ private fun PlayerQuickAction(
                     imageVector = icon,
                     contentDescription = null,
                     tint = tint,
-                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                    modifier = Modifier.size(if (compact) 20.dp else 22.dp)
                 )
             }
         }
@@ -11656,18 +11641,17 @@ private fun PlayerYoutubeEngagementRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 6.dp else 8.dp),
+                .padding(top = if (compact) 4.dp else 6.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Likes & Dislikes Capsule
             Surface(
-                color = Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                color = Color.White.copy(alpha = 0.06f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                 shape = CircleShape
             ) {
                 Row(
-                    modifier = Modifier.height(28.dp),
+                    modifier = Modifier.height(24.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
@@ -11682,104 +11666,94 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = if (hasLikes) 0.92f else 0.50f),
-                            modifier = Modifier.size(13.dp)
+                            modifier = Modifier.size(12.dp)
                         )
-                        if (hasLikes) {
-                            Text(
-                                text = compactYoutubeCount(track.youtubeLikeCount),
-                                color = Color.White.copy(alpha = 0.92f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                        }
+                        Text(
+                            text = if (hasLikes) compactYoutubeCount(track.youtubeLikeCount) else "---",
+                            color = Color.White.copy(alpha = if (hasLikes) 0.92f else 0.50f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(14.dp)
-                            .background(Color.White.copy(alpha = 0.12f))
-                    )
-                    Row(
-                        modifier = Modifier.padding(
-                            start = 8.dp,
-                            end = 10.dp
-                        ),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ThumbDown,
-                            contentDescription = null,
-                            tint = if (hasDislikeEstimate) {
-                                Color.White.copy(alpha = 0.72f)
-                            } else {
-                                Color.White.copy(alpha = 0.50f)
-                            },
-                            modifier = Modifier.size(13.dp)
+                    if (engagement.dislikeEstimateAvailable) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(12.dp)
+                                .background(Color.White.copy(alpha = 0.12f))
                         )
-                        when {
-                            engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.4.dp,
-                                color = Color.White.copy(alpha = 0.72f)
+                        Row(
+                            modifier = Modifier.padding(
+                                start = 8.dp,
+                                end = 10.dp
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ThumbDown,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.50f),
+                                modifier = Modifier.size(12.dp)
                             )
-                            hasDislikeEstimate -> Text(
-                                text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
+                            if (engagement.dislikeEstimateLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.4.dp,
+                                    color = Color.White.copy(alpha = 0.72f)
+                                )
+                            } else {
+                                Text(
+                                    text = if (hasDislikeEstimate) "~${compactYoutubeCount(engagement.estimatedDislikeCount)}" else "---",
+                                    color = Color.White.copy(alpha = 0.65f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Comments Capsule
             Surface(
-                color = Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(
-                    1.dp,
-                    if (comments.visible) Color.White.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.12f)
-                ),
+                modifier = Modifier
+                    .height(24.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = canOpenComments, onClick = onComments),
+                color = Color.White.copy(alpha = 0.06f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                 shape = CircleShape
             ) {
-                Box(
-                    modifier = Modifier
-                        .height(28.dp)
-                        .pressable(enabled = canOpenComments, onClick = onComments)
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ChatBubbleOutline,
-                            contentDescription = null,
-                            tint = if (canOpenComments) {
-                                Color.White.copy(alpha = 0.75f)
-                            } else {
-                                Color.White.copy(alpha = 0.45f)
-                            },
-                            modifier = Modifier.size(13.dp)
+                    Icon(
+                        imageVector = Icons.Rounded.ChatBubbleOutline,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = if (commentBadge.isNotEmpty()) 0.92f else 0.50f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    if (comments.loading && !comments.loaded) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(10.dp),
+                            strokeWidth = 1.4.dp,
+                            color = Color.White.copy(alpha = 0.72f)
                         )
-                        when {
-                            comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                modifier = Modifier.size(10.dp),
-                                strokeWidth = 1.4.dp,
-                                color = Color.White.copy(alpha = 0.72f)
-                            )
-                            commentBadge.isNotBlank() -> Text(
-                                text = commentBadge,
-                                color = Color.White.copy(alpha = 0.90f),
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1
-                            )
-                        }
+                    } else {
+                        Text(
+                            text = commentBadge.ifEmpty { "---" },
+                            color = Color.White.copy(alpha = if (commentBadge.isNotEmpty()) 0.92f else 0.50f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -12268,7 +12242,8 @@ private fun PlayerScreen(
             state.animationsEnabled &&
             playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
-            track != null
+            track != null &&
+            state.motionArtwork != null
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
 
         PlayerImmersiveBackdrop(
@@ -12339,6 +12314,7 @@ private fun PlayerScreen(
                             isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
                             activeColor = primary,
                             activeColorTarget = primaryTarget,
+                            enabled = !state.isResolving,
                             onSong = viewModel::toggleVideoMode,
                             onVideo = viewModel::toggleVideoMode
                         )
@@ -12617,16 +12593,29 @@ private fun PlayerScreen(
                             )
                         }
                     }
+                    val actionButtonSize = if (compactPlayer) 32.dp else 36.dp
                     Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.AutoAwesome,
+                        contentDescription = strings.motionArtwork,
+                        size = actionButtonSize,
+                        iconSize = 20.dp,
+                        tint = if (state.motionArtworkEnabled) Color.White else Color.White.copy(alpha = 0.45f),
+                        fill = if (state.motionArtworkEnabled) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
+                        borderTop = if (state.motionArtworkEnabled) Color.White.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.10f),
+                        borderBottom = if (state.motionArtworkEnabled) Color.White.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.10f),
+                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     PlayerGlassIconButton(
                         icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = strings.favoritesPlain,
-                        size = heartButtonSize,
-                        iconSize = if (compactPlayer) 22.dp else 24.dp,
-                        tint = favoriteTint,
-                        fill = favoriteFill,
-                        borderTop = favoriteBorder,
-                        borderBottom = favoriteBorder,
+                        size = actionButtonSize,
+                        iconSize = 20.dp,
+                        tint = if (isFavorite) Color(0xFFFF2D55) else Color.White.copy(alpha = 0.75f),
+                        fill = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f),
+                        borderTop = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f),
+                        borderBottom = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f),
                         modifier = Modifier
                             .graphicsLayer {
                                 scaleX = favoriteScale
@@ -12635,18 +12624,45 @@ private fun PlayerScreen(
                             .semantics { toggleableState = ToggleableState(isFavorite) },
                         onClick = { viewModel.toggleFavorite(activeTrack) }
                     )
-                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
-                    PlayerGlassIconButton(
-                        icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                        contentDescription = strings.addToPlaylist,
-                        size = heartButtonSize,
-                        iconSize = if (compactPlayer) 22.dp else 24.dp,
-                        tint = Color.White.copy(alpha = 0.75f),
-                        fill = Color.White.copy(alpha = 0.06f),
-                        borderTop = Color.White.copy(alpha = 0.12f),
-                        borderBottom = Color.White.copy(alpha = 0.06f),
-                        onClick = { playlistTarget = activeTrack }
-                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    var moreMenuExpanded by remember(activeTrack.id) { mutableStateOf(false) }
+                    Box {
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.MoreVert,
+                            contentDescription = strings.options,
+                            size = actionButtonSize,
+                            iconSize = 22.dp,
+                            tint = Color.White.copy(alpha = 0.75f),
+                            fill = Color.White.copy(alpha = 0.08f),
+                            borderTop = Color.White.copy(alpha = 0.12f),
+                            borderBottom = Color.White.copy(alpha = 0.12f),
+                            onClick = { moreMenuExpanded = true }
+                        )
+                        DropdownMenu(
+                            expanded = moreMenuExpanded,
+                            onDismissRequest = { moreMenuExpanded = false },
+                            modifier = Modifier.background(PlayerDarkSurface, LevyraPlayerDesign.ShapeMd)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(strings.addToPlaylist, color = Color.White) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = Color.White) },
+                                onClick = { moreMenuExpanded = false; playlistTarget = activeTrack }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(strings.motionArtwork, color = Color.White) },
+                                leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
+                                modifier = Modifier.semantics {
+                                    toggleableState = ToggleableState(state.motionArtworkEnabled)
+                                },
+                                onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(strings.audioQuality, color = Color.White) },
+                                leadingIcon = { Icon(Icons.Rounded.HighQuality, null, tint = Color.White) },
+                                onClick = { moreMenuExpanded = false; viewModel.openAudioQualityPanel() }
+                            )
+                        }
+                    }
                 }
                 PlayerYoutubeEngagementRow(
                     track = activeTrack,

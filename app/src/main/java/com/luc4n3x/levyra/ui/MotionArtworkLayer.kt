@@ -20,6 +20,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -287,9 +288,9 @@ private fun MotionArtworkStaticFallback(
     )
 
     val immersive = presentation == MotionArtworkPresentation.Immersive
-    val zoomDurationMs = if (immersive) 14_000 else STATIC_ARTWORK_ZOOM_DURATION_MS
-    val horizontalDurationMs = if (immersive) 18_000 else STATIC_ARTWORK_HORIZONTAL_DURATION_MS
-    val verticalDurationMs = if (immersive) 21_000 else STATIC_ARTWORK_VERTICAL_DURATION_MS
+    val zoomDurationMs = if (immersive) 24_000 else 26_000
+    val horizontalDurationMs = if (immersive) 28_000 else 32_000
+    val verticalDurationMs = if (immersive) 32_000 else 36_000
 
     LaunchedEffect(animated, presentation) {
         if (!animated) {
@@ -363,16 +364,23 @@ private fun MotionArtworkStaticFallback(
                 .graphicsLayer {
                     this.alpha = alpha()
                     val amount = motionAmount
-                    val baseZoom = if (immersive) 0.064f else 0.042f
-                    val pulseZoom = if (immersive) 0.030f else 0.022f
-                    val horizontalTravel = if (immersive) 0.026f else 0.016f
-                    val verticalTravel = if (immersive) 0.020f else 0.012f
-                    val scale = 1f + amount * (baseZoom + zoomPhase.value * pulseZoom)
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = artworkSize.width * horizontalTravel * horizontalDrift.value * amount
-                    translationY = artworkSize.height * verticalTravel * verticalDrift.value * amount
-                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.22f else 0f
+                    if (immersive) {
+                        val scale = 1f + amount * (0.15f + zoomPhase.value * 0.05f)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = artworkSize.width * 0.04f * horizontalDrift.value * amount
+                        translationY = artworkSize.height * 0.03f * verticalDrift.value * amount
+                        rotationZ = horizontalDrift.value * amount * 0.4f
+                    } else {
+                        val scale = 1f - amount * (0.020f - zoomPhase.value * 0.014f)
+                        val safeInsetX = artworkSize.width * ((1f - scale).coerceAtLeast(0f) / 2f)
+                        val safeInsetY = artworkSize.height * ((1f - scale).coerceAtLeast(0f) / 2f)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = safeInsetX * 0.72f * horizontalDrift.value * amount
+                        translationY = safeInsetY * 0.58f * verticalDrift.value * amount
+                        rotationZ = 0f
+                    }
                 }
         ) {
             content()
