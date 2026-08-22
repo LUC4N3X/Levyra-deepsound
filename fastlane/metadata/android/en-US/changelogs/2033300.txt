@@ -1,0 +1,1 @@
+Levyra 2.3.33 fixes runaway playback memory by hardening Media3 player, decoder and transition cleanup, keeping audio-mode crossfade audio-only, bounding resolver caches and refreshing YouTube player configuration.
