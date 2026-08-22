@@ -377,9 +377,6 @@ private fun MotionArtworkStaticFallback(
                 }
         ) {
             content()
-            if (immersive && animated) {
-                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.2f)))
-            }
         }
     }
 }
