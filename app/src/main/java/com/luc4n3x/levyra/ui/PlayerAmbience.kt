@@ -17,7 +17,7 @@ internal data class PlayerAmbience(
 private const val AmbienceTintLevel = 0.32f
 private const val AmbienceElevatedLevel = 0.088f
 private const val AmbienceControlLevel = 0.092f
-private const val AmbienceBaseLevel = 0.08f
+private const val AmbienceBaseLevel = 0.09f
 
 internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience {
     val sourcePrimary = primary.copy(alpha = 1f)
@@ -29,7 +29,7 @@ internal fun playerAmbienceOf(primary: Color, secondary: Color): PlayerAmbience 
         tint = blended.playerAmbienceDesaturate(0.28f).playerAmbienceTone(AmbienceTintLevel),
         elevated = blended.playerAmbienceDesaturate(0.42f).playerAmbienceTone(AmbienceElevatedLevel),
         control = blended.playerAmbienceDesaturate(0.20f).playerAmbienceTone(AmbienceControlLevel),
-        base = blended.playerAmbienceDesaturate(0.20f).playerAmbienceTone(AmbienceBaseLevel)
+        base = blended.playerAmbienceDesaturate(0.18f).playerAmbienceTone(AmbienceBaseLevel)
     )
 }
 

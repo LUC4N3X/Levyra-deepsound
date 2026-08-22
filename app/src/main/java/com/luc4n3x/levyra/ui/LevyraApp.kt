@@ -11167,14 +11167,14 @@ private fun PlayerCanvasFusionScrim(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
             val baseColor = base.value
-            val controlColor = control.value
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.56f to Color.Transparent,
-                        0.68f to baseColor.copy(alpha = 0.60f),
-                        0.80f to controlColor.copy(alpha = 0.90f),
+                        0.50f to Color.Transparent,
+                        0.64f to baseColor.copy(alpha = 0.45f),
+                        0.78f to baseColor.copy(alpha = 0.85f),
+                        0.92f to baseColor.copy(alpha = 0.98f),
                         1.00f to baseColor
                     )
                 )
@@ -11203,17 +11203,11 @@ private fun PlayerModeSwitch(
             .selectableGroup()
             .playerGlass(
                 shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.45f),
-                borderTop = Color.White.copy(alpha = 0.22f),
-                borderBottom = Color.White.copy(alpha = 0.12f)
+                fill = Color.Black.copy(alpha = 0.30f),
+                borderTop = Color.White.copy(alpha = 0.16f),
+                borderBottom = Color.White.copy(alpha = 0.06f)
             )
-            .shadow(
-                elevation = 8.dp,
-                shape = CircleShape,
-                ambientColor = activeColorTarget.copy(alpha = 0.30f),
-                spotColor = activeColorTarget.copy(alpha = 0.50f)
-            )
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
@@ -11265,7 +11259,7 @@ private fun PlayerModeSwitchTab(
     )
     Box(
         modifier = Modifier
-            .height(LevyraPlayerDesign.MinimumTouchTarget)
+            .height(32.dp)
             .semantics {
                 this.selected = selected
                 role = Role.Tab
@@ -11275,46 +11269,21 @@ private fun PlayerModeSwitchTab(
     ) {
         Row(
             modifier = Modifier
-                .then(
-                    if (selected) {
-                        Modifier
-                            .shadow(
-                                elevation = 4.dp,
-                                shape = CircleShape,
-                                clip = false,
-                                ambientColor = activeColor.copy(alpha = 0.30f),
-                                spotColor = activeColor.copy(alpha = 0.46f)
-                            )
-                            .background(background, CircleShape)
-                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.30f)), CircleShape)
-                    } else {
-                        Modifier.background(background, CircleShape)
-                    }
-                )
-                .padding(horizontal = 11.dp, vertical = 7.dp),
+                .background(background, CircleShape)
+                .padding(horizontal = 11.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .background(
-                        if (selected) contentColor.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.06f),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isVideoTab) Icons.Rounded.Videocam else Icons.Rounded.MusicNote,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(12.dp)
-                )
-            }
+            Icon(
+                imageVector = if (isVideoTab) Icons.Rounded.Videocam else Icons.Rounded.MusicNote,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(14.dp)
+            )
             Text(
                 text = label,
                 color = contentColor,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.2.sp,
                 maxLines = 1,
@@ -12655,16 +12624,29 @@ private fun PlayerScreen(
                             )
                         }
                     }
+                    val actionButtonSize = if (compactPlayer) 36.dp else 38.dp
                     Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.AutoAwesome,
+                        contentDescription = strings.motionArtwork,
+                        size = actionButtonSize,
+                        iconSize = 20.dp,
+                        tint = if (state.motionArtworkEnabled) primaryTarget else Color.White.copy(alpha = 0.70f),
+                        fill = if (state.motionArtworkEnabled) primaryTarget.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f),
+                        borderTop = if (state.motionArtworkEnabled) primaryTarget.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f),
+                        borderBottom = if (state.motionArtworkEnabled) primaryTarget.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.12f),
+                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                    )
+                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
                     PlayerGlassIconButton(
                         icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = strings.favoritesPlain,
-                        size = 36.dp,
-                        iconSize = 22.dp,
+                        size = actionButtonSize,
+                        iconSize = 20.dp,
                         tint = favoriteTint,
-                        fill = Color.White.copy(alpha = 0.08f),
-                        borderTop = Color.White.copy(alpha = 0.10f),
-                        borderBottom = Color.White.copy(alpha = 0.10f),
+                        fill = favoriteFill,
+                        borderTop = favoriteBorder,
+                        borderBottom = favoriteBorder,
                         modifier = Modifier
                             .graphicsLayer {
                                 scaleX = favoriteScale
