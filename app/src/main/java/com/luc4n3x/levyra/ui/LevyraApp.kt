@@ -12701,6 +12701,9 @@ private fun PlayerScreen(
                             DropdownMenuItem(
                                 text = { Text(strings.motionArtwork, color = Color.White) },
                                 leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
+                                modifier = Modifier.semantics {
+                                    toggleableState = ToggleableState(state.motionArtworkEnabled)
+                                },
                                 onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
                             )
                             DropdownMenuItem(

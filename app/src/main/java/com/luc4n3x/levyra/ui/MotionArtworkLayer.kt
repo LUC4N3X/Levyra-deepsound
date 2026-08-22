@@ -288,7 +288,6 @@ private fun MotionArtworkStaticFallback(
     )
 
     val immersive = presentation == MotionArtworkPresentation.Immersive
-    // cinematic breathing: slow down the animation significantly
     val zoomDurationMs = if (immersive) 24_000 else 18_000
     val horizontalDurationMs = if (immersive) 28_000 else 22_000
     val verticalDurationMs = if (immersive) 32_000 else 26_000
@@ -379,7 +378,6 @@ private fun MotionArtworkStaticFallback(
         ) {
             content()
             if (immersive && animated) {
-                // Add an ambient glow overlay to give a cinematic lighting effect
                 Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.2f)))
             }
         }

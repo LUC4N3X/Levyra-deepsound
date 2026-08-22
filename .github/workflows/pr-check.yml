@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-check-${{ github.ref }}
@@ -31,60 +31,10 @@ jobs:
       LEVYRA_KEY_PASSWORD: levyra_ci_password
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: feature/redesign-player-canvas
           fetch-depth: 0
-
-      - name: Apply scoped CodeRabbit follow-ups
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
-          app = app_path.read_text(encoding='utf-8')
-          icon_marker = 'leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },'
-          click_marker = 'onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }'
-          lines = app.splitlines(keepends=True)
-          matches = [index for index, line in enumerate(lines) if icon_marker in line]
-          if len(matches) != 1:
-              raise SystemExit(f'Expected one Motion Artwork icon line, found {len(matches)}')
-          index = matches[0]
-          if index + 1 >= len(lines) or lines[index + 1].strip() != click_marker:
-              raise SystemExit('Unexpected Motion Artwork menu structure')
-          if 'import androidx.compose.ui.state.ToggleableState' not in app or 'import androidx.compose.ui.semantics.toggleableState' not in app:
-              raise SystemExit('Required accessibility imports are missing')
-          indent = lines[index][:len(lines[index]) - len(lines[index].lstrip())]
-          lines[index + 1:index + 1] = [
-              f'{indent}modifier = Modifier.semantics {{\n',
-              f'{indent}    toggleableState = ToggleableState(state.motionArtworkEnabled)\n',
-              f'{indent}}},\n',
-          ]
-          app_path.write_text(''.join(lines), encoding='utf-8')
-
-          motion_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt')
-          motion_lines = motion_path.read_text(encoding='utf-8').splitlines(keepends=True)
-          comments = {
-              '// cinematic breathing: slow down the animation significantly',
-              '// Add an ambient glow overlay to give a cinematic lighting effect',
-          }
-          counts = {comment: sum(line.strip() == comment for line in motion_lines) for comment in comments}
-          if any(count != 1 for count in counts.values()):
-              raise SystemExit(f'Unexpected explanatory comment counts: {counts}')
-          motion_path.write_text(
-              ''.join(line for line in motion_lines if line.strip() not in comments),
-              encoding='utf-8'
-          )
-          PY
-          git diff --check
-          changed="$(git diff --name-only | sort)"
-          expected="$(printf '%s\n' \
-            'app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt' \
-            'app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt' | sort)"
-          test "${changed}" = "${expected}"
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -175,7 +125,6 @@ jobs:
             --tests 'com.luc4n3x.levyra.domain.LevyraAudioPresetsTest' \
             --tests 'com.luc4n3x.levyra.feature.motion.*' \
             --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
-            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
             --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
             --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
             --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
@@ -266,18 +215,6 @@ jobs:
           if len(providers) != 1 or providers[0].get(android + 'enabled', 'true') != 'false':
               raise SystemExit('F-Droid APK must keep the GitHub update provider disabled')
           PY
-
-      - name: Commit scoped review follow-ups and restore CI
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show c66bb94d2e6ff5ff81b9eec6bb72013e5334ad1f:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt .github/workflows/pr-check.yml
-          git diff --cached --check
-          git commit -m "fix(player): address review follow-ups"
-          git push origin HEAD:feature/redesign-player-canvas
 
       - name: Collect Reports
         if: always()
