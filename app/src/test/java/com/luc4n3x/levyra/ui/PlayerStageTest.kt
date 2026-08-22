@@ -49,7 +49,7 @@ class PlayerStageTest {
             videoHeight = 1920,
             pixelWidthHeightRatio = 1f,
             containerWidth = 1080,
-            containerHeight = 1551,
+            containerHeight = 1503,
             maxZoom = MotionArtworkStageMaxZoom
         )
         val epsilon = 0.0001f
