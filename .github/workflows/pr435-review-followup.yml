@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   apply-review-followups:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR branch
