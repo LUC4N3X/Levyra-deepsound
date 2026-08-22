@@ -11158,24 +11158,24 @@ private fun PlayerCanvasFusionScrim(
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-canvas-fusion-base"
     )
-    val control = animateColorAsState(
-        targetValue = ambience.control,
+    val primaryGlow = animateColorAsState(
+        targetValue = ambience.primary,
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-canvas-fusion-control"
+        label = "player-canvas-fusion-primary"
     )
     Box(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
             val baseColor = base.value
-            val controlColor = control.value
+            val glowColor = primaryGlow.value.copy(alpha = 0.25f)
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.30f to Color.Transparent,
-                        0.45f to baseColor.copy(alpha = 0.20f),
-                        0.55f to baseColor.copy(alpha = 0.85f),
-                        0.60f to baseColor.copy(alpha = 1.00f),
+                        0.40f to Color.Transparent,
+                        0.50f to glowColor,
+                        0.65f to baseColor.copy(alpha = 0.85f),
+                        0.75f to baseColor.copy(alpha = 1.00f),
                         1.00f to baseColor.copy(alpha = 1.00f)
                     )
                 )
@@ -12619,12 +12619,12 @@ private fun PlayerScreen(
                     PlayerGlassIconButton(
                         icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = strings.favoritesPlain,
-                        size = heartButtonSize,
-                        iconSize = if (compactPlayer) 22.dp else 24.dp,
+                        size = 36.dp,
+                        iconSize = 22.dp,
                         tint = favoriteTint,
-                        fill = favoriteFill,
-                        borderTop = favoriteBorder,
-                        borderBottom = favoriteBorder,
+                        fill = Color.White.copy(alpha = 0.08f),
+                        borderTop = Color.White.copy(alpha = 0.10f),
+                        borderBottom = Color.White.copy(alpha = 0.10f),
                         modifier = Modifier
                             .graphicsLayer {
                                 scaleX = favoriteScale
@@ -12634,29 +12634,41 @@ private fun PlayerScreen(
                         onClick = { viewModel.toggleFavorite(activeTrack) }
                     )
                     Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
-                    PlayerGlassIconButton(
-                        icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                        contentDescription = strings.addToPlaylist,
-                        size = heartButtonSize,
-                        iconSize = if (compactPlayer) 22.dp else 24.dp,
-                        tint = Color.White.copy(alpha = 0.75f),
-                        fill = Color.White.copy(alpha = 0.06f),
-                        borderTop = Color.White.copy(alpha = 0.12f),
-                        borderBottom = Color.White.copy(alpha = 0.06f),
-                        onClick = { playlistTarget = activeTrack }
-                    )
-                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
-                    PlayerGlassIconButton(
-                        icon = if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear,
-                        contentDescription = strings.motionArtwork,
-                        size = heartButtonSize,
-                        iconSize = if (compactPlayer) 22.dp else 24.dp,
-                        tint = if (state.motionArtworkEnabled) Color.White else Color.White.copy(alpha = 0.4f),
-                        fill = if (state.motionArtworkEnabled) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
-                        borderTop = Color.White.copy(alpha = 0.12f),
-                        borderBottom = Color.White.copy(alpha = 0.06f),
-                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
-                    )
+                    var moreMenuExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.MoreVert,
+                            contentDescription = strings.options,
+                            size = 36.dp,
+                            iconSize = 22.dp,
+                            tint = Color.White.copy(alpha = 0.75f),
+                            fill = Color.White.copy(alpha = 0.08f),
+                            borderTop = Color.White.copy(alpha = 0.10f),
+                            borderBottom = Color.White.copy(alpha = 0.10f),
+                            onClick = { moreMenuExpanded = true }
+                        )
+                        DropdownMenu(
+                            expanded = moreMenuExpanded,
+                            onDismissRequest = { moreMenuExpanded = false },
+                            modifier = Modifier.background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(strings.addToPlaylist, color = Color.White) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = Color.White) },
+                                onClick = { moreMenuExpanded = false; playlistTarget = activeTrack }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(strings.motionArtwork, color = Color.White) },
+                                leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
+                                onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(strings.audioQuality, color = Color.White) },
+                                leadingIcon = { Icon(Icons.Rounded.HighQuality, null, tint = Color.White) },
+                                onClick = { moreMenuExpanded = false; viewModel.openAudioQualityPanel() }
+                            )
+                        }
+                    }
                 }
                 PlayerYoutubeEngagementRow(
                     track = activeTrack,
