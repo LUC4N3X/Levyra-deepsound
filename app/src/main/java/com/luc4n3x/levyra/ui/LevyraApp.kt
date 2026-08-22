@@ -11158,25 +11158,24 @@ private fun PlayerCanvasFusionScrim(
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
         label = "player-canvas-fusion-base"
     )
-    val primaryGlow = animateColorAsState(
-        targetValue = ambience.primary,
+    val control = animateColorAsState(
+        targetValue = ambience.control,
         animationSpec = if (animationsEnabled) tween(700, easing = LinearOutSlowInEasing) else snap(),
-        label = "player-canvas-fusion-primary"
+        label = "player-canvas-fusion-control"
     )
     Box(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
             val baseColor = base.value
-            val glowColor = primaryGlow.value.copy(alpha = 0.25f)
+            val controlColor = control.value
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to Color.Transparent,
-                        0.40f to Color.Transparent,
-                        0.50f to glowColor,
-                        0.65f to baseColor.copy(alpha = 0.85f),
-                        0.75f to baseColor.copy(alpha = 1.00f),
-                        1.00f to baseColor.copy(alpha = 1.00f)
+                        0.56f to Color.Transparent,
+                        0.68f to baseColor.copy(alpha = 0.60f),
+                        0.80f to controlColor.copy(alpha = 0.90f),
+                        1.00f to baseColor
                     )
                 )
             )
