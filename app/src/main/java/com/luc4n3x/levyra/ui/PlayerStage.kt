@@ -8,7 +8,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -17,12 +16,12 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 
-internal const val PlayerStageHeightFraction = 0.64f
-internal const val PlayerStageMinOverlapDp = 48f
+internal const val PlayerStageHeightFraction = 0.62f
+internal const val PlayerStageMinOverlapDp = 44f
 internal val PlayerStageSpillHeight: Dp = 96.dp
 
 private const val StageTopScrimEnd = 0.20f
-private const val StageSideVignetteAlpha = 0.035f
+private const val StageSideVignetteAlpha = 0.03f
 
 @Immutable
 internal data class PlayerStageMetrics(
@@ -61,16 +60,13 @@ internal fun PlayerStage(
     staticArtwork: @Composable () -> Unit
 ) {
     val settle = veilSettleFraction.coerceIn(0.35f, 0.98f)
-    val fadeStart = (settle - 0.15f).coerceIn(0.66f, 0.76f)
-    val fadeMid = (settle - 0.035f).coerceIn(fadeStart, 0.86f)
-    val fadeStrong = (settle + 0.065f).coerceIn(fadeMid, 0.94f)
-    val songColor = ambience.primary.playerAmbienceMix(ambience.secondary, 0.46f)
-    val handoff = ambience.base
-        .playerAmbienceMix(ambience.tint, 0.34f)
-        .playerAmbienceMix(songColor, 0.10f)
-    val deep = ambience.elevated
-        .playerAmbienceMix(ambience.tint, 0.36f)
-        .playerAmbienceMix(songColor, 0.14f)
+    val fadeStart = (settle - 0.20f).coerceIn(0.58f, 0.70f)
+    val fadeSoft = (fadeStart + 0.08f).coerceAtMost(0.78f)
+    val fadeMid = (fadeStart + 0.16f).coerceAtMost(0.86f)
+    val fadeDeep = (fadeStart + 0.25f).coerceAtMost(0.95f)
+    val songColor = ambience.primary.playerAmbienceMix(ambience.secondary, 0.42f)
+    val handoff = songColor.playerAmbienceMix(Color.Black, 0.60f)
+    val deep = songColor.playerAmbienceMix(Color.Black, 0.74f)
 
     Box(modifier = modifier) {
         Box(
@@ -102,32 +98,11 @@ internal fun PlayerStage(
                             colorStops = arrayOf(
                                 0.00f to Color.Transparent,
                                 fadeStart to Color.Transparent,
-                                fadeMid to handoff.copy(alpha = 0.18f),
-                                fadeStrong to handoff.copy(alpha = 0.48f),
-                                0.965f to deep.copy(alpha = 0.84f),
+                                fadeSoft to handoff.copy(alpha = 0.08f),
+                                fadeMid to handoff.copy(alpha = 0.26f),
+                                fadeDeep to deep.copy(alpha = 0.72f),
                                 1.00f to deep
                             )
-                        )
-                    )
-
-                    drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                ambience.primary.copy(alpha = 0.055f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.22f, size.height),
-                            radius = size.width * 0.78f
-                        )
-                    )
-                    drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                ambience.secondary.copy(alpha = 0.045f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.82f, size.height * 0.96f),
-                            radius = size.width * 0.66f
                         )
                     )
 
@@ -162,48 +137,20 @@ internal fun PlayerConsoleSurface(
     ambience: PlayerAmbience,
     modifier: Modifier = Modifier
 ) {
-    val songColor = ambience.primary.playerAmbienceMix(ambience.secondary, 0.46f)
-    val deep = ambience.elevated
-        .playerAmbienceMix(ambience.tint, 0.36f)
-        .playerAmbienceMix(songColor, 0.14f)
-    val middle = deep.playerAmbienceMix(ambience.tint, 0.14f)
-    val lower = deep.playerAmbienceMix(songColor, 0.08f)
+    val songColor = ambience.primary.playerAmbienceMix(ambience.secondary, 0.42f)
+    val deep = songColor.playerAmbienceMix(Color.Black, 0.74f)
+    val lower = songColor.playerAmbienceMix(Color.Black, 0.82f)
 
     Box(
         modifier = modifier.drawBehind {
             if (size.minDimension <= 0f) return@drawBehind
-
             drawRect(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.00f to deep,
-                        0.36f to middle,
-                        0.72f to lower,
-                        1.00f to deep
+                        0.42f to deep,
+                        1.00f to lower
                     )
-                )
-            )
-
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        ambience.primary.copy(alpha = 0.10f),
-                        ambience.primary.copy(alpha = 0.025f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.16f, size.height * 0.10f),
-                    radius = size.width * 0.88f
-                )
-            )
-            drawRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        ambience.secondary.copy(alpha = 0.085f),
-                        ambience.secondary.copy(alpha = 0.020f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.84f, size.height * 0.26f),
-                    radius = size.width * 0.76f
                 )
             )
         }
