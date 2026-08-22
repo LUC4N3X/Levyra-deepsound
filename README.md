@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
+<picture>
+  <source media="(max-width: 640px)" srcset="docs/assets/levyra-github-banner-mobile.webp">
+  <img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
+</picture>
 
 # Hear every layer. No limits.
 
@@ -106,9 +109,9 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 ## ✦ Acoustic Architecture & Features
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%" valign="top">
+<td valign="top">
 
 ### 🎚️ Pure Audio & Playback Engine
 
@@ -120,7 +123,9 @@ Modern music streaming applications often treat music as temporary, disposable b
 * **Audio / Video Seamless Toggle**: Switch between high-efficiency Opus/AAC audio streams and full HD video playback with one tap.
 
 </td>
-<td width="50%" valign="top">
+</tr>
+<tr>
+<td valign="top">
 
 ### 💾 Offline Audio Vault & File Exports
 
@@ -133,7 +138,7 @@ Modern music streaming applications often treat music as temporary, disposable b
 </td>
 </tr>
 <tr>
-<td width="50%" valign="top">
+<td valign="top">
 
 ### 🔍 Stream Extraction & Discovery
 
@@ -144,7 +149,9 @@ Modern music streaming applications often treat music as temporary, disposable b
 * **Samples & Clip Feed**: Short-form vertical music video teaser feed with real-time comment energy resonance.
 
 </td>
-<td width="50%" valign="top">
+</tr>
+<tr>
+<td valign="top">
 
 ### 📊 Karaoke Lyrics & Visual Immersion
 
@@ -164,9 +171,9 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%" valign="top">
+<td valign="top">
 
 ### 📱 Android Native Suite (`app/`)
 * 🎨 **[`ui/`](app/src/main/java/com/luc4n3x/levyra/ui)** — Fluid Jetpack Compose & Material 3 screens, gesture-driven canvas, and dynamic OLED palettes.
@@ -177,7 +184,9 @@ Levyra is built from the ground up as a native, modular audio suite for Android 
 * 🔒 **[`data/local/`](app/src/main/java/com/luc4n3x/levyra/data/local)** — Zero-telemetry Room SQLite database for playback metrics and favorites.
 
 </td>
-<td width="50%" valign="top">
+</tr>
+<tr>
+<td valign="top">
 
 ### 💻 Windows Desktop Suite (`desktop/`)
 * 🖥️ **[`desktop/app/`](desktop/app)** — Compose Multiplatform desktop UI with window management & auto-updater.
@@ -253,9 +262,9 @@ levyraDesktopVersion=1.2.0
 
 Levyra is built on strict zero-tracking principles: no advertising identifiers, no user profiling, and no background telemetry.
 
-<table>
+<table width="100%">
 <tr>
-<td width="50%" valign="top">
+<td valign="top">
 
 ### 🌐 Network Transparency
 * **Stream Endpoints**: Direct connections to YouTube / YT Music CDN servers without proxy tracking.
@@ -265,7 +274,9 @@ Levyra is built on strict zero-tracking principles: no advertising identifiers, 
 * **Update Verification**: Startup release checks on GitHub (disabled in F-Droid).
 
 </td>
-<td width="50%" valign="top">
+</tr>
+<tr>
+<td valign="top">
 
 ### 🛡️ Android Permissions
 * `INTERNET` & `ACCESS_NETWORK_STATE`: Stream audio and resolve album metadata.
