@@ -136,7 +136,8 @@ internal fun MotionArtworkLayer(
             videoUnavailable = false
         }
     }
-    val animateStatic = enabled &&
+    val animateStatic = artwork != null &&
+        enabled &&
         lifecycleActive &&
         environment.localAllowed &&
         isPlaying &&
