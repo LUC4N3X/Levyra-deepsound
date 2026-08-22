@@ -180,24 +180,11 @@ jobs:
 
           text = text[:start] + replacement.rstrip() + text[end:]
 
-          old_call = '''                        PlayerModeSwitch(
-                              isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
-                              activeColor = primary,
-                              activeColorTarget = primaryTarget,
-                              onSong = viewModel::toggleVideoMode,
-                              onVideo = viewModel::toggleVideoMode
-                          )'''.replace("\n                              ", "\n                            ")
-          new_call = '''                        PlayerModeSwitch(
-                              isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
-                              activeColor = primary,
-                              activeColorTarget = primaryTarget,
-                              enabled = !state.isResolving,
-                              onSong = viewModel::toggleVideoMode,
-                              onVideo = viewModel::toggleVideoMode
-                          )'''.replace("\n                              ", "\n                            ")
-          if text.count(old_call) != 1:
-              raise RuntimeError(f"Expected one PlayerModeSwitch call, found {text.count(old_call)}")
-          text = text.replace(old_call, new_call, 1)
+          old_args = "                            activeColorTarget = primaryTarget,\n                            onSong = viewModel::toggleVideoMode,"
+          new_args = "                            activeColorTarget = primaryTarget,\n                            enabled = !state.isResolving,\n                            onSong = viewModel::toggleVideoMode,"
+          if text.count(old_args) != 1:
+              raise RuntimeError(f"Expected one PlayerModeSwitch argument block, found {text.count(old_args)}")
+          text = text.replace(old_args, new_args, 1)
           path.write_text(text, encoding="utf-8")
 
       - name: Verify scope
