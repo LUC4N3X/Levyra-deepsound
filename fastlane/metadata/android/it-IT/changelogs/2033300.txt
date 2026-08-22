@@ -1,0 +1,1 @@
+Levyra 2.3.33 corregge la crescita anomala della memoria durante la riproduzione, rafforza il rilascio di player, decoder e transizioni Media3, mantiene il crossfade audio-only, limita le cache del resolver e aggiorna la configurazione player YouTube.
