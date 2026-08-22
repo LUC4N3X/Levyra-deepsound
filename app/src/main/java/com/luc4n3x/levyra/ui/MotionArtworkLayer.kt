@@ -136,8 +136,7 @@ internal fun MotionArtworkLayer(
             videoUnavailable = false
         }
     }
-    val animateStatic = artwork != null &&
-        enabled &&
+    val animateStatic = enabled &&
         lifecycleActive &&
         environment.localAllowed &&
         isPlaying &&
@@ -289,9 +288,9 @@ private fun MotionArtworkStaticFallback(
     )
 
     val immersive = presentation == MotionArtworkPresentation.Immersive
-    val zoomDurationMs = if (immersive) 24_000 else 18_000
-    val horizontalDurationMs = if (immersive) 28_000 else 22_000
-    val verticalDurationMs = if (immersive) 32_000 else 26_000
+    val zoomDurationMs = if (immersive) 24_000 else 26_000
+    val horizontalDurationMs = if (immersive) 28_000 else 32_000
+    val verticalDurationMs = if (immersive) 32_000 else 36_000
 
     LaunchedEffect(animated, presentation) {
         if (!animated) {
@@ -365,16 +364,23 @@ private fun MotionArtworkStaticFallback(
                 .graphicsLayer {
                     this.alpha = alpha()
                     val amount = motionAmount
-                    val baseZoom = if (immersive) 0.15f else 0.08f
-                    val pulseZoom = if (immersive) 0.05f else 0.03f
-                    val horizontalTravel = if (immersive) 0.04f else 0.02f
-                    val verticalTravel = if (immersive) 0.03f else 0.015f
-                    val scale = 1f + amount * (baseZoom + zoomPhase.value * pulseZoom)
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = artworkSize.width * horizontalTravel * horizontalDrift.value * amount
-                    translationY = artworkSize.height * verticalTravel * verticalDrift.value * amount
-                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.4f else 0f
+                    if (immersive) {
+                        val scale = 1f + amount * (0.15f + zoomPhase.value * 0.05f)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = artworkSize.width * 0.04f * horizontalDrift.value * amount
+                        translationY = artworkSize.height * 0.03f * verticalDrift.value * amount
+                        rotationZ = horizontalDrift.value * amount * 0.4f
+                    } else {
+                        val scale = 1f - amount * (0.020f - zoomPhase.value * 0.014f)
+                        val safeInsetX = artworkSize.width * ((1f - scale).coerceAtLeast(0f) / 2f)
+                        val safeInsetY = artworkSize.height * ((1f - scale).coerceAtLeast(0f) / 2f)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = safeInsetX * 0.72f * horizontalDrift.value * amount
+                        translationY = safeInsetY * 0.58f * verticalDrift.value * amount
+                        rotationZ = 0f
+                    }
                 }
         ) {
             content()
