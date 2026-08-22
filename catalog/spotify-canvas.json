@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-22T01:52:33Z",
+  "generatedAt": "2026-08-22T07:01:37Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -327,7 +327,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -525,13 +525,6 @@
       "artist": "Olivia Rodrigo",
       "album": "you seem pretty sad for a girl so in love",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/cd287fd1443f4a65b9d079dc08fea6d4.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1813,6 +1806,13 @@
       "artist": "Lil Kleine, Samuel Welten, De Amsterdamse Zomer",
       "album": "Maak Me Nou Niet Gek",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/2a4992244e9345a6a8fb6f6db4de9f0f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3500,13 +3500,6 @@
       "artist": "HANRORO",
       "album": "Take-off",
       "url": "https://canvaz.scdn.co/upload/artist/5wVJpXzuKV6Xj7Yhsf2uYx/video/3ad782c9fd444280890f1a41d144962d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "RUDE!",
-      "artist": "Hearts2Hearts",
-      "album": "RUDE!",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
       "scope": "track"
     },
     {
