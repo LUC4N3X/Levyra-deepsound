@@ -12648,7 +12648,7 @@ private fun PlayerScreen(
                     Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
                     PlayerGlassIconButton(
                         icon = if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear,
-                        contentDescription = "Toggle Canvas",
+                        contentDescription = strings.motionArtwork,
                         size = heartButtonSize,
                         iconSize = if (compactPlayer) 22.dp else 24.dp,
                         tint = if (state.motionArtworkEnabled) Color.White else Color.White.copy(alpha = 0.4f),
