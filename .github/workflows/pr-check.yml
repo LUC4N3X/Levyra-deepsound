@@ -46,36 +46,38 @@ jobs:
 
           app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           app = app_path.read_text(encoding='utf-8')
-          before = '''                            DropdownMenuItem(
-                                text = { Text(strings.motionArtwork, color = Color.White) },
-                                leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
-                                onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
-                            )'''
-          after = '''                            DropdownMenuItem(
-                                text = { Text(strings.motionArtwork, color = Color.White) },
-                                leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },
-                                modifier = Modifier.semantics {
-                                    toggleableState = ToggleableState(state.motionArtworkEnabled)
-                                },
-                                onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
-                            )'''
-          if app.count(before) != 1:
-              raise SystemExit(f'Expected one Motion Artwork menu block, found {app.count(before)}')
+          icon_marker = 'leadingIcon = { Icon(if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear, null, tint = Color.White) },'
+          click_marker = 'onClick = { moreMenuExpanded = false; viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }'
+          lines = app.splitlines(keepends=True)
+          matches = [index for index, line in enumerate(lines) if icon_marker in line]
+          if len(matches) != 1:
+              raise SystemExit(f'Expected one Motion Artwork icon line, found {len(matches)}')
+          index = matches[0]
+          if index + 1 >= len(lines) or lines[index + 1].strip() != click_marker:
+              raise SystemExit('Unexpected Motion Artwork menu structure')
           if 'import androidx.compose.ui.state.ToggleableState' not in app or 'import androidx.compose.ui.semantics.toggleableState' not in app:
               raise SystemExit('Required accessibility imports are missing')
-          app_path.write_text(app.replace(before, after, 1), encoding='utf-8')
+          indent = lines[index][:len(lines[index]) - len(lines[index].lstrip())]
+          lines[index + 1:index + 1] = [
+              f'{indent}modifier = Modifier.semantics {{\n',
+              f'{indent}    toggleableState = ToggleableState(state.motionArtworkEnabled)\n',
+              f'{indent}}},\n',
+          ]
+          app_path.write_text(''.join(lines), encoding='utf-8')
 
           motion_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/MotionArtworkLayer.kt')
-          motion = motion_path.read_text(encoding='utf-8')
-          comments = [
-              '    // cinematic breathing: slow down the animation significantly\n',
-              '                // Add an ambient glow overlay to give a cinematic lighting effect\n',
-          ]
-          for comment in comments:
-              if motion.count(comment) != 1:
-                  raise SystemExit(f'Expected one review comment line, found {motion.count(comment)}: {comment.strip()}')
-              motion = motion.replace(comment, '', 1)
-          motion_path.write_text(motion, encoding='utf-8')
+          motion_lines = motion_path.read_text(encoding='utf-8').splitlines(keepends=True)
+          comments = {
+              '// cinematic breathing: slow down the animation significantly',
+              '// Add an ambient glow overlay to give a cinematic lighting effect',
+          }
+          counts = {comment: sum(line.strip() == comment for line in motion_lines) for comment in comments}
+          if any(count != 1 for count in counts.values()):
+              raise SystemExit(f'Unexpected explanatory comment counts: {counts}')
+          motion_path.write_text(
+              ''.join(line for line in motion_lines if line.strip() not in comments),
+              encoding='utf-8'
+          )
           PY
           git diff --check
           changed="$(git diff --name-only | sort)"
@@ -173,6 +175,7 @@ jobs:
             --tests 'com.luc4n3x.levyra.domain.LevyraAudioPresetsTest' \
             --tests 'com.luc4n3x.levyra.feature.motion.*' \
             --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.HomeRefreshStabilityTest' \
             --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
             --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
             --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
