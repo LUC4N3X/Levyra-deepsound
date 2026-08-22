@@ -188,9 +188,10 @@ fun PlayerTransportControls(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val skipIconSize = if (compact) 28.dp else 32.dp
+    val skipIconSize = if (compact) 30.dp else 34.dp
     val modeIconSize = if (compact) 20.dp else 24.dp
-    val primarySize = if (compact) 52.dp else 58.dp
+    val primarySize = 56.dp
+    val primaryIconSize = if (compact) 38.dp else 44.dp
 
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -201,7 +202,6 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.Shuffle,
             contentDescription = labels.shuffle,
             active = shuffleOn,
-            accentTarget = accents.primaryTarget,
             iconSize = modeIconSize,
             animated = animated,
             onClick = onShuffle
@@ -216,7 +216,7 @@ fun PlayerTransportControls(
             isPlaying = isPlaying,
             isResolving = isResolving,
             size = primarySize,
-            accentColor = accents.primaryTarget,
+            iconSize = primaryIconSize,
             animated = animated,
             playLabel = labels.play,
             pauseLabel = labels.pause,
@@ -232,7 +232,6 @@ fun PlayerTransportControls(
             icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
             contentDescription = labels.repeat,
             active = repeatOn,
-            accentTarget = accents.secondaryTarget,
             iconSize = modeIconSize,
             animated = animated,
             onClick = onRepeat
@@ -257,7 +256,7 @@ private fun PlayerSkipButton(
         contentDescription = contentDescription
     ) {
         Box(
-            modifier = Modifier.size(44.dp),
+            modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
@@ -274,16 +273,12 @@ private fun PlayerModeToggleButton(
     icon: ImageVector,
     contentDescription: String,
     active: Boolean,
-    accentTarget: Color,
     iconSize: Dp,
     animated: Boolean,
     onClick: () -> Unit
 ) {
-    val activeTint = remember(accentTarget) {
-        Color(0xFF1DB954).playerMix(accentTarget, 0.35f)
-    }
     val tint by animateColorAsState(
-        targetValue = if (active) activeTint else Color.White.copy(alpha = 0.5f),
+        targetValue = if (active) Color.White else Color.White.copy(alpha = 0.45f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-tint"
     )
@@ -317,9 +312,9 @@ private fun PlayerModeToggleButton(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 6.dp)
-                    .size(4.dp)
+                    .size(3.dp)
                     .graphicsLayer { alpha = indicatorAlpha }
-                    .background(activeTint, CircleShape)
+                    .background(Color.White, CircleShape)
             )
         }
     }
@@ -359,36 +354,32 @@ private fun PlayerPrimaryButton(
     isPlaying: Boolean,
     isResolving: Boolean,
     size: Dp,
-    accentColor: Color,
+    iconSize: Dp,
     animated: Boolean,
     playLabel: String,
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val contentColor = LevyraPlayerDesign.PrimaryContent
-
     SpringIconButton(
         onClick = onClick,
         pressedScale = 0.88f,
         contentDescription = if (isPlaying) pauseLabel else playLabel
     ) {
         Box(
-            modifier = Modifier
-                .size(size)
-                .background(Color.White, CircleShape),
+            modifier = Modifier.size(size),
             contentAlignment = Alignment.Center
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     strokeWidth = 2.6.dp,
-                    color = contentColor
+                    color = Color.White
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
-                    iconSize = 28.dp,
-                    tint = contentColor,
+                    iconSize = iconSize,
+                    tint = Color.White,
                     animated = animated
                 )
             }
