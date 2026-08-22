@@ -1,9 +1,6 @@
 <div align="center">
 
-<picture>
-  <source media="(max-width: 640px)" srcset="https://images.weserv.nl/?url=raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/docs/assets/levyra-github-banner.webp&amp;w=1200&amp;h=720&amp;fit=cover&amp;a=center">
-  <img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
-</picture>
+<img src="docs/assets/levyra-github-banner.webp" alt="Levyra — Advanced Music Application" width="100%" />
 
 # Hear every layer. No limits.
 
