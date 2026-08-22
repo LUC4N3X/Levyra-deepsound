@@ -263,6 +263,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun openArtist(track: Track) = root.openArtist(track)
     fun openAudioQualityPanel() = root.openAudioQualityPanel()
     fun openLyrics() = root.openLyrics()
+    fun setMotionArtworkEnabled(enabled: Boolean) = root.setMotionArtworkEnabled(enabled)
     fun openQueue() = root.openQueue()
     fun openYoutubeComments() = root.openYoutubeComments()
     fun closeYoutubeComments() = root.closeYoutubeComments()

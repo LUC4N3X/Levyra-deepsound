@@ -20,6 +20,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -287,9 +288,10 @@ private fun MotionArtworkStaticFallback(
     )
 
     val immersive = presentation == MotionArtworkPresentation.Immersive
-    val zoomDurationMs = if (immersive) 14_000 else STATIC_ARTWORK_ZOOM_DURATION_MS
-    val horizontalDurationMs = if (immersive) 18_000 else STATIC_ARTWORK_HORIZONTAL_DURATION_MS
-    val verticalDurationMs = if (immersive) 21_000 else STATIC_ARTWORK_VERTICAL_DURATION_MS
+    // cinematic breathing: slow down the animation significantly
+    val zoomDurationMs = if (immersive) 24_000 else 18_000
+    val horizontalDurationMs = if (immersive) 28_000 else 22_000
+    val verticalDurationMs = if (immersive) 32_000 else 26_000
 
     LaunchedEffect(animated, presentation) {
         if (!animated) {
@@ -363,19 +365,23 @@ private fun MotionArtworkStaticFallback(
                 .graphicsLayer {
                     this.alpha = alpha()
                     val amount = motionAmount
-                    val baseZoom = if (immersive) 0.064f else 0.042f
-                    val pulseZoom = if (immersive) 0.030f else 0.022f
-                    val horizontalTravel = if (immersive) 0.026f else 0.016f
-                    val verticalTravel = if (immersive) 0.020f else 0.012f
+                    val baseZoom = if (immersive) 0.15f else 0.08f
+                    val pulseZoom = if (immersive) 0.05f else 0.03f
+                    val horizontalTravel = if (immersive) 0.04f else 0.02f
+                    val verticalTravel = if (immersive) 0.03f else 0.015f
                     val scale = 1f + amount * (baseZoom + zoomPhase.value * pulseZoom)
                     scaleX = scale
                     scaleY = scale
                     translationX = artworkSize.width * horizontalTravel * horizontalDrift.value * amount
                     translationY = artworkSize.height * verticalTravel * verticalDrift.value * amount
-                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.22f else 0f
+                    rotationZ = if (immersive) horizontalDrift.value * amount * 0.4f else 0f
                 }
         ) {
             content()
+            if (immersive && animated) {
+                // Add an ambient glow overlay to give a cinematic lighting effect
+                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.2f)))
+            }
         }
     }
 }

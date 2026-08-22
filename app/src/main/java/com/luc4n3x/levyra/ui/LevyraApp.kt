@@ -163,6 +163,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
@@ -11170,16 +11171,12 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.75f),
-                        0.06f to baseColor.copy(alpha = 0.45f),
-                        0.14f to baseColor.copy(alpha = 0.15f),
-                        0.22f to Color.Transparent,
-                        0.48f to Color.Transparent,
-                        0.58f to controlColor.copy(alpha = 0.25f),
-                        0.68f to controlColor.copy(alpha = 0.68f),
-                        0.78f to controlColor.copy(alpha = 0.92f),
-                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
-                        1.00f to baseColor
+                        0.00f to Color.Transparent,
+                        0.30f to Color.Transparent,
+                        0.45f to baseColor.copy(alpha = 0.20f),
+                        0.55f to baseColor.copy(alpha = 0.85f),
+                        0.60f to baseColor.copy(alpha = 1.00f),
+                        1.00f to baseColor.copy(alpha = 1.00f)
                     )
                 )
             )
@@ -11206,13 +11203,14 @@ private fun PlayerModeSwitch(
             .selectableGroup()
             .playerGlass(
                 shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.35f),
-                borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.08f)
+                fill = Color.Black.copy(alpha = 0.45f),
+                borderTop = Color.White.copy(alpha = 0.22f),
+                borderBottom = Color.White.copy(alpha = 0.12f)
             )
-            .padding(3.dp),
+            .shadow(elevation = 8.dp, shape = CircleShape, ambientColor = activeColorTarget.copy(alpha = 0.3f), spotColor = activeColorTarget.copy(alpha = 0.5f))
+            .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         PlayerModeSwitchTab(
             label = strings.song,
@@ -11246,12 +11244,12 @@ private fun PlayerModeSwitchTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
+        targetValue = if (selected) Color.White.copy(alpha = 0.35f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary,
+        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary.copy(alpha = 0.8f),
         animationSpec = tabSpec,
         label = "player-mode-tab-content"
     )
@@ -11264,9 +11262,9 @@ private fun PlayerModeSwitchTab(
             .then(
                 if (selected) {
                     Modifier
-                        .shadow(3.dp, CircleShape, clip = false)
+                        .shadow(4.dp, CircleShape, clip = false)
                         .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.40f)), CircleShape)
                 } else {
                     Modifier.background(background, CircleShape)
                 }
@@ -12646,6 +12644,18 @@ private fun PlayerScreen(
                         borderTop = Color.White.copy(alpha = 0.12f),
                         borderBottom = Color.White.copy(alpha = 0.06f),
                         onClick = { playlistTarget = activeTrack }
+                    )
+                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
+                    PlayerGlassIconButton(
+                        icon = if (state.motionArtworkEnabled) Icons.Rounded.AutoAwesome else Icons.Rounded.Clear,
+                        contentDescription = "Toggle Canvas",
+                        size = heartButtonSize,
+                        iconSize = if (compactPlayer) 22.dp else 24.dp,
+                        tint = if (state.motionArtworkEnabled) Color.White else Color.White.copy(alpha = 0.4f),
+                        fill = if (state.motionArtworkEnabled) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
+                        borderTop = Color.White.copy(alpha = 0.12f),
+                        borderBottom = Color.White.copy(alpha = 0.06f),
+                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
                     )
                 }
                 PlayerYoutubeEngagementRow(

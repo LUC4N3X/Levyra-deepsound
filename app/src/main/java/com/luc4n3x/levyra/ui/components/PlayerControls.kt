@@ -420,12 +420,12 @@ private fun PlayerPrimaryButton(
 
     SpringIconButton(
         onClick = onClick,
-        pressedScale = 0.90f,
+        pressedScale = 0.85f,
         contentDescription = if (isPlaying) pauseLabel else playLabel
     ) {
         Box(
             modifier = Modifier
-                .size(size)
+                .size(size * 1.35f)
                 .drawBehind {
                     val radius = this.size.minDimension * 0.72f
                     drawCircle(
