@@ -64,7 +64,7 @@ class PlaybackResumeUiPolicyTest {
             isPlaying = true
         )
         val resolving = LevyraUiState(
-            currentTrack = track("other123456"),
+            currentTrack = track("other123456").copy(title = "Other Song"),
             isResolving = true,
             isPlaying = false,
             positionMs = 0L,
