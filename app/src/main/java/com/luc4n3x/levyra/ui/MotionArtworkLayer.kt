@@ -20,7 +20,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -288,9 +287,9 @@ private fun MotionArtworkStaticFallback(
     )
 
     val immersive = presentation == MotionArtworkPresentation.Immersive
-    val zoomDurationMs = if (immersive) 24_000 else 30_000
-    val horizontalDurationMs = if (immersive) 28_000 else 36_000
-    val verticalDurationMs = if (immersive) 32_000 else 42_000
+    val zoomDurationMs = if (immersive) 24_000 else 12_000
+    val horizontalDurationMs = if (immersive) 28_000 else 18_000
+    val verticalDurationMs = if (immersive) 32_000 else 24_000
 
     LaunchedEffect(animated, presentation) {
         if (!animated) {
@@ -372,13 +371,14 @@ private fun MotionArtworkStaticFallback(
                         translationY = artworkSize.height * 0.03f * verticalDrift.value * amount
                         rotationZ = horizontalDrift.value * amount * 0.4f
                     } else {
-                        val scale = 1f - amount * (0.016f - zoomPhase.value * 0.010f)
+                        val targetScale = 0.974f + zoomPhase.value * 0.016f
+                        val scale = 1f - amount * (1f - targetScale)
                         val safeInsetX = artworkSize.width * ((1f - scale).coerceAtLeast(0f) / 2f)
                         val safeInsetY = artworkSize.height * ((1f - scale).coerceAtLeast(0f) / 2f)
                         scaleX = scale
                         scaleY = scale
-                        translationX = safeInsetX * 0.58f * horizontalDrift.value * amount
-                        translationY = safeInsetY * 0.42f * verticalDrift.value * amount
+                        translationX = safeInsetX * 0.78f * horizontalDrift.value * amount
+                        translationY = safeInsetY * 0.62f * verticalDrift.value * amount
                         rotationZ = 0f
                     }
                 }
@@ -511,11 +511,8 @@ private data class MotionArtworkEnvironment(
     val conditions: MotionCanvasConditions
 )
 
-private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 11_000
-private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 14_000
-private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 17_000
-private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
-private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
+private const val STATIC_ARTWORK_MOTION_ENTER_MS = 460
+private const val STATIC_ARTWORK_MOTION_EXIT_MS = 260
 private const val STATIC_ARTWORK_BED_FADE_MS = 420
 private const val VIDEO_FADE_IN_MS = 620
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
