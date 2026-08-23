@@ -298,45 +298,53 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 ## ✦ Author & Credits
 
-<table align="center" width="100%">
+<div align="center">
+
+<a href="https://github.com/LUC4N3X">
+  <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="105" height="105" alt="LUC4N3X — Creator & Lead Developer" />
+</a>
+
+<br><br>
+
+### <a href="https://github.com/LUC4N3X">LUC4N3X</a>
+**Creator & Lead Systems Architect**
+
+<sub>Dedicated to audio sovereignty, bit-perfect playback engines, and zero-telemetry client architecture.</sub>
+
+<br><br>
+
+<p align="center">
+  <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub" /></a>&nbsp;&nbsp;
+  <a href="https://github.com/LUC4N3X?tab=repositories"><img src="https://img.shields.io/badge/Portfolio-Repositories-00D2FF?style=for-the-badge&logo=git&logoColor=black&labelColor=0d1117" alt="Repositories" /></a>
+</p>
+
+<table align="center">
   <tr>
-    <td align="center" width="110" valign="middle">
-      <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=200&w=200&fit=cover&mask=circle&maxage=7d" width="80" height="80" alt="LUC4N3X" />
-      </a>
+    <td align="center" width="220">
+      <sub><b>Audio Core & Playback</b></sub><br>
+      <sub>Media3 · ExoPlayer · libvlc Engine</sub>
     </td>
-    <td valign="middle">
-      <strong>LUC4N3X</strong> &nbsp;·&nbsp; <sub><code>Creator & Lead Developer</code></sub><br>
-      <sub>Core audio engine architecture, stream extraction pipeline, Jetpack Compose UI, and offline storage.</sub><br><br>
-      <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub" /></a>
+    <td align="center" width="220">
+      <sub><b>Modern UI Canvas</b></sub><br>
+      <sub>Jetpack Compose · Compose Multiplatform</sub>
+    </td>
+    <td align="center" width="220">
+      <sub><b>Pipeline & Security</b></sub><br>
+      <sub>Stream Extractors · 100% Offline Vault</sub>
     </td>
   </tr>
 </table>
+
+</div>
+
+<br>
 
 ### Acknowledgments
 
-<table width="100%">
-  <tr valign="top">
-    <td width="50%">
-      <h4><a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a></h4>
-      <sub>UI/UX architecture foundation, fluid Compose navigation, and dynamic OLED theme inspiration.</sub>
-    </td>
-    <td width="50%">
-      <h4><a href="https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor">LevyraExtractor</a></h4>
-      <sub>Dedicated audio stream extraction and metadata parser maintained for high-fidelity playback.</sub>
-    </td>
-  </tr>
-  <tr valign="top">
-    <td width="50%">
-      <h4><a href="https://github.com/InfinityLoop1308/PipePipeExtractor">PipePipe & NewPipe Communities</a></h4>
-      <sub>Foundational stream extraction logic, parser protocols, and open-source media routing.</sub>
-    </td>
-    <td width="50%">
-      <h4><a href="https://lrclib.net/">LRCLIB</a></h4>
-      <sub>Synchronized lyric database and API powering real-time karaoke synchronization.</sub>
-    </td>
-  </tr>
-</table>
+* **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Architectural inspiration for fluid Compose UI navigation and dynamic OLED palettes.
+* **[LevyraExtractor](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor)** — Dedicated audio stream extraction and metadata parser maintained for high-fidelity playback.
+* **[PipePipe & NewPipe Communities](https://github.com/InfinityLoop1308/PipePipeExtractor)** — Foundational open-source stream extraction logic, parser protocols, and media routing.
+* **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
 
 ---
 
