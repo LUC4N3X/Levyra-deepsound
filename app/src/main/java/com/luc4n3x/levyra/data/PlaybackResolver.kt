@@ -369,8 +369,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         selectedAudioQuality = normalizeAudioQuality(value)
     }
 
-    internal fun activeResolveCount(): Int = singleFlight.activeCount()
-
     private fun refreshPlaybackPolicyInBackground(force: Boolean, reason: String) {
         if (!force && !playbackPolicyStore.needsRefresh()) return
         resolveScope.launch {
