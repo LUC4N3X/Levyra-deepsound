@@ -108,10 +108,10 @@ object PlaybackSourceIdentity {
     private fun normalize(value: String): String {
         return value
             .lowercase(Locale.ROOT)
-            .replace(Regex("\\([^)]*(official|audio|video|lyrics?|visuali[sz]er|remaster)[^)]*\\)", RegexOption.IGNORE_CASE), " ")
-            .replace(Regex("\\[[^]]*(official|audio|video|lyrics?|visuali[sz]er|remaster)[^]]*]", RegexOption.IGNORE_CASE), " ")
-            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(SOURCE_PARENTHETICAL_MARKER, " ")
+            .replace(SOURCE_BRACKET_MARKER, " ")
+            .replace(SOURCE_NON_ALPHANUMERIC, " ")
+            .replace(SOURCE_WHITESPACE, " ")
             .trim()
     }
 
@@ -120,3 +120,11 @@ object PlaybackSourceIdentity {
         return bytes.joinToString("") { byte -> "%02x".format(byte) }
     }
 }
+
+// Precompiled: source identity normalization runs for every resolved playback candidate.
+private val SOURCE_PARENTHETICAL_MARKER =
+    Regex("""\([^)]*(official|audio|video|lyrics?|visuali[sz]er|remaster)[^)]*\)""", RegexOption.IGNORE_CASE)
+private val SOURCE_BRACKET_MARKER =
+    Regex("""\[[^]]*(official|audio|video|lyrics?|visuali[sz]er|remaster)[^]]*]""", RegexOption.IGNORE_CASE)
+private val SOURCE_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
+private val SOURCE_WHITESPACE = Regex("""\s+""")

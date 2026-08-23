@@ -488,11 +488,16 @@ internal fun selectPreferredVideoPlaybackCandidate(
         ?.second
 }
 
+// Precompiled: playback candidate scoring normalizes every candidate title in a loop.
+private val PLAYBACK_TEXT_BRACKETS = Regex("""[()\[\]]""")
+private val PLAYBACK_TEXT_NON_WORD = Regex("""[^a-z0-9àèéìòóùçñäöüß\s]""")
+private val PLAYBACK_TEXT_WHITESPACE = Regex("""\s+""")
+
 internal fun playbackTextKey(value: String): String {
     return value.lowercase()
-        .replace(Regex("""[()\[\]]"""), " ")
-        .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
-        .replace(Regex("""\s+"""), " ")
+        .replace(PLAYBACK_TEXT_BRACKETS, " ")
+        .replace(PLAYBACK_TEXT_NON_WORD, " ")
+        .replace(PLAYBACK_TEXT_WHITESPACE, " ")
         .trim()
 }
 
