@@ -59,6 +59,23 @@ class AutoMixPlannerTest {
         assertEquals(19_999L, crossfadeHandoffSeekPosition(19_950L, 20_000L, leadMs = 120L))
     }
 
+    @Test
+    fun crossfadeStepScalesInverselyWithPlaybackSpeed() {
+        assertEquals(50L, crossfadeStepWallClockMs(50L, 1.0f))
+        assertEquals(25L, crossfadeStepWallClockMs(50L, 2.0f))
+        assertEquals(100L, crossfadeStepWallClockMs(50L, 0.5f))
+        assertEquals(40L, crossfadeStepWallClockMs(60L, 1.5f))
+    }
+
+    @Test
+    fun crossfadeStepClampsToMinimumAndHandlesInvalidSpeedGracefully() {
+        assertEquals(10L, crossfadeStepWallClockMs(5L, 2.0f, minWallClockMs = 10L))
+        assertEquals(50L, crossfadeStepWallClockMs(50L, 0f))
+        assertEquals(50L, crossfadeStepWallClockMs(50L, -1.5f))
+        assertEquals(50L, crossfadeStepWallClockMs(50L, Float.NaN))
+        assertEquals(50L, crossfadeStepWallClockMs(50L, Float.POSITIVE_INFINITY))
+    }
+
     private fun track(id: String = "current") = Track(
         id = id,
         title = id,
