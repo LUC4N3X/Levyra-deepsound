@@ -11,9 +11,6 @@ ROOT = Path(__file__).resolve().parents[2]
 HOOK = ROOT / ".claude" / "hooks" / "user-prompt-submit.sh"
 
 
-from scripts.ai_quality_gate import find_bash
-
-
 def route(prompt: str) -> str:
     bash = find_bash()
     if not bash:
@@ -74,6 +71,30 @@ class ClaudePromptRoutingTest(unittest.TestCase):
 
         self.assertIn("levyra-android-intent-security", context)
         self.assertIn("levyra-security-review", context)
+
+    def test_project_manager_route(self) -> None:
+        context = route("Update roadmap acceptance criteria for the active phase")
+
+        self.assertIn("Mandatory skill load", context)
+        self.assertIn("levyra-project-manager", context)
+
+    def test_desktop_route(self) -> None:
+        context = route("Work on the Windows Desktop mini player")
+
+        self.assertIn("levyra-desktop", context)
+
+    def test_openclaw_route_adds_handoff_companions(self) -> None:
+        context = route("Delegate this Levyra fix through OpenClaw")
+
+        self.assertIn("levyra-openclaw-orchestrator", context)
+        self.assertIn("levyra-project-manager", context)
+        self.assertIn("levyra-context-efficiency", context)
+
+    def test_cross_domain_route_adds_engineering_coordinator(self) -> None:
+        context = route("Investigate a cross-domain architecture issue across subsystems")
+
+        self.assertIn("levyra-engineering", context)
+        self.assertIn("levyra-real-engineering", context)
 
 
 if __name__ == "__main__":
