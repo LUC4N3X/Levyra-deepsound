@@ -89,12 +89,20 @@ abstract class LevyraScreenViewModel(
 ) : ViewModel() {
     private var lastPublishedState = root.state.value
 
-    val state: StateFlow<LevyraUiState> = root.state
+    protected val stablePlaybackState: StateFlow<LevyraUiState> = root.state
         .map { current ->
             stabilizeResolvingPlaybackUi(lastPublishedState, current).also { stable ->
                 lastPublishedState = stable
             }
         }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = root.state.value
+        )
+
+    val state: StateFlow<LevyraUiState> = stablePlaybackState
+        .map { it }
         .distinctUntilChanged { previous, current -> projection(previous) == projection(current) }
         .stateIn(
             scope = viewModelScope,
@@ -130,7 +138,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
             started = SharingStarted.WhileSubscribed(5_000L),
             initialValue = buildHomeRenderSnapshot(root.state.value)
         )
-    val playbackProgress: StateFlow<HomePlaybackProgress> = state
+    val playbackProgress: StateFlow<HomePlaybackProgress> = stablePlaybackState
         .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
         .distinctUntilChanged()
         .stateIn(
