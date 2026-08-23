@@ -8,7 +8,7 @@ import org.junit.Test
 
 class PlaybackResumeUiPolicyTest {
     @Test
-    fun sameTrackResolutionKeepsKnownPlaybackStateVisible() {
+    fun sameTrackResolutionKeepsKnownTimelineWithoutOverridingPlayState() {
         val track = track("video123456")
         val previous = LevyraUiState(
             currentTrack = track,
@@ -31,7 +31,7 @@ class PlaybackResumeUiPolicyTest {
         assertEquals(93_000L, stable.positionMs)
         assertEquals(108_000L, stable.bufferedPositionMs)
         assertEquals(180_000L, stable.durationMs)
-        assertTrue(stable.isPlaying)
+        assertFalse(stable.isPlaying)
         assertTrue(stable.isResolving)
     }
 
