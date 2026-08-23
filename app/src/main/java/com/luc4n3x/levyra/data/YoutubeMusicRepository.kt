@@ -208,7 +208,6 @@ private fun albumRecommendationDisplayTitleKey(value: String): String {
         .trim()
 }
 
-// Precompiled so recommendation ranking does not rebuild ICU regex state per candidate.
 private val RECOMMENDATION_WHITESPACE = Regex("""\s+""")
 private val RECOMMENDATION_COMBINING_MARKS = Regex("""\p{M}+""")
 private val RECOMMENDATION_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
@@ -222,8 +221,6 @@ private val ALBUM_RECOMMENDATION_EDITION_SUFFIX = Regex(
     """(?i)\s+(?:deluxe(?: edition)?|expanded(?: edition)?|anniversary(?: edition)?|remaster(?:ed)?(?: edition)?|bonus(?: track)?s?|special edition|collector(?:s)? edition|legacy edition|tour edition|digital edition|international edition|explicit edition|explicit version)\b.*$"""
 )
 
-// Recommendation ranking scores every candidate against the same seed strings, so the
-// normalized form is memoized to keep ICU work off the per-candidate path.
 private const val RECOMMENDATION_TEXT_KEY_CACHE_LIMIT = 1024
 private const val RECOMMENDATION_TEXT_KEY_MAX_LENGTH = 256
 private val recommendationTextKeyCache =
@@ -352,10 +349,6 @@ private fun songArtistCompatibility(requested: String, candidate: String): Doubl
     return maxOf(pairwise, whole, if (containment) ARTIST_CONTAINMENT_COMPATIBILITY else 0.0)
 }
 
-/**
- * Confidence that a YouTube Music candidate is the same recording as the requested
- * title/artist reference. Values below [MIN_SONG_MATCH_CONFIDENCE] must not be played.
- */
 internal fun songMatchConfidence(
     requestedTitle: String,
     requestedArtist: String,
@@ -606,10 +599,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             emptyList()
         }
         val result = filtered.ifEmpty {
-            // The video filter can occasionally omit type metadata. Keep generic
-            // search results as a last resort and let the playback identity checks
-            // and resolver validate them instead of turning an inconclusive miss
-            // into an early, negative result.
             search(cleanQuery, boundedLimit, languageCode)
         }
         result.take(boundedLimit).also { items -> items.forEach { memory[it.id] = it } }
@@ -618,12 +607,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     /** First YouTube Music match for a query, used to make chart entries playable. */
     suspend fun searchOne(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): Track? = search(query, 1, languageCode).firstOrNull()
 
-    /**
-     * Resolves a title/artist reference to a playable YouTube Music song. The Songs shelf is
-     * preferred and every candidate is scored, so an unrelated first result is rejected instead of
-     * being played. Returns null when no candidate is confident enough, leaving existing fallbacks
-     * in control.
-     */
     suspend fun searchSongMatch(
         title: String,
         artist: String,
@@ -733,9 +716,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     ): JSONObject? {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return null
-        return runCatching {
+        return try {
             searchInnerTubeRaw(cleanQuery, languageCode, params, continuation.trim())
-        }.getOrNull()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun rememberSearchTracks(tracks: List<Track>) {

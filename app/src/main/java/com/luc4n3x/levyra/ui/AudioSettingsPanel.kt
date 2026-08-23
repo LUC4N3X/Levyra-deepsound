@@ -41,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -64,6 +66,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -720,39 +723,43 @@ private fun EqualizerCurve(
                     strokeWidth = with(density) { 2.dp.toPx() }
                 )
             }
-            Row(modifier = Modifier.fillMaxSize()) {
-                safeLevels.forEachIndexed { index, level ->
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    safeLevels.forEachIndexed { index, level ->
                     val frequency = LevyraAudioPresets.bandFrequencyLabels[index]
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .progressSemantics(level.toFloat(), -100f..100f, 0)
-                            .semantics {
-                                contentDescription = "$frequency Hz"
-                                stateDescription = decibels(LevyraAudioPresets.bandDb(level))
-                                if (enabled) {
-                                    setProgress { target ->
-                                        onBandLevel(index, target.roundToInt())
-                                        true
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .progressSemantics(level.toFloat(), -100f..100f, 0)
+                                .semantics {
+                                    contentDescription = "$frequency Hz"
+                                    stateDescription = decibels(LevyraAudioPresets.bandDb(level))
+                                    if (enabled) {
+                                        setProgress { target ->
+                                            onBandLevel(index, target.roundToInt())
+                                            true
+                                        }
                                     }
                                 }
-                            }
-                    )
+                        )
+                    }
                 }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            LevyraAudioPresets.bandFrequencyLabels.forEach { frequency ->
-                Text(
-                    frequency,
-                    color = LevyraMuted,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                LevyraAudioPresets.bandFrequencyLabels.forEach { frequency ->
+                    Text(
+                        frequency,
+                        color = LevyraMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

@@ -38,12 +38,6 @@ import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Window requested by a Media3 browser page, translated to an offset/limit pair. A request larger
- * than [maxItems] is served in [maxItems] chunks, and the same effective page size drives the
- * offset so consecutive pages neither skip nor repeat items. A missing page size keeps the previous
- * whole-directory behaviour, bounded by [maxItems].
- */
 internal data class AndroidAutoPageWindow(val offset: Int, val limit: Int) {
     companion object {
         fun of(page: Int, pageSize: Int, maxItems: Int = Int.MAX_VALUE): AndroidAutoPageWindow {

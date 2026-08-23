@@ -3523,7 +3523,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val match = if (entry.videoUrl.isNotBlank()) {
             entry
         } else {
-            runCatching {
+            runCatchingPreservingCancellation {
                 repository.searchSongMatch(entry.title, entry.artist, _state.value.languageCode)
             }.getOrNull() ?: return null
         }
@@ -6799,7 +6799,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             val resolved = if (youtube != null) {
                                 resolver.prefetch(youtube, _state.value.isVideoMode)
                             } else {
-                                val match = runCatching {
+                                val match = runCatchingPreservingCancellation {
                                     repository.searchSongMatch(track.title, track.artist, _state.value.languageCode)
                                 }.getOrNull()
                                 match?.let { resolver.prefetch(it, _state.value.isVideoMode) }
@@ -6930,7 +6930,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val resolved = if (youtube != null) {
             resolver.prefetch(youtube, videoMode)
         } else {
-            val match = runCatching { repository.searchSongMatch(track.title, track.artist, _state.value.languageCode) }.getOrNull() ?: return
+            val match = runCatchingPreservingCancellation {
+                repository.searchSongMatch(track.title, track.artist, _state.value.languageCode)
+            }.getOrNull() ?: return
             resolver.prefetch(match, videoMode)
         }
         if (resolved != null && prime) {

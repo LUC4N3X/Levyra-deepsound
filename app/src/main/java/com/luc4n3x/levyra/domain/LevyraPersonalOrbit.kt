@@ -9,10 +9,21 @@ object LevyraPersonalOrbit {
     private const val RECORDING_DURATION_TOLERANCE_MS = 12_000L
 
     private const val DEFAULT_ARTWORK_SIZE = 1200
+    private const val HTTPS_SCHEME = "https://"
 
     private val artworkWidthHeightPattern = Regex("=w(\\d+)-h(\\d+)")
     private val artworkSizePattern = Regex("=s(\\d+)")
-    private val googleArtworkHosts = listOf("googleusercontent.com/", "ggpht.com/")
+    private val googleArtworkHosts = listOf("googleusercontent.com", "ggpht.com")
+
+    private fun isGoogleArtworkUrl(url: String): Boolean {
+        if (!url.startsWith(HTTPS_SCHEME, ignoreCase = true)) return false
+        val authorityEnd = url.indexOf('/', HTTPS_SCHEME.length)
+        if (authorityEnd < 0) return false
+        val authority = url.substring(HTTPS_SCHEME.length, authorityEnd)
+        if (authority.contains('@') || authority.contains(':')) return false
+        val host = authority.lowercase(Locale.ROOT)
+        return googleArtworkHosts.any { allowed -> host == allowed || host.endsWith(".$allowed") }
+    }
     private val squareArtWidthHeightPattern = Regex("=w\\d+-h\\d+")
     private val squareArtSizePattern = Regex("=s\\d+")
     private val youtubeVideoIdPattern = Regex("^[A-Za-z0-9_-]{11}$")
@@ -266,15 +277,10 @@ object LevyraPersonalOrbit {
     fun youtubeFallbackArtwork(track: Track): String? =
         youtubeVideoId(track)?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
 
-    /**
-     * Requests a larger Google-hosted artwork without touching the query string of signed URLs and
-     * without turning a rectangular image into a square crop.
-     */
     fun upscaledArtworkUrl(url: String, size: Int = DEFAULT_ARTWORK_SIZE): String {
         val clean = url.trim()
         if (clean.isEmpty()) return clean
-        val lower = clean.lowercase(Locale.ROOT)
-        if (!googleArtworkHosts.any(lower::contains)) return clean
+        if (!isGoogleArtworkUrl(clean)) return clean
         if (clean.indexOf('?') >= 0) return clean
         val path = clean
         val target = size.coerceIn(64, 4096)
