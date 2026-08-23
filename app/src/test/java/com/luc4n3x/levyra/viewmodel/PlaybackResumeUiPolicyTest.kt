@@ -101,6 +101,38 @@ class PlaybackResumeUiPolicyTest {
         assertEquals(resolved, stabilizeResolvingPlaybackUi(previous, resolved))
     }
 
+    @Test
+    fun stabilizerRetainsKnownTimelineAcrossCollectorRestart() {
+        val track = track("video123456")
+        val known = LevyraUiState(
+            currentTrack = track,
+            positionMs = 93_000L,
+            bufferedPositionMs = 108_000L,
+            durationMs = 180_000L,
+            isPlaying = true
+        )
+        val resolving = known.copy(
+            currentTrack = track.copy(streamUrl = ""),
+            isResolving = true,
+            isPlaying = false,
+            positionMs = 0L,
+            bufferedPositionMs = 0L,
+            durationMs = 0L
+        )
+        val stabilizer = ResolvingPlaybackUiStabilizer(known)
+
+        val beforeRestart = stabilizer.apply(resolving)
+        val afterRestart = stabilizer.apply(resolving)
+
+        assertEquals(93_000L, beforeRestart.positionMs)
+        assertEquals(108_000L, beforeRestart.bufferedPositionMs)
+        assertEquals(180_000L, beforeRestart.durationMs)
+        assertEquals(93_000L, afterRestart.positionMs)
+        assertEquals(108_000L, afterRestart.bufferedPositionMs)
+        assertEquals(180_000L, afterRestart.durationMs)
+        assertFalse(afterRestart.isPlaying)
+    }
+
     private fun track(id: String) = Track(
         id = id,
         title = "Song",
