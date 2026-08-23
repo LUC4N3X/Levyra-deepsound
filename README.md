@@ -106,60 +106,51 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 ## ✦ Acoustic Architecture & Features
 
-<table width="100%">
-<tr>
-<td valign="top">
-
-### 🎚️ Pure Audio & Playback Engine
-
-* **Dual Native Engines**: AndroidX Media3 foreground audio service on Android; isolated libvlc pipeline on Windows.
-* **Android Auto Integration**: Native in-car dashboard with library browsing, steering wheel controls, and voice playback.
-* **Acoustic Normalization**: Intelligent volume leveling smooths loudness jumps between studio tracks and live recordings.
-* **Smart Silence & Sponsor Skipping**: Automatic detection of video intros, banter, sponsors, and outro silence.
-* **Playback Controls**: True gapless playback, dynamic queue shuffle, single/queue repeat, custom pitch/speed, and sleep timers.
-* **Audio / Video Seamless Toggle**: Switch between high-efficiency Opus/AAC audio streams and full HD video playback with one tap.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 💾 Offline Audio Vault & File Exports
-
-* **Standard Tagged M4A Files**: Exported audio files include embedded high-res cover art, artist, album, and lyrics in standard ID3/MP4 metadata.
-* **Permanent Local Storage**: Files are saved into standard Android `Music/Levyra` directory, accessible by all apps and external DACs.
-* **Local-First Routing**: If a track exists offline, Levyra plays the local copy instantly with 0ms network latency.
-* **Resilient Download Manager**: Chunked downloading with HTTP Range headers, automatic resume, and atomic verification.
-* **Backup & Portability**: 100% offline JSON export and import for playlists, favorites, and listening history with zero cloud dependency.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 🔍 Stream Extraction & Discovery
-
-* **High-Fidelity Stream Pipeline**: Dual resolver selecting highest available Opus (160 kbps) or AAC (128/256 kbps) streams.
-* **Proactive Queue Prefetch**: Next songs pre-buffer silently in the background for zero-latency track skipping.
-* **Global Top Charts**: Real-time country-specific Top 50 charts (Italia, USA, UK, España, Global).
-* **Smart Orbit Rotation**: Adaptive recommendations that rotate with your listening mood and time of day.
-* **Samples & Clip Feed**: Short-form vertical music video teaser feed with real-time comment energy resonance.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 📊 Karaoke Lyrics & Visual Immersion
-
-* **Real-Time Synced Lyrics**: Millisecond-accurate scrolling lyrics powered by LRCLIB with line-by-line glow.
-* **Interactive Lyric Scrubbing**: Tap any lyric line to jump the audio track directly to that timestamp.
-* **Ambient Visuals & Motion Art**: Dynamic palette-reactive aurora backdrops, real-time waveform visualizer, and ambient looping motion art.
-* **Listening Pulse Dashboard**: 100% private on-device statistics—minutes played, top artists, completion rates, and peak hours.
-* **Real-Play Scoring**: Artists and tracks are ranked purely by actual playback duration, filtering out accidental skips.
-
-</td>
-</tr>
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="50%">
+      <h3>🎚️ Pure Audio & Playback Engine</h3>
+      <ul>
+        <li><b>Dual Native Engines:</b> Media3 / ExoPlayer on Android; isolated libvlc on Windows.</li>
+        <li><b>Android Auto:</b> Library browsing, steering-wheel controls, and voice playback.</li>
+        <li><b>Playback Tools:</b> Gapless playback, shuffle/repeat, speed/pitch, and sleep timers.</li>
+        <li><b>Smart Audio:</b> Volume normalization plus intro, sponsor, banter, and silence skipping.</li>
+        <li><b>Audio / Video Toggle:</b> Switch between efficient audio streams and full video playback.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>💾 Offline Audio Vault & File Exports</h3>
+      <ul>
+        <li><b>Standard M4A Files:</b> Cover art, artist, album, and lyrics embedded in the file.</li>
+        <li><b>Permanent Storage:</b> Saved to <code>Music/Levyra</code> and usable outside the app.</li>
+        <li><b>Local-First Playback:</b> Existing offline files play instantly without a network request.</li>
+        <li><b>Resilient Downloads:</b> HTTP Range resume with atomic verification.</li>
+        <li><b>Portable Backups:</b> Offline JSON export/import for playlists, favorites, and history.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr valign="top">
+    <td width="50%">
+      <h3>🔍 Stream Extraction & Discovery</h3>
+      <ul>
+        <li><b>Dual Resolver:</b> Highest-fidelity Opus or AAC with automatic fallback.</li>
+        <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
+        <li><b>Global Charts:</b> Country-specific Top 50 and global discovery.</li>
+        <li><b>Smart Orbit:</b> Recommendations rotate with listening context.</li>
+        <li><b>Samples Feed:</b> Short-form music clips with live comment-energy signals.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>📊 Karaoke Lyrics & Visual Immersion</h3>
+      <ul>
+        <li><b>Synced Lyrics:</b> Millisecond-aligned LRCLIB lyrics with live highlighting.</li>
+        <li><b>Tap-to-Seek:</b> Jump straight to any lyric timestamp.</li>
+        <li><b>Ambient Visuals:</b> Palette-reactive backdrops, waveform, and looping motion art.</li>
+        <li><b>Listening Pulse:</b> Private on-device minutes, artists, completion rates, and peak hours.</li>
+        <li><b>Real-Play Scoring:</b> Rankings use actual listening time instead of accidental starts.</li>
+      </ul>
+    </td>
+  </tr>
 </table>
 
 ---
@@ -168,31 +159,28 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
 
-<table width="100%">
-<tr>
-<td valign="top">
-
-### 📱 Android Native Suite (`app/`)
-* 🎨 **[`ui/`](app/src/main/java/com/luc4n3x/levyra/ui)** — Fluid Jetpack Compose & Material 3 screens, gesture-driven canvas, and dynamic OLED palettes.
-* 🧠 **[`viewmodel/`](app/src/main/java/com/luc4n3x/levyra/viewmodel)** — Central state machine coordinating unidirectional immutable UI state.
-* 🎧 **[`player/`](app/src/main/java/com/luc4n3x/levyra/player)** — Low-latency AndroidX Media3 / ExoPlayer foreground audio service.
-* 💾 **[`player/offline/`](app/src/main/java/com/luc4n3x/levyra/player/offline)** — WorkManager background export engine with atomic M4A atom tagging & artwork.
-* ⚡ **[`data/`](app/src/main/java/com/luc4n3x/levyra/data)** — Dual stream resolver, LRCLIB synchronized lyrics client, and smart prefetch queues.
-* 🔒 **[`data/local/`](app/src/main/java/com/luc4n3x/levyra/data/local)** — Zero-telemetry Room SQLite database for playback metrics and favorites.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 💻 Windows Desktop Suite (`desktop/`)
-* 🖥️ **[`desktop/app/`](desktop/app)** — Compose Multiplatform desktop UI with window management & auto-updater.
-* 🔊 **[`desktop/player/`](desktop/player)** — libvlc audio output engine with hardware acceleration, system tray, and global hotkeys.
-* 🌐 **[`desktop/core/`](desktop/core)** — Shared InnerTube stream resolver, download manager, and `%APPDATA%\Levyra` storage.
-* 📦 **[`desktop/packaging/`](desktop/packaging)** — WiX Toolset MSI installer and standalone portable distributions.
-
-</td>
-</tr>
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="50%">
+      <h3>📱 Android Native Suite (<code>app/</code>)</h3>
+      <ul>
+        <li>🎨 <b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a></b> — Compose & Material 3 screens, gestures, canvas, and OLED palettes.</li>
+        <li>🧠 <b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a></b> — Immutable UI state and unidirectional coordination.</li>
+        <li>🎧 <b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b> — Media3 / ExoPlayer foreground audio service.</li>
+        <li>💾 <b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>player/offline/</code></a></b> — WorkManager exports, M4A tagging, and artwork.</li>
+        <li>⚡ <b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a></b> — Stream resolving, synchronized lyrics, prefetch, and local Room data.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>💻 Windows Desktop Suite (<code>desktop/</code>)</h3>
+      <ul>
+        <li>🖥️ <b><a href="desktop/app"><code>desktop/app/</code></a></b> — Compose Multiplatform UI, windows, and updater.</li>
+        <li>🔊 <b><a href="desktop/player"><code>desktop/player/</code></a></b> — libvlc playback, hardware acceleration, tray, and global hotkeys.</li>
+        <li>🌐 <b><a href="desktop/core"><code>desktop/core/</code></a></b> — Stream resolver, downloads, and local app storage.</li>
+        <li>📦 <b><a href="desktop/packaging"><code>desktop/packaging/</code></a></b> — WiX MSI installer and portable distributions.</li>
+      </ul>
+    </td>
+  </tr>
 </table>
 
 ### ✦ Under the Hood
@@ -259,31 +247,29 @@ levyraDesktopVersion=1.2.0
 
 Levyra is built on strict zero-tracking principles: no advertising identifiers, no user profiling, and no background telemetry.
 
-<table width="100%">
-<tr>
-<td valign="top">
-
-### 🌐 Network Transparency
-* **Stream Endpoints**: Direct connections to YouTube / YT Music CDN servers without proxy tracking.
-* **Synchronized Lyrics**: Secure queries to LRCLIB and YouTube Music with title and artist.
-* **Artwork & Metadata**: Public catalog queries across Deezer, Apple Music, and Tidal.
-* **SponsorBlock**: Optional query with truncated video ID hash prefixes.
-* **Update Verification**: Startup release checks on GitHub (disabled in F-Droid).
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 🛡️ Android Permissions
-* `INTERNET` & `ACCESS_NETWORK_STATE`: Stream audio and resolve album metadata.
-* `FOREGROUND_SERVICE_MEDIA_PLAYBACK`: Continuous background playback with notification controls.
-* `POST_NOTIFICATIONS`: Playback controls on lockscreen and download updates.
-* `WAKE_LOCK`: Prevents CPU sleep while playing audio with the screen off.
-* `WRITE_EXTERNAL_STORAGE` (Android ≤ 9): Exporting tagged M4A files to `Music/Levyra`.
-
-</td>
-</tr>
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="50%">
+      <h3>🌐 Network Transparency</h3>
+      <ul>
+        <li><b>Streams:</b> Direct YouTube / YT Music CDN connections without proxy tracking.</li>
+        <li><b>Lyrics:</b> LRCLIB and YouTube Music queries using song metadata.</li>
+        <li><b>Artwork & Metadata:</b> Public catalog lookups across Deezer, Apple Music, and Tidal.</li>
+        <li><b>SponsorBlock:</b> Optional queries using truncated video-ID hash prefixes.</li>
+        <li><b>Updates:</b> GitHub release checks at startup; disabled in F-Droid builds.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>🛡️ Android Permissions</h3>
+      <ul>
+        <li><code>INTERNET</code> / <code>ACCESS_NETWORK_STATE</code> — Streaming and metadata resolution.</li>
+        <li><code>FOREGROUND_SERVICE_MEDIA_PLAYBACK</code> — Background playback and media controls.</li>
+        <li><code>POST_NOTIFICATIONS</code> — Lockscreen controls and download updates.</li>
+        <li><code>WAKE_LOCK</code> — Keeps playback active with the screen off.</li>
+        <li><code>WRITE_EXTERNAL_STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.</li>
+      </ul>
+    </td>
+  </tr>
 </table>
 
 ---
