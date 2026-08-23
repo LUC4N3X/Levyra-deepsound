@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import androidx.media3.common.PlaybackException
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.TrackJson
 import com.luc4n3x.levyra.domain.Track
@@ -7,6 +8,7 @@ import com.luc4n3x.levyra.viewmodel.playbackIdentity
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LevyraPlayerTest {
@@ -148,6 +150,12 @@ class LevyraPlayerTest {
         val unverified = track(streamUrl = "").copy(counterpartVideoId = "")
 
         assertNull(youtubePlayableTrack(unverified, preferVideo = true))
+    }
+
+    @Test
+    fun remoteAndTimeoutPlaybackErrorsUseRecoverableStreamPath() {
+        assertTrue(isRecoverablePlaybackErrorCode(PlaybackException.ERROR_CODE_REMOTE_ERROR))
+        assertTrue(isRecoverablePlaybackErrorCode(PlaybackException.ERROR_CODE_TIMEOUT))
     }
 
     private fun track(streamUrl: String): Track = Track(
