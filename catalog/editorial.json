@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-23T02:01:35Z",
+  "generatedAt": "2026-08-23T07:04:09Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1801,7 +1801,7 @@
         },
         {
           "position": 26,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1809,12 +1809,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 27,
@@ -2920,11 +2920,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 26,
@@ -5000,6 +5000,12 @@
           },
           "durationMs": 176213,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "O2tKlnfrLkY",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -5941,12 +5947,6 @@
           },
           "durationMs": 161739,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qEiHxwkAsr4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCu1AETF4UnfEQCBIIoKLhiA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bd9982d65b699012379d87ce"
         },
         {
@@ -6244,11 +6244,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "releaseDate": "2010-08-24"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
         },
         {
           "position": 16,
@@ -16579,8 +16579,8 @@
         },
         {
           "position": 6,
-          "id": "levyra-7f139ce5291fa0cd3c50",
-          "title": "Duse do vesmiru",
+          "id": "levyra-92e3f95bf5f0a7d81c11",
+          "title": "Duše do vesmíru",
           "artists": [
             {
               "name": "Michal Hruza"
@@ -16590,12 +16590,12 @@
             }
           ],
           "album": {
-            "name": "Den",
-            "releaseDate": "2014-05-12"
+            "name": "Hity & příběhy (Best Of 2001-2021)",
+            "releaseDate": "2021-11-26"
           },
-          "durationMs": 190293,
+          "durationMs": 190146,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
         },
         {
           "position": 7,
@@ -17044,7 +17044,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17052,12 +17052,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 28,
@@ -17187,20 +17187,20 @@
         },
         {
           "position": 34,
-          "id": "levyra-a5a017fba38add2b0e35",
-          "title": "Zakazane uvolneni",
+          "id": "levyra-9d3af210c1d9093eda1e",
+          "title": "Zakázané uvolnění",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Den",
-            "releaseDate": "2014-05-12"
+            "name": "Hity & příběhy (Best Of 2001-2021)",
+            "releaseDate": "2021-11-26"
           },
-          "durationMs": 217426,
+          "durationMs": 217013,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
         },
         {
           "position": 35,
@@ -18039,12 +18039,6 @@
           },
           "durationMs": 173272,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "in8yMqycOqI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCF397u9y1R8ga-KiyYaaOAw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02636adab1214fa22eebf73a01"
         },
         {
@@ -18284,6 +18278,12 @@
           },
           "durationMs": 152184,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "fPYUIaI4lsg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3b9OZ16ZaKEXbJ2xq7J4DQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a0cbc5f07d3a807b85fafe55"
         },
         {
@@ -22365,6 +22365,12 @@
           },
           "durationMs": 189000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "A9EpZWrQ3dM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCC3Hg75KxQk4VTrBSphEbGw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ccf2a687cd03daa7c9696e73"
         },
         {
@@ -22795,6 +22801,12 @@
           },
           "durationMs": 218480,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "6Xa1VDLACPo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC-IG_h142pRnsilk8TkoZxA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bd15713cf9824b7842bcd290"
         },
         {
@@ -26048,11 +26060,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 33,
@@ -26099,10 +26111,10 @@
           "durationMs": 234168,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "-zNB1BT2mi4",
+            "audioVideoId": "5q906vfrzyY",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCO2EZyzX5-X3Dc65bta6yDg"
+            "artistBrowseId": "UCjhtSjcSCUWbfFAWrp8Ow6w"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d6ebd978c7c460eaf3f75f85"
         },
@@ -26744,8 +26756,6 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -27061,6 +27071,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "RrWFlqoWIHY",
+            "videoConfidence": 97,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -27963,7 +27975,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
         },
         {
           "position": 19,
@@ -28721,12 +28733,6 @@
           },
           "durationMs": 157959,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "DGIGqbBAm3c",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2-rG7DMkCdDL3lE15wUrSw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021f50eee9553ec21741a42c38"
         },
         {
@@ -29500,6 +29506,12 @@
           },
           "durationMs": 200800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "CpQnS1qxiAU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCpqDiWhFY6B76xF7iMDOVAA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0244d94f8ffd83da40a609a875"
         },
         {
