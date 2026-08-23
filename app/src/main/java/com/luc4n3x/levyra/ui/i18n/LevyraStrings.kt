@@ -199,6 +199,14 @@ class LevyraStrings private constructor(
     val voicesSubtitle: String get() = value("voicesSubtitle")
     val totalComments: String get() = value("totalComments")
     val engagement: String get() = value("engagement")
+    val audioSectionQuality: String get() = value("audioSectionQuality")
+    val audioSectionEqualizer: String get() = value("audioSectionEqualizer")
+    val audioSectionSpatial: String get() = value("audioSectionSpatial")
+    val audioSectionDynamics: String get() = value("audioSectionDynamics")
+    val audioSectionPlayback: String get() = value("audioSectionPlayback")
+    val audioResetEqualizer: String get() = value("audioResetEqualizer")
+    val audioPresetCustom: String get() = value("audioPresetCustom")
+    val audioBands: String get() = value("audioBands")
     val audioEngine: String get() = value("audioEngine")
     val audioEngineSubtitle: String get() = value("audioEngineSubtitle")
     val equalizer: String get() = value("equalizer")
@@ -1038,6 +1046,16 @@ class LevyraStrings private constructor(
     companion object {
         private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
         private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
+        private val audioKeys = setOf(
+            "audioSectionQuality",
+            "audioSectionEqualizer",
+            "audioSectionSpatial",
+            "audioSectionDynamics",
+            "audioSectionPlayback",
+            "audioResetEqualizer",
+            "audioPresetCustom",
+            "audioBands"
+        )
         private val canvasKeys = setOf(
             "canvasQuality",
             "canvasQualitySubtitle",
@@ -1082,8 +1100,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
@@ -1196,7 +1214,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "The most commented tracks, seen as living energy",
             "totalComments" to "Total comments",
             "engagement" to "Engagement",
-            "audioEngine" to "Premium audio engine",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch and gapless",
             "equalizer" to "Equalizer",
             "equalizerSubtitle" to "Real effects with presets, bass boost and virtualizer",
@@ -1591,7 +1609,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Le tracce più commentate, viste come energia viva",
             "totalComments" to "Commenti totali",
             "engagement" to "Coinvolgimento",
-            "audioEngine" to "Motore audio premium",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch e gapless",
             "equalizer" to "Equalizer",
             "equalizerSubtitle" to "Effetti reali con preset, bass boost e virtualizer",
@@ -1986,7 +2004,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Las pistas más comentadas vistas como energía viva",
             "totalComments" to "Comentarios totales",
             "engagement" to "Interacción",
-            "audioEngine" to "Motor de audio premium",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Ecualizador, crossfade, loudness, tempo, pitch y gapless",
             "equalizer" to "Ecualizador",
             "equalizerSubtitle" to "Efectos reales con presets, bass boost y virtualizer",
@@ -2381,7 +2399,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Les titres les plus commentés vus comme une énergie vivante",
             "totalComments" to "Commentaires totaux",
             "engagement" to "Engagement",
-            "audioEngine" to "Moteur audio premium",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Égaliseur, crossfade, loudness, tempo, pitch et gapless",
             "equalizer" to "Égaliseur",
             "equalizerSubtitle" to "Effets réels avec presets, bass boost et virtualizer",
@@ -2776,7 +2794,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Die meistkommentierten Tracks als lebendige Energie",
             "totalComments" to "Kommentare gesamt",
             "engagement" to "Engagement",
-            "audioEngine" to "Premium-Audioengine",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Equalizer, Crossfade, Loudness, Tempo, Pitch und Gapless",
             "equalizer" to "Equalizer",
             "equalizerSubtitle" to "Echte Effekte mit Presets, Bass Boost und Virtualizer",
@@ -3171,7 +3189,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "As faixas mais comentadas vistas como energia viva",
             "totalComments" to "Comentários totais",
             "engagement" to "Interação",
-            "audioEngine" to "Motor de áudio premium",
+            "audioEngine" to "Áudio",
             "audioEngineSubtitle" to "Equalizador, crossfade, loudness, tempo, pitch e gapless",
             "equalizer" to "Equalizador",
             "equalizerSubtitle" to "Efeitos reais com presets, bass boost e virtualizer",
@@ -3566,7 +3584,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "De meest besproken nummers als levende energie",
             "totalComments" to "Totaal aantal reacties",
             "engagement" to "Betrokkenheid",
-            "audioEngine" to "Premium-audio-engine",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch en gapless",
             "equalizer" to "Equalizer",
             "equalizerSubtitle" to "Echte effecten met presets, bass boost en virtualizer",
@@ -3961,7 +3979,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Najczęściej komentowane utwory jako żywa energia",
             "totalComments" to "Łączna liczba komentarzy",
             "engagement" to "Zaangażowanie",
-            "audioEngine" to "Silnik dźwięku premium",
+            "audioEngine" to "Dźwięk",
             "audioEngineSubtitle" to "Korektor, crossfade, głośność, tempo, wysokość dźwięku i gapless",
             "equalizer" to "Korektor",
             "equalizerSubtitle" to "Prawdziwe efekty z presetami, podbiciem basu i wirtualizatorem",
@@ -4356,7 +4374,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Cele mai comentate piese, văzute ca energie vie",
             "totalComments" to "Total comentarii",
             "engagement" to "Interacțiune",
-            "audioEngine" to "Motor audio premium",
+            "audioEngine" to "Audio",
             "audioEngineSubtitle" to "Egalizator, crossfade, loudness, tempo, pitch și redare fără pauze",
             "equalizer" to "Egalizator",
             "equalizerSubtitle" to "Efecte reale cu presetări, amplificare de bas și virtualizator",
@@ -4751,7 +4769,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Τα κομμάτια με τα περισσότερα σχόλια ως ζωντανή ενέργεια",
             "totalComments" to "Συνολικά σχόλια",
             "engagement" to "Αλληλεπίδραση",
-            "audioEngine" to "Premium μηχανή ήχου",
+            "audioEngine" to "Ήχος",
             "audioEngineSubtitle" to "Ισοσταθμιστής, crossfade, ένταση, tempo, pitch και gapless",
             "equalizer" to "Ισοσταθμιστής",
             "equalizerSubtitle" to "Πραγματικά εφέ με presets, ενίσχυση μπάσων και virtualizer",
@@ -5146,7 +5164,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "De mest kommenterade låtarna, visualiserade som levande energi",
             "totalComments" to "Kommentarer totalt",
             "engagement" to "Engagemang",
-            "audioEngine" to "Premiumljudmotor",
+            "audioEngine" to "Ljud",
             "audioEngineSubtitle" to "Equalizer, crossfade, ljudstyrka, tempo, tonhöjd och gapless",
             "equalizer" to "Equalizer",
             "equalizerSubtitle" to "Riktiga effekter med förinställningar, basförstärkning och virtualizer",
@@ -5541,7 +5559,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "De mest kommenterede numre visualiseret som levende energi",
             "totalComments" to "Kommentarer i alt",
             "engagement" to "Engagement",
-            "audioEngine" to "Premium-lydmotor",
+            "audioEngine" to "Lyd",
             "audioEngineSubtitle" to "Equalizer, crossfade, lydstyrke, tempo, tonehøjde og gapless",
             "equalizer" to "Equalizer",
             "equalizerSubtitle" to "Ægte effekter med forudindstillinger, basforstærkning og virtualizer",
@@ -5936,7 +5954,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Nejkomentovanější skladby zobrazené jako živá energie",
             "totalComments" to "Komentářů celkem",
             "engagement" to "Zapojení",
-            "audioEngine" to "Prémiový zvukový engine",
+            "audioEngine" to "Zvuk",
             "audioEngineSubtitle" to "Ekvalizér, crossfade, hlasitost, tempo, výška tónu a gapless",
             "equalizer" to "Ekvalizér",
             "equalizerSubtitle" to "Skutečné efekty s předvolbami, zesílením basů a virtualizérem",
@@ -6331,7 +6349,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Найбільш коментовані треки як жива енергія",
             "totalComments" to "Усього коментарів",
             "engagement" to "Залученість",
-            "audioEngine" to "Преміальний аудіодвигун",
+            "audioEngine" to "Звук",
             "audioEngineSubtitle" to "Еквалайзер, crossfade, гучність, темп, висота тону та gapless",
             "equalizer" to "Еквалайзер",
             "equalizerSubtitle" to "Справжні ефекти з пресетами, підсиленням басів і віртуалізатором",
@@ -6726,7 +6744,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "Самые обсуждаемые треки в виде живой энергии",
             "totalComments" to "Всего комментариев",
             "engagement" to "Вовлечённость",
-            "audioEngine" to "Премиальный аудиодвижок",
+            "audioEngine" to "Звук",
             "audioEngineSubtitle" to "Эквалайзер, crossfade, громкость, темп, высота тона и gapless",
             "equalizer" to "Эквалайзер",
             "equalizerSubtitle" to "Настоящие эффекты с пресетами, усилением басов и виртуализатором",
@@ -7121,7 +7139,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "En çok yorum alan parçalar, canlı enerji olarak görselleştirildi",
             "totalComments" to "Toplam yorum",
             "engagement" to "Etkileşim",
-            "audioEngine" to "Premium ses motoru",
+            "audioEngine" to "Ses",
             "audioEngineSubtitle" to "Ekolayzır, crossfade, ses yüksekliği, tempo, perde ve kesintisiz oynatma",
             "equalizer" to "Ekolayzır",
             "equalizerSubtitle" to "Ön ayarlar, bas güçlendirme ve sanallaştırıcı ile gerçek efektler",
@@ -7516,7 +7534,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "المقاطع الأكثر تعليقًا، في صورة طاقة حيّة",
             "totalComments" to "إجمالي التعليقات",
             "engagement" to "التفاعل",
-            "audioEngine" to "محرك صوت احترافي",
+            "audioEngine" to "الصوت",
             "audioEngineSubtitle" to "معادل صوت وتداخل تدريجي ومستوى ذكي وإيقاع وطبقة وتشغيل بلا فواصل",
             "equalizer" to "معادل الصوت",
             "equalizerSubtitle" to "مؤثرات حقيقية مع إعدادات مسبقة وتعزيز الجهير والصوت المحيطي",
@@ -7911,7 +7929,7 @@ class LevyraStrings private constructor(
             "voicesSubtitle" to "评论最热烈的歌曲，化作鲜活能量",
             "totalComments" to "评论总数",
             "engagement" to "互动度",
-            "audioEngine" to "专业音频引擎",
+            "audioEngine" to "音频",
             "audioEngineSubtitle" to "均衡器、交叉淡化、智能响度、速度、音高与无缝播放",
             "equalizer" to "均衡器",
             "equalizerSubtitle" to "支持预设、低音增强和虚拟环绕的真实音效",

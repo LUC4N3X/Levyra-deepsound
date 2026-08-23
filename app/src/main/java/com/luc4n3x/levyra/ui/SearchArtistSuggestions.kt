@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -164,7 +164,7 @@ private fun SearchArtistSuggestionRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
                     modifier = Modifier.size(19.dp),
@@ -219,7 +219,7 @@ private fun SearchArtistFallbackRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Icon(
-                imageVector = Icons.Rounded.ArrowForward,
+                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(19.dp),

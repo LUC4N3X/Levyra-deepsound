@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
+import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -217,7 +218,7 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
         private val BLUETOOTH_COMPENSATION = floatArrayOf(0f, 0f, -0.3f, -0.3f, 0f, 0f, 0.2f, 0.5f, 0.5f, 0f)
         private val USB_COMPENSATION = FloatArray(BAND_COUNT)
         private const val Q = 1.15f
-        private const val MAX_BAND_DB = 12f
+        private const val MAX_BAND_DB = LevyraAudioPresets.maxBandDb
         private const val BASS_MAX_DB = 6f
         private const val COEFFICIENT_SMOOTHING = 0.22f
         private const val MIX_SMOOTHING = 0.0018f

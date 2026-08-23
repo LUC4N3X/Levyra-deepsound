@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchPage
 import com.luc4n3x.levyra.domain.SearchResults
@@ -207,7 +208,6 @@ private fun albumRecommendationDisplayTitleKey(value: String): String {
         .trim()
 }
 
-// Precompiled so recommendation ranking does not rebuild ICU regex state per candidate.
 private val RECOMMENDATION_WHITESPACE = Regex("""\s+""")
 private val RECOMMENDATION_COMBINING_MARKS = Regex("""\p{M}+""")
 private val RECOMMENDATION_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
@@ -221,8 +221,6 @@ private val ALBUM_RECOMMENDATION_EDITION_SUFFIX = Regex(
     """(?i)\s+(?:deluxe(?: edition)?|expanded(?: edition)?|anniversary(?: edition)?|remaster(?:ed)?(?: edition)?|bonus(?: track)?s?|special edition|collector(?:s)? edition|legacy edition|tour edition|digital edition|international edition|explicit edition|explicit version)\b.*$"""
 )
 
-// Recommendation ranking scores every candidate against the same seed strings, so the
-// normalized form is memoized to keep ICU work off the per-candidate path.
 private const val RECOMMENDATION_TEXT_KEY_CACHE_LIMIT = 1024
 private const val RECOMMENDATION_TEXT_KEY_MAX_LENGTH = 256
 private val recommendationTextKeyCache =
@@ -272,6 +270,121 @@ private val ALBUM_RECOMMENDATION_STOP_WORDS = setOf(
     "album", "the", "and", "con", "per", "una", "uno", "del", "della", "degli", "delle", "di", "da",
     "music", "musica", "new", "nuovo", "nuova", "popular", "popolari", "italian", "italiano", "italiana"
 )
+
+internal const val MIN_SONG_MATCH_CONFIDENCE = 0.60
+
+internal const val SONG_MATCH_CANDIDATE_LIMIT = 12
+
+private const val MIN_SONG_ARTIST_AGREEMENT = 0.34
+
+private const val ARTIST_CONTAINMENT_COMPATIBILITY = 0.8
+
+private val SONG_VARIANT_MARKERS = mapOf(
+    "remix" to setOf("remix", "remixes", "rmx", "bootleg", "flip"),
+    "live" to setOf("live", "unplugged", "concert", "sessions"),
+    "acoustic" to setOf("acoustic", "acustico", "acustica"),
+    "instrumental" to setOf("instrumental", "strumentale"),
+    "karaoke" to setOf("karaoke"),
+    "cover" to setOf("cover"),
+    "speed" to setOf("nightcore", "sped", "slowed")
+)
+
+private fun songVariantTags(value: String): Set<String> {
+    val tokens = albumRecommendationTextKey(value).split(' ').filter { it.isNotBlank() }.toSet()
+    if (tokens.isEmpty()) return emptySet()
+    return SONG_VARIANT_MARKERS.asSequence()
+        .filter { (_, markers) -> markers.any { it in tokens } }
+        .map { (tag, _) -> tag }
+        .toSet()
+}
+
+private val GENERIC_SONG_ARTISTS = setOf("youtube", "youtube music", "various artists", "vari artisti")
+
+private fun isGenericSongArtist(value: String): Boolean =
+    albumRecommendationTextKey(value) in GENERIC_SONG_ARTISTS
+
+private fun songArtistParts(value: String): List<String> = value
+    .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
+    .map { albumRecommendationTextKey(it) }
+    .filter { it.isNotBlank() }
+
+private fun songTokens(key: String): List<String> = key.split(' ').filter { it.isNotBlank() }
+
+private fun songTokenCompatibility(requestedKey: String, candidateKey: String): Double {
+    val requestedTokens = songTokens(requestedKey)
+    val candidateTokens = songTokens(candidateKey)
+    if (requestedTokens.isEmpty() || candidateTokens.isEmpty()) return 0.0
+    val intersection = requestedTokens.intersect(candidateTokens.toSet()).size.toDouble()
+    val coverage = intersection / minOf(requestedTokens.size, candidateTokens.size).toDouble()
+    val union = requestedTokens.union(candidateTokens).size.toDouble()
+    return coverage * 0.7 + (if (union == 0.0) 0.0 else intersection / union) * 0.3
+}
+
+private fun songTextCompatibility(requested: String, candidate: String): Double {
+    val requestedKey = albumRecommendationTextKey(requested)
+    val candidateKey = albumRecommendationTextKey(candidate)
+    if (requestedKey.isBlank() || candidateKey.isBlank()) return 0.0
+    if (requestedKey == candidateKey) return 1.0
+    val shared = recommendationCompatibility(requestedKey, candidateKey)
+    return if (shared > 0.0) shared else songTokenCompatibility(requestedKey, candidateKey)
+}
+
+private fun songArtistCompatibility(requested: String, candidate: String): Double {
+    if (requested.isBlank() || candidate.isBlank()) return 0.0
+    val requestedParts = songArtistParts(requested)
+    val candidateParts = songArtistParts(candidate)
+    if (requestedParts.isEmpty() || candidateParts.isEmpty()) return 0.0
+    val pairwise = requestedParts.maxOf { requestedPart ->
+        candidateParts.maxOf { candidatePart -> songTextCompatibility(requestedPart, candidatePart) }
+    }
+    val whole = songTextCompatibility(requested, candidate)
+    val containment = requestedParts.any { requestedPart ->
+        candidateParts.any { candidatePart ->
+            val requestedTokens = songTokens(requestedPart)
+            val candidateTokens = songTokens(candidatePart)
+            requestedTokens.isNotEmpty() && candidateTokens.isNotEmpty() &&
+                (candidateTokens.containsAll(requestedTokens) || requestedTokens.containsAll(candidateTokens))
+        }
+    }
+    return maxOf(pairwise, whole, if (containment) ARTIST_CONTAINMENT_COMPATIBILITY else 0.0)
+}
+
+internal fun songMatchConfidence(
+    requestedTitle: String,
+    requestedArtist: String,
+    candidateTitle: String,
+    candidateArtist: String
+): Double {
+    val titleScore = songTextCompatibility(requestedTitle, candidateTitle)
+    if (titleScore <= 0.0) return 0.0
+    val comparableArtists = requestedArtist.isNotBlank() &&
+        candidateArtist.isNotBlank() &&
+        !isGenericSongArtist(candidateArtist) &&
+        !isGenericSongArtist(requestedArtist)
+    val artistScore = songArtistCompatibility(requestedArtist, candidateArtist)
+    val base = if (comparableArtists) titleScore * 0.6 + artistScore * 0.4 else titleScore * 0.85
+    val requestedVariants = songVariantTags(requestedTitle)
+    val candidateVariants = songVariantTags(candidateTitle)
+    var confidence = base
+    if (comparableArtists && artistScore < MIN_SONG_ARTIST_AGREEMENT) confidence *= 0.45
+    if ((candidateVariants - requestedVariants).isNotEmpty()) confidence *= 0.5
+    if ((requestedVariants - candidateVariants).isNotEmpty()) confidence *= 0.7
+    return confidence.coerceIn(0.0, 1.0)
+}
+
+internal fun bestSongMatch(
+    requestedTitle: String,
+    requestedArtist: String,
+    candidates: List<Track>
+): Track? = candidates
+    .asSequence()
+    .take(SONG_MATCH_CANDIDATE_LIMIT)
+    .map { candidate ->
+        candidate to songMatchConfidence(requestedTitle, requestedArtist, candidate.title, candidate.artist)
+    }
+    .filter { (_, confidence) -> confidence >= MIN_SONG_MATCH_CONFIDENCE }
+    .maxByOrNull { (_, confidence) -> confidence }
+    ?.first
 
 private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 16
 private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
@@ -486,10 +599,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             emptyList()
         }
         val result = filtered.ifEmpty {
-            // The video filter can occasionally omit type metadata. Keep generic
-            // search results as a last resort and let the playback identity checks
-            // and resolver validate them instead of turning an inconclusive miss
-            // into an early, negative result.
             search(cleanQuery, boundedLimit, languageCode)
         }
         result.take(boundedLimit).also { items -> items.forEach { memory[it.id] = it } }
@@ -497,6 +606,24 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     /** First YouTube Music match for a query, used to make chart entries playable. */
     suspend fun searchOne(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): Track? = search(query, 1, languageCode).firstOrNull()
+
+    suspend fun searchSongMatch(
+        title: String,
+        artist: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): Track? = withContext(Dispatchers.IO) {
+        val query = listOf(title, artist).map(String::trim).filter { it.isNotBlank() }.joinToString(" ")
+        if (query.length < 2) return@withContext null
+        val songs = try {
+            searchSongsPage(query, languageCode).items
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        bestSongMatch(title, artist, songs)?.let { return@withContext it }
+        bestSongMatch(title, artist, search(query, SONG_MATCH_CANDIDATE_LIMIT, languageCode))
+    }
 
     suspend fun searchEverything(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): SearchResults = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
@@ -589,9 +716,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     ): JSONObject? {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return null
-        return runCatching {
+        return try {
             searchInnerTubeRaw(cleanQuery, languageCode, params, continuation.trim())
-        }.getOrNull()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     private fun rememberSearchTracks(tracks: List<Track>) {
@@ -2790,8 +2921,7 @@ return Track(
 
     private fun upgradeThumbnail(url: String): String {
         if (url.isBlank()) return url
-        return url.replace(Regex("=w\\d+-h\\d+.*$"), "=w1200-h1200-l90-rj")
-            .replace(Regex("=s\\d+.*$"), "=s1200")
+        return LevyraPersonalOrbit.upscaledArtworkUrl(url)
     }
 
     private fun stableSeed(value: String): Int {
