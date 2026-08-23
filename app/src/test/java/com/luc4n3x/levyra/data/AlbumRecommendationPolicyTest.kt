@@ -141,4 +141,30 @@ class AlbumRecommendationPolicyTest {
         query = "$title $artist",
         browseId = "MPREb_test"
     )
+
+    @Test
+    fun albumRecommendationTextKeyNormalizesAccentsCreditsAndPunctuation() {
+        assertEquals("cafe del mar", albumRecommendationTextKey("Café Del Mar"))
+        assertEquals("random access memories", albumRecommendationTextKey("Random Access Memories (Official Audio)"))
+        assertEquals("no time", albumRecommendationTextKey("No Time feat. Someone Else"))
+        assertEquals("a b", albumRecommendationTextKey("  A  &  B  "))
+    }
+
+    @Test
+    fun albumRecommendationTextKeyIsStableAcrossRepeatedAndEvictingCalls() {
+        val probe = "Discovery (Remastered) feat. Guest"
+        val expected = albumRecommendationTextKey(probe)
+        assertEquals(expected, albumRecommendationTextKey(probe))
+
+        repeat(2_048) { index -> albumRecommendationTextKey("Filler Release $index") }
+        assertEquals(expected, albumRecommendationTextKey(probe))
+    }
+
+    @Test
+    fun albumRecommendationTextKeyHandlesValuesBeyondTheMemoizationLimit() {
+        val long = "Café ".repeat(120)
+        val normalized = albumRecommendationTextKey(long)
+        assertTrue(normalized.length > 256)
+        assertEquals(normalized, albumRecommendationTextKey(long))
+    }
 }
