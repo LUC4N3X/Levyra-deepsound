@@ -112,9 +112,9 @@ class LevyraLocalIntelligence {
 
     private fun normalize(value: String): String {
         return Normalizer.normalize(value.lowercase(Locale.ROOT), Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
-            .replace(Regex("[^a-z0-9àèéìòóùçñäöüß' ]"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(LOCAL_INTELLIGENCE_COMBINING_MARKS, "")
+            .replace(LOCAL_INTELLIGENCE_NON_WORD, " ")
+            .replace(LOCAL_INTELLIGENCE_WHITESPACE, " ")
             .trim()
     }
 
@@ -131,3 +131,8 @@ class LevyraLocalIntelligence {
         val intenseWords = setOf("fuoco", "fire", "lotta", "fight", "guerra", "war", "forte", "strong", "urlo", "scream", "corsa", "run", "sangue", "blood", "potere", "power")
     }
 }
+
+// Precompiled: local intelligence normalizes every track title and artist it scores.
+private val LOCAL_INTELLIGENCE_COMBINING_MARKS = Regex("""\p{M}+""")
+private val LOCAL_INTELLIGENCE_NON_WORD = Regex("""[^a-z0-9àèéìòóùçñäöüß' ]""")
+private val LOCAL_INTELLIGENCE_WHITESPACE = Regex("""\s+""")

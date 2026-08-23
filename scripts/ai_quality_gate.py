@@ -331,7 +331,11 @@ def build_commands(
     ]
     blocked: list[str] = []
 
-    shell_files = sorted(path for path in paths if path.endswith(".sh"))
+    shell_files = sorted(
+        path
+        for path in paths
+        if path.endswith(".sh") and (ROOT / path).is_file()
+    )
     if shell_files:
         bash = find_bash()
         if bash:
@@ -346,7 +350,11 @@ def build_commands(
         else:
             blocked.append("Bash is required to validate changed .sh files")
 
-    powershell_files = sorted(path for path in paths if path.endswith(".ps1"))
+    powershell_files = sorted(
+        path
+        for path in paths
+        if path.endswith(".ps1") and (ROOT / path).is_file()
+    )
     if powershell_files:
         powershell = find_powershell()
         if powershell:
