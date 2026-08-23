@@ -26,10 +26,12 @@ fun SpringIconButton(
     enabled: Boolean = true,
     pressedScale: Float = 0.85f,
     contentDescription: String? = null,
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val internalInteractionSource = remember { MutableInteractionSource() }
+    val resolvedInteractionSource = interactionSource ?: internalInteractionSource
+    val isPressed by resolvedInteractionSource.collectIsPressedAsState()
     val scale = remember { Animatable(1f) }
 
     LaunchedEffect(isPressed, enabled, pressedScale) {
@@ -69,7 +71,7 @@ fun SpringIconButton(
             modifier = Modifier
                 .matchParentSize()
                 .clickable(
-                    interactionSource = interactionSource,
+                    interactionSource = resolvedInteractionSource,
                     indication = null,
                     enabled = enabled,
                     onClickLabel = contentDescription,
