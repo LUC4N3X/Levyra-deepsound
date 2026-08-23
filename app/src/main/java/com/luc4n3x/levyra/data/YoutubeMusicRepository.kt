@@ -113,7 +113,7 @@ internal fun isPlausibleYoutubeMusicAlbumTitle(value: String): Boolean {
         .replace("\\n", " ")
         .replace('\n', ' ')
         .replace('\r', ' ')
-        .replace(Regex("""\s+"""), " ")
+        .replace(RECOMMENDATION_WHITESPACE, " ")
         .trim()
         .lowercase(Locale.ROOT)
     if (normalized.isBlank() || normalized.looksLikeSerializedJson()) return false
@@ -203,9 +203,16 @@ internal fun albumRecommendationDeduplicationKey(album: AlbumHit): String {
 private fun albumRecommendationDisplayTitleKey(value: String): String {
     return albumRecommendationTextKey(value)
         .replace(ALBUM_RECOMMENDATION_EDITION_SUFFIX, " ")
-        .replace(Regex("\\s+"), " ")
+        .replace(RECOMMENDATION_WHITESPACE, " ")
         .trim()
 }
+
+// Precompiled so recommendation ranking does not rebuild ICU regex state per candidate.
+private val RECOMMENDATION_WHITESPACE = Regex("""\s+""")
+private val RECOMMENDATION_COMBINING_MARKS = Regex("""\p{M}+""")
+private val RECOMMENDATION_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
+private val RECOMMENDATION_CREDIT_SUFFIX =
+    Regex("""(?i)\b(feat|featuring|ft|with|prod|official|audio|video|lyrics)\b.*$""")
 
 private val ALBUM_RECOMMENDATION_ARTIST_SEPARATOR =
     Regex("(?i)\\s*(?:,|;|&|\\bfeat(?:uring)?\\b|\\bft\\b|\\s+[x×]\\s+)\\s*")
@@ -214,15 +221,33 @@ private val ALBUM_RECOMMENDATION_EDITION_SUFFIX = Regex(
     """(?i)\s+(?:deluxe(?: edition)?|expanded(?: edition)?|anniversary(?: edition)?|remaster(?:ed)?(?: edition)?|bonus(?: track)?s?|special edition|collector(?:s)? edition|legacy edition|tour edition|digital edition|international edition|explicit edition|explicit version)\b.*$"""
 )
 
+// Recommendation ranking scores every candidate against the same seed strings, so the
+// normalized form is memoized to keep ICU work off the per-candidate path.
+private const val RECOMMENDATION_TEXT_KEY_CACHE_LIMIT = 1024
+private const val RECOMMENDATION_TEXT_KEY_MAX_LENGTH = 256
+private val recommendationTextKeyCache =
+    object : LinkedHashMap<String, String>(128, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean =
+            size > RECOMMENDATION_TEXT_KEY_CACHE_LIMIT
+    }
+
 internal fun albumRecommendationTextKey(value: String): String {
+    if (value.length > RECOMMENDATION_TEXT_KEY_MAX_LENGTH) return computeAlbumRecommendationTextKey(value)
+    synchronized(recommendationTextKeyCache) { recommendationTextKeyCache[value] }?.let { return it }
+    val computed = computeAlbumRecommendationTextKey(value)
+    synchronized(recommendationTextKeyCache) { recommendationTextKeyCache[value] = computed }
+    return computed
+}
+
+private fun computeAlbumRecommendationTextKey(value: String): String {
     val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
     return decomposed
-        .replace(Regex("\\p{M}+"), "")
+        .replace(RECOMMENDATION_COMBINING_MARKS, "")
         .lowercase(Locale.ROOT)
         .replace('&', ' ')
-        .replace(Regex("(?i)\\b(feat|featuring|ft|with|prod|official|audio|video|lyrics)\\b.*$"), " ")
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-        .replace(Regex("\\s+"), " ")
+        .replace(RECOMMENDATION_CREDIT_SUFFIX, " ")
+        .replace(RECOMMENDATION_NON_ALPHANUMERIC, " ")
+        .replace(RECOMMENDATION_WHITESPACE, " ")
         .trim()
 }
 
@@ -361,10 +386,10 @@ internal fun rankYoutubeMusicNewReleases(
 }
 
 private fun normalizedReleaseArtist(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
-    .replace(Regex("""\p{M}+"""), "")
+    .replace(RECOMMENDATION_COMBINING_MARKS, "")
     .lowercase(Locale.ROOT)
-    .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
-    .replace(Regex("""\s+"""), " ")
+    .replace(RECOMMENDATION_NON_ALPHANUMERIC, " ")
+    .replace(RECOMMENDATION_WHITESPACE, " ")
     .trim()
 
 private fun matchingArtistSignalIndex(artist: String, signals: List<String>): Int {

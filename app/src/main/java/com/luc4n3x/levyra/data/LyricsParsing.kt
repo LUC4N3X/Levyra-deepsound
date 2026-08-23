@@ -53,10 +53,10 @@ object UnifiedLyricsParser {
         val source = text.trimStart()
         return when {
             source.startsWith("<tt", ignoreCase = true) || source.contains("<tt ", ignoreCase = true) -> LyricsFormat.TTML
-            Regex("(?m)^\\[\\d+,\\d+]\\(\\d+,\\d+,\\d+\\)").containsMatchIn(source) -> LyricsFormat.YRC
-            source.contains("[language:", ignoreCase = true) && Regex("(?m)^\\[\\d+,\\d+]<(?:\\d+,){2}\\d+>").containsMatchIn(source) -> LyricsFormat.KRC
-            Regex("(?m)^\\[\\d+,\\d+]<(?:\\d+,){2}\\d+>").containsMatchIn(source) -> LyricsFormat.QRC
-            Regex("(?m)^\\[\\d{1,3}:\\d{2}(?:[.:]\\d{1,3})?]").containsMatchIn(source) -> LyricsFormat.LRC
+            LYRICS_YRC_MARKER.containsMatchIn(source) -> LyricsFormat.YRC
+            source.contains("[language:", ignoreCase = true) && LYRICS_WORD_TIMED_MARKER.containsMatchIn(source) -> LyricsFormat.KRC
+            LYRICS_WORD_TIMED_MARKER.containsMatchIn(source) -> LyricsFormat.QRC
+            LYRICS_LRC_MARKER.containsMatchIn(source) -> LyricsFormat.LRC
             else -> LyricsFormat.PLAIN
         }
     }
@@ -115,7 +115,7 @@ object LrcLyricsParser {
             val fallbackEnd = nextStart?.minus(80L)?.coerceAtLeast(item.startMs + 350L) ?: (item.startMs + 6_000L)
             val words = parseEnhancedWords(item.content, item.startMs, fallbackEnd, offsetMs)
             val visibleText = if (words.isNotEmpty()) {
-                words.joinToString("") { it.text }.replace(Regex("\\s+"), " ").trim()
+                words.joinToString("") { it.text }.replace(LYRICS_WHITESPACE, " ").trim()
             } else {
                 enhancedTimestampRegex.replace(item.content, "").trim()
             }
@@ -216,7 +216,7 @@ private fun parseSyllableLines(
             LyricWord(startMs = start, endMs = start + wordDuration, text = wordText)
         }.toList()
         val visibleText = if (words.isNotEmpty()) {
-            words.joinToString("") { it.text }.replace(Regex("\\s+"), " ").trim()
+            words.joinToString("") { it.text }.replace(LYRICS_WHITESPACE, " ").trim()
         } else {
             wordRegex.replace(payload, "\$3").trim()
         }
@@ -272,9 +272,9 @@ object TtmlLyricsParser {
             val role = element.lyricRole(multipleAgents)
             val words = element.wordSpans()
             val text = if (words.isNotEmpty()) {
-                words.joinToString("") { it.text }.replace(Regex("\\s+"), " ").trim()
+                words.joinToString("") { it.text }.replace(LYRICS_WHITESPACE, " ").trim()
             } else {
-                element.baseText().replace(Regex("\\s+"), " ").trim()
+                element.baseText().replace(LYRICS_WHITESPACE, " ").trim()
             }
             if (text.isNotBlank()) {
                 val lineEnd = max(end, words.lastOrNull()?.endMs ?: end).coerceAtLeast(start + 120L)
@@ -383,9 +383,9 @@ object TtmlLyricsParser {
                 ?: parentEnd
             val words = span.wordSpans()
             val text = if (words.isNotEmpty()) {
-                words.joinToString("") { it.text }.replace(Regex("\\s+"), " ").trim()
+                words.joinToString("") { it.text }.replace(LYRICS_WHITESPACE, " ").trim()
             } else {
-                span.baseText().replace(Regex("\\s+"), " ").trim()
+                span.baseText().replace(LYRICS_WHITESPACE, " ").trim()
             }
             if (text.isBlank()) continue
             out += LyricLine(
@@ -407,7 +407,7 @@ object TtmlLyricsParser {
         for (index in 0 until spans.length) {
             val span = spans.item(index) as? Element ?: continue
             if (span.roleAttribute() != expectedRole || span.hasAncestorWithSpecialRole(this)) continue
-            val value = span.textContent.orEmpty().replace(Regex("\\s+"), " ").trim()
+            val value = span.textContent.orEmpty().replace(LYRICS_WHITESPACE, " ").trim()
             if (value.isNotBlank()) values += value
         }
         return values.distinct().joinToString(" ")
@@ -546,7 +546,7 @@ object LyricsCleaner {
 
     private fun cleanTimedWords(words: List<LyricWord>): List<LyricWord> {
         val normalized = words.mapNotNull { word ->
-            val value = word.text.replace(Regex("\\s+"), " ")
+            val value = word.text.replace(LYRICS_WHITESPACE, " ")
             if (value.isBlank()) null else word.copy(text = value)
         }
         if (normalized.isEmpty()) return emptyList()
@@ -623,8 +623,8 @@ object LyricsCleaner {
 
     private fun normalizeText(value: String): String = value
         .replace('\n', ' ')
-        .replace(Regex("\\s+"), " ")
-        .replace(Regex("\\s+([,.;:!?])"), "$1")
+        .replace(LYRICS_WHITESPACE, " ")
+        .replace(LYRICS_PUNCTUATION_SPACING, "$1")
         .trim()
 
     private fun Char.isPunctuationWithoutLeadingSpace(): Boolean = this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')
@@ -866,3 +866,10 @@ object LyricsMatcher {
         return ((1.0 - distance.toDouble() / max(left.length, right.length).coerceAtLeast(1)) * 100.0).toInt().coerceIn(0, 100)
     }
 }
+
+// Precompiled: lyrics parsing and cleaning run these per line and per word.
+private val LYRICS_WHITESPACE = Regex("""\s+""")
+private val LYRICS_PUNCTUATION_SPACING = Regex("""\s+([,.;:!?])""")
+private val LYRICS_YRC_MARKER = Regex("""(?m)^\[\d+,\d+]\(\d+,\d+,\d+\)""")
+private val LYRICS_WORD_TIMED_MARKER = Regex("""(?m)^\[\d+,\d+]<(?:\d+,){2}\d+>""")
+private val LYRICS_LRC_MARKER = Regex("""(?m)^\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?]""")

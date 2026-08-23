@@ -3,27 +3,36 @@ package com.luc4n3x.levyra.domain
 import java.text.Normalizer
 import java.util.Locale
 
+// Precompiled: artist identity/segment helpers run per candidate in ranking and dedup loops.
+private val ARTIST_COMBINING_MARKS = Regex("""\p{M}+""")
+private val ARTIST_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
+private val ARTIST_WHITESPACE = Regex("""\s+""")
+private val ARTIST_EXPLICIT_SEPARATOR =
+    Regex("""(?i)\s+(?:feat(?:uring)?\.?|ft\.?|with|con|vs\.?)\s+|,\s*|;\s*|\s+[x×/]\s+""")
+private val ARTIST_JOINED_SEPARATOR = Regex("""(?i)\s+(?:&|and|e|y|et|und)\s+""")
+private val ARTIST_YEAR_TOKEN = Regex("""\b(?:19|20)\d{2}\b""")
+
 internal fun artistIdentityKey(value: String): String {
     return Normalizer.normalize(value, Normalizer.Form.NFKD)
-        .replace(Regex("\\p{M}+"), "")
+        .replace(ARTIST_COMBINING_MARKS, "")
         .lowercase(Locale.ROOT)
         .replace("&", " and ")
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-        .replace(Regex("\\s+"), " ")
+        .replace(ARTIST_NON_ALPHANUMERIC, " ")
+        .replace(ARTIST_WHITESPACE, " ")
         .trim()
 }
 
 internal fun primaryArtistSegment(value: String): String {
     val clean = value.trim()
     if (clean.isBlank()) return ""
-    val explicit = Regex("(?i)\\s+(?:feat(?:uring)?\\.?|ft\\.?|with|con|vs\\.?)\\s+|,\\s*|;\\s*|\\s+[x×/]\\s+")
+    val explicit = ARTIST_EXPLICIT_SEPARATOR
         .split(clean)
         .firstOrNull()
         .orEmpty()
         .trim()
     if (explicit.isNotBlank() && !explicit.equals(clean, ignoreCase = true)) return explicit
-    val joinedParts = Regex("(?i)\\s+(?:&|and|e|y|et|und)\\s+").split(clean)
-    return if (joinedParts.size == 2 && joinedParts.all { it.trim().split(Regex("\\s+")).size <= 4 }) {
+    val joinedParts = ARTIST_JOINED_SEPARATOR.split(clean)
+    return if (joinedParts.size == 2 && joinedParts.all { it.trim().split(ARTIST_WHITESPACE).size <= 4 }) {
         joinedParts.first().trim()
     } else {
         clean
@@ -58,7 +67,7 @@ internal fun isArtistShelfNameEligible(value: String): Boolean {
     if (blockedPhrases.any(key::contains)) return false
     if (key.startsWith("topsify ")) return false
     if (key.endsWith(" mix") || key.endsWith(" playlist") || key.endsWith(" chart") || key.endsWith(" charts")) return false
-    if (Regex("\\b(?:19|20)\\d{2}\\b").containsMatchIn(key) && listOf("hit", "canzoni", "mix", "top", "classifica").any(key::contains)) return false
+    if (ARTIST_YEAR_TOKEN.containsMatchIn(key) && listOf("hit", "canzoni", "mix", "top", "classifica").any(key::contains)) return false
     return true
 }
 

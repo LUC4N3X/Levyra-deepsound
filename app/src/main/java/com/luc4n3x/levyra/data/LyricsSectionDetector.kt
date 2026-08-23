@@ -245,10 +245,10 @@ internal object LyricsSectionDetector {
 
     private fun normalize(value: String): String {
         return Normalizer.normalize(value, Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}+"), "")
+            .replace(SECTION_COMBINING_MARKS, "")
             .lowercase(Locale.ROOT)
-            .replace(Regex("[^\\p{L}\\p{N} ]+"), " ")
-            .replace(Regex("\\s+"), " ")
+            .replace(SECTION_NON_ALPHANUMERIC, " ")
+            .replace(SECTION_WHITESPACE, " ")
             .trim()
     }
 
@@ -271,3 +271,8 @@ internal object LyricsSectionDetector {
         val confidence: Int
     )
 }
+
+// Precompiled: section detection normalizes every lyric line.
+private val SECTION_COMBINING_MARKS = Regex("""\p{M}+""")
+private val SECTION_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N} ]+""")
+private val SECTION_WHITESPACE = Regex("""\s+""")

@@ -88,12 +88,13 @@ object MotionArtworkIdentityKey {
     }
 }
 
+private val MOTION_ARTIST_SEPARATORS = Regex(
+    """(?:\s*,\s*|\s*&\s*|\s+×\s+|\s+[xX]\s+|\bfeat\.?\b|\bft\.?\b|\bfeaturing\b|\bwith\b|\bcon\b)""",
+    RegexOption.IGNORE_CASE
+)
+
 internal fun splitArtists(value: String): List<String> {
-    val separators = Regex(
-        "(?:\\s*,\\s*|\\s*&\\s*|\\s+×\\s+|\\s+[xX]\\s+|\\bfeat\\.?\\b|\\bft\\.?\\b|\\bfeaturing\\b|\\bwith\\b|\\bcon\\b)",
-        RegexOption.IGNORE_CASE
-    )
-    return value.split(separators)
+    return value.split(MOTION_ARTIST_SEPARATORS)
         .map { it.trim() }
         .filter { it.isNotBlank() }
         .distinctBy(::normalizeMotionText)
@@ -118,12 +119,18 @@ internal fun primaryMotionArtistMatches(requested: List<String>, returned: List<
     return requestedPrimary.isNotBlank() && returned.any { normalizeMotionText(it) == requestedPrimary }
 }
 
+// Precompiled: motion-artwork identity normalization runs for every candidate title and artist.
+private val MOTION_APOSTROPHES = Regex("""[’'`´]""")
+private val MOTION_BRACKETS = Regex("""[()\[\]{}]""")
+private val MOTION_NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
+private val MOTION_WHITESPACE = Regex("""\s+""")
+
 internal fun normalizeMotionText(value: String): String = value
     .lowercase(Locale.ROOT)
-    .replace(Regex("[’'`´]"), "")
-    .replace(Regex("[()\\[\\]{}]"), " ")
-    .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-    .replace(Regex("\\s+"), " ")
+    .replace(MOTION_APOSTROPHES, "")
+    .replace(MOTION_BRACKETS, " ")
+    .replace(MOTION_NON_ALPHANUMERIC, " ")
+    .replace(MOTION_WHITESPACE, " ")
     .trim()
 
 internal fun motionTextContainsTerm(value: String, term: String): Boolean {
