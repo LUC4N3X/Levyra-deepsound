@@ -44,8 +44,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
@@ -87,19 +89,18 @@ abstract class LevyraScreenViewModel(
     protected val root: LevyraViewModel,
     projection: (LevyraUiState) -> Any
 ) : ViewModel() {
-    private var lastPublishedState = root.state.value
-
-    protected val stablePlaybackState: StateFlow<LevyraUiState> = root.state
-        .map { current ->
-            stabilizeResolvingPlaybackUi(lastPublishedState, current).also { stable ->
-                lastPublishedState = stable
-            }
+    protected val stablePlaybackState: StateFlow<LevyraUiState> = flow {
+        var previous = root.state.value
+        root.state.collect { current ->
+            val stable = stabilizeResolvingPlaybackUi(previous, current)
+            emit(stable)
+            previous = stable
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = root.state.value
-        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000L),
+        initialValue = root.state.value
+    )
 
     val state: StateFlow<LevyraUiState> = stablePlaybackState
         .map { it }
