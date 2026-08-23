@@ -355,7 +355,12 @@ class LevyraPlayer(context: Context) {
     fun pause() {
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
-        controller?.pause()
+        val active = controller
+        if (active != null) {
+            active.pause()
+        } else {
+            pendingPlayback = pendingPlayback?.copy(playWhenReady = false)
+        }
     }
 
     fun stop() {
@@ -374,7 +379,13 @@ class LevyraPlayer(context: Context) {
     }
 
     fun seekTo(positionMs: Long) {
-        controller?.seekTo(positionMs.coerceAtLeast(0L))
+        val safePositionMs = positionMs.coerceAtLeast(0L)
+        val active = controller
+        if (active != null) {
+            active.seekTo(safePositionMs)
+        } else {
+            pendingPlayback = pendingPlayback?.copy(positionMs = safePositionMs)
+        }
     }
 
     fun setSpeed(speed: Float) {
