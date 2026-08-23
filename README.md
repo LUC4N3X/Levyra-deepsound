@@ -300,15 +300,18 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 <table width="100%">
   <tr>
-    <td width="130" align="center" valign="middle">
+    <td width="125" align="center" valign="middle">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="96" height="96" alt="LUC4N3X" />
+        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="88" height="88" alt="LUC4N3X" />
       </a>
     </td>
     <td valign="middle">
-      <h3><a href="https://github.com/LUC4N3X">LUC4N3X</a> &nbsp;<sub><code>Lead Systems Architect & Creator</code></sub></h3>
-      <p>
-        Creator and core architect of Levyra. Specializing in low-latency Android audio pipelines (Media3 & ExoPlayer), standalone libvlc desktop cores, zero-telemetry SQLite vaults, and synchronized LRCLIB karaoke engines.
+      <h3 style="margin: 0 0 6px 0;">
+        <a href="https://github.com/LUC4N3X">LUC4N3X</a>
+        &nbsp;<sub><code>Lead Systems Architect & Creator</code></sub>
+      </h3>
+      <p style="margin: 0 0 10px 0;">
+        Creator and lead systems architect of Levyra. Engineering low-latency Android audio pipelines (Media3 & ExoPlayer), standalone libvlc desktop cores, zero-telemetry SQLite vaults, and synchronized LRCLIB karaoke engines.
       </p>
       <div>
         <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="GitHub Profile" /></a>&nbsp;
@@ -319,6 +322,8 @@ We welcome community contributions, bug fixes, localization, and performance enh
     </td>
   </tr>
 </table>
+
+<br>
 
 ### Acknowledgments
 
