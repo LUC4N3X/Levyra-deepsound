@@ -275,9 +275,8 @@ object LevyraPersonalOrbit {
         if (clean.isEmpty()) return clean
         val lower = clean.lowercase(Locale.ROOT)
         if (!googleArtworkHosts.any(lower::contains)) return clean
-        val queryStart = clean.indexOf('?')
-        val path = if (queryStart >= 0) clean.substring(0, queryStart) else clean
-        val query = if (queryStart >= 0) clean.substring(queryStart) else ""
+        if (clean.indexOf('?') >= 0) return clean
+        val path = clean
         val target = size.coerceIn(64, 4096)
         val resized = artworkWidthHeightPattern.find(path)?.let { match ->
             val width = match.groupValues[1].toIntOrNull() ?: return@let null
@@ -296,7 +295,7 @@ object LevyraPersonalOrbit {
         } ?: artworkSizePattern.find(path)?.let { match ->
             path.replaceRange(match.range, "=s$target")
         } ?: path
-        return resized + query
+        return resized
     }
 
     fun isVideoFrameArtworkUrl(url: String): Boolean {

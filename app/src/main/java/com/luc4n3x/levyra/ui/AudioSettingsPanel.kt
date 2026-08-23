@@ -421,16 +421,18 @@ private fun AudioEqualizerSwitchRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            subtitle,
-            color = LevyraMuted,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            lineHeight = 16.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(
+                subtitle,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 16.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -683,11 +685,15 @@ private fun EqualizerCurve(
                 .alpha(if (enabled) 1f else DISABLED_ALPHA)
                 .pointerInput(enabled, bandCount) {
                     if (!enabled) return@pointerInput
-                    detectTapGestures { offset ->
-                        val band = bandAt(offset.x, size.width, bandCount)
-                        activeBand = band
-                        onBandLevel(band, bandLevelAt(offset.y, size.height.toFloat(), handleRadiusPx))
-                    }
+                    detectTapGestures(
+                        onPress = { offset ->
+                            val band = bandAt(offset.x, size.width, bandCount)
+                            activeBand = band
+                            onBandLevel(band, bandLevelAt(offset.y, size.height.toFloat(), handleRadiusPx))
+                            tryAwaitRelease()
+                            activeBand = -1
+                        }
+                    )
                 }
                 .pointerInput(enabled, bandCount) {
                     if (!enabled) return@pointerInput

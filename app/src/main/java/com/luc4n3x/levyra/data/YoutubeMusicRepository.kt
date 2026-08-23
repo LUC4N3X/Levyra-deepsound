@@ -311,12 +311,25 @@ private fun songArtistParts(value: String): List<String> = value
     .map { albumRecommendationTextKey(it) }
     .filter { it.isNotBlank() }
 
+private fun songTokens(key: String): List<String> = key.split(' ').filter { it.isNotBlank() }
+
+private fun songTokenCompatibility(requestedKey: String, candidateKey: String): Double {
+    val requestedTokens = songTokens(requestedKey)
+    val candidateTokens = songTokens(candidateKey)
+    if (requestedTokens.isEmpty() || candidateTokens.isEmpty()) return 0.0
+    val intersection = requestedTokens.intersect(candidateTokens.toSet()).size.toDouble()
+    val coverage = intersection / minOf(requestedTokens.size, candidateTokens.size).toDouble()
+    val union = requestedTokens.union(candidateTokens).size.toDouble()
+    return coverage * 0.7 + (if (union == 0.0) 0.0 else intersection / union) * 0.3
+}
+
 private fun songTextCompatibility(requested: String, candidate: String): Double {
     val requestedKey = albumRecommendationTextKey(requested)
     val candidateKey = albumRecommendationTextKey(candidate)
     if (requestedKey.isBlank() || candidateKey.isBlank()) return 0.0
     if (requestedKey == candidateKey) return 1.0
-    return recommendationCompatibility(requestedKey, candidateKey)
+    val shared = recommendationCompatibility(requestedKey, candidateKey)
+    return if (shared > 0.0) shared else songTokenCompatibility(requestedKey, candidateKey)
 }
 
 private fun songArtistCompatibility(requested: String, candidate: String): Double {
@@ -330,8 +343,10 @@ private fun songArtistCompatibility(requested: String, candidate: String): Doubl
     val whole = songTextCompatibility(requested, candidate)
     val containment = requestedParts.any { requestedPart ->
         candidateParts.any { candidatePart ->
-            minOf(requestedPart.length, candidatePart.length) >= 3 &&
-                (candidatePart.contains(requestedPart) || requestedPart.contains(candidatePart))
+            val requestedTokens = songTokens(requestedPart)
+            val candidateTokens = songTokens(candidatePart)
+            requestedTokens.isNotEmpty() && candidateTokens.isNotEmpty() &&
+                (candidateTokens.containsAll(requestedTokens) || requestedTokens.containsAll(candidateTokens))
         }
     }
     return maxOf(pairwise, whole, if (containment) ARTIST_CONTAINMENT_COMPATIBILITY else 0.0)

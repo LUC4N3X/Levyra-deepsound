@@ -38,13 +38,10 @@ class ArtworkUrlUpgradeTest {
     }
 
     @Test
-    fun signedQueryParametersAreLeftUntouched() {
-        assertEquals(
-            "https://lh3.googleusercontent.com/aAbBcC=w1200-h1200?sqp=-oaymwEdCJUDENAFSFXyq4qpAw&rs=AOn4CLA=x1",
-            LevyraPersonalOrbit.upscaledArtworkUrl(
-                "https://lh3.googleusercontent.com/aAbBcC=w120-h120?sqp=-oaymwEdCJUDENAFSFXyq4qpAw&rs=AOn4CLA=x1"
-            )
-        )
+    fun signedUrlsAreLeftExactlyAsTheyAre() {
+        val signed = "https://lh3.googleusercontent.com/aAbBcC=w120-h120?sqp=-oaymwEdCJUDENAFSFXyq4qpAw&rs=AOn4CLA=x1"
+        assertEquals(signed, LevyraPersonalOrbit.upscaledArtworkUrl(signed))
+        assertEquals(signed, highResolutionPlayerArtworkUrl(signed))
     }
 
     @Test

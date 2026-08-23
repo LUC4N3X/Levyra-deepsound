@@ -69,6 +69,18 @@ class SongMatchConfidenceTest {
     }
 
     @Test
+    fun aShorterArtistNameIsNotAPrefixMatchForAnotherArtist() {
+        assertTrue(confidence("Hello", "Nas", "Hello", "Nasty C") < MIN_SONG_MATCH_CONFIDENCE)
+        assertTrue(confidence("Chandelier", "Sia", "Chandelier", "Asia") < MIN_SONG_MATCH_CONFIDENCE)
+    }
+
+    @Test
+    fun aTitleMadeOfCommonWordsStillMatches() {
+        assertTrue(confidence("Music", "Madonna", "Music (Official Video)", "Madonna") >= MIN_SONG_MATCH_CONFIDENCE)
+        assertTrue(confidence("Music", "Madonna", "Completely Other Song", "Madonna") < MIN_SONG_MATCH_CONFIDENCE)
+    }
+
+    @Test
     fun channelPlaceholderArtistFallsBackToTheTitleOnly() {
         assertTrue(confidence("Bohemian Rhapsody", "Queen", "Bohemian Rhapsody", "YouTube") >= MIN_SONG_MATCH_CONFIDENCE)
         assertTrue(confidence("Bohemian Rhapsody", "Queen", "Bohemian Rhapsody", "") >= MIN_SONG_MATCH_CONFIDENCE)
