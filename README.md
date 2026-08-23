@@ -298,27 +298,80 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 ## ✦ Author & Credits
 
-<table align="center">
+<div align="center">
+
+<table align="center" width="100%">
   <tr>
-    <td align="center" width="110">
+    <td align="center" width="130" style="padding: 16px;">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=160&w=160&fit=cover&mask=circle" width="75" alt="LUC4N3X" />
+        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=240&w=240&fit=cover&mask=circle&maxage=7d" width="92" height="92" alt="LUC4N3X — Lead Architect" />
       </a>
     </td>
-    <td>
-      <strong>LUC4N3X</strong><br>
-      Creator & Lead Developer<br>
-      <sub>Audio engine architecture, stream extraction, Compose UI design, and offline pipelines.</sub><br>
-      <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub"></a>
+    <td style="padding: 16px;">
+      <h3 style="margin-top: 0; margin-bottom: 6px;">
+        <a href="https://github.com/LUC4N3X">LUC4N3X</a>
+        &nbsp;<sub><code>Lead Architect & Creator</code></sub>
+      </h3>
+      <p style="margin: 4px 0 10px 0;">
+        Architect of the low-latency Media3/ExoPlayer audio pipeline, standalone libvlc Windows core, on-device SQLite pulse telemetry, and real-time synchronized karaoke engine.
+      </p>
+      <div>
+        <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub" /></a>&nbsp;
+        <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin Multiplatform" />&nbsp;
+        <img src="https://img.shields.io/badge/AndroidX-Media3%20%2F%20ExoPlayer-38BDF8?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="AndroidX Media3" />&nbsp;
+        <img src="https://img.shields.io/badge/Desktop-libvlc-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc Desktop" />
+      </div>
     </td>
   </tr>
 </table>
 
-### Acknowledgments
-* [**Metrolist**](https://github.com/MetrolistGroup/Metrolist): Design inspiration for Compose UI architecture and theming.
-* [**LevyraExtractor**](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor): Custom stream extraction engine maintained for Levyra.
-* [**PipePipeExtractor**](https://github.com/InfinityLoop1308/PipePipeExtractor): Extractor foundation from the NewPipe and PipePipe open-source communities.
-* [**LRCLIB**](https://lrclib.net/): Synchronized lyric database powering real-time karaoke sync.
+</div>
+
+### ✦ Upstream Foundations & Architectural Credits
+
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top">
+      <h4>🎨 <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a></h4>
+      <sub><b>UI/UX Architecture & Dynamic Theming</b><br>
+      Architectural foundation for fluid Jetpack Compose navigation, gesture interactions, and deep OLED visual aesthetics.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <h4>⚡ <a href="https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor">LevyraExtractor</a></h4>
+      <sub><b>Dedicated Audio Stream Resolution</b><br>
+      Bespoke streaming extractor and parser engine optimized specifically for bit-perfect Opus (160 kbps) and AAC (256 kbps) delivery.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h4>🌐 <a href="https://github.com/InfinityLoop1308/PipePipeExtractor">PipePipe & NewPipe Communities</a></h4>
+      <sub><b>Open-Source Extractor Ecosystem</b><br>
+      Pioneering upstream extractor protocols, parser foundations, and resilient media stream routing.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <h4>🎙️ <a href="https://lrclib.net/">LRCLIB</a></h4>
+      <sub><b>Real-Time Synchronized Lyrics Database</b><br>
+      Open community synchronized lyrics API powering millisecond-accurate karaoke line highlighting and interactive scrubbing.</sub>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<div align="center">
+
+<p>
+  <sub><b>Powered by Open-Source Pillars</b></sub><br>
+  <a href="https://developer.android.com/media/media3"><img src="https://img.shields.io/badge/AndroidX-Media3-3DDC84?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Media3" /></a>&nbsp;
+  <a href="https://www.videolan.org/vlc/libvlc.html"><img src="https://img.shields.io/badge/VideoLAN-libvlc-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc" /></a>&nbsp;
+  <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white&labelColor=0d1117" alt="Jetpack Compose" /></a>&nbsp;
+  <a href="https://developer.android.com/training/data-storage/room"><img src="https://img.shields.io/badge/Room-SQLite%20Vault-003B57?style=flat-square&logo=sqlite&logoColor=white&labelColor=0d1117" alt="Room SQLite" /></a>&nbsp;
+  <a href="https://insert-koin.io/"><img src="https://img.shields.io/badge/Koin-DI-AB47BC?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Koin" /></a>&nbsp;
+  <a href="https://coil-kt.github.io/coil/"><img src="https://img.shields.io/badge/Coil-Async%20Image-6200EE?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Coil" /></a>&nbsp;
+  <a href="https://sponsor.ajay.app/"><img src="https://img.shields.io/badge/SponsorBlock-API-CC0000?style=flat-square&logo=youtube&logoColor=white&labelColor=0d1117" alt="SponsorBlock" /></a>
+</p>
+
+</div>
 
 ---
 
