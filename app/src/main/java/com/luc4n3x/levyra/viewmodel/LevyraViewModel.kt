@@ -2232,16 +2232,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun resetEqualizer() {
-        val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
-        updateAudioSettings(
-            _state.value.audioSettings.copy(
-                presetId = flat.id,
-                bandLevels = flat.levels,
-                bassBoost = flat.bassBoost,
-                virtualizer = flat.virtualizer,
-                preampDb = 0f
-            )
-        )
+        updateAudioSettings(_state.value.audioSettings.withNeutralEqualizer())
     }
 
     fun setPreampDb(value: Float) {

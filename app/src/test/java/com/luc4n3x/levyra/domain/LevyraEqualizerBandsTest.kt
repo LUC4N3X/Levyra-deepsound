@@ -34,6 +34,51 @@ class LevyraEqualizerBandsTest {
     }
 
     @Test
+    fun equalizerResetLeavesTheSpatialValueAlone() {
+        val tuned = LevyraAudioSettings(
+            equalizerEnabled = true,
+            presetId = LevyraAudioPresets.GYM,
+            bandLevels = LevyraAudioPresets.levelsFor(LevyraAudioPresets.GYM),
+            bassBoost = 80,
+            virtualizer = 34,
+            preampDb = -3.5f
+        )
+
+        val reset = tuned.withNeutralEqualizer()
+
+        assertEquals(34, reset.virtualizer)
+        assertEquals(LevyraAudioPresets.FLAT, reset.presetId)
+        assertEquals(LevyraAudioPresets.flatLevels, reset.bandLevels)
+        assertEquals(0, reset.bassBoost)
+        assertEquals(0f, reset.preampDb, 0.0001f)
+    }
+
+    @Test
+    fun equalizerResetKeepsEveryPlaybackSetting() {
+        val tuned = LevyraAudioSettings(
+            equalizerEnabled = true,
+            crossfadeSeconds = 8,
+            djSoftMode = true,
+            replayGainEnabled = true,
+            limiterEnabled = false,
+            playbackSpeed = 1.25f,
+            pitch = 0.9f,
+            gaplessEnabled = false
+        )
+
+        val reset = tuned.withNeutralEqualizer()
+
+        assertEquals(true, reset.equalizerEnabled)
+        assertEquals(8, reset.crossfadeSeconds)
+        assertEquals(true, reset.djSoftMode)
+        assertEquals(true, reset.replayGainEnabled)
+        assertEquals(false, reset.limiterEnabled)
+        assertEquals(1.25f, reset.playbackSpeed, 0.0001f)
+        assertEquals(0.9f, reset.pitch, 0.0001f)
+        assertEquals(false, reset.gaplessEnabled)
+    }
+
+    @Test
     fun everyPresetKeepsTheDspBandContract() {
         LevyraAudioPresets.presets.forEach { preset ->
             assertEquals(preset.id, LevyraAudioPresets.bandCount, preset.levels.size)

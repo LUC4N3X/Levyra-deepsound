@@ -23,6 +23,16 @@ data class LevyraAudioSettings(
     val pitch: Float = 1f,
     val gaplessEnabled: Boolean = true
 ) {
+    fun withNeutralEqualizer(): LevyraAudioSettings {
+        val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
+        return copy(
+            presetId = flat.id,
+            bandLevels = flat.levels,
+            bassBoost = flat.bassBoost,
+            preampDb = 0f
+        )
+    }
+
     fun normalized(): LevyraAudioSettings {
         val preset = LevyraAudioPresets.normalizePreset(presetId)
         val levels = bandLevels.takeIf { it.size == LevyraAudioPresets.bandCount } ?: LevyraAudioPresets.levelsFor(preset)

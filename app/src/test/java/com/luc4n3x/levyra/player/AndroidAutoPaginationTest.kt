@@ -76,9 +76,34 @@ class AndroidAutoPaginationTest {
 
     @Test
     fun windowsAreClampedToABoundedNumberOfItems() {
-        val clamped = AndroidAutoPageWindow.of(page = 0, pageSize = 0).clampedTo(500)
-        assertEquals(500, clamped.limit)
-        assertEquals(500, items(4_000).androidAutoWindow(clamped).size)
+        val clamped = AndroidAutoPageWindow.of(page = 0, pageSize = 0, maxItems = 100)
+        assertEquals(0, clamped.offset)
+        assertEquals(100, clamped.limit)
+        assertEquals(100, items(4_000).androidAutoWindow(clamped).size)
+    }
+
+    @Test
+    fun pageSizeAboveTheCapStillPagesWithoutLossOrDuplicates() {
+        val items = items(450)
+        val first = items.androidAutoWindow(AndroidAutoPageWindow.of(page = 0, pageSize = 200, maxItems = 100))
+        val second = items.androidAutoWindow(AndroidAutoPageWindow.of(page = 1, pageSize = 200, maxItems = 100))
+        assertEquals((0 until 100).toList(), first)
+        assertEquals((100 until 200).toList(), second)
+        assertTrue(first.intersect(second.toSet()).isEmpty())
+    }
+
+    @Test
+    fun cappedPagingWalksTheWholeCatalogExactlyOnce() {
+        val items = items(450)
+        val collected = ArrayList<Int>(items.size)
+        var page = 0
+        while (true) {
+            val window = items.androidAutoWindow(AndroidAutoPageWindow.of(page, pageSize = 1_000, maxItems = 100))
+            if (window.isEmpty()) break
+            collected += window
+            page++
+        }
+        assertEquals(items, collected)
     }
 
     private fun items(count: Int): List<Int> = (0 until count).toList()

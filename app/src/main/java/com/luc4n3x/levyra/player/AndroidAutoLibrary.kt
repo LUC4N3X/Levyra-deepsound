@@ -38,20 +38,24 @@ import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/** Window requested by a Media3 browser page, translated to an offset/limit pair. */
+/**
+ * Window requested by a Media3 browser page, translated to an offset/limit pair. A request larger
+ * than [maxItems] is served in [maxItems] chunks, and the same effective page size drives the
+ * offset so consecutive pages neither skip nor repeat items. A missing page size keeps the previous
+ * whole-directory behaviour, bounded by [maxItems].
+ */
 internal data class AndroidAutoPageWindow(val offset: Int, val limit: Int) {
     companion object {
-        fun of(page: Int, pageSize: Int): AndroidAutoPageWindow {
-            if (pageSize <= 0) return AndroidAutoPageWindow(0, Int.MAX_VALUE)
-            val offset = page.coerceAtLeast(0).toLong() * pageSize.toLong()
+        fun of(page: Int, pageSize: Int, maxItems: Int = Int.MAX_VALUE): AndroidAutoPageWindow {
+            val effectivePageSize = if (pageSize <= 0) maxItems else pageSize.coerceAtMost(maxItems)
+            if (effectivePageSize <= 0) return AndroidAutoPageWindow(0, 0)
+            val offset = page.coerceAtLeast(0).toLong() * effectivePageSize.toLong()
             if (offset > Int.MAX_VALUE) return AndroidAutoPageWindow(Int.MAX_VALUE, 0)
-            return AndroidAutoPageWindow(offset.toInt(), pageSize)
+            return AndroidAutoPageWindow(offset.toInt(), effectivePageSize)
         }
 
         fun limited(limit: Int): AndroidAutoPageWindow = AndroidAutoPageWindow(0, limit.coerceAtLeast(0))
     }
-
-    fun clampedTo(maxItems: Int): AndroidAutoPageWindow = copy(limit = limit.coerceAtMost(maxItems))
 }
 
 internal fun <T> List<T>.androidAutoWindow(window: AndroidAutoPageWindow): List<T> {
@@ -91,7 +95,7 @@ class AndroidAutoLibrary(context: Context) {
     fun root(): MediaItem = folder(ID_ROOT, "Levyra", "Musica ottimizzata per Android Auto")
 
     suspend fun children(parentId: String, page: Int = 0, pageSize: Int = 0): List<MediaItem> = withContext(Dispatchers.IO) {
-        val window = AndroidAutoPageWindow.of(page, pageSize).clampedTo(MAX_PAGE_ITEMS)
+        val window = AndroidAutoPageWindow.of(page, pageSize, MAX_PAGE_ITEMS)
         when (parentId) {
             ID_ROOT -> rootChildren().androidAutoWindow(window)
             ID_HOME -> homeChildren().androidAutoWindow(window)
