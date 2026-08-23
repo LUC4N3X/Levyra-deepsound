@@ -301,6 +301,11 @@ private fun songVariantTags(value: String): Set<String> {
         .toSet()
 }
 
+private val GENERIC_SONG_ARTISTS = setOf("youtube", "youtube music", "various artists", "vari artisti")
+
+private fun isGenericSongArtist(value: String): Boolean =
+    albumRecommendationTextKey(value) in GENERIC_SONG_ARTISTS
+
 private fun songArtistParts(value: String): List<String> = value
     .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
     .map { albumRecommendationTextKey(it) }
@@ -344,12 +349,16 @@ internal fun songMatchConfidence(
 ): Double {
     val titleScore = songTextCompatibility(requestedTitle, candidateTitle)
     if (titleScore <= 0.0) return 0.0
+    val comparableArtists = requestedArtist.isNotBlank() &&
+        candidateArtist.isNotBlank() &&
+        !isGenericSongArtist(candidateArtist) &&
+        !isGenericSongArtist(requestedArtist)
     val artistScore = songArtistCompatibility(requestedArtist, candidateArtist)
-    val base = if (requestedArtist.isBlank()) titleScore else titleScore * 0.6 + artistScore * 0.4
+    val base = if (comparableArtists) titleScore * 0.6 + artistScore * 0.4 else titleScore * 0.85
     val requestedVariants = songVariantTags(requestedTitle)
     val candidateVariants = songVariantTags(candidateTitle)
     var confidence = base
-    if (requestedArtist.isNotBlank() && artistScore < MIN_SONG_ARTIST_AGREEMENT) confidence *= 0.45
+    if (comparableArtists && artistScore < MIN_SONG_ARTIST_AGREEMENT) confidence *= 0.45
     if ((candidateVariants - requestedVariants).isNotEmpty()) confidence *= 0.5
     if ((requestedVariants - candidateVariants).isNotEmpty()) confidence *= 0.7
     return confidence.coerceIn(0.0, 1.0)
@@ -614,7 +623,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         } catch (_: Throwable) {
             emptyList()
         }
-        if (songs.isNotEmpty()) return@withContext bestSongMatch(title, artist, songs)
+        bestSongMatch(title, artist, songs)?.let { return@withContext it }
         bestSongMatch(title, artist, search(query, SONG_MATCH_CANDIDATE_LIMIT, languageCode))
     }
 

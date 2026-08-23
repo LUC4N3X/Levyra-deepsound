@@ -357,7 +357,6 @@ class AndroidAutoLibrary(context: Context) {
         database.downloadedTracksDao()
             .page(limit = window.limit, offset = window.offset)
             .map { it.toAutoTrack() }
-            .distinctTracks()
     }
 
     private suspend fun playlists(window: AndroidAutoPageWindow = PLAYLIST_WINDOW): List<Playlist> = withContext(Dispatchers.IO) {
@@ -654,7 +653,7 @@ class AndroidAutoLibrary(context: Context) {
         const val EXTRA_SOURCE = "levyra.auto.SOURCE"
         private const val MAX_FOLDER_TRACKS = 80
         private const val MAX_PLAYLISTS = 60
-        private const val MAX_PAGE_ITEMS = 500
+        private const val MAX_PAGE_ITEMS = 100
         private val DERIVED_WINDOW = AndroidAutoPageWindow.limited(MAX_FOLDER_TRACKS)
         private val PLAYLIST_WINDOW = AndroidAutoPageWindow.limited(MAX_PLAYLISTS)
         private const val SEARCH_TTL_MS = 3L * 60L * 1000L

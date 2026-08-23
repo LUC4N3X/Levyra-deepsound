@@ -83,6 +83,7 @@ private val PanelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
 private val CardShape = RoundedCornerShape(20.dp)
 private val ChipShape = RoundedCornerShape(14.dp)
 private const val DISABLED_ALPHA = 0.42f
+private val EqualizerHandleRadius = 5.dp
 
 @Composable
 internal fun AudioSettingsPanel(
@@ -382,15 +383,8 @@ private fun AudioPanelHeader(
 
 @Composable
 private fun AudioSectionLabel(text: String) {
-    val code = LocalLevyraStrings.current.code
-    val locale = remember(code) { Locale.forLanguageTag(code.replace('_', '-')) }
-    val label = remember(text, locale) {
-        text.trim().lowercase(locale).replaceFirstChar { character ->
-            if (character.isLowerCase()) character.titlecase(locale) else character.toString()
-        }
-    }
     Text(
-        label,
+        text,
         color = LevyraMuted,
         fontSize = 12.sp,
         fontWeight = FontWeight.Black,
@@ -663,6 +657,7 @@ private fun EqualizerCurve(
         if (levels.size == bandCount) levels else LevyraAudioPresets.flatLevels
     }
     var activeBand by remember { mutableIntStateOf(-1) }
+    val handleRadiusPx = with(LocalDensity.current) { EqualizerHandleRadius.toPx() }
     val curveColor = LevyraCyan
     val gridColor = LevyraMuted.copy(alpha = 0.28f)
     val handleFill = LevyraPanel
@@ -691,7 +686,7 @@ private fun EqualizerCurve(
                     detectTapGestures { offset ->
                         val band = bandAt(offset.x, size.width, bandCount)
                         activeBand = band
-                        onBandLevel(band, LevyraAudioPresets.bandLevelFromVerticalFraction(offset.y / size.height))
+                        onBandLevel(band, bandLevelAt(offset.y, size.height.toFloat(), handleRadiusPx))
                     }
                 }
                 .pointerInput(enabled, bandCount) {
@@ -703,10 +698,7 @@ private fun EqualizerCurve(
                     ) { change, _ ->
                         val band = bandAt(change.position.x, size.width, bandCount)
                         activeBand = band
-                        onBandLevel(
-                            band,
-                            LevyraAudioPresets.bandLevelFromVerticalFraction(change.position.y / size.height)
-                        )
+                        onBandLevel(band, bandLevelAt(change.position.y, size.height.toFloat(), handleRadiusPx))
                         change.consume()
                     }
                 }
@@ -718,7 +710,7 @@ private fun EqualizerCurve(
                     gridColor = gridColor,
                     handleFill = handleFill,
                     activeBand = activeBand,
-                    handleRadius = with(density) { 5.dp.toPx() },
+                    handleRadius = handleRadiusPx,
                     strokeWidth = with(density) { 2.dp.toPx() }
                 )
             }
@@ -733,9 +725,11 @@ private fun EqualizerCurve(
                             .semantics {
                                 contentDescription = "$frequency Hz"
                                 stateDescription = decibels(LevyraAudioPresets.bandDb(level))
-                                setProgress { target ->
-                                    onBandLevel(index, target.roundToInt())
-                                    true
+                                if (enabled) {
+                                    setProgress { target ->
+                                        onBandLevel(index, target.roundToInt())
+                                        true
+                                    }
                                 }
                             }
                     )
@@ -756,6 +750,13 @@ private fun EqualizerCurve(
             }
         }
     }
+}
+
+private fun bandLevelAt(y: Float, height: Float, handleRadius: Float): Int {
+    val half = height / 2f
+    val usable = (half - handleRadius * 2f).coerceAtLeast(1f)
+    val fraction = 0.5f - ((half - y) / usable) / 2f
+    return LevyraAudioPresets.bandLevelFromVerticalFraction(fraction)
 }
 
 private fun bandAt(x: Float, width: Int, bandCount: Int): Int {

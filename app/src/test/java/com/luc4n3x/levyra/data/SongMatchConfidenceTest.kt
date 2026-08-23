@@ -69,6 +69,17 @@ class SongMatchConfidenceTest {
     }
 
     @Test
+    fun channelPlaceholderArtistFallsBackToTheTitleOnly() {
+        assertTrue(confidence("Bohemian Rhapsody", "Queen", "Bohemian Rhapsody", "YouTube") >= MIN_SONG_MATCH_CONFIDENCE)
+        assertTrue(confidence("Bohemian Rhapsody", "Queen", "Bohemian Rhapsody", "") >= MIN_SONG_MATCH_CONFIDENCE)
+    }
+
+    @Test
+    fun placeholderArtistDoesNotRescueAWrongTitle() {
+        assertTrue(confidence("Bohemian Rhapsody", "Queen", "Tokyo Drift", "YouTube") < MIN_SONG_MATCH_CONFIDENCE)
+    }
+
+    @Test
     fun wrongFirstResultDoesNotWinOverTheCorrectCandidate() {
         val candidates = listOf(
             track("wrong", "Hello (Karaoke Version)", "Karaoke Universe"),
