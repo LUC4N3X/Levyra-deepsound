@@ -48,7 +48,9 @@ internal fun replacementStartPosition(
 }
 
 internal fun isRecoverablePlaybackErrorCode(errorCode: Int): Boolean =
-    errorCode in 2000..2008 ||
+    errorCode == PlaybackException.ERROR_CODE_REMOTE_ERROR ||
+        errorCode == PlaybackException.ERROR_CODE_TIMEOUT ||
+        errorCode in 2000..2008 ||
         errorCode in 3001..3004 ||
         errorCode in 4001..4005
 
