@@ -61,30 +61,25 @@ internal fun stabilizeResolvingPlaybackUi(
     val currentTrack = current.currentTrack ?: return current
     if (playbackIdentity(previousTrack) != playbackIdentity(currentTrack)) return current
 
-    val stableDuration = current.durationMs.takeIf { it > 0L } ?: previous.durationMs.coerceAtLeast(0L)
-    val candidatePosition = current.positionMs.takeIf { it > 0L } ?: previous.positionMs.coerceAtLeast(0L)
+    val lostPosition = current.positionMs <= 0L && previous.positionMs > 0L
+    val lostDuration = current.durationMs <= 0L && previous.durationMs > 0L
+    val lostBuffer = current.bufferedPositionMs <= 0L && previous.bufferedPositionMs > 0L
+    if (!lostPosition && !lostDuration && !lostBuffer) return current
+
+    val stableDuration = if (lostDuration) previous.durationMs else current.durationMs
+    val candidatePosition = if (lostPosition) previous.positionMs else current.positionMs
     val stablePosition = if (stableDuration > 0L) candidatePosition.coerceAtMost(stableDuration) else candidatePosition
-    val candidateBuffered = current.bufferedPositionMs.takeIf { it > 0L }
-        ?: previous.bufferedPositionMs.coerceAtLeast(stablePosition)
+    val candidateBuffered = if (lostBuffer) previous.bufferedPositionMs else current.bufferedPositionMs
     val stableBuffered = if (stableDuration > 0L) {
         candidateBuffered.coerceIn(stablePosition, stableDuration)
     } else {
         candidateBuffered.coerceAtLeast(stablePosition)
     }
-    val stablePlaying = current.isPlaying || previous.isPlaying
-
-    if (
-        stablePosition == current.positionMs &&
-        stableBuffered == current.bufferedPositionMs &&
-        stableDuration == current.durationMs &&
-        stablePlaying == current.isPlaying
-    ) return current
 
     return current.copy(
         positionMs = stablePosition,
         bufferedPositionMs = stableBuffered,
-        durationMs = stableDuration,
-        isPlaying = stablePlaying
+        durationMs = stableDuration
     )
 }
 
@@ -92,8 +87,14 @@ abstract class LevyraScreenViewModel(
     protected val root: LevyraViewModel,
     projection: (LevyraUiState) -> Any
 ) : ViewModel() {
+    private var lastPublishedState = root.state.value
+
     val state: StateFlow<LevyraUiState> = root.state
-        .scan(root.state.value, ::stabilizeResolvingPlaybackUi)
+        .map { current ->
+            stabilizeResolvingPlaybackUi(lastPublishedState, current).also { stable ->
+                lastPublishedState = stable
+            }
+        }
         .distinctUntilChanged { previous, current -> projection(previous) == projection(current) }
         .stateIn(
             scope = viewModelScope,
