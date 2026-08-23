@@ -100,7 +100,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "voicesSubtitle" to "השירים עם הכי הרבה תגובות, כאנרגיה חיה",
     "totalComments" to "סך כל התגובות",
     "engagement" to "מעורבות",
-    "audioEngine" to "מנוע שמע מתקדם",
+    "audioEngine" to "שמע",
     "audioEngineSubtitle" to "אקולייזר, מעבר הדרגתי, עוצמה, קצב, גובה צליל וניגון רציף",
     "equalizer" to "אקולייזר",
     "equalizerSubtitle" to "אפקטים אמיתיים עם הגדרות מוכנות, הגברת בס וסראונד וירטואלי",

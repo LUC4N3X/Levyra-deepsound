@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
@@ -1240,8 +1241,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     private fun upgradeThumbnail(url: String): String {
         if (url.isBlank()) return url
-        return url.replace(Regex("=w\\d+-h\\d+.*$"), "=w1200-h1200-l90-rj")
-            .replace(Regex("=s\\d+.*$"), "=s1200")
+        return LevyraPersonalOrbit.upscaledArtworkUrl(url)
     }
 
     private fun collectByKey(value: Any?, key: String, out: MutableList<JSONObject>) {

@@ -470,8 +470,9 @@ class PlaybackService : MediaLibraryService() {
                 if (controller.packageName == packageName) {
                     commandBuilder.add(platformTokenCommand)
                 }
-                return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
                     .setAvailableSessionCommands(commandBuilder.build())
+                    .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
                     .build()
             }
 
@@ -562,7 +563,7 @@ class PlaybackService : MediaLibraryService() {
                 params: LibraryParams?
             ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
                 return libraryListFuture(params) {
-                    paginate(autoLibrary.children(parentId), page, pageSize)
+                    autoLibrary.children(parentId, page, pageSize)
                 }
             }
 
@@ -1022,8 +1023,7 @@ class PlaybackService : MediaLibraryService() {
             track
         } else {
             if (!hasInternetCapableNetwork()) throw IOException("Connessione Internet non disponibile")
-            val query = listOf(track.title, track.artist).filter { it.isNotBlank() }.joinToString(" ")
-            val match = musicRepository.searchOne(query, LevyraPreferences(this).languageCode())
+            val match = musicRepository.searchSongMatch(track.title, track.artist, LevyraPreferences(this).languageCode())
             match?.copy(
                 title = track.title.ifBlank { match.title },
                 artist = track.artist.ifBlank { match.artist },
