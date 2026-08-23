@@ -2,9 +2,19 @@
 set -uo pipefail
 
 payload="$(cat 2>/dev/null || true)"
-command -v python3 >/dev/null 2>&1 || exit 0
 
-printf '%s' "$payload" | python3 -c '
+python_cmd=()
+if command -v python3 >/dev/null 2>&1; then
+  python_cmd=(python3)
+elif command -v python >/dev/null 2>&1; then
+  python_cmd=(python)
+elif command -v py >/dev/null 2>&1; then
+  python_cmd=(py -3)
+else
+  exit 0
+fi
+
+printf '%s' "$payload" | "${python_cmd[@]}" -c '
 import json
 import re
 import sys
@@ -28,6 +38,16 @@ if any(marker in prompt for marker in AUTOMATED_MARKERS):
 
 ROUTES = [
     (
+        "levyra-project-manager",
+        "requirements, roadmap, active phase, acceptance criteria, or implementation handoff",
+        r"requirements?|requisit|roadmap|acceptance criteria|criteri.*accett|active phase|fase attiv|task status|stato.*task|milestone|implementation handoff|handoff.*implement|docs/project/(?:spec|roadmap|tasks)",
+    ),
+    (
+        "levyra-openclaw-orchestrator",
+        "OpenClaw delegation or Levyra worker/reviewer/CI coordination",
+        r"openclaw|levyra-worker|levyra-reviewer|levyra-ci|delegat.*(?:agent|runtime|review|ci)|orchestrat",
+    ),
+    (
         "levyra-real-engineering",
         "non-trivial engineering, debugging, requirements, or architecture",
         r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug",
@@ -49,13 +69,13 @@ ROUTES = [
     ),
     (
         "levyra-compose",
-        "Compose UI, performance, accessibility, or state projection",
-        r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|animation|animazion|layout|jank|recomposition|ricompos|scroll|perfetto|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
+        "Compose UI, accessibility, lifecycle, or state projection",
+        r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|layout|recomposition|ricompos|scroll|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
     ),
     (
         "levyra-android-performance",
         "Android runtime profiling or measured performance",
-        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android",
+        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|memory leak|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android",
     ),
     (
         "levyra-r8-proguard",
@@ -75,7 +95,12 @@ ROUTES = [
     (
         "levyra-motion-artwork",
         "motion artwork",
-        r"motion artwork|motion|artwork|copertin|cover art",
+        r"motion artwork|animated artwork|animated cover|canvas|copertin.*animat|cover art.*animat",
+    ),
+    (
+        "levyra-desktop",
+        "Windows Desktop, Compose Multiplatform, libvlc, packaging, or desktop updates",
+        r"\bdesktop\b|windows client|compose multiplatform|libvlc|mini player|mini-player|protocol registration|wix|msi|desktop update|desktop release",
     ),
     (
         "levyra-ci-workflows",
@@ -102,17 +127,32 @@ ROUTES = [
         "runtime, pre-merge, or release validation",
         r"release|rilasci|versionname|versioncode|\bversion\b|versione|\bapk\b|signing|firma|tag\b|publish|pubblic|emulator|emulatore|physical device|device test|test dispositivo|\badb\b|connectedcheck|smoke test|runtime verification|runtime validation|verifica runtime|pre.?merge",
     ),
+    (
+        "levyra-engineering",
+        "genuine cross-domain work or repository architecture orientation",
+        r"cross.?domain|pi[uù].*sottosistem|multiple subsystems|several subsystems|repository orientation|architecture orientation|orient.*(?:repo|codebase|architett)",
+    ),
 ]
 
 matched = [(skill, topic) for skill, topic, pattern in ROUTES if re.search(pattern, prompt)]
 matched_skills = {skill for skill, _ in matched}
 companions = []
+
 if "levyra-compose" in matched_skills and "levyra-android-performance" in matched_skills:
     companions.append(("levyra-real-engineering", "non-trivial Compose performance debugging"))
 if "levyra-r8-proguard" in matched_skills:
     companions.append(("levyra-release-check", "minified release validation"))
 if "levyra-android-intent-security" in matched_skills:
     companions.append(("levyra-security-review", "Android component-boundary security review"))
+if "levyra-design-taste" in matched_skills:
+    if "levyra-desktop" in matched_skills:
+        companions.append(("levyra-desktop", "Desktop visual implementation"))
+    elif re.search(r"android|compose|player|now playing|home|screen|schermat|ui|grafica|interfaccia", prompt):
+        companions.append(("levyra-compose", "Android visual implementation"))
+if "levyra-openclaw-orchestrator" in matched_skills:
+    companions.append(("levyra-context-efficiency", "compact delegation context"))
+    companions.append(("levyra-project-manager", "delegated acceptance criteria and handoff"))
+
 for skill, topic in companions:
     if skill not in matched_skills:
         matched.append((skill, topic))
@@ -120,17 +160,21 @@ for skill, topic in companions:
 
 lines = [
     "Levyra context budget: search/path/symbol first; read bounded ranges; expand only on a concrete need; do not reread unchanged evidence.",
-    "Keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics raw when compression could change the conclusion.",
+    "Root AGENTS.md is imported by .claude/CLAUDE.md and is mandatory repository context.",
+    "Evidence-gated completion: for non-trivial work define observable acceptance gates; only direct evidence is PASS; FAIL/BLOCKED/UNRUN stay open.",
     "Before delivering code, invoke /code-review when available (otherwise the code-review stage), fix actionable findings, then deliver the reviewed final code/diff.",
 ]
 
 if matched:
-    lines += ["", "Matching skills:"]
+    lines += ["", "Mandatory skill load:"]
     for skill, topic in matched:
         lines.append("- %s -> %s" % (topic, skill))
     lines += [
         "",
-        "Invoke matching skills before broad reading/editing. Apply AI_ENGINEERING_GUARDRAILS.md. "
+        "Invoke every matching project skill above before broad Read/Grep/Edit/Write/Bash work. "
+        "Do not merely acknowledge the skill name. After a .claude/skills bridge is invoked, "
+        "follow it to the canonical .agents/skills/<skill-name>/SKILL.md before editing. "
+        "Apply AI_ENGINEERING_GUARDRAILS.md and EVIDENCE_GATED_COMPLETION.md. "
         "Use the smallest verified change. New source code should be self-explanatory: add no "
         "explanatory comments; preserve only required license/tooling/suppression comments.",
     ]
