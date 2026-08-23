@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Levyra's automatic Claude Code jCodeMunch bootstrap contract."""
+"""Validate Levyra's automatic Claude Code bootstrap and context-loading contract."""
 
 from __future__ import annotations
 
@@ -8,6 +8,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+CLAUDE_BRIDGES = (
+    "levyra-project-manager",
+    "levyra-desktop",
+    "levyra-engineering",
+    "levyra-openclaw-orchestrator",
+)
 
 
 def read_json(relative_path: str, errors: list[str]) -> dict:
@@ -60,6 +67,12 @@ def main() -> int:
     if not isinstance(allowed, list) or "mcp__jcodemunch" not in allowed:
         errors.append(".claude/settings.json must allow the project jcodemunch MCP server")
 
+    skill_budget = settings.get("skillListingBudgetFraction") if isinstance(settings, dict) else None
+    if not isinstance(skill_budget, (int, float)) or skill_budget < 0.02:
+        errors.append(
+            ".claude/settings.json skillListingBudgetFraction must be at least 0.02"
+        )
+
     hooks = settings.get("hooks") if isinstance(settings, dict) else None
     groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
     matching_group = None
@@ -98,6 +111,68 @@ def main() -> int:
         if jcodemunch_handler is not None and jcodemunch_handler.get("timeout") != 600:
             errors.append("Claude jCodeMunch SessionStart timeout must be 600 seconds")
 
+    prompt_groups = hooks.get("UserPromptSubmit") if isinstance(hooks, dict) else None
+    prompt_commands: list[str] = []
+    if isinstance(prompt_groups, list):
+        for group in prompt_groups:
+            if not isinstance(group, dict):
+                continue
+            for handler in group.get("hooks") or []:
+                if isinstance(handler, dict) and handler.get("type") == "command":
+                    prompt_commands.append(str(handler.get("command", "")))
+    if not any("user-prompt-submit.sh" in command for command in prompt_commands):
+        errors.append(
+            ".claude/settings.json must run user-prompt-submit.sh on UserPromptSubmit"
+        )
+
+    require_terms(
+        ".claude/CLAUDE.md",
+        (
+            "@../AGENTS.md",
+            "@../docs/ai/EVIDENCE_GATED_COMPLETION.md",
+            "Deterministic skill loading",
+            "Mandatory skill load",
+            "AI_ENGINEERING_GUARDRAILS.md",
+            "/code-review",
+        ),
+        errors,
+    )
+    require_terms(
+        ".claude/hooks/user-prompt-submit.sh",
+        (
+            "command -v python3",
+            "command -v python",
+            "command -v py",
+            "Mandatory skill load",
+            "Root AGENTS.md is imported",
+            "EVIDENCE_GATED_COMPLETION.md",
+            "levyra-project-manager",
+            "levyra-desktop",
+            "levyra-engineering",
+            "levyra-openclaw-orchestrator",
+        ),
+        errors,
+    )
+    require_terms(
+        "docs/ai/EVIDENCE_GATED_COMPLETION.md",
+        (
+            "Acceptance gates",
+            "PASS",
+            "FAIL",
+            "BLOCKED",
+            "UNRUN",
+            "Do not create `GATES.md`",
+        ),
+        errors,
+    )
+
+    for skill in CLAUDE_BRIDGES:
+        require_terms(
+            f".claude/skills/{skill}/SKILL.md",
+            (f".agents/skills/{skill}/SKILL.md",),
+            errors,
+        )
+
     require_terms(
         "scripts/claude-jcodemunch-mcp.sh",
         ("codex_jcodemunch.py", "serve", "python3", "python", "py"),
@@ -128,6 +203,7 @@ def main() -> int:
         ".mcp.json",
         ".claude/settings.json",
         ".claude/hooks/jcodemunch-start.sh",
+        ".claude/hooks/user-prompt-submit.sh",
         "scripts/claude-jcodemunch-mcp.sh",
     ):
         path = ROOT / relative_path
@@ -143,9 +219,10 @@ def main() -> int:
         return 1
 
     print(
-        "Claude bootstrap validation passed: project jCodeMunch MCP, automatic "
-        "startup/resume indexing, server-level tool permission, native-tool fallback, "
-        "and correctness-first context policy verified."
+        "Claude bootstrap validation passed: canonical AGENTS import, mandatory "
+        "skill routing, project bridges, skill-listing budget, evidence-gated "
+        "completion, jCodeMunch startup/resume indexing, native-tool fallback, "
+        "and permission safety verified."
     )
     return 0
 
