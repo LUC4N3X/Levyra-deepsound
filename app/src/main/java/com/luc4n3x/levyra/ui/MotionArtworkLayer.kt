@@ -288,9 +288,9 @@ private fun MotionArtworkStaticFallback(
     )
 
     val immersive = presentation == MotionArtworkPresentation.Immersive
-    val zoomDurationMs = if (immersive) 24_000 else 26_000
-    val horizontalDurationMs = if (immersive) 28_000 else 32_000
-    val verticalDurationMs = if (immersive) 32_000 else 36_000
+    val zoomDurationMs = if (immersive) 24_000 else 30_000
+    val horizontalDurationMs = if (immersive) 28_000 else 36_000
+    val verticalDurationMs = if (immersive) 32_000 else 42_000
 
     LaunchedEffect(animated, presentation) {
         if (!animated) {
@@ -372,25 +372,18 @@ private fun MotionArtworkStaticFallback(
                         translationY = artworkSize.height * 0.03f * verticalDrift.value * amount
                         rotationZ = horizontalDrift.value * amount * 0.4f
                     } else {
-                        val scale = 1f - amount * (0.020f - zoomPhase.value * 0.014f)
+                        val scale = 1f - amount * (0.016f - zoomPhase.value * 0.010f)
                         val safeInsetX = artworkSize.width * ((1f - scale).coerceAtLeast(0f) / 2f)
                         val safeInsetY = artworkSize.height * ((1f - scale).coerceAtLeast(0f) / 2f)
                         scaleX = scale
                         scaleY = scale
-                        translationX = safeInsetX * 0.72f * horizontalDrift.value * amount
-                        translationY = safeInsetY * 0.58f * verticalDrift.value * amount
+                        translationX = safeInsetX * 0.58f * horizontalDrift.value * amount
+                        translationY = safeInsetY * 0.42f * verticalDrift.value * amount
                         rotationZ = 0f
                     }
                 }
         ) {
             content()
-        }
-        if (!immersive) {
-            PlayerArtworkEffectsOverlay(
-                active = animated,
-                alpha = alpha,
-                modifier = Modifier.fillMaxSize()
-            )
         }
     }
 }
