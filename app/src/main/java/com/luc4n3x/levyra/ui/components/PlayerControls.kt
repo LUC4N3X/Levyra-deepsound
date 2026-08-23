@@ -145,14 +145,21 @@ fun PlayerGlassIconButton(
     shape: Shape = CircleShape,
     enabled: Boolean = true
 ) {
+    val compactMetaAction = size <= 36.dp
+    if (compactMetaAction && icon.name.substringAfterLast('.') == "AutoAwesome") return
+
     SpringIconButton(
         onClick = onClick,
-        modifier = modifier.sizeIn(
-            minWidth = LevyraPlayerDesign.MinimumTouchTarget,
-            minHeight = LevyraPlayerDesign.MinimumTouchTarget
-        ),
+        modifier = if (compactMetaAction) {
+            modifier.size(width = 40.dp, height = LevyraPlayerDesign.MinimumTouchTarget)
+        } else {
+            modifier.sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
+            )
+        },
         enabled = enabled,
-        pressedScale = 0.94f,
+        pressedScale = if (compactMetaAction) 0.91f else 0.94f,
         contentDescription = contentDescription
     ) {
         Box(
