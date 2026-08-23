@@ -67,6 +67,50 @@ class PersistentQueueOrderTest {
         assertEquals(playbackQueueIdentity(first), playbackQueueIdentity(second))
     }
 
+    @Test
+    fun rebuildingQueueAroundSameCurrentTrackKeepsRestoredPosition() {
+        val current = track(6)
+        val identity = playbackQueueIdentity(current)
+
+        assertEquals(
+            46_000L,
+            replacementQueuePositionMs(
+                previousIdentity = identity,
+                nextIdentity = identity,
+                currentPositionMs = 46_000L,
+                requestedPositionMs = 0L
+            )
+        )
+    }
+
+    @Test
+    fun rebuildingQueueForDifferentTrackStartsAtZero() {
+        assertEquals(
+            0L,
+            replacementQueuePositionMs(
+                previousIdentity = playbackQueueIdentity(track(6)),
+                nextIdentity = playbackQueueIdentity(track(7)),
+                currentPositionMs = 46_000L,
+                requestedPositionMs = 0L
+            )
+        )
+    }
+
+    @Test
+    fun explicitReplacementPositionWinsOverPreservedPosition() {
+        val identity = playbackQueueIdentity(track(6))
+
+        assertEquals(
+            12_000L,
+            replacementQueuePositionMs(
+                previousIdentity = identity,
+                nextIdentity = identity,
+                currentPositionMs = 46_000L,
+                requestedPositionMs = 12_000L
+            )
+        )
+    }
+
     private fun track(index: Int): Track = Track(
         id = "track-$index",
         title = "Track $index",
