@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchPage
 import com.luc4n3x.levyra.domain.SearchResults
@@ -273,6 +274,101 @@ private val ALBUM_RECOMMENDATION_STOP_WORDS = setOf(
     "music", "musica", "new", "nuovo", "nuova", "popular", "popolari", "italian", "italiano", "italiana"
 )
 
+internal const val MIN_SONG_MATCH_CONFIDENCE = 0.60
+
+internal const val SONG_MATCH_CANDIDATE_LIMIT = 12
+
+private const val MIN_SONG_ARTIST_AGREEMENT = 0.34
+
+private const val ARTIST_CONTAINMENT_COMPATIBILITY = 0.8
+
+private val SONG_VARIANT_MARKERS = mapOf(
+    "remix" to setOf("remix", "remixes", "rmx", "bootleg", "flip"),
+    "live" to setOf("live", "unplugged", "concert", "sessions"),
+    "acoustic" to setOf("acoustic", "acustico", "acustica"),
+    "instrumental" to setOf("instrumental", "strumentale"),
+    "karaoke" to setOf("karaoke"),
+    "cover" to setOf("cover"),
+    "speed" to setOf("nightcore", "sped", "slowed")
+)
+
+private fun songVariantTags(value: String): Set<String> {
+    val tokens = albumRecommendationTextKey(value).split(' ').filter { it.isNotBlank() }.toSet()
+    if (tokens.isEmpty()) return emptySet()
+    return SONG_VARIANT_MARKERS.asSequence()
+        .filter { (_, markers) -> markers.any { it in tokens } }
+        .map { (tag, _) -> tag }
+        .toSet()
+}
+
+private fun songArtistParts(value: String): List<String> = value
+    .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
+    .map { albumRecommendationTextKey(it) }
+    .filter { it.isNotBlank() }
+
+private fun songTextCompatibility(requested: String, candidate: String): Double {
+    val requestedKey = albumRecommendationTextKey(requested)
+    val candidateKey = albumRecommendationTextKey(candidate)
+    if (requestedKey.isBlank() || candidateKey.isBlank()) return 0.0
+    if (requestedKey == candidateKey) return 1.0
+    return recommendationCompatibility(requestedKey, candidateKey)
+}
+
+private fun songArtistCompatibility(requested: String, candidate: String): Double {
+    if (requested.isBlank() || candidate.isBlank()) return 0.0
+    val requestedParts = songArtistParts(requested)
+    val candidateParts = songArtistParts(candidate)
+    if (requestedParts.isEmpty() || candidateParts.isEmpty()) return 0.0
+    val pairwise = requestedParts.maxOf { requestedPart ->
+        candidateParts.maxOf { candidatePart -> songTextCompatibility(requestedPart, candidatePart) }
+    }
+    val whole = songTextCompatibility(requested, candidate)
+    val containment = requestedParts.any { requestedPart ->
+        candidateParts.any { candidatePart ->
+            minOf(requestedPart.length, candidatePart.length) >= 3 &&
+                (candidatePart.contains(requestedPart) || requestedPart.contains(candidatePart))
+        }
+    }
+    return maxOf(pairwise, whole, if (containment) ARTIST_CONTAINMENT_COMPATIBILITY else 0.0)
+}
+
+/**
+ * Confidence that a YouTube Music candidate is the same recording as the requested
+ * title/artist reference. Values below [MIN_SONG_MATCH_CONFIDENCE] must not be played.
+ */
+internal fun songMatchConfidence(
+    requestedTitle: String,
+    requestedArtist: String,
+    candidateTitle: String,
+    candidateArtist: String
+): Double {
+    val titleScore = songTextCompatibility(requestedTitle, candidateTitle)
+    if (titleScore <= 0.0) return 0.0
+    val artistScore = songArtistCompatibility(requestedArtist, candidateArtist)
+    val base = if (requestedArtist.isBlank()) titleScore else titleScore * 0.6 + artistScore * 0.4
+    val requestedVariants = songVariantTags(requestedTitle)
+    val candidateVariants = songVariantTags(candidateTitle)
+    var confidence = base
+    if (requestedArtist.isNotBlank() && artistScore < MIN_SONG_ARTIST_AGREEMENT) confidence *= 0.45
+    if ((candidateVariants - requestedVariants).isNotEmpty()) confidence *= 0.5
+    if ((requestedVariants - candidateVariants).isNotEmpty()) confidence *= 0.7
+    return confidence.coerceIn(0.0, 1.0)
+}
+
+internal fun bestSongMatch(
+    requestedTitle: String,
+    requestedArtist: String,
+    candidates: List<Track>
+): Track? = candidates
+    .asSequence()
+    .take(SONG_MATCH_CANDIDATE_LIMIT)
+    .map { candidate ->
+        candidate to songMatchConfidence(requestedTitle, requestedArtist, candidate.title, candidate.artist)
+    }
+    .filter { (_, confidence) -> confidence >= MIN_SONG_MATCH_CONFIDENCE }
+    .maxByOrNull { (_, confidence) -> confidence }
+    ?.first
+
 private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 16
 private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
 private const val ALBUM_RESULTS_PER_SEED = 8
@@ -497,6 +593,30 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     /** First YouTube Music match for a query, used to make chart entries playable. */
     suspend fun searchOne(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): Track? = search(query, 1, languageCode).firstOrNull()
+
+    /**
+     * Resolves a title/artist reference to a playable YouTube Music song. The Songs shelf is
+     * preferred and every candidate is scored, so an unrelated first result is rejected instead of
+     * being played. Returns null when no candidate is confident enough, leaving existing fallbacks
+     * in control.
+     */
+    suspend fun searchSongMatch(
+        title: String,
+        artist: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): Track? = withContext(Dispatchers.IO) {
+        val query = listOf(title, artist).map(String::trim).filter { it.isNotBlank() }.joinToString(" ")
+        if (query.length < 2) return@withContext null
+        val songs = try {
+            searchSongsPage(query, languageCode).items
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        if (songs.isNotEmpty()) return@withContext bestSongMatch(title, artist, songs)
+        bestSongMatch(title, artist, search(query, SONG_MATCH_CANDIDATE_LIMIT, languageCode))
+    }
 
     suspend fun searchEverything(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): SearchResults = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
@@ -2790,8 +2910,7 @@ return Track(
 
     private fun upgradeThumbnail(url: String): String {
         if (url.isBlank()) return url
-        return url.replace(Regex("=w\\d+-h\\d+.*$"), "=w1200-h1200-l90-rj")
-            .replace(Regex("=s\\d+.*$"), "=s1200")
+        return LevyraPersonalOrbit.upscaledArtworkUrl(url)
     }
 
     private fun stableSeed(value: String): Int {

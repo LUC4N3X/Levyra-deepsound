@@ -2231,6 +2231,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    fun resetEqualizer() {
+        val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                presetId = flat.id,
+                bandLevels = flat.levels,
+                bassBoost = flat.bassBoost,
+                virtualizer = flat.virtualizer,
+                preampDb = 0f
+            )
+        )
+    }
+
     fun setPreampDb(value: Float) {
         updateAudioSettings(_state.value.audioSettings.copy(preampDb = value))
     }
@@ -3520,7 +3533,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             entry
         } else {
             runCatching {
-                repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode)
+                repository.searchSongMatch(entry.title, entry.artist, _state.value.languageCode)
             }.getOrNull() ?: return null
         }
         if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
@@ -6796,7 +6809,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                 resolver.prefetch(youtube, _state.value.isVideoMode)
                             } else {
                                 val match = runCatching {
-                                    repository.searchOne("${track.title} ${track.artist}", _state.value.languageCode)
+                                    repository.searchSongMatch(track.title, track.artist, _state.value.languageCode)
                                 }.getOrNull()
                                 match?.let { resolver.prefetch(it, _state.value.isVideoMode) }
                             }
@@ -6926,7 +6939,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val resolved = if (youtube != null) {
             resolver.prefetch(youtube, videoMode)
         } else {
-            val match = runCatching { repository.searchOne("${track.title} ${track.artist}", _state.value.languageCode) }.getOrNull() ?: return
+            val match = runCatching { repository.searchSongMatch(track.title, track.artist, _state.value.languageCode) }.getOrNull() ?: return
             resolver.prefetch(match, videoMode)
         }
         if (resolved != null && prime) {

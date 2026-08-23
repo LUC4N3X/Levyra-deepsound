@@ -38,6 +38,28 @@ import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
+/** Window requested by a Media3 browser page, translated to an offset/limit pair. */
+internal data class AndroidAutoPageWindow(val offset: Int, val limit: Int) {
+    companion object {
+        fun of(page: Int, pageSize: Int): AndroidAutoPageWindow {
+            if (pageSize <= 0) return AndroidAutoPageWindow(0, Int.MAX_VALUE)
+            val offset = page.coerceAtLeast(0).toLong() * pageSize.toLong()
+            if (offset > Int.MAX_VALUE) return AndroidAutoPageWindow(Int.MAX_VALUE, 0)
+            return AndroidAutoPageWindow(offset.toInt(), pageSize)
+        }
+
+        fun limited(limit: Int): AndroidAutoPageWindow = AndroidAutoPageWindow(0, limit.coerceAtLeast(0))
+    }
+
+    fun clampedTo(maxItems: Int): AndroidAutoPageWindow = copy(limit = limit.coerceAtMost(maxItems))
+}
+
+internal fun <T> List<T>.androidAutoWindow(window: AndroidAutoPageWindow): List<T> {
+    if (window.limit <= 0 || window.offset >= size) return emptyList()
+    val end = (window.offset.toLong() + window.limit.toLong()).coerceAtMost(size.toLong()).toInt()
+    return subList(window.offset, end).toList()
+}
+
 class AndroidAutoLibrary(context: Context) {
     private val appContext = context.applicationContext
     private val favoritesStore = FavoritesStore(appContext)
@@ -68,26 +90,28 @@ class AndroidAutoLibrary(context: Context) {
 
     fun root(): MediaItem = folder(ID_ROOT, "Levyra", "Musica ottimizzata per Android Auto")
 
-    suspend fun children(parentId: String): List<MediaItem> = withContext(Dispatchers.IO) {
+    suspend fun children(parentId: String, page: Int = 0, pageSize: Int = 0): List<MediaItem> = withContext(Dispatchers.IO) {
+        val window = AndroidAutoPageWindow.of(page, pageSize).clampedTo(MAX_PAGE_ITEMS)
         when (parentId) {
-            ID_ROOT -> rootChildren()
-            ID_HOME -> homeChildren()
-            ID_QUEUE -> queueTracks().map { trackItem(it) }
-            ID_RECOMMENDED -> smartRecommended().map { trackItem(it) }
-            ID_ALBUMS -> albumChildren()
-            ID_ARTISTS -> artistChildren()
-            ID_HOME_DRIVER -> drivingMix().map { trackItem(it) }
-            ID_HOME_TOP_IT -> topLocal().map { trackItem(it) }
-            ID_HOME_OFFLINE -> downloads().map { trackItem(it) }
-            ID_FLOW -> flowTracks().map { trackItem(it) }
-            ID_FAVORITES -> favorites().map { trackItem(it) }
-            ID_DOWNLOADS -> downloads().map { trackItem(it) }
-            ID_RECENTS -> recents().map { trackItem(it) }
-            ID_PLAYLISTS -> playlists().map { playlist -> playlistFolder(playlist) }
+            ID_ROOT -> rootChildren().androidAutoWindow(window)
+            ID_HOME -> homeChildren().androidAutoWindow(window)
+            ID_QUEUE -> queueTracks(window).map { trackItem(it) }
+            ID_RECOMMENDED -> smartRecommended().androidAutoWindow(window).map { trackItem(it) }
+            ID_ALBUMS -> albumChildren().androidAutoWindow(window)
+            ID_ARTISTS -> artistChildren().androidAutoWindow(window)
+            ID_HOME_DRIVER -> drivingMix().androidAutoWindow(window).map { trackItem(it) }
+            ID_HOME_TOP_IT -> topLocal().androidAutoWindow(window).map { trackItem(it) }
+            ID_HOME_OFFLINE -> downloads(window).map { trackItem(it) }
+            ID_FLOW -> flowTracks().androidAutoWindow(window).map { trackItem(it) }
+            ID_FAVORITES -> favorites(window).map { trackItem(it) }
+            ID_DOWNLOADS -> downloads(window).map { trackItem(it) }
+            ID_RECENTS -> recents(window).map { trackItem(it) }
+            ID_PLAYLISTS -> playlists(window).map { playlist -> playlistFolder(playlist) }
             else -> when {
-                parentId.startsWith(ID_PLAYLIST_PREFIX) -> playlistTracks(parentId.removePrefix(ID_PLAYLIST_PREFIX)).map { trackItem(it) }
-                parentId.startsWith(ID_ALBUM_PREFIX) -> albumTracks(parentId).map { trackItem(it) }
-                parentId.startsWith(ID_ARTIST_PREFIX) -> artistTracks(parentId).map { trackItem(it) }
+                parentId.startsWith(ID_PLAYLIST_PREFIX) ->
+                    playlistTracks(parentId.removePrefix(ID_PLAYLIST_PREFIX), window).map { trackItem(it) }
+                parentId.startsWith(ID_ALBUM_PREFIX) -> albumTracks(parentId).androidAutoWindow(window).map { trackItem(it) }
+                parentId.startsWith(ID_ARTIST_PREFIX) -> artistTracks(parentId).androidAutoWindow(window).map { trackItem(it) }
                 else -> emptyList()
             }
         }
@@ -264,8 +288,8 @@ class AndroidAutoLibrary(context: Context) {
     private suspend fun Track.ensureYoutubeIdentity(): Track {
         if (streamUrl.isNotBlank() && !streamUrl.isLocalUri()) return this
         if (videoUrl.isNotBlank() && !id.startsWith("chart-", true) && !id.startsWith("auto-", true)) return this
-        val query = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ").cleanQuery()
-        val match = musicRepository.searchOne(query, contentLanguage()) ?: return this
+        val match = musicRepository.searchSongMatch(title.cleanQuery(), artist.cleanQuery(), contentLanguage())
+            ?: return this
         return match.copy(
             title = title.ifBlank { match.title },
             artist = artist.ifBlank { match.artist },
@@ -309,7 +333,7 @@ class AndroidAutoLibrary(context: Context) {
         return ID_TRACK_PREFIX + seed.sha256().take(24)
     }
 
-    private suspend fun queueTracks(): List<Track> = withContext(Dispatchers.IO) {
+    private suspend fun queueTracks(window: AndroidAutoPageWindow = DERIVED_WINDOW): List<Track> = withContext(Dispatchers.IO) {
         if (queueEngine.state.value.tracks.isEmpty()) {
             queueEngine.restore(
                 fallbackTracks = emptyList(),
@@ -318,27 +342,33 @@ class AndroidAutoLibrary(context: Context) {
                 fallbackRadioEnabled = true
             )
         }
-        queueEngine.state.value.tracks.take(MAX_FOLDER_TRACKS)
+        queueEngine.state.value.tracks.androidAutoWindow(window)
     }
 
-    private suspend fun favorites(): List<Track> = withContext(Dispatchers.IO) {
-        favoritesStore.load().distinctTracks().take(MAX_FOLDER_TRACKS)
+    private suspend fun favorites(window: AndroidAutoPageWindow = DERIVED_WINDOW): List<Track> = withContext(Dispatchers.IO) {
+        favoritesStore.load().distinctTracks().androidAutoWindow(window)
     }
 
-    private suspend fun recents(): List<Track> = withContext(Dispatchers.IO) {
-        preferences.loadRecentSearches().distinctTracks().take(MAX_FOLDER_TRACKS)
+    private suspend fun recents(window: AndroidAutoPageWindow = DERIVED_WINDOW): List<Track> = withContext(Dispatchers.IO) {
+        preferences.loadRecentSearches().distinctTracks().androidAutoWindow(window)
     }
 
-    private suspend fun downloads(): List<Track> = withContext(Dispatchers.IO) {
-        database.downloadedTracksDao().recent(MAX_FOLDER_TRACKS).map { it.toAutoTrack() }.distinctTracks()
+    private suspend fun downloads(window: AndroidAutoPageWindow = DERIVED_WINDOW): List<Track> = withContext(Dispatchers.IO) {
+        database.downloadedTracksDao()
+            .page(limit = window.limit, offset = window.offset)
+            .map { it.toAutoTrack() }
+            .distinctTracks()
     }
 
-    private suspend fun playlists(): List<Playlist> = withContext(Dispatchers.IO) {
-        playlistStore.loadAll().take(MAX_PLAYLISTS)
+    private suspend fun playlists(window: AndroidAutoPageWindow = PLAYLIST_WINDOW): List<Playlist> = withContext(Dispatchers.IO) {
+        playlistStore.loadAll().androidAutoWindow(window)
     }
 
-    private suspend fun playlistTracks(playlistId: String): List<Track> = withContext(Dispatchers.IO) {
-        playlistStore.load(playlistId)?.tracks.orEmpty().distinctTracks().take(MAX_FOLDER_TRACKS)
+    private suspend fun playlistTracks(
+        playlistId: String,
+        window: AndroidAutoPageWindow = DERIVED_WINDOW
+    ): List<Track> = withContext(Dispatchers.IO) {
+        playlistStore.load(playlistId)?.tracks.orEmpty().distinctTracks().androidAutoWindow(window)
     }
 
     private fun contentLanguage(): String = preferences.languageCode()
@@ -624,6 +654,9 @@ class AndroidAutoLibrary(context: Context) {
         const val EXTRA_SOURCE = "levyra.auto.SOURCE"
         private const val MAX_FOLDER_TRACKS = 80
         private const val MAX_PLAYLISTS = 60
+        private const val MAX_PAGE_ITEMS = 500
+        private val DERIVED_WINDOW = AndroidAutoPageWindow.limited(MAX_FOLDER_TRACKS)
+        private val PLAYLIST_WINDOW = AndroidAutoPageWindow.limited(MAX_PLAYLISTS)
         private const val SEARCH_TTL_MS = 3L * 60L * 1000L
         private const val MAX_SEARCH_CACHE_ENTRIES = 64
         private val VOICE_COMMAND_PREFIXES = listOf(

@@ -8,6 +8,11 @@ object LevyraPersonalOrbit {
 
     private const val RECORDING_DURATION_TOLERANCE_MS = 12_000L
 
+    private const val DEFAULT_ARTWORK_SIZE = 1200
+
+    private val artworkWidthHeightPattern = Regex("=w(\\d+)-h(\\d+)")
+    private val artworkSizePattern = Regex("=s(\\d+)")
+    private val googleArtworkHosts = listOf("googleusercontent.com/", "ggpht.com/")
     private val squareArtWidthHeightPattern = Regex("=w\\d+-h\\d+")
     private val squareArtSizePattern = Regex("=s\\d+")
     private val youtubeVideoIdPattern = Regex("^[A-Za-z0-9_-]{11}$")
@@ -260,6 +265,39 @@ object LevyraPersonalOrbit {
 
     fun youtubeFallbackArtwork(track: Track): String? =
         youtubeVideoId(track)?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
+
+    /**
+     * Requests a larger Google-hosted artwork without touching the query string of signed URLs and
+     * without turning a rectangular image into a square crop.
+     */
+    fun upscaledArtworkUrl(url: String, size: Int = DEFAULT_ARTWORK_SIZE): String {
+        val clean = url.trim()
+        if (clean.isEmpty()) return clean
+        val lower = clean.lowercase(Locale.ROOT)
+        if (!googleArtworkHosts.any(lower::contains)) return clean
+        val queryStart = clean.indexOf('?')
+        val path = if (queryStart >= 0) clean.substring(0, queryStart) else clean
+        val query = if (queryStart >= 0) clean.substring(queryStart) else ""
+        val target = size.coerceIn(64, 4096)
+        val resized = artworkWidthHeightPattern.find(path)?.let { match ->
+            val width = match.groupValues[1].toIntOrNull() ?: return@let null
+            val height = match.groupValues[2].toIntOrNull() ?: return@let null
+            if (width <= 0 || height <= 0) return@let null
+            val scaledWidth: Int
+            val scaledHeight: Int
+            if (width >= height) {
+                scaledWidth = target
+                scaledHeight = ((target.toLong() * height) / width).toInt().coerceAtLeast(1)
+            } else {
+                scaledHeight = target
+                scaledWidth = ((target.toLong() * width) / height).toInt().coerceAtLeast(1)
+            }
+            path.replaceRange(match.range, "=w$scaledWidth-h$scaledHeight")
+        } ?: artworkSizePattern.find(path)?.let { match ->
+            path.replaceRange(match.range, "=s$target")
+        } ?: path
+        return resized + query
+    }
 
     fun isVideoFrameArtworkUrl(url: String): Boolean {
         val lower = url.lowercase(Locale.ROOT)

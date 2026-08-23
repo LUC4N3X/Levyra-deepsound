@@ -57,6 +57,14 @@ object LevyraAudioPresets {
     const val SONY_XM5 = "autoeq_sony_xm5"
     const val SENNHEISER_HD600 = "autoeq_hd600"
     const val bandCount = 10
+    const val maxBandDb = 12f
+
+    val bandFrequencyLabels = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+
+    fun bandDb(level: Int): Float = level.coerceIn(-100, 100) / 100f * maxBandDb
+
+    fun bandLevelFromVerticalFraction(fraction: Float): Int =
+        ((1f - 2f * fraction.coerceIn(0f, 1f)) * 100f).toInt().coerceIn(-100, 100)
 
     val flatLevels = listOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
