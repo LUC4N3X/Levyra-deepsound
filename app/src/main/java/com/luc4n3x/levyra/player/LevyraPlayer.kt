@@ -102,6 +102,7 @@ class LevyraPlayer(context: Context) {
     private var videoSurfaceAttached = false
     private var renderedVideoFrame = false
     private var audioSettings = LevyraAudioSettings()
+    private var audioNormalization: Boolean? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var sponsorJob: Job? = null
 
@@ -384,12 +385,16 @@ class LevyraPlayer(context: Context) {
             pitch = pitch.coerceIn(0.5f, 2f)
         ).normalized()
         controller?.let { applyPlaybackParameters(it) }
+        audioNormalization?.let { normalization ->
+            PlaybackService.applyPremiumAudioSettings(audioSettings, normalization)
+        }
     }
 
     fun setPremiumAudioSettings(
         settings: LevyraAudioSettings,
         audioNormalization: Boolean
     ) {
+        this.audioNormalization = audioNormalization
         audioSettings = settings.normalized()
         controller?.let { applyPlaybackParameters(it) }
         PlaybackService.applyPremiumAudioSettings(audioSettings, audioNormalization)
