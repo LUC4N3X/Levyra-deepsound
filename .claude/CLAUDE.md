@@ -1,8 +1,12 @@
+@../AGENTS.md
+@../docs/ai/EVIDENCE_GATED_COMPLETION.md
+
 # Levyra Claude Code
 
-Use root `AGENTS.md` as the repository contract and
-`docs/ai/AI_ENGINEERING_GUARDRAILS.md` as the shared implementation guardrail.
-Apply nearer path-specific `AGENTS.md` files for files in scope.
+The root `AGENTS.md` imported above is the repository-wide operating contract.
+Apply every nearer path-specific `AGENTS.md` for files in scope. For
+production-code implementation or broad review also read
+`docs/ai/AI_ENGINEERING_GUARDRAILS.md`.
 
 ## Automatic project tooling
 
@@ -47,6 +51,9 @@ baseline without loading extra skill text.
 - For non-trivial implementation, use `Plan -> Execute -> Verify`: make a brief
   evidence-based plan, implement one coherent slice, verify it before expanding.
   Do not stop for approval unless the owner reserved a checkpoint.
+- Apply `docs/ai/EVIDENCE_GATED_COMPLETION.md`: no non-trivial task is complete
+  until every acceptance gate is backed by direct evidence or explicitly
+  reported as blocked/unverified.
 - Match the requested action mode. `inspect`, `review`, `diagnose`, and `report`
   authorize investigation only; `fix`, `update`, `address`, and `implement`
   authorize the requested code change and validation, but never publication.
@@ -58,13 +65,29 @@ baseline without loading extra skill text.
   functions, and explicit structure. Preserve only required license,
   generated/tool, lint/suppression, or real compatibility-contract comments.
 
-## Automatic skill routing
+## Deterministic skill loading
 
-Invoke every matching skill before broad reading/editing. Do not wait for the
-owner to name it.
+Claude must select skills from the task itself; the owner never has to name them.
+
+The `UserPromptSubmit` hook routes the prompt to matching project skills. Every
+skill listed by the hook under **Mandatory skill load** must be invoked before
+broad repository reading or editing. Do not merely mention, plan to use, or
+silently skip a routed skill.
+
+Project skills under `.claude/skills/` are intentionally thin bridges. After
+invoking a bridge, follow it to the canonical
+`.agents/skills/<skill-name>/SKILL.md` and apply that procedure before editing.
+If the hook is unavailable, use the table below manually. Never claim a skill was
+loaded when only its name or description was visible.
+
+Load only matching skills. Do not preload the whole skill tree.
+
+## Automatic skill routing
 
 | Task | Skill |
 | --- | --- |
+| Requirements, roadmap, active phase, acceptance criteria, task status, implementation handoff | `levyra-project-manager` |
+| OpenClaw delegation, Levyra worker/reviewer/CI coordination, evidence handoff | `levyra-openclaw-orchestrator` |
 | Non-trivial feature, architecture, unclear bug/regression, build/test failure, multi-step work | `levyra-real-engineering` |
 | Playback, queue, Media3, MediaSession, notification, Android Auto, audio/video mode | `levyra-player` |
 | InnerTube, extractor, stream resolution, retry/cache/fallback | `levyra-extractor` |
@@ -75,11 +98,13 @@ owner to name it.
 | R8/Proguard/minification/shrinking/keep rules/mapping/release-only shrinker failure | `levyra-r8-proguard` plus `levyra-release-check`; add `levyra-ci-workflows` for tooling changes |
 | Visual redesign/polish/hierarchy/spacing/typography/color/motion/reference/anti-AI-slop UI | `levyra-design-taste` plus matching UI skill |
 | Decorative motion artwork | `levyra-motion-artwork` |
+| Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
 | GitHub Actions/CI/F-Droid/Gradle/AGP/Kotlin/KSP/build cache/artifacts | `levyra-ci-workflows` |
 | Repository exploration, builds/tests/lint/logs/search/dependencies/Git/GitHub/CI/CodeRabbit/setup | `levyra-context-efficiency` |
 | Security/privacy/trust-boundary/supply-chain work | `levyra-security-review` |
 | Branch/commit/diff/pull-request review | `levyra-pr-review` plus affected skills |
 | Device/runtime/pre-merge/release/signing/APK validation | `levyra-release-check` |
+| Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
 
 ## Mandatory pre-delivery review
 
@@ -105,4 +130,5 @@ checks are not passes. Never claim unrun validation.
 
 Commit, push, PR, merge, tag, release, version changes, deployment, and
 repository settings remain owner-controlled. A `UserPromptSubmit` hook reinforces
-context budgeting and matching skill routes each turn.
+context budgeting, mandatory matching-skill loading, and evidence-gated
+completion each turn.

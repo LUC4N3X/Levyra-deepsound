@@ -7,7 +7,8 @@ authoritative for the instruction hierarchy, the complete "Native skill
 routing" table, the work method, the quality gate, and publication
 boundaries — do not restate that content here. Apply
 `../../docs/ai/AI_ENGINEERING_GUARDRAILS.md` before production-code
-implementation or broad review.
+implementation or broad review, and apply
+`../../docs/ai/EVIDENCE_GATED_COMPLETION.md` to non-trivial work.
 
 ## Antigravity-specific automation
 
@@ -51,6 +52,18 @@ remediation, human review, revalidation. RTK reduces command output; it is not
 validation authority — rerun the exact command raw whenever compact output
 hides required evidence. Keep exploit evidence, hashes, signatures, secret
 scans, and signing evidence raw.
+
+## Evidence-gated completion
+
+For non-trivial work, define the smallest useful acceptance gates before editing.
+Each required gate needs a condition, a proving check, and direct evidence.
+`FAIL`, `BLOCKED`, and `UNRUN` are not passes. Re-run a gate when later edits can
+invalidate its evidence, then inspect the final diff and perform the required
+pre-delivery review before calling implementation complete.
+
+Keep this lightweight: do not create tracking files or abstractions merely to
+record gates. Use `docs/project/TASKS.md` only when the work is already a tracked
+multi-phase project.
 
 ## Validation and publication
 
