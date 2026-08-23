@@ -307,8 +307,7 @@ We welcome community contributions, bug fixes, localization, and performance enh
     </td>
     <td valign="middle">
       <h3 style="margin: 0 0 6px 0;">
-        <a href="https://github.com/LUC4N3X">LUC4N3X</a>
-        &nbsp;<sub><code>Lead Systems Architect & Creator</code></sub>
+        <a href="https://github.com/LUC4N3X">LUC4N3X</a> &nbsp;·&nbsp; <code>Lead Systems Architect & Creator</code>
       </h3>
       <p style="margin: 0 0 10px 0;">
         Creator and lead systems architect of Levyra. Engineering low-latency Android audio pipelines (Media3 & ExoPlayer), standalone libvlc desktop cores, zero-telemetry SQLite vaults, and synchronized LRCLIB karaoke engines.
