@@ -298,46 +298,27 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 ## ✦ Author & Credits
 
-<div align="center">
-
-<a href="https://github.com/LUC4N3X">
-  <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="105" height="105" alt="LUC4N3X — Creator & Lead Developer" />
-</a>
-
-<br><br>
-
-### <a href="https://github.com/LUC4N3X">LUC4N3X</a>
-**Creator & Lead Systems Architect**
-
-<sub>Dedicated to audio sovereignty, bit-perfect playback engines, and zero-telemetry client architecture.</sub>
-
-<br><br>
-
-<p align="center">
-  <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub" /></a>&nbsp;&nbsp;
-  <a href="https://github.com/LUC4N3X?tab=repositories"><img src="https://img.shields.io/badge/Portfolio-Repositories-00D2FF?style=for-the-badge&logo=git&logoColor=black&labelColor=0d1117" alt="Repositories" /></a>
-</p>
-
-<table align="center">
+<table width="100%">
   <tr>
-    <td align="center" width="220">
-      <sub><b>Audio Core & Playback</b></sub><br>
-      <sub>Media3 · ExoPlayer · libvlc Engine</sub>
+    <td width="130" align="center" valign="middle">
+      <a href="https://github.com/LUC4N3X">
+        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="96" height="96" alt="LUC4N3X" />
+      </a>
     </td>
-    <td align="center" width="220">
-      <sub><b>Modern UI Canvas</b></sub><br>
-      <sub>Jetpack Compose · Compose Multiplatform</sub>
-    </td>
-    <td align="center" width="220">
-      <sub><b>Pipeline & Security</b></sub><br>
-      <sub>Stream Extractors · 100% Offline Vault</sub>
+    <td valign="middle">
+      <h3><a href="https://github.com/LUC4N3X">LUC4N3X</a> &nbsp;<sub><code>Lead Systems Architect & Creator</code></sub></h3>
+      <p>
+        Creator and core architect of Levyra. Specializing in low-latency Android audio pipelines (Media3 & ExoPlayer), standalone libvlc desktop cores, zero-telemetry SQLite vaults, and synchronized LRCLIB karaoke engines.
+      </p>
+      <div>
+        <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="GitHub Profile" /></a>&nbsp;
+        <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin Multiplatform" />&nbsp;
+        <img src="https://img.shields.io/badge/Android-Media3%20%2F%20Compose-38BDF8?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Android Media3" />&nbsp;
+        <img src="https://img.shields.io/badge/Desktop-libvlc%20Core-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc Desktop" />
+      </div>
     </td>
   </tr>
 </table>
-
-</div>
-
-<br>
 
 ### Acknowledgments
 
