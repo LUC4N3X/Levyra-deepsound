@@ -15,14 +15,21 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
@@ -34,6 +41,7 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -42,13 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
@@ -190,59 +199,116 @@ fun PlayerTransportControls(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val skipIconSize = if (compact) LevyraPlayerDesign.SkipGlyphCompact else LevyraPlayerDesign.SkipGlyph
-    val modeIconSize = if (compact) LevyraPlayerDesign.ModeGlyphCompact else LevyraPlayerDesign.ModeGlyph
-    val primarySize = if (compact) LevyraPlayerDesign.PrimarySizeCompact else LevyraPlayerDesign.PrimarySize
-    val primaryIconSize = if (compact) LevyraPlayerDesign.PrimaryGlyphCompact else LevyraPlayerDesign.PrimaryGlyph
-    val modeAccent = accents.primary.playerMix(accents.secondary, 0.28f)
+    val previousInteraction = remember { MutableInteractionSource() }
+    val primaryInteraction = remember { MutableInteractionSource() }
+    val nextInteraction = remember { MutableInteractionSource() }
+    val previousPressed by previousInteraction.collectIsPressedAsState()
+    val primaryPressed by primaryInteraction.collectIsPressedAsState()
+    val nextPressed by nextInteraction.collectIsPressedAsState()
+    val weightSpec = if (animated) LevyraPlayerDesign.expressiveSpring<Float>() else snap()
+
+    val previousWeight by animateFloatAsState(
+        targetValue = when {
+            previousPressed -> 0.66f
+            primaryPressed -> 0.36f
+            else -> 0.48f
+        },
+        animationSpec = weightSpec,
+        label = "player-previous-weight"
+    )
+    val primaryWeight by animateFloatAsState(
+        targetValue = when {
+            primaryPressed -> 1.88f
+            previousPressed || nextPressed -> 1.12f
+            else -> 1.38f
+        },
+        animationSpec = weightSpec,
+        label = "player-primary-weight"
+    )
+    val nextWeight by animateFloatAsState(
+        targetValue = when {
+            nextPressed -> 0.66f
+            primaryPressed -> 0.36f
+            else -> 0.48f
+        },
+        animationSpec = weightSpec,
+        label = "player-next-weight"
+    )
+
+    val modeAccent = accents.primary.playerMix(accents.secondary, 0.30f)
+    val transportHeight = if (compact) LevyraPlayerDesign.TransportHeightCompact else LevyraPlayerDesign.TransportHeight
+    val sideGlyph = if (compact) LevyraPlayerDesign.TransportSideGlyphCompact else LevyraPlayerDesign.TransportSideGlyph
+    val primaryGlyph = if (compact) LevyraPlayerDesign.TransportPrimaryGlyphCompact else LevyraPlayerDesign.TransportPrimaryGlyph
+    val modeGlyph = if (compact) LevyraPlayerDesign.ModeGlyphCompact else LevyraPlayerDesign.ModeGlyph
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = if (compact) LevyraPlayerDesign.SpaceXs else LevyraPlayerDesign.SpaceSm),
+            .padding(horizontal = if (compact) LevyraPlayerDesign.SpaceXxs else LevyraPlayerDesign.SpaceXs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)
     ) {
         PlayerModeToggleButton(
             icon = Icons.Rounded.Shuffle,
             contentDescription = labels.shuffle,
             active = shuffleOn,
-            iconSize = modeIconSize,
+            iconSize = modeGlyph,
             accent = modeAccent,
+            compact = compact,
             animated = animated,
             onClick = onShuffle
         )
-        PlayerSkipButton(
-            icon = Icons.Rounded.SkipPrevious,
-            contentDescription = labels.previous,
-            iconSize = skipIconSize,
-            compact = compact,
-            onClick = onPrevious
-        )
-        PlayerPrimaryButton(
-            isPlaying = isPlaying,
-            isResolving = isResolving,
-            size = primarySize,
-            iconSize = primaryIconSize,
-            compact = compact,
-            animated = animated,
-            playLabel = labels.play,
-            pauseLabel = labels.pause,
-            onClick = onToggle
-        )
-        PlayerSkipButton(
-            icon = Icons.Rounded.SkipNext,
-            contentDescription = labels.next,
-            iconSize = skipIconSize,
-            compact = compact,
-            onClick = onNext
-        )
+
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .height(transportHeight),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp)
+        ) {
+            PlayerTransportSideButton(
+                icon = Icons.Rounded.SkipPrevious,
+                contentDescription = labels.previous,
+                iconSize = sideGlyph,
+                interactionSource = previousInteraction,
+                modifier = Modifier
+                    .weight(previousWeight)
+                    .fillMaxHeight(),
+                onClick = onPrevious
+            )
+            PlayerTransportPrimaryButton(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                iconSize = primaryGlyph,
+                compact = compact,
+                animated = animated,
+                playLabel = labels.play,
+                pauseLabel = labels.pause,
+                interactionSource = primaryInteraction,
+                modifier = Modifier
+                    .weight(primaryWeight)
+                    .fillMaxHeight(),
+                onClick = onToggle
+            )
+            PlayerTransportSideButton(
+                icon = Icons.Rounded.SkipNext,
+                contentDescription = labels.next,
+                iconSize = sideGlyph,
+                interactionSource = nextInteraction,
+                modifier = Modifier
+                    .weight(nextWeight)
+                    .fillMaxHeight(),
+                onClick = onNext
+            )
+        }
+
         PlayerModeToggleButton(
             icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
             contentDescription = labels.repeat,
             active = repeatOn,
-            iconSize = modeIconSize,
+            iconSize = modeGlyph,
             accent = modeAccent,
+            compact = compact,
             animated = animated,
             onClick = onRepeat
         )
@@ -250,22 +316,37 @@ fun PlayerTransportControls(
 }
 
 @Composable
-private fun PlayerSkipButton(
+private fun PlayerTransportSideButton(
     icon: ImageVector,
     contentDescription: String,
     iconSize: Dp,
-    compact: Boolean,
+    interactionSource: MutableInteractionSource,
+    modifier: Modifier,
     onClick: () -> Unit
 ) {
-    val buttonSize = if (compact) 58.dp else 64.dp
+    val pressed by interactionSource.collectIsPressedAsState()
+    val fill by animateColorAsState(
+        targetValue = if (pressed) Color.White.copy(alpha = 0.17f) else Color.White.copy(alpha = 0.105f),
+        animationSpec = LevyraPlayerDesign.standardTween(140),
+        label = "player-side-fill"
+    )
+
     SpringIconButton(
         onClick = onClick,
-        modifier = Modifier.size(buttonSize),
-        pressedScale = 0.84f,
-        contentDescription = contentDescription
+        modifier = modifier,
+        pressedScale = 0.97f,
+        contentDescription = contentDescription,
+        interactionSource = interactionSource
     ) {
         Box(
-            modifier = Modifier.size(buttonSize),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(fill, LevyraPlayerDesign.ShapePill)
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    Color.White.copy(alpha = if (pressed) 0.18f else 0.10f),
+                    LevyraPlayerDesign.ShapePill
+                ),
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
@@ -284,40 +365,37 @@ private fun PlayerModeToggleButton(
     active: Boolean,
     iconSize: Dp,
     accent: Color,
+    compact: Boolean,
     animated: Boolean,
     onClick: () -> Unit
 ) {
     val tint by animateColorAsState(
-        targetValue = if (active) Color.White else Color.White.copy(alpha = 0.42f),
+        targetValue = if (active) accent.playerMix(Color.White, 0.62f) else Color.White.copy(alpha = 0.42f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-tint"
     )
     val surfaceAlpha by animateFloatAsState(
-        targetValue = if (active) 0.14f else 0f,
+        targetValue = if (active) 0.15f else 0f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-surface"
     )
-    val indicatorAlpha by animateFloatAsState(
-        targetValue = if (active) 1f else 0f,
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
-        label = "player-toggle-indicator"
-    )
+    val visualSize = if (compact) 38.dp else 40.dp
 
     SpringIconButton(
         onClick = onClick,
         modifier = Modifier
             .size(LevyraPlayerDesign.ModeSlot)
             .semantics { toggleableState = ToggleableState(active) },
-        pressedScale = 0.84f,
+        pressedScale = 0.88f,
         contentDescription = contentDescription
     ) {
         Box(
             modifier = Modifier
-                .size(LevyraPlayerDesign.ModeSlot)
+                .size(visualSize)
                 .background(accent.copy(alpha = surfaceAlpha), CircleShape)
                 .border(
                     LevyraPlayerDesign.Hairline,
-                    Color.White.copy(alpha = surfaceAlpha * 0.55f),
+                    Color.White.copy(alpha = surfaceAlpha * 0.60f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -326,14 +404,6 @@ private fun PlayerModeToggleButton(
                 icon = icon,
                 tint = tint,
                 modifier = Modifier.size(iconSize)
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(LevyraPlayerDesign.ModeIndicator)
-                    .graphicsLayer { alpha = indicatorAlpha }
-                    .background(accent.playerMix(Color.White, 0.42f), CircleShape)
             )
         }
     }
@@ -363,46 +433,76 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, ani
             tint = tint,
             modifier = Modifier
                 .size(iconSize)
-                .offset(x = if (playing) 0.dp else 1.5.dp)
+                .offset(x = if (playing) 0.dp else 1.dp)
         )
     }
 }
 
 @Composable
-private fun PlayerPrimaryButton(
+private fun PlayerTransportPrimaryButton(
     isPlaying: Boolean,
     isResolving: Boolean,
-    size: Dp,
     iconSize: Dp,
     compact: Boolean,
     animated: Boolean,
     playLabel: String,
     pauseLabel: String,
+    interactionSource: MutableInteractionSource,
+    modifier: Modifier,
     onClick: () -> Unit
 ) {
+    val pressed by interactionSource.collectIsPressedAsState()
+    val fill by animateColorAsState(
+        targetValue = if (pressed) Color.White.copy(alpha = 0.86f) else Color.White.copy(alpha = 0.94f),
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(130) else snap(),
+        label = "player-primary-fill"
+    )
+    val label = if (isPlaying) pauseLabel else playLabel
+
     SpringIconButton(
         onClick = onClick,
-        modifier = Modifier.size(size),
-        pressedScale = 0.84f,
-        contentDescription = if (isPlaying) pauseLabel else playLabel
+        modifier = modifier,
+        pressedScale = 0.985f,
+        contentDescription = label,
+        interactionSource = interactionSource
     ) {
         Box(
-            modifier = Modifier.size(size),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(fill, LevyraPlayerDesign.ShapePill)
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    Color.White.copy(alpha = 0.30f),
+                    LevyraPlayerDesign.ShapePill
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 26.dp else 30.dp),
-                    strokeWidth = 2.8.dp,
-                    color = Color.White
+                    modifier = Modifier.size(if (compact) 24.dp else 26.dp),
+                    strokeWidth = 2.6.dp,
+                    color = LevyraPlayerDesign.PrimaryContent
                 )
             } else {
-                PlayerPrimaryIcon(
-                    isPlaying = isPlaying,
-                    iconSize = iconSize,
-                    tint = Color.White,
-                    animated = animated
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    PlayerPrimaryIcon(
+                        isPlaying = isPlaying,
+                        iconSize = iconSize,
+                        tint = LevyraPlayerDesign.PrimaryContent,
+                        animated = animated
+                    )
+                    Spacer(modifier = Modifier.width(if (compact) 6.dp else 8.dp))
+                    Text(
+                        text = label,
+                        color = LevyraPlayerDesign.PrimaryContent,
+                        fontSize = if (compact) 13.sp else 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
