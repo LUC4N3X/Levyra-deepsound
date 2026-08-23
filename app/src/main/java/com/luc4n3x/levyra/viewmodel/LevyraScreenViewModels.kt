@@ -52,12 +52,48 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+internal fun stabilizeResolvingPlaybackUi(
+    previous: LevyraUiState,
+    current: LevyraUiState
+): LevyraUiState {
+    if (!current.isResolving) return current
+    val previousTrack = previous.currentTrack ?: return current
+    val currentTrack = current.currentTrack ?: return current
+    if (playbackIdentity(previousTrack) != playbackIdentity(currentTrack)) return current
+
+    val stableDuration = current.durationMs.takeIf { it > 0L } ?: previous.durationMs.coerceAtLeast(0L)
+    val candidatePosition = current.positionMs.takeIf { it > 0L } ?: previous.positionMs.coerceAtLeast(0L)
+    val stablePosition = if (stableDuration > 0L) candidatePosition.coerceAtMost(stableDuration) else candidatePosition
+    val candidateBuffered = current.bufferedPositionMs.takeIf { it > 0L }
+        ?: previous.bufferedPositionMs.coerceAtLeast(stablePosition)
+    val stableBuffered = if (stableDuration > 0L) {
+        candidateBuffered.coerceIn(stablePosition, stableDuration)
+    } else {
+        candidateBuffered.coerceAtLeast(stablePosition)
+    }
+    val stablePlaying = current.isPlaying || previous.isPlaying
+
+    if (
+        stablePosition == current.positionMs &&
+        stableBuffered == current.bufferedPositionMs &&
+        stableDuration == current.durationMs &&
+        stablePlaying == current.isPlaying
+    ) return current
+
+    return current.copy(
+        positionMs = stablePosition,
+        bufferedPositionMs = stableBuffered,
+        durationMs = stableDuration,
+        isPlaying = stablePlaying
+    )
+}
+
 abstract class LevyraScreenViewModel(
     protected val root: LevyraViewModel,
     projection: (LevyraUiState) -> Any
 ) : ViewModel() {
     val state: StateFlow<LevyraUiState> = root.state
-        .map { it }
+        .scan(root.state.value, ::stabilizeResolvingPlaybackUi)
         .distinctUntilChanged { previous, current -> projection(previous) == projection(current) }
         .stateIn(
             scope = viewModelScope,
@@ -93,7 +129,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
             started = SharingStarted.WhileSubscribed(5_000L),
             initialValue = buildHomeRenderSnapshot(root.state.value)
         )
-    val playbackProgress: StateFlow<HomePlaybackProgress> = root.state
+    val playbackProgress: StateFlow<HomePlaybackProgress> = state
         .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
         .distinctUntilChanged()
         .stateIn(
