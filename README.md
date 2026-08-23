@@ -298,27 +298,38 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 ## ✦ Author & Credits
 
-<table align="center">
+<table width="100%">
   <tr>
-    <td align="center" width="110">
+    <td width="125" align="center" valign="middle">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=160&w=160&fit=cover&mask=circle" width="75" alt="LUC4N3X" />
+        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=260&w=260&fit=cover&mask=circle&maxage=7d" width="88" height="88" alt="LUC4N3X" />
       </a>
     </td>
-    <td>
-      <strong>LUC4N3X</strong><br>
-      Creator & Lead Developer<br>
-      <sub>Audio engine architecture, stream extraction, Compose UI design, and offline pipelines.</sub><br>
-      <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub"></a>
+    <td valign="middle">
+      <h3 style="margin: 0 0 6px 0;">
+        <a href="https://github.com/LUC4N3X">LUC4N3X</a> &nbsp;·&nbsp; <code>Lead Systems Architect & Creator</code>
+      </h3>
+      <p style="margin: 0 0 10px 0;">
+        Creator and lead systems architect of Levyra. Engineering low-latency Android audio pipelines (Media3 & ExoPlayer), standalone libvlc desktop cores, zero-telemetry SQLite vaults, and synchronized LRCLIB karaoke engines.
+      </p>
+      <div>
+        <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="GitHub Profile" /></a>&nbsp;
+        <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin Multiplatform" />&nbsp;
+        <img src="https://img.shields.io/badge/Android-Media3%20%2F%20Compose-38BDF8?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Android Media3" />&nbsp;
+        <img src="https://img.shields.io/badge/Desktop-libvlc%20Core-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc Desktop" />
+      </div>
     </td>
   </tr>
 </table>
 
+<br>
+
 ### Acknowledgments
-* [**Metrolist**](https://github.com/MetrolistGroup/Metrolist): Design inspiration for Compose UI architecture and theming.
-* [**LevyraExtractor**](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor): Custom stream extraction engine maintained for Levyra.
-* [**PipePipeExtractor**](https://github.com/InfinityLoop1308/PipePipeExtractor): Extractor foundation from the NewPipe and PipePipe open-source communities.
-* [**LRCLIB**](https://lrclib.net/): Synchronized lyric database powering real-time karaoke sync.
+
+* **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Architectural inspiration for fluid Compose UI navigation and dynamic OLED palettes.
+* **[LevyraExtractor](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor)** — Dedicated audio stream extraction and metadata parser maintained for high-fidelity playback.
+* **[PipePipe & NewPipe Communities](https://github.com/InfinityLoop1308/PipePipeExtractor)** — Foundational open-source stream extraction logic, parser protocols, and media routing.
+* **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
 
 ---
 
