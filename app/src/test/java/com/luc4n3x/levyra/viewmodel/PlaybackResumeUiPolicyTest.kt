@@ -36,6 +36,25 @@ class PlaybackResumeUiPolicyTest {
     }
 
     @Test
+    fun sameTrackResolutionKeepsFreshNonZeroTimelineValues() {
+        val track = track("video123456")
+        val previous = LevyraUiState(
+            currentTrack = track,
+            positionMs = 93_000L,
+            bufferedPositionMs = 108_000L,
+            durationMs = 180_000L
+        )
+        val resolving = previous.copy(
+            isResolving = true,
+            positionMs = 94_000L,
+            bufferedPositionMs = 110_000L,
+            durationMs = 181_000L
+        )
+
+        assertEquals(resolving, stabilizeResolvingPlaybackUi(previous, resolving))
+    }
+
+    @Test
     fun differentTrackResolutionDoesNotReusePreviousPlaybackState() {
         val previous = LevyraUiState(
             currentTrack = track("video123456"),
