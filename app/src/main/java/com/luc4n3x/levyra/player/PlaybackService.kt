@@ -85,6 +85,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+import java.io.File
 import java.io.IOException
 import java.util.ArrayList
 
@@ -110,6 +111,7 @@ class PlaybackService : MediaLibraryService() {
     private var queueTransitionJob: Job? = null
     private var queueTransitionMonitorJob: Job? = null
     private var memoryGuardJob: Job? = null
+    private var playbackMemoryDiagnosticJob: Job? = null
     private var memoryGuardHighSamples = 0
     private var lastMemoryRecycleElapsedMs = 0L
     private var transitionPlayer: ExoPlayer? = null
@@ -130,6 +132,7 @@ class PlaybackService : MediaLibraryService() {
     private var lastPlaybackExpected: Boolean? = null
     private var lastPlaybackHeartbeatAtMs = 0L
     private var appliedPlayerWakeMode = C.WAKE_MODE_NETWORK
+    private var mediaItemTransitionCount = 0L
 
     private data class PreparedQueueNext(
         val sourceIdentity: String,
@@ -385,6 +388,7 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = player
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                mediaItemTransitionCount++
                 updatePlayerWakeMode(player, mediaItem)
                 applyPlaybackTrackSelection(player, mediaItem)
                 if (serviceRecoveryJob?.isActive != true && stickyRestoreJob?.isActive != true) {
@@ -683,6 +687,7 @@ class PlaybackService : MediaLibraryService() {
         activateServiceAndApplyPendingAudioSettings()
         startQueueTransitionMonitor(player)
         startMemoryGuard(player)
+        startPlaybackMemoryDiagnostics(player)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -1387,6 +1392,65 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    private fun startPlaybackMemoryDiagnostics(player: ExoPlayer) {
+        playbackMemoryDiagnosticJob?.cancel()
+        val externalFiles = getExternalFilesDir(null) ?: return
+        val log = PlaybackMemoryDiagnosticLog(
+            File(File(externalFiles, "diagnostics"), PlaybackMemoryDiagnosticLog.FILE_NAME)
+        )
+        playbackMemoryDiagnosticJob = serviceScope.launch {
+            val initialized = withContext(Dispatchers.IO) {
+                runCatching { log.prepare() }
+                    .onFailure { Timber.w(it, "Playback memory diagnostics unavailable") }
+                    .isSuccess
+            }
+            if (!initialized) return@launch
+            while (isActive) {
+                val playbackState = player.playbackState
+                val playWhenReady = player.playWhenReady
+                val isPlaying = player.isPlaying
+                val audioSessionId = player.audioSessionId
+                val positionBucket30s = player.currentPosition.coerceAtLeast(0L) / 30_000L
+                val mediaId = player.currentMediaItem?.mediaId.orEmpty()
+                val transitionCount = mediaItemTransitionCount
+                val activeResolverJobs = resolver.activeResolveCount()
+                val prefetchActiveCount = if (servicePrefetchJob?.isActive == true) 1 else 0
+                val recoveryActive = serviceRecoveryJob?.isActive == true
+                val transitionActive = queueTransitionJob?.isActive == true || transitionPlayer != null
+                val memoryGuardSamples = memoryGuardHighSamples
+                val runtime = Runtime.getRuntime()
+                val sample = withContext(Dispatchers.IO) {
+                    PlaybackMemoryDiagnosticSample(
+                        timestampMs = System.currentTimeMillis(),
+                        elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                        processMemory = log.processMemory(),
+                        nativeHeapBytes = Debug.getNativeHeapAllocatedSize(),
+                        javaHeapBytes = runtime.totalMemory() - runtime.freeMemory(),
+                        playbackState = playbackState,
+                        playWhenReady = playWhenReady,
+                        isPlaying = isPlaying,
+                        audioSessionId = audioSessionId,
+                        positionBucket30s = positionBucket30s,
+                        mediaId = mediaId,
+                        transitionCount = transitionCount,
+                        activeResolverJobs = activeResolverJobs,
+                        prefetchActiveCount = prefetchActiveCount,
+                        recoveryActive = recoveryActive,
+                        transitionActive = transitionActive,
+                        memoryGuardHighSamples = memoryGuardSamples
+                    )
+                }
+                val appended = withContext(Dispatchers.IO) {
+                    runCatching { log.append(sample) }
+                        .onFailure { Timber.w(it, "Playback memory diagnostic sample failed") }
+                        .getOrDefault(false)
+                }
+                if (!appended) return@launch
+                delay(PlaybackMemoryDiagnosticLog.SAMPLE_INTERVAL_MS)
+            }
+        }
+    }
+
     private fun recyclePlaybackPipeline(
         player: ExoPlayer,
         thresholdBytes: Long,
@@ -1464,6 +1528,7 @@ class PlaybackService : MediaLibraryService() {
         playbackWatchdogJob?.cancel()
         cancelQueueTransition()
         memoryGuardJob?.cancel()
+        playbackMemoryDiagnosticJob?.cancel()
         queueTransitionMonitorJob?.cancel()
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
