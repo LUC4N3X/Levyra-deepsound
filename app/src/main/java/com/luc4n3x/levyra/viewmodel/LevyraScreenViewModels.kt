@@ -85,16 +85,22 @@ internal fun stabilizeResolvingPlaybackUi(
     )
 }
 
+internal class ResolvingPlaybackUiStabilizer(initial: LevyraUiState) {
+    private var previous = initial
+
+    fun apply(current: LevyraUiState): LevyraUiState =
+        stabilizeResolvingPlaybackUi(previous, current).also { stable -> previous = stable }
+}
+
 abstract class LevyraScreenViewModel(
     protected val root: LevyraViewModel,
     projection: (LevyraUiState) -> Any
 ) : ViewModel() {
+    private val playbackUiStabilizer = ResolvingPlaybackUiStabilizer(root.state.value)
+
     protected val stablePlaybackState: StateFlow<LevyraUiState> = flow {
-        var previous = root.state.value
         root.state.collect { current ->
-            val stable = stabilizeResolvingPlaybackUi(previous, current)
-            emit(stable)
-            previous = stable
+            emit(playbackUiStabilizer.apply(current))
         }
     }.stateIn(
         scope = viewModelScope,
