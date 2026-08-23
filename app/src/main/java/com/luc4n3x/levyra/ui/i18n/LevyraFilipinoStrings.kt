@@ -100,7 +100,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "voicesSubtitle" to "Mga kantang may pinakamaraming komento, bilang buhay na enerhiya",
     "totalComments" to "Kabuuang komento",
     "engagement" to "Pakikipag-ugnayan",
-    "audioEngine" to "Premium audio engine",
+    "audioEngine" to "Audio",
     "audioEngineSubtitle" to "Equalizer, crossfade, loudness, tempo, pitch, at gapless",
     "equalizer" to "Equalizer",
     "equalizerSubtitle" to "Tunay na mga effect gamit ang preset, bass boost, at virtualizer",

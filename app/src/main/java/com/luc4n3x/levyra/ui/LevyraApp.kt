@@ -496,16 +496,16 @@ private val LevyraTabScrimHeight = 22.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
 
-private val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
+internal val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
 private val LevyraReadableOnArtwork: Color get() = Color.White
 private val LevyraReadableMutedOnArtwork: Color get() = Color.White.copy(alpha = 0.78f)
-private val LevyraAdaptiveHairline: Color get() = if (LevyraIsLight) Color(0x26101322) else Color.White.copy(alpha = 0.105f)
+internal val LevyraAdaptiveHairline: Color get() = if (LevyraIsLight) Color(0x26101322) else Color.White.copy(alpha = 0.105f)
 private val LevyraAdaptiveSoftHairline: Color get() = if (LevyraIsLight) Color(0x16101322) else Color.White.copy(alpha = 0.08f)
-private val LevyraAdaptiveCard: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
+internal val LevyraAdaptiveCard: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
 private val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
-private val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
+internal val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
 private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
-private val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
+internal val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
 
 @Composable
 private fun HomeSectionInset(content: @Composable () -> Unit) {
@@ -1590,7 +1590,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             }
 
             AnimatedVisibility(visible = state.showAudioQualityPanel, enter = miniEnter, exit = miniExit) {
-                AudioQualityPanel(
+                AudioSettingsPanel(
                     selected = state.audioQuality,
                     volumePercent = 33,
                     audioSettings = state.audioSettings,
@@ -1608,6 +1608,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onTempo = viewModel::setPlaybackSpeed,
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
+                    onResetEqualizer = viewModel::resetEqualizer,
                     onClose = viewModel::closeAudioQualityPanel
                 )
             }
@@ -19369,314 +19370,6 @@ private fun GlassMessage(text: String, color: Color) {
 
 
 
-
-@Composable
-private fun AudioQualityPanel(
-    selected: String,
-    volumePercent: Int,
-    audioSettings: LevyraAudioSettings,
-    onSelect: (String) -> Unit,
-    onEqualizerEnabled: (Boolean) -> Unit,
-    onPreset: (String) -> Unit,
-    onBandLevel: (Int, Int) -> Unit,
-    onBassBoost: (Int) -> Unit,
-    onVirtualizer: (Int) -> Unit,
-    onPreamp: (Float) -> Unit,
-    onLimiter: (Boolean) -> Unit,
-    onCrossfade: (Int) -> Unit,
-    onDjSoft: (Boolean) -> Unit,
-    onReplayGain: (Boolean) -> Unit,
-    onTempo: (Float) -> Unit,
-    onPitch: (Float) -> Unit,
-    onGapless: (Boolean) -> Unit,
-    onClose: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val blocker = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.58f))
-            .clickable(interactionSource = blocker, indication = null) { onClose() },
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Surface(
-            color = Color(0xFF11131C),
-            shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.94f)
-                .navigationBarsPadding()
-                .clickable(interactionSource = blocker, indication = null) {}
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(56.dp)
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(Color.White.copy(alpha = 0.38f))
-                        )
-                    }
-                }
-                item {
-                    Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(28.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier.background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        Color(0xFF667AA9).copy(alpha = 0.95f),
-                                        Color(0xFF536890).copy(alpha = 0.98f),
-                                        LevyraViolet.copy(alpha = 0.72f)
-                                    )
-                                )
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 18.dp, vertical = 18.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .background(Color.White.copy(alpha = 0.10f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Rounded.Equalizer, null, tint = LevyraText.copy(alpha = 0.9f), modifier = Modifier.size(30.dp))
-                                }
-                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(strings.audioEngine, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                                    Text(strings.audioEngineSubtitle, color = LevyraText.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.Bold, lineHeight = 16.sp)
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Rounded.GraphicEq, null, tint = LevyraText, modifier = Modifier.size(17.dp))
-                                    Text("$volumePercent%", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(strings.audioQuality, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            listOf(
-                                strings.audioQualityAuto to "Auto",
-                                strings.audioQualityHigh to "High",
-                                strings.audioQualityLow to "Low"
-                            ).forEach { (label, quality) ->
-                                AudioQualityChoice(
-                                    label = label,
-                                    selected = selected.equals(quality, ignoreCase = true),
-                                    modifier = Modifier.weight(1f),
-                                    onClick = { onSelect(quality) }
-                                )
-                            }
-                        }
-                    }
-                }
-                item {
-                    PremiumToggleRow(
-                        title = strings.equalizer,
-                        subtitle = strings.equalizerSubtitle,
-                        checked = audioSettings.equalizerEnabled,
-                        onChecked = onEqualizerEnabled
-                    )
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(strings.preset, color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black)
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 4.dp)) {
-                            items(LevyraAudioPresets.presets, key = { it.id }) { preset ->
-                                PremiumPresetChip(
-                                    label = strings.localizedAudioPresetLabel(preset.id, preset.fallbackLabel),
-                                    selected = audioSettings.presetId == preset.id,
-                                    onClick = { onPreset(preset.id) }
-                                )
-                            }
-                        }
-                    }
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("10-band DSP", color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                        val frequencies = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
-                        audioSettings.bandLevels.forEachIndexed { index, level ->
-                            PremiumSliderRow(
-                                title = "${frequencies.getOrElse(index) { "-" }} Hz",
-                                valueLabel = String.format(Locale.US, "%+.1f dB", level / 100f * 12f),
-                                value = level.toFloat(),
-                                range = -100f..100f,
-                                steps = 39,
-                                onValue = { onBandLevel(index, it.roundToInt()) }
-                            )
-                        }
-                    }
-                }
-                item {
-                    PremiumSliderRow(
-                        strings.preamp,
-                        String.format(Locale.US, "%+.1f dB", audioSettings.preampDb),
-                        audioSettings.preampDb,
-                        -12f..3f,
-                        29
-                    ) { onPreamp((it * 2f).roundToInt() / 2f) }
-                }
-                item { PremiumToggleRow(strings.truePeakLimiter, "−1.0 dBTP", audioSettings.limiterEnabled, onLimiter) }
-                item { PremiumSliderRow(strings.bassBoost, "${audioSettings.bassBoost}%", audioSettings.bassBoost.toFloat(), 0f..100f, 0) { onBassBoost(it.toInt()) } }
-                item { PremiumSliderRow(strings.virtualizer, "${audioSettings.virtualizer}%", audioSettings.virtualizer.toFloat(), 0f..100f, 0) { onVirtualizer(it.toInt()) } }
-                item { PremiumSliderRow(strings.crossfade, "${audioSettings.crossfadeSeconds}s", audioSettings.crossfadeSeconds.toFloat(), 0f..12f, 11) { onCrossfade(it.toInt()) } }
-                item { PremiumToggleRow(strings.djSoft, "${strings.crossfade} ${audioSettings.crossfadeSeconds}s", audioSettings.djSoftMode, onDjSoft) }
-                item { PremiumToggleRow(strings.replayGain, strings.volume, audioSettings.replayGainEnabled, onReplayGain) }
-                item { PremiumSliderRow(strings.tempo, "${trimSpeed(audioSettings.playbackSpeed)}x", audioSettings.playbackSpeed, 0.5f..2.0f, 14) { onTempo((it * 100f).toInt() / 100f) } }
-                item { PremiumSliderRow(strings.pitch, "${trimSpeed(audioSettings.pitch)}x", audioSettings.pitch, 0.5f..2.0f, 14) { onPitch((it * 100f).toInt() / 100f) } }
-                item { PremiumToggleRow(strings.gapless, strings.gapless, audioSettings.gaplessEnabled, onGapless) }
-                item {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Surface(
-                            color = Color(0xFFB8C8F4),
-                            shape = RoundedCornerShape(22.dp),
-                            modifier = Modifier
-                                .width(132.dp)
-                                .height(58.dp)
-                                .pressable(onClick = onClose)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(strings.done, color = Color(0xFF263049), fontSize = 16.sp, fontWeight = FontWeight.Black)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PremiumToggleRow(title: String, subtitle: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    Surface(
-        color = Color.White.copy(alpha = 0.045f),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Switch(
-                checked = checked,
-                onCheckedChange = onChecked,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = LevyraText,
-                    checkedTrackColor = LevyraCyan.copy(alpha = 0.55f),
-                    uncheckedThumbColor = LevyraMuted,
-                    uncheckedTrackColor = Color.White.copy(alpha = 0.08f)
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun PremiumSliderRow(title: String, valueLabel: String, value: Float, range: ClosedFloatingPointRange<Float>, steps: Int, onValue: (Float) -> Unit) {
-    Surface(
-        color = Color.White.copy(alpha = 0.045f),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Surface(color = LevyraCyan.copy(alpha = 0.13f), shape = RoundedCornerShape(999.dp)) {
-                    Text(valueLabel, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
-                }
-            }
-            Slider(
-                value = value.coerceIn(range.start, range.endInclusive),
-                onValueChange = onValue,
-                valueRange = range,
-                steps = steps,
-                colors = SliderDefaults.colors(
-                    thumbColor = LevyraText,
-                    activeTrackColor = LevyraCyan,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.18f)
-                )
-            )
-        }
-    }
-}
-
-@Composable
-private fun PremiumPresetChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) LevyraCyan.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.055f),
-        shape = RoundedCornerShape(999.dp),
-        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.08f)),
-        modifier = Modifier
-            .height(42.dp)
-            .pressable(onClick = onClick)
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 14.dp)) {
-            Text(label, color = if (selected) LevyraText else LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Black)
-        }
-    }
-}
-
-@Composable
-private fun AudioQualityChoice(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) Color(0xFFB8C8F4) else Color.White.copy(alpha = 0.035f),
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, if (selected) Color.Transparent else Color.White.copy(alpha = 0.05f)),
-        modifier = modifier
-            .height(64.dp)
-            .pressable(onClick = onClick)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = label,
-                color = if (selected) Color(0xFF263049) else LevyraMuted,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black
-            )
-        }
-    }
-}
 
 @Composable
 private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Unit) {

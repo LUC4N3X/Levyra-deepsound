@@ -20,6 +20,16 @@ interface DownloadedTracksDao {
     @Query("SELECT * FROM downloaded_tracks ORDER BY savedAt DESC LIMIT :limit")
     suspend fun recent(limit: Int = 80): List<DownloadEntity>
 
+    @Query(
+        """
+        SELECT * FROM downloaded_tracks
+        WHERE id IN (SELECT MAX(id) FROM downloaded_tracks GROUP BY uri)
+        ORDER BY savedAt DESC, id DESC
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    suspend fun page(limit: Int, offset: Int): List<DownloadEntity>
+
     @Query("SELECT * FROM downloaded_tracks WHERE trackId = :trackId ORDER BY savedAt DESC LIMIT 1")
     suspend fun byTrackId(trackId: String): DownloadEntity?
 
