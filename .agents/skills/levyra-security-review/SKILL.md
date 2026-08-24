@@ -15,7 +15,22 @@ description: Perform an evidence-based Levyra security review and Codex Security
    persistence, signing, release, update, and GitHub workflow configuration.
 4. Load `levyra-context-efficiency` only for noisy non-sensitive output. Keep
    exploit evidence, security validation, signatures, checksums, secrets scans,
-   and exact reproduction output raw.
+   and exact reproduction output raw inside the trusted working context.
+
+## Finding lifecycle
+
+Every security candidate has an explicit evidence state:
+
+- `SUSPECTED`: a static pattern, warning, model observation, or incomplete path;
+- `SUPPORTED`: evidence is consistent with the finding but exploit/failure impact is not fully established;
+- `VALIDATED`: a concrete safe reproduction or equivalent evidence establishes the path and consequence;
+- `DISPROVED`: evidence shows the candidate does not represent the claimed failure;
+- `RETRACTED`: a previously reported/supported finding has been explicitly withdrawn after newer evidence invalidated it;
+- `BLOCKED`: decisive validation cannot be completed safely or with the available environment.
+
+Do not silently drop a finding that was previously presented as real. If later evidence disproves it, mark it `RETRACTED`, state what new evidence changed the conclusion, and remove it from downstream remediation/severity decisions.
+
+A warning, HTTP status, scanner hit, lint message, dependency advisory, or source-code pattern is not by itself a validated vulnerability.
 
 ## Closed-loop security method
 
@@ -45,7 +60,9 @@ concrete path, trigger, and consequence.
 Attempt to reproduce the issue safely in an isolated or controlled environment.
 A suspected issue remains unconfirmed until evidence supports exploitability or
 a concrete security failure. Preserve the exact command, input, output, exit
-status, and relevant artifact or test result.
+status, and relevant artifact or test result in the trusted working context.
+
+Before calling the candidate validated, challenge at least one plausible benign or non-exploitable explanation when one exists: expected authorization, input normalization, validation order, unreachable code, environment-only behavior, stale dependency metadata, or an already-enforced boundary. The purpose is to kill false positives, not to add ceremony when the failure path is already directly proven.
 
 Never run destructive, persistence, credential-theft, external-target, or
 production-impacting proof-of-concept activity. Use minimal local fixtures and
@@ -69,6 +86,20 @@ owner control.
 After remediation, rerun the original safe reproduction or equivalent
 regression test. State whether the attack path is closed, which checks passed,
 which checks were blocked, and what residual risk remains.
+
+## Evidence hygiene
+
+Raw security evidence may contain more sensitive material than the finding itself. Before an artifact, excerpt, screenshot, HAR, log, request/response pair, stack trace, or command output is placed in a PR, issue, review comment, public report, or other durable shared location:
+
+- redact bearer/access/refresh tokens, cookies, authorization headers, API keys, passwords, signing material, private keys, and session identifiers;
+- redact unrelated PII and account identifiers; use synthetic values when the exact value is not material;
+- redact private/local provider URLs or signed URLs when disclosure would expose credentials, infrastructure, or user data;
+- preserve the evidence shape needed for review: status code, method, route shape, request ID, timestamp, non-sensitive headers, hash/checksum, error class, and minimal payload structure;
+- prefer placeholders such as `<redacted-token>` over deleting fields when field presence is relevant;
+- never "sanitize" by changing the behavior being demonstrated;
+- if redaction would destroy the proof, state that the sensitive artifact was withheld and describe the reproducible non-sensitive facts instead of publishing it raw.
+
+Do not rely on a later reviewer to notice secrets after publication. Hygiene happens before evidence leaves the trusted working context.
 
 ## Review areas
 
@@ -105,12 +136,14 @@ validation, or manual approval.
 
 Report only evidence-backed findings. Every finding must include:
 
+- evidence state (`SUSPECTED`, `SUPPORTED`, `VALIDATED`, `DISPROVED`, `RETRACTED`, or `BLOCKED`);
 - severity and confidence;
 - exact file and line or symbol;
 - attacker-controlled input or triggering condition;
 - trust boundary crossed;
 - concrete exploit or failure path;
 - validation or reproduction evidence;
+- relevant alternative explanation checked when material;
 - user/system consequence;
 - smallest compatible fix;
 - regression test or revalidation needed;
@@ -118,3 +151,11 @@ Report only evidence-backed findings. Every finding must include:
 
 Do not report generic best-practice observations without a concrete path to
 harm. Do not label an unvalidated suspicion as confirmed.
+
+## Skill-intelligence discipline
+
+Use `docs/ai/SKILL_INTELLIGENCE.md` when considering external security catalogs. Do not vendor broad offensive bundles into Levyra merely to obtain validation or reporting techniques. Import only narrow, defensive, evidence-based methods that preserve the repository's authorization and safety boundaries.
+
+## Provenance
+
+The finding-state, explicit-retraction, false-positive challenge, and evidence-hygiene refinements are selectively informed by `elementalsouls/Claude-BugHunter`'s validation/reporting discipline. No offensive payload catalog, target-hunting workflow, credential-capture behavior, or authorization assumption is imported into Levyra.
