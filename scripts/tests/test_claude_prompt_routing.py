@@ -78,6 +78,35 @@ class ClaudePromptRoutingTest(unittest.TestCase):
         self.assertIn("levyra-android-performance", context)
         self.assertIn("levyra-real-engineering", context)
 
+    def test_memory_terms_add_performance_and_real_engineering(self) -> None:
+        prompts = (
+            "RAM keeps climbing during playback",
+            "Investigate native memory growth",
+            "OOM after 20 minutes of music",
+            "Check PSS RSS and dumpsys meminfo",
+        )
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                context = route(prompt)
+                self.assertIn("levyra-android-performance", context)
+                self.assertIn("levyra-real-engineering", context)
+                self.assertIn("memory-regression root-cause analysis and evidence", context)
+
+    def test_playback_allocation_growth_routes_memory_analysis(self) -> None:
+        context = route("Player allocations grow on every track change")
+
+        self.assertIn("levyra-player", context)
+        self.assertIn("levyra-android-performance", context)
+        self.assertIn("levyra-real-engineering", context)
+        self.assertIn("memory-regression root-cause analysis and evidence", context)
+
+    def test_memory_route_upgrades_existing_real_engineering_topic(self) -> None:
+        context = route("Root cause of native memory growth during playback")
+
+        self.assertIn("levyra-real-engineering", context)
+        self.assertIn("memory-regression root-cause analysis and evidence", context)
+
     def test_r8_adds_release_validation(self) -> None:
         context = route("R8 missing classes")
 

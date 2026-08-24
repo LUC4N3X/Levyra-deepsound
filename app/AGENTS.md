@@ -26,6 +26,22 @@ For Android Intent/deep-link/PendingIntent/component-boundary work, automaticall
 - Preserve synchronization among the audible player, MediaSession, notification, Android Auto, queue, and background service.
 - Keep optional enrichment behind direct playback in priority.
 
+## Memory regression guard
+
+The stability reached after issue #427 is a preserved product invariant. Any Android change that touches playback, recommendations, resolver/extractor loops, DSP/audio processors, Media3 track selection, prefetch, artwork/Canvas decoding, caches, buffering, coroutines/listeners, or other repeated hot paths must be reviewed for memory behavior before completion.
+
+- Treat continuously rising memory during steady playback as a regression until evidence explains and bounds it. A one-time warm-up peak or device-specific high RSS is not by itself proof of a leak; the trend matters.
+- Never compile `Regex`/`Pattern`, call `.toRegex()`, construct parsers, or create equivalent reusable matchers inside per-item, recommendation-candidate, polling, playback-tick, frame, sample, or audio-buffer loops. Hoist immutable/reusable instances or prove why reuse is unsafe. Issue #427 demonstrated that repeated regex compilation can create extreme native allocation churn even when the Java heap looks acceptable.
+- Avoid per-sample/per-buffer/per-frame allocations in DSP and playback callbacks. Reuse existing `ByteBuffer`, arrays, scratch buffers, processors, decoders, and immutable helpers when ownership permits; do not add copying merely for convenience.
+- Keep caches, prefetch sets, recommendation state, queues, histories, maps keyed by media IDs/URLs, decoded artwork, and retry bookkeeping explicitly bounded with eviction or lifecycle cleanup. No collection may grow with playback duration without a documented finite bound.
+- Cancel obsolete coroutines/jobs, unregister listeners/callbacks, close response bodies/files/cursors, and release Media3 players/controllers/decoders/surfaces only at the owning lifecycle boundary. Identity/generation checks must prevent stale work from retaining large graphs after track changes.
+- Song/audio-only mode must not keep a video decoder, video track, surface, or video-sized buffer pool alive unless that mode explicitly requires it. Preserve native-video mode separately rather than weakening it globally.
+- Do not introduce `System.gc()`, periodic player/service recycling, arbitrary pause/restart loops, cache purges, or process restarts as the primary fix for unexplained growth. Find and remove the allocation/retention source first; resilience guards may remain a fallback only when independently justified.
+- Artwork and Canvas work must avoid duplicate full-resolution bitmaps, unbounded animated-frame retention, and unnecessary intermediate render targets. Decode/retain only what the visible lifecycle needs.
+- A memory-sensitive change is not validated by Java/Kotlin heap inspection alone. When the task can affect native/media/graphics memory, inspect at least native heap plus process PSS/RSS (for example via `dumpsys meminfo`, Perfetto/heapprofd, or equivalent device profiling) and distinguish allocation churn from retention.
+- For materially memory-sensitive playback changes, prefer a sustained real-playback validation after warm-up with normal track transitions; 20–30 minutes on a physical device is the target when practical. Include screen/background transitions when the changed path remains active there. If this cannot be run, report the memory regression check as `BLOCKED`/unverified rather than claiming stability.
+- Acceptance is a stable plateau or bounded oscillation appropriate to the workload, with no persistent monotonic climb across track transitions. Do not hard-code one universal MB threshold across devices/OEMs.
+
 ## Compose and resources
 
 - Keep orchestration outside composables and observe the smallest stable state required by each screen.
@@ -67,4 +83,4 @@ For Android Intent/deep-link/PendingIntent/component-boundary work, automaticall
 
 Start with focused unit tests for the affected class or feature. Then run applicable checks from the root `AGENTS.md`.
 
-Manual playback, notification, Android Auto, PiP, emulator, device, background restriction, OEM behavior, visual polish, TalkBack, Intent/deep-link/component security, and measured UI-performance claims remain unverified unless directly tested and reported with evidence.
+Manual playback, notification, Android Auto, PiP, emulator, device, background restriction, OEM behavior, visual polish, TalkBack, Intent/deep-link/component security, memory stability, and measured UI-performance claims remain unverified unless directly tested and reported with evidence.
