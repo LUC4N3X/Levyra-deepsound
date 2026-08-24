@@ -52,7 +52,14 @@ def scan_diff(diff: str) -> list[str]:
 
 def _git(*args: str) -> str:
     result = subprocess.run(
-        ["git", *args], cwd=ROOT, check=False, text=True, capture_output=True, timeout=30
+        ["git", *args],
+        cwd=ROOT,
+        check=False,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        timeout=30,
     )
     return result.stdout if result.returncode == 0 else ""
 
