@@ -174,6 +174,11 @@ class PlaybackResumeStartPositionTest {
     }
 
     @Test
+    fun restoredPositionIsKeptWhenDurationIsUnknown() {
+        assertEquals(46_000L, resumeStartPositionMs(46_000L, 0L))
+    }
+
+    @Test
     fun positionsTooEarlyOrPastTheKnownDurationAreNotRestored() {
         assertEquals(0L, resumeStartPositionMs(1_500L, 270_000L))
         assertEquals(0L, resumeStartPositionMs(0L, 270_000L))

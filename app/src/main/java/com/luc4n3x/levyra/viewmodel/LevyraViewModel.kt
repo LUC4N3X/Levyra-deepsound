@@ -290,7 +290,9 @@ internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boole
  * treated as a finished track.
  */
 internal fun resumeStartPositionMs(pendingSeekMs: Long, durationMs: Long): Long =
-    pendingSeekMs.takeIf { it > 1500L && it < durationMs } ?: 0L
+    pendingSeekMs.takeIf { positionMs ->
+        positionMs > 1500L && (durationMs <= 0L || positionMs < durationMs)
+    } ?: 0L
 
 internal fun shouldReuseFreshCurrentsRequest(
     activeRequestLanguage: String,
