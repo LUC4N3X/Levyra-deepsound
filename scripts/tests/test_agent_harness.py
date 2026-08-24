@@ -50,6 +50,7 @@ class AgentHarnessTest(unittest.TestCase):
         harness.post_tool(read)
         allowed = self.capture(harness.pre_tool, write)
         self.assertNotIn('"permissionDecision": "deny"', allowed)
+        self.assertNotIn("Current sample.kt", allowed)
 
         target.write_text("val answer = 43\n", encoding="utf-8")
         stale = json.loads(self.capture(harness.pre_tool, write))
@@ -62,6 +63,52 @@ class AgentHarnessTest(unittest.TestCase):
         target = app / "Player.kt"
         target.write_text("fun play() = Unit\n", encoding="utf-8")
         payload = {"session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(target), "old_string": "fun play"}}
+        output = self.capture(harness.pre_tool, payload)
+        self.assertIn("Scoped app rule", output)
+        self.assertIn("fun play() = Unit", output)
+
+    def test_repeated_edit_does_not_reinject_known_context(self) -> None:
+        app = self.root / "app"
+        app.mkdir()
+        (app / "AGENTS.md").write_text("Scoped app rule", encoding="utf-8")
+        target = app / "Player.kt"
+        target.write_text("fun play() = Unit\n", encoding="utf-8")
+        first = {"session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(target), "old_string": "fun play"}}
+        self.assertIn("Scoped app rule", self.capture(harness.pre_tool, first))
+
+        target.write_text('fun play() = println("ok")\n', encoding="utf-8")
+        harness.post_tool(first)
+        second = {"session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(target), "old_string": "println"}}
+        self.assertEqual("", self.capture(harness.pre_tool, second))
+
+    def test_external_change_reinjects_file_without_repeating_agents(self) -> None:
+        app = self.root / "app"
+        app.mkdir()
+        (app / "AGENTS.md").write_text("Scoped app rule", encoding="utf-8")
+        target = app / "Player.kt"
+        target.write_text("fun play() = Unit\n", encoding="utf-8")
+        payload = {"session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(target), "old_string": "fun play"}}
+        self.capture(harness.pre_tool, payload)
+        target.write_text('fun play() = println("known")\n', encoding="utf-8")
+        harness.post_tool(payload)
+
+        target.write_text('fun play() = println("external")\n', encoding="utf-8")
+        output = self.capture(
+            harness.pre_tool,
+            {"session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(target), "old_string": "external"}},
+        )
+        self.assertIn("external", output)
+        self.assertNotIn("Scoped app rule", output)
+
+    def test_compaction_invalidates_mutation_context_cache(self) -> None:
+        app = self.root / "app"
+        app.mkdir()
+        (app / "AGENTS.md").write_text("Scoped app rule", encoding="utf-8")
+        target = app / "Player.kt"
+        target.write_text("fun play() = Unit\n", encoding="utf-8")
+        payload = {"session_id": "s", "tool_name": "Edit", "tool_input": {"file_path": str(target), "old_string": "fun play"}}
+        self.capture(harness.pre_tool, payload)
+        self.capture(harness.compact, {"session_id": "s"})
         output = self.capture(harness.pre_tool, payload)
         self.assertIn("Scoped app rule", output)
         self.assertIn("fun play() = Unit", output)
@@ -98,6 +145,8 @@ class AgentHarnessTest(unittest.TestCase):
         self.assertIn("Fix playback without changing UI", output)
         state = harness._load({"session_id": "s"})
         self.assertTrue(state["reanchor_pending"])
+        self.assertEqual({}, state["context_hashes"])
+        self.assertEqual({}, state["instruction_hashes"])
 
     def test_checkpoint_blocks_third_identical_failed_command(self) -> None:
         payload = {
