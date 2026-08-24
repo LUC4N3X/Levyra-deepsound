@@ -44,6 +44,16 @@ def require_terms(relative_path: str, terms: tuple[str, ...], errors: list[str])
             errors.append(f"{relative_path}: missing Claude bootstrap contract {term!r}")
 
 
+def reject_terms(relative_path: str, terms: tuple[str, ...], errors: list[str]) -> None:
+    path = ROOT / relative_path
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    for term in terms:
+        if term in text:
+            errors.append(f"{relative_path}: compact Claude bootstrap must not preload {term!r}")
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -68,9 +78,18 @@ def main() -> int:
         errors.append(".claude/settings.json must allow the project jcodemunch MCP server")
 
     skill_budget = settings.get("skillListingBudgetFraction") if isinstance(settings, dict) else None
-    if not isinstance(skill_budget, (int, float)) or skill_budget < 0.02:
+    if not isinstance(skill_budget, (int, float)) or skill_budget != 0.01:
         errors.append(
-            ".claude/settings.json skillListingBudgetFraction must be at least 0.02"
+            ".claude/settings.json skillListingBudgetFraction must stay at the compact 0.01 budget"
+        )
+    description_budget = settings.get("maxSkillDescriptionChars") if isinstance(settings, dict) else None
+    if description_budget != 768:
+        errors.append(
+            ".claude/settings.json maxSkillDescriptionChars must stay at 768"
+        )
+    if settings.get("includeGitInstructions") is not False:
+        errors.append(
+            ".claude/settings.json includeGitInstructions must be false to avoid duplicate Git context"
         )
 
     hooks = settings.get("hooks") if isinstance(settings, dict) else None
@@ -125,16 +144,44 @@ def main() -> int:
             ".claude/settings.json must run user-prompt-submit.sh on UserPromptSubmit"
         )
 
+    claude_path = ROOT / ".claude/CLAUDE.md"
+    if claude_path.is_file() and len(claude_path.read_bytes()) > 7000:
+        errors.append(".claude/CLAUDE.md must stay at or below 7000 bytes")
     require_terms(
+        ".claude/CLAUDE.md",
+        (
+            "AGENTS.md",
+            "EVIDENCE_GATED_COMPLETION.md",
+            "Deterministic skill loading",
+            "Mandatory skill load",
+            "AI_ENGINEERING_GUARDRAILS.md",
+            "Subagent token discipline",
+            "/code-review",
+        ),
+        errors,
+    )
+    reject_terms(
         ".claude/CLAUDE.md",
         (
             "@../AGENTS.md",
             "@../docs/ai/EVIDENCE_GATED_COMPLETION.md",
-            "Deterministic skill loading",
-            "Mandatory skill load",
-            "AI_ENGINEERING_GUARDRAILS.md",
-            "/code-review",
+            "@../docs/ai/ALWAYS_ON_AGENT_GUARDS.md",
         ),
+        errors,
+    )
+    require_terms(
+        ".claude/agents/levyra-android-developer.md",
+        (
+            "tools: Read, Grep, Glob, Edit, Write, Bash, Skill",
+            "model: inherit",
+            "effort: high",
+            "Project instructions are already loaded automatically",
+        ),
+        errors,
+    )
+    reject_terms(
+        ".claude/agents/levyra-android-developer.md",
+        ("Read `.claude/CLAUDE.md`",),
         errors,
     )
     require_terms(
@@ -144,7 +191,7 @@ def main() -> int:
             "command -v python",
             "command -v py",
             "Mandatory skill load",
-            "Root AGENTS.md is imported",
+            "Root AGENTS.md remains canonical",
             "EVIDENCE_GATED_COMPLETION.md",
             "levyra-project-manager",
             "levyra-desktop",
@@ -194,6 +241,8 @@ def main() -> int:
         (
             "jCodeMunch",
             "Claude native Read/Grep/Glob/Bash",
+            ".rtk/filters.toml",
+            "Rerun the exact command raw",
             "Token savings never override correctness",
         ),
         errors,
@@ -219,9 +268,9 @@ def main() -> int:
         return 1
 
     print(
-        "Claude bootstrap validation passed: canonical AGENTS import, mandatory "
-        "skill routing, project bridges, skill-listing budget, evidence-gated "
-        "completion, jCodeMunch startup/resume indexing, native-tool fallback, "
+        "Claude bootstrap validation passed: compact project context, automatic "
+        "skill routing, focused high-effort subagent tools, evidence-gated "
+        "completion, jCodeMunch startup/resume indexing, RTK/native-tool fallback, "
         "and permission safety verified."
     )
     return 0
