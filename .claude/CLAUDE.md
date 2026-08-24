@@ -1,5 +1,6 @@
 @../AGENTS.md
 @../docs/ai/EVIDENCE_GATED_COMPLETION.md
+@../docs/ai/ALWAYS_ON_AGENT_GUARDS.md
 
 # Levyra Claude Code
 
@@ -21,6 +22,13 @@ not available, load `levyra-context-efficiency` and follow its owner-authorized,
 one-attempt automatic claude-mem bootstrap. Memory failure must never block the
 task.
 
+Task-required tools may be installed automatically under
+`docs/ai/ALWAYS_ON_AGENT_GUARDS.md`: verify absence/version first, install only
+the specific useful dependency from a trusted upstream, prefer user/project
+scope, and verify it afterwards. Never turn that authorization into a broad
+package upgrade, admin/root elevation, sandbox weakening, telemetry, or unrelated
+plugin installation.
+
 ## Immediate context budget
 
 Apply before broad reading on every real coding task:
@@ -36,6 +44,23 @@ Apply before broad reading on every real coding task:
 For non-trivial repository exploration or noisy output, invoke
 `levyra-context-efficiency` immediately. Tiny already-local edits keep the same
 baseline without loading extra skill text.
+
+## Claude context hygiene
+
+Use `/clear` as a token-saving boundary, not as a debugging reflex.
+
+- Never clear an `ACTIVE` or `BLOCKED` task before its durable checkpoint has the
+  current goal, changed paths, evidence status, and next action.
+- After a verified completed task, if the next owner request is unrelated,
+  prefer a fresh context. The stop audit emits a context-hygiene reminder after
+  repeated completed-task boundaries.
+- When that reminder appears, proactively tell the owner to run `/clear` before
+  the next unrelated task; do not nag on related follow-ups.
+- Project command hooks cannot execute slash commands themselves. Never claim
+  `/clear` ran unless it actually did. `SessionStart(clear)` automatically
+  reloads Levyra guards and restores any open durable checkpoint.
+- Use `/compact` instead when the same task still needs its conversation history
+  summarized rather than discarded.
 
 ## Core engineering rules
 
@@ -69,10 +94,11 @@ baseline without loading extra skill text.
 
 Claude must select skills from the task itself; the owner never has to name them.
 
-The `UserPromptSubmit` hook routes the prompt to matching project skills. Every
-skill listed by the hook under **Mandatory skill load** must be invoked before
-broad repository reading or editing. Do not merely mention, plan to use, or
-silently skip a routed skill.
+The `UserPromptSubmit` hook executes the shared
+`scripts/agent_skill_router.py`. Every skill listed by the hook under
+**Mandatory skill load** must be invoked before broad repository reading,
+editing, or shell work. Do not merely mention, plan to use, or silently skip a
+routed skill.
 
 Project skills under `.claude/skills/` are intentionally thin bridges. After
 invoking a bridge, follow it to the canonical
@@ -94,6 +120,7 @@ Load only matching skills. Do not preload the whole skill tree.
 | Room, DAO, migration, schema, persistent stores | `levyra-database` |
 | Compose UI/state/navigation/accessibility/RTL/localization | `levyra-compose` |
 | Android runtime profiling, jank, Perfetto, CPU/thread, Binder, graphics, memory, I/O, power | `levyra-android-performance` plus affected domain skill |
+| APK/XAPK/AAB/DEX/JAR/AAR decompilation, jadx/smali, compiled API extraction, binary call-flow tracing, Kotlin/R8 metadata recovery | `levyra-android-reverse-engineering` plus `levyra-security-review`; add `levyra-r8-proguard` when obfuscation matters |
 | Intent/deep link/PendingIntent/exported component/provider/URI/caller boundary | `levyra-android-intent-security` plus `levyra-security-review` and affected domain skill |
 | R8/Proguard/minification/shrinking/keep rules/mapping/release-only shrinker failure | `levyra-r8-proguard` plus `levyra-release-check`; add `levyra-ci-workflows` for tooling changes |
 | Visual redesign/polish/hierarchy/spacing/typography/color/motion/reference/anti-AI-slop UI | `levyra-design-taste` plus matching UI skill |
