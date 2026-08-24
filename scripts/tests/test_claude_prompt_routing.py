@@ -91,13 +91,21 @@ class ClaudePromptRoutingTest(unittest.TestCase):
                 context = route(prompt)
                 self.assertIn("levyra-android-performance", context)
                 self.assertIn("levyra-real-engineering", context)
+                self.assertIn("memory-regression root-cause analysis and evidence", context)
 
-    def test_playback_memory_routes_player_too(self) -> None:
-        context = route("Player native allocations grow on every track change")
+    def test_playback_allocation_growth_routes_memory_analysis(self) -> None:
+        context = route("Player allocations grow on every track change")
 
         self.assertIn("levyra-player", context)
         self.assertIn("levyra-android-performance", context)
         self.assertIn("levyra-real-engineering", context)
+        self.assertIn("memory-regression root-cause analysis and evidence", context)
+
+    def test_memory_route_upgrades_existing_real_engineering_topic(self) -> None:
+        context = route("Root cause of native memory growth during playback")
+
+        self.assertIn("levyra-real-engineering", context)
+        self.assertIn("memory-regression root-cause analysis and evidence", context)
 
     def test_r8_adds_release_validation(self) -> None:
         context = route("R8 missing classes")
