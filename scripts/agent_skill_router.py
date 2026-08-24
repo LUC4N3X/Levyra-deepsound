@@ -36,7 +36,7 @@ ROUTES = (
     route(
         "levyra-real-engineering",
         "non-trivial engineering, debugging, requirements, or architecture",
-        r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug|root cause|causa radice",
+        r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|debug|diagnos|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug|root cause|causa radice",
     ),
     route(
         "levyra-player",
@@ -46,7 +46,7 @@ ROUTES = (
     route(
         "levyra-extractor",
         "stream extraction or network fallback",
-        r"extractor|estrattor|innertube|newpipe|youtube|stream|resolver|player.?config|\btoken\b|scraping|403|throttl",
+        r"extractor|estrattor|innertube|newpipe|youtube|stream|resolver|player.?config|(?:youtube|innertube|player|po)[ -]?token|potoken|visitor data|scraping|403|throttl",
     ),
     route(
         "levyra-database",
@@ -56,7 +56,7 @@ ROUTES = (
     route(
         "levyra-compose",
         "Android Compose UI, accessibility, lifecycle, or state projection",
-        r"compose|composable|\bui\b|screen|schermat|theme|\btema\b|layout|recomposition|ricompos|scroll|layout inspector|talkback|semantics|semantic|touch target|accessibilit|rtl|localizzazion|localization|string resource",
+        r"compose|composable|\bui\b|\bscreen\b|schermat|theme|\btema\b|layout|recomposition|ricompos|scroll|layout inspector|talkback|\bsemantics\b|touch target|accessibilit|rtl|localizzazion|localization|string resource",
     ),
     route(
         "levyra-android-performance",
@@ -76,7 +76,7 @@ ROUTES = (
     route(
         "levyra-design-taste",
         "visual design, redesign, polish, hierarchy, or anti-AI-slop UI",
-        r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|screenshot|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|pi[uù] bella|pi[uù] professionale|(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b).{0,40}\b(?:premium|modern|clean|cinematic|less generic)\b|\b(?:premium|modern|clean|cinematic|less generic)\b.{0,40}(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b)|^\s*(?:premium|modern|clean|cinematic|less generic)\s*[.!?]*\s*$|anti.?ai.?slop|glassmorphism|bento",
+        r"visual design|ui design|design ui|grafica|interfaccia|ui polish|visual polish|gerarchia visual|visual hierarchy|spacing|spaziatur|typograph|tipograf|color palette|palette colori|shape|forme|radius|corner radius|motion ui|ui motion|animazion|design reference|ui reference|riferiment.*(?:grafica|ui|schermat)|(?:ui|screen|schermat|layout|design|grafica|interfaccia).{0,30}screenshot|screenshot.{0,30}(?:ui|screen|schermat|layout|design|grafica|interfaccia|reference|riferimento)|pi[uù] bella|pi[uù] professionale|(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b).{0,40}\b(?:premium|modern|clean|cinematic|less generic)\b|\b(?:premium|modern|clean|cinematic|less generic)\b.{0,40}(?:\bscreen\b|schermat\w*|\bui\b|\bdesign\b|grafica|interfaccia|\blayout\b|\bplayer\b|\bhome\b|\bnow playing\b)|^\s*(?:premium|modern|clean|cinematic|less generic)\s*[.!?]*\s*$|anti.?ai.?slop|glassmorphism|bento",
     ),
     route(
         "levyra-motion-artwork",
@@ -91,7 +91,7 @@ ROUTES = (
     route(
         "levyra-ci-workflows",
         "CI, Gradle/Kotlin tooling, or build performance",
-        r"github actions|\bworkflow\b|\bci\b|fdroid|f-droid|\bgradle\b|\bagp\b|\bkotlin\b|\bksp\b|build performance|slow build|build lento|configuration cache|build cache|compile time|compilation time|build logic|gradle\.properties|artifact",
+        r"github actions|\bworkflow\b|\bci\b|fdroid|f-droid|\bgradle\b|\bagp\b|\bksp\b|kotlin(?: compiler| plugin| toolchain| version)|(?:upgrade|update|bump|migrat).{0,24}\bkotlin\b|\bkotlin\b.{0,24}(?:gradle|compiler|ksp|toolchain)|build performance|slow build|build lento|configuration cache|build cache|compile time|compilation time|build logic|gradle\.properties|artifact",
     ),
     route(
         "levyra-context-efficiency",
@@ -111,7 +111,7 @@ ROUTES = (
     route(
         "levyra-release-check",
         "runtime, pre-merge, or release validation",
-        r"release|rilasci|versionname|versioncode|\bversion\b|versione|\bapk\b|signing|firma|tag\b|publish|pubblic|emulator|emulatore|physical device|device test|test dispositivo|\badb\b|connectedcheck|smoke test|runtime verification|runtime validation|verifica runtime|pre.?merge",
+        r"release|rilasci|versionname|versioncode|app version|release version|versione (?:app|release)|\bapk\b|signing|firma|tag\b|publish|pubblic|emulator|emulatore|physical device|device test|test dispositivo|\badb\b|connectedcheck|smoke test|runtime verification|runtime validation|verifica runtime|pre.?merge",
     ),
     route(
         "levyra-engineering",
