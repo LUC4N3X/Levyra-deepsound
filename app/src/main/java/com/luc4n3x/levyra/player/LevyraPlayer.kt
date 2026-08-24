@@ -47,6 +47,32 @@ internal fun replacementStartPosition(
     return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
 }
 
+/**
+ * Media3 contract: the session resolves media items asynchronously, so a seek issued after
+ * `setMediaItem` is overwritten by the resolved `startPositionMs`. A restored position must
+ * therefore travel with the item; an already loaded track keeps its live player position.
+ */
+internal fun playbackStartPositionRequest(
+    sameTrack: Boolean,
+    resumePositionMs: Long,
+    activePositionMs: Long
+): Long = if (sameTrack) activePositionMs.coerceAtLeast(0L) else resumePositionMs.coerceAtLeast(0L)
+
+/**
+ * Media3 contract: the controller reports position 0 for a short window after
+ * `setMediaItem(item, startPositionMs)`, until the session resolves and applies the item.
+ * Publishing that 0 would zero the visible timeline and persist it back into the queue.
+ */
+internal fun reportedPlaybackPositionMs(
+    currentPositionMs: Long,
+    awaitedStartPositionMs: Long?,
+    mediaItemCount: Int
+): Long {
+    val current = currentPositionMs.coerceAtLeast(0L)
+    if (current > 0L || awaitedStartPositionMs == null || mediaItemCount == 0) return current
+    return awaitedStartPositionMs.coerceAtLeast(0L)
+}
+
 internal fun isRecoverablePlaybackErrorCode(errorCode: Int): Boolean =
     errorCode == PlaybackException.ERROR_CODE_REMOTE_ERROR ||
         errorCode == PlaybackException.ERROR_CODE_TIMEOUT ||
@@ -94,6 +120,7 @@ class LevyraPlayer(context: Context) {
     private var loadedStreamIdentity: String? = null
     private var loadedVideoMode = false
     private var pendingPlayback: PendingPlayback? = null
+    private var pendingStartPositionMs: Long? = null
     private var ignoreEndedFromManualStop = false
     private var recoveryInFlight = false
     private var recoveryAttempts = 0
@@ -249,7 +276,14 @@ class LevyraPlayer(context: Context) {
             ?: false
 
     val positionMs: Long
-        get() = controller?.currentPosition?.coerceAtLeast(0L) ?: pendingPlayback?.positionMs ?: 0L
+        get() {
+            val active = controller ?: return pendingPlayback?.positionMs ?: 0L
+            return reportedPlaybackPositionMs(
+                currentPositionMs = active.currentPosition,
+                awaitedStartPositionMs = pendingStartPositionMs,
+                mediaItemCount = active.mediaItemCount
+            )
+        }
 
     val bufferedPositionMs: Long
         get() = controller?.bufferedPosition?.coerceAtLeast(0L) ?: 0L
@@ -260,13 +294,14 @@ class LevyraPlayer(context: Context) {
             return if (duration == C.TIME_UNSET) 0L else duration.coerceAtLeast(0L)
         }
 
-    fun play(track: Track, videoMode: Boolean = false) {
+    fun play(track: Track, videoMode: Boolean = false, startPositionMs: Long = 0L) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
         invalidateDelayedVideoRecovery()
+        val safeStartPositionMs = startPositionMs.coerceAtLeast(0L)
         val identity = streamIdentity(track, videoMode)
         val active = controller
         if (active == null) {
-            pendingPlayback = PendingPlayback(track, 0L, videoMode, true)
+            pendingPlayback = PendingPlayback(track, safeStartPositionMs, videoMode, true)
             return
         }
         ignoreEndedFromManualStop = false
@@ -277,7 +312,11 @@ class LevyraPlayer(context: Context) {
         if (!sameTrack || loadedStreamIdentity != identity || loadedVideoMode != videoMode) {
             replaceSource(
                 track = track,
-                positionMs = if (sameTrack) active.currentPosition.coerceAtLeast(0L) else 0L,
+                positionMs = playbackStartPositionRequest(
+                    sameTrack = sameTrack,
+                    resumePositionMs = safeStartPositionMs,
+                    activePositionMs = active.currentPosition
+                ),
                 videoMode = videoMode,
                 playWhenReady = true
             )
@@ -332,6 +371,7 @@ class LevyraPlayer(context: Context) {
         videoFrameWatchdogJob?.cancel()
         videoFrameWatchdogJob = null
         PlaybackService.consumePreparedQueueNext(track.id)
+        pendingStartPositionMs = startPositionMs.takeIf { it > 0L }
         applyPlaybackParameters(active)
         active.playWhenReady = effectivePlayWhenReady
         active.setMediaItem(LevyraMediaItemFactory.build(track, videoMode), startPositionMs)
@@ -380,6 +420,7 @@ class LevyraPlayer(context: Context) {
 
     fun seekTo(positionMs: Long) {
         val safePositionMs = positionMs.coerceAtLeast(0L)
+        pendingStartPositionMs = null
         val active = controller
         if (active != null) {
             active.seekTo(safePositionMs)
@@ -573,6 +614,7 @@ class LevyraPlayer(context: Context) {
     }
 
     private fun clearLoadedState() {
+        pendingStartPositionMs = null
         loadedTrack = null
         loadedStreamIdentity = null
         loadedVideoMode = false

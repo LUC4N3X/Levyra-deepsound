@@ -283,6 +283,15 @@ private const val DEARROW_CONCURRENCY = 4
 
 internal fun shouldDispatchPlaybackStartSideEffects(startPaused: Boolean): Boolean = !startPaused
 
+/**
+ * Saved position a restored track should start from, or 0 when there is nothing to resume.
+ *
+ * Very early positions are not worth restoring, and a position at or past the known duration is
+ * treated as a finished track.
+ */
+internal fun resumeStartPositionMs(pendingSeekMs: Long, durationMs: Long): Long =
+    pendingSeekMs.takeIf { it > 1500L && it < durationMs } ?: 0L
+
 internal fun shouldReuseFreshCurrentsRequest(
     activeRequestLanguage: String,
     requestedLanguage: String,
@@ -5368,8 +5377,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         repository.replace(restoredTrack)
-        player.play(restoredTrack, session.videoMode)
-        if (resumeMs > 0L) player.seekTo(resumeMs)
+        player.play(restoredTrack, session.videoMode, startPositionMs = resumeMs)
         if (!session.wasPlaying) player.pause()
         queueEngine.updatePosition(resumeMs)
         _state.update {
@@ -5991,16 +5999,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(track)
     }
 
+    private fun resumePositionFor(track: Track): Long =
+        resumeStartPositionMs(pendingSeekMs, track.durationMs)
+
     private fun startPlayback(playable: Track, request: PlaybackResolveRequest) {
         if (request.id != playRequestId) return
         val startPaused = shouldStartPlaybackPaused(request, playRequestId)
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
-        player.play(playable, _state.value.isVideoMode)
-        // Resume from the saved position when continuing the last session's track.
-        val resumeMs = pendingSeekMs.takeIf { it > 1500L && it < playable.durationMs } ?: 0L
-        if (resumeMs > 0L) player.seekTo(resumeMs)
+        // Media3 contract: the session resolves media items asynchronously, so a follow-up seek
+        // is discarded by the resolved startPositionMs. The resume position must travel with the item.
+        val resumeMs = resumePositionFor(playable)
+        player.play(playable, _state.value.isVideoMode, startPositionMs = resumeMs)
         if (startPaused) player.pause()
         queueEngine.updatePosition(resumeMs)
         pendingSeekMs = 0L
@@ -6970,7 +6981,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun samePlayableTrack(left: Track, right: Track): Boolean = playbackIdentity(left) == playbackIdentity(right)
 
     fun play() = _state.value.currentTrack?.let { current ->
-        if (current.streamUrl.isBlank()) play(current) else player.play(current, _state.value.isVideoMode)
+        if (current.streamUrl.isBlank()) {
+            play(current)
+        } else {
+            player.play(current, _state.value.isVideoMode, startPositionMs = resumePositionFor(current))
+        }
     }
     fun pause() = player.pause()
 
@@ -6985,7 +7000,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             saveLastPlaybackAsync(current, player.positionMs)
             _state.update { it.copy(isPlaying = false) }
         } else {
-            player.play(current, _state.value.isVideoMode)
+            player.play(current, _state.value.isVideoMode, startPositionMs = resumePositionFor(current))
             _state.update { it.copy(isPlaying = true) }
         }
         updateWidget()
