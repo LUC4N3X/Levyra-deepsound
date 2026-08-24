@@ -132,7 +132,7 @@ AUTOMATED_MARKERS = (
 )
 
 MEMORY_RE = re.compile(
-    r"memory|\bram\b|\boom\b|out of memory|native heap|native allocat|memory churn|memory growth|\bpss\b|\brss\b|lmkd|dumpsys meminfo|heapprofd|bufferpool",
+    r"memory|\bram\b|\boom\b|out of memory|native heap|allocat|memory churn|memory growth|\bpss\b|\brss\b|lmkd|dumpsys meminfo|heapprofd|bufferpool",
     re.I,
 )
 
@@ -154,10 +154,17 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
             matched.append((skill, topic))
             seen.add(skill)
 
+    def set_topic(skill: str, topic: str) -> None:
+        for index, (matched_skill, _) in enumerate(matched):
+            if matched_skill == skill:
+                matched[index] = (skill, topic)
+                return
+        add(skill, topic)
+
     if "levyra-compose" in seen and "levyra-android-performance" in seen:
         add("levyra-real-engineering", "non-trivial Compose performance debugging")
     if "levyra-android-performance" in seen and MEMORY_RE.search(text):
-        add("levyra-real-engineering", "memory-regression root-cause analysis and evidence")
+        set_topic("levyra-real-engineering", "memory-regression root-cause analysis and evidence")
     if "levyra-r8-proguard" in seen:
         add("levyra-release-check", "minified release validation")
     if "levyra-android-intent-security" in seen:
