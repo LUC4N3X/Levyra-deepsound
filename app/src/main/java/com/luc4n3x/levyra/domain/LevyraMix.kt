@@ -30,6 +30,7 @@ object LevyraMixDefaults {
     const val Familiarity: Float = 0.5f
     const val MaxCandidates: Int = 160
     const val MixSize: Int = 30
+    const val CanonicalSourceLimit: Int = 512
     const val RecentExclusionMs: Long = 3L * 60L * 60L * 1000L
 }
 
@@ -97,11 +98,6 @@ fun mixTrackKey(track: Track): String {
     return compositeMixKey(track.title, track.artist)
 }
 
-/**
- * Reconciles generated mix entries with richer canonical copies already known by Levyra.
- * Chart/Home copies are intentionally supplied first by the caller, so the same recording
- * keeps the same music identity and metadata used by normal Song Mode / Motion Artwork.
- */
 fun prepareMixPlaybackTracks(
     selected: List<Track>,
     canonicalSources: List<Track>
@@ -113,7 +109,9 @@ fun prepareMixPlaybackTracks(
         )
     }
 
-    val canonical = LevyraPersonalOrbit.distinctRecordings(canonicalSources)
+    val canonical = LevyraPersonalOrbit.distinctRecordings(
+        canonicalSources.take(LevyraMixDefaults.CanonicalSourceLimit)
+    )
     val prepared = ArrayList<Track>(selected.size)
     for (candidate in selected) {
         val knownRecording = canonical.firstOrNull { source ->
