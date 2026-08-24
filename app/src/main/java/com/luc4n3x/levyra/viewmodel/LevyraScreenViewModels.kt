@@ -44,19 +44,71 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+internal fun stabilizeResolvingPlaybackUi(
+    previous: LevyraUiState,
+    current: LevyraUiState
+): LevyraUiState {
+    if (!current.isResolving) return current
+    val previousTrack = previous.currentTrack ?: return current
+    val currentTrack = current.currentTrack ?: return current
+    if (playbackIdentity(previousTrack) != playbackIdentity(currentTrack)) return current
+
+    val lostPosition = current.positionMs <= 0L && previous.positionMs > 0L
+    val lostDuration = current.durationMs <= 0L && previous.durationMs > 0L
+    val lostBuffer = current.bufferedPositionMs <= 0L && previous.bufferedPositionMs > 0L
+    if (!lostPosition && !lostDuration && !lostBuffer) return current
+
+    val stableDuration = if (lostDuration) previous.durationMs else current.durationMs
+    val candidatePosition = if (lostPosition) previous.positionMs else current.positionMs
+    val stablePosition = if (stableDuration > 0L) candidatePosition.coerceAtMost(stableDuration) else candidatePosition
+    val candidateBuffered = if (lostBuffer) previous.bufferedPositionMs else current.bufferedPositionMs
+    val stableBuffered = if (stableDuration > 0L) {
+        candidateBuffered.coerceIn(stablePosition, stableDuration)
+    } else {
+        candidateBuffered.coerceAtLeast(stablePosition)
+    }
+
+    return current.copy(
+        positionMs = stablePosition,
+        bufferedPositionMs = stableBuffered,
+        durationMs = stableDuration
+    )
+}
+
+internal class ResolvingPlaybackUiStabilizer(initial: LevyraUiState) {
+    private var previous = initial
+
+    fun apply(current: LevyraUiState): LevyraUiState =
+        stabilizeResolvingPlaybackUi(previous, current).also { stable -> previous = stable }
+}
+
 abstract class LevyraScreenViewModel(
     protected val root: LevyraViewModel,
     projection: (LevyraUiState) -> Any
 ) : ViewModel() {
-    val state: StateFlow<LevyraUiState> = root.state
+    private val playbackUiStabilizer = ResolvingPlaybackUiStabilizer(root.state.value)
+
+    protected val stablePlaybackState: StateFlow<LevyraUiState> = flow {
+        root.state.collect { current ->
+            emit(playbackUiStabilizer.apply(current))
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000L),
+        initialValue = root.state.value
+    )
+
+    val state: StateFlow<LevyraUiState> = stablePlaybackState
         .map { it }
         .distinctUntilChanged { previous, current -> projection(previous) == projection(current) }
         .stateIn(
@@ -93,7 +145,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
             started = SharingStarted.WhileSubscribed(5_000L),
             initialValue = buildHomeRenderSnapshot(root.state.value)
         )
-    val playbackProgress: StateFlow<HomePlaybackProgress> = root.state
+    val playbackProgress: StateFlow<HomePlaybackProgress> = stablePlaybackState
         .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
         .distinctUntilChanged()
         .stateIn(
