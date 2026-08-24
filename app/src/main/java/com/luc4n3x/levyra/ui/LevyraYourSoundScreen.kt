@@ -25,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -37,6 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.NumberFormat
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import com.luc4n3x.levyra.domain.DnaArtist
 import com.luc4n3x.levyra.domain.ListeningDna
 import com.luc4n3x.levyra.domain.ListeningDnaPeriod
@@ -77,6 +83,10 @@ internal fun LevyraYourSoundOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val style = LevyraConnectedDefaults.style(accent = accent)
+    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
+    val percent = remember(locale) {
+        NumberFormat.getPercentInstance(locale).apply { maximumFractionDigits = 0 }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -149,14 +159,14 @@ internal fun LevyraYourSoundOverlay(
                         DnaStatTile(dna.totalMinutes.toString(), strings.pulseMinutes, LevyraConnectedPosition.Top, style, accent)
                         DnaStatTile(dna.plays.toString(), strings.statPlays, LevyraConnectedPosition.Middle, style, accent)
                         DnaStatTile(dna.distinctArtists.toString(), strings.statArtists, LevyraConnectedPosition.Middle, style, accent)
-                        DnaStatTile(dna.discoveryRate.toString() + "%", strings.dnaDiscovery, LevyraConnectedPosition.Bottom, style, accent)
+                        DnaStatTile(percent.format(dna.discoveryRate / 100.0), strings.dnaDiscovery, LevyraConnectedPosition.Bottom, style, accent)
                     }
                 }
                 if (dna.artists.isNotEmpty()) {
                     item(contentType = "dna-artists-title") { DnaSectionTitle(strings.pulseTopArtists) }
                     itemsIndexed(
                         dna.artists,
-                        key = { _, artist -> "dna-artist-" + artist.name },
+                        key = { index, _ -> "dna-artist-$index" },
                         contentType = { _, _ -> "dna-artist" }
                     ) { index, artist ->
                         DnaArtistRow(
@@ -166,6 +176,7 @@ internal fun LevyraYourSoundOverlay(
                             style = style,
                             mixLabel = strings.mixStartRadio,
                             discoverLabel = strings.discoverMore,
+                            percent = percent,
                             onStartMix = { onStartArtistMix(artist) },
                             onDiscover = { onDiscoverArtist(artist) }
                         )
@@ -178,14 +189,15 @@ internal fun LevyraYourSoundOverlay(
                         accent = accent,
                         style = style,
                         peakLabel = strings.pulsePeakHour,
-                        peakHour = dna.peakHour
+                        peakHour = dna.peakHour,
+                        locale = locale
                     )
                 }
                 if (dna.tracks.isNotEmpty()) {
                     item(contentType = "dna-tracks-title") { DnaSectionTitle(strings.songs) }
                     itemsIndexed(
                         dna.tracks,
-                        key = { _, track -> "dna-track-" + track.trackId + track.title },
+                        key = { index, _ -> "dna-track-$index" },
                         contentType = { _, _ -> "dna-track" }
                     ) { index, track ->
                         DnaTrackRow(
@@ -295,6 +307,7 @@ private fun DnaArtistRow(
     style: LevyraConnectedStyle,
     mixLabel: String,
     discoverLabel: String,
+    percent: NumberFormat,
     onStartMix: () -> Unit,
     onDiscover: () -> Unit
 ) {
@@ -333,7 +346,7 @@ private fun DnaArtistRow(
                 modifier = Modifier.weight(1f)
             )
             Text(
-                text = (artist.weight * 100f).toInt().toString() + "%",
+                text = percent.format(artist.weight.toDouble()),
                 color = accent,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black
@@ -367,7 +380,8 @@ private fun DnaRhythmChart(
     accent: Color,
     style: LevyraConnectedStyle,
     peakLabel: String,
-    peakHour: Int
+    peakHour: Int,
+    locale: Locale
 ) {
     if (buckets.isEmpty()) return
     val peak = buckets.maxOrNull() ?: 0L
@@ -397,7 +411,7 @@ private fun DnaRhythmChart(
         }
         if (peakHour in 0..23) {
             Text(
-                text = peakLabel + " " + peakHour.toString() + ":00",
+                text = peakLabel + " " + localizedHour(peakHour, locale),
                 color = LevyraMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold
@@ -452,4 +466,10 @@ private fun DnaTrackRow(
             fontWeight = FontWeight.Black
         )
     }
+}
+
+private fun localizedHour(hour: Int, locale: Locale): String {
+    val safeHour = hour.coerceIn(0, 23)
+    return LocalTime.of(safeHour, 0)
+        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
 }

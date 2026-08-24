@@ -18,7 +18,14 @@ const val LevyraNowPlayingAccentDurationMs: Int = 620
 @Composable
 fun rememberNowPlayingAccent(track: Track?, fallback: Color): Color {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val target = remember(track?.id, track?.thumbnailUrl, track?.largeThumbnailUrl, fallback) {
+    val target = remember(
+        track?.id,
+        track?.thumbnailUrl,
+        track?.largeThumbnailUrl,
+        track?.accentStart,
+        track?.accentEnd,
+        fallback
+    ) {
         resolveNowPlayingAccent(track, fallback)
     }
     val accent by animateColorAsState(

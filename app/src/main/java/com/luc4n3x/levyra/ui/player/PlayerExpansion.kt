@@ -80,10 +80,6 @@ fun playerMorphFraction(expansion: Float): Float =
 fun playerBackgroundScale(expansion: Float): Float =
     1f - playerMotionProgress(expansion) * BackgroundDepth
 
-/**
- * Maps an in-flight system predictive-back gesture onto the shared expansion value so the
- * fullscreen player recedes progressively and the previous screen reappears behind it.
- */
 fun playerPredictiveBackExpansion(start: Float, progress: Float): Float {
     val safeStart = start.finiteOr(PlayerExpansionExpanded)
         .coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)

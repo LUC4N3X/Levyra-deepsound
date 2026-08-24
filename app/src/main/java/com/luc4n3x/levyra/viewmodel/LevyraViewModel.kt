@@ -7861,13 +7861,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     return@launch
                 }
                 val listens = listeningPulseStore.eventsWindow(MIX_HISTORY_DAYS)
-                val candidates = withContext(Dispatchers.Default) {
-                    buildMixCandidates(pool, listens, System.currentTimeMillis())
-                }
                 val avoidRecent = kind == LevyraMixKind.SurpriseMe || kind == LevyraMixKind.Rediscover
-                val ranked = LevyraMixRanker
-                    .rank(candidates, snapshot.mixFamiliarity, excludeRecent = avoidRecent)
-                    .ifEmpty { LevyraMixRanker.rank(candidates, snapshot.mixFamiliarity) }
+                val ranked = withContext(Dispatchers.Default) {
+                    val candidates = buildMixCandidates(pool, listens, System.currentTimeMillis())
+                    LevyraMixRanker
+                        .rank(candidates, snapshot.mixFamiliarity, excludeRecent = avoidRecent)
+                        .ifEmpty { LevyraMixRanker.rank(candidates, snapshot.mixFamiliarity) }
+                }
                 if (ranked.isEmpty()) {
                     _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
                     return@launch
@@ -7899,9 +7899,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = tracks.filter { it.title.isNotBlank() }.take(LevyraMixDefaults.MixSize)
         if (cleanName.isEmpty() || snapshot.isEmpty()) return
         viewModelScope.launch {
-            runCatching { playlistStore.createWithTracks(cleanName, snapshot) }
-                .onSuccess { loadPlaylists() }
-                .onFailure { Timber.w(it, "Discovery playlist save failed") }
+            try {
+                playlistStore.createWithTracks(cleanName, snapshot)
+                loadPlaylists()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Discovery playlist save failed")
+            }
         }
     }
 
@@ -7915,9 +7920,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         viewModelScope.launch {
-            val resolved = runCatching {
+            val resolved = try {
                 repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
-            }.getOrNull() ?: return@launch
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening DNA track resolve failed")
+                null
+            } ?: return@launch
             playFrom(listOf(resolved), resolved)
         }
     }

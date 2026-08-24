@@ -44,7 +44,7 @@
                     android:layout_marginEnd="6dp"
                     android:visibility="gone"
                     android:src="@drawable/ic_widget_playing"
-                    android:contentDescription="@string/widget_toggle" />
+                    android:importantForAccessibility="no" />
 
                 <TextView
                     android:id="@+id/widget_title"

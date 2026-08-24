@@ -78,13 +78,23 @@ object LevyraMixRanker {
     private class ScoredCandidate(val track: Track, val score: Float)
 }
 
+fun listenEventMixKey(event: ListenEvent): String {
+    val id = event.trackId.trim()
+    if (id.isNotEmpty()) return id
+    return compositeMixKey(event.title, event.artist)
+}
+
+private fun compositeMixKey(title: String, artist: String): String {
+    val cleanTitle = title.trim().lowercase()
+    val cleanArtist = artist.trim().lowercase()
+    if (cleanTitle.isEmpty() && cleanArtist.isEmpty()) return ""
+    return "$cleanTitle|$cleanArtist"
+}
+
 fun mixTrackKey(track: Track): String {
     val id = track.id.trim()
     if (id.isNotEmpty()) return id
-    val title = track.title.trim().lowercase()
-    val artist = track.artist.trim().lowercase()
-    if (title.isEmpty() && artist.isEmpty()) return ""
-    return "$title|$artist"
+    return compositeMixKey(track.title, track.artist)
 }
 
 fun buildMixCandidates(
@@ -100,9 +110,7 @@ fun buildMixCandidates(
     var maxTrackPlays = 0
     var maxArtistPlays = 0
     for (event in listens) {
-        val trackKey = event.trackId.trim().ifEmpty {
-            "${event.title.trim().lowercase()}|${event.artist.trim().lowercase()}"
-        }
+        val trackKey = listenEventMixKey(event)
         if (trackKey.isNotEmpty()) {
             val plays = (playsByTrack[trackKey] ?: 0) + 1
             playsByTrack[trackKey] = plays

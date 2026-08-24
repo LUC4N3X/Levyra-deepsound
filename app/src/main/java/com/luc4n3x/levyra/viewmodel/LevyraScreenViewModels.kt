@@ -262,6 +262,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
 }
 
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
+    fun openYourSound() = root.openYourSound()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
     fun addToQueue(track: Track) = root.addToQueue(track)

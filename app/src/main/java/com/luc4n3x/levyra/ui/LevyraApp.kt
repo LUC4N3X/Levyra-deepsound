@@ -18374,27 +18374,29 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
             contentPadding = PaddingValues(top = 42.dp, bottom = 190.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item(key = "explore-levyra-mix", contentType = "explore-mix") {
-                LevyraMixLauncherPanel(
-                    familiarity = state.mixFamiliarity,
-                    loading = state.mixLoading,
-                    accent = exploreMixAccent,
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                    onFamiliarityChange = viewModel::setMixFamiliarity,
-                    onStartMix = { kind -> viewModel.startLevyraMix(kind) },
-                    onOpenYourSound = viewModel::openYourSound
-                )
-            }
             items(
                 items = rows,
                 key = { row -> row.key },
                 contentType = { row -> row::class }
             ) { row ->
                 when (row) {
-                    ExploreRow.Shortcuts -> ExploreShortcutRow(
-                        availableAnchors = availableAnchors,
-                        onSelect = onShortcut
-                    )
+                    ExploreRow.Shortcuts -> Column(
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        ExploreShortcutRow(
+                            availableAnchors = availableAnchors,
+                            onSelect = onShortcut
+                        )
+                        LevyraMixLauncherPanel(
+                            familiarity = state.mixFamiliarity,
+                            loading = state.mixLoading,
+                            accent = exploreMixAccent,
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            onFamiliarityChange = viewModel::setMixFamiliarity,
+                            onStartMix = { kind -> viewModel.startLevyraMix(kind) },
+                            onOpenYourSound = viewModel::openYourSound
+                        )
+                    }
                     is ExploreRow.Header -> when (row.anchor) {
                         ExploreAnchor.Fresh -> ExploreSectionHeader(
                             title = strings.exploreFresh,

@@ -314,7 +314,8 @@ internal fun LevyraLibraryScreen(
                             artistCount = catalog.artists.size,
                             trackCount = catalog.tracks.size,
                             playlistCount = state.playlists.size,
-                            offlineCount = state.downloads.size
+                            offlineCount = state.downloads.size,
+                            onOpenYourSound = viewModel::openYourSound
                         )
                     }
                     if (visiblePlaylists.isNotEmpty()) {
