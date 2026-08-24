@@ -30,6 +30,7 @@ object LevyraMixDefaults {
     const val Familiarity: Float = 0.5f
     const val MaxCandidates: Int = 160
     const val MixSize: Int = 30
+    const val CanonicalSourceLimit: Int = 512
     const val RecentExclusionMs: Long = 3L * 60L * 60L * 1000L
 }
 
@@ -95,6 +96,35 @@ fun mixTrackKey(track: Track): String {
     val id = track.id.trim()
     if (id.isNotEmpty()) return id
     return compositeMixKey(track.title, track.artist)
+}
+
+fun prepareMixPlaybackTracks(
+    selected: List<Track>,
+    canonicalSources: List<Track>
+): List<Track> {
+    if (selected.isEmpty()) return emptyList()
+    if (canonicalSources.isEmpty()) {
+        return LevyraPersonalOrbit.distinctRecordings(
+            selected.map { LevyraPersonalOrbit.prepareForOrbit(it, emptyList()) }
+        )
+    }
+
+    val canonical = LevyraPersonalOrbit.distinctRecordings(
+        canonicalSources.take(LevyraMixDefaults.CanonicalSourceLimit)
+    )
+    val prepared = ArrayList<Track>(selected.size)
+    for (candidate in selected) {
+        val knownRecording = canonical.firstOrNull { source ->
+            LevyraPersonalOrbit.sameRecording(source, candidate)
+        }
+        val resolved = if (knownRecording != null) {
+            LevyraPersonalOrbit.prepareForOrbit(knownRecording, listOf(candidate))
+        } else {
+            LevyraPersonalOrbit.prepareForOrbit(candidate, canonical)
+        }
+        prepared.add(resolved)
+    }
+    return LevyraPersonalOrbit.distinctRecordings(prepared)
 }
 
 fun buildMixCandidates(
