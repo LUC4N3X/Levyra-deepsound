@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.view.View
 import android.widget.RemoteViews
 import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.MainActivity
@@ -22,6 +24,8 @@ object LevyraWidgetCenter {
     private const val KEY_ARTIST = "artist"
     private const val KEY_ARTWORK = "artwork"
     private const val KEY_PLAYING = "playing"
+    private const val KEY_ACCENT = "accent"
+    private const val DEFAULT_ACCENT = 0xFF6EE7FF.toInt()
 
     @Volatile
     private var cachedArtworkUrl: String = ""
@@ -31,13 +35,21 @@ object LevyraWidgetCenter {
 
     private val fetching = AtomicBoolean(false)
 
-    fun update(context: Context, title: String?, artist: String?, artworkUrl: String?, isPlaying: Boolean) {
+    fun update(
+        context: Context,
+        title: String?,
+        artist: String?,
+        artworkUrl: String?,
+        isPlaying: Boolean,
+        accentColor: Int = DEFAULT_ACCENT
+    ) {
         val appContext = context.applicationContext
         appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
             .putString(KEY_TITLE, title.orEmpty())
             .putString(KEY_ARTIST, artist.orEmpty())
             .putString(KEY_ARTWORK, artworkUrl.orEmpty())
             .putBoolean(KEY_PLAYING, isPlaying)
+            .putInt(KEY_ACCENT, accentColor)
             .apply()
         render(appContext)
     }
@@ -65,7 +77,11 @@ object LevyraWidgetCenter {
         val artist = prefs.getString(KEY_ARTIST, "").orEmpty()
         val artworkUrl = prefs.getString(KEY_ARTWORK, "").orEmpty()
         val playing = prefs.getBoolean(KEY_PLAYING, false)
+        val accent = prefs.getInt(KEY_ACCENT, DEFAULT_ACCENT)
         val views = RemoteViews(context.packageName, R.layout.levyra_widget)
+        views.setViewVisibility(R.id.widget_playing, if (playing) View.VISIBLE else View.GONE)
+        views.setInt(R.id.widget_playing, "setColorFilter", accent)
+        views.setInt(R.id.widget_toggle, "setColorFilter", if (playing) accent else Color.WHITE)
         views.setTextViewText(R.id.widget_title, title.ifBlank { context.getString(R.string.widget_idle_title) })
         views.setTextViewText(R.id.widget_artist, artist.ifBlank { context.getString(R.string.widget_idle_subtitle) })
         views.setImageViewResource(R.id.widget_toggle, if (playing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play)

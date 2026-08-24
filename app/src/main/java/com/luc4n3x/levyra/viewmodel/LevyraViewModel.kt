@@ -26,6 +26,7 @@ import com.luc4n3x.levyra.data.HomeStartupWorkPlan
 import com.luc4n3x.levyra.data.HomeStartupWorkPolicy
 import com.luc4n3x.levyra.data.StartupPlaybackWarmPolicy
 import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
+import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.LyricsRepository
@@ -104,6 +105,17 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.ListeningDna
+import com.luc4n3x.levyra.domain.ListeningDnaEngine
+import com.luc4n3x.levyra.domain.ListeningDnaPeriod
+import com.luc4n3x.levyra.domain.LevyraMixDefaults
+import com.luc4n3x.levyra.domain.LevyraMixKind
+import com.luc4n3x.levyra.domain.LevyraMixRanker
+import com.luc4n3x.levyra.domain.LevyraMixSummary
+import com.luc4n3x.levyra.domain.buildMixCandidates
+import com.luc4n3x.levyra.domain.mixTrackKey
+import java.util.TimeZone
+import com.luc4n3x.levyra.domain.PulseTrack
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
@@ -1595,6 +1607,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(themePreset = normalized) }
     }
 
+    private fun widgetAccentColor(track: Track?): Int {
+        if (track == null) return WIDGET_DEFAULT_ACCENT
+        val cached = ArtworkPaletteCache.peek(
+            ArtworkPaletteCache.key(
+                trackId = track.id,
+                thumbnailUrl = track.thumbnailUrl,
+                largeThumbnailUrl = track.largeThumbnailUrl
+            )
+        )
+        val start = cached?.start ?: track.accentStart
+        return if (start == 0) WIDGET_DEFAULT_ACCENT else start
+    }
     private fun updateWidget() {
         val snapshot = _state.value
         val track = snapshot.currentTrack
@@ -1603,7 +1627,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             track?.title,
             track?.artist,
             track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl },
-            snapshot.isPlaying
+            snapshot.isPlaying,
+            widgetAccentColor(track)
         )
     }
 
@@ -7728,6 +7753,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
         const val PULSE_REFRESH_THROTTLE_MS = 5_000L
+        val WIDGET_DEFAULT_ACCENT = 0xFF6EE7FF.toInt()
+        const val MIX_RADIO_LIMIT = 25
+        const val MIX_SEARCH_LIMIT = 40
+        const val MIX_HISTORY_DAYS = 180
+        const val MIX_SURPRISE_ANCHORS = 3
+        const val MIX_UNAVAILABLE_MARKER = "levyra_mix_unavailable"
     }
 
     override fun onCleared() {
@@ -7782,7 +7813,216 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         musicVideosJob?.cancel()
         videoMetadataJob?.cancel()
         if (deArrowRepository.isInitialized()) deArrowRepository.value.close()
+        levyraMixJob?.cancel()
+        listeningDnaJob?.cancel()
         super.onCleared()
+    }
+
+    private var levyraMixJob: Job? = null
+    private var listeningDnaJob: Job? = null
+
+    fun setMixFamiliarity(value: Float) {
+        val clamped = value.coerceIn(0f, 1f)
+        if (_state.value.mixFamiliarity == clamped) return
+        _state.update { it.copy(mixFamiliarity = clamped) }
+    }
+
+    fun clearMixMessage() {
+        if (_state.value.mixMessage == null) return
+        _state.update { it.copy(mixMessage = null) }
+    }
+
+    fun surpriseMe() {
+        startLevyraMix(LevyraMixKind.SurpriseMe)
+    }
+
+    fun saveActiveMixAsPlaylist(name: String) {
+        saveDiscoveryAsPlaylist(name, _state.value.queue)
+    }
+
+    fun startLevyraMix(
+        kind: LevyraMixKind,
+        seedTrack: Track? = null,
+        seedQuery: String = "",
+        label: String = ""
+    ) {
+        levyraMixJob?.cancel()
+        levyraMixJob = viewModelScope.launch {
+            _state.update { it.copy(mixLoading = true, mixMessage = null) }
+            try {
+                val snapshot = _state.value
+                val seed = seedTrack
+                    ?: snapshot.currentTrack
+                    ?: snapshot.recentListens.firstOrNull()
+                    ?: snapshot.mostPlayedTracks.firstOrNull()
+                val pool = collectMixPool(kind, seed, seedQuery, snapshot)
+                if (pool.isEmpty()) {
+                    _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
+                    return@launch
+                }
+                val listens = listeningPulseStore.eventsWindow(MIX_HISTORY_DAYS)
+                val avoidRecent = kind == LevyraMixKind.SurpriseMe || kind == LevyraMixKind.Rediscover
+                val ranked = withContext(Dispatchers.Default) {
+                    val candidates = buildMixCandidates(pool, listens, System.currentTimeMillis())
+                    LevyraMixRanker
+                        .rank(candidates, snapshot.mixFamiliarity, excludeRecent = avoidRecent)
+                        .ifEmpty { LevyraMixRanker.rank(candidates, snapshot.mixFamiliarity) }
+                }
+                if (ranked.isEmpty()) {
+                    _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
+                    return@launch
+                }
+                _state.update {
+                    it.copy(
+                        mixLoading = false,
+                        activeMix = LevyraMixSummary(
+                            kind = kind,
+                            label = label,
+                            seedTrackId = seed?.id.orEmpty(),
+                            trackCount = ranked.size
+                        )
+                    )
+                }
+                playFrom(ranked, ranked.first(), loopOnCompletion = true)
+            } catch (cancelled: CancellationException) {
+                _state.update { it.copy(mixLoading = false) }
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Levyra mix build failed")
+                _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
+            }
+        }
+    }
+
+    fun saveDiscoveryAsPlaylist(name: String, tracks: List<Track>) {
+        val cleanName = name.trim()
+        val snapshot = tracks.filter { it.title.isNotBlank() }.take(LevyraMixDefaults.MixSize)
+        if (cleanName.isEmpty() || snapshot.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                playlistStore.createWithTracks(cleanName, snapshot)
+                loadPlaylists()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Discovery playlist save failed")
+            }
+        }
+    }
+
+    fun playListeningDnaTrack(entry: PulseTrack) {
+        val snapshot = _state.value
+        val local = (snapshot.recentListens + snapshot.mostPlayedTracks).firstOrNull { candidate ->
+            candidate.id.isNotBlank() && candidate.id == entry.trackId
+        }
+        if (local != null) {
+            playFrom(listOf(local), local)
+            return
+        }
+        viewModelScope.launch {
+            val resolved = try {
+                repository.searchSongMatch(entry.title, entry.artist, snapshot.languageCode)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening DNA track resolve failed")
+                null
+            } ?: return@launch
+            playFrom(listOf(resolved), resolved)
+        }
+    }
+    fun openYourSound() {
+        _state.update { it.copy(showYourSound = true) }
+        refreshListeningDna(_state.value.listeningDnaPeriod)
+    }
+
+    fun closeYourSound() {
+        if (!_state.value.showYourSound) return
+        _state.update { it.copy(showYourSound = false) }
+    }
+
+    fun selectListeningDnaPeriod(period: ListeningDnaPeriod) {
+        if (_state.value.listeningDnaPeriod == period && _state.value.listeningDna.hasSignal) return
+        _state.update { it.copy(listeningDnaPeriod = period) }
+        refreshListeningDna(period)
+    }
+
+    private fun refreshListeningDna(period: ListeningDnaPeriod) {
+        listeningDnaJob?.cancel()
+        listeningDnaJob = viewModelScope.launch {
+            _state.update { it.copy(listeningDnaLoading = true) }
+            try {
+                val events = listeningPulseStore.eventsWindow()
+                val zoneOffsetMs = TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
+                val dna = withContext(Dispatchers.Default) {
+                    ListeningDnaEngine.build(events, period, zoneOffsetMs = zoneOffsetMs)
+                }
+                _state.update { current ->
+                    if (current.listeningDnaPeriod != period) {
+                        current.copy(listeningDnaLoading = false)
+                    } else {
+                        current.copy(listeningDna = dna, listeningDnaLoading = false)
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Listening DNA build failed")
+                _state.update { it.copy(listeningDnaLoading = false) }
+            }
+        }
+    }
+
+    private suspend fun collectMixPool(
+        kind: LevyraMixKind,
+        seed: Track?,
+        seedQuery: String,
+        snapshot: LevyraUiState
+    ): List<Track> {
+        val languageCode = snapshot.languageCode
+        return when (kind) {
+            LevyraMixKind.SimilarTrack, LevyraMixKind.Personalized ->
+                seed?.let { repository.radio(it, languageCode, MIX_RADIO_LIMIT) }.orEmpty()
+
+            LevyraMixKind.SimilarArtist -> {
+                val artist = seedQuery.trim().ifEmpty { seed?.artist.orEmpty() }.trim()
+                if (artist.isEmpty()) {
+                    emptyList()
+                } else {
+                    val fromRadio = seed?.let { repository.radio(it, languageCode, MIX_RADIO_LIMIT) }.orEmpty()
+                    fromRadio + repository.search(artist, MIX_SEARCH_LIMIT, languageCode)
+                }
+            }
+
+            LevyraMixKind.Genre -> {
+                val query = seedQuery.trim()
+                if (query.isEmpty()) {
+                    emptyList()
+                } else {
+                    repository.search(query, MIX_SEARCH_LIMIT, languageCode)
+                }
+            }
+
+            LevyraMixKind.Rediscover -> {
+                val recentKeys = snapshot.recentListens.mapTo(HashSet()) { mixTrackKey(it) }
+                listeningPulseStore.mostPlayedTracks(days = MIX_HISTORY_DAYS, limit = MIX_SEARCH_LIMIT)
+                    .filterNot { mixTrackKey(it) in recentKeys }
+            }
+
+            LevyraMixKind.CurrentRotation ->
+                snapshot.mostPlayedTracks + snapshot.recentListens
+
+            LevyraMixKind.SurpriseMe -> {
+                val anchors = (snapshot.mostPlayedTracks + snapshot.recentListens)
+                    .distinctBy { mixTrackKey(it) }
+                    .take(MIX_SURPRISE_ANCHORS)
+                val radio = ArrayList<Track>(MIX_RADIO_LIMIT * MIX_SURPRISE_ANCHORS)
+                for (anchor in anchors) {
+                    radio.addAll(repository.radio(anchor, languageCode, MIX_RADIO_LIMIT))
+                }
+                radio + snapshot.exploreFreshTracks + snapshot.homeResonanceTracks
+            }
+        }
     }
 }
 
