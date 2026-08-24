@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.R
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -152,6 +153,7 @@ import androidx.compose.material.icons.rounded.Mood
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.SlowMotionVideo
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
@@ -239,6 +241,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -393,6 +396,17 @@ import com.luc4n3x.levyra.ui.components.LevyraArtistNameSpacing
 import com.luc4n3x.levyra.ui.components.LevyraArtistShelfItem
 import com.luc4n3x.levyra.ui.components.LevyraArtistShelfSpacing
 import com.luc4n3x.levyra.ui.components.LevyraTrackActionSheet
+import com.luc4n3x.levyra.ui.components.LevyraConnectedDefaults
+import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
+import com.luc4n3x.levyra.ui.components.LevyraConnectedStyle
+import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.LevyraSkeletonBlock
+import com.luc4n3x.levyra.ui.components.levyraConnectedSurface
+import com.luc4n3x.levyra.domain.LevyraMixKind
+import com.luc4n3x.levyra.ui.components.rememberNowPlayingAccent
+import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.components.levyraShimmer
 import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
@@ -408,6 +422,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
+import com.luc4n3x.levyra.ui.theme.LevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
@@ -431,13 +446,13 @@ import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.viewmodel.SearchViewModel
-import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
@@ -452,6 +467,7 @@ import com.luc4n3x.levyra.ui.player.playerChromeAlpha
 import com.luc4n3x.levyra.ui.player.playerExpansionFromDrag
 import com.luc4n3x.levyra.ui.player.playerAxisDragGestures
 import com.luc4n3x.levyra.ui.player.playerMorphActive
+import com.luc4n3x.levyra.ui.player.playerPredictiveBackExpansion
 import com.luc4n3x.levyra.ui.player.playerMorphAnchor
 import com.luc4n3x.levyra.ui.player.playerMorphFraction
 import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
@@ -468,7 +484,15 @@ import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-private val LocalAnimationsEnabled = compositionLocalOf { true }
+internal val LocalAnimationsEnabled = compositionLocalOf { true }
+
+private val BiographyWhitespacePattern = Regex("""\s+""")
+private val CompactNumberTrailingZeroPattern = Regex("[,.]0$")
+private val CommentCountBadgePattern = Regex("""\d[\d\s.,]*(?:[KMBkmb])?""")
+private val TrackRowShape = RoundedCornerShape(18.dp)
+private val TrackRowArtworkShape = RoundedCornerShape(12.dp)
+private val DownloadRowArtworkShape = RoundedCornerShape(8.dp)
+private val TrackRowTransparentBrush: Brush = SolidColor(Color.Transparent)
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
@@ -1034,42 +1058,20 @@ private fun EmptyState(text: String) {
 private fun Modifier.pressable(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
-    pressedScale: Float = 0.96f,
+    pressedScale: Float = LevyraPressScale.Control,
     onLongClickLabel: String? = null,
     onLongClick: (() -> Unit)? = null,
+    haptic: LevyraHapticAction? = null,
     onClick: () -> Unit
-): Modifier {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val interaction = interactionSource ?: remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && animationsEnabled) pressedScale else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-        label = "press"
-    )
-    val indication = if (animationsEnabled) null else LocalIndication.current
-    return this
-        .graphicsLayer { scaleX = scale; scaleY = scale }
-        .then(
-            if (onLongClick == null) {
-                Modifier.clickable(
-                    interactionSource = interaction,
-                    indication = indication,
-                    enabled = enabled,
-                    onClick = onClick
-                )
-            } else {
-                Modifier.combinedClickable(
-                    interactionSource = interaction,
-                    indication = indication,
-                    enabled = enabled,
-                    onLongClickLabel = onLongClickLabel,
-                    onLongClick = onLongClick,
-                    onClick = onClick
-                )
-            }
-        )
-}
+): Modifier = levyraPressable(
+    onClick = onClick,
+    enabled = enabled,
+    pressedScale = pressedScale,
+    interactionSource = interactionSource,
+    onLongClickLabel = onLongClickLabel,
+    onLongClick = onLongClick,
+    haptic = haptic
+)
 
 private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
     awaitPointerEventScope {
@@ -1200,9 +1202,11 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.showYourSound || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
+        } else if (state.showYourSound) {
+            viewModel.closeYourSound()
         } else if (state.sharedMediaPreview != null) {
             viewModel.dismissSharedMedia()
         } else if (showDownloadsFolder) {
@@ -1239,9 +1243,9 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             val playerExpansion = remember {
                 Animatable(if (state.selectedTab == LevyraTab.Player) 1f else 0f)
             }
-            var expansionDragStart by remember { mutableStateOf(0f) }
-            var expansionDragAccum by remember { mutableStateOf(0f) }
-            var expansionDragGeneration by remember { mutableStateOf(0) }
+            var expansionDragStart by remember { mutableFloatStateOf(0f) }
+            var expansionDragAccum by remember { mutableFloatStateOf(0f) }
+            var expansionDragGeneration by remember { mutableIntStateOf(0) }
             var backgroundTab by remember {
                 mutableStateOf(state.selectedTab.takeIf { it != LevyraTab.Player } ?: LevyraTab.Home)
             }
@@ -1298,6 +1302,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     }
                 }
             }
+            val yourSoundAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
             val collapsePlayer: () -> Unit = {
                 expansionScope.launch {
                     if (state.animationsEnabled) {
@@ -1306,6 +1311,38 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         playerExpansion.snapTo(0f)
                     }
                     if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
+                }
+            }
+            val playerPredictiveBackEnabled = state.animationsEnabled &&
+                state.selectedTab == LevyraTab.Player &&
+                !state.showQueue &&
+                !state.showLyrics &&
+                !state.showSettings &&
+                !state.showAlbum &&
+                !state.showArtist &&
+                !state.showAudioQualityPanel &&
+                !state.youtubeEngagement.comments.visible &&
+                !state.showYourSound &&
+                state.openPlaylist == null &&
+                state.sharedMediaPreview == null &&
+                !showDownloadsFolder &&
+                !showLanguageRestartDialog
+            PredictiveBackHandler(enabled = playerPredictiveBackEnabled) { backProgress ->
+                val startExpansion = playerExpansion.value
+                try {
+                    backProgress.collect { backEvent ->
+                        playerExpansion.snapTo(
+                            playerPredictiveBackExpansion(startExpansion, backEvent.progress)
+                        )
+                    }
+                    playerExpansion.animateTo(0f, spring(dampingRatio = 0.86f, stiffness = 430f))
+                    if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
+                } catch (cancelled: CancellationException) {
+                    playerExpansion.animateTo(
+                        startExpansion,
+                        spring(dampingRatio = 0.82f, stiffness = 360f)
+                    )
+                    throw cancelled
                 }
             }
 
@@ -1622,6 +1659,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onMove = viewModel::moveQueueItem,
                     onUndo = viewModel::undoQueueRemoval,
                     onToggleRadio = viewModel::toggleContinuousRadio,
+                    onSaveSelection = { name -> viewModel.saveActiveMixAsPlaylist(name) },
                     onClose = viewModel::closeQueue
                 )
             }
@@ -1663,6 +1701,30 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
             AnimatedVisibility(visible = showDownloadsFolder, enter = overlayEnter, exit = overlayExit) {
                 DownloadsFolderOverlay(state = state, viewModel = viewModel, onClose = { showDownloadsFolder = false })
+            }
+
+            AnimatedVisibility(visible = state.showYourSound, enter = overlayEnter, exit = overlayExit) {
+                LevyraYourSoundOverlay(
+                    dna = state.listeningDna,
+                    period = state.listeningDnaPeriod,
+                    loading = state.listeningDnaLoading,
+                    accent = yourSoundAccent,
+                    onSelectPeriod = viewModel::selectListeningDnaPeriod,
+                    onStartArtistMix = { artist ->
+                        viewModel.closeYourSound()
+                        viewModel.startLevyraMix(
+                            kind = LevyraMixKind.SimilarArtist,
+                            seedQuery = artist.name,
+                            label = artist.name
+                        )
+                    },
+                    onDiscoverArtist = { artist ->
+                        viewModel.closeYourSound()
+                        viewModel.openArtistByName(artist.name)
+                    },
+                    onPlayTrack = viewModel::playListeningDnaTrack,
+                    onClose = viewModel::closeYourSound
+                )
             }
 
             if (showLanguageRestartDialog) {
@@ -2317,7 +2379,7 @@ private fun AlbumLoadingCard() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 34.dp)
-            .shimmer()
+            .levyraShimmer()
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -3212,7 +3274,7 @@ private fun normalizeBiographyPreview(
     val source = text.takeIf { it.isNotBlank() }
         ?: paragraphs.joinToString(" ").takeIf { it.isNotBlank() }
         ?: summary
-    return source.replace(Regex("""\s+"""), " ").trim()
+    return source.replace(BiographyWhitespacePattern, " ").trim()
 }
 
 private data class ArtistBiographyPresentation(
@@ -3875,9 +3937,13 @@ private fun QueueOverlay(
     onMove: (Int, Int) -> Unit,
     onUndo: () -> Unit,
     onToggleRadio: () -> Unit,
+    onSaveSelection: (String) -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
+    val queueAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
+    val connectedStyle = LevyraConnectedDefaults.style(accent = queueAccent)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -3889,11 +3955,11 @@ private fun QueueOverlay(
                 .fillMaxSize()
                 .statusBarsPadding(),
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(connectedStyle.gap)
         ) {
-            item {
+            item(contentType = "queue-header") {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -3914,12 +3980,12 @@ private fun QueueOverlay(
                     )
                 }
             }
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
+            item(contentType = "queue-radio") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -3940,24 +4006,67 @@ private fun QueueOverlay(
                     }
                 }
             }
+            if (state.activeMix != null && state.queue.size > 1) {
+                val mixName = state.activeMix.label.ifBlank { strings.levyraMix }
+                item(contentType = "queue-save") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                            .levyraConnectedSurface(LevyraConnectedPosition.Single, connectedStyle)
+                            .levyraPressable(
+                                onClick = { onSaveSelection(mixName) },
+                                pressedScale = LevyraPressScale.Row,
+                                role = Role.Button,
+                                onClickLabel = strings.saveSelection,
+                                haptic = LevyraHapticAction.Confirm
+                            )
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.BookmarkAdd,
+                            contentDescription = null,
+                            tint = queueAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = strings.saveSelection,
+                            color = LevyraText,
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
             if (state.queue.isEmpty()) {
                 item { Text(strings.queueEmpty, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
             } else {
-                itemsIndexed(state.queue, key = { _, track -> "q-${System.identityHashCode(track)}-${track.id}-${track.videoUrl}" }) { index, track ->
+                itemsIndexed(
+                    state.queue,
+                    key = { _, track -> "q-${System.identityHashCode(track)}-${track.id}-${track.videoUrl}" },
+                    contentType = { _, _ -> "queue-track" }
+                ) { index, track ->
                     val isCurrent = index == state.queueCurrentIndex
                     var dragDistance by remember(track) { mutableFloatStateOf(0f) }
                     val latestQueue by rememberUpdatedState(state.queue)
                     val latestMove by rememberUpdatedState(onMove)
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        color = if (isCurrent) LevyraCyan.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.035f),
-                        border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.055f))
+                    val queuePosition = LevyraConnectedPosition.of(index, state.queue.size)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .levyraConnectedSurface(queuePosition, connectedStyle, selected = isCurrent)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .pressable(onClick = { onPlay(track) })
+                                .levyraPressable(
+                                    onClick = { onPlay(track) },
+                                    pressedScale = LevyraPressScale.Row
+                                )
                                 .padding(horizontal = 10.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -3990,24 +4099,31 @@ private fun QueueOverlay(
                                                         latestMove(dragIndex, dragIndex + 1)
                                                         dragIndex += 1
                                                         dragDistance = 0f
+                                                        haptics.perform(LevyraHapticAction.Reorder)
                                                     }
                                                     dragDistance < -threshold && dragIndex > 0 -> {
                                                         latestMove(dragIndex, dragIndex - 1)
                                                         dragIndex -= 1
                                                         dragDistance = 0f
+                                                        haptics.perform(LevyraHapticAction.Reorder)
                                                     }
                                                 }
                                             }
                                         )
                                     }
                             )
-                            CoverImage(track, Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)))
+                            CoverImage(track, Modifier.size(48.dp).clip(LevyraPlayerDesign.ShapeXs))
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(track.title, color = if (isCurrent) queueAccent else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             if (isCurrent) {
-                                Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                                LevyraPlayingIndicator(
+                                    playing = state.isPlaying,
+                                    color = queueAccent,
+                                    size = 18.dp,
+                                    contentDescription = strings.playing
+                                )
                             } else {
                                 IconButton(onClick = { onPlayNext(track) }, modifier = Modifier.size(34.dp)) {
                                     Icon(Icons.Rounded.SkipNext, strings.playNext, tint = LevyraText, modifier = Modifier.size(19.dp))
@@ -4552,7 +4668,8 @@ private fun LyricsOverlay(
                         ) {
                             items(
                                 items = state.lyricsSections,
-                                key = { section -> "${section.type}-${section.ordinal}-${section.startMs}" }
+                                key = { section -> "${section.type}-${section.ordinal}-${section.startMs}" },
+                                contentType = { "lyrics-section-chip" }
                             ) { section ->
                                 LyricsSectionChip(
                                     label = lyricSectionLabel(strings, section),
@@ -7080,7 +7197,7 @@ private fun TrendingArtistLoadingItem() {
             modifier = Modifier
                 .size(LevyraArtistAvatarSize)
                 .clip(CircleShape)
-                .shimmer()
+                .levyraShimmer()
                 .background(CinematicGlassDeep)
         )
         Box(
@@ -7088,7 +7205,7 @@ private fun TrendingArtistLoadingItem() {
                 .fillMaxWidth(0.78f)
                 .height(15.dp)
                 .clip(RoundedCornerShape(99.dp))
-                .shimmer()
+                .levyraShimmer()
                 .background(CinematicGlassDeep)
         )
         Box(
@@ -7096,7 +7213,7 @@ private fun TrendingArtistLoadingItem() {
                 .fillMaxWidth(0.58f)
                 .height(12.dp)
                 .clip(RoundedCornerShape(99.dp))
-                .shimmer()
+                .levyraShimmer()
                 .background(CinematicGlassDeep)
         )
     }
@@ -9551,6 +9668,8 @@ private fun DownloadsFolderOverlay(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val downloadsAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
+    val downloadsStyle = LevyraConnectedDefaults.style(accent = downloadsAccent)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -9561,11 +9680,11 @@ private fun DownloadsFolderOverlay(
                 .fillMaxSize()
                 .statusBarsPadding(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(downloadsStyle.gap)
         ) {
-            item {
+            item(contentType = "downloads-header") {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onClose) {
@@ -9592,10 +9711,18 @@ private fun DownloadsFolderOverlay(
                     EmptyState(strings.noOfflineDownloads)
                 }
             } else {
-                items(state.downloads, key = { "dlfolder-${it.id}" }) { download ->
+                itemsIndexed(
+                    state.downloads,
+                    key = { _, download -> "dlfolder-${download.id}" },
+                    contentType = { _, _ -> "download-saved" }
+                ) { downloadIndex, download ->
                     DownloadRow(
                         download = download,
                         isCurrent = download.trackId == state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        position = LevyraConnectedPosition.of(downloadIndex, state.downloads.size),
+                        style = downloadsStyle,
+                        accent = downloadsAccent,
                         onPlay = { viewModel.playDownloaded(download) },
                         onDelete = { viewModel.deleteDownload(download) }
                     )
@@ -10628,18 +10755,25 @@ private fun cleanLibraryLabel(value: String): String {
 }
 
 @Composable
-private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: () -> Unit, onDelete: () -> Unit) {
+private fun DownloadRow(
+    download: DownloadedTrack,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    position: LevyraConnectedPosition,
+    style: LevyraConnectedStyle,
+    accent: Color,
+    onPlay: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val artworkBrush = remember(accent) {
+        Brush.linearGradient(listOf(accent.copy(alpha = 0.32f), LevyraViolet.copy(alpha = 0.28f)))
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(cinematicGlassBrush(intensity = if (isCurrent) 0.82f else 0.48f))
-            .border(
-                1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.07f),
-                RoundedCornerShape(18.dp)
-            )
-            .clickable(onClick = onPlay)
+            .levyraConnectedSurface(position, style, selected = isCurrent)
+            .levyraPressable(onClick = onPlay, pressedScale = LevyraPressScale.Row)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -10647,14 +10781,23 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: (
         Box(
             modifier = Modifier
                 .size(54.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.32f), LevyraViolet.copy(alpha = 0.32f)))),
+                .clip(DownloadRowArtworkShape)
+                .background(artworkBrush),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.DownloadDone, null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
+            if (isCurrent) {
+                LevyraPlayingIndicator(
+                    playing = isPlaying,
+                    color = accent,
+                    size = 20.dp,
+                    contentDescription = strings.playing
+                )
+            } else {
+                Icon(Icons.Rounded.DownloadDone, null, tint = accent, modifier = Modifier.size(24.dp))
+            }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(download.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(download.title, color = if (isCurrent) accent else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(download.artist, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 if (download.embeddedMetadata) "Music/Levyra · ${LocalLevyraStrings.current.coverAndTags}" else "Music/Levyra",
@@ -11631,7 +11774,7 @@ private fun compactYoutubeCount(value: Long): String {
     }
     val pattern = if (kotlin.math.abs(scaled) >= 100.0) "%.0f" else "%.1f"
     return String.format(Locale.getDefault(), pattern, scaled)
-        .replace(Regex("[,.]0$"), "") + suffix
+        .replace(CompactNumberTrailingZeroPattern, "") + suffix
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -11791,7 +11934,7 @@ private fun PlayerYoutubeEngagementRow(
 private fun youtubeCommentCountBadge(value: String): String {
     val normalized = value.replace('\u00A0', ' ').trim()
     if (normalized.isBlank()) return ""
-    return Regex("""\d[\d\s.,]*(?:[KMBkmb])?""")
+    return CommentCountBadgePattern
         .find(normalized)
         ?.value
         ?.replace(" ", "")
@@ -12186,11 +12329,11 @@ private fun PlayerScreen(
         )
     }
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
-    var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
+    var mediaSeekFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
-    var gestureFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
+    var gestureFeedbackEvent by remember(track?.id) { mutableIntStateOf(0) }
     var playlistTarget by remember(track?.id) { mutableStateOf<Track?>(null) }
-    var swipeOffsetPx by remember(track?.id) { mutableStateOf(0f) }
+    var swipeOffsetPx by remember(track?.id) { mutableFloatStateOf(0f) }
     val settledSwipeOffset by animateFloatAsState(
         targetValue = swipeOffsetPx,
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.smoothSpring() else snap(),
@@ -16307,7 +16450,7 @@ private fun HomeAlbumLoadingRow() {
             Column(
                 modifier = Modifier
                     .width(168.dp)
-                    .shimmer(),
+                    .levyraShimmer(),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 Box(
@@ -17543,40 +17686,51 @@ private fun TrackRow(
     onAddToPlaylist: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null
 ) {
+    val strings = LocalLevyraStrings.current
+    val rowAccent = if (isCurrent) rememberNowPlayingAccent(track, LevyraCyan) else LevyraCyan
+    val currentBackground = if (isCurrent) {
+        remember(track.accentStart, track.accentEnd) {
+            cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), 0.82f)
+        }
+    } else {
+        TrackRowTransparentBrush
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                if (isCurrent) {
-                    cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), 0.82f)
-                } else {
-                    SolidColor(Color.Transparent)
-                }
-            )
+            .clip(TrackRowShape)
+            .background(currentBackground)
             .border(
                 1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else Color.Transparent,
-                RoundedCornerShape(18.dp)
+                if (isCurrent) rowAccent.copy(alpha = 0.30f) else Color.Transparent,
+                TrackRowShape
             )
-            .pressable(onClick = onClick)
+            .levyraPressable(onClick = onClick, pressedScale = LevyraPressScale.Row)
             .padding(horizontal = if (isCurrent) 9.dp else 0.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box {
-            CoverImage(track, Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)))
+            CoverImage(track, Modifier.size(56.dp).clip(TrackRowArtworkShape))
             if (isPlaying || isResolving) {
-                Surface(color = Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp), modifier = Modifier.matchParentSize()) {
+                Surface(color = Color.Black.copy(alpha = 0.5f), shape = TrackRowArtworkShape, modifier = Modifier.matchParentSize()) {
                     Box(contentAlignment = Alignment.Center) {
-                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
+                        if (isResolving) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = rowAccent)
+                        } else {
+                            LevyraPlayingIndicator(
+                                playing = isPlaying,
+                                color = rowAccent,
+                                size = 20.dp,
+                                contentDescription = strings.playing
+                            )
+                        }
                     }
                 }
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.title, color = if (isCurrent) rowAccent else LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     track.artist,
@@ -17672,12 +17826,13 @@ private fun handleMiniPlayerDragEvent(
     event: PlayerDragEvent,
     playbackActions: MiniPlayerPlaybackActions,
     expansionActions: MiniPlayerExpansionActions,
+    haptics: LevyraHaptics,
     updateSwipeOffset: (Float) -> Unit
 ) {
     when (event) {
         is PlayerDragEvent.HorizontalOffset -> updateSwipeOffset(event.offsetPx)
         is PlayerDragEvent.HorizontalSettled -> {
-            handleMiniPlayerSwipeResult(event.result, playbackActions)
+            handleMiniPlayerSwipeResult(event.result, playbackActions, haptics)
             updateSwipeOffset(0f)
         }
         is PlayerDragEvent.VerticalStart -> expansionActions.start()
@@ -17696,11 +17851,18 @@ private fun handleMiniPlayerDragEvent(
 
 private fun handleMiniPlayerSwipeResult(
     result: PlayerSwipeResult,
-    playbackActions: MiniPlayerPlaybackActions
+    playbackActions: MiniPlayerPlaybackActions,
+    haptics: LevyraHaptics
 ) {
     when (result) {
-        PlayerSwipeResult.Next -> playbackActions.next()
-        PlayerSwipeResult.Previous -> playbackActions.previous()
+        PlayerSwipeResult.Next -> {
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+            playbackActions.next()
+        }
+        PlayerSwipeResult.Previous -> {
+            haptics.perform(LevyraHapticAction.TrackSwipe)
+            playbackActions.previous()
+        }
         PlayerSwipeResult.Settle -> Unit
     }
 }
@@ -17745,6 +17907,7 @@ private fun MiniPlayer(
     val gesturesEnabled = model.gesturesEnabled
     val strings = LocalLevyraStrings.current
     val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val miniHaptics = LocalLevyraHaptics.current
     val context = LocalContext.current
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
@@ -17812,7 +17975,7 @@ private fun MiniPlayer(
         animationSpec = if (animated) tween(520, easing = LinearOutSlowInEasing) else snap(),
         label = "mini-buffered"
     )
-    var swipeOffsetPx by remember(track.id) { mutableStateOf(0f) }
+    var swipeOffsetPx by remember(track.id) { mutableFloatStateOf(0f) }
     val settledSwipeOffset by animateFloatAsState(
         targetValue = swipeOffsetPx,
         animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap(),
@@ -17845,6 +18008,7 @@ private fun MiniPlayer(
                     event = event,
                     playbackActions = playbackActions,
                     expansionActions = expansionActions,
+                    haptics = miniHaptics,
                     updateSwipeOffset = { swipeOffsetPx = it }
                 )
             }
@@ -18199,6 +18363,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
         null
     }
 
+    val exploreMixAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -18216,10 +18381,23 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                 contentType = { row -> row::class }
             ) { row ->
                 when (row) {
-                    ExploreRow.Shortcuts -> ExploreShortcutRow(
-                        availableAnchors = availableAnchors,
-                        onSelect = onShortcut
-                    )
+                    ExploreRow.Shortcuts -> Column(
+                        verticalArrangement = Arrangement.spacedBy(18.dp)
+                    ) {
+                        ExploreShortcutRow(
+                            availableAnchors = availableAnchors,
+                            onSelect = onShortcut
+                        )
+                        LevyraMixLauncherPanel(
+                            familiarity = state.mixFamiliarity,
+                            loading = state.mixLoading,
+                            accent = exploreMixAccent,
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            onFamiliarityChange = viewModel::setMixFamiliarity,
+                            onStartMix = { kind -> viewModel.startLevyraMix(kind) },
+                            onOpenYourSound = viewModel::openYourSound
+                        )
+                    }
                     is ExploreRow.Header -> when (row.anchor) {
                         ExploreAnchor.Fresh -> ExploreSectionHeader(
                             title = strings.exploreFresh,
@@ -18286,6 +18464,13 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                             onClick = {
                                 viewModel.selectExploreZone(row.leading)
                                 exploreDestination = exploreMoodDestination(row.leading.id)
+                            },
+                            onStartZoneMix = {
+                                viewModel.startLevyraMix(
+                                    kind = LevyraMixKind.Genre,
+                                    seedQuery = row.leading.query,
+                                    label = row.leading.label
+                                )
                             }
                         )
                         val trailing = row.trailing
@@ -18298,6 +18483,13 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                                 onClick = {
                                     viewModel.selectExploreZone(trailing)
                                     exploreDestination = exploreMoodDestination(trailing.id)
+                                },
+                                onStartZoneMix = {
+                                    viewModel.startLevyraMix(
+                                        kind = LevyraMixKind.Genre,
+                                        seedQuery = trailing.query,
+                                        label = trailing.label
+                                    )
                                 }
                             )
                         }
@@ -18462,7 +18654,13 @@ private fun RowScope.ExploreShortcutCard(icon: ImageVector, label: String, onCli
 }
 
 @Composable
-private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onClick: () -> Unit) {
+private fun RowScope.ExploreMoodCard(
+    zone: ExploreZone,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onStartZoneMix: (() -> Unit)? = null
+) {
+    val moodStrings = LocalLevyraStrings.current
     val animationsEnabled = LocalAnimationsEnabled.current
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
@@ -18505,7 +18703,14 @@ private fun RowScope.ExploreMoodCard(zone: ExploreZone, isSelected: Boolean, onC
                 role = Role.Button
                 selected = isSelected
             }
-            .pressable(onClick = onClick),
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Tile,
+                role = Role.Button,
+                onClickLabel = zone.label,
+                onLongClick = onStartZoneMix,
+                onLongClickLabel = moodStrings.mixStartRadio
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -19207,7 +19412,7 @@ private fun SearchLoadingSkeleton() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shimmer()
+            .levyraShimmer()
             .padding(vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -19222,7 +19427,7 @@ private fun ChartLoadingSkeleton() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shimmer(),
+            .levyraShimmer(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         repeat(2) {
@@ -19327,7 +19532,7 @@ private fun VideoLoadingSkeleton() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .shimmer()
+            .levyraShimmer()
             .background(
                 Brush.linearGradient(
                     listOf(

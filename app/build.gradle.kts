@@ -277,7 +277,6 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
-    implementation(libs.shimmer)
     debugImplementation(libs.chucker)
     releaseImplementation(libs.chucker.no.op)
     ksp(libs.androidx.room.compiler)

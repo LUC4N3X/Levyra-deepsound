@@ -4,6 +4,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import com.luc4n3x.levyra.domain.OfflineDownloadStage
+import com.luc4n3x.levyra.domain.offlineDownloadStageOf
+import com.luc4n3x.levyra.ui.components.LevyraConnectedDefaults
+import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
+import com.luc4n3x.levyra.ui.components.LevyraConnectedStyle
+import com.luc4n3x.levyra.ui.components.levyraConnectedSurface
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -139,21 +147,36 @@ internal fun LibraryDownloadTaskRow(
     task: OfflineDownloadTask,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    position: LevyraConnectedPosition = LevyraConnectedPosition.Single,
+    style: LevyraConnectedStyle = LevyraConnectedDefaults.style(accent = LevyraCyan)
 ) {
     val strings = LocalLevyraStrings.current
-    val paused = task.state == "PAUSED"
-    val failed = task.state == "FAILED"
-    Surface(
-        color = LevyraPanel.copy(alpha = 0.84f),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth()
+    val stage = offlineDownloadStageOf(task.state)
+    val paused = stage == OfflineDownloadStage.Paused
+    val failed = stage == OfflineDownloadStage.Failed
+    val stageColor = when (stage) {
+        OfflineDownloadStage.Failed -> MaterialTheme.colorScheme.error
+        OfflineDownloadStage.Downloading, OfflineDownloadStage.Retrying -> LevyraCyan
+        else -> LevyraMuted
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .levyraConnectedSurface(position, style)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 10.dp)
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(stageColor)
+                )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         task.title,
@@ -182,17 +205,26 @@ internal fun LibraryDownloadTaskRow(
                     Icon(Icons.Rounded.Cancel, contentDescription = strings.cancelDownload, tint = LevyraMuted)
                 }
             }
-            LinearProgressIndicator(
-                progress = { task.progress.coerceIn(0, 100) / 100f },
-                modifier = Modifier.fillMaxWidth().height(4.dp),
-                color = if (failed) MaterialTheme.colorScheme.error else LevyraCyan,
-                trackColor = LevyraPanelSoft
-            )
+            if (stage.showsProgress) {
+                LinearProgressIndicator(
+                    progress = { task.progress.coerceIn(0, 100) / 100f },
+                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+                    color = if (paused) LevyraMuted else LevyraCyan,
+                    trackColor = LevyraPanelSoft
+                )
+            }
             Text(
-                if (failed && task.error.isNotBlank()) task.error
-                else "${strings.localizeDownloadState(task.state)} · ${task.progress.coerceIn(0, 100)}%",
-                color = if (failed) MaterialTheme.colorScheme.error else LevyraMuted,
-                fontSize = 10.sp
+                if (failed && task.error.isNotBlank()) {
+                    task.error
+                } else if (stage.showsProgress) {
+                    "${strings.localizeDownloadState(task.state)} · ${task.progress.coerceIn(0, 100)}%"
+                } else {
+                    strings.localizeDownloadState(task.state)
+                },
+                color = stageColor,
+                fontSize = 10.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

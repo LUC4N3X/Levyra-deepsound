@@ -19,6 +19,10 @@ import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
+import com.luc4n3x.levyra.domain.ListeningDna
+import com.luc4n3x.levyra.domain.ListeningDnaPeriod
+import com.luc4n3x.levyra.domain.LevyraMixDefaults
+import com.luc4n3x.levyra.domain.LevyraMixSummary
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
@@ -184,5 +188,13 @@ data class LevyraUiState(
     val followedArtists: List<FollowedArtist> = emptyList(),
     val followedArtistKeys: Set<String> = emptySet(),
     val releaseRadar: List<ReleaseRadarEntry> = emptyList(),
-    val similarArtists: List<ArtistHit> = emptyList()
+    val similarArtists: List<ArtistHit> = emptyList(),
+    val mixFamiliarity: Float = LevyraMixDefaults.Familiarity,
+    val mixLoading: Boolean = false,
+    val activeMix: LevyraMixSummary? = null,
+    val mixMessage: String? = null,
+    val showYourSound: Boolean = false,
+    val listeningDnaPeriod: ListeningDnaPeriod = ListeningDnaPeriod.Month,
+    val listeningDna: ListeningDna = ListeningDna(),
+    val listeningDnaLoading: Boolean = false
 )
