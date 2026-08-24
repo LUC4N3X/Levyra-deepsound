@@ -64,7 +64,7 @@ class LevyraMixRankerTest {
             LevyraMixCandidate(track("recent"), familiarity = 0.5f, affinity = 0.5f, recentlyPlayed = true),
             LevyraMixCandidate(track("other"), familiarity = 0.5f, affinity = 0.5f, recentlyPlayed = false)
         )
-        val ranked = LevyraMixRanker.rank(candidates, familiarityBias = 0.5f, excludeRecent = true)
+        val ranked = LevyraMixRanker.rank(listOf(candidates[0], candidates[1]), familiarityBias = 0.5f, excludeRecent = true)
         assertEquals(listOf("other"), ranked.map { it.id })
     }
 
@@ -96,5 +96,47 @@ class LevyraMixRankerTest {
         assertEquals(0f, c.familiarity, 0.0001f)
         assertTrue(a.recentlyPlayed)
         assertTrue(!c.recentlyPlayed)
+    }
+
+    @Test
+    fun prepareMixPlaybackTracksPrefersCanonicalChartRecording() {
+        val generated = track("radio-copy").copy(
+            title = "Same Song (Official Audio)",
+            artist = "Artist",
+            durationMs = 181_000L,
+            thumbnailUrl = "https://i.ytimg.com/vi/radio-copy/hqdefault.jpg"
+        )
+        val chart = track("chart-copy").copy(
+            title = "Same Song",
+            artist = "Artist",
+            album = "Canonical Album",
+            durationMs = 180_000L,
+            isrc = "ITABC2600001",
+            upc = "123456789012",
+            audioVideoId = "chart-audio",
+            metadataProvider = "official",
+            metadataConfidence = 98,
+            thumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a/b/c/600x600bb.jpg",
+            largeThumbnailUrl = "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a/b/c/1200x1200bb.jpg"
+        )
+
+        val prepared = prepareMixPlaybackTracks(listOf(generated), listOf(chart))
+
+        assertEquals(1, prepared.size)
+        assertEquals("chart-copy", prepared.single().id)
+        assertEquals("Canonical Album", prepared.single().album)
+        assertEquals("ITABC2600001", prepared.single().isrc)
+        assertEquals("chart-audio", prepared.single().audioVideoId)
+        assertTrue(prepared.single().largeThumbnailUrl.contains("mzstatic.com"))
+    }
+
+    @Test
+    fun prepareMixPlaybackTracksKeepsUnrelatedGeneratedTrack() {
+        val generated = track("generated").copy(title = "Generated Song", artist = "Artist One")
+        val unrelated = track("chart").copy(title = "Other Song", artist = "Artist Two")
+
+        val prepared = prepareMixPlaybackTracks(listOf(generated), listOf(unrelated))
+
+        assertEquals(listOf("generated"), prepared.map { it.id })
     }
 }
