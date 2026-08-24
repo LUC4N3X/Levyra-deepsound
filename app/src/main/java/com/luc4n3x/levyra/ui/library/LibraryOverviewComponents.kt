@@ -73,6 +73,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -629,7 +631,8 @@ internal fun LibraryListeningDashboard(
     artistCount: Int,
     trackCount: Int,
     playlistCount: Int,
-    offlineCount: Int
+    offlineCount: Int,
+    onOpenYourSound: (() -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
     val week = pulse.week.takeLast(7)
@@ -638,8 +641,18 @@ internal fun LibraryListeningDashboard(
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
     val percent = remember(locale) { NumberFormat.getPercentInstance(locale) }
 
+    val openSurface = if (onOpenYourSound != null) {
+        Modifier.levyraPressable(
+            onClick = onOpenYourSound,
+            pressedScale = LevyraPressScale.Surface,
+            role = Role.Button,
+            onClickLabel = strings.yourSound
+        )
+    } else {
+        Modifier
+    }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(openSurface),
         color = LevyraPanel.copy(alpha = 0.92f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
         shape = RoundedCornerShape(26.dp)
