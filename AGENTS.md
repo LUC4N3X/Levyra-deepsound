@@ -21,7 +21,8 @@ Current repository evidence always overrides remembered behavior, old
 discussions, stale comments, previous agent output, or stale task status.
 Surface conflicts between planning files and implementation before editing.
 
-For production-code implementation or broad review, also read
+For every engineering task apply `docs/ai/ALWAYS_ON_AGENT_GUARDS.md`. For
+production-code implementation or broad review, also read
 `docs/ai/AI_ENGINEERING_GUARDRAILS.md` and apply its reuse-first, explicit
 assumption/tradeoff, simpler-alternative, goal-verification, surgical-edit,
 complexity-budget, and diff-quality rules.
@@ -60,6 +61,10 @@ complexity-budget, and diff-quality rules.
   `.agents/skills/<skill-name>/SKILL.md` when a conversation starts.
 - `.agents/rules/levyra-workspace.md` links back to this file with a relative
   `@../../AGENTS.md` reference instead of maintaining a duplicate contract.
+- Claude Code and Codex execute `scripts/agent_skill_router.py` automatically on
+  user prompts. Other supported runtimes must infer the same routes from the
+  current task and canonical table below without requiring the owner to name a
+  skill; shell-capable runtimes may invoke the shared router directly.
 - Open the repository root as the workspace. Starting only from `app/`,
   `desktop/`, or another nested folder may hide repository-level agent
   configuration.
@@ -194,12 +199,17 @@ the memory tools are available. Repository configuration alone must never be
 represented as a successful ChatGPT-to-local-worker connection.
 
 This standing authorization applies to the pinned `rtk-ai/rtk` bootstrap, the
-pinned claude-mem integration, and the focused Matt Pocock skill bootstrap
-documented below. Other plugins, executables, unrestricted sandboxing, approval
-bypasses, commit, push, pull request, merge, tag, release, deployment, external
-messages, and repository settings still require their normal explicit
-authorization. Keep security, signing, checksum, secret, and exact reproduction
-evidence raw.
+pinned claude-mem integration, the focused Matt Pocock skill bootstrap documented
+below, and task-required tools installed under
+`docs/ai/ALWAYS_ON_AGENT_GUARDS.md`. A shell-capable runtime may install a missing
+useful tool automatically when the active task genuinely requires it, using a
+trusted upstream and the narrowest practical user/project-local installation,
+then verifying the installed version. Broad package/system upgrades, unrelated
+plugins or daemons, telemetry, administrator/root elevation, unrestricted
+sandboxing, approval bypasses, commit, push, pull request, merge, tag, release,
+deployment, external messages, and repository settings still require their
+normal explicit authorization. Keep security, signing, checksum, secret, and
+exact reproduction evidence raw.
 
 ## Matt Pocock skills bootstrap
 
@@ -250,8 +260,11 @@ owner publication controls always take precedence. See
 
 ## Native skill routing
 
-Load every matching skill before reading widely or editing. Prefer focused
-skills over the general coordinator.
+Select every matching skill automatically from the task before reading widely or
+editing. The owner never needs to name a skill. Claude Code and Codex use the
+shared prompt router; other runtimes must apply this table directly. Prefer
+focused skills over the general coordinator and never preload the whole skill
+tree.
 
 | Task | Skill |
 | --- | --- |
@@ -263,6 +276,7 @@ skills over the general coordinator.
 | Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
 | Android Compose UI, state, navigation, animation, lifecycle, accessibility, RTL, localization | `levyra-compose` |
 | Android jank, frame misses, latency, startup, Perfetto/System Trace, CPU/thread state, graphics, Binder/IPC, blocking, memory, I/O, power, or measured runtime-performance investigation | `levyra-android-performance` plus the affected domain skill |
+| APK/XAPK/AAB/DEX/JAR/AAR decompilation, jadx/smali, compiled Android API extraction, binary call-flow tracing, or Kotlin/R8 metadata recovery | `levyra-android-reverse-engineering` plus `levyra-security-review`; add `levyra-r8-proguard` when obfuscation/shrinker behavior is material |
 | R8, Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker crashes, mapping/missing classes, reflection/serialization/JNI shrinker issues, or measured APK-size work | `levyra-r8-proguard` plus `levyra-release-check`; add `levyra-ci-workflows` for build-tooling changes |
 | Android Intent, deep link, PendingIntent, exported activity/service/receiver/provider, nested Intent, `onNewIntent`, URI grant, FileProvider/ContentProvider, or caller/signature verification | `levyra-android-intent-security` plus `levyra-security-review` and the affected Android domain skill |
 | Visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshots/references, premium/modern/cohesive/anti-AI-slop requests | `levyra-design-taste` plus the matching Android/Desktop UI skill |
@@ -283,9 +297,11 @@ uses `levyra-real-engineering`; non-trivial repository exploration additionally
 uses `levyra-context-efficiency`; visual Android work uses `levyra-design-taste`
 plus `levyra-compose`; visual Desktop work uses `levyra-design-taste` plus
 `levyra-desktop`; Android runtime-performance work uses
-`levyra-android-performance` plus the affected domain skill; R8/Proguard work
-uses `levyra-r8-proguard` plus release validation and build-tooling guidance
-when applicable; Android component-boundary security uses
+`levyra-android-performance` plus the affected domain skill; Android artifact
+reverse-engineering uses `levyra-android-reverse-engineering` plus security
+review and R8 guidance when obfuscation is material; R8/Proguard work uses
+`levyra-r8-proguard` plus release validation and build-tooling guidance when
+applicable; Android component-boundary security uses
 `levyra-android-intent-security` plus `levyra-security-review` and the affected
 domain skill; OpenClaw coordination additionally uses
 `levyra-openclaw-orchestrator`.
@@ -303,6 +319,9 @@ active phase:
 - `docs/ARCHITECTURE.md` describes current implementation ownership and data
   flow.
 - `docs/ai/WORKFLOW.md` defines the complete AI-assisted lifecycle.
+- `docs/ai/ALWAYS_ON_AGENT_GUARDS.md` defines non-optional execution, automatic
+  skill routing, checkpoint/retry discipline, narrow tool installation, and
+  context-hygiene rules shared by all coding runtimes.
 - `docs/ai/AI_ENGINEERING_GUARDRAILS.md` defines the anti-overengineering,
   assumption/tradeoff, goal-verification, surgical-edit, and complexity rules
   shared by all coding runtimes.
@@ -366,7 +385,8 @@ explicitly reserved one.
 1. Define the exact requested outcome, action mode, and scope.
 2. At the start of a non-trivial shell-capable task, ensure the pinned RTK
    bootstrap automatically; continue raw if it is unavailable.
-3. Apply the always-on context budget before broad reading; load
+3. Route and load every matching native skill automatically from the task, then
+   apply the always-on context budget before broad reading; load
    `levyra-context-efficiency` when exploration or cross-session continuity is
    non-trivial.
 4. When prior-session context materially matters, use focused claude-mem

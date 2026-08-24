@@ -72,6 +72,19 @@ class ClaudePromptRoutingTest(unittest.TestCase):
         self.assertIn("levyra-android-intent-security", context)
         self.assertIn("levyra-security-review", context)
 
+    def test_reverse_engineering_adds_security_and_r8(self) -> None:
+        context = route("Decompile this APK and recover Kotlin R8 metadata")
+
+        self.assertIn("levyra-android-reverse-engineering", context)
+        self.assertIn("levyra-security-review", context)
+        self.assertIn("levyra-r8-proguard", context)
+
+    def test_normal_apk_release_does_not_trigger_reverse_engineering(self) -> None:
+        context = route("Build and validate the release APK")
+
+        self.assertIn("levyra-release-check", context)
+        self.assertNotIn("levyra-android-reverse-engineering", context)
+
     def test_project_manager_route(self) -> None:
         context = route("Update roadmap acceptance criteria for the active phase")
 
