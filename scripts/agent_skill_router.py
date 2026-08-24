@@ -60,8 +60,8 @@ ROUTES = (
     ),
     route(
         "levyra-android-performance",
-        "Android runtime profiling or measured performance",
-        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|memory leak|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android",
+        "Android runtime profiling, memory stability, or measured performance",
+        r"perfetto|system trace|trace processor|frame miss|frame drop|jank|latency|latenza|startup|avvio lento|cpu schedul|thread state|runnable|blocked thread|binder wait|binder spam|binder storm|lock contention|renderthread|frame timeline|gpu memory|texture upload|memory pressure|memory leak|memory growth|memory churn|native memory|native heap|\bram\b|\boom\b|out of memory|low memory|\bpss\b|\brss\b|dumpsys meminfo|heapprofd|bufferpool|bytebuffer|bitmap memory|allocat|i/o stall|io stall|d-state|lmkd|psi|wakelock|power rail|power trace|battery trace|runtime performance|performance runtime|profiling android",
     ),
     route(
         "levyra-r8-proguard",
@@ -131,6 +131,11 @@ AUTOMATED_MARKERS = (
     "<system-reminder",
 )
 
+MEMORY_RE = re.compile(
+    r"memory|\bram\b|\boom\b|out of memory|native heap|allocat|memory churn|memory growth|\bpss\b|\brss\b|lmkd|dumpsys meminfo|heapprofd|bufferpool",
+    re.I,
+)
+
 
 def route_prompt(prompt: str) -> list[tuple[str, str]]:
     text = prompt.strip().lower()
@@ -149,8 +154,17 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
             matched.append((skill, topic))
             seen.add(skill)
 
+    def set_topic(skill: str, topic: str) -> None:
+        for index, (matched_skill, _) in enumerate(matched):
+            if matched_skill == skill:
+                matched[index] = (skill, topic)
+                return
+        add(skill, topic)
+
     if "levyra-compose" in seen and "levyra-android-performance" in seen:
         add("levyra-real-engineering", "non-trivial Compose performance debugging")
+    if "levyra-android-performance" in seen and MEMORY_RE.search(text):
+        set_topic("levyra-real-engineering", "memory-regression root-cause analysis and evidence")
     if "levyra-r8-proguard" in seen:
         add("levyra-release-check", "minified release validation")
     if "levyra-android-intent-security" in seen:
