@@ -1,20 +1,27 @@
 # Levyra Evidence-Gated Completion
 
 This rule adds a lightweight completion discipline for AI-assisted engineering.
-It complements `AGENTS.md` and `docs/ai/AI_ENGINEERING_GUARDRAILS.md`; it does
-not replace architecture, tests, current repository evidence, or owner decisions.
+It complements `AGENTS.md`, `docs/ai/AI_ENGINEERING_GUARDRAILS.md`, and
+`docs/ai/ALWAYS_ON_AGENT_GUARDS.md`; it does not replace architecture, tests,
+current repository evidence, or owner decisions.
 
-## When to use it
+## Mandatory applicability
 
-Apply this rule to non-trivial implementation, debugging, refactoring,
-performance, security, build/CI, migration, or cross-domain work.
+This rule is always active. The model does not decide whether to enable it.
 
-Tiny, already-local edits may use one implicit acceptance gate plus the focused
-check that proves it. Do not create ceremony for a one-line fix.
+Use explicit acceptance gates for every code-bearing change and for build/config,
+migration, performance, security, CI, release, dependency, or agent-configuration
+work. A tiny single-file documentation/copy edit that cannot change runtime,
+build, security, release, or agent behavior may use one implicit acceptance gate
+plus the focused check that proves it.
+
+Do not create ceremony for a one-line non-behavioral edit, but never use
+"this is small" to skip evidence for behavior-changing work.
 
 ## Acceptance gates
 
-Before editing, convert the requested outcome into the smallest useful set of
+Before editing, or immediately after the minimum repository inspection needed to
+make them accurate, convert the requested outcome into the smallest useful set of
 observable acceptance gates, normally two to six.
 
 Each gate has three parts:
@@ -47,16 +54,20 @@ the change could invalidate its evidence.
 
 ## Completion rule
 
-Do not present non-trivial work as complete while a required gate is `FAIL`,
+Do not present required work as complete while a required gate is `FAIL`,
 `BLOCKED`, or `UNRUN`. Report the unresolved state precisely instead.
 
-After all required gates pass:
+After the final material edit:
 
-1. inspect the complete final diff for unrelated churn and accidental scope
-   expansion;
-2. run the mandatory pre-delivery code review;
-3. rerun any gate invalidated by review fixes;
-4. stop adding speculative work once the requested outcome is proven.
+1. run focused validation appropriate to the current change generation;
+2. inspect the complete actual final diff;
+3. run `git diff --check` or equivalent conflict/whitespace validation;
+4. run the mandatory pre-delivery code review for code-bearing work;
+5. rerun any gate invalidated by review fixes;
+6. stop adding speculative work once the requested outcome is proven.
+
+Validation or diff review performed before a later material edit is stale for
+completion purposes unless that edit provably cannot affect the evidence.
 
 Build, lint, tests, runtime checks, review, push, PR, merge, and release are
 separate states. Never collapse them into `done`.
@@ -64,9 +75,10 @@ separate states. Never collapse them into `done`.
 ## Keep it lightweight
 
 Do not create `GATES.md`, tracking files, extra abstractions, or permanent
-framework code merely to implement this rule. Persist gates in
-`docs/project/TASKS.md` only when the work is already a tracked multi-phase
-project and that document is the established owner.
+framework code merely to implement this rule. Runtime harness state belongs in
+ephemeral session storage. Persist gates in `docs/project/TASKS.md` only when the
+work is already a tracked multi-phase project and that document is the established
+owner.
 
 The goal is stronger evidence with less premature completion, not more process
 or more generated code.
