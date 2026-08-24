@@ -959,7 +959,10 @@ internal data class ExploreProjection(
     val isSamplesLoading: Boolean,
     val samplesLoadFailed: Boolean,
     val isSamplesOpen: Boolean,
-    val playlists: List<Playlist>
+    val playlists: List<Playlist>,
+    val mixFamiliarity: Float,
+    val mixLoading: Boolean,
+    val mixMessage: String?
 )
 
 internal fun exploreProjection(state: LevyraUiState): ExploreProjection = ExploreProjection(
@@ -981,7 +984,10 @@ internal fun exploreProjection(state: LevyraUiState): ExploreProjection = Explor
     isSamplesLoading = state.isSamplesLoading,
     samplesLoadFailed = state.samplesLoadFailed,
     isSamplesOpen = state.isSamplesOpen,
-    playlists = state.playlists
+    playlists = state.playlists,
+    mixFamiliarity = state.mixFamiliarity,
+    mixLoading = state.mixLoading,
+    mixMessage = state.mixMessage
 )
 
 internal data class LibraryProjection(
