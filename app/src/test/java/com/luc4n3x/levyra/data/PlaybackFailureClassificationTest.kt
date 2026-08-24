@@ -104,6 +104,40 @@ class PlaybackFailureClassificationTest {
         assertEquals(PlaybackFailureKind.Network, classifyPlaybackFailureReason("Connection refused"))
         assertEquals(PlaybackFailureKind.Network, classifyPlaybackFailureReason("Unknown host"))
     }
+
+    @Test
+    fun transientNetworkRecoveryRefreshesStreamWithoutPurgingCacheOrSecurity() {
+        listOf(PlaybackFailureKind.Network, PlaybackFailureKind.Timeout).forEach { kind ->
+            val plan = playbackRecoveryPlanFor(kind)
+            assertTrue(plan.invalidateStream)
+            assertTrue(plan.rotateClient)
+            assertFalse(plan.rotateCodec)
+            assertFalse(plan.refreshSecurity)
+            assertFalse(plan.invalidateCache)
+            assertEquals(45_000L, plan.quarantineMs)
+        }
+    }
+
+    @Test
+    fun expiredAndRejectedUrlsUseFreshResolutionWithBoundedQuarantine() {
+        val expired = playbackRecoveryPlanFor(PlaybackFailureKind.ExpiredUrl)
+        assertTrue(expired.invalidateStream)
+        assertTrue(expired.rotateClient)
+        assertFalse(expired.rotateCodec)
+        assertFalse(expired.refreshSecurity)
+        assertFalse(expired.invalidateCache)
+        assertEquals(2L * 60L * 1000L, expired.quarantineMs)
+
+        listOf(PlaybackFailureKind.Forbidden, PlaybackFailureKind.Gone).forEach { kind ->
+            val plan = playbackRecoveryPlanFor(kind)
+            assertTrue(plan.invalidateStream)
+            assertTrue(plan.rotateClient)
+            assertTrue(plan.refreshSecurity)
+            assertFalse(plan.invalidateCache)
+            assertEquals(10L * 60L * 1000L, plan.quarantineMs)
+        }
+    }
+
     @Test
     fun structuralMediaFailuresAreTerminal() {
         assertEquals(
@@ -136,5 +170,4 @@ class PlaybackFailureClassificationTest {
         assertFalse(malformed.refreshSecurity)
         assertEquals(0L, malformed.quarantineMs)
     }
-
 }

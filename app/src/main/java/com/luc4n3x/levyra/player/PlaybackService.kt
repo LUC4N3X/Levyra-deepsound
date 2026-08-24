@@ -1040,6 +1040,9 @@ class PlaybackService : MediaLibraryService() {
     private fun updateQueueTransitionSettings(settings: LevyraAudioSettings, audioNormalization: Boolean) {
         currentAudioSettings = settings.normalized()
         currentAudioNormalization = audioNormalization
+        transitionPlayer?.setPlaybackParameters(
+            PlaybackParameters(currentAudioSettings.playbackSpeed, currentAudioSettings.pitch)
+        )
         if (currentAudioSettings.crossfadeSeconds <= 0 || !currentAudioSettings.gaplessEnabled) {
             cancelQueueTransition()
         }
@@ -1310,6 +1313,7 @@ class PlaybackService : MediaLibraryService() {
         isValid: () -> Boolean = { true }
     ) {
         val steps = (durationMs / TRANSITION_STEP_MS).toInt().coerceIn(8, 120)
+        val mediaStepMs = (durationMs / steps).coerceAtLeast(10L)
         repeat(steps + 1) { step ->
             if ((!outgoing.playWhenReady || !incoming.playWhenReady || !isValid()) && step < steps) {
                 throw CancellationException("Playback paused during crossfade")
@@ -1317,7 +1321,10 @@ class PlaybackService : MediaLibraryService() {
             val gains = equalPowerCrossfade(step.toFloat() / steps.toFloat())
             outgoing.volume = gains.outgoing
             incoming.volume = gains.incoming
-            if (step < steps) delay((durationMs / steps).coerceAtLeast(10L))
+            if (step < steps) {
+                val stepDelay = crossfadeStepWallClockMs(mediaStepMs, outgoing.playbackParameters.speed)
+                delay(stepDelay)
+            }
         }
     }
 

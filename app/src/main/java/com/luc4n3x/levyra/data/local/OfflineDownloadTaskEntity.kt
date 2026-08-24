@@ -1,13 +1,13 @@
 package com.luc4n3x.levyra.data.local
 
+import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Index
-import androidx.room.PrimaryKey
-import kotlinx.coroutines.flow.Flow
-import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Entity(
     tableName = "offline_download_tasks",
@@ -32,6 +32,16 @@ data class OfflineDownloadTaskEntity(
     val batchPosition: Int = 0
 )
 
+data class OfflineDownloadTaskSummaryRow(
+    val taskKey: String,
+    val trackId: String,
+    val title: String,
+    val artist: String,
+    val state: String,
+    val progress: Int,
+    val error: String
+)
+
 data class OfflineDownloadBatchRow(
     val batchKey: String,
     val batchTitle: String,
@@ -50,8 +60,15 @@ interface OfflineDownloadTasksDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(task: OfflineDownloadTaskEntity)
 
-    @Query("SELECT * FROM offline_download_tasks WHERE state IN ('QUEUED','RUNNING','PAUSED','RETRYING','FAILED') ORDER BY createdAt ASC")
-    fun observeActive(): Flow<List<OfflineDownloadTaskEntity>>
+    @Query(
+        """
+        SELECT taskKey, trackId, title, artist, state, progress, error
+        FROM offline_download_tasks
+        WHERE state IN ('QUEUED','RUNNING','PAUSED','RETRYING','FAILED')
+        ORDER BY createdAt ASC
+        """
+    )
+    fun observeActive(): Flow<List<OfflineDownloadTaskSummaryRow>>
 
     @Query("SELECT * FROM offline_download_tasks WHERE taskKey = :taskKey LIMIT 1")
     suspend fun byKey(taskKey: String): OfflineDownloadTaskEntity?
