@@ -364,12 +364,19 @@ internal fun libraryDownloadForTrack(
     }
 }
 
+private val LibraryArtistSeparatorPattern =
+    Regex("\\s+(?:feat\\.?|ft\\.?|x|×)\\s+|\\s*;\\s*|\\s+·\\s+", RegexOption.IGNORE_CASE)
+private val LibraryDiacriticsPattern = Regex("\\p{M}+")
+private val LibraryNonAlphanumericPattern = Regex("[^\\p{L}\\p{N}]+")
+private val LibraryWhitespacePattern = Regex("\\s+")
+private val GenericAlbumNames = setOf("single", "singolo", "unknown", "sconosciuto", "music", "musica")
+
 internal fun normalizeLibraryText(value: String): String {
     return Normalizer.normalize(value, Normalizer.Form.NFD)
-        .replace(Regex("\\p{M}+"), "")
+        .replace(LibraryDiacriticsPattern, "")
         .lowercase(Locale.ROOT)
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-        .replace(Regex("\\s+"), " ")
+        .replace(LibraryNonAlphanumericPattern, " ")
+        .replace(LibraryWhitespacePattern, " ")
         .trim()
 }
 
@@ -390,7 +397,7 @@ private fun isUsableLibraryTrack(track: Track): Boolean {
 }
 
 private fun isGenericAlbumName(value: String): Boolean {
-    return normalizeLibraryText(value) in setOf("single", "singolo", "unknown", "sconosciuto", "music", "musica")
+    return normalizeLibraryText(value) in GenericAlbumNames
 }
 
 private fun libraryMetadataScore(track: Track): Int {
@@ -406,7 +413,7 @@ private fun libraryMetadataScore(track: Track): Int {
 
 private fun splitLibraryArtists(value: String): List<String> {
     return value
-        .split(Regex("\\s+(?:feat\\.?|ft\\.?|x|×)\\s+|\\s*;\\s*|\\s+·\\s+", RegexOption.IGNORE_CASE))
+        .split(LibraryArtistSeparatorPattern)
         .map(String::trim)
         .filter(String::isNotBlank)
         .distinctBy(::normalizeLibraryText)

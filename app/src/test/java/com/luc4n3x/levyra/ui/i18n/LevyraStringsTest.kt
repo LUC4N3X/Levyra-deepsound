@@ -17,6 +17,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, lyricsActionLocalizationCodes())
         assertEquals(catalogCodes, playerExperienceLocalizationCodes())
         assertEquals(catalogCodes, exploreLocalizationCodes())
+        assertEquals(catalogCodes, experienceLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.introHeadline.isNotBlank())
             assertTrue(strings.introBody.isNotBlank())

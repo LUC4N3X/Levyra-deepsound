@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,6 +59,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.offlineDownloadStageOf
+import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
@@ -545,7 +548,7 @@ internal fun LevyraLibraryScreen(
                         LibraryOfflineSummary(
                             bytes = state.downloadStorageBytes,
                             activeCount = state.downloadQueue.count {
-                                it.state in setOf("QUEUED", "RUNNING", "RETRYING", "PAUSED")
+                                offlineDownloadStageOf(it.state).isActive
                             }
                         )
                     }
@@ -563,12 +566,17 @@ internal fun LevyraLibraryScreen(
                             onCancel = { viewModel.cancelBatchDownload(batch.key) }
                         )
                     }
-                    items(state.downloadQueue, key = { "task-${it.taskKey}" }) { task ->
+                    itemsIndexed(
+                        state.downloadQueue,
+                        key = { _, task -> "task-${task.taskKey}" },
+                        contentType = { _, _ -> "download-task" }
+                    ) { taskIndex, task ->
                         LibraryDownloadTaskRow(
                             task = task,
                             onPause = { viewModel.pauseDownload(task.taskKey) },
                             onResume = { viewModel.resumeDownload(task.taskKey) },
-                            onCancel = { viewModel.cancelDownload(task.taskKey) }
+                            onCancel = { viewModel.cancelDownload(task.taskKey) },
+                            position = LevyraConnectedPosition.of(taskIndex, state.downloadQueue.size)
                         )
                     }
                     if (hasTransfers && visibleOffline.isNotEmpty()) {

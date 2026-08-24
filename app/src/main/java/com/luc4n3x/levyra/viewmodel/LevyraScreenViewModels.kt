@@ -23,6 +23,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraMixKind
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
@@ -252,6 +253,10 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
+    fun setMixFamiliarity(value: Float) = root.setMixFamiliarity(value)
+    fun startLevyraMix(kind: LevyraMixKind, seedTrack: Track? = null, seedQuery: String = "", label: String = "") =
+        root.startLevyraMix(kind, seedTrack, seedQuery, label)
+    fun openYourSound() = root.openYourSound()
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
 }

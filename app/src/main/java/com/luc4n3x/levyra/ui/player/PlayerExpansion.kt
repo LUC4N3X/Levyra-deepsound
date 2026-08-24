@@ -17,6 +17,7 @@ private const val SurfaceFadeEnd = 0.50f
 private const val BackgroundDepth = 0.028f
 private const val SurfaceScaleStart = 0.94f
 private const val SurfaceLiftStart = 0.055f
+private const val PredictiveBackCollapseDepth = 0.34f
 
 fun playerExpansionFromDrag(start: Float, dragPx: Float, travelPx: Float): Float {
     if (!start.isFinite()) return PlayerExpansionCollapsed
@@ -78,6 +79,18 @@ fun playerMorphFraction(expansion: Float): Float =
 
 fun playerBackgroundScale(expansion: Float): Float =
     1f - playerMotionProgress(expansion) * BackgroundDepth
+
+/**
+ * Maps an in-flight system predictive-back gesture onto the shared expansion value so the
+ * fullscreen player recedes progressively and the previous screen reappears behind it.
+ */
+fun playerPredictiveBackExpansion(start: Float, progress: Float): Float {
+    val safeStart = start.finiteOr(PlayerExpansionExpanded)
+        .coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
+    val eased = playerMotionProgress(progress.finiteOr(0f).coerceIn(0f, 1f))
+    return (safeStart * (1f - eased * PredictiveBackCollapseDepth))
+        .coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
+}
 
 private fun normalize(value: Float, start: Float, end: Float): Float {
     if (!value.isFinite() || !start.isFinite() || !end.isFinite() || end <= start) return 0f
