@@ -103,7 +103,7 @@ object LevyraConnectedDefaults {
 
     val Gap: Dp = 2.dp
     val OuterCorner: Dp = LevyraPlayerDesign.CornerMd
-    val InnerCorner: Dp = LevyraPlayerDesign.CornerXs
+    val InnerCorner: Dp = LevyraPlayerDesign.CornerXxs
 
     @Composable
     fun style(
@@ -117,7 +117,7 @@ object LevyraConnectedDefaults {
             LevyraConnectedStyle(
                 gap = gap,
                 shapes = LevyraConnectedShapes(outerCorner, innerCorner),
-                fill = Color.White.copy(alpha = 0.045f),
+                fill = Color.White.copy(alpha = 0.058f),
                 selectedFill = accent?.copy(alpha = 0.13f) ?: Color.White.copy(alpha = 0.10f),
                 disabledFill = Color.White.copy(alpha = 0.02f),
                 borderColor = border,
@@ -133,7 +133,7 @@ fun Modifier.levyraConnectedRowSurface(
     style: LevyraConnectedStyle,
     selected: Boolean = false,
     enabled: Boolean = true,
-    bordered: Boolean = true
+    bordered: Boolean = selected || position == LevyraConnectedPosition.Single
 ): Modifier {
     val shape = style.shapes.forRowPosition(position)
     val base = this.clip(shape).background(style.fillFor(selected, enabled), shape)
@@ -145,7 +145,7 @@ fun Modifier.levyraConnectedSurface(
     style: LevyraConnectedStyle,
     selected: Boolean = false,
     enabled: Boolean = true,
-    bordered: Boolean = true
+    bordered: Boolean = selected || position == LevyraConnectedPosition.Single
 ): Modifier {
     val shape = style.shapes.forPosition(position)
     val base = this.clip(shape).background(style.fillFor(selected, enabled), shape)
