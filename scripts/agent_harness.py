@@ -67,6 +67,8 @@ def _load(data: dict[str, Any]) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError):
         state = {}
     state.setdefault("read_hashes", {})
+    state.setdefault("context_hashes", {})
+    state.setdefault("instruction_hashes", {})
     state.setdefault("edited_paths", [])
     state.setdefault("edit_generation", 0)
     state.setdefault("diff_review_generation", -1)
@@ -145,7 +147,7 @@ def _targets(data: dict[str, Any]) -> list[Path]:
     return unique
 
 
-def _scoped_agents(path: Path) -> str:
+def _scoped_agents(path: Path, state: dict[str, Any]) -> str:
     parts: list[str] = []
     current = path.parent if path.suffix else path
     chain: list[Path] = []
@@ -157,9 +159,15 @@ def _scoped_agents(path: Path) -> str:
         current = current.parent
     for directory in reversed(chain):
         candidate = directory / "AGENTS.md"
-        if candidate.is_file():
-            text = candidate.read_text(encoding="utf-8", errors="replace")
-            parts.append(f"Applicable scoped instructions: {_relative(candidate)}\n{text}")
+        if not candidate.is_file():
+            continue
+        relative = _relative(candidate)
+        digest = _hash(candidate)
+        if state["instruction_hashes"].get(relative) == digest:
+            continue
+        text = candidate.read_text(encoding="utf-8", errors="replace")
+        state["instruction_hashes"][relative] = digest
+        parts.append(f"Applicable scoped instructions: {relative}\n{text}")
     return "\n\n".join(parts)
 
 
@@ -169,6 +177,15 @@ def _patch_anchor(data: dict[str, Any]) -> str:
     for line in old.splitlines():
         if len(line.strip()) >= 4:
             return line.strip()
+    edits = item.get("edits")
+    if isinstance(edits, list):
+        for edit in edits:
+            if not isinstance(edit, dict):
+                continue
+            old = str(edit.get("old_string") or edit.get("oldString") or "")
+            for line in old.splitlines():
+                if len(line.strip()) >= 4:
+                    return line.strip()
     command = str(item.get("command") or item.get("patch") or "")
     for line in command.splitlines():
         if line.startswith(("***", "@@", "+++", "---")):
@@ -180,12 +197,17 @@ def _patch_anchor(data: dict[str, Any]) -> str:
     return ""
 
 
-def _current_context(path: Path, data: dict[str, Any]) -> str:
+def _current_context(path: Path, data: dict[str, Any], state: dict[str, Any]) -> str:
     if not path.is_file() or _protected(path):
         return ""
+    relative = _relative(path)
+    digest = _hash(path)
+    if state["context_hashes"].get(relative) == digest:
+        return ""
     text = path.read_text(encoding="utf-8", errors="replace")
-    if len(text) <= 14000:
-        return f"Current {_relative(path)}:\n{text}"
+    state["context_hashes"][relative] = digest
+    if len(text) <= 4000:
+        return f"Current {relative}:\n{text}"
     lines = text.splitlines()
     anchor = _patch_anchor(data)
     index = 0
@@ -194,20 +216,19 @@ def _current_context(path: Path, data: dict[str, Any]) -> str:
     start = max(0, index - 35)
     end = min(len(lines), index + 36)
     excerpt = "\n".join(f"{i + 1}: {lines[i]}" for i in range(start, end))
-    return f"Current bounded region from {_relative(path)}:\n{excerpt}"
+    return f"Current bounded region from {relative}:\n{excerpt}"
 
 
 def _reanchor(state: dict[str, Any]) -> str:
     edited = ", ".join(state.get("edited_paths", [])) or "none"
     return (
-        "Levyra always-on re-anchor after compaction/resume:\n"
-        f"- latest owner request: {state.get('latest_prompt') or 'not recorded'}\n"
+        "Levyra re-anchor after compaction/resume:\n"
+        f"- owner request: {state.get('latest_prompt') or 'not recorded'}\n"
         f"- edited paths: {edited}\n"
         f"- edit generation: {state.get('edit_generation', 0)}\n"
         f"- validation generation: {state.get('validation_generation', -1)}\n"
         f"- final-diff review generation: {state.get('diff_review_generation', -1)}\n"
-        "- re-read current repository evidence before relying on compacted memory; "
-        "ALWAYS_ON_AGENT_GUARDS.md remains mandatory."
+        "- re-read only evidence needed for the next action; always-on guards remain active."
     )
 
 
@@ -221,8 +242,17 @@ def _deny(event: str, reason: str) -> None:
     print(json.dumps({"hookSpecificOutput": {"hookEventName": event, "permissionDecision": "deny", "permissionDecisionReason": reason}}))
 
 
+def _reset_context_cache(state: dict[str, Any], *, clear_full_reads: bool) -> None:
+    state["context_hashes"] = {}
+    state["instruction_hashes"] = {}
+    if clear_full_reads:
+        state["read_hashes"] = {}
+
+
 def _reset_task(state: dict[str, Any]) -> None:
     state["read_hashes"] = {}
+    state["context_hashes"] = {}
+    state["instruction_hashes"] = {}
     state["edited_paths"] = []
     state["edit_generation"] = 0
     state["diff_review_generation"] = -1
@@ -243,7 +273,7 @@ def user_prompt(data: dict[str, Any]) -> int:
     _save(data, state)
     _context_output(
         "UserPromptSubmit",
-        "Levyra always-on guards are active for this entire task and are not skill-routed: scoped AGENTS context, current-file-before-mutation, evidence gates, final-diff review, anti-AI-comment checks, and compaction re-anchoring are mandatory. For symbol/call-flow/reference work, use jCodeMunch first when available, then an already-available LSP/AST-aware tool when it answers the question more directly, then bounded native search/read.",
+        "Levyra guards active: scoped instructions, current-file freshness, evidence gates, final-diff review, and compact/resume re-anchoring. For structural work prefer jCodeMunch, then available LSP/AST, then bounded native search.",
     )
     return 0
 
@@ -251,6 +281,7 @@ def user_prompt(data: dict[str, Any]) -> int:
 def pre_tool(data: dict[str, Any]) -> int:
     state = _load(data)
     tool = _tool_name(data)
+    low = tool.lower()
     targets = _targets(data)
     for path in targets:
         if _protected(path):
@@ -271,12 +302,13 @@ def pre_tool(data: dict[str, Any]) -> int:
         chunks.append(_reanchor(state))
         state["reanchor_pending"] = False
     for path in targets:
-        scoped = _scoped_agents(path)
+        scoped = _scoped_agents(path, state)
         if scoped:
             chunks.append(scoped)
-        current = _current_context(path, data)
-        if current and tool.lower() in {"edit", "write", "apply_patch", "multi_edit", "multiedit"}:
-            chunks.append(current)
+        if low in {"edit", "apply_patch", "multi_edit", "multiedit"}:
+            current = _current_context(path, data, state)
+            if current:
+                chunks.append(current)
     _save(data, state)
     _context_output("PreToolUse", "\n\n".join(chunks))
     return 0
@@ -304,13 +336,17 @@ def post_tool(data: dict[str, Any]) -> int:
         if full:
             for path in targets:
                 if path.is_file() and not _protected(path):
-                    state["read_hashes"][_relative(path)] = _hash(path)
+                    digest = _hash(path)
+                    state["read_hashes"][_relative(path)] = digest
+                    state["context_hashes"][_relative(path)] = digest
     if low in {"edit", "write", "apply_patch", "multi_edit", "multiedit"}:
         state["edit_generation"] += 1
         state["task_complete"] = False
         edited = set(state.get("edited_paths", []))
         for path in targets:
             edited.add(_relative(path))
+            if path.is_file() and not _protected(path):
+                state["context_hashes"][_relative(path)] = _hash(path)
         state["edited_paths"] = sorted(edited)
     command = _command(data)
     if command:
@@ -325,6 +361,7 @@ def post_tool(data: dict[str, Any]) -> int:
 def compact(data: dict[str, Any]) -> int:
     state = _load(data)
     state["reanchor_pending"] = True
+    _reset_context_cache(state, clear_full_reads=True)
     _save(data, state)
     _context_output("PostCompact", _reanchor(state))
     return 0
@@ -411,10 +448,11 @@ def session_start(data: dict[str, Any]) -> int:
     state = _load(data)
     if str(data.get("source") or "").lower() == "resume":
         state["reanchor_pending"] = True
+        _reset_context_cache(state, clear_full_reads=True)
         _save(data, state)
         _context_output("SessionStart", _reanchor(state))
     else:
-        _context_output("SessionStart", "Levyra ALWAYS_ON_AGENT_GUARDS.md is active for the full session and is not optional skill routing.")
+        _context_output("SessionStart", "Levyra always-on guards active.")
     return 0
 
 
