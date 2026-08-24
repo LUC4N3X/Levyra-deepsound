@@ -269,7 +269,6 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
         mixPresentationJob = viewModelScope.launch {
             val previousQueue = root.state.value.queue
             root.startLevyraMix(kind, seedTrack, seedQuery, label)
-            root.state.first { it.mixLoading }
             val generated = root.state.first { snapshot ->
                 !snapshot.mixLoading && (
                     snapshot.mixMessage != null ||
