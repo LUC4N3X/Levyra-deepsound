@@ -1,37 +1,21 @@
 # Context-efficient execution
 
-Apply this baseline immediately to every real Levyra coding task, before broad
-repository reading or noisy commands:
+Apply this before broad repository work:
 
-- search/symbol/path first;
+- search path/symbol/call site first;
 - read the smallest useful range or focused diff;
-- expand only to answer a concrete unresolved question;
+- expand only for a concrete unanswered question;
 - do not reread unchanged evidence already in context;
-- load only matching skills, never the whole skill tree;
-- keep security, Perfetto, R8, signing, exact failures, and decisive diagnostics
-  raw when compression could change the conclusion.
+- load only the skills routed for the current task.
 
-For non-trivial repository exploration, prefer the project-scoped jCodeMunch MCP
-for symbol-level discovery before broad reads. Treat it as a navigator, not a
-restriction: Claude native Read/Grep/Glob/Bash tools remain available and must be
-used whenever control flow, lifecycle, state, concurrency, generated behavior,
-tests, or correctness require broader evidence.
+Prefer project jCodeMunch for non-trivial symbol discovery, then available
+LSP/AST tooling, then bounded Claude native Read/Grep/Glob/Bash when broader
+evidence is needed.
 
-Token savings never override correctness.
+Invoke `levyra-context-efficiency` for noisy builds, tests, lint, logs, broad
+searches, dependency/Git/GitHub/CI output, or other high-volume work. Project
+RTK filters remain in `.rtk/filters.toml`. Use RTK only when filtered output is
+sufficient. Rerun the exact command raw for exact failures, stack traces,
+security/signing evidence, Perfetto/R8 evidence, or ambiguous results.
 
-For non-trivial repository exploration, builds, tests, lint, logs, broad
-searches, dependencies, Git/GitHub, CI, CodeRabbit, adb, setup, or other
-high-volume work, invoke `levyra-context-efficiency` and follow
-`.agents/skills/levyra-context-efficiency/SKILL.md` as the canonical procedure.
-
-When RTK is available, prefer its supported compact wrappers for repetitive
-success-heavy output. Rerun the exact command raw if compact output is
-incomplete, ambiguous, or insufficient to diagnose a failure. Verify exit
-status and final success/failure markers; compact output is not validation
-authority.
-
-Project filters live in `.rtk/filters.toml`; setup and measurement are in
-`docs/ai/RTK.md` and `scripts/setup-ai.ps1` / `scripts/setup-ai.sh`.
-
-Do not install another always-on compression proxy. Do not infer permission to
-commit, push, open/merge a PR, tag, publish, or release.
+Token savings never override correctness, validation, or publication controls.
