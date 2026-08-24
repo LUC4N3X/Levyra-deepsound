@@ -24,10 +24,45 @@ class ListeningPulseEngineTest {
     }
 
     @Test
-    fun shortListensAreIgnored() {
+    fun shortListensBelowThresholdAreIgnored() {
         val pulse = engine.build(listOf(event(listenedMs = 3_000L, startedAt = now - 1_000L)), now)
 
         assertFalse(pulse.hasSignal)
+    }
+
+    @Test
+    fun shortListenCountsListenTimeButNotCountedPlay() {
+        // 15 seconds listen: contributes to totalListenMs, but not a counted play
+        val events = listOf(
+            event(trackId = "a", listenedMs = 15_000L, durationMs = 200_000L, completed = false, startedAt = hoursAgo(1))
+        )
+        val pulse = engine.build(events, now)
+
+        assertTrue(pulse.hasSignal)
+        assertEquals(15_000L, pulse.totalListenMs)
+        assertEquals(0, pulse.plays)
+    }
+
+    @Test
+    fun thirtySecondsOrMoreCountsAsPlay() {
+        val events = listOf(
+            event(trackId = "a", listenedMs = 32_000L, durationMs = 200_000L, completed = false, startedAt = hoursAgo(1))
+        )
+        val pulse = engine.build(events, now)
+
+        assertEquals(32_000L, pulse.totalListenMs)
+        assertEquals(1, pulse.plays)
+    }
+
+    @Test
+    fun shortCompletedTrackCountsAsPlay() {
+        val events = listOf(
+            event(trackId = "short", listenedMs = 20_000L, durationMs = 20_000L, completed = true, startedAt = hoursAgo(1))
+        )
+        val pulse = engine.build(events, now)
+
+        assertEquals(20_000L, pulse.totalListenMs)
+        assertEquals(1, pulse.plays)
     }
 
     @Test
@@ -200,8 +235,8 @@ class ListeningPulseEngineTest {
     @Test
     fun blankTrackIdFallsBackToTitleAndArtistKey() {
         val events = listOf(
-            event(trackId = "", title = "Same", artist = "One", listenedMs = 20_000L, startedAt = hoursAgo(1)),
-            event(trackId = "", title = "Same", artist = "One", listenedMs = 20_000L, startedAt = hoursAgo(2))
+            event(trackId = "", title = "Same", artist = "One", listenedMs = 35_000L, startedAt = hoursAgo(1)),
+            event(trackId = "", title = "Same", artist = "One", listenedMs = 35_000L, startedAt = hoursAgo(2))
         )
 
         val pulse = engine.build(events, now)

@@ -11,7 +11,10 @@ from typing import Any
 try:
     import tomllib
 except ModuleNotFoundError:  # Python < 3.11
-    tomllib = None  # type: ignore[assignment]
+    try:
+        import tomli as tomllib  # type: ignore[no-redef]
+    except ModuleNotFoundError:
+        tomllib = None  # type: ignore[assignment]
 
 ROOT = Path(__file__).resolve().parents[1]
 

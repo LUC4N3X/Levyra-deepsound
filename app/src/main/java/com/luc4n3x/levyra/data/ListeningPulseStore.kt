@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.ListenAllTimeAggregateEntity
 import com.luc4n3x.levyra.data.local.toListenEvent
 import com.luc4n3x.levyra.data.local.toListenEventEntity
 import com.luc4n3x.levyra.data.local.toTrack
@@ -9,6 +10,7 @@ import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.PersonalizedArtistCandidate
 import com.luc4n3x.levyra.domain.SmartPlaylistListen
+import com.luc4n3x.levyra.domain.isCountedPlay
 import com.luc4n3x.levyra.domain.rankPersonalizedArtistCandidates
 import com.luc4n3x.levyra.domain.rankMostPlayedTracks
 import com.luc4n3x.levyra.domain.Track
@@ -23,7 +25,9 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 class ListeningPulseStore(context: Context) {
-    private val dao = LevyraDatabase.get(context.applicationContext).listenEventsDao()
+    private val database = LevyraDatabase.get(context.applicationContext)
+    private val dao = database.listenEventsDao()
+    private val aggregatesDao = database.listenAllTimeAggregatesDao()
     private val preferences = LevyraPreferences(context.applicationContext)
     private val writeLock = Mutex()
 
@@ -33,19 +37,95 @@ class ListeningPulseStore(context: Context) {
         withContext(Dispatchers.IO) {
             writeLock.withLock {
                 runCatching {
+                    ensureAggregatesBackfilled()
                     val cleanTrack = track.copy(streamUrl = "", videoStreamUrl = "")
+                    val artistIds = cleanTrack.artistBrowseIds.filter(String::isNotBlank).joinToString("\u001F")
                     val updated = dao.updateSession(
                         trackId = cleanTrack.id,
                         startedAt = startedAt,
                         listenedMs = cappedMs,
                         completed = if (completed) 1 else 0,
-                        artistBrowseIds = cleanTrack.artistBrowseIds.filter(String::isNotBlank).joinToString("\u001F")
+                        artistBrowseIds = artistIds
                     )
                     if (updated == 0) {
                         dao.insert(cleanTrack.toListenEventEntity(cappedMs, completed, startedAt))
                     }
+
+                    // Update compact all-time aggregates
+                    val trackKey = cleanTrack.id.trim().ifBlank {
+                        "${cleanTrack.title.trim().lowercase()}|${cleanTrack.artist.trim().lowercase()}"
+                    }
+                    val event = ListenEvent(
+                        trackId = cleanTrack.id,
+                        title = cleanTrack.title,
+                        artist = cleanTrack.artist,
+                        listenedMs = cappedMs,
+                        trackDurationMs = cleanTrack.durationMs,
+                        completed = completed,
+                        startedAt = startedAt,
+                        artistBrowseIds = cleanTrack.artistBrowseIds
+                    )
+                    val isPlay = isCountedPlay(event)
+                    val existing = aggregatesDao.get(trackKey)
+                    if (existing != null) {
+                        val playIncrement = if (isPlay && !isCountedPlay(event.copy(listenedMs = (cappedMs - 5_000L).coerceAtLeast(0L), completed = false))) 1 else 0
+                        val newCompleted = if (completed && existing.completedCount == 0) 1 else existing.completedCount
+                        aggregatesDao.insertOrUpdate(
+                            existing.copy(
+                                countedPlays = if (updated == 0 && isPlay) existing.countedPlays + 1 else existing.countedPlays + playIncrement,
+                                listenedMs = if (updated == 0) existing.listenedMs + cappedMs else (existing.listenedMs + (cappedMs - listenedMs).coerceAtLeast(0L)),
+                                completedCount = newCompleted,
+                                lastStartedAt = maxOf(existing.lastStartedAt, startedAt),
+                                artistBrowseIds = if (existing.artistBrowseIds.isBlank()) artistIds else existing.artistBrowseIds
+                            )
+                        )
+                    } else {
+                        aggregatesDao.insertOrUpdate(
+                            ListenAllTimeAggregateEntity(
+                                trackKey = trackKey,
+                                trackId = cleanTrack.id,
+                                title = cleanTrack.title,
+                                artist = cleanTrack.artist,
+                                countedPlays = if (isPlay) 1 else 0,
+                                listenedMs = cappedMs,
+                                completedCount = if (completed) 1 else 0,
+                                firstStartedAt = startedAt,
+                                lastStartedAt = startedAt,
+                                artistBrowseIds = artistIds
+                            )
+                        )
+                    }
+
                     pruneIfDue(System.currentTimeMillis())
                 }.onFailure { Timber.w(it, "Listen event write failed") }
+            }
+        }
+    }
+
+    private suspend fun ensureAggregatesBackfilled() {
+        if (aggregatesDao.count() == 0 && dao.count() > 0) {
+            val allEvents = dao.all()
+            if (allEvents.isNotEmpty()) {
+                val aggregates = allEvents.groupBy {
+                    it.trackId.trim().ifBlank { "${it.title.trim().lowercase()}|${it.artist.trim().lowercase()}" }
+                }.map { (key, list) ->
+                    val first = list.minByOrNull { it.startedAt } ?: list.first()
+                    val last = list.maxByOrNull { it.startedAt } ?: list.first()
+                    val domainEvents = list.map { it.toListenEvent() }
+                    ListenAllTimeAggregateEntity(
+                        trackKey = key,
+                        trackId = first.trackId,
+                        title = first.title,
+                        artist = first.artist,
+                        countedPlays = domainEvents.count { isCountedPlay(it) },
+                        listenedMs = list.sumOf { it.listenedMs },
+                        completedCount = list.count { it.completed },
+                        firstStartedAt = first.startedAt,
+                        lastStartedAt = last.startedAt,
+                        artistBrowseIds = first.artistBrowseIds
+                    )
+                }
+                aggregatesDao.insertAll(aggregates)
             }
         }
     }
@@ -70,8 +150,20 @@ class ListeningPulseStore(context: Context) {
 
     suspend fun eventsWindow(days: Int = RETENTION_DAYS): List<ListenEvent> = withContext(Dispatchers.IO) {
         val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
-        runCatching { dao.since(since).map { it.toListenEvent() } }
+        runCatching {
+            ensureAggregatesBackfilled()
+            dao.since(since).map { it.toListenEvent() }
+        }
             .onFailure { Timber.w(it, "Listen events load failed") }
+            .getOrDefault(emptyList())
+    }
+
+    suspend fun allTimeAggregates(): List<ListenAllTimeAggregateEntity> = withContext(Dispatchers.IO) {
+        runCatching {
+            ensureAggregatesBackfilled()
+            aggregatesDao.all()
+        }
+            .onFailure { Timber.w(it, "All-time aggregates load failed") }
             .getOrDefault(emptyList())
     }
 
@@ -126,7 +218,10 @@ class ListeningPulseStore(context: Context) {
     }
 
     suspend fun clear() = withContext(Dispatchers.IO) {
-        runCatching { dao.clear() }.onFailure { Timber.w(it, "Listen events clear failed") }
+        runCatching {
+            dao.clear()
+            aggregatesDao.clear()
+        }.onFailure { Timber.w(it, "Listen events clear failed") }
         Unit
     }
 

@@ -28,7 +28,7 @@ data class ListeningDna(
     val hourBuckets: List<Long> = emptyList()
 ) {
     val hasSignal: Boolean
-        get() = plays > 0
+        get() = plays > 0 || totalListenMs > 0L
 
     val totalMinutes: Long
         get() = totalListenMs / 60_000L
@@ -124,7 +124,7 @@ object ListeningDnaEngine {
         return ListeningDna(
             period = period,
             totalListenMs = totalListenMs,
-            plays = scoped.size,
+            plays = scoped.count { isCountedPlay(it) },
             distinctTracks = distinctTracks.size,
             distinctArtists = artistPlays.size,
             completionRate = (completed * 100) / scoped.size,
@@ -146,7 +146,9 @@ object ListeningDnaEngine {
         var listenedMs: Long = 0L
 
         fun add(event: ListenEvent) {
-            plays += 1
+            if (isCountedPlay(event)) {
+                plays += 1
+            }
             listenedMs += event.listenedMs
         }
     }
@@ -161,7 +163,9 @@ object ListeningDnaEngine {
         var listenedMs: Long = 0L
 
         fun add(event: ListenEvent) {
-            plays += 1
+            if (isCountedPlay(event)) {
+                plays += 1
+            }
             listenedMs += event.listenedMs
         }
     }

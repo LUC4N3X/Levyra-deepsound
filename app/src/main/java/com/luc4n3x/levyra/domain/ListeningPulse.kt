@@ -15,6 +15,11 @@ data class ListenEvent(
     val artistBrowseIds: List<String> = emptyList()
 )
 
+fun isCountedPlay(event: ListenEvent): Boolean {
+    return event.listenedMs >= ListeningPulseEngine.COUNTED_PLAY_MIN_MS ||
+        (event.completed && (event.listenedMs >= ListeningPulseEngine.MIN_LISTEN_MS || event.trackDurationMs in 1..29_999L))
+}
+
 data class PulseTrack(
     val trackId: String,
     val title: String,
@@ -65,7 +70,7 @@ data class ListeningPulse(
     val week: List<PulseDay> = emptyList()
 ) {
     val hasSignal: Boolean
-        get() = plays > 0
+        get() = plays > 0 || totalListenMs > 0L
 
     val totalMinutes: Long
         get() = totalListenMs / 60_000L
@@ -90,7 +95,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
 
         return ListeningPulse(
             totalListenMs = totalListenMs,
-            plays = valid.size,
+            plays = valid.count { isCountedPlay(it) },
             distinctTracks = valid.map { trackKey(it) }.toSet().size,
             distinctArtists = valid.map { artistKey(it.artist) }.filter { it.isNotBlank() }.toSet().size,
             completionRate = (completedCount * 100) / valid.size,
@@ -114,7 +119,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
         val artists = events.map { artistKey(it.artist) }.filter { it.isNotBlank() }
         return PulsePeriod(
             totalListenMs = events.sumOf { it.listenedMs },
-            plays = events.size,
+            plays = events.count { isCountedPlay(it) },
             distinctTracks = events.map { trackKey(it) }.toSet().size,
             distinctArtists = artists.toSet().size,
             completionRate = (events.count { it.completed } * 100) / events.size,
@@ -131,7 +136,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
                     trackId = newest.trackId,
                     title = newest.title,
                     artist = newest.artist,
-                    plays = group.size,
+                    plays = group.count { isCountedPlay(it) },
                     listenedMs = group.sumOf { it.listenedMs }
                 )
             }
@@ -144,7 +149,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
             .map { (_, group) ->
                 PulseArtist(
                     name = group.maxBy { it.startedAt }.artist.trim(),
-                    plays = group.size,
+                    plays = group.count { isCountedPlay(it) },
                     listenedMs = group.sumOf { it.listenedMs }
                 )
             }
@@ -201,6 +206,7 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
 
     companion object {
         const val MIN_LISTEN_MS = 5_000L
+        const val COUNTED_PLAY_MIN_MS = 30_000L
         private const val TOP_LIMIT = 5
         private const val WEEK_DAYS = 7
         private const val LAST_30_DAYS = 30L

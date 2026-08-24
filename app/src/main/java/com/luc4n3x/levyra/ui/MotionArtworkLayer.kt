@@ -71,6 +71,8 @@ internal fun MotionArtworkLayer(
     isPlaying: Boolean,
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
+    accentStart: Int = 0,
+    accentEnd: Int = 0,
     presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     staticArtwork: @Composable () -> Unit
@@ -153,6 +155,9 @@ internal fun MotionArtworkLayer(
     Box(modifier = modifier) {
         MotionArtworkStaticFallback(
             animated = animateStatic,
+            isPlaying = isPlaying,
+            accentStart = accentStart,
+            accentEnd = accentEnd,
             presentation = presentation,
             cornerRadius = cornerRadius,
             alpha = { staticBedAlpha },
@@ -266,6 +271,9 @@ private fun rememberMotionArtworkEnvironment(observe: Boolean): MotionArtworkEnv
 @Composable
 private fun MotionArtworkStaticFallback(
     animated: Boolean,
+    isPlaying: Boolean,
+    accentStart: Int,
+    accentEnd: Int,
     presentation: MotionArtworkPresentation,
     cornerRadius: Dp,
     alpha: () -> Float,
@@ -355,13 +363,29 @@ private fun MotionArtworkStaticFallback(
         }
     }
 
+    val palette = remember(accentStart, accentEnd) {
+        com.luc4n3x.levyra.ui.components.deriveLivingArtworkPalette(accentStart, accentEnd)
+    }
+
     Box(modifier = modifier.clip(shape)) {
+        if (animated) {
+            com.luc4n3x.levyra.ui.components.LivingArtworkCanvas(
+                palette = palette,
+                isPlaying = isPlaying,
+                animationsEnabled = animated,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        this.alpha = alpha()
+                    }
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { artworkSize = it }
                 .graphicsLayer {
-                    this.alpha = alpha()
+                    this.alpha = if (animated && immersive) alpha() * 0.45f else alpha()
                     val amount = motionAmount
                     val baseZoom = if (immersive) 0.064f else 0.042f
                     val pulseZoom = if (immersive) 0.030f else 0.022f

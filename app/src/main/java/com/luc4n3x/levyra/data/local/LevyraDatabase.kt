@@ -14,6 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
         ListenEventEntity::class,
+        ListenAllTimeAggregateEntity::class,
         PlaybackQueueItemEntity::class,
         PlaybackQueueStateEntity::class,
         OfflineDownloadTaskEntity::class,
@@ -23,7 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackSourceMatchEntity::class,
         ArtistLoreEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -31,6 +32,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun downloadedTracksDao(): DownloadedTracksDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun listenEventsDao(): ListenEventsDao
+    abstract fun listenAllTimeAggregatesDao(): ListenAllTimeAggregatesDao
     abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun offlineDownloadTasksDao(): OfflineDownloadTasksDao
     abstract fun lyricsCacheDao(): LyricsCacheDao
@@ -470,6 +472,28 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS listen_all_time_aggregates (
+                        trackKey TEXT NOT NULL PRIMARY KEY,
+                        trackId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        countedPlays INTEGER NOT NULL DEFAULT 0,
+                        listenedMs INTEGER NOT NULL DEFAULT 0,
+                        completedCount INTEGER NOT NULL DEFAULT 0,
+                        firstStartedAt INTEGER NOT NULL DEFAULT 0,
+                        lastStartedAt INTEGER NOT NULL DEFAULT 0,
+                        artistBrowseIds TEXT NOT NULL DEFAULT ''
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_listen_all_time_aggregates_artist ON listen_all_time_aggregates(artist)")
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -477,7 +501,6 @@ abstract class LevyraDatabase : RoomDatabase() {
                     LevyraDatabase::class.java,
                     "levyra.db"
                 )
-
                     .addMigrations(
                         MIGRATION_1_2,
                         MIGRATION_2_3,
@@ -492,7 +515,8 @@ abstract class LevyraDatabase : RoomDatabase() {
                         MIGRATION_11_12,
                         MIGRATION_12_13,
                         MIGRATION_13_14,
-                        MIGRATION_14_15
+                        MIGRATION_14_15,
+                        MIGRATION_15_16
                     )
                     .build()
                     .also { instance = it }

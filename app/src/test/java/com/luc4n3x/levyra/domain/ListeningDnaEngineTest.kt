@@ -33,6 +33,21 @@ class ListeningDnaEngineTest {
     }
 
     @Test
+    fun shortListensContributeListenTimeWithoutInflatingPlays() {
+        val now = 100L * dayMs
+        val events = listOf(
+            listen("short", "ArtistA", now - dayMs, listenedMs = 15_000L, completed = false),
+            listen("full", "ArtistA", now - dayMs, listenedMs = 45_000L, completed = false)
+        )
+        val dna = ListeningDnaEngine.build(events, ListeningDnaPeriod.Month, nowMs = now)
+
+        assertEquals(60_000L, dna.totalListenMs)
+        assertEquals(1, dna.plays)
+        assertEquals(1, dna.artists.first().plays)
+        assertEquals(60_000L, dna.artists.first().listenedMs)
+    }
+
+    @Test
     fun periodWindowExcludesOlderEvents() {
         val now = 100L * dayMs
         val events = listOf(

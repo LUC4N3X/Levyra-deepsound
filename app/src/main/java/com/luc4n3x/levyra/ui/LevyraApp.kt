@@ -4602,12 +4602,26 @@ private fun LyricsOverlay(
                                             ClipEntry(ClipData.newPlainText("lyrics", text))
                                         )
                                     }
+                                    haptics.perform(LevyraHapticAction.TrackSwipe)
+                                }
+                            )
+                            LyricsControlChip(
+                                label = strings.share,
+                                selected = false,
+                                icon = Icons.Rounded.Share,
+                                onClick = {
+                                    val selectedText = selectedLyricsText()
+                                    val fallback = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, selectedText)
+                                    }
+                                    shareContext.startActivity(Intent.createChooser(fallback, strings.shareVia))
                                 }
                             )
                             LyricsControlChip(
                                 label = strings.shareVerses,
                                 selected = false,
-                                icon = Icons.Rounded.Share,
+                                icon = Icons.Rounded.Palette,
                                 onClick = {
                                     val selectedText = selectedLyricsText()
                                     val selectedTrack = track
@@ -4767,10 +4781,10 @@ private fun LyricsOverlay(
                             if (selectionMode) {
                                 selectedVerseKeys = if (selected) selectedVerseKeys - selectionKey else selectedVerseKeys + selectionKey
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
-                            } else if (state.lyricsSynced) {
-                                lyricsOffsetMs = state.positionMs - line.startMs
+                            } else {
+                                selectionMode = true
+                                selectedVerseKeys = setOf(selectionKey)
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
-                                autoScrollEnabled = true
                             }
                         }
                     )
@@ -5154,7 +5168,12 @@ private fun KaraokeLyricLine(
                     else -> TransformOrigin(0f, 0.5f)
                 }
             }
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                onClickLabel = if (selectionMode) strings.selectVerses else null,
+                onLongClickLabel = strings.selectVerses
+            ),
         horizontalAlignment = alignment,
         verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)
     ) {
@@ -11181,7 +11200,8 @@ private fun PlayerArtworkCanvas(
     isPlaying: Boolean,
     cornerRadius: Dp,
     canvasQuality: LevyraCanvasQuality,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val artworkShadow by animateDpAsState(
@@ -11211,9 +11231,19 @@ private fun PlayerArtworkCanvas(
                 enabled = animationsEnabled,
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
+                accentStart = track.accentStart,
+                accentEnd = track.accentEnd,
                 presentation = MotionArtworkPresentation.Card,
                 quality = canvasQuality,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (onLongPress != null) {
+                            Modifier.pointerInput(track.id) {
+                                detectTapGestures(onLongPress = { onLongPress() })
+                            }
+                        } else Modifier
+                    )
             ) {
                 if (artworkUrl.isNotBlank()) {
                     AsyncImage(
@@ -11262,6 +11292,8 @@ private fun PlayerImmersiveMotionCanvas(
             enabled = animationsEnabled,
             isPlaying = isPlaying,
             cornerRadius = 0.dp,
+            accentStart = track.accentStart,
+            accentEnd = track.accentEnd,
             presentation = MotionArtworkPresentation.Immersive,
             quality = canvasQuality,
             modifier = Modifier.fillMaxSize()
@@ -12356,6 +12388,8 @@ private fun PlayerScreen(
         }
     }
 
+    var showArtworkPreview by remember { mutableStateOf(false) }
+
     val artScale by animateFloatAsState(
         targetValue = if (state.isPlaying) 1f else 0.945f,
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
@@ -12572,6 +12606,7 @@ private fun PlayerScreen(
                         isPlaying = state.isPlaying,
                         cornerRadius = artCorner,
                         canvasQuality = state.interfaceSettings.canvasQuality,
+                        onLongPress = { showArtworkPreview = true },
                         modifier = Modifier
                             .fillMaxSize()
                             .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
@@ -12979,6 +13014,14 @@ private fun PlayerScreen(
                 onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
                 onToggleReplies = viewModel::toggleYoutubeCommentReplies,
                 onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
+            )
+        }
+
+        if (showArtworkPreview && track != null) {
+            com.luc4n3x.levyra.ui.components.ArtworkPreviewDialog(
+                track = track,
+                artworkUrl = artworkUrl,
+                onDismiss = { showArtworkPreview = false }
             )
         }
     }
