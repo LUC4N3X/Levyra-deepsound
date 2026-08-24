@@ -571,13 +571,13 @@ internal fun LevyraLibraryScreen(
                         state.downloadQueue,
                         key = { _, task -> "task-${task.taskKey}" },
                         contentType = { _, _ -> "download-task" }
-                    ) { taskIndex, task ->
+                    ) { _, task ->
                         LibraryDownloadTaskRow(
                             task = task,
                             onPause = { viewModel.pauseDownload(task.taskKey) },
                             onResume = { viewModel.resumeDownload(task.taskKey) },
                             onCancel = { viewModel.cancelDownload(task.taskKey) },
-                            position = LevyraConnectedPosition.of(taskIndex, state.downloadQueue.size)
+                            position = LevyraConnectedPosition.Single
                         )
                     }
                     if (hasTransfers && visibleOffline.isNotEmpty()) {
