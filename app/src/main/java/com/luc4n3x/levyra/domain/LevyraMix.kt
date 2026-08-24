@@ -97,6 +97,38 @@ fun mixTrackKey(track: Track): String {
     return compositeMixKey(track.title, track.artist)
 }
 
+/**
+ * Reconciles generated mix entries with richer canonical copies already known by Levyra.
+ * Chart/Home copies are intentionally supplied first by the caller, so the same recording
+ * keeps the same music identity and metadata used by normal Song Mode / Motion Artwork.
+ */
+fun prepareMixPlaybackTracks(
+    selected: List<Track>,
+    canonicalSources: List<Track>
+): List<Track> {
+    if (selected.isEmpty()) return emptyList()
+    if (canonicalSources.isEmpty()) {
+        return LevyraPersonalOrbit.distinctRecordings(
+            selected.map { LevyraPersonalOrbit.prepareForOrbit(it, emptyList()) }
+        )
+    }
+
+    val canonical = LevyraPersonalOrbit.distinctRecordings(canonicalSources)
+    val prepared = ArrayList<Track>(selected.size)
+    for (candidate in selected) {
+        val knownRecording = canonical.firstOrNull { source ->
+            LevyraPersonalOrbit.sameRecording(source, candidate)
+        }
+        val resolved = if (knownRecording != null) {
+            LevyraPersonalOrbit.prepareForOrbit(knownRecording, listOf(candidate))
+        } else {
+            LevyraPersonalOrbit.prepareForOrbit(candidate, canonical)
+        }
+        prepared.add(resolved)
+    }
+    return LevyraPersonalOrbit.distinctRecordings(prepared)
+}
+
 fun buildMixCandidates(
     tracks: List<Track>,
     listens: List<ListenEvent>,
