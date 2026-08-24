@@ -1342,6 +1342,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         startExpansion,
                         spring(dampingRatio = 0.82f, stiffness = 360f)
                     )
+                    throw cancelled
                 }
             }
 
