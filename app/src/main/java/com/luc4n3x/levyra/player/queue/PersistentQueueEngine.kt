@@ -20,6 +20,21 @@ import timber.log.Timber
 internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
     !transientPlaybackActive
 
+internal fun replacementQueuePositionMs(
+    previousIdentity: String?,
+    nextIdentity: String?,
+    currentPositionMs: Long,
+    requestedPositionMs: Long
+): Long {
+    val requested = requestedPositionMs.coerceAtLeast(0L)
+    if (requested > 0L) return requested
+    return if (previousIdentity != null && previousIdentity == nextIdentity) {
+        currentPositionMs.coerceAtLeast(0L)
+    } else {
+        0L
+    }
+}
+
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -92,10 +107,18 @@ class PersistentQueueEngine private constructor(context: Context) {
     ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val normalized = tracks.filter { it.title.isNotBlank() }.distinctBy(::playbackQueueIdentity)
         val safeIndex = if (normalized.isEmpty()) -1 else currentIndex.coerceIn(0, normalized.lastIndex)
+        val previousIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextIdentity = normalized.getOrNull(safeIndex)?.let(::playbackQueueIdentity)
+        val nextPositionMs = replacementQueuePositionMs(
+            previousIdentity = previousIdentity,
+            nextIdentity = nextIdentity,
+            currentPositionMs = current.positionMs,
+            requestedPositionMs = positionMs
+        )
         buildSnapshot(
             tracks = normalized,
             currentIndex = safeIndex,
-            positionMs = positionMs,
+            positionMs = nextPositionMs,
             repeatMode = if (keepPlaybackModes) current.repeatMode else RepeatMode.Off,
             shuffleEnabled = keepPlaybackModes && current.shuffleEnabled,
             radioEnabled = radioEnabled ?: if (keepPlaybackModes) current.radioEnabled else false,
@@ -556,7 +579,12 @@ class PersistentQueueEngine private constructor(context: Context) {
         return buildSnapshot(
             tracks = tracks,
             currentIndex = currentIndex,
-            positionMs = if (previousIdentity != null && previousIdentity == nextIdentity) current.positionMs else 0L,
+            positionMs = replacementQueuePositionMs(
+                previousIdentity = previousIdentity,
+                nextIdentity = nextIdentity,
+                currentPositionMs = current.positionMs,
+                requestedPositionMs = 0L
+            ),
             repeatMode = current.repeatMode,
             shuffleEnabled = current.shuffleEnabled,
             radioEnabled = current.radioEnabled,

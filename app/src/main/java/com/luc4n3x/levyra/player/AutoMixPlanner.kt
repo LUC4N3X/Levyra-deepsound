@@ -63,6 +63,15 @@ internal fun crossfadeHandoffSeekPosition(
     return requested.coerceAtMost((durationMs - 1L).coerceAtLeast(0L))
 }
 
+internal fun crossfadeStepWallClockMs(
+    mediaStepMs: Long,
+    playbackSpeed: Float,
+    minWallClockMs: Long = 10L
+): Long {
+    val speed = if (playbackSpeed.isFinite() && playbackSpeed > 0f) playbackSpeed else 1f
+    return ((mediaStepMs.toFloat() / speed).toLong()).coerceAtLeast(minWallClockMs)
+}
+
 private const val MIN_TRACK_MS = 30_000L
 private const val MIN_TRANSITION_MS = 800L
 private const val MAX_TRANSITION_MS = 12_000L

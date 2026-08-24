@@ -97,8 +97,8 @@ class PlaybackHandoffTest {
 
     @Test
     fun unrelatedPlaybackErrorsRemainFatal() {
-        assertFalse(isRecoverablePlaybackErrorCode(1001))
         assertFalse(isRecoverablePlaybackErrorCode(5001))
+        assertFalse(isRecoverablePlaybackErrorCode(6001))
     }
 
     @Test
