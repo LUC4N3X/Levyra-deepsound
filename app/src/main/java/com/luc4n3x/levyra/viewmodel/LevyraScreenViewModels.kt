@@ -35,6 +35,7 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.domain.prepareMixPlaybackTracks
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -48,6 +49,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
@@ -242,6 +244,8 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
 }
 
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
+    private var mixPresentationJob: Job? = null
+
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
@@ -254,8 +258,49 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun playSample(list: List<Track>, track: Track) = root.playSample(list, track)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
     fun setMixFamiliarity(value: Float) = root.setMixFamiliarity(value)
-    fun startLevyraMix(kind: LevyraMixKind, seedTrack: Track? = null, seedQuery: String = "", label: String = "") =
-        root.startLevyraMix(kind, seedTrack, seedQuery, label)
+
+    fun startLevyraMix(
+        kind: LevyraMixKind,
+        seedTrack: Track? = null,
+        seedQuery: String = "",
+        label: String = ""
+    ) {
+        mixPresentationJob?.cancel()
+        mixPresentationJob = viewModelScope.launch {
+            val previousQueue = root.state.value.queue
+            root.startLevyraMix(kind, seedTrack, seedQuery, label)
+            root.state.first { it.mixLoading }
+            val generated = root.state.first { snapshot ->
+                !snapshot.mixLoading && (
+                    snapshot.mixMessage != null ||
+                        (snapshot.activeMix != null && snapshot.queue.isNotEmpty() && snapshot.queue !== previousQueue)
+                )
+            }
+            if (generated.mixMessage != null || generated.activeMix == null || generated.queue.isEmpty()) {
+                return@launch
+            }
+
+            val canonicalSources = buildList {
+                addAll(generated.charts)
+                generated.homeSections.forEach { section -> addAll(section.tracks) }
+                addAll(generated.tracks)
+                addAll(generated.personalOrbitTracks)
+                addAll(generated.favorites)
+                addAll(generated.recentListens)
+                addAll(generated.exploreFreshTracks)
+                addAll(generated.exploreTracks)
+                addAll(generated.homeResonanceTracks)
+            }
+            val prepared = withContext(Dispatchers.Default) {
+                prepareMixPlaybackTracks(generated.queue, canonicalSources)
+            }
+            if (prepared.isNotEmpty() && (generated.isVideoMode || prepared != generated.queue)) {
+                root.playAudioFrom(prepared, prepared.first(), loopOnCompletion = true)
+            }
+            root.openQueue()
+        }
+    }
+
     fun openYourSound() = root.openYourSound()
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
