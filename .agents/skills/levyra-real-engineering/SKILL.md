@@ -70,20 +70,42 @@ Implement one ticket or one reviewable phase at a time.
 - Read applicable Levyra domain skills before editing.
 - For defects, establish a concrete failing path first; use `diagnosing-bugs` when root cause is unclear.
 - Prefer red -> green -> refactor where deterministic tests are useful.
+- Test externally observable behavior and durable contracts rather than incidental implementation details when possible.
 - Do not force artificial tests around trivial declarative changes.
 - Make the smallest coherent change and avoid unrelated cleanup.
 
 #### Hypothesis-driven debugging
 
+Use this closed loop:
+
+```text
+reproduce -> isolate -> hypothesis -> smallest experiment -> fix -> prevent
+```
+
 1. Reproduce/capture the failing path and complete relevant evidence.
 2. Trace the bad state/value backward to the first failed assumption or contract.
 3. Compare with a nearby working path when available.
 4. State one concrete root-cause hypothesis and supporting evidence.
-5. Test it with the smallest experiment/change.
-6. If it fails, discard the speculative change and form a new hypothesis.
-7. Once supported, add the smallest deterministic regression evidence, fix, and rerun relevant broader checks.
+5. Test it with the smallest experiment/change; do not stack several speculative changes into one experiment.
+6. If it fails, revert/discard the speculative change, mark the hypothesis `DISPROVED`, and stop using it downstream.
+7. Once supported, add the smallest deterministic regression evidence, apply the root-cause fix, and rerun relevant broader checks.
+8. Prevent recurrence with the narrowest useful test, invariant, validator, or ownership clarification; do not create generic infrastructure for a one-off mistake.
 
-After three materially different failed hypotheses, reassess the ownership boundary instead of stacking more guesses.
+Keep the current hypothesis state explicit when the investigation is long: `CANDIDATE`, `SUPPORTED`, `VALIDATED`, or `DISPROVED`. If later evidence invalidates a previously supported conclusion, retract it explicitly rather than silently leaving old reasoning in handoffs, comments, or review summaries.
+
+After three materially different failed hypotheses, reassess the ownership boundary and reproduction evidence instead of stacking more guesses.
+
+#### Test and check failure classification
+
+Before reacting to a failed test/build/lint/runtime check, classify the failure using the best available evidence:
+
+- `PRODUCT_REGRESSION`: the implementation violates the expected behavior;
+- `TEST_DEFECT`: the test/fixture/assertion is stale or incorrect;
+- `ENVIRONMENT`: tooling, network, service, device, permission, or CI infrastructure prevented a valid result;
+- `FLAKY`: the same code/input/environment can legitimately produce intermittent pass/fail behavior and there is evidence of nondeterminism;
+- `UNKNOWN`: evidence is insufficient to classify yet.
+
+Do not rerun an unchanged failing command repeatedly to fish for a green result. A retry is evidence only when it tests an environment/flakiness hypothesis; preserve the original failure and compare both runs. Never relabel a failure as flaky merely because a retry passed once.
 
 ### 6. Mandatory pre-delivery review: `code-review`
 
@@ -123,10 +145,15 @@ If the external package is unavailable, follow this Levyra adapter rather than b
 
 - Keep the current ticket/phase small enough to review.
 - Prefer fresh context between independent tickets and an independent context for final review when supported.
-- Carry forward only the approved spec/ticket, relevant architecture/invariants, exact changed files or diff/commit, direct validation evidence, and unresolved blockers.
+- Carry forward only the approved spec/ticket, relevant architecture/invariants, exact changed files or diff/commit, direct validation evidence, current hypothesis/finding state, and unresolved blockers.
+- Do not carry a disproved hypothesis or stale finding into a fresh context as an unresolved fact.
 - Prefer durable existing artifacts over duplicate memory/recap documents.
 - When a session must compact/restart, summarize verified facts and open decisions, not exploratory chatter or superseded hypotheses.
 - Current repository evidence overrides remembered conversation context or older handoffs.
+
+## Skill-intelligence discipline
+
+When an external skill or catalog is proposed as an improvement, follow `docs/ai/SKILL_INTELLIGENCE.md`. Prefer adapting a useful method into the existing owner skill over adding another always-discoverable skill. Route changes require positive and near-miss evaluation, and increased token/tool cost must buy a material improvement in correctness, validation, review quality, or scope control.
 
 ## Publication and quality gates
 
@@ -143,3 +170,7 @@ python3 scripts/ai_quality_gate.py --profile full
 ```
 
 Commit, push, pull request, merge, tag, release, deployment, version changes, and repository settings remain owner-controlled exactly as defined by `AGENTS.md`.
+
+## Provenance
+
+The debugging/test refinements are selectively informed by the reproduce/isolate/hypothesis/prevention discipline in `Jeffallan/claude-skills`. They are rewritten for Levyra and do not import that catalog's generic toolchain assumptions or skill inventory.
