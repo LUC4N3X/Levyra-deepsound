@@ -130,6 +130,7 @@ boundaries.
 | `levyra-android-performance` | Android Perfetto/System Trace, jank, latency, startup, CPU/thread state, graphics, Binder, blocking, memory, I/O, power, and measured runtime bottlenecks |
 | `levyra-r8-proguard` | R8/Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker failures, mapping evidence, and measured APK-size work |
 | `levyra-android-intent-security` | Android Intents, PendingIntents, deep links, exported components, receivers/services/providers, URI grants, FileProvider, and caller verification |
+| `levyra-android-reverse-engineering` | APK/XAPK/AAB/DEX/JAR/AAR fingerprinting, decompilation, Kotlin/R8 metadata recovery, compiled API/call-flow extraction, and static artifact security analysis |
 | `levyra-motion-artwork` | Decorative motion artwork and muted playback boundaries |
 | `levyra-desktop` | Windows Desktop, libvlc, downloads, mini player, updates, and packaging |
 | `levyra-security-review` | Cross-runtime threat modeling, vulnerability validation, minimal remediation, privacy, supply chain, and revalidation |
@@ -177,6 +178,11 @@ forwarding, `onNewIntent`, mutable PendingIntents, URI grants, FileProvider,
 ContentProvider, signature/caller verification, or component-boundary audits.
 Always pair it with `levyra-security-review` and the affected Android domain
 skill.
+
+Load `levyra-android-reverse-engineering` automatically for APK/XAPK/AAB/DEX/JAR/AAR
+analysis, jadx/smali work, compiled API extraction, binary call-flow tracing, or
+Kotlin/R8 metadata recovery. Pair it with `levyra-security-review`, and add
+`levyra-r8-proguard` when obfuscation or shrinker behavior is material.
 
 Load `levyra-security-review` for vulnerability scans, attacker-controlled
 input, trust-boundary changes, authentication, tokens, cookies, signing,
@@ -230,9 +236,10 @@ ChatGPT use the repository-native adapter whether or not the upstream package is
 installed.
 
 The scripts do not configure Ollama/local-model profiles, unrestricted
-sandboxing, or silent approval bypasses. Root `AGENTS.md` explicitly authorizes
-only the pinned RTK bootstrap and the focused Matt Pocock integration described
-there; every other unapproved executable or plugin remains opt-in.
+sandboxing, or silent approval bypasses. Root `AGENTS.md` keeps unrelated plugins
+and executables opt-in. A tool genuinely required by the active task may be
+installed only under the narrow, verified installation policy in
+`docs/ai/ALWAYS_ON_AGENT_GUARDS.md`.
 
 ## Validation
 
@@ -268,8 +275,9 @@ local-model profiles.
   boundaries and reachable attack paths; do not copy generic sample contracts.
 - Keep RTK as an output layer, never validation authority.
 - Keep security findings evidence-based and revalidate every remediation.
-- Keep the pinned RTK bootstrap and focused Matt integration narrow; every other
-  unapproved plugin or executable installation remains opt-in.
+- Keep the pinned RTK bootstrap and focused Matt integration narrow; unrelated
+  plugins and executables remain opt-in, while genuinely task-required tools may
+  use the verified narrow-install policy in `docs/ai/ALWAYS_ON_AGENT_GUARDS.md`.
 - Keep commit, push, PR, merge, tag, release, upload, and repository settings
   under explicit owner authorization.
 - Verify paths, commands, skills, workflows, and documentation after structural

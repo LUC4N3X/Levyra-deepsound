@@ -8,6 +8,21 @@ OpenClaw-delegated runtimes, and any other coding agent used on this repository.
 They supplement `AGENTS.md`; they do not replace repository architecture,
 path-specific instructions, tests, or owner decisions.
 
+## Always-on execution harness
+
+`docs/ai/ALWAYS_ON_AGENT_GUARDS.md` applies to every Levyra engineering task.
+It is a mandatory repository contract, not a skill and not a model-selected
+workflow. Root/scoped instructions, current-file-before-mutation, evidence-gated
+completion, final-diff review, anti-AI-comment discipline, structural navigation
+ordering, and compaction/resume re-anchoring remain active whether or not a
+specialized skill is selected.
+
+Claude Code and Codex use checked-in lifecycle hooks to enforce the portions the
+runtime can enforce mechanically. ChatGPT and Google Antigravity/Gemini must
+apply the same contract directly from their project/workspace instructions; the
+repository harness validator and CI are the backstop. No runtime may weaken the
+contract because it lacks a hook API.
+
 ## Core rule
 
 A successful AI change is not the change that produces the most code or the most
@@ -263,7 +278,7 @@ an instruction to enter Levyra engineering mode before technical work:
 
 1. open `LUC4N3X/Levyra-deepsound`;
 2. read the current root `AGENTS.md` and every nearer scoped instruction;
-3. read this guardrail document;
+3. read this guardrail document and `docs/ai/ALWAYS_ON_AGENT_GUARDS.md`;
 4. load the relevant project planning, architecture, and native skills;
 5. inspect current repository evidence before relying on previous chat memory;
 6. apply the smallest-change and complexity-budget rules above.
