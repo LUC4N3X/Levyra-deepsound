@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -225,7 +227,9 @@ private fun MixBalanceSlider(
                 disabledThumbColor = LevyraMuted,
                 disabledActiveTrackColor = LevyraMuted
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "$familiarLabel / $discoveryLabel" }
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
