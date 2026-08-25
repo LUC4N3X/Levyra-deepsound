@@ -31,6 +31,74 @@ class YoutubeMusicSearchEntityKindTest {
     }
 
     @Test
+    fun `MPLA browse id is recognized as an artist without page type metadata`() {
+        val renderer = JSONObject().put(
+            "flexColumns",
+            JSONArray().put(
+                runLine(
+                    browseRun(
+                        text = "Coldplay",
+                        browseId = "MPLAUC123456",
+                        pageType = ""
+                    )
+                )
+            )
+        )
+
+        assertEquals(SearchEntityKind.Artist, repository.searchEntityKind(renderer))
+        val artist = repository.parseSearchOverview(
+            JSONObject().put(
+                "contents",
+                JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", renderer))
+            ),
+            "coldplay"
+        ).artists.single()
+        assertEquals("MPLAUC123456", artist.browseId)
+    }
+
+    @Test
+    fun `bare UC browse id is not classified as an artist without page type metadata`() {
+        val renderer = JSONObject().put(
+            "flexColumns",
+            JSONArray().put(
+                runLine(
+                    browseRun(
+                        text = "Curator Channel",
+                        browseId = "UC_CURATOR_CHANNEL",
+                        pageType = ""
+                    )
+                )
+            )
+        )
+
+        assertEquals(SearchEntityKind.Track, repository.searchEntityKind(renderer))
+    }
+
+    @Test
+    fun `direct artist reference rejects bare UC browse id without artist page type`() {
+        val renderer = JSONObject()
+            .put(
+                "navigationEndpoint",
+                JSONObject().put(
+                    "browseEndpoint",
+                    JSONObject().put("browseId", "UC_CURATOR_CHANNEL")
+                )
+            )
+            .put(
+                "title",
+                JSONObject().put(
+                    "runs",
+                    JSONArray().put(JSONObject().put("text", "Curator Channel"))
+                )
+            )
+
+        assertEquals(
+            null,
+            repository.extractYoutubeMusicArtistReference(renderer, "Curator Channel")
+        )
+    }
+
+    @Test
     fun `album row wins over the artist endpoint it also carries`() {
         val renderer = JSONObject().put(
             "flexColumns",
@@ -129,6 +197,27 @@ class YoutubeMusicSearchEntityKindTest {
     }
 
     @Test
+    fun `reload continuation data is accepted for search pagination`() {
+        val root = JSONObject().put(
+            "continuationContents",
+            JSONObject().put(
+                "musicShelfContinuation",
+                JSONObject().put(
+                    "continuations",
+                    JSONArray().put(
+                        JSONObject().put(
+                            "reloadContinuationData",
+                            JSONObject().put("continuation", "RELOAD_TOKEN")
+                        )
+                    )
+                )
+            )
+        )
+
+        assertEquals("RELOAD_TOKEN", repository.findSearchContinuation(root))
+    }
+
+    @Test
     fun `overview is empty for an unparsable payload`() {
         val overview = repository.parseSearchOverview(JSONObject().put("contents", JSONArray()), "query")
 
@@ -158,23 +247,21 @@ class YoutubeMusicSearchEntityKindTest {
 
     private fun runLine(run: JSONObject): JSONObject = flexColumn(JSONArray().put(run))
 
-    private fun browseRun(text: String, browseId: String, pageType: String): JSONObject = JSONObject()
-        .put("text", text)
-        .put(
-            "navigationEndpoint",
-            JSONObject().put(
-                "browseEndpoint",
-                JSONObject()
-                    .put("browseId", browseId)
-                    .put(
-                        "browseEndpointContextSupportedConfigs",
-                        JSONObject().put(
-                            "browseEndpointContextMusicConfig",
-                            JSONObject().put("pageType", pageType)
-                        )
-                    )
+    private fun browseRun(text: String, browseId: String, pageType: String): JSONObject {
+        val endpoint = JSONObject().put("browseId", browseId)
+        if (pageType.isNotBlank()) {
+            endpoint.put(
+                "browseEndpointContextSupportedConfigs",
+                JSONObject().put(
+                    "browseEndpointContextMusicConfig",
+                    JSONObject().put("pageType", pageType)
+                )
             )
-        )
+        }
+        return JSONObject()
+            .put("text", text)
+            .put("navigationEndpoint", JSONObject().put("browseEndpoint", endpoint))
+    }
 
     private fun flexColumn(runs: JSONArray): JSONObject = JSONObject().put(
         "musicResponsiveListItemFlexColumnRenderer",
