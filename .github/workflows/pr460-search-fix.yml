@@ -1,0 +1,64 @@
+name: Validate PR 460 search fix
+
+on:
+  push:
+    branches:
+      - feature/search-top-tracks
+    paths:
+      - .github/workflows/pr460-search-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-validate-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
+
+      - name: Apply focused fix
+        run: python3 .github/pr460-search-fix.py
+
+      - name: Check diff
+        run: git diff --check
+
+      - name: Targeted tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.data.SearchEntityIdentityTest' --tests 'com.luc4n3x.levyra.viewmodel.ReliableArtistSearchTest'
+
+      - name: Lint debug
+        run: ./gradlew --no-daemon :app:lintDebug
+
+      - name: Assemble debug
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/SearchEntityIdentity.kt \
+                  app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+                  app/src/main/java/com/luc4n3x/levyra/viewmodel/ReliableArtistSearch.kt \
+                  app/src/test/java/com/luc4n3x/levyra/data/SearchEntityIdentityTest.kt \
+                  app/src/test/java/com/luc4n3x/levyra/viewmodel/ReliableArtistSearchTest.kt
+          git commit -m "fix(search): tighten artist relevance and top result dedupe"
+          git push origin HEAD:feature/search-top-tracks
