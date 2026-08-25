@@ -115,6 +115,102 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
+    fun searchSuggestionsUsesMusicEndpointAndInputPayload() {
+        val requests = mutableListOf<YoutubeMusicTransportRequest>()
+        val client = client { request ->
+            requests += request
+            YoutubeMusicTransportResponse(200, validSuggestions(), 9L)
+        }
+
+        val result = client.searchSuggestions("daft punk", "it")
+
+        assertNotNull(result)
+        assertEquals(1, requests.size)
+        assertEquals("music/get_search_suggestions", requests.single().path)
+        assertEquals("web-remix", requests.single().profile.id)
+        assertEquals("daft punk", JSONObject(requests.single().payload).optString("input"))
+    }
+
+    @Test
+    fun suggestionFailureDoesNotPenalizePrimarySearchProfile() {
+        val calls = mutableListOf<String>()
+        var suggestionRequest = true
+        val client = client { request ->
+            calls += "${request.path}:${request.profile.id}"
+            if (suggestionRequest) {
+                YoutubeMusicTransportResponse(500, "suggestion endpoint failure", 10L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+        }
+
+        assertNull(client.searchSuggestions("daft punk", "it"))
+        assertTrue(client.diagnostics().isEmpty())
+
+        suggestionRequest = false
+        assertNotNull(client.search("public search", "it"))
+
+        assertEquals("search:web-remix", calls.last())
+        assertEquals(0, client.diagnostics().getValue("web-remix").failures)
+        assertEquals(1, client.diagnostics().getValue("web-remix").successes)
+    }
+
+    @Test
+    fun searchAcceptsTabbedSearchResultsRendererCarryingResults() {
+        val client = client { _ ->
+            YoutubeMusicTransportResponse(
+                200,
+                """{"contents":{"tabbedSearchResultsRenderer":{"tabs":[{"tabRenderer":{"content":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[{"musicResponsiveListItemRenderer":{"title":"Track"}}]}}]}}}}]}}}""",
+                10L
+            )
+        }
+
+        assertNotNull(client.search("alternate renderer", "it"))
+    }
+
+    @Test
+    fun emptyTabbedSearchResultsRendererKeepsTheFallbackChainRunning() {
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            calls += request.profile.id
+            if (calls.size < 2) {
+                YoutubeMusicTransportResponse(200, """{"contents":{"tabbedSearchResultsRenderer":{"tabs":[]}}}""", 10L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+        }
+
+        assertNotNull(client.search("structural wrapper only", "it"))
+        assertTrue(calls.size >= 2)
+    }
+
+    @Test
+    fun emptyItemSectionRendererIsNotAcceptedAsSearchContent() {
+        val client = client { _ ->
+            YoutubeMusicTransportResponse(
+                200,
+                """{"contents":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[]}}]}}}""",
+                10L
+            )
+        }
+
+        assertNull(client.search("empty item section", "it"))
+    }
+
+    @Test
+    fun searchContinuationWithResultsRemainsUseful() {
+        val client = client { _ ->
+            YoutubeMusicTransportResponse(
+                200,
+                """{"continuationContents":{"musicShelfContinuation":{"contents":[{"musicResponsiveListItemRenderer":{"title":"Track"}}]}}}""",
+                10L
+            )
+        }
+
+        assertNotNull(client.search("continuation", "it", continuation = "TOKEN"))
+    }
+
+    @Test
     fun expiredCachePerformsANewRequest() {
         var now = 1_700_000_000_000L
         var calls = 0
@@ -298,4 +394,7 @@ class YoutubeMusicResilienceClientTest {
 
     private fun validSearch(): String =
         """{"contents":{"musicResponsiveListItemRenderer":{"title":"Track"}}}"""
+
+    private fun validSuggestions(): String =
+        """{"contents":[{"searchSuggestionsSectionRenderer":{"contents":[{"searchSuggestionRenderer":{"navigationEndpoint":{"searchEndpoint":{"query":"daft punk"}}}}]}}]}"""
 }

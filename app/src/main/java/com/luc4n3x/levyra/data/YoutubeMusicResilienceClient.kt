@@ -123,6 +123,19 @@ internal class YoutubeMusicResilienceClient(
         )
     }
 
+    fun searchSuggestions(query: String, languageCode: String): JSONObject? {
+        val clean = query.trim()
+        if (apiKey.isBlank() || clean.length < 2) return null
+        return request(
+            kind = YoutubeMusicRequestKind.SEARCH_SUGGESTIONS,
+            languageCode = languageCode,
+            browseId = "",
+            params = "",
+            continuation = "",
+            query = clean
+        )
+    }
+
     fun browse(
         languageCode: String,
         browseId: String,
@@ -209,7 +222,14 @@ internal class YoutubeMusicResilienceClient(
         query: String
     ): JSONObject? {
         val deadline = monotonicClock() + TOTAL_REQUEST_BUDGET_MS
-        val orderedProfiles = orderedProfiles(clock())
+        val affectsProfileHealth = kind != YoutubeMusicRequestKind.SEARCH_SUGGESTIONS
+        val orderedProfiles = orderedProfiles(clock()).let { candidates ->
+            if (kind == YoutubeMusicRequestKind.SEARCH_SUGGESTIONS) {
+                candidates.filter { it.id == "web-remix" }
+            } else {
+                candidates
+            }
+        }
         val deferredDenials = mutableListOf<YoutubeMusicDeferredFailure>()
         var lastFailure: Throwable? = null
 
@@ -221,7 +241,11 @@ internal class YoutubeMusicResilienceClient(
             }
 
             val request = YoutubeMusicTransportRequest(
-                path = if (kind == YoutubeMusicRequestKind.SEARCH) "search" else "browse",
+                path = when (kind) {
+                    YoutubeMusicRequestKind.SEARCH -> "search"
+                    YoutubeMusicRequestKind.SEARCH_SUGGESTIONS -> "music/get_search_suggestions"
+                    YoutubeMusicRequestKind.BROWSE -> "browse"
+                },
                 apiKey = apiKey,
                 profile = profile,
                 payload = payload(profile, kind, languageCode, browseId, params, continuation, query).toString(),
@@ -238,28 +262,32 @@ internal class YoutubeMusicResilienceClient(
                     return null
                 }
                 lastFailure = error
-                recordFailure(
-                    profile = profile,
-                    statusCode = null,
-                    reason = error.message.orEmpty(),
-                    latencyMs = (monotonicClock() - attemptStartedAt).takeIf { it > 0L },
-                    now = clock()
-                )
+                if (affectsProfileHealth) {
+                    recordFailure(
+                        profile = profile,
+                        statusCode = null,
+                        reason = error.message.orEmpty(),
+                        latencyMs = (monotonicClock() - attemptStartedAt).takeIf { it > 0L },
+                        now = clock()
+                    )
+                }
                 continue
             }
 
             if (response.code !in 200..299) {
                 lastFailure = IOException("HTTP ${response.code}")
-                if (isRequestScopedDenial(response.code, response.body)) {
-                    deferredDenials += YoutubeMusicDeferredFailure(
-                        profile = profile,
-                        statusCode = response.code,
-                        reason = response.body,
-                        latencyMs = response.latencyMs,
-                        now = clock()
-                    )
-                } else {
-                    recordFailure(profile, response.code, response.body, response.latencyMs, clock())
+                if (affectsProfileHealth) {
+                    if (isRequestScopedDenial(response.code, response.body)) {
+                        deferredDenials += YoutubeMusicDeferredFailure(
+                            profile = profile,
+                            statusCode = response.code,
+                            reason = response.body,
+                            latencyMs = response.latencyMs,
+                            now = clock()
+                        )
+                    } else {
+                        recordFailure(profile, response.code, response.body, response.latencyMs, clock())
+                    }
                 }
                 continue
             }
@@ -268,36 +296,46 @@ internal class YoutubeMusicResilienceClient(
             val root = parsed.getOrNull()
             if (root == null) {
                 lastFailure = parsed.exceptionOrNull() ?: IOException("Invalid JSON")
-                recordFailure(profile, response.code, "invalid json", response.latencyMs, clock())
+                if (affectsProfileHealth) {
+                    recordFailure(profile, response.code, "invalid json", response.latencyMs, clock())
+                }
                 continue
             }
             if (!isUseful(kind, root)) {
-                if (isRequestScopedDenial(response.code, response.body)) {
-                    deferredDenials += YoutubeMusicDeferredFailure(
-                        profile = profile,
-                        statusCode = response.code,
-                        reason = response.body,
-                        latencyMs = response.latencyMs,
-                        now = clock()
-                    )
-                } else {
-                    recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
+                if (affectsProfileHealth) {
+                    if (isRequestScopedDenial(response.code, response.body)) {
+                        deferredDenials += YoutubeMusicDeferredFailure(
+                            profile = profile,
+                            statusCode = response.code,
+                            reason = response.body,
+                            latencyMs = response.latencyMs,
+                            now = clock()
+                        )
+                    } else {
+                        recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
+                    }
                 }
                 continue
             }
 
-            deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = true) }
+            if (affectsProfileHealth) {
+                deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = true) }
+            }
             root.optJSONObject("responseContext")
                 ?.optString("visitorData")
                 ?.trim()
                 ?.takeIf(String::isNotBlank)
                 ?.let { visitorData[profile.id] = it }
 
-            recordSuccess(profile, response.latencyMs, clock())
+            if (affectsProfileHealth) {
+                recordSuccess(profile, response.latencyMs, clock())
+            }
             return root
         }
 
-        deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = false) }
+        if (affectsProfileHealth) {
+            deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = false) }
+        }
         lastFailure?.let { Timber.d(it, "YouTube Music fallback chain exhausted") }
         return null
     }
@@ -329,6 +367,9 @@ internal class YoutubeMusicResilienceClient(
                 if (query.isNotBlank()) root.put("query", query)
                 if (params.isNotBlank()) root.put("params", params)
                 if (continuation.isNotBlank()) root.put("continuation", continuation)
+            }
+            YoutubeMusicRequestKind.SEARCH_SUGGESTIONS -> {
+                if (query.isNotBlank()) root.put("input", query)
             }
             YoutubeMusicRequestKind.BROWSE -> {
                 if (browseId.isNotBlank()) root.put("browseId", browseId)
@@ -437,6 +478,7 @@ internal class YoutubeMusicResilienceClient(
         val raw = root.toString()
         return when (kind) {
             YoutubeMusicRequestKind.SEARCH -> SEARCH_MARKERS.any(raw::contains)
+            YoutubeMusicRequestKind.SEARCH_SUGGESTIONS -> SEARCH_SUGGESTION_MARKERS.any(raw::contains)
             YoutubeMusicRequestKind.BROWSE -> BROWSE_MARKERS.any(raw::contains)
         }
     }
@@ -447,6 +489,7 @@ internal class YoutubeMusicResilienceClient(
                 val encoded = URLEncoder.encode(query, StandardCharsets.UTF_8.name())
                 "https://music.youtube.com/search?q=$encoded"
             }
+            YoutubeMusicRequestKind.SEARCH_SUGGESTIONS -> "https://music.youtube.com/"
             YoutubeMusicRequestKind.BROWSE -> browseId
                 .takeIf(String::isNotBlank)
                 ?.let { "https://music.youtube.com/browse/$it" }
@@ -518,11 +561,24 @@ internal class YoutubeMusicResilienceClient(
         const val IOS_USER_AGENT =
             "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)"
 
+        /**
+         * Renderers the search parser can actually read. Structural wrappers such as
+         * `tabbedSearchResultsRenderer` or `itemSectionRenderer` are deliberately absent: they are
+         * present on empty and blocked responses too, so on their own they must not stop the
+         * fallback chain. A wrapper carrying real results still matches through the item renderers
+         * nested inside it.
+         */
         val SEARCH_MARKERS = arrayOf(
             "musicResponsiveListItemRenderer",
             "musicTwoRowItemRenderer",
             "videoRenderer",
-            "musicShelfRenderer"
+            "musicCardShelfRenderer",
+            "playlistPanelVideoRenderer"
+        )
+        val SEARCH_SUGGESTION_MARKERS = arrayOf(
+            "searchSuggestionsSectionRenderer",
+            "searchSuggestionRenderer",
+            "historySuggestionRenderer"
         )
         val BROWSE_MARKERS = arrayOf(
             "musicCarouselShelfRenderer",
@@ -655,6 +711,7 @@ private class YoutubeMusicInFlightRequest {
 
 private enum class YoutubeMusicRequestKind {
     SEARCH,
+    SEARCH_SUGGESTIONS,
     BROWSE
 }
 

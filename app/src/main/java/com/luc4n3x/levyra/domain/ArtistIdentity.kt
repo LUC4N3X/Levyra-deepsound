@@ -11,6 +11,11 @@ private val ARTIST_EXPLICIT_SEPARATOR =
     Regex("""(?i)\s+(?:feat(?:uring)?\.?|ft\.?|with|con|vs\.?)\s+|,\s*|;\s*|\s+[x×/]\s+""")
 private val ARTIST_JOINED_SEPARATOR = Regex("""(?i)\s+(?:&|and|e|y|et|und)\s+""")
 private val ARTIST_YEAR_TOKEN = Regex("""\b(?:19|20)\d{2}\b""")
+private val ARTIST_AUDIENCE_PATTERN =
+    Regex("""(\d[\d.,\s\u00A0]*)\s*(k|m|b|mln|mld|mrd|mio|mila|tys)?""", RegexOption.IGNORE_CASE)
+private val ARTIST_LEADING_ARTICLES = setOf(
+    "the", "a", "an", "el", "la", "las", "los", "le", "les", "il", "lo", "gli", "der", "die", "das", "os", "as"
+)
 
 internal fun artistIdentityKey(value: String): String {
     return Normalizer.normalize(value, Normalizer.Form.NFKD)
@@ -20,6 +25,47 @@ internal fun artistIdentityKey(value: String): String {
         .replace(ARTIST_NON_ALPHANUMERIC, " ")
         .replace(ARTIST_WHITESPACE, " ")
         .trim()
+}
+
+/**
+ * Identity keys a name can be matched by: the plain key plus, when the name starts with a common
+ * leading article, the key without it. Lets "weeknd" match "The Weeknd" without dropping articles
+ * from anything shown to the user.
+ */
+internal fun artistIdentityKeys(value: String): Set<String> {
+    val key = artistIdentityKey(value)
+    if (key.isBlank()) return emptySet()
+    val article = key.substringBefore(' ')
+    val remainder = key.substringAfter(' ', "")
+    if (remainder.isBlank() || article !in ARTIST_LEADING_ARTICLES) return setOf(key)
+    return setOf(key, remainder)
+}
+
+internal fun artistIdentityMatches(first: String, second: String): Boolean {
+    val firstKeys = artistIdentityKeys(first)
+    if (firstKeys.isEmpty()) return false
+    return artistIdentityKeys(second).any(firstKeys::contains)
+}
+
+/**
+ * Rough audience size parsed from a search subtitle ("274M monthly audience", "7 subscribers").
+ * Ranks equally matching artists only; it never filters a candidate out.
+ */
+internal fun artistAudienceWeight(value: String): Long {
+    val match = ARTIST_AUDIENCE_PATTERN.find(value) ?: return 0L
+    val multiplier = when (match.groupValues[2].lowercase(Locale.ROOT)) {
+        "k", "mila", "tys" -> 1_000.0
+        "m", "mln", "mio" -> 1_000_000.0
+        "b", "mrd", "mld" -> 1_000_000_000.0
+        else -> 1.0
+    }
+    val digits = match.groupValues[1].filter { it.isDigit() || it == '.' || it == ',' }
+    val amount = if (multiplier > 1.0) {
+        digits.replace(',', '.').toDoubleOrNull()
+    } else {
+        digits.filter(Char::isDigit).toDoubleOrNull()
+    } ?: return 0L
+    return (amount * multiplier).toLong()
 }
 
 internal fun primaryArtistSegment(value: String): String {
