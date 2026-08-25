@@ -45,6 +45,10 @@ class MusicRecognitionTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        if (!LevyraRecognitionCenter.isAvailable) {
+            renderTile(LevyraRecognitionCenter.get(this).state.value)
+            return
+        }
         if (!hasRecordAudioPermission()) {
             openAppForPermission()
             return
@@ -55,8 +59,8 @@ class MusicRecognitionTileService : TileService() {
             is RecognitionState.Result,
             is RecognitionState.NoMatch,
             is RecognitionState.Error -> controller.start()
-            RecognitionState.Listening -> controller.cancel()
-            RecognitionState.Identifying -> Unit
+            RecognitionState.Listening,
+            RecognitionState.Identifying -> controller.cancel()
         }
         renderTile(controller.state.value)
     }
@@ -76,8 +80,14 @@ class MusicRecognitionTileService : TileService() {
     private fun renderTile(state: RecognitionState) {
         val tile = qsTile ?: return
         val strings = LevyraStrings.forCode(LevyraPreferences(this).snapshot().languageCode)
-        val projection = recognitionTileProjection(state)
         tile.label = strings.recognizeMusic
+        if (!LevyraRecognitionCenter.isAvailable) {
+            tile.state = Tile.STATE_UNAVAILABLE
+            setStateDescription(null)
+            tile.updateTile()
+            return
+        }
+        val projection = recognitionTileProjection(state)
         tile.state = if (projection.kind == RecognitionTileProjectionKind.Active) {
             Tile.STATE_ACTIVE
         } else {
@@ -108,6 +118,7 @@ class MusicRecognitionTileService : TileService() {
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra(LevyraLaunchActions.EXTRA_SHORTCUT, LevyraLaunchActions.SHORTCUT_RECOGNITION)
+            putExtra(LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST, true)
         }
         TileServiceCompat.startActivityAndCollapse(
             this,

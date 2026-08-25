@@ -51,6 +51,7 @@ import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
+import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -115,9 +116,8 @@ class MainActivity : ComponentActivity() {
         resumePendingUpdateInstall()
     }
 
-    private val recognitionPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        LevyraLaunchActions.pendingShortcut.value =
-            if (granted) LevyraLaunchActions.SHORTCUT_RECOGNITION else null
+    private val recognitionPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -255,11 +255,19 @@ class MainActivity : ComponentActivity() {
 
     private fun handleRecognitionLaunchRequest() {
         if (LevyraLaunchActions.pendingShortcut.value != LevyraLaunchActions.SHORTCUT_RECOGNITION) return
+        val permissionRequest = intent.getBooleanExtra(
+            LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST,
+            false
+        )
+        intent.removeExtra(LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST)
+
+        // Launcher/deep-link input may navigate, but it never authorizes microphone capture.
+        LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
+        if (!LevyraRecognitionCenter.isAvailable || !permissionRequest) return
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
         ) {
-            LevyraLaunchActions.pendingShortcut.value = null
             recognitionPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }

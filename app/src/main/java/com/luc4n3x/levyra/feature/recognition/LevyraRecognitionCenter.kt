@@ -4,19 +4,23 @@ import android.content.Context
 
 object LevyraRecognitionCenter {
     private val lock = Any()
+    private val provider: RecognitionProvider = NoOpRecognitionProvider
 
     @Volatile
     private var controller: MusicRecognitionController? = null
 
+    val isAvailable: Boolean
+        get() = provider !== NoOpRecognitionProvider
+
     fun get(context: Context): MusicRecognitionController = controller ?: synchronized(lock) {
         controller ?: MusicRecognitionController(
             audioCapture = MicrophoneCapture(context.applicationContext),
-            provider = NoOpRecognitionProvider
+            provider = provider
         ).also { controller = it }
     }
 
     fun start(context: Context) {
-        get(context).start()
+        if (isAvailable) get(context).start()
     }
 
     fun cancel(context: Context) {
