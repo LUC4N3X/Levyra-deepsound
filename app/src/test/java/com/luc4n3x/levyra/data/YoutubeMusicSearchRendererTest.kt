@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class YoutubeMusicSearchRendererTest {
@@ -25,8 +26,23 @@ class YoutubeMusicSearchRendererTest {
         )
 
         requireNotNull(track)
-        assertEquals("YouTube Music", track.artist)
+        assertEquals("", track.artist)
         assertEquals("YouTube Music", track.album)
+    }
+
+    @Test
+    fun `provider name is never surfaced as artist credit`() {
+        val track = repository.parseMusicRenderer(
+            renderer(
+                line("O"),
+                line("27M plays")
+            ),
+            query = "Coldplay"
+        )
+
+        requireNotNull(track)
+        assertNotEquals("YouTube Music", track.artist)
+        assertNotEquals("YouTube", track.artist)
     }
 
     @Test

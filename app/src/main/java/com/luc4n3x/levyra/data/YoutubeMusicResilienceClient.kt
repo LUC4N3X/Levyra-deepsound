@@ -561,15 +561,19 @@ internal class YoutubeMusicResilienceClient(
         const val IOS_USER_AGENT =
             "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)"
 
+        /**
+         * Renderers the search parser can actually read. Structural wrappers such as
+         * `tabbedSearchResultsRenderer` or `itemSectionRenderer` are deliberately absent: they are
+         * present on empty and blocked responses too, so on their own they must not stop the
+         * fallback chain. A wrapper carrying real results still matches through the item renderers
+         * nested inside it.
+         */
         val SEARCH_MARKERS = arrayOf(
             "musicResponsiveListItemRenderer",
             "musicTwoRowItemRenderer",
             "videoRenderer",
-            "musicShelfRenderer",
-            "musicShelfContinuation",
             "musicCardShelfRenderer",
-            "tabbedSearchResultsRenderer",
-            "itemSectionRenderer"
+            "playlistPanelVideoRenderer"
         )
         val SEARCH_SUGGESTION_MARKERS = arrayOf(
             "searchSuggestionsSectionRenderer",

@@ -391,6 +391,7 @@ private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
 private const val ALBUM_RESULTS_PER_SEED = 8
 private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
+private const val SUGGESTION_RESPONSE_LIMIT_CHARS = 64 * 1024
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS = "EgWKAQIYAWoMEA4QChADEAQQCRAF"
@@ -1615,7 +1616,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         collectObjectsByKey(card, "watchEndpoint", watchEndpoints)
         val audioPlaylistId = watchEndpoints.firstNotNullOfOrNull { endpoint -> endpoint.optString("playlistId").takeIf { it.isNotBlank() } }.orEmpty()
         val artistReference = extractYoutubeMusicArtistReference(card, artist)
-        val resolvedArtist = artistReference?.name.orEmpty().ifBlank { artist }.ifBlank { "YouTube Music" }
+        val resolvedArtist = artistReference?.name.orEmpty().ifBlank { artist }
         return AlbumHit(
             title = title.cleanLabel(),
             artist = resolvedArtist.cleanLabel(),
@@ -2405,7 +2406,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return buildTrack(
             id = item.videoId,
             title = item.title,
-            artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist.ifBlank { "YouTube Music" } },
+            artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist },
             album = item.albumTitle.ifBlank { "YouTube Music Radio" },
             durationMs = item.durationMs,
             thumbnailUrl = thumbnail,
@@ -2427,7 +2428,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return buildTrack(
             id = item.videoId,
             title = item.title,
-            artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist.ifBlank { "YouTube Music" } },
+            artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist },
             album = item.albumTitle.ifBlank { "YouTube Music Related" },
             durationMs = item.durationMs,
             thumbnailUrl = thumbnail,
@@ -2458,7 +2459,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
-                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                val response = connection.inputStream.bufferedReader().use { reader ->
+                    val buffer = CharArray(SUGGESTION_RESPONSE_LIMIT_CHARS)
+                    val read = reader.read(buffer)
+                    if (read <= 0) "" else String(buffer, 0, read)
+                }
                 val root = JSONArray(response)
                 val suggestions = root.optJSONArray(1) ?: return@runCatching emptyList()
                 val result = mutableListOf<String>()
@@ -2482,7 +2487,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val tokens = subtitle.split(" • ", " · ", " - ").map { it.trim() }
         if (tokens.isNotEmpty() && tokens[0].lowercase() in excludedTypes) return null
 
-        val fallbackArtist = tokens.firstOrNull(::isPlausibleSearchMetadataLabel) ?: "YouTube Music"
+        val fallbackArtist = tokens.firstOrNull(::isPlausibleSearchMetadataLabel).orEmpty()
         val artistReferences = extractYoutubeMusicArtistReferences(two, fallbackArtist)
         val artist = artistReferences.creditLabel(fallbackArtist)
         val thumbnail = findBestThumbnail(two)
@@ -2623,7 +2628,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
         val fallbackArtist = tokens
             .firstOrNull(::isPlausibleSearchMetadataLabel)
-            ?: "YouTube Music"
+            .orEmpty()
         val artistReferences = extractYoutubeMusicArtistReferences(renderer, fallbackArtist)
         val artist = artistReferences.creditLabel(fallbackArtist)
         val albumReference = extractYoutubeMusicAlbumReference(renderer)

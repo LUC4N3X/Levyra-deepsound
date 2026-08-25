@@ -156,16 +156,58 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
-    fun searchAcceptsTabbedSearchResultsRenderer() {
+    fun searchAcceptsTabbedSearchResultsRendererCarryingResults() {
         val client = client { _ ->
             YoutubeMusicTransportResponse(
                 200,
-                """{"contents":{"tabbedSearchResultsRenderer":{"tabs":[]}}}""",
+                """{"contents":{"tabbedSearchResultsRenderer":{"tabs":[{"tabRenderer":{"content":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[{"musicResponsiveListItemRenderer":{"title":"Track"}}]}}]}}}}]}}}""",
                 10L
             )
         }
 
         assertNotNull(client.search("alternate renderer", "it"))
+    }
+
+    @Test
+    fun emptyTabbedSearchResultsRendererKeepsTheFallbackChainRunning() {
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            calls += request.profile.id
+            if (calls.size < 2) {
+                YoutubeMusicTransportResponse(200, """{"contents":{"tabbedSearchResultsRenderer":{"tabs":[]}}}""", 10L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+        }
+
+        assertNotNull(client.search("structural wrapper only", "it"))
+        assertTrue(calls.size >= 2)
+    }
+
+    @Test
+    fun emptyItemSectionRendererIsNotAcceptedAsSearchContent() {
+        val client = client { _ ->
+            YoutubeMusicTransportResponse(
+                200,
+                """{"contents":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[]}}]}}}""",
+                10L
+            )
+        }
+
+        assertNull(client.search("empty item section", "it"))
+    }
+
+    @Test
+    fun searchContinuationWithResultsRemainsUseful() {
+        val client = client { _ ->
+            YoutubeMusicTransportResponse(
+                200,
+                """{"continuationContents":{"musicShelfContinuation":{"contents":[{"musicResponsiveListItemRenderer":{"title":"Track"}}]}}}""",
+                10L
+            )
+        }
+
+        assertNotNull(client.search("continuation", "it", continuation = "TOKEN"))
     }
 
     @Test
