@@ -7867,6 +7867,20 @@ private fun hasSquareAlbumArtwork(track: Track): Boolean {
         SQUARE_ART_SIZE_PATTERN.containsMatchIn(url)
 }
 
+internal fun displayableAlbumLabel(track: Track): String? {
+    val album = track.album.trim()
+    if (album.isBlank() || album.equals(track.title.trim(), ignoreCase = true)) return null
+    if (album.equals("YouTube", ignoreCase = true) || album.startsWith("YouTube Music", ignoreCase = true)) return null
+    return album
+}
+
+internal fun displayableArtistCredit(artist: String): String? {
+    val credit = artist.trim()
+    if (credit.isBlank()) return null
+    if (credit.equals("YouTube Music", ignoreCase = true) || credit.equals("YouTube", ignoreCase = true)) return null
+    return credit
+}
+
 private fun isReliableMusicUpdateCandidate(track: Track): Boolean {
     val title = track.title.trim()
     val artist = track.artist.trim()
@@ -16680,7 +16694,7 @@ private fun AlbumArtworkCard(
     )
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    val meta = track.album.takeIf { it.isNotBlank() && it != track.title } ?: track.artist
+    val meta = displayableAlbumLabel(track) ?: track.artist
     Column(
         modifier = Modifier
             .graphicsLayer {
@@ -17350,15 +17364,17 @@ private fun TopResultCard(
                     CoverImage(track, Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)), highRes = true)
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(track.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            track.artist,
-                            color = LevyraMuted,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable { onArtist() }
-                        )
+                        displayableArtistCredit(track.artist)?.let { credit ->
+                            Text(
+                                credit,
+                                color = LevyraMuted,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.clickable { onArtist() }
+                            )
+                        }
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -19184,7 +19200,7 @@ private fun VideoGlassCard(
             }
         }
         Text(
-            text = track.album.takeIf { it.isNotBlank() && it != track.title } ?: LocalLevyraStrings.current.video,
+            text = displayableAlbumLabel(track) ?: LocalLevyraStrings.current.video,
             color = accentStart.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color.copy(alpha = 0.82f),
             fontSize = 11.5.sp,
             lineHeight = 14.sp,
