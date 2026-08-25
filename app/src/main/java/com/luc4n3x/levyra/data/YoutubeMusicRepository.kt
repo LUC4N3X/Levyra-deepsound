@@ -790,7 +790,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             when {
                 pageType == MUSIC_PAGE_TYPE_ALBUM || browseId.startsWith("MPRE", ignoreCase = true) -> album = true
                 pageType == MUSIC_PAGE_TYPE_PLAYLIST || browseId.startsWith("VL", ignoreCase = true) -> playlist = true
-                pageType == MUSIC_PAGE_TYPE_ARTIST || browseId.startsWith("UC") -> artist = true
+                pageType == MUSIC_PAGE_TYPE_ARTIST ||
+                    browseId.startsWith("MPLA", ignoreCase = true) -> artist = true
             }
         }
         if (album) return SearchEntityKind.Album
@@ -912,10 +913,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }.orEmpty()
     }
 
-    private fun findSearchContinuation(root: JSONObject): String {
+    internal fun findSearchContinuation(root: JSONObject): String {
         val legacy = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "nextContinuationData", legacy)
         legacy.firstNotNullOfOrNull { it.optString("continuation").takeIf(String::isNotBlank) }?.let { return it }
+        val reload = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "reloadContinuationData", reload)
+        reload.firstNotNullOfOrNull { it.optString("continuation").takeIf(String::isNotBlank) }?.let { return it }
         val commands = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "continuationCommand", commands)
         return commands.firstNotNullOfOrNull { it.optString("token").takeIf(String::isNotBlank) }.orEmpty()
@@ -1793,7 +1797,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
         "فنان", "قناة", "ملف شخصي", "قائمة تشغيل", "歌手", "频道", "个人资料", "播放列表",
         "アーティスト", "チャンネル", "プロフィール", "プレイリスト", "再生リスト",
-        "아티스트", "채널", "프로필", "재생목록", "플레이리スト",
+        "아티스트", "채널", "프로필", "재생목록", "플레이리스트",
         "कलाकार", "चैनल", "प्रोफ़ाइल", "प्लेलिस्ट",
         "saluran", "daftar putar", "nghệ sĩ", "kênh", "hồ sơ", "danh sách phát",
         "ศิลปิน", "ช่อง", "โปรไฟล์", "เพลย์ลิสต์",
@@ -2163,7 +2167,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            if (browseId.isBlank() || !pageType.contains("ARTIST", ignoreCase = true)) return null
+            val isArtistEndpoint = browseId.startsWith("MPLA", ignoreCase = true) ||
+                pageType.contains("ARTIST", ignoreCase = true)
+            if (browseId.isBlank() || !isArtistEndpoint) return null
             val name = run.optString("text").cleanAlbumArtistLabel().trim()
             if (name.isBlank()) return null
             return YoutubeMusicArtistReference(name = name, browseId = browseId)
@@ -2233,7 +2239,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            val isArtistEndpoint = browseId.startsWith("UC", ignoreCase = true) ||
+            val isArtistEndpoint = browseId.startsWith("MPLA", ignoreCase = true) ||
                 pageType.contains("ARTIST", ignoreCase = true)
             if (browseId.isBlank() || !isArtistEndpoint) return null
             val title = renderer.optJSONObject("title")
@@ -2437,24 +2443,32 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> {
-        if (query.isBlank()) return emptyList()
+        val cleanQuery = query.trim()
+        if (cleanQuery.isBlank()) return emptyList()
         val locale = LevyraContentLocales.forLanguage(languageCode)
-        val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=${locale.hl}&gl=${locale.gl}&q=${java.net.URLEncoder.encode(query, "UTF-8")}"
-        val remote = runCatching {
-            val connection = URL(url).openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            val response = connection.inputStream.bufferedReader().use { it.readText() }
-            val root = JSONArray(response)
-            val suggestions = root.optJSONArray(1) ?: return@runCatching emptyList()
-            val result = mutableListOf<String>()
-            for (i in 0 until suggestions.length()) {
-                result += suggestions.optString(i)
-            }
-            result
+        val native = runCatching {
+            parseYoutubeMusicSearchSuggestions(
+                resilienceClient.searchSuggestions(cleanQuery, languageCode)
+            )
         }.getOrDefault(emptyList())
-        return LevyraLocalizedDiscovery.suggestions(query, locale.languageCode, remote)
+        val remote = native.ifEmpty {
+            val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=${locale.hl}&gl=${locale.gl}&q=${java.net.URLEncoder.encode(cleanQuery, "UTF-8")}"
+            runCatching {
+                val connection = URL(url).openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+                val response = connection.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONArray(response)
+                val suggestions = root.optJSONArray(1) ?: return@runCatching emptyList()
+                val result = mutableListOf<String>()
+                for (i in 0 until suggestions.length()) {
+                    result += suggestions.optString(i)
+                }
+                result
+            }.getOrDefault(emptyList())
+        }
+        return LevyraLocalizedDiscovery.suggestions(cleanQuery, locale.languageCode, remote)
     }
 
     internal fun parseCarouselItem(item: JSONObject): Track? {
