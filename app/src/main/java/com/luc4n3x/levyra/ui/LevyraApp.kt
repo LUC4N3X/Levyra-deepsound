@@ -5566,10 +5566,11 @@ private fun buildKaraokeGlyphPath(
 private fun buildTimedLyricText(words: List<com.luc4n3x.levyra.domain.LyricWord>): TimedLyricText {
     val text = StringBuilder()
     val timedWords = ArrayList<TimedLyricWord>(words.size)
-    words.forEach { word ->
+    var previousEndedWithWhitespace = true
+    words.forEachIndexed { index, word ->
         val value = word.text.trim()
         if (value.isNotBlank()) {
-            if (text.isNotEmpty() && !value.first().isPunctuationWithoutLeadingSpace()) {
+            if (index > 0 && !previousEndedWithWhitespace && !value.first().isPunctuationWithoutLeadingSpace()) {
                 text.append(' ')
             }
             val startIndex = text.length
@@ -5580,6 +5581,7 @@ private fun buildTimedLyricText(words: List<com.luc4n3x.levyra.domain.LyricWord>
                 startMs = word.startMs,
                 endMs = word.endMs.coerceAtLeast(word.startMs + 1L)
             )
+            previousEndedWithWhitespace = word.text.lastOrNull()?.isWhitespace() == true
         }
     }
     return TimedLyricText(text.toString(), timedWords)
