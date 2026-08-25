@@ -62,6 +62,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 
 internal enum class SamplesLoadSurfaceState {
@@ -440,7 +441,7 @@ private fun ExploreSamplePage(
                     text = track.title,
                     color = Color.White,
                     fontSize = 20.sp,
-                    lineHeight = 23.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
                     fontWeight = FontWeight.Black,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -449,7 +450,7 @@ private fun ExploreSamplePage(
                     text = track.artist,
                     color = Color.White.copy(alpha = 0.82f),
                     fontSize = 15.sp,
-                    lineHeight = 18.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -520,7 +521,7 @@ private fun SampleActionButton(
             text = label,
             color = Color.White,
             fontSize = 10.5.sp,
-            lineHeight = 12.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

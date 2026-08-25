@@ -159,7 +159,11 @@ internal fun LevyraYourSoundOverlay(
                         DnaStatTile(dna.totalMinutes.toString(), strings.pulseMinutes, LevyraConnectedPosition.Top, style, accent)
                         DnaStatTile(dna.plays.toString(), strings.statPlays, LevyraConnectedPosition.Middle, style, accent)
                         DnaStatTile(dna.distinctArtists.toString(), strings.statArtists, LevyraConnectedPosition.Middle, style, accent)
-                        DnaStatTile(percent.format(dna.discoveryRate / 100.0), strings.dnaDiscovery, LevyraConnectedPosition.Bottom, style, accent)
+                        if (dna.period == ListeningDnaPeriod.AllTime) {
+                            DnaStatTile(percent.format(dna.completionRate / 100.0), strings.pulseCompletion, LevyraConnectedPosition.Bottom, style, accent)
+                        } else {
+                            DnaStatTile(percent.format(dna.discoveryRate / 100.0), strings.dnaDiscovery, LevyraConnectedPosition.Bottom, style, accent)
+                        }
                     }
                 }
                 if (dna.artists.isNotEmpty()) {

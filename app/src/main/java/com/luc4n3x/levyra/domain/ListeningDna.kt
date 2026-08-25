@@ -28,7 +28,7 @@ data class ListeningDna(
     val hourBuckets: List<Long> = emptyList()
 ) {
     val hasSignal: Boolean
-        get() = plays > 0
+        get() = plays > 0 || totalListenMs > 0L
 
     val totalMinutes: Long
         get() = totalListenMs / 60_000L
@@ -49,7 +49,7 @@ object ListeningDnaEngine {
         zoneOffsetMs: Long = 0L
     ): ListeningDna {
         val valid = events.filter {
-            it.listenedMs >= ListeningPulseEngine.MIN_LISTEN_MS && it.startedAt in 1..nowMs
+            ListenPlayPolicy.isRecordableEvent(it.listenedMs) && it.startedAt in 1..nowMs
         }
         if (valid.isEmpty()) return ListeningDna(period = period, hourBuckets = List(HoursPerDay) { 0L })
 
@@ -66,6 +66,7 @@ object ListeningDnaEngine {
         if (scoped.isEmpty()) return ListeningDna(period = period, hourBuckets = List(HoursPerDay) { 0L })
 
         val hourBuckets = LongArray(HoursPerDay)
+        var countedPlays = 0
         val artistPlays = LinkedHashMap<String, ArtistAccumulator>()
         val trackPlays = LinkedHashMap<String, TrackAccumulator>()
         val distinctTracks = HashSet<String>(scoped.size)
@@ -76,6 +77,7 @@ object ListeningDnaEngine {
         for (event in scoped) {
             totalListenMs += event.listenedMs
             if (event.completed) completed += 1
+            if (ListenPlayPolicy.isCountedPlay(event)) countedPlays += 1
             val hour = (((event.startedAt + zoneOffsetMs) / 3_600_000L) % HoursPerDay).toInt()
             hourBuckets[if (hour < 0) hour + HoursPerDay else hour] += event.listenedMs
 
@@ -124,7 +126,7 @@ object ListeningDnaEngine {
         return ListeningDna(
             period = period,
             totalListenMs = totalListenMs,
-            plays = scoped.size,
+            plays = countedPlays,
             distinctTracks = distinctTracks.size,
             distinctArtists = artistPlays.size,
             completionRate = (completed * 100) / scoped.size,
@@ -136,17 +138,48 @@ object ListeningDnaEngine {
         )
     }
 
-    private fun trackKey(event: ListenEvent): String =
-        event.trackId.trim().ifEmpty {
-            "${event.title.trim().lowercase()}|${event.artist.trim().lowercase()}"
+    fun buildAllTime(
+        lifetime: LifetimeListening,
+        events: List<ListenEvent>,
+        nowMs: Long = System.currentTimeMillis(),
+        zoneOffsetMs: Long = 0L
+    ): ListeningDna {
+        val window = build(events, ListeningDnaPeriod.AllTime, nowMs, zoneOffsetMs)
+        if (!lifetime.hasSignal) return window
+        val artistTotal = lifetime.artists.sumOf { it.listenedMs }.coerceAtLeast(1L)
+        val artists = lifetime.artists.map { artist ->
+            DnaArtist(
+                name = artist.name,
+                plays = artist.countedPlays,
+                listenedMs = artist.listenedMs,
+                weight = (artist.listenedMs.toFloat() / artistTotal.toFloat()).coerceIn(0f, 1f)
+            )
         }
+        val completionRate = if (lifetime.eventCount > 0) {
+            ((lifetime.completedCount * 100) / lifetime.eventCount).coerceIn(0, 100)
+        } else {
+            0
+        }
+        return window.copy(
+            totalListenMs = lifetime.totalListenMs,
+            plays = lifetime.countedPlays,
+            distinctTracks = lifetime.distinctTracks,
+            distinctArtists = lifetime.distinctArtists,
+            completionRate = completionRate,
+            discoveryRate = 0,
+            artists = artists.ifEmpty { window.artists },
+            tracks = lifetime.tracks.ifEmpty { window.tracks }
+        )
+    }
+
+    private fun trackKey(event: ListenEvent): String = ListenIdentity.trackKey(event)
 
     private class ArtistAccumulator(val name: String) {
         var plays: Int = 0
         var listenedMs: Long = 0L
 
         fun add(event: ListenEvent) {
-            plays += 1
+            if (ListenPlayPolicy.isCountedPlay(event)) plays += 1
             listenedMs += event.listenedMs
         }
     }
@@ -161,7 +194,7 @@ object ListeningDnaEngine {
         var listenedMs: Long = 0L
 
         fun add(event: ListenEvent) {
-            plays += 1
+            if (ListenPlayPolicy.isCountedPlay(event)) plays += 1
             listenedMs += event.listenedMs
         }
     }
