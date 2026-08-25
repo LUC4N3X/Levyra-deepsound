@@ -1103,6 +1103,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeDownloadBatches()
         loadPlaylists()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
+        viewModelScope.launch(Dispatchers.IO) { listeningPulseStore.ensureLifetimeBackfill() }
         refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
         LevyraWidgetBridge.onToggle = { togglePlay() }
@@ -7954,8 +7955,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val events = listeningPulseStore.eventsWindow()
                 val zoneOffsetMs = TimeZone.getDefault().getOffset(System.currentTimeMillis()).toLong()
+                val lifetime = if (period == ListeningDnaPeriod.AllTime) {
+                    listeningPulseStore.lifetime()
+                } else {
+                    null
+                }
                 val dna = withContext(Dispatchers.Default) {
-                    ListeningDnaEngine.build(events, period, zoneOffsetMs = zoneOffsetMs)
+                    if (lifetime != null) {
+                        ListeningDnaEngine.buildAllTime(lifetime, events, zoneOffsetMs = zoneOffsetMs)
+                    } else {
+                        ListeningDnaEngine.build(events, period, zoneOffsetMs = zoneOffsetMs)
+                    }
                 }
                 _state.update { current ->
                     if (current.listeningDnaPeriod != period) {
