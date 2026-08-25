@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Yayın radarı</string>
     <string name="radar_channel_description">Takip ettiğiniz sanatçıların yeni yayınları</string>
     <string name="radar_new_release_title">%1$s sanatçısından yeni yayın</string>
+    <string name="tile_recognize_music">Müziği tanı</string>
+    <string name="shortcut_search">Ara</string>
+    <string name="shortcut_library">Kitaplık</string>
+    <string name="shortcut_recognition">Müziği tanı</string>
 </resources>

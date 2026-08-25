@@ -115,6 +115,11 @@ class MainActivity : ComponentActivity() {
         resumePendingUpdateInstall()
     }
 
+    private val recognitionPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        LevyraLaunchActions.pendingShortcut.value =
+            if (granted) LevyraLaunchActions.SHORTCUT_RECOGNITION else null
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyOrientationPolicy()
@@ -130,6 +135,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = startPalette.isLight
         }
         LevyraLaunchActions.consumeFrom(intent)
+        handleRecognitionLaunchRequest()
         if (Build.VERSION.SDK_INT >= 28) {
             val params = window.attributes
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -244,6 +250,18 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         LevyraLaunchActions.consumeFrom(intent)
+        handleRecognitionLaunchRequest()
+    }
+
+    private fun handleRecognitionLaunchRequest() {
+        if (LevyraLaunchActions.pendingShortcut.value != LevyraLaunchActions.SHORTCUT_RECOGNITION) return
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+        ) {
+            LevyraLaunchActions.pendingShortcut.value = null
+            recognitionPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     override fun startActivity(intent: Intent) {

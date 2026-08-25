@@ -13,6 +13,9 @@ object LevyraLaunchActions {
     const val SHORTCUT_FLOW = "flow"
     const val SHORTCUT_OFFLINE = "offline"
     const val SHORTCUT_LYRICS = "lyrics"
+    const val SHORTCUT_SEARCH = "search"
+    const val SHORTCUT_LIBRARY = "library"
+    const val SHORTCUT_RECOGNITION = "recognition"
 
     val pendingShortcut = mutableStateOf<String?>(null)
     val pendingArtist = mutableStateOf<String?>(null)

@@ -26,4 +26,8 @@
     <string name="car_queue">Coda</string>
     <string name="notification_shuffle">Casuale</string>
     <string name="notification_favorite">Mi piace</string>
+    <string name="tile_recognize_music">Riconosci musica</string>
+    <string name="shortcut_search">Cerca</string>
+    <string name="shortcut_library">Libreria</string>
+    <string name="shortcut_recognition">Riconosci musica</string>
 </resources>
