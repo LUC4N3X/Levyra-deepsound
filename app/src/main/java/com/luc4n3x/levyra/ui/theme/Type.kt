@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
@@ -29,22 +32,47 @@ private val RobotoFont: FontFamily = googleFontFamily("Roboto")
 
 private val defaultTypography = Typography()
 
+private val LevyraLineHeightStyle = LineHeightStyle(
+    alignment = LineHeightStyle.Alignment.Center,
+    trim = LineHeightStyle.Trim.None
+)
+
+private val LevyraPlatformTextStyle = PlatformTextStyle(includeFontPadding = false)
+
+private fun TextStyle.levyraRhythm(
+    fontFamily: FontFamily,
+    fontWeight: FontWeight? = null,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = this.letterSpacing,
+    retuneLineHeight: Boolean = true
+): TextStyle = copy(
+    fontFamily = fontFamily,
+    fontWeight = fontWeight ?: this.fontWeight,
+    letterSpacing = letterSpacing,
+    lineHeight = if (retuneLineHeight && fontSize.isSp) {
+        LevyraTypeRhythm.lineHeight(fontSize)
+    } else {
+        lineHeight
+    },
+    lineHeightStyle = LevyraLineHeightStyle,
+    platformStyle = LevyraPlatformTextStyle
+)
+
 private fun typographyForFamily(fontFamily: FontFamily): Typography = Typography(
-    displayLarge = defaultTypography.displayLarge.copy(fontFamily = fontFamily, letterSpacing = (-1.2).sp, fontWeight = FontWeight.Bold),
-    displayMedium = defaultTypography.displayMedium.copy(fontFamily = fontFamily, letterSpacing = (-1).sp, fontWeight = FontWeight.Bold),
-    displaySmall = defaultTypography.displaySmall.copy(fontFamily = fontFamily, letterSpacing = (-0.8).sp, fontWeight = FontWeight.Bold),
-    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = fontFamily, letterSpacing = (-0.7).sp, fontWeight = FontWeight.Bold),
-    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = fontFamily, letterSpacing = (-0.5).sp, fontWeight = FontWeight.Bold),
-    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = fontFamily, letterSpacing = (-0.4).sp, fontWeight = FontWeight.SemiBold),
-    titleLarge = defaultTypography.titleLarge.copy(fontFamily = fontFamily, letterSpacing = (-0.3).sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = defaultTypography.titleMedium.copy(fontFamily = fontFamily, letterSpacing = (-0.1).sp, fontWeight = FontWeight.SemiBold),
-    titleSmall = defaultTypography.titleSmall.copy(fontFamily = fontFamily, fontWeight = FontWeight.SemiBold),
-    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = fontFamily),
-    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = fontFamily),
-    bodySmall = defaultTypography.bodySmall.copy(fontFamily = fontFamily),
-    labelLarge = defaultTypography.labelLarge.copy(fontFamily = fontFamily, letterSpacing = 0.2.sp),
-    labelMedium = defaultTypography.labelMedium.copy(fontFamily = fontFamily, letterSpacing = 0.3.sp),
-    labelSmall = defaultTypography.labelSmall.copy(fontFamily = fontFamily, letterSpacing = 0.4.sp)
+    displayLarge = defaultTypography.displayLarge.levyraRhythm(fontFamily, FontWeight.Bold, (-0.25).sp, retuneLineHeight = false),
+    displayMedium = defaultTypography.displayMedium.levyraRhythm(fontFamily, FontWeight.Bold, (-0.2).sp, retuneLineHeight = false),
+    displaySmall = defaultTypography.displaySmall.levyraRhythm(fontFamily, FontWeight.Bold, (-0.15).sp, retuneLineHeight = false),
+    headlineLarge = defaultTypography.headlineLarge.levyraRhythm(fontFamily, FontWeight.Bold, (-0.15).sp, retuneLineHeight = false),
+    headlineMedium = defaultTypography.headlineMedium.levyraRhythm(fontFamily, FontWeight.Bold, (-0.1).sp, retuneLineHeight = false),
+    headlineSmall = defaultTypography.headlineSmall.levyraRhythm(fontFamily, FontWeight.SemiBold, 0.sp, retuneLineHeight = false),
+    titleLarge = defaultTypography.titleLarge.levyraRhythm(fontFamily, FontWeight.SemiBold, 0.sp),
+    titleMedium = defaultTypography.titleMedium.levyraRhythm(fontFamily, FontWeight.SemiBold),
+    titleSmall = defaultTypography.titleSmall.levyraRhythm(fontFamily, FontWeight.SemiBold),
+    bodyLarge = defaultTypography.bodyLarge.levyraRhythm(fontFamily),
+    bodyMedium = defaultTypography.bodyMedium.levyraRhythm(fontFamily),
+    bodySmall = defaultTypography.bodySmall.levyraRhythm(fontFamily),
+    labelLarge = defaultTypography.labelLarge.levyraRhythm(fontFamily),
+    labelMedium = defaultTypography.labelMedium.levyraRhythm(fontFamily),
+    labelSmall = defaultTypography.labelSmall.levyraRhythm(fontFamily)
 )
 
 private val typographyByPreset: Map<LevyraFontPreset, Typography> = mapOf(

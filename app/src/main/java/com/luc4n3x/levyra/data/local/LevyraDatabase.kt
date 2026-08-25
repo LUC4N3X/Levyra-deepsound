@@ -21,9 +21,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LyricsSelectionEntity::class,
         MotionArtworkEntity::class,
         PlaybackSourceMatchEntity::class,
-        ArtistLoreEntity::class
+        ArtistLoreEntity::class,
+        ListenLifetimeTrackEntity::class,
+        ListenLifetimeArtistEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -38,6 +40,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun motionArtworkDao(): MotionArtworkDao
     abstract fun playbackSourceMatchDao(): PlaybackSourceMatchDao
     abstract fun artistLoreDao(): ArtistLoreDao
+    abstract fun listenLifetimeDao(): ListenLifetimeDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -470,6 +473,55 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS listen_lifetime_tracks (" +
+                        "trackKey TEXT NOT NULL, " +
+                        "trackId TEXT NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "artist TEXT NOT NULL, " +
+                        "listenedMs INTEGER NOT NULL, " +
+                        "countedPlays INTEGER NOT NULL, " +
+                        "completedCount INTEGER NOT NULL, " +
+                        "eventCount INTEGER NOT NULL, " +
+                        "firstPlayedAt INTEGER NOT NULL, " +
+                        "lastPlayedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(trackKey))"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS listen_lifetime_artists (" +
+                        "artistKey TEXT NOT NULL, " +
+                        "name TEXT NOT NULL, " +
+                        "listenedMs INTEGER NOT NULL, " +
+                        "countedPlays INTEGER NOT NULL, " +
+                        "completedCount INTEGER NOT NULL, " +
+                        "eventCount INTEGER NOT NULL, " +
+                        "firstPlayedAt INTEGER NOT NULL, " +
+                        "lastPlayedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(artistKey))"
+                )
+            }
+        }
+
+        internal val MIGRATIONS: Array<Migration> = arrayOf(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+            MIGRATION_6_7,
+            MIGRATION_7_8,
+            MIGRATION_8_9,
+            MIGRATION_9_10,
+            MIGRATION_10_11,
+            MIGRATION_11_12,
+            MIGRATION_12_13,
+            MIGRATION_13_14,
+            MIGRATION_14_15,
+            MIGRATION_15_16
+        )
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -478,22 +530,7 @@ abstract class LevyraDatabase : RoomDatabase() {
                     "levyra.db"
                 )
 
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        MIGRATION_2_3,
-                        MIGRATION_3_4,
-                        MIGRATION_4_5,
-                        MIGRATION_5_6,
-                        MIGRATION_6_7,
-                        MIGRATION_7_8,
-                        MIGRATION_8_9,
-                        MIGRATION_9_10,
-                        MIGRATION_10_11,
-                        MIGRATION_11_12,
-                        MIGRATION_12_13,
-                        MIGRATION_13_14,
-                        MIGRATION_14_15
-                    )
+                    .addMigrations(*MIGRATIONS)
                     .build()
                     .also { instance = it }
             }

@@ -344,6 +344,12 @@ class LevyraPreferences(context: Context) {
 
     fun lastPositionMs(): Long = read(0L) { it[KEY_LAST_POSITION] ?: 0L }
 
+    fun listeningLifetimeBackfillVersion(): Int = read(0) { it[KEY_LISTENING_LIFETIME_BACKFILL] ?: 0 }
+
+    fun setListeningLifetimeBackfillVersion(value: Int) {
+        write { it[KEY_LISTENING_LIFETIME_BACKFILL] = value.coerceAtLeast(0) }
+    }
+
     fun listeningPulseLastPruneMs(): Long = read(0L) { it[KEY_LISTENING_PULSE_LAST_PRUNE] ?: 0L }
 
     fun setListeningPulseLastPruneMs(value: Long) {
@@ -719,6 +725,7 @@ class LevyraPreferences(context: Context) {
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
         val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
+        val KEY_LISTENING_LIFETIME_BACKFILL = intPreferencesKey("listening_lifetime_backfill")
         val KEY_UI_COMPACT_HOME = booleanPreferencesKey("ui_compact_home")
         val KEY_UI_PERSONAL_ORBIT = booleanPreferencesKey("ui_show_personal_orbit")
         val KEY_UI_RESONANCE = booleanPreferencesKey("ui_show_resonance")

@@ -200,8 +200,8 @@ class ListeningPulseEngineTest {
     @Test
     fun blankTrackIdFallsBackToTitleAndArtistKey() {
         val events = listOf(
-            event(trackId = "", title = "Same", artist = "One", listenedMs = 20_000L, startedAt = hoursAgo(1)),
-            event(trackId = "", title = "Same", artist = "One", listenedMs = 20_000L, startedAt = hoursAgo(2))
+            event(trackId = "", title = "Same", artist = "One", listenedMs = 40_000L, startedAt = hoursAgo(1)),
+            event(trackId = "", title = "Same", artist = "One", listenedMs = 40_000L, startedAt = hoursAgo(2))
         )
 
         val pulse = engine.build(events, now)

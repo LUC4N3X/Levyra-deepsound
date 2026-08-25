@@ -145,9 +145,31 @@ Modern music streaming applications often treat music as temporary, disposable b
       <ul>
         <li><b>Synced Lyrics:</b> Millisecond-aligned LRCLIB lyrics with live highlighting.</li>
         <li><b>Tap-to-Seek:</b> Jump straight to any lyric timestamp.</li>
+        <li><b>Lyric Sharing:</b> Long-press a line to select verses, then copy, share, or export a 1080x1080 Levyra card.</li>
+        <li><b>Living Artwork:</b> When a track has no real Canvas, the cover comes alive with a slow artwork-driven colour field (AGSL on Android 13+, Compose fallback below).</li>
+        <li><b>Artwork Preview:</b> Long-press the cover for a full-screen zoomable artwork view with save-to-gallery.</li>
         <li><b>Ambient Visuals:</b> Palette-reactive backdrops, waveform, and looping motion art.</li>
-        <li><b>Listening Pulse:</b> Private on-device minutes, artists, completion rates, and peak hours.</li>
-        <li><b>Real-Play Scoring:</b> Rankings use actual listening time instead of accidental starts.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr valign="top">
+    <td width="50%">
+      <h3>📈 Listening Insights</h3>
+      <ul>
+        <li><b>Real Listening Time:</b> Only time actually spent playing counts, across pause, seek, skip, and background.</li>
+        <li><b>Counted Plays:</b> A play needs roughly 30 seconds, or a genuine completion for short tracks - a skipped long track never counts.</li>
+        <li><b>Lifetime Totals:</b> Compact on-device aggregates keep All Time accurate even after raw history is pruned.</li>
+        <li><b>Listening Pulse:</b> Your week, a 24-hour listening rhythm, and an artist distribution ring in the Library.</li>
+        <li><b>Your Sound:</b> Deeper period analysis for 7 days, 30 days, 6 months, and All Time.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>🔤 Readability & Typography</h3>
+      <ul>
+        <li><b>Levyra Type Rhythm:</b> One shared line-height scale so titles, metadata, and multi-line text breathe.</li>
+        <li><b>Balanced Tracking:</b> Letter spacing tuned per role instead of a blanket negative value.</li>
+        <li><b>No Clipping:</b> Accents and descenders stay intact at large font scales.</li>
+        <li><b>Private by Default:</b> Every statistic is computed on device and never leaves it.</li>
       </ul>
     </td>
   </tr>
