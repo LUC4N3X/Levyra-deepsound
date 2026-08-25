@@ -6,11 +6,20 @@ import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.artistIdentityMatches
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import java.util.Locale
 
 internal fun searchSongIdentityKey(track: Track): String =
     track.id.trim().lowercase(Locale.ROOT)
+
+internal fun searchSongMetadataKey(track: Track): String {
+    val title = albumRecommendationTextKey(track.title)
+    val artist = artistIdentityKey(primaryArtistSegment(track.artist))
+    val durationSeconds = track.durationMs / 1_000L
+    if (title.isBlank() || artist.isBlank() || durationSeconds <= 0L) return ""
+    return "recording:$title|$artist|$durationSeconds"
+}
 
 internal fun searchAlbumCanonicalKey(album: AlbumHit): String {
     val browseId = album.browseId.trim().lowercase(Locale.ROOT)
@@ -61,7 +70,42 @@ internal fun isMusicVideoResult(videoType: String): Boolean {
 }
 
 internal fun mergeSearchSongs(existing: List<Track>, incoming: List<Track>): List<Track> =
-    mergeSearchEntities(existing, incoming, ::searchSongIdentityKey, { "" }, ::richerSong)
+    mergeSearchEntities(existing, incoming, ::searchSongIdentityKey, ::searchSongMetadataKey, ::richerSong)
+
+internal fun selectSearchTopResultTracks(
+    topTrack: Track?,
+    songs: List<Track>,
+    limit: Int = 3
+): List<Track> {
+    val hero = topTrack ?: return emptyList()
+    val merged = deduplicateSearchSongs(listOf(hero) + songs)
+    val resolvedHero = merged.firstOrNull { it.id == hero.id } ?: hero
+    val heroArtist = primaryArtistSegment(resolvedHero.artist).ifBlank { resolvedHero.artist.trim() }
+    val heroBrowseIds = resolvedHero.artistBrowseIds
+        .map { it.trim().lowercase(Locale.ROOT) }
+        .filter(String::isNotBlank)
+        .toSet()
+    val boundedLimit = limit.coerceIn(1, 3)
+
+    return buildList {
+        add(resolvedHero)
+        if (heroArtist.isBlank() && heroBrowseIds.isEmpty()) return@buildList
+        merged.asSequence()
+            .filterNot { it.id == resolvedHero.id }
+            .filter { candidate ->
+                val candidateBrowseIds = candidate.artistBrowseIds
+                    .asSequence()
+                    .map { it.trim().lowercase(Locale.ROOT) }
+                    .filter(String::isNotBlank)
+                    .toSet()
+                val sharesBrowseId = heroBrowseIds.isNotEmpty() && candidateBrowseIds.any(heroBrowseIds::contains)
+                val candidateArtist = primaryArtistSegment(candidate.artist).ifBlank { candidate.artist.trim() }
+                sharesBrowseId || (heroArtist.isNotBlank() && artistIdentityMatches(heroArtist, candidateArtist))
+            }
+            .take(boundedLimit - 1)
+            .forEach(::add)
+    }.take(boundedLimit)
+}
 
 internal fun mergeSearchAlbums(existing: List<AlbumHit>, incoming: List<AlbumHit>): List<AlbumHit> =
     mergeSearchEntities(existing, incoming, ::searchAlbumCanonicalKey, ::searchAlbumMetadataKey, ::richerAlbum)
@@ -121,13 +165,16 @@ private fun <T> entityKeys(
 }
 
 private fun richerSong(current: Track, candidate: Track): Track = current.copy(
+    artist = current.artist.ifBlank { candidate.artist },
     thumbnailUrl = current.thumbnailUrl.ifBlank { candidate.thumbnailUrl },
     largeThumbnailUrl = current.largeThumbnailUrl.ifBlank { candidate.largeThumbnailUrl },
     album = current.album.ifBlank { candidate.album },
     albumBrowseId = current.albumBrowseId.ifBlank { candidate.albumBrowseId },
     artistBrowseIds = current.artistBrowseIds.ifEmpty { candidate.artistBrowseIds },
     durationMs = if (current.durationMs > 0L) current.durationMs else candidate.durationMs,
-    videoType = current.videoType.ifBlank { candidate.videoType }
+    videoType = current.videoType.ifBlank { candidate.videoType },
+    isrc = current.isrc.ifBlank { candidate.isrc },
+    youtubeViewCount = maxOf(current.youtubeViewCount, candidate.youtubeViewCount)
 )
 
 private fun richerAlbum(current: AlbumHit, candidate: AlbumHit): AlbumHit = current.copy(
