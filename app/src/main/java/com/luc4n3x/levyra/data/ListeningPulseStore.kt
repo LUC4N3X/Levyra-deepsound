@@ -135,7 +135,6 @@ class ListeningPulseStore(context: Context) {
     }
 
     suspend fun ensureLifetimeBackfill() {
-        if (preferences.listeningLifetimeBackfillVersion() >= LIFETIME_BACKFILL_VERSION) return
         withContext(Dispatchers.IO) {
             writeLock.withLock {
                 if (preferences.listeningLifetimeBackfillVersion() >= LIFETIME_BACKFILL_VERSION) {

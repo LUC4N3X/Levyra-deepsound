@@ -46,6 +46,7 @@ import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.size.Size
 import coil3.toBitmap
@@ -236,6 +237,7 @@ private suspend fun saveArtwork(context: Context, artworkUrl: String, title: Str
         val request = ImageRequest.Builder(context)
             .data(artworkUrl)
             .size(Size(PREVIEW_MAX_PX, PREVIEW_MAX_PX))
+            .allowHardware(false)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .build()

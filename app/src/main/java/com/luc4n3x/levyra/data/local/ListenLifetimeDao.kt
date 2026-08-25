@@ -1,22 +1,17 @@
 package com.luc4n3x.levyra.data.local
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 
 @Dao
 interface ListenLifetimeDao {
 
     @Query(
         """
-        INSERT INTO listen_lifetime_tracks (
-            trackKey, trackId, title, artist, listenedMs, countedPlays,
-            completedCount, eventCount, firstPlayedAt, lastPlayedAt
-        )
-        VALUES (
-            :trackKey, :trackId, :title, :artist, :listenedMs, :countedPlays,
-            :completedCount, :eventCount, :playedAt, :playedAt
-        )
-        ON CONFLICT(trackKey) DO UPDATE SET
+        UPDATE listen_lifetime_tracks SET
             listenedMs = listenedMs + :listenedMs,
             countedPlays = countedPlays + :countedPlays,
             completedCount = completedCount + :completedCount,
@@ -28,8 +23,25 @@ interface ListenLifetimeDao {
                 WHEN :playedAt > 0 AND (firstPlayedAt = 0 OR :playedAt < firstPlayedAt)
                 THEN :playedAt ELSE firstPlayedAt END,
             lastPlayedAt = CASE WHEN :playedAt > lastPlayedAt THEN :playedAt ELSE lastPlayedAt END
+        WHERE trackKey = :trackKey
         """
     )
+    suspend fun updateTrackDelta(
+        trackKey: String,
+        trackId: String,
+        title: String,
+        artist: String,
+        listenedMs: Long,
+        countedPlays: Int,
+        completedCount: Int,
+        eventCount: Int,
+        playedAt: Long
+    ): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTrack(entity: ListenLifetimeTrackEntity): Long
+
+    @Transaction
     suspend fun addTrackDelta(
         trackKey: String,
         trackId: String,
@@ -40,19 +52,37 @@ interface ListenLifetimeDao {
         completedCount: Int,
         eventCount: Int,
         playedAt: Long
-    )
+    ) {
+        val updated = updateTrackDelta(
+            trackKey, trackId, title, artist, listenedMs,
+            countedPlays, completedCount, eventCount, playedAt
+        )
+        if (updated > 0) return
+        val inserted = insertTrack(
+            ListenLifetimeTrackEntity(
+                trackKey = trackKey,
+                trackId = trackId,
+                title = title,
+                artist = artist,
+                listenedMs = listenedMs,
+                countedPlays = countedPlays,
+                completedCount = completedCount,
+                eventCount = eventCount,
+                firstPlayedAt = playedAt,
+                lastPlayedAt = playedAt
+            )
+        )
+        if (inserted == -1L) {
+            updateTrackDelta(
+                trackKey, trackId, title, artist, listenedMs,
+                countedPlays, completedCount, eventCount, playedAt
+            )
+        }
+    }
 
     @Query(
         """
-        INSERT INTO listen_lifetime_artists (
-            artistKey, name, listenedMs, countedPlays, completedCount, eventCount,
-            firstPlayedAt, lastPlayedAt
-        )
-        VALUES (
-            :artistKey, :name, :listenedMs, :countedPlays, :completedCount, :eventCount,
-            :playedAt, :playedAt
-        )
-        ON CONFLICT(artistKey) DO UPDATE SET
+        UPDATE listen_lifetime_artists SET
             listenedMs = listenedMs + :listenedMs,
             countedPlays = countedPlays + :countedPlays,
             completedCount = completedCount + :completedCount,
@@ -62,8 +92,23 @@ interface ListenLifetimeDao {
                 WHEN :playedAt > 0 AND (firstPlayedAt = 0 OR :playedAt < firstPlayedAt)
                 THEN :playedAt ELSE firstPlayedAt END,
             lastPlayedAt = CASE WHEN :playedAt > lastPlayedAt THEN :playedAt ELSE lastPlayedAt END
+        WHERE artistKey = :artistKey
         """
     )
+    suspend fun updateArtistDelta(
+        artistKey: String,
+        name: String,
+        listenedMs: Long,
+        countedPlays: Int,
+        completedCount: Int,
+        eventCount: Int,
+        playedAt: Long
+    ): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertArtist(entity: ListenLifetimeArtistEntity): Long
+
+    @Transaction
     suspend fun addArtistDelta(
         artistKey: String,
         name: String,
@@ -72,7 +117,29 @@ interface ListenLifetimeDao {
         completedCount: Int,
         eventCount: Int,
         playedAt: Long
-    )
+    ) {
+        val updated = updateArtistDelta(
+            artistKey, name, listenedMs, countedPlays, completedCount, eventCount, playedAt
+        )
+        if (updated > 0) return
+        val inserted = insertArtist(
+            ListenLifetimeArtistEntity(
+                artistKey = artistKey,
+                name = name,
+                listenedMs = listenedMs,
+                countedPlays = countedPlays,
+                completedCount = completedCount,
+                eventCount = eventCount,
+                firstPlayedAt = playedAt,
+                lastPlayedAt = playedAt
+            )
+        )
+        if (inserted == -1L) {
+            updateArtistDelta(
+                artistKey, name, listenedMs, countedPlays, completedCount, eventCount, playedAt
+            )
+        }
+    }
 
     @Query(
         """

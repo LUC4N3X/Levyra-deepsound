@@ -79,7 +79,9 @@ internal object ArtworkMediaStore {
         val directory = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return false
         val target = File(directory, fileName)
         return try {
-            FileOutputStream(target).use { output -> write(output) }
+            val written = FileOutputStream(target).use { output -> write(output) }
+            if (!written) runCatching { target.delete() }
+            written
         } catch (cancelled: CancellationException) {
             runCatching { target.delete() }
             throw cancelled
