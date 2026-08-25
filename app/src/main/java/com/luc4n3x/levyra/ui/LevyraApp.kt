@@ -337,6 +337,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
+import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
 import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
@@ -9030,8 +9031,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         }
                         if (filter == SearchFilter.All || filter == SearchFilter.Songs) {
                             val songs = if (filter == SearchFilter.All) {
-                                val topResultIds = topResultTracks.mapTo(HashSet()) { it.id }
-                                data.songs.filterNot { it.id in topResultIds }
+                                filterSearchSongsExcludingTopResult(data.songs, topResultTracks)
                             } else {
                                 data.songs
                             }

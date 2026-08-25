@@ -151,6 +151,33 @@ class ReliableArtistSearchTest {
     }
 
     @Test
+    fun nearExactMisspellingKeepsOnlyAuthoritativeArtist() {
+        val official = artist(
+            "The Weeknd",
+            "UC-official",
+            subscribers = "Artist · 274M monthly audience"
+        )
+        val tinyHomonym = artist(
+            "The weeknd",
+            "UC-tiny",
+            subscribers = "Artist · 7 subscribers"
+        )
+        val nearbyName = artist(
+            "The Weekend Dreamers",
+            "UC-dreamers",
+            subscribers = "Artist · 20K subscribers"
+        )
+
+        val result = mergeReliableArtistSearchResults(
+            query = "the weekend",
+            exactArtist = tinyHomonym,
+            verifiedArtists = listOf(tinyHomonym, nearbyName, official)
+        )
+
+        assertEquals(listOf("UC-official"), result.map { it.browseId })
+    }
+
+    @Test
     fun tinyHomonymIsNotPropagatedToSongCredits() {
         val placeholder = track("After Hours", "YouTube Music")
 

@@ -107,6 +107,24 @@ internal fun selectSearchTopResultTracks(
     }.take(boundedLimit)
 }
 
+internal fun filterSearchSongsExcludingTopResult(
+    songs: List<Track>,
+    topResultTracks: List<Track>
+): List<Track> {
+    if (songs.isEmpty() || topResultTracks.isEmpty()) return songs
+
+    val topResultIds = topResultTracks
+        .mapNotNullTo(HashSet()) { track -> searchSongIdentityKey(track).takeIf(String::isNotBlank) }
+    val topResultMetadataKeys = topResultTracks
+        .mapNotNullTo(HashSet()) { track -> searchSongMetadataKey(track).takeIf(String::isNotBlank) }
+
+    return songs.filterNot { song ->
+        val identity = searchSongIdentityKey(song)
+        val metadata = searchSongMetadataKey(song)
+        identity in topResultIds || (metadata.isNotBlank() && metadata in topResultMetadataKeys)
+    }
+}
+
 internal fun mergeSearchAlbums(existing: List<AlbumHit>, incoming: List<AlbumHit>): List<AlbumHit> =
     mergeSearchEntities(existing, incoming, ::searchAlbumCanonicalKey, ::searchAlbumMetadataKey, ::richerAlbum)
 

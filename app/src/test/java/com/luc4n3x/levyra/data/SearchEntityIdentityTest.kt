@@ -185,6 +185,48 @@ class SearchEntityIdentityTest {
     }
 
     @Test
+    fun `songs shelf excludes metadata duplicate of top result`() {
+        val hero = track(
+            id = "hero-video",
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            durationMs = 200_000L
+        )
+        val alternateVideo = track(
+            id = "alternate-video",
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            durationMs = 200_000L
+        )
+        val other = track(
+            id = "other",
+            title = "Save Your Tears",
+            artist = "The Weeknd",
+            durationMs = 215_000L
+        )
+
+        val filtered = filterSearchSongsExcludingTopResult(
+            songs = listOf(alternateVideo, other),
+            topResultTracks = listOf(hero)
+        )
+
+        assertEquals(listOf("other"), filtered.map { it.id })
+    }
+
+    @Test
+    fun `songs shelf keeps alternate id when recording metadata is incomplete`() {
+        val hero = track(id = "hero-video", title = "Unknown", artist = "Artist", durationMs = 0L)
+        val alternateVideo = track(id = "alternate-video", title = "Unknown", artist = "Artist", durationMs = 0L)
+
+        val filtered = filterSearchSongsExcludingTopResult(
+            songs = listOf(alternateVideo),
+            topResultTracks = listOf(hero)
+        )
+
+        assertEquals(listOf("alternate-video"), filtered.map { it.id })
+    }
+
+    @Test
     fun `top result does not invent related tracks when hero artist is missing`() {
         val hero = track(id = "hero", title = "Unknown", artist = "")
         val selected = selectSearchTopResultTracks(
