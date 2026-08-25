@@ -76,4 +76,4 @@ fun Track.toListenEventEntity(listenedMs: Long, completed: Boolean, startedAt: L
     startedAt = startedAt
 )
 
-private const val ARTIST_ID_SEPARATOR = "\u001F"
+internal const val ARTIST_ID_SEPARATOR = "\u001F"

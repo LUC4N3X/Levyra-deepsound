@@ -31,6 +31,12 @@ interface ListenEventsDao {
         artistBrowseIds: String
     ): Int
 
+    @Query("SELECT * FROM listen_events WHERE trackId = :trackId AND startedAt = :startedAt LIMIT 1")
+    suspend fun findSession(trackId: String, startedAt: Long): ListenEventEntity?
+
+    @Query("SELECT * FROM listen_events WHERE id > :afterId ORDER BY id ASC LIMIT :limit")
+    suspend fun pageAfter(afterId: Long, limit: Int): List<ListenEventEntity>
+
     @Query("SELECT * FROM listen_events WHERE startedAt >= :since ORDER BY startedAt DESC")
     suspend fun since(since: Long): List<ListenEventEntity>
 

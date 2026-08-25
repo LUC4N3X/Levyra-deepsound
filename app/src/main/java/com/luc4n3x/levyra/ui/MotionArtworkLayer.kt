@@ -48,6 +48,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.ui.artwork.LivingArtworkColors
+import com.luc4n3x.levyra.ui.artwork.LivingArtworkLayer
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
 import com.luc4n3x.levyra.feature.motion.MotionCanvasConditions
@@ -73,6 +75,7 @@ internal fun MotionArtworkLayer(
     modifier: Modifier = Modifier,
     presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
+    livingArtwork: LivingArtworkColors? = null,
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
@@ -159,6 +162,21 @@ internal fun MotionArtworkLayer(
             modifier = Modifier.fillMaxSize(),
             content = staticArtwork
         )
+        if (livingArtwork != null) {
+            LivingArtworkLayer(
+                colors = livingArtwork,
+                active = livingArtworkActive(
+                    enabled = enabled,
+                    lifecycleActive = lifecycleActive,
+                    localAllowed = environment.localAllowed,
+                    isPlaying = isPlaying,
+                    realCanvasReady = videoReady
+                ),
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(cornerRadius))
+            )
+        }
         if (videoArtwork != null) {
             MotionArtworkVideo(
                 artwork = videoArtwork,
@@ -179,6 +197,14 @@ internal fun MotionArtworkLayer(
         }
     }
 }
+
+internal fun livingArtworkActive(
+    enabled: Boolean,
+    lifecycleActive: Boolean,
+    localAllowed: Boolean,
+    isPlaying: Boolean,
+    realCanvasReady: Boolean
+): Boolean = enabled && lifecycleActive && localAllowed && isPlaying && !realCanvasReady
 
 @Composable
 private fun rememberMotionArtworkLifecycleActive(): Boolean {
