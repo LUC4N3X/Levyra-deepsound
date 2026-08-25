@@ -824,7 +824,8 @@ internal fun LibraryListeningDashboard(
                             centerValue = number.format(pulse.totalMinutes),
                             textColor = LevyraText,
                             mutedColor = LevyraMuted,
-                            shareDescription = { name, percentage -> name + " " + percentage + "%" }
+                            percentLabel = { fraction -> percent.format(fraction.toDouble()) },
+                            shareDescription = { name, label -> name + " " + label }
                         )
                     }
                 }

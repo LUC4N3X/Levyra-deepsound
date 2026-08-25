@@ -108,7 +108,8 @@ internal fun LibraryArtistRing(
     centerValue: String,
     textColor: Color,
     mutedColor: Color,
-    shareDescription: (String, Int) -> String,
+    percentLabel: (Float) -> String,
+    shareDescription: (String, String) -> String,
     modifier: Modifier = Modifier
 ) {
     if (shares.isEmpty()) return
@@ -119,7 +120,7 @@ internal fun LibraryArtistRing(
     )
     val description = remember(shares) {
         shares.joinToString(", ") { share ->
-            shareDescription(share.name, (share.fraction * 100f).toInt())
+            shareDescription(share.name, percentLabel(share.fraction))
         }
     }
 
@@ -210,7 +211,7 @@ internal fun LibraryArtistRing(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     Text(
-                        text = (share.fraction * 100f).toInt().toString() + "%",
+                        text = percentLabel(share.fraction),
                         color = mutedColor,
                         fontSize = 11.sp,
                         lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
