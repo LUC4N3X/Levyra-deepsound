@@ -33,7 +33,10 @@ internal fun mergeReliableArtistSearchResults(
     val candidates = (listOfNotNull(exactArtist) + verifiedArtists)
     val typoDistance = allowedArtistTypoDistance(query)
     val nearExactMatches = candidates.filter { candidate ->
-        artistNameEditDistance(query, candidate.name) <= typoDistance
+        candidate.name.isNotBlank() &&
+            candidate.browseId.isNotBlank() &&
+            candidate.thumbnailUrl.isNotBlank() &&
+            artistNameEditDistance(query, candidate.name) <= typoDistance
     }
     if (nearExactMatches.isNotEmpty()) {
         nearExactMatches.maxWithOrNull(artistAuthorityOrder)?.let(::add)

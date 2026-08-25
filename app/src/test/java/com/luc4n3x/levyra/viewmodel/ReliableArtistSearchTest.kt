@@ -178,6 +178,29 @@ class ReliableArtistSearchTest {
     }
 
     @Test
+    fun nearExactMisspellingSkipsUnrenderableHighestAuthorityArtist() {
+        val unusable = artist(
+            "The Weeknd",
+            "UC-unusable",
+            subscribers = "Artist · 274M monthly audience",
+            thumbnailUrl = ""
+        )
+        val fallback = artist(
+            "The Weeknd",
+            "UC-fallback",
+            subscribers = "Artist · 100M monthly audience"
+        )
+
+        val result = mergeReliableArtistSearchResults(
+            query = "the weekend",
+            exactArtist = unusable,
+            verifiedArtists = listOf(unusable, fallback)
+        )
+
+        assertEquals(listOf("UC-fallback"), result.map { it.browseId })
+    }
+
+    @Test
     fun tinyHomonymIsNotPropagatedToSongCredits() {
         val placeholder = track("After Hours", "YouTube Music")
 
@@ -231,11 +254,12 @@ class ReliableArtistSearchTest {
         name: String,
         browseId: String,
         subscribers: String = "",
-        officialArtwork: Boolean = true
+        officialArtwork: Boolean = true,
+        thumbnailUrl: String = "https://example.com/$browseId.jpg"
     ) = ArtistHit(
         name = name,
         subscribers = subscribers,
-        thumbnailUrl = "https://example.com/$browseId.jpg",
+        thumbnailUrl = thumbnailUrl,
         accentStart = 0,
         accentEnd = 0,
         browseId = browseId,
