@@ -35,10 +35,12 @@ import kotlinx.coroutines.withContext
  * dedicated non-exported FileProvider declared in AndroidManifest.xml.
  */
 internal object LyricsShareCard {
-    private const val CARD_SIZE = 1440
-    private const val MAX_SELECTED_LINES = 5
+    private const val CARD_SIZE = 1080
+    private const val DESIGN_SIZE = 1440f
+    private const val MAX_SELECTED_LINES = 8
     private const val MAX_TEXT_CHARS = 900
-    private const val MAX_CACHE_FILES = 12
+    private const val MAX_CACHE_FILES = 10
+    private const val MAX_LAYOUT_LINES = 14
     private const val BRAND = "LEVYRA"
 
     suspend fun createShareIntent(
@@ -100,6 +102,8 @@ internal object LyricsShareCard {
     private fun render(track: Track, selectedLyrics: String, cover: Bitmap?): Bitmap {
         val bitmap = Bitmap.createBitmap(CARD_SIZE, CARD_SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        val cardScale = CARD_SIZE / DESIGN_SIZE
+        canvas.scale(cardScale, cardScale)
         val accentStart = opaque(track.accentStart, Color.rgb(38, 178, 214))
         val accentEnd = opaque(track.accentEnd, Color.rgb(111, 76, 255))
 
@@ -107,30 +111,30 @@ internal object LyricsShareCard {
             shader = LinearGradient(
                 0f,
                 0f,
-                CARD_SIZE.toFloat(),
-                CARD_SIZE.toFloat(),
+                DESIGN_SIZE,
+                DESIGN_SIZE,
                 darken(accentStart, 0.70f),
                 darken(accentEnd, 0.82f),
                 Shader.TileMode.CLAMP
             )
         }
-        canvas.drawRect(0f, 0f, CARD_SIZE.toFloat(), CARD_SIZE.toFloat(), background)
+        canvas.drawRect(0f, 0f, DESIGN_SIZE, DESIGN_SIZE, background)
 
         val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = android.graphics.RadialGradient(
-                CARD_SIZE * 0.76f,
-                CARD_SIZE * 0.20f,
-                CARD_SIZE * 0.66f,
+                DESIGN_SIZE * 0.76f,
+                DESIGN_SIZE * 0.20f,
+                DESIGN_SIZE * 0.66f,
                 withAlpha(accentStart, 92),
                 Color.TRANSPARENT,
                 Shader.TileMode.CLAMP
             )
         }
-        canvas.drawCircle(CARD_SIZE * 0.76f, CARD_SIZE * 0.20f, CARD_SIZE * 0.66f, glow)
+        canvas.drawCircle(DESIGN_SIZE * 0.76f, DESIGN_SIZE * 0.20f, DESIGN_SIZE * 0.66f, glow)
 
         val panel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(62, 255, 255, 255) }
         canvas.drawRoundRect(
-            RectF(92f, 92f, CARD_SIZE - 92f, CARD_SIZE - 92f),
+            RectF(92f, 92f, DESIGN_SIZE - 92f, DESIGN_SIZE - 92f),
             76f,
             76f,
             panel
@@ -153,7 +157,7 @@ internal object LyricsShareCard {
             textSize = 34f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
         }
-        val metadataWidth = if (cover != null) 820f else CARD_SIZE - 300f
+        val metadataWidth = if (cover != null) 820f else DESIGN_SIZE - 300f
         drawEllipsized(canvas, track.title.ifBlank { BRAND }, titlePaint, 150f, 266f, metadataWidth)
         drawEllipsized(canvas, track.artist, artistPaint, 150f, 318f, metadataWidth)
         if (cover != null) drawCover(canvas, cover)
@@ -167,10 +171,10 @@ internal object LyricsShareCard {
             color = Color.WHITE
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
-        val availableWidth = CARD_SIZE - 300f
-        val availableHeight = CARD_SIZE - 570f
+        val availableWidth = DESIGN_SIZE - 300f
+        val availableHeight = DESIGN_SIZE - 570f
         val lyricsLayout = fitLyrics(rawLines.joinToString("\n"), lyricPaint, availableWidth, availableHeight)
-        val y = ((CARD_SIZE - lyricsLayout.height) / 2f + 50f).coerceAtLeast(465f)
+        val y = ((DESIGN_SIZE - lyricsLayout.height) / 2f + 50f).coerceAtLeast(465f)
         canvas.save()
         canvas.translate(150f, y)
         lyricsLayout.draw(canvas)
@@ -181,12 +185,12 @@ internal object LyricsShareCard {
             textSize = 27f
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.NORMAL)
         }
-        canvas.drawText(BRAND, 150f, CARD_SIZE - 146f, footerPaint)
+        canvas.drawText(BRAND, 150f, DESIGN_SIZE - 146f, footerPaint)
         return bitmap
     }
 
     private fun drawCover(canvas: Canvas, cover: Bitmap) {
-        val target = RectF(CARD_SIZE - 444f, 144f, CARD_SIZE - 144f, 444f)
+        val target = RectF(DESIGN_SIZE - 444f, 144f, DESIGN_SIZE - 144f, 444f)
         val path = Path().apply { addRoundRect(target, 42f, 42f, Path.Direction.CW) }
         canvas.save()
         canvas.clipPath(path)
@@ -210,11 +214,11 @@ internal object LyricsShareCard {
         while (size >= 42f) {
             paint.textSize = size
             val layout = buildLyricsLayout(source, paint, maxWidth.toInt())
-            if (layout.lineCount <= 12 && layout.height <= maxHeight) return layout
+            if (layout.lineCount <= MAX_LAYOUT_LINES && layout.height <= maxHeight) return layout
             size -= 4f
         }
         paint.textSize = 42f
-        return buildLyricsLayout(source, paint, maxWidth.toInt(), maxLines = 12)
+        return buildLyricsLayout(source, paint, maxWidth.toInt(), maxLines = MAX_LAYOUT_LINES)
     }
 
     private fun buildLyricsLayout(
@@ -227,7 +231,7 @@ internal object LyricsShareCard {
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setTextDirection(TextDirectionHeuristics.FIRSTSTRONG_LTR)
             .setIncludePad(false)
-            .setLineSpacing(0f, 1.28f)
+            .setLineSpacing(0f, 1.36f)
             .setMaxLines(maxLines)
         if (maxLines != Int.MAX_VALUE) {
             builder.setEllipsize(TextUtils.TruncateAt.END).setEllipsizedWidth(width)

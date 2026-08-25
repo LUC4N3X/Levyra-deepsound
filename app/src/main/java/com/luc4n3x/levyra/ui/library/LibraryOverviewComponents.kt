@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -91,6 +89,11 @@ import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import java.text.NumberFormat
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.semantics.contentDescription
+import com.luc4n3x.levyra.domain.ListeningChartProjection
 
 internal val LibraryPillShape = RoundedCornerShape(999.dp)
 
@@ -104,7 +107,7 @@ internal fun LibraryHero(title: String, subtitle: String) {
             text = title,
             color = LevyraText,
             fontSize = 28.sp,
-            lineHeight = 32.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
             fontWeight = FontWeight.Black,
             letterSpacing = (-0.6).sp,
             maxLines = 1,
@@ -257,7 +260,7 @@ internal fun LibrarySectionTitle(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 text = title,
                 color = LevyraText,
@@ -607,7 +610,7 @@ private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modi
                         text = card.title,
                         color = LevyraText,
                         fontSize = 13.sp,
-                        lineHeight = 15.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
                         fontWeight = FontWeight.Black,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -682,7 +685,7 @@ internal fun LibraryListeningDashboard(
                             modifier = Modifier.padding(9.dp).size(18.dp)
                         )
                     }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
                             text = strings.formatLibraryDuration(pulse.totalListenMs),
                             color = LevyraText,
@@ -764,46 +767,66 @@ internal fun LibraryListeningDashboard(
                         Text(strings.pulseWeek, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
                         Text("${number.format(weekMinutes)} ${strings.pulseMinuteShort}", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
                     }
-                    LibraryWeekChart(pulse = pulse, locale = locale)
+                    LibraryWeekChart(
+                        pulse = pulse,
+                        locale = locale,
+                        durationLabel = { strings.formatLibraryDuration(it) }
+                    )
                 }
 
-                if (pulse.topArtists.isNotEmpty() || pulse.peakHour >= 0) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (pulse.topArtists.isNotEmpty()) {
-                            Text(strings.pulseTopArtists, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(7.dp)
-                            ) {
-                                pulse.topArtists.take(4).forEach { artist ->
-                                    Surface(
-                                        color = LevyraViolet.copy(alpha = 0.12f),
-                                        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.20f)),
-                                        shape = RoundedCornerShape(999.dp)
-                                    ) {
-                                        Text(
-                                            text = artist.name,
-                                            color = LevyraText,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
-                                        )
-                                    }
+                if (pulse.hourBuckets.any { it > 0L }) {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(strings.pulseRhythm, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            if (pulse.peakHour >= 0) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Schedule, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(14.dp))
+                                    Text(
+                                        text = peakHourLabel(strings.pulsePeakHour, pulse.peakHour),
+                                        color = LevyraMuted,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
                         }
-                        if (pulse.peakHour >= 0) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                Icon(Icons.Rounded.Schedule, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(15.dp))
-                                Text(
-                                    text = "${strings.pulsePeakHour} · ${pulse.peakHour.toString().padStart(2, '0')}:00",
-                                    color = LevyraMuted,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        LibraryRhythmChart(
+                            hourBuckets = pulse.hourBuckets,
+                            accent = LevyraCyan.copy(alpha = 0.72f),
+                            peakAccent = LevyraViolet,
+                            mutedColor = Color.White.copy(alpha = 0.10f),
+                            label = strings.pulseRhythm,
+                            peakHourDescription = { hour ->
+                                strings.pulseRhythm + " · " + peakHourLabel(strings.pulsePeakHour, hour)
                             }
-                        }
+                        )
+                    }
+                }
+
+                val artistShares = remember(pulse.topArtists) {
+                    ListeningChartProjection.artistShares(pulse.topArtists)
+                }
+                if (artistShares.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(strings.pulseTopArtists, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        LibraryArtistRing(
+                            shares = artistShares,
+                            palette = LibraryRingPalette,
+                            trackColor = Color.White.copy(alpha = 0.07f),
+                            centerLabel = strings.yourSound,
+                            centerValue = number.format(pulse.totalMinutes),
+                            textColor = LevyraText,
+                            mutedColor = LevyraMuted,
+                            percentLabel = { fraction -> percent.format(fraction.toDouble()) },
+                            shareDescription = { name, label -> name + " " + label }
+                        )
                     }
                 }
             }
@@ -868,10 +891,24 @@ private fun LibraryInsightMetric(
 
 private const val WEEK_CHART_MIN_PEAK_MS = 5L * 60L * 1000L
 
+private val LibraryRingPalette = listOf(
+    LevyraCyan,
+    LevyraViolet,
+    LevyraPink,
+    Color(0xFFFFC857),
+    Color(0xFF5AD8A6)
+)
+
+private fun peakHourLabel(prefix: String, hour: Int): String =
+    prefix + " · " + hour.toString().padStart(2, '0') + ":00"
+
 @Composable
-private fun LibraryWeekChart(pulse: ListeningPulse, locale: Locale) {
+private fun LibraryWeekChart(
+    pulse: ListeningPulse,
+    locale: Locale,
+    durationLabel: (Long) -> String
+) {
     val week = pulse.week.takeLast(7)
-    val peak = week.maxOfOrNull { it.listenedMs } ?: 0L
 
     if (week.isEmpty()) {
         Row(
@@ -889,44 +926,64 @@ private fun LibraryWeekChart(pulse: ListeningPulse, locale: Locale) {
         return
     }
 
+    val fractions = remember(week) {
+        ListeningChartProjection.weekFractions(week, WEEK_CHART_MIN_PEAK_MS)
+    }
+    val peakIndex = remember(week) { ListeningChartProjection.peakDayIndex(week) }
+    val today = remember(week) { week.lastIndex }
+    val reveal by animateFloatAsState(
+        targetValue = if (fractions.any { it > 0f }) 1f else 0f,
+        animationSpec = tween(durationMillis = 560, easing = FastOutSlowInEasing),
+        label = "library-week-reveal"
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().height(76.dp),
             horizontalArrangement = Arrangement.spacedBy(7.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            week.forEach { day ->
+            week.forEachIndexed { index, day ->
                 val active = day.listenedMs > 0L
-                val scale = peak.coerceAtLeast(WEEK_CHART_MIN_PEAK_MS)
-                val fraction = if (peak > 0L) {
-                    (day.listenedMs.toFloat() / scale.toFloat()).coerceIn(0.10f, 1f)
-                } else 0.10f
+                val fraction = (fractions[index] * reveal).coerceIn(0.10f, 1f)
+                val dayName = day.date.dayOfWeek.getDisplayName(DayTextStyle.FULL, locale)
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight(fraction)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(fraction)
                         .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    LevyraCyan.copy(alpha = if (active) 0.95f else 0.13f),
+                                    weekBarTop(index, peakIndex, today).copy(alpha = if (active) 0.95f else 0.13f),
                                     LevyraViolet.copy(alpha = if (active) 0.70f else 0.08f)
                                 )
                             )
                         )
+                        .semantics {
+                            contentDescription = dayName + " · " + durationLabel(day.listenedMs)
+                        }
                 )
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            week.forEach { day ->
+            week.forEachIndexed { index, day ->
                 val label = day.date.dayOfWeek.getDisplayName(DayTextStyle.NARROW, locale).uppercase(locale)
                 Text(
                     text = label,
-                    color = LevyraMuted,
+                    color = if (index == today) LevyraCyan else LevyraMuted,
                     fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = if (index == today) FontWeight.SemiBold else FontWeight.Medium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
     }
+}
+
+private fun weekBarTop(index: Int, peakIndex: Int, todayIndex: Int): Color = when (index) {
+    peakIndex -> LevyraPink
+    todayIndex -> LevyraCyan
+    else -> LevyraCyan.copy(alpha = 0.72f)
 }

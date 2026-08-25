@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -145,14 +146,14 @@ internal fun LibraryImportPlaylistCard(
                         text = copy.title,
                         color = LevyraText,
                         fontSize = 15.5.sp,
-                        lineHeight = 18.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(15.5.sp),
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = copy.subtitle,
                         color = LevyraMuted,
                         fontSize = 11.5.sp,
-                        lineHeight = 15.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
                         fontWeight = FontWeight.Medium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis

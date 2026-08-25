@@ -100,6 +100,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 private const val TrackActionSheetExitMs = 210
 private const val TrackActionSheetEnterMs = 260
@@ -471,7 +472,7 @@ private fun TrackActionHeader(
                 text = track.title,
                 color = LevyraText,
                 fontSize = 15.sp,
-                lineHeight = 19.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
                 fontWeight = FontWeight.Black,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -562,7 +563,7 @@ private fun TrackActionTile(
             text = label,
             color = LevyraText.copy(alpha = 0.88f),
             fontSize = 11.5.sp,
-            lineHeight = 14.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -598,7 +599,7 @@ private fun TrackActionRow(
             text = label,
             color = if (enabled) tint else LevyraMuted.copy(alpha = 0.7f),
             fontSize = 14.5.sp,
-            lineHeight = 18.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

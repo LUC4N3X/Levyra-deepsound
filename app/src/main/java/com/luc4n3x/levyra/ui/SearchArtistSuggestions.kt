@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 @Composable
 internal fun SearchArtistSuggestions(
@@ -59,7 +60,7 @@ internal fun SearchArtistSuggestions(
             text = title,
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 27.sp,
-            lineHeight = 31.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(27.sp),
             fontWeight = FontWeight.Black,
         )
 

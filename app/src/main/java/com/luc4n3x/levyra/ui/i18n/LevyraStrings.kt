@@ -369,6 +369,12 @@ class LevyraStrings private constructor(
     val chorusDetected: String get() = value("chorusDetected")
     val goToChorus: String get() = value("goToChorus")
     val close: String get() = value("close")
+    val artworkPreview: String get() = value("artworkPreview")
+    val saveArtwork: String get() = value("saveArtwork")
+    val artworkSaved: String get() = value("artworkSaved")
+    val artworkSaveFailed: String get() = value("artworkSaveFailed")
+    val pulseRhythm: String get() = value("pulseRhythm")
+    val lyricsCalibrate: String get() = value("lyricsCalibrate")
     val complete: String get() = value("complete")
     val delete: String get() = value("delete")
     val newPlaylist: String get() = value("newPlaylist")
@@ -1074,6 +1080,15 @@ class LevyraStrings private constructor(
             "audioPresetCustom",
             "audioBands"
         )
+        private val insightKeys = setOf(
+            "artworkPreview",
+            "saveArtwork",
+            "artworkSaved",
+            "artworkSaveFailed",
+            "pulseRhythm",
+            "lyricsCalibrate"
+        )
+
         private val canvasKeys = setOf(
             "canvasQuality",
             "canvasQualitySubtitle",
@@ -1118,8 +1133,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + experienceLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + experienceKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + experienceKeys + insightKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
