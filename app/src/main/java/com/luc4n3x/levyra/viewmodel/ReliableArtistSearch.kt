@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistAudienceWeight
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.artistIdentityKeys
 import com.luc4n3x.levyra.domain.artistIdentityMatches
 
 /**
@@ -30,8 +31,17 @@ internal fun mergeReliableArtistSearchResults(
     }
 
     val candidates = (listOfNotNull(exactArtist) + verifiedArtists)
-    val queryMatches = candidates.filter { artistIdentityMatches(it.name, query) }
-    queryMatches.maxWithOrNull(artistAuthorityOrder)?.let(::add)
+    val typoDistance = allowedArtistTypoDistance(query)
+    val nearExactMatches = candidates.filter { candidate ->
+        candidate.name.isNotBlank() &&
+            candidate.browseId.isNotBlank() &&
+            candidate.thumbnailUrl.isNotBlank() &&
+            artistNameEditDistance(query, candidate.name) <= typoDistance
+    }
+    if (nearExactMatches.isNotEmpty()) {
+        nearExactMatches.maxWithOrNull(artistAuthorityOrder)?.let(::add)
+        return merged.values.take(limit.coerceIn(1, 24))
+    }
 
     verifiedArtists
         .sortedWith(
@@ -42,6 +52,46 @@ internal fun mergeReliableArtistSearchResults(
         .forEach(::add)
 
     return merged.values.take(limit.coerceIn(1, 24))
+}
+
+private fun allowedArtistTypoDistance(query: String): Int {
+    val shortestKey = artistIdentityKeys(query).minOfOrNull(String::length) ?: return 0
+    return when {
+        shortestKey >= 12 -> 2
+        shortestKey >= 6 -> 1
+        else -> 0
+    }
+}
+
+private fun artistNameEditDistance(query: String, candidate: String): Int {
+    val queryKeys = artistIdentityKeys(query)
+    val candidateKeys = artistIdentityKeys(candidate)
+    if (queryKeys.isEmpty() || candidateKeys.isEmpty()) return Int.MAX_VALUE
+    return queryKeys.minOf { queryKey ->
+        candidateKeys.minOf { candidateKey -> levenshteinDistance(queryKey, candidateKey) }
+    }
+}
+
+private fun levenshteinDistance(first: String, second: String): Int {
+    if (first == second) return 0
+    if (first.isEmpty()) return second.length
+    if (second.isEmpty()) return first.length
+
+    var previous = IntArray(second.length + 1) { it }
+    first.forEachIndexed { firstIndex, firstChar ->
+        val current = IntArray(second.length + 1)
+        current[0] = firstIndex + 1
+        second.forEachIndexed { secondIndex, secondChar ->
+            val substitution = previous[secondIndex] + if (firstChar == secondChar) 0 else 1
+            current[secondIndex + 1] = minOf(
+                current[secondIndex] + 1,
+                previous[secondIndex + 1] + 1,
+                substitution
+            )
+        }
+        previous = current
+    }
+    return previous[second.length]
 }
 
 /**

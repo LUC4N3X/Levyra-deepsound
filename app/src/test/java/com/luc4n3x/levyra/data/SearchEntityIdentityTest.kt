@@ -128,6 +128,116 @@ class SearchEntityIdentityTest {
     }
 
     @Test
+    fun `same recording with different video ids collapses on song metadata`() {
+        val merged = mergeSearchSongs(
+            listOf(
+                track(
+                    id = "video-a",
+                    title = "Blinding Lights",
+                    artist = "The Weeknd",
+                    durationMs = 200_000L,
+                    youtubeViewCount = 3_000_000_000L
+                )
+            ),
+            listOf(
+                track(
+                    id = "video-b",
+                    title = "Blinding Lights",
+                    artist = "The Weeknd",
+                    durationMs = 200_000L,
+                    youtubeViewCount = 3_600_000_000L
+                )
+            )
+        )
+
+        assertEquals(1, merged.size)
+        assertEquals("video-a", merged.single().id)
+        assertEquals(3_600_000_000L, merged.single().youtubeViewCount)
+    }
+
+    @Test
+    fun `different song variants remain separate`() {
+        val merged = deduplicateSearchSongs(
+            listOf(
+                track(id = "studio", title = "Blinding Lights", artist = "The Weeknd"),
+                track(id = "live", title = "Blinding Lights Live", artist = "The Weeknd")
+            )
+        )
+
+        assertEquals(2, merged.size)
+    }
+
+    @Test
+    fun `top result selects three tracks from the hero artist only`() {
+        val hero = track(id = "hero", title = "After Hours", artist = "The Weeknd")
+        val selected = selectSearchTopResultTracks(
+            topTrack = hero,
+            songs = listOf(
+                hero,
+                track(id = "one", title = "Blinding Lights", artist = "The Weeknd"),
+                track(id = "wrong", title = "Creepin", artist = "Metro Boomin"),
+                track(id = "two", title = "Save Your Tears", artist = "The Weeknd"),
+                track(id = "three", title = "The Hills", artist = "The Weeknd")
+            )
+        )
+
+        assertEquals(listOf("hero", "one", "two"), selected.map { it.id })
+    }
+
+    @Test
+    fun `songs shelf excludes metadata duplicate of top result`() {
+        val hero = track(
+            id = "hero-video",
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            durationMs = 200_000L
+        )
+        val alternateVideo = track(
+            id = "alternate-video",
+            title = "Blinding Lights",
+            artist = "The Weeknd",
+            durationMs = 200_000L
+        )
+        val other = track(
+            id = "other",
+            title = "Save Your Tears",
+            artist = "The Weeknd",
+            durationMs = 215_000L
+        )
+
+        val filtered = filterSearchSongsExcludingTopResult(
+            songs = listOf(alternateVideo, other),
+            topResultTracks = listOf(hero)
+        )
+
+        assertEquals(listOf("other"), filtered.map { it.id })
+    }
+
+    @Test
+    fun `songs shelf keeps alternate id when recording metadata is incomplete`() {
+        val hero = track(id = "hero-video", title = "Unknown", artist = "Artist", durationMs = 0L)
+        val alternateVideo = track(id = "alternate-video", title = "Unknown", artist = "Artist", durationMs = 0L)
+
+        val filtered = filterSearchSongsExcludingTopResult(
+            songs = listOf(alternateVideo),
+            topResultTracks = listOf(hero)
+        )
+
+        assertEquals(listOf("alternate-video"), filtered.map { it.id })
+    }
+
+    @Test
+    fun `top result does not invent related tracks when hero artist is missing`() {
+        val hero = track(id = "hero", title = "Unknown", artist = "")
+        val selected = selectSearchTopResultTracks(
+            topTrack = hero,
+            songs = listOf(hero, track(id = "other", title = "Other", artist = "Someone"))
+        )
+
+        assertEquals(listOf("hero"), selected.map { it.id })
+    }
+
+    @Test
     fun `music video type classification separates songs from videos`() {
         assertFalse(isMusicVideoResult("MUSIC_VIDEO_TYPE_ATV"))
         assertFalse(isMusicVideoResult(""))
@@ -230,11 +340,13 @@ class SearchEntityIdentityTest {
         id: String,
         title: String = "Song",
         album: String = "Album",
-        durationMs: Long = 0L
+        durationMs: Long = 0L,
+        artist: String = "Coldplay",
+        youtubeViewCount: Long = -1L
     ) = Track(
         id = id,
         title = title,
-        artist = "Coldplay",
+        artist = artist,
         album = album,
         durationMs = durationMs,
         streamUrl = "",
@@ -248,6 +360,7 @@ class SearchEntityIdentityTest {
         replayScore = 0,
         cacheScore = 0,
         accentStart = 0,
-        accentEnd = 0
+        accentEnd = 0,
+        youtubeViewCount = youtubeViewCount
     )
 }
