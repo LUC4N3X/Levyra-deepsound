@@ -136,14 +136,83 @@ class ReliableArtistSearchTest {
         assertEquals(listOf("UC-existing"), result.topTrack?.artistBrowseIds)
     }
 
-    private fun artist(name: String, browseId: String) = ArtistHit(
+    @Test
+    fun leadingArticleArtistWinsOverTinyHomonym() {
+        val official = artist("The Weeknd", "UC-official", subscribers = "Artist · 274M monthly audience")
+        val homonym = artist("Weeknd", "UC-homonym", subscribers = "Artist · 7 subscribers")
+
+        val result = mergeReliableArtistSearchResults(
+            query = "weeknd",
+            exactArtist = homonym,
+            verifiedArtists = listOf(homonym, official)
+        )
+
+        assertEquals("The Weeknd", result.first().name)
+    }
+
+    @Test
+    fun tinyHomonymIsNotPropagatedToSongCredits() {
+        val placeholder = track("After Hours", "YouTube Music")
+
+        val result = enrichSearchTracksWithExactArtist(
+            query = "weeknd",
+            results = SearchResults(topTrack = placeholder, songs = listOf(placeholder)),
+            reliableArtists = listOf(
+                artist("Weeknd", "UC-homonym", subscribers = "Artist · 7 subscribers"),
+                artist("The Weeknd", "UC-official", subscribers = "Artist · 274M monthly audience")
+            )
+        )
+
+        assertEquals("The Weeknd", result.topTrack?.artist)
+        assertEquals(listOf("UC-official"), result.topTrack?.artistBrowseIds)
+        assertEquals("The Weeknd", result.songs.single().artist)
+    }
+
+    @Test
+    fun unverifiedLargeChannelDoesNotBeatVerifiedExactArtist() {
+        val verified = artist("HUGEL", "UC-hugel", subscribers = "Artist · 900K subscribers")
+        val unverified = artist(
+            "Hugel",
+            "UC-copycat",
+            subscribers = "Artist · 40M subscribers",
+            officialArtwork = false
+        )
+
+        val result = mergeReliableArtistSearchResults(
+            query = "hugel",
+            exactArtist = verified,
+            verifiedArtists = listOf(unverified, verified)
+        )
+
+        assertEquals("UC-hugel", result.first().browseId)
+    }
+
+    @Test
+    fun realSongArtistSurvivesArticleAwareMatching() {
+        val collaboration = track("Pray For Me", "The Weeknd, Kendrick Lamar")
+
+        val result = enrichSearchTracksWithExactArtist(
+            query = "weeknd",
+            results = SearchResults(topTrack = collaboration, songs = listOf(collaboration)),
+            reliableArtists = listOf(artist("The Weeknd", "UC-official"))
+        )
+
+        assertEquals("The Weeknd, Kendrick Lamar", result.topTrack?.artist)
+    }
+
+    private fun artist(
+        name: String,
+        browseId: String,
+        subscribers: String = "",
+        officialArtwork: Boolean = true
+    ) = ArtistHit(
         name = name,
-        subscribers = "",
+        subscribers = subscribers,
         thumbnailUrl = "https://example.com/$browseId.jpg",
         accentStart = 0,
         accentEnd = 0,
         browseId = browseId,
-        officialArtwork = true
+        officialArtwork = officialArtwork
     )
 
     private fun track(
