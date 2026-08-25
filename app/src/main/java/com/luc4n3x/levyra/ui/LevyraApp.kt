@@ -337,6 +337,8 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
+import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
+import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
@@ -8904,6 +8906,11 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                     !state.searchData.isEmpty -> {
                         val data = state.searchData
                         val filter = state.searchFilter
+                        val topResultTracks = if (filter == SearchFilter.All) {
+                            selectSearchTopResultTracks(data.topTrack, data.songs)
+                        } else {
+                            emptyList()
+                        }
                         item {
                             SearchFilterChips(
                                 selected = filter,
@@ -8914,22 +8921,22 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 onSelect = viewModel::setSearchFilter
                             )
                         }
-                        if (filter == SearchFilter.All && data.topTrack != null) {
+                        if (filter == SearchFilter.All && topResultTracks.isNotEmpty()) {
                             item {
                                 TopResultCard(
-                                    track = data.topTrack,
-                                    isCurrent = data.topTrack.id == state.currentTrack?.id,
-                                    isPlaying = state.isPlaying && data.topTrack.id == state.currentTrack?.id,
-                                    isResolving = state.isResolving && data.topTrack.id == state.currentTrack?.id,
-                                    isFavorite = data.topTrack.id in state.favoriteIds,
-                                    onPlay = {
+                                    tracks = topResultTracks,
+                                    currentTrackId = state.currentTrack?.id,
+                                    isPlaying = state.isPlaying,
+                                    isResolving = state.isResolving,
+                                    favoriteIds = state.favoriteIds,
+                                    onPlay = { track ->
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        viewModel.playFrom(data.songs, data.topTrack)
+                                        viewModel.playFrom(data.songs, track)
                                     },
-                                    onFavorite = { viewModel.toggleFavorite(data.topTrack) },
-                                    onAddToPlaylist = { addTarget = data.topTrack },
-                                    onArtist = { viewModel.openArtist(data.topTrack) }
+                                    onFavorite = viewModel::toggleFavorite,
+                                    onAddToPlaylist = { track -> addTarget = track },
+                                    onArtist = viewModel::openArtist
                                 )
                             }
                         }
@@ -9023,7 +9030,11 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if (filter == SearchFilter.All || filter == SearchFilter.Songs) {
-                            val songs = if (filter == SearchFilter.All) data.songs.drop(if (data.topTrack != null) 1 else 0) else data.songs
+                            val songs = if (filter == SearchFilter.All) {
+                                filterSearchSongsExcludingTopResult(data.songs, topResultTracks)
+                            } else {
+                                data.songs
+                            }
                             if (songs.isNotEmpty()) {
                                 item {
                                     SearchSectionHeader(
@@ -17330,16 +17341,22 @@ private fun SearchFilterChips(
 
 @Composable
 private fun TopResultCard(
-    track: Track,
-    isCurrent: Boolean,
+    tracks: List<Track>,
+    currentTrackId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
-    isFavorite: Boolean,
-    onPlay: () -> Unit,
-    onFavorite: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onArtist: () -> Unit
+    favoriteIds: Set<String>,
+    onPlay: (Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onArtist: (Track) -> Unit
 ) {
+    val hero = tracks.firstOrNull() ?: return
+    val heroIsCurrent = hero.id == currentTrackId
+    val heroIsPlaying = isPlaying && heroIsCurrent
+    val heroIsResolving = isResolving && heroIsCurrent
+    val heroIsFavorite = hero.id in favoriteIds
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(LocalLevyraStrings.current.topResult, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
         Box(
@@ -17349,22 +17366,42 @@ private fun TopResultCard(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            Color(track.accentStart).copy(alpha = 0.30f),
-                            Color(track.accentEnd).copy(alpha = 0.14f),
+                            Color(hero.accentStart).copy(alpha = 0.30f),
+                            Color(hero.accentEnd).copy(alpha = 0.14f),
                             Color.White.copy(alpha = 0.04f)
                         )
                     )
                 )
                 .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
-                .pressable(onClick = onPlay)
                 .padding(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    CoverImage(track, Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)), highRes = true)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().pressable(onClick = { onPlay(hero) }),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box {
+                        CoverImage(hero, Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)), highRes = true)
+                        if (heroIsPlaying || heroIsResolving) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.48f),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.matchParentSize()
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (heroIsResolving) {
+                                        CircularProgressIndicator(modifier = Modifier.size(21.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                                    } else {
+                                        Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(track.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        displayableArtistCredit(track.artist)?.let { credit ->
+                        Text(hero.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        displayableArtistCredit(hero.artist)?.let { credit ->
                             Text(
                                 credit,
                                 color = LevyraMuted,
@@ -17372,39 +17409,52 @@ private fun TopResultCard(
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.clickable { onArtist() }
+                                modifier = Modifier.clickable { onArtist(hero) }
                             )
                         }
+                        SearchTrackPlayCount(hero)
                     }
                 }
+
+                tracks.drop(1).take(2).forEach { track ->
+                    Box(modifier = Modifier.fillMaxWidth().height(Dp.Hairline).background(Color.White.copy(alpha = 0.07f)))
+                    TopResultTrackRow(
+                        track = track,
+                        isCurrent = track.id == currentTrackId,
+                        isPlaying = isPlaying && track.id == currentTrackId,
+                        isResolving = isResolving && track.id == currentTrackId,
+                        onPlay = { onPlay(track) }
+                    )
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Surface(
                         color = LevyraText,
                         shape = RoundedCornerShape(99.dp),
-                        modifier = Modifier.weight(1f).pressable(onClick = onPlay)
+                        modifier = Modifier.weight(1f).pressable(onClick = { onPlay(hero) })
                     ) {
                         Row(
                             modifier = Modifier.padding(vertical = 12.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraBlack)
-                            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
+                            if (heroIsResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraBlack)
+                            else Icon(if (heroIsPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play, color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Text(if (heroIsPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play, color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
                         }
                     }
-                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist() }) {
+                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist(hero) }) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText, modifier = Modifier.size(22.dp))
                         }
                     }
-                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite() }) {
+                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite(hero) }) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                if (heroIsFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                 null,
-                                tint = if (isFavorite) LevyraPink else LevyraText,
+                                tint = if (heroIsFavorite) LevyraPink else LevyraText,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -17413,6 +17463,77 @@ private fun TopResultCard(
             }
         }
     }
+}
+
+@Composable
+private fun TopResultTrackRow(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().pressable(onClick = onPlay).padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box {
+            CoverImage(track, Modifier.size(46.dp).clip(RoundedCornerShape(9.dp)))
+            if (isPlaying || isResolving) {
+                Surface(color = Color.Black.copy(alpha = 0.48f), shape = RoundedCornerShape(9.dp), modifier = Modifier.matchParentSize()) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                track.title,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            SearchTrackPlayCount(track)
+        }
+        Icon(Icons.Rounded.PlayArrow, null, tint = if (isCurrent) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun SearchTrackPlayCount(track: Track) {
+    if (track.youtubeViewCount <= 0L) return
+    val strings = LocalLevyraStrings.current
+    val count = remember(track.youtubeViewCount, strings.code) {
+        formatSearchViewCount(track.youtubeViewCount, strings.code)
+    }
+    Text(
+        text = "${strings.song} • $count ${strings.pulsePlays}",
+        color = LevyraMuted.copy(alpha = 0.88f),
+        fontSize = 11.5.sp,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+private fun formatSearchViewCount(views: Long, languageCode: String): String {
+    if (views <= 0L) return ""
+    val locale = Locale.forLanguageTag(languageCode.replace('_', '-'))
+    val (divisor, suffix) = when {
+        views >= 1_000_000_000L -> 1_000_000_000.0 to if (locale.language == "it") "Mld" else "B"
+        views >= 1_000_000L -> 1_000_000.0 to if (locale.language == "it") "Mln" else "M"
+        views >= 1_000L -> 1_000.0 to if (locale.language == "it") "mila" else "K"
+        else -> 1.0 to ""
+    }
+    val scaled = views / divisor
+    val pattern = if (divisor > 1.0 && scaled < 10.0 && kotlin.math.abs(scaled - scaled.toLong()) > 0.05) "%.1f" else "%.0f"
+    val number = String.format(locale, pattern, scaled)
+    return if (suffix.isBlank()) number else "$number $suffix"
 }
 
 @Composable
