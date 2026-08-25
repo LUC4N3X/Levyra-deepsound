@@ -118,7 +118,7 @@ internal fun LibraryOfflineSummary(
                 modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     strings.offlineDownloadsPlain,
                     color = LevyraText,

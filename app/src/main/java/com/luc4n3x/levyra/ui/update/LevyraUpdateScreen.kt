@@ -51,6 +51,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 @Composable
 fun LevyraUpdateScreen(
@@ -109,7 +110,7 @@ fun LevyraUpdateScreen(
                 text = update.latestVersionName,
                 color = LevyraText,
                 fontSize = 56.sp,
-                lineHeight = 60.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(56.sp),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

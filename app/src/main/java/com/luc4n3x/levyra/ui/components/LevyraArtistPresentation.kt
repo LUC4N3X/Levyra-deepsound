@@ -37,6 +37,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import java.util.Locale
 import kotlin.math.absoluteValue
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 internal val LevyraArtistItemWidth = 122.dp
 internal val LevyraArtistAvatarSize = 114.dp
@@ -185,7 +186,7 @@ internal fun LevyraArtistShelfItem(
             text = name,
             color = LevyraText,
             fontSize = 14.sp,
-            lineHeight = 17.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             minLines = 2,

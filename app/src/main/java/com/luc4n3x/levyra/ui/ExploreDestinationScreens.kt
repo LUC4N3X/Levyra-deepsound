@@ -58,6 +58,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 internal const val ExploreNewReleasesDestination = "explore-destination-new-releases"
 internal const val ExploreMoodsDestination = "explore-destination-moods"
@@ -241,7 +242,7 @@ private fun ExploreDestinationReleaseRow(
                 text = release.title,
                 color = LevyraText,
                 fontSize = 15.sp,
-                lineHeight = 19.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -252,7 +253,7 @@ private fun ExploreDestinationReleaseRow(
                     .joinToString(" • "),
                 color = LevyraMuted,
                 fontSize = 12.5.sp,
-                lineHeight = 15.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -364,7 +365,7 @@ private fun ExploreDestinationSurface(
                     text = title,
                     color = LevyraText,
                     fontSize = 21.sp,
-                    lineHeight = 24.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(21.sp),
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -374,7 +375,7 @@ private fun ExploreDestinationSurface(
                         text = detail,
                         color = LevyraMuted,
                         fontSize = 12.5.sp,
-                        lineHeight = 15.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -423,7 +424,7 @@ private fun ExploreDestinationTrackRow(
                 text = track.title,
                 color = LevyraText,
                 fontSize = 14.5.sp,
-                lineHeight = 18.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -432,7 +433,7 @@ private fun ExploreDestinationTrackRow(
                 text = track.artist,
                 color = LevyraMuted,
                 fontSize = 12.5.sp,
-                lineHeight = 15.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -483,7 +484,7 @@ private fun ExploreDestinationMoodCard(
             text = zone.label,
             color = LevyraText,
             fontSize = 14.sp,
-            lineHeight = 18.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
             fontWeight = FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

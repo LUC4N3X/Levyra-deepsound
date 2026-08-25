@@ -57,6 +57,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 private const val CrestBarCount = 9
 private val CrestPhases = floatArrayOf(0.35f, 0.72f, 0.44f, 0.95f, 0.58f, 0.86f, 0.40f, 0.68f, 0.30f)
@@ -345,7 +346,7 @@ private fun RowScope.MixSecondaryTile(
             text = label,
             color = if (enabled) LevyraText else LevyraMuted,
             fontSize = 13.sp,
-            lineHeight = 16.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
