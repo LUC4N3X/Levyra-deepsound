@@ -55,6 +55,16 @@ class AutoEqImporterTest {
     }
 
     @Test
+    fun `malformed preamp is rejected instead of silently ignored`() {
+        val graphicEq = "\nGraphicEQ: 31 0; 62 0"
+
+        assertEquals(AutoEqImporter.ParseError.INVALID_PREAMP, error("Preamp: NaN dB$graphicEq"))
+        assertEquals(AutoEqImporter.ParseError.INVALID_PREAMP, error("Preamp: Infinity$graphicEq"))
+        assertEquals(AutoEqImporter.ParseError.INVALID_PREAMP, error("Preamp: banana$graphicEq"))
+        assertEquals(AutoEqImporter.ParseError.INVALID_PREAMP, error("Preamp -4 dB$graphicEq"))
+    }
+
+    @Test
     fun `exact input values are preserved on levyra bands`() {
         val profile = success("GraphicEQ: 20 -4; 31 5; 62 2; 125 -3; 250 1; 500 -1; 1000 0; 2000 2; 4000 -2; 8000 3; 16000 4; 20000 0")
 
