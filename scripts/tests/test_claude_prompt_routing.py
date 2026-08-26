@@ -8,7 +8,8 @@ from pathlib import Path
 from scripts.ai_quality_gate import find_bash
 
 ROOT = Path(__file__).resolve().parents[2]
-HOOK = ROOT / ".claude" / "hooks" / "user-prompt-submit.sh"
+CLAUDE_ROOT = ROOT / ".agents" / "claude"
+HOOK = CLAUDE_ROOT / "hooks" / "user-prompt-submit.sh"
 
 
 def route(prompt: str) -> str:
@@ -29,18 +30,18 @@ def route(prompt: str) -> str:
 
 class ClaudePromptRoutingTest(unittest.TestCase):
     def test_claude_context_budget_stays_compact(self) -> None:
-        settings = json.loads((ROOT / ".claude" / "settings.json").read_text(encoding="utf-8"))
+        settings = json.loads((CLAUDE_ROOT / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual(0.01, settings["skillListingBudgetFraction"])
         self.assertEqual(768, settings["maxSkillDescriptionChars"])
         self.assertFalse(settings["includeGitInstructions"])
 
-        instructions = (ROOT / ".claude" / "CLAUDE.md").read_text(encoding="utf-8")
+        instructions = (CLAUDE_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertLessEqual(len(instructions.encode("utf-8")), 7000)
         self.assertNotIn("@../AGENTS.md", instructions)
         self.assertNotIn("@../docs/ai/", instructions)
         self.assertIn("Subagent token discipline", instructions)
 
-        developer = (ROOT / ".claude" / "agents" / "levyra-android-developer.md").read_text(encoding="utf-8")
+        developer = (CLAUDE_ROOT / "agents" / "levyra-android-developer.md").read_text(encoding="utf-8")
         self.assertIn("tools: Read, Grep, Glob, Edit, Write, Bash, Skill", developer)
         self.assertIn("effort: high", developer)
         self.assertIn("model: inherit", developer)
