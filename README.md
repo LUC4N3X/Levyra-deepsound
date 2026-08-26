@@ -210,13 +210,13 @@ Levyra is built from the ground up as a native, modular audio suite for Android 
 
 <sub>Three core systems keep Levyra predictable, resilient, and portable.</sub>
 
-**01 · Unidirectional State Flow**  
+**01 · Unidirectional State Flow**<br>
 Immutable ViewModel state keeps the Compose UI, MediaSession, and Android Auto synchronized.
 
-**02 · Dual Stream Resolver**  
+**02 · Dual Stream Resolver**<br>
 InnerTube and LevyraExtractor coordinate automatic fallback, fidelity selection, and queue prefetch.
 
-**03 · Standard File Vault**  
+**03 · Standard File Vault**<br>
 Offline tracks are exported as tagged M4A files in `Music/Levyra`, ready for external players and car systems.
 
 ---
