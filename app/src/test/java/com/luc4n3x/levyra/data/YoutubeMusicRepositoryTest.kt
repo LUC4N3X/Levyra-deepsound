@@ -389,4 +389,50 @@ class YoutubeMusicRepositoryTest {
 
         assertEquals(null, selected)
     }
+
+    @Test
+    fun albumRecoveryKeepsMultipleMatchingAlternativesInSearchOrder() {
+        val seed = AlbumHit(
+            title = "AMATORE",
+            artist = "Samurai Jay, Vito Salamanca",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "AMATORE Samurai Jay Vito Salamanca",
+            browseId = "MPRE_OLD"
+        )
+        val first = seed.copy(artist = "Samurai Jay", browseId = "MPRE_FIRST")
+        val second = seed.copy(artist = "Vito Salamanca, Samurai Jay", browseId = "MPRE_SECOND")
+
+        val selected = selectAlbumRecoveryCandidates(
+            album = seed,
+            candidates = listOf(first, second),
+            excludedBrowseIds = setOf(seed.browseId)
+        )
+
+        assertEquals(listOf("MPRE_FIRST", "MPRE_SECOND"), selected.map { it.browseId })
+    }
+
+    @Test
+    fun albumRecoveryCandidatesExcludeAlreadyAttemptedAndDifferentArtists() {
+        val seed = AlbumHit(
+            title = "AMATORE",
+            artist = "Samurai Jay, Vito Salamanca",
+            year = "2026",
+            thumbnailUrl = "",
+            query = "AMATORE Samurai Jay Vito Salamanca",
+            browseId = "MPRE_OLD"
+        )
+        val attempted = seed.copy(artist = "Samurai Jay", browseId = "MPRE_TRIED")
+        val unrelated = seed.copy(artist = "Different Artist", browseId = "MPRE_OTHER")
+        val valid = seed.copy(artist = "Vito Salamanca", browseId = "MPRE_VALID")
+
+        val selected = selectAlbumRecoveryCandidates(
+            album = seed,
+            candidates = listOf(attempted, unrelated, valid),
+            excludedBrowseIds = setOf(seed.browseId, attempted.browseId)
+        )
+
+        assertEquals(listOf("MPRE_VALID"), selected.map { it.browseId })
+    }
+
 }

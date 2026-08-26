@@ -5,7 +5,8 @@ data class LevyraAudioPreset(
     val fallbackLabel: String,
     val levels: List<Int>,
     val bassBoost: Int,
-    val virtualizer: Int
+    val virtualizer: Int,
+    val preampDb: Float = 0f
 )
 
 data class LevyraAudioSettings(
@@ -21,7 +22,8 @@ data class LevyraAudioSettings(
     val replayGainEnabled: Boolean = false,
     val playbackSpeed: Float = 1f,
     val pitch: Float = 1f,
-    val gaplessEnabled: Boolean = true
+    val gaplessEnabled: Boolean = true,
+    val customPresets: List<LevyraAudioPreset> = emptyList()
 ) {
     fun withNeutralEqualizer(): LevyraAudioSettings {
         val flat = LevyraAudioPresets.preset(LevyraAudioPresets.FLAT)
@@ -34,8 +36,29 @@ data class LevyraAudioSettings(
     }
 
     fun normalized(): LevyraAudioSettings {
-        val preset = LevyraAudioPresets.normalizePreset(presetId)
-        val levels = bandLevels.takeIf { it.size == LevyraAudioPresets.bandCount } ?: LevyraAudioPresets.levelsFor(preset)
+        val builtInIds = LevyraAudioPresets.presets.map { it.id }.toSet()
+        val custom = customPresets
+            .mapNotNull { candidate ->
+                if (candidate.id.isBlank() || candidate.id in builtInIds) return@mapNotNull null
+                if (!candidate.id.startsWith(LevyraAudioPresets.CUSTOM_PRESET_PREFIX)) return@mapNotNull null
+                if (candidate.levels.size != LevyraAudioPresets.bandCount) return@mapNotNull null
+                candidate.copy(
+                    levels = candidate.levels.map { it.coerceIn(-100, 100) },
+                    bassBoost = candidate.bassBoost.coerceIn(0, 100),
+                    virtualizer = candidate.virtualizer.coerceIn(0, 100),
+                    preampDb = candidate.preampDb.coerceIn(-12f, 3f)
+                )
+            }
+            .distinctBy { it.id }
+            .take(LevyraAudioPresets.MAX_CUSTOM_PRESETS)
+        val preset = if (custom.any { it.id == presetId }) {
+            presetId
+        } else {
+            LevyraAudioPresets.normalizePreset(presetId)
+        }
+        val fallbackLevels = custom.firstOrNull { it.id == preset }?.levels
+            ?: LevyraAudioPresets.levelsFor(preset)
+        val levels = bandLevels.takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
         return copy(
             presetId = preset,
             bandLevels = levels.map { it.coerceIn(-100, 100) },
@@ -44,7 +67,8 @@ data class LevyraAudioSettings(
             preampDb = preampDb.coerceIn(-12f, 3f),
             crossfadeSeconds = crossfadeSeconds.coerceIn(0, 12),
             playbackSpeed = playbackSpeed.coerceIn(0.5f, 2.0f),
-            pitch = pitch.coerceIn(0.5f, 2.0f)
+            pitch = pitch.coerceIn(0.5f, 2.0f),
+            customPresets = custom
         )
     }
 }
@@ -68,6 +92,8 @@ object LevyraAudioPresets {
     const val SENNHEISER_HD600 = "autoeq_hd600"
     const val bandCount = 10
     const val maxBandDb = 12f
+    const val CUSTOM_PRESET_PREFIX = "custom_"
+    const val MAX_CUSTOM_PRESETS = 24
 
     val bandFrequencyLabels = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
 
