@@ -97,7 +97,9 @@ import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
+import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
@@ -132,6 +134,9 @@ import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.domain.videoViewCountBonus
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
+import com.luc4n3x.levyra.feature.motion.MotionTrackIdentity
+import com.luc4n3x.levyra.feature.motion.normalizeMotionText
+import com.luc4n3x.levyra.feature.motion.primaryMotionArtistMatches
 import com.luc4n3x.levyra.feature.providers.CachedPlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraNativePlaybackProvider
 import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
@@ -534,6 +539,18 @@ private fun playbackArtistTokens(value: String): List<String> {
     return playbackTokens(value).filterNot { it in ignored }
 }
 
+internal fun selectArtistMotionSeed(
+    profileName: String,
+    tracks: List<Track>,
+    isLocal: (Track) -> Boolean
+): Track? = tracks.firstOrNull { candidate ->
+    !isLocal(candidate) &&
+        primaryMotionArtistMatches(
+            MotionTrackIdentity.from(candidate).artists,
+            listOf(profileName)
+        )
+}
+
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
@@ -666,6 +683,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var artistJob: Job? = null
     private var artistLoreJob: Job? = null
     private var albumJob: Job? = null
+    private var artistMotionJob: Job? = null
+    private var albumMotionJob: Job? = null
     private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
     private var homeArtistsJob: Job? = null
@@ -708,17 +727,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun restoreDetailPage(): Boolean {
         val page = detailBackStack.removeLastOrNull() ?: return false
         when (page) {
-            is DetailPage.AlbumPage -> _state.update {
-                it.copy(
-                    showAlbum = true,
-                    albumLoading = false,
-                    albumError = null,
-                    albumDetail = page.detail,
-                    showArtist = false,
-                    artistLoading = false,
-                    artistError = null,
-                    detailReturnTarget = DetailReturnTarget.None
-                )
+            is DetailPage.AlbumPage -> {
+                _state.update {
+                    it.copy(
+                        showAlbum = true,
+                        albumLoading = false,
+                        albumError = null,
+                        albumDetail = page.detail,
+                        albumMotionArtwork = null,
+                        showArtist = false,
+                        artistLoading = false,
+                        artistError = null,
+                        artistMotionArtwork = null,
+                        detailReturnTarget = DetailReturnTarget.None
+                    )
+                }
+                refreshAlbumMotionArtwork(page.detail)
             }
             is DetailPage.ArtistPage -> {
                 _state.update {
@@ -727,13 +751,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistLoading = false,
                         artistError = null,
                         artistProfile = page.profile,
+                        artistMotionArtwork = null,
                         artistListStateKey = page.listStateKey,
                         showAlbum = false,
                         albumLoading = false,
                         albumError = null,
+                        albumMotionArtwork = null,
                         detailReturnTarget = DetailReturnTarget.None
                     )
                 }
+                refreshArtistMotionArtwork(page.profile)
                 startArtistLore(page.profile)
             }
         }
@@ -2267,6 +2294,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setEqualizerPreset(presetId: String) {
+        val custom = _state.value.audioSettings.customPresets.firstOrNull { it.id == presetId }
+        if (custom != null) {
+            updateAudioSettings(
+                _state.value.audioSettings.copy(
+                    equalizerEnabled = true,
+                    presetId = custom.id,
+                    bandLevels = custom.levels,
+                    bassBoost = custom.bassBoost,
+                    virtualizer = custom.virtualizer,
+                    preampDb = custom.preampDb
+                )
+            )
+            return
+        }
         val preset = LevyraAudioPresets.preset(presetId)
         updateAudioSettings(
             _state.value.audioSettings.copy(
@@ -2275,6 +2316,45 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 bandLevels = preset.levels,
                 bassBoost = preset.bassBoost,
                 virtualizer = preset.virtualizer
+            )
+        )
+    }
+
+    fun applyAutoEqImport(profile: AutoEqImporter.ImportedProfile) {
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = true,
+                presetId = LevyraAudioPresets.FLAT,
+                bandLevels = profile.bandLevels,
+                bassBoost = 0,
+                virtualizer = 0,
+                preampDb = profile.preampDb
+            )
+        )
+    }
+
+    fun saveAutoEqCustomPreset(name: String, profile: AutoEqImporter.ImportedProfile) {
+        val cleanName = name.trim()
+        if (cleanName.isBlank()) return
+        val preset = LevyraAudioPreset(
+            id = AutoEqImporter.customPresetId(cleanName, profile),
+            fallbackLabel = cleanName,
+            levels = profile.bandLevels,
+            bassBoost = 0,
+            virtualizer = 0,
+            preampDb = profile.preampDb
+        )
+        val customPresets = (_state.value.audioSettings.customPresets.filterNot { it.id == preset.id } + preset)
+            .takeLast(LevyraAudioPresets.MAX_CUSTOM_PRESETS)
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = true,
+                presetId = preset.id,
+                bandLevels = preset.levels,
+                bassBoost = preset.bassBoost,
+                virtualizer = preset.virtualizer,
+                preampDb = preset.preampDb,
+                customPresets = customPresets
             )
         )
     }
@@ -2949,15 +3029,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 animationsEnabled = value,
                 motionArtwork = if (motionEnabled) it.motionArtwork else null,
-                motionArtworkLoading = if (motionEnabled) it.motionArtworkLoading else false
+                motionArtworkLoading = if (motionEnabled) it.motionArtworkLoading else false,
+                artistMotionArtwork = if (motionEnabled) it.artistMotionArtwork else null,
+                albumMotionArtwork = if (motionEnabled) it.albumMotionArtwork else null
             )
         }
         if (motionEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+            refreshPageMotionArtwork()
         } else {
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             motionArtworkPrefetchJob?.cancel()
+            cancelPageMotion()
         }
     }
 
@@ -2966,16 +3050,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 motionArtworkEnabled = value,
                 motionArtwork = if (value) it.motionArtwork else null,
-                motionArtworkLoading = if (value) it.motionArtworkLoading else false
+                motionArtworkLoading = if (value) it.motionArtworkLoading else false,
+                artistMotionArtwork = if (value) it.artistMotionArtwork else null,
+                albumMotionArtwork = if (value) it.albumMotionArtwork else null
             )
         }
         viewModelScope.launch { preferences.setMotionArtworkEnabled(value) }
         if (value && _state.value.animationsEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+            refreshPageMotionArtwork()
         } else {
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             motionArtworkPrefetchJob?.cancel()
+            cancelPageMotion()
         }
     }
 
@@ -2994,8 +3082,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             motionArtworkPrefetchJob?.cancel()
-            _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
+            cancelPageMotion()
+            _state.update {
+                it.copy(
+                    motionArtwork = null,
+                    motionArtworkLoading = false,
+                    artistMotionArtwork = null,
+                    albumMotionArtwork = null
+                )
+            }
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+            refreshPageMotionArtwork()
         }
         if (previous.enhanceVideoMetadata != normalized.enhanceVideoMetadata) {
             videoMetadataJob?.cancel()
@@ -3717,6 +3814,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val requestedArtistListStateKey = nextArtistListStateKey(normalizedBrowseId)
         artistJob?.cancel()
         artistLoreJob?.cancel()
+        artistMotionJob?.cancel()
         val previous = _state.value
         val previousProfileMatches = previous.artistProfile?.let { profile ->
             if (normalizedBrowseId.isNotBlank()) {
@@ -3753,6 +3851,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 artistLoading = true,
                 artistError = null,
                 artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio },
+                artistMotionArtwork = current.artistMotionArtwork.takeIf { sameProfile },
                 artistListStateKey = requestedArtistListStateKey,
                 openPlaylist = null,
                 detailReturnTarget = DetailReturnTarget.None
@@ -3761,11 +3860,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         artistJob = viewModelScope.launch {
             coroutineScope {
                 val profileDeferred = async {
-                    if (normalizedBrowseId.isNotBlank()) {
-                        runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
-                    } else {
-                        runCatching { artistRepository.profileFor(clean) }.getOrNull()
-                    }
+                    resolveArtistProfileReference(
+                        browseId = normalizedBrowseId,
+                        name = clean,
+                        isActive = { isActive },
+                        profileByBrowseId = artistRepository::profile,
+                        profileByName = artistRepository::profileFor
+                    )
                 }
                 val biographyDeferred = async {
                     runCatching { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
@@ -3796,6 +3897,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistProfile = initialProfile
                     )
                 }
+                refreshArtistMotionArtwork(initialProfile)
                 initialBiography?.let {
                     startArtistLore(initialProfile)
                 } ?: run {
@@ -3852,12 +3954,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun closeArtist() {
         artistJob?.cancel()
         artistLoreJob?.cancel()
+        artistMotionJob?.cancel()
         if (restoreDetailPage()) return
         _state.update {
             it.copy(
                 showArtist = false,
                 artistLoading = false,
                 artistError = null,
+                artistMotionArtwork = null,
                 showAlbum = false,
                 detailReturnTarget = DetailReturnTarget.None
             )
@@ -3870,9 +3974,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         albumJob?.cancel()
+        albumMotionJob?.cancel()
         if (returnTarget != DetailReturnTarget.Artist) {
             artistJob?.cancel()
             artistLoreJob?.cancel()
+            artistMotionJob?.cancel()
         }
         val previous = _state.value
         val current = previous.albumDetail
@@ -3897,6 +4003,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 albumLoading = true,
                 albumError = null,
                 albumDetail = if (sameAlbum) current else AlbumDetail(album, "", emptyList()),
+                albumMotionArtwork = if (sameAlbum) state.albumMotionArtwork else null,
                 showArtist = keepArtistParent,
                 artistLoading = if (keepArtistParent) state.artistLoading else false,
                 artistError = if (keepArtistParent) state.artistError else null,
@@ -3928,6 +4035,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     cacheReport = repository.cacheReport()
                 )
             }
+            refreshAlbumMotionArtwork(detail)
             launch {
                 val description = runCatching {
                     repository.resolveAlbumDescription(detail, languageCode)
@@ -3951,6 +4059,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeAlbum() {
         albumJob?.cancel()
+        albumMotionJob?.cancel()
         val current = _state.value
         if (current.detailReturnTarget == DetailReturnTarget.Artist && current.showArtist) {
             _state.update {
@@ -3958,6 +4067,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     showAlbum = false,
                     albumLoading = false,
                     albumError = null,
+                    albumMotionArtwork = null,
                     showArtist = true,
                     detailReturnTarget = DetailReturnTarget.None
                 )
@@ -3970,6 +4080,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 showAlbum = false,
                 albumLoading = false,
                 albumError = null,
+                albumMotionArtwork = null,
                 showArtist = false,
                 detailReturnTarget = DetailReturnTarget.None
             )
@@ -3980,6 +4091,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         albumJob?.cancel()
         artistJob?.cancel()
         artistLoreJob?.cancel()
+        cancelPageMotion()
         detailBackStack.clear()
         _state.update {
             it.copy(
@@ -3988,6 +4100,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 openPlaylist = null,
                 albumLoading = false,
                 artistLoading = false,
+                albumMotionArtwork = null,
+                artistMotionArtwork = null,
                 detailReturnTarget = DetailReturnTarget.None
             )
         }
@@ -6778,6 +6892,96 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
                 }
         }
+    }
+
+    private fun cancelPageMotion() {
+        artistMotionJob?.cancel()
+        albumMotionJob?.cancel()
+    }
+
+    private fun refreshPageMotionArtwork() {
+        val state = _state.value
+        if (state.showArtist) state.artistProfile?.let(::refreshArtistMotionArtwork)
+        if (state.showAlbum) state.albumDetail?.let(::refreshAlbumMotionArtwork)
+    }
+
+    private fun refreshArtistMotionArtwork(profile: ArtistProfile) {
+        artistMotionJob?.cancel()
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
+            _state.update { it.copy(artistMotionArtwork = null) }
+            return
+        }
+        val seed = selectArtistMotionSeed(
+            profileName = profile.name,
+            tracks = profile.topSongs,
+            isLocal = ::isLocalPlaybackTrack
+        )
+        if (seed == null) {
+            _state.update { it.copy(artistMotionArtwork = null) }
+            return
+        }
+        artistMotionJob = viewModelScope.launch(Dispatchers.IO) {
+            val resolved = runCatching {
+                motionArtworkEngine.resolve(seed, _state.value.interfaceSettings.canvasSource)
+            }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
+                }
+                .getOrNull()
+            if (!isActive) return@launch
+            val visible = _state.value.artistProfile ?: return@launch
+            if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
+            _state.update { it.copy(artistMotionArtwork = resolved) }
+        }
+    }
+
+    private fun refreshAlbumMotionArtwork(detail: AlbumDetail) {
+        albumMotionJob?.cancel()
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
+            _state.update { it.copy(albumMotionArtwork = null) }
+            return
+        }
+        val expectedBrowseId = detail.album.browseId
+        val expectedTitle = detail.album.title
+        val expectedArtist = detail.album.artist
+        val seed = detail.tracks.firstOrNull { candidate ->
+            !isLocalPlaybackTrack(candidate) && albumMotionSeedMatches(candidate, expectedTitle, expectedArtist)
+        }
+        if (seed == null) {
+            _state.update { it.copy(albumMotionArtwork = null) }
+            return
+        }
+        albumMotionJob = viewModelScope.launch(Dispatchers.IO) {
+            val resolved = runCatching {
+                motionArtworkEngine.resolve(seed, _state.value.interfaceSettings.canvasSource)
+            }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    Timber.d(error, "Album motion artwork resolve failed for %s", seed.album)
+                }
+                .getOrNull()
+            if (!isActive) return@launch
+            val visible = _state.value.albumDetail ?: return@launch
+            val sameAlbum = sameAlbumIdentity(visible, expectedBrowseId, expectedTitle, expectedArtist)
+            if (!_state.value.showAlbum || !sameAlbum) return@launch
+            _state.update { it.copy(albumMotionArtwork = resolved) }
+        }
+    }
+
+    private fun albumMotionSeedMatches(track: Track, albumTitle: String, albumArtist: String): Boolean {
+        val identity = MotionTrackIdentity.from(track)
+        if (albumArtist.isNotBlank() && !primaryMotionArtistMatches(identity.artists, listOf(albumArtist))) return false
+        if (albumTitle.isBlank() || identity.album.isBlank()) return true
+        return normalizeMotionText(identity.album) == normalizeMotionText(albumTitle)
+    }
+
+    private fun sameAlbumIdentity(detail: AlbumDetail, browseId: String, title: String, artist: String): Boolean {
+        if (browseId.isNotBlank() && detail.album.browseId.isNotBlank()) {
+            return detail.album.browseId.equals(browseId, ignoreCase = true)
+        }
+        return detail.album.title.equals(title, ignoreCase = true) &&
+            detail.album.artist.equals(artist, ignoreCase = true)
     }
 
     private fun prefetchLyricsAround(current: Track) {

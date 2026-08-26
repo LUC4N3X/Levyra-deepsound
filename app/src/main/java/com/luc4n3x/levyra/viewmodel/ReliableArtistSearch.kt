@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistAudienceWeight
@@ -52,6 +53,29 @@ internal fun mergeReliableArtistSearchResults(
         .forEach(::add)
 
     return merged.values.take(limit.coerceIn(1, 24))
+}
+
+/**
+ * Resolves an artist reference. A browseId that no longer answers for the requested identity must
+ * still fall back to the canonical name lookup instead of failing the whole screen, and the
+ * fallback is skipped once the caller is no longer active.
+ */
+internal suspend fun resolveArtistProfileReference(
+    browseId: String,
+    name: String,
+    isActive: () -> Boolean,
+    profileByBrowseId: suspend (String, String) -> ArtistProfile?,
+    profileByName: suspend (String) -> ArtistProfile?
+): ArtistProfile? {
+    val normalizedBrowseId = browseId.trim()
+    val direct = if (normalizedBrowseId.isNotBlank()) {
+        runCatching { profileByBrowseId(normalizedBrowseId, name) }.getOrNull()
+    } else {
+        null
+    }
+    if (direct != null) return direct
+    if (!isActive()) return null
+    return runCatching { profileByName(name) }.getOrNull()
 }
 
 private fun allowedArtistTypoDistance(query: String): Int {
