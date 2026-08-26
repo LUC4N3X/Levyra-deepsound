@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -77,6 +78,24 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _is_link_like(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    junction_check = getattr(path, "is_junction", None)
+    if callable(junction_check):
+        try:
+            if junction_check():
+                return True
+        except OSError:
+            return True
+    try:
+        attributes = path.lstat().st_file_attributes
+    except (AttributeError, OSError):
+        return False
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    return bool(reparse_flag and attributes & reparse_flag)
+
+
 def _parse_managed_relative(value: str) -> Path:
     if not value or "\\" in value:
         raise ProjectionError(f"unsafe runtime manifest path: {value!r}")
@@ -110,8 +129,8 @@ def _assert_owned_relative(spec: RuntimeSpec, relative: Path) -> None:
 
 def _assert_runtime_root(spec: RuntimeSpec, *, create: bool) -> None:
     target = spec.target
-    if target.is_symlink():
-        raise ProjectionError(f"native runtime root must not be a symlink: {_relative(target)}")
+    if _is_link_like(target):
+        raise ProjectionError(f"native runtime root must not be a link or junction: {_relative(target)}")
     if target.exists():
         if not target.is_dir():
             raise ProjectionError(f"native runtime root is not a directory: {_relative(target)}")
@@ -127,9 +146,9 @@ def _assert_safe_parent_chain(
     current = spec.target
     for part in relative.parts[:-1]:
         current = current / part
-        if current.is_symlink():
+        if _is_link_like(current):
             raise ProjectionError(
-                f"runtime projection parent must not be a symlink: {_relative(current)}"
+                f"runtime projection parent must not be a link or junction: {_relative(current)}"
             )
         if current.exists():
             if not current.is_dir():
@@ -143,9 +162,9 @@ def _assert_safe_parent_chain(
 def _assert_regular_target(spec: RuntimeSpec, relative: Path) -> Path:
     _assert_safe_parent_chain(spec, relative, create=False)
     target = spec.target / relative
-    if target.is_symlink():
+    if _is_link_like(target):
         raise ProjectionError(
-            f"runtime projection target must not be a symlink: {_relative(target)}"
+            f"runtime projection target must not be a link or junction: {_relative(target)}"
         )
     if target.exists() and not target.is_file():
         raise ProjectionError(
@@ -156,8 +175,8 @@ def _assert_regular_target(spec: RuntimeSpec, relative: Path) -> Path:
 
 def _source_files(mapping: Mapping) -> list[tuple[Path, Path]]:
     source = mapping.source
-    if source.is_symlink():
-        raise ProjectionError(f"canonical runtime source must not be a symlink: {_relative(source)}")
+    if _is_link_like(source):
+        raise ProjectionError(f"canonical runtime source must not be a link or junction: {_relative(source)}")
     if not source.exists():
         raise ProjectionError(f"missing canonical runtime source: {_relative(source)}")
 
@@ -169,9 +188,9 @@ def _source_files(mapping: Mapping) -> list[tuple[Path, Path]]:
 
     files: list[tuple[Path, Path]] = []
     for child in sorted(source.rglob("*")):
-        if child.is_symlink():
+        if _is_link_like(child):
             raise ProjectionError(
-                f"canonical runtime source must not contain symlinks: {_relative(child)}"
+                f"canonical runtime source must not contain links or junctions: {_relative(child)}"
             )
         if child.is_file():
             files.append((child, mapping.target_relative / child.relative_to(source)))
@@ -184,8 +203,8 @@ def _manifest_path(spec: RuntimeSpec) -> Path:
 
 def _load_previous_manifest(name: str, spec: RuntimeSpec) -> dict[str, str]:
     path = _manifest_path(spec)
-    if path.is_symlink():
-        raise ProjectionError(f"runtime manifest must not be a symlink: {_relative(path)}")
+    if _is_link_like(path):
+        raise ProjectionError(f"runtime manifest must not be a link or junction: {_relative(path)}")
     if not path.exists():
         return {}
     if not path.is_file():
@@ -260,19 +279,23 @@ def _stale_removal_plan(
     return removals
 
 
-def _remove_empty_managed_directories(spec: RuntimeSpec) -> None:
-    for directory_root in spec.owned_directories:
-        root = spec.target / directory_root
-        if root.is_symlink() or not root.is_dir():
-            continue
-        directories = [path for path in root.rglob("*") if path.is_dir() and not path.is_symlink()]
-        for directory in sorted(directories, key=lambda path: len(path.parts), reverse=True):
-            try:
-                directory.rmdir()
-            except OSError:
-                pass
+def _remove_empty_parents(spec: RuntimeSpec, removals: list[Path]) -> None:
+    parents = sorted(
+        {parent for target in removals for parent in target.parents if parent != spec.target},
+        key=lambda path: len(path.parts),
+        reverse=True,
+    )
+    for directory in parents:
         try:
-            root.rmdir()
+            directory.relative_to(spec.target)
+        except ValueError:
+            continue
+        if _is_link_like(directory):
+            raise ProjectionError(
+                f"runtime projection parent became a link or junction: {_relative(directory)}"
+            )
+        try:
+            directory.rmdir()
         except OSError:
             pass
 
@@ -301,8 +324,8 @@ def _copy_atomic(source: Path, target: Path) -> None:
 
 def _write_manifest(name: str, spec: RuntimeSpec, managed: dict[str, str]) -> None:
     path = _manifest_path(spec)
-    if path.is_symlink():
-        raise ProjectionError(f"runtime manifest must not be a symlink: {_relative(path)}")
+    if _is_link_like(path):
+        raise ProjectionError(f"runtime manifest must not be a link or junction: {_relative(path)}")
     if path.exists() and not path.is_file():
         raise ProjectionError(f"runtime manifest conflicts with local content: {_relative(path)}")
 
@@ -347,7 +370,7 @@ def sync_runtime(name: str, *, quiet: bool) -> None:
 
     for target in removals:
         target.unlink()
-    _remove_empty_managed_directories(spec)
+    _remove_empty_parents(spec, removals)
 
     for source, relative in sources:
         _assert_safe_parent_chain(spec, relative, create=True)
