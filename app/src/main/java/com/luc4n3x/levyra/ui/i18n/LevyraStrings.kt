@@ -626,6 +626,38 @@ class LevyraStrings private constructor(
     val newBadge: String get() = value("newBadge")
     val brightness: String get() = value("brightness")
     val timer: String get() = value("timer")
+    val sleepTimer: String get() = value("sleepTimer")
+    val sleepTimerEndOfTrack: String get() = value("sleepTimerEndOfTrack")
+    val sleepTimerCancel: String get() = value("sleepTimerCancel")
+    val sleepTimerCancelled: String get() = value("sleepTimerCancelled")
+    val sleepTimerRemaining: String get() = value("sleepTimerRemaining")
+    val recognitionListening: String get() = value("recognitionListening")
+    val recognitionProcessing: String get() = value("recognitionProcessing")
+    val recognitionTapToListen: String get() = value("recognitionTapToListen")
+    fun formatSleepTimerMinutes(minutes: Int): String {
+        val amount = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(minutes.coerceAtLeast(0))
+        val normalizedCode = LevyraLanguageCatalog.normalize(code)
+        val unit = when (normalizedCode) {
+            "de" -> "Min."
+            "el" -> "λεπ."
+            "uk" -> "хв"
+            "ru" -> "мин"
+            "tr" -> "dk"
+            "ar" -> "د"
+            "zh" -> "分钟"
+            "ja" -> "分"
+            "ko" -> "분"
+            "hi" -> "मि"
+            "id" -> "mnt"
+            "vi" -> "phút"
+            "th" -> "นาที"
+            "he" -> "דק׳"
+            else -> "min"
+        }
+        val separator = if (normalizedCode in setOf("zh", "ja", "ko")) "" else " "
+        return directionalValue("$amount$separator$unit")
+    }
     val normalizationShort: String get() = value("normalizationShort")
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
@@ -1101,6 +1133,17 @@ class LevyraStrings private constructor(
             "recognizeMusic"
         )
 
+        private val systemActionKeys = setOf(
+            "sleepTimer",
+            "sleepTimerEndOfTrack",
+            "sleepTimerCancel",
+            "sleepTimerCancelled",
+            "sleepTimerRemaining",
+            "recognitionListening",
+            "recognitionProcessing",
+            "recognitionTapToListen"
+        )
+
         private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
             mapOf(
                 "en" to bundle("en", enEntries()),
@@ -1133,8 +1176,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + experienceKeys + insightKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + experienceKeys + insightKeys + systemActionKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

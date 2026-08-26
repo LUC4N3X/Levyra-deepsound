@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Radar phát hành</string>
     <string name="radar_channel_description">Bản phát hành mới từ nghệ sĩ bạn theo dõi</string>
     <string name="radar_new_release_title">Bản phát hành mới từ %1$s</string>
+    <string name="tile_recognize_music">Nhận diện nhạc</string>
+    <string name="shortcut_search">Tìm kiếm</string>
+    <string name="shortcut_library">Thư viện</string>
+    <string name="shortcut_recognition">Nhận diện nhạc</string>
 </resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutId="search"
+        android:shortcutLongLabel="@string/shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_search">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.luc4n3x.levyra.MainActivity"
+            android:targetPackage="com.luc4n3x.levyra">
+            <extra
+                android:name="levyra.shortcut"
+                android:value="search" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_library"
+        android:shortcutId="library"
+        android:shortcutLongLabel="@string/shortcut_library"
+        android:shortcutShortLabel="@string/shortcut_library">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.luc4n3x.levyra.MainActivity"
+            android:targetPackage="com.luc4n3x.levyra">
+            <extra
+                android:name="levyra.shortcut"
+                android:value="library" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_recognition"
+        android:shortcutId="recognition"
+        android:shortcutLongLabel="@string/shortcut_recognition"
+        android:shortcutShortLabel="@string/shortcut_recognition">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.luc4n3x.levyra.MainActivity"
+            android:targetPackage="com.luc4n3x.levyra">
+            <extra
+                android:name="levyra.shortcut"
+                android:value="recognition" />
+        </intent>
+    </shortcut>
+</shortcuts>

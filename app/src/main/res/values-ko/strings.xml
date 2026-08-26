@@ -12,4 +12,8 @@
     <string name="radar_channel_name">릴리스 레이더</string>
     <string name="radar_channel_description">팔로우한 아티스트의 신곡</string>
     <string name="radar_new_release_title">%1$s의 신곡</string>
+    <string name="tile_recognize_music">음악 인식</string>
+    <string name="shortcut_search">검색</string>
+    <string name="shortcut_library">보관함</string>
+    <string name="shortcut_recognition">음악 인식</string>
 </resources>

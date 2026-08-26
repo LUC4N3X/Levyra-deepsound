@@ -84,6 +84,9 @@ class MusicRecognitionController(
             audioCapture.capture(captureDurationMs)
         } catch (error: CancellationException) {
             throw error
+        } catch (_: RecognitionProviderUnavailableException) {
+            publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.Unavailable))
+            return
         } catch (error: MicrophonePermissionDeniedException) {
             publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.PermissionDenied))
             return

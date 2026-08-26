@@ -358,8 +358,8 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun closePlayer() = root.closePlayer()
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
-    fun cycleSleepTimer() = root.cycleSleepTimer()
     fun cycleSpeed() = root.cycleSpeed()
+    fun openSleepTimer() = root.openSleepTimer()
     fun exportCurrentTrack() = root.exportCurrentTrack()
     fun next() = root.next()
     fun openArtist(track: Track) = root.openArtist(track)
@@ -378,6 +378,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun seekTo(progress: Float) = root.seekTo(progress)
     fun selectTab(tab: LevyraTab) = root.selectTab(tab)
     fun toggleAudioNormalization() = root.toggleAudioNormalization()
+    fun setMotionArtworkEnabled(value: Boolean) = root.setMotionArtworkEnabled(value)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
     fun toggleRepeat() = root.toggleRepeat()
@@ -1096,6 +1097,7 @@ private data class PlayerProjection(
     val repeatMode: RepeatMode,
     val shuffleEnabled: Boolean,
     val sleepTimerMinutes: Int,
+    val sleepTimerEndOfTrack: Boolean,
     val interfaceSettings: LevyraInterfaceSettings,
     val youtubeEngagement: YoutubeEngagementState
 )
@@ -1122,6 +1124,7 @@ private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPro
     repeatMode = state.repeatMode,
     shuffleEnabled = state.shuffleEnabled,
     sleepTimerMinutes = state.sleepTimerMinutes,
+    sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
     interfaceSettings = state.interfaceSettings,
     youtubeEngagement = state.youtubeEngagement
 )

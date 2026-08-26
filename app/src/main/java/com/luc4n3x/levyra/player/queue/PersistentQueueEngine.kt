@@ -20,6 +20,21 @@ import timber.log.Timber
 internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
     !transientPlaybackActive
 
+internal fun queueRemovalCurrentIndex(removedIndex: Int, currentIndex: Int, newLastIndex: Int): Int = when {
+    newLastIndex < 0 -> -1
+    removedIndex < currentIndex -> currentIndex - 1
+    removedIndex == currentIndex -> removedIndex.coerceAtMost(newLastIndex)
+    else -> currentIndex.coerceAtMost(newLastIndex)
+}
+
+internal fun queueUndoInsertionIndex(originalIndex: Int, size: Int): Int = originalIndex.coerceIn(0, size)
+
+internal fun queueUndoCurrentIndex(insertionIndex: Int, currentIndex: Int): Int = when {
+    currentIndex < 0 -> insertionIndex
+    insertionIndex <= currentIndex -> currentIndex + 1
+    else -> currentIndex
+}
+
 internal fun replacementQueuePositionMs(
     previousIdentity: String?,
     nextIdentity: String?,
@@ -239,12 +254,7 @@ class PersistentQueueEngine private constructor(context: Context) {
         val removed = current.tracks[index]
         undoRemoval = QueueRemoval(removed, index)
         val nextTracks = current.tracks.toMutableList().apply { removeAt(index) }
-        val nextCurrentIndex = when {
-            nextTracks.isEmpty() -> -1
-            index < current.currentIndex -> current.currentIndex - 1
-            index == current.currentIndex -> index.coerceAtMost(nextTracks.lastIndex)
-            else -> current.currentIndex.coerceAtMost(nextTracks.lastIndex)
-        }
+        val nextCurrentIndex = queueRemovalCurrentIndex(index, current.currentIndex, nextTracks.lastIndex)
         rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = true)
     }
 
@@ -255,13 +265,9 @@ class PersistentQueueEngine private constructor(context: Context) {
             undoRemoval = null
             return@mutate current.copy(undoAvailable = false)
         }
-        val insertionIndex = removal.index.coerceIn(0, current.tracks.size)
+        val insertionIndex = queueUndoInsertionIndex(removal.index, current.tracks.size)
         val nextTracks = current.tracks.toMutableList().apply { add(insertionIndex, removal.track) }
-        val nextCurrentIndex = when {
-            current.currentIndex < 0 -> insertionIndex
-            insertionIndex <= current.currentIndex -> current.currentIndex + 1
-            else -> current.currentIndex
-        }
+        val nextCurrentIndex = queueUndoCurrentIndex(insertionIndex, current.currentIndex)
         undoRemoval = null
         rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = false)
     }

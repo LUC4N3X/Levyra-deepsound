@@ -12,4 +12,8 @@
     <string name="radar_channel_name">רדאר ההשקות</string>
     <string name="radar_channel_description">השקות חדשות מאמנים שבמעקב שלך</string>
     <string name="radar_new_release_title">השקה חדשה מאת &#x2068;%1$s&#x2069;</string>
+    <string name="tile_recognize_music">זיהוי מוזיקה</string>
+    <string name="shortcut_search">חיפוש</string>
+    <string name="shortcut_library">ספרייה</string>
+    <string name="shortcut_recognition">זיהוי מוזיקה</string>
 </resources>

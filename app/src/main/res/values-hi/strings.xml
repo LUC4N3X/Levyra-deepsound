@@ -12,4 +12,8 @@
     <string name="radar_channel_name">रिलीज़ रडार</string>
     <string name="radar_channel_description">आपके फ़ॉलो किए कलाकारों की नई रिलीज़</string>
     <string name="radar_new_release_title">%1$s की नई रिलीज़</string>
+    <string name="tile_recognize_music">संगीत पहचानें</string>
+    <string name="shortcut_search">खोजें</string>
+    <string name="shortcut_library">लाइब्रेरी</string>
+    <string name="shortcut_recognition">संगीत पहचानें</string>
 </resources>

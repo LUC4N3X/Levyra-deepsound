@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Release Radar</string>
     <string name="radar_channel_description">Mga bagong release mula sa mga artist na fina-follow mo</string>
     <string name="radar_new_release_title">Bagong release mula kay %1$s</string>
+    <string name="tile_recognize_music">Kilalanin ang musika</string>
+    <string name="shortcut_search">Maghanap</string>
+    <string name="shortcut_library">Library</string>
+    <string name="shortcut_recognition">Kilalanin ang musika</string>
 </resources>

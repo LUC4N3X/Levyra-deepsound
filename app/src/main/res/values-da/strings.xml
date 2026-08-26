@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Udgivelsesradar</string>
     <string name="radar_channel_description">Nye udgivelser fra kunstnere, du følger</string>
     <string name="radar_new_release_title">Ny udgivelse fra %1$s</string>
+    <string name="tile_recognize_music">Genkend musik</string>
+    <string name="shortcut_search">Søg</string>
+    <string name="shortcut_library">Bibliotek</string>
+    <string name="shortcut_recognition">Genkend musik</string>
 </resources>

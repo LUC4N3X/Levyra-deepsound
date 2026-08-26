@@ -12,4 +12,8 @@
     <string name="radar_channel_name">新歌雷达</string>
     <string name="radar_channel_description">你关注的歌手发布的新作品</string>
     <string name="radar_new_release_title">%1$s 发布了新作品</string>
+    <string name="tile_recognize_music">识别音乐</string>
+    <string name="shortcut_search">搜索</string>
+    <string name="shortcut_library">媒体库</string>
+    <string name="shortcut_recognition">识别音乐</string>
 </resources>

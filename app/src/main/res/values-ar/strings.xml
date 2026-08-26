@@ -12,4 +12,8 @@
     <string name="radar_channel_name">رادار الإصدارات</string>
     <string name="radar_channel_description">إصدارات جديدة من الفنانين الذين تتابعهم</string>
     <string name="radar_new_release_title">إصدار جديد من %1$s</string>
+    <string name="tile_recognize_music">التعرّف على الموسيقى</string>
+    <string name="shortcut_search">بحث</string>
+    <string name="shortcut_library">المكتبة</string>
+    <string name="shortcut_recognition">التعرّف على الموسيقى</string>
 </resources>

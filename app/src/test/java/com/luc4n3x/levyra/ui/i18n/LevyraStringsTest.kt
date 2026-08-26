@@ -180,9 +180,27 @@ class LevyraStringsTest {
             "widget_lyrics",
             "radar_channel_name",
             "radar_channel_description",
-            "radar_new_release_title"
+            "radar_new_release_title",
+            "tile_recognize_music",
+            "shortcut_search",
+            "shortcut_library",
+            "shortcut_recognition"
         )
-        val qualifiers = listOf("values-ja", "values-ko", "values-hi", "values-b+id", "values-vi", "values-th", "values-b+fil", "values-b+he")
+        val qualifiers = listOf(
+            "values-ja",
+            "values-ko",
+            "values-hi",
+            "values-b+id",
+            "values-vi",
+            "values-th",
+            "values-b+fil",
+            "values-b+he",
+            "values-b+zh+Hans",
+            "values-cs",
+            "values-da",
+            "values-tr",
+            "values-uk"
+        )
         val namePattern = Regex("""<string name="([^"]+)"""")
 
         qualifiers.forEach { qualifier ->

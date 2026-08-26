@@ -113,7 +113,7 @@ Modern music streaming applications often treat music as temporary, disposable b
       <ul>
         <li><b>Dual Native Engines:</b> Media3 / ExoPlayer on Android; isolated libvlc on Windows.</li>
         <li><b>Android Auto:</b> Library browsing, steering-wheel controls, and voice playback.</li>
-        <li><b>Playback Tools:</b> Gapless playback, shuffle/repeat, speed/pitch, and sleep timers.</li>
+        <li><b>Playback Tools:</b> Gapless playback, shuffle/repeat, speed/pitch, service-owned sleep timer presets, and queue swipe-to-remove with Undo.</li>
         <li><b>Smart Audio:</b> Volume normalization plus intro, sponsor, banter, and silence skipping.</li>
         <li><b>Audio / Video Toggle:</b> Switch between efficient audio streams and full video playback.</li>
       </ul>
@@ -147,6 +147,7 @@ Modern music streaming applications often treat music as temporary, disposable b
         <li><b>Tap-to-Seek:</b> Jump straight to any lyric timestamp.</li>
         <li><b>Lyric Sharing:</b> Long-press a line to select verses, then copy, share, or export a 1080x1080 Levyra card.</li>
         <li><b>Living Artwork:</b> When a track has no real Canvas, the cover comes alive with a slow artwork-driven colour field (AGSL on Android 13+, Compose fallback below).</li>
+        <li><b>Canvas Control:</b> Toggle Canvas/Living Artwork directly from Now Playing in Song Mode without digging through settings.</li>
         <li><b>Artwork Preview:</b> Long-press the cover for a full-screen zoomable artwork view with save-to-gallery.</li>
         <li><b>Ambient Visuals:</b> Palette-reactive backdrops, waveform, and looping motion art.</li>
       </ul>
@@ -287,6 +288,7 @@ Levyra is built on strict zero-tracking principles: no advertising identifiers, 
         <li><code>INTERNET</code> / <code>ACCESS_NETWORK_STATE</code> — Streaming and metadata resolution.</li>
         <li><code>FOREGROUND_SERVICE_MEDIA_PLAYBACK</code> — Background playback and media controls.</li>
         <li><code>POST_NOTIFICATIONS</code> — Lockscreen controls and download updates.</li>
+        <li><code>RECORD_AUDIO</code> — Optional music-recognition capture; it is not started when no recognition provider is configured.</li>
         <li><code>WAKE_LOCK</code> — Keeps playback active with the screen off.</li>
         <li><code>WRITE_EXTERNAL_STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.</li>
       </ul>

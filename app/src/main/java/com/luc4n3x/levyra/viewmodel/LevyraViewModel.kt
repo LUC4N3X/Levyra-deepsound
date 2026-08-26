@@ -143,7 +143,7 @@ import com.luc4n3x.levyra.feature.dearrow.DeArrowRepository
 import com.luc4n3x.levyra.feature.dearrow.DEARROW_VIDEO_ID_PATTERN
 import com.luc4n3x.levyra.feature.dearrow.VideoMetadata
 import com.luc4n3x.levyra.feature.dearrow.VideoMetadataEnhancer
-import com.luc4n3x.levyra.feature.recognition.MicrophoneCapture
+import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionController
 import com.luc4n3x.levyra.feature.recognition.NoOpRecognitionProvider
 import com.luc4n3x.levyra.feature.recognition.RecognitionProvider
@@ -163,6 +163,7 @@ import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import com.luc4n3x.levyra.player.AdaptivePlaybackPolicy
 import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.PlaybackService
+import com.luc4n3x.levyra.player.PlaybackSleepTimerState
 import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
@@ -569,12 +570,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
     private val recognitionProvider: RecognitionProvider = NoOpRecognitionProvider
-    private val recognitionController by lazy {
-        MusicRecognitionController(
-            audioCapture = MicrophoneCapture(getApplication<Application>().applicationContext),
-            provider = recognitionProvider
-        )
-    }
+    private val recognitionController: MusicRecognitionController
+        get() = LevyraRecognitionCenter.get(getApplication<Application>().applicationContext)
     private val sharedMediaResolver = SharedMediaResolver(
         providerRouter = providerRouter,
         sharedPlaylistTracks = { playlist, languageCode ->
@@ -655,7 +652,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
     private var motionArtworkPrefetchJob: Job? = null
-    private var sleepJob: Job? = null
+    private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
     private var lyricsJob: Job? = null
     private var lyricsVersionsJob: Job? = null
@@ -1080,6 +1077,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = if (synchronizeCurrent) queueSnapshot.positionMs else current.positionMs,
                         durationMs = if (synchronizeCurrent) currentPersisted?.durationMs ?: current.durationMs else current.durationMs
                     )
+                }
+            }
+        }
+        sleepTimerCollectorJob?.cancel()
+        sleepTimerCollectorJob = viewModelScope.launch {
+            PlaybackService.sleepTimerStateFlow.collect { timerState ->
+                _state.update { current ->
+                    when (timerState) {
+                        is PlaybackSleepTimerState.Disabled -> current.copy(
+                            sleepTimerMinutes = 0,
+                            sleepTimerEndOfTrack = false,
+                            sleepTimerDeadlineElapsedRealtimeMs = 0L,
+                            sleepTimerTotalMs = 0L
+                        )
+                        is PlaybackSleepTimerState.Countdown -> current.copy(
+                            sleepTimerMinutes = ((timerState.totalMs + 59_999L) / 60_000L).toInt(),
+                            sleepTimerEndOfTrack = false,
+                            sleepTimerDeadlineElapsedRealtimeMs = timerState.deadlineElapsedRealtimeMs,
+                            sleepTimerTotalMs = timerState.totalMs
+                        )
+                        is PlaybackSleepTimerState.EndOfTrack -> current.copy(
+                            sleepTimerMinutes = 0,
+                            sleepTimerEndOfTrack = true,
+                            sleepTimerDeadlineElapsedRealtimeMs = 0L,
+                            sleepTimerTotalMs = 0L
+                        )
+                    }
                 }
             }
         }
@@ -2354,22 +2378,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(audioQuality = normalized) }
     }
 
-    fun cycleSleepTimer() {
-        val steps = listOf(0, 15, 30, 60)
-        val current = _state.value.sleepTimerMinutes
-        val next = steps[(steps.indexOf(current).coerceAtLeast(0) + 1) % steps.size]
-        setSleepTimer(next)
+    fun openSleepTimer() {
+        _state.update { it.copy(showSleepTimer = true) }
     }
 
-    private fun setSleepTimer(minutes: Int) {
-        sleepJob?.cancel()
-        _state.update { it.copy(sleepTimerMinutes = minutes) }
-        if (minutes <= 0) return
-        sleepJob = viewModelScope.launch {
-            delay(minutes * 60_000L)
-            player.pause()
-            _state.update { it.copy(isPlaying = false, sleepTimerMinutes = 0) }
-        }
+    fun closeSleepTimer() {
+        _state.update { it.copy(showSleepTimer = false) }
+    }
+
+    fun setSleepTimerMinutes(minutes: Int) {
+        PlaybackService.startSleepTimer(minutes)
+    }
+
+    fun setSleepTimerEndOfTrack() {
+        PlaybackService.startSleepTimerEndOfTrack()
+    }
+
+    fun cancelSleepTimer() {
+        PlaybackService.cancelSleepTimer()
     }
 
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
@@ -7067,8 +7093,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sponsorJob?.cancel()
         radioJob?.cancel()
         radioJob = null
-        sleepJob?.cancel()
-        sleepJob = null
+        PlaybackService.cancelSleepTimer()
         sponsorSegments = emptyList()
         cancelBackgroundWarmups(cancelList = true)
         pendingSeekMs = 0L
@@ -7087,6 +7112,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 queueHistoryCount = 0,
                 radioEnabled = false,
                 sleepTimerMinutes = 0,
+                sleepTimerEndOfTrack = false,
+                sleepTimerDeadlineElapsedRealtimeMs = 0L,
+                sleepTimerTotalMs = 0L,
+                showSleepTimer = false,
                 isPlaying = false,
                 pendingVideoMode = null,
                 isResolving = false,
@@ -7795,7 +7824,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         orbitArtworkJob?.cancel()
         officialMetadataSignal.close()
         chartEnrichJob?.cancel()
-        sleepJob?.cancel()
+        sleepTimerCollectorJob?.cancel()
         lyricsJob?.cancel()
         lyricsPrefetchJob?.cancel()
         sponsorJob?.cancel()

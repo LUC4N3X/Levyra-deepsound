@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Radar premier</string>
     <string name="radar_channel_description">Nowe wydania obserwowanych artystów</string>
     <string name="radar_new_release_title">Nowe wydanie od %1$s</string>
+    <string name="tile_recognize_music">Rozpoznaj muzykę</string>
+    <string name="shortcut_search">Szukaj</string>
+    <string name="shortcut_library">Biblioteka</string>
+    <string name="shortcut_recognition">Rozpoznaj muzykę</string>
 </resources>
