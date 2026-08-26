@@ -14,7 +14,6 @@ CODEX_ROOT = ".agents/codex"
 
 REQUIRED_FILES = (
     "AGENTS.md",
-    "CLAUDE.md",
     "app/AGENTS.md",
     "desktop/AGENTS.md",
     ".github/AGENTS.md",
@@ -37,6 +36,8 @@ REQUIRED_FILES = (
     f"{CODEX_ROOT}/config.toml",
     f"{CODEX_ROOT}/hooks.json",
     "scripts/sync_agent_runtime.py",
+    "scripts/setup-ai.ps1",
+    "scripts/setup-ai.sh",
     "docs/ai/README.md",
     "docs/ai/WORKFLOW.md",
     "docs/ai/AI_ENGINEERING_GUARDRAILS.md",
@@ -75,17 +76,6 @@ AUTOMATIC_ROUTED_SKILLS = (
     "levyra-ci-workflows",
     "levyra-context-efficiency",
     "levyra-pr-review",
-    "levyra-release-check",
-)
-CLAUDE_CANONICAL_BRIDGES = (
-    "levyra-real-engineering",
-    "levyra-compose",
-    "levyra-design-taste",
-    "levyra-android-performance",
-    "levyra-r8-proguard",
-    "levyra-android-intent-security",
-    "levyra-ci-workflows",
-    "levyra-context-efficiency",
     "levyra-release-check",
 )
 
@@ -138,10 +128,10 @@ def require_terms(
             errors.append(f"{relative_path}: missing {label}: {term}")
 
 
-def tracked_runtime_paths() -> list[str]:
+def tracked_root_runtime_paths() -> list[str]:
     try:
         result = subprocess.run(
-            ["git", "ls-files", "--", ".claude", ".codex"],
+            ["git", "ls-files", "--", "CLAUDE.md", ".claude", ".codex"],
             cwd=ROOT,
             check=False,
             text=True,
@@ -166,22 +156,18 @@ def main() -> int:
         if (ROOT / relative_path).exists():
             errors.append(f"obsolete root planning file must be removed: {relative_path}")
 
-    tracked_adapters = tracked_runtime_paths()
+    tracked_adapters = tracked_root_runtime_paths()
     if tracked_adapters:
         errors.append(
-            "root .claude/.codex runtime projections must not be tracked; canonical sources belong under .agents: "
+            "root CLAUDE.md/.claude/.codex runtime surfaces must not be tracked; canonical sources belong under .agents: "
             + ", ".join(tracked_adapters)
         )
 
-    root_claude = ROOT / "CLAUDE.md"
-    if root_claude.is_file():
-        text = root_claude.read_text(encoding="utf-8")
-        require_terms(
-            errors,
-            "CLAUDE.md",
-            text,
-            ("@.agents/claude/CLAUDE.md", "sync_agent_runtime.py", "--runtime claude"),
-            "Claude root bridge",
+    duplicate_claude_skills = ROOT / CLAUDE_ROOT / "skills"
+    if duplicate_claude_skills.exists():
+        errors.append(
+            f"{CLAUDE_ROOT}/skills must not be tracked as a second skill tree; "
+            ".agents/skills is canonical and scripts/sync_agent_runtime.py projects it to .claude/skills locally"
         )
 
     antigravity_rule_path = ROOT / ANTIGRAVITY_RULE_PATH
@@ -296,16 +282,36 @@ def main() -> int:
             "cross-runtime pre-delivery review contract",
         )
 
-    for skill in CLAUDE_CANONICAL_BRIDGES:
-        relative_path = f"{CLAUDE_ROOT}/skills/{skill}/SKILL.md"
-        path = ROOT / relative_path
-        if not path.is_file():
-            errors.append(f"missing Claude runtime bridge: {relative_path}")
-            continue
-        bridge = path.read_text(encoding="utf-8")
-        canonical_reference = f".agents/skills/{skill}/SKILL.md"
-        if canonical_reference not in bridge:
-            errors.append(f"{relative_path}: missing canonical bridge to {canonical_reference}")
+    sync_path = ROOT / "scripts/sync_agent_runtime.py"
+    if sync_path.is_file():
+        sync_text = sync_path.read_text(encoding="utf-8")
+        require_terms(
+            errors,
+            "scripts/sync_agent_runtime.py",
+            sync_text,
+            (
+                'ROOT / ".agents" / "skills"',
+                'Path("skills")',
+                'ROOT / ".agents" / "claude"',
+                'ROOT / ".agents" / "codex"',
+                'ROOT / ".claude"',
+                'ROOT / ".codex"',
+                "MANIFEST_NAME",
+                "--check",
+            ),
+            "runtime projection contract",
+        )
+
+    for setup_relative in ("scripts/setup-ai.ps1", "scripts/setup-ai.sh"):
+        setup_path = ROOT / setup_relative
+        if setup_path.is_file():
+            require_terms(
+                errors,
+                setup_relative,
+                setup_path.read_text(encoding="utf-8"),
+                ("sync_agent_runtime.py", "--runtime all", ".agents", ".claude", ".codex"),
+                "runtime bootstrap contract",
+            )
 
     skills_root = ROOT / ".agents" / "skills"
     skill_paths = sorted(skills_root.glob("*/SKILL.md"))
@@ -364,9 +370,9 @@ def main() -> int:
         return 1
 
     print(
-        "Agent configuration validation passed: canonical .agents runtime layout, "
-        f"{len(actual_skills)} native skills, {len(referenced_skills)} documented skill references, "
-        f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, and no tracked root runtime directories."
+        "Agent configuration validation passed: one tracked .agents runtime tree, "
+        f"{len(actual_skills)} canonical skills, {len(referenced_skills)} documented skill references, "
+        f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, and no tracked root Claude/Codex runtime surfaces."
     )
     return 0
 
