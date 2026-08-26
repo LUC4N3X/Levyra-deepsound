@@ -257,25 +257,21 @@ Levyra is built on strict zero-tracking principles: no advertising identifiers, 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
-      <h3>🌐 Network Transparency</h3>
-      <ul>
-        <li><b>Streams:</b> Direct YouTube / YT Music CDN connections without proxy tracking.</li>
-        <li><b>Lyrics:</b> LRCLIB and YouTube Music queries using song metadata.</li>
-        <li><b>Artwork & Metadata:</b> Public catalog lookups across Deezer, Apple Music, and Tidal.</li>
-        <li><b>SponsorBlock:</b> Optional queries using truncated video-ID hash prefixes.</li>
-        <li><b>Updates:</b> GitHub release checks at startup; disabled in F-Droid builds.</li>
-      </ul>
+      <strong>🌐 Network Transparency</strong><br><br>
+      <b>Streams:</b> Direct YouTube / YT Music CDN connections without proxy tracking.<br><br>
+      <b>Lyrics:</b> LRCLIB and YouTube Music queries using song metadata.<br><br>
+      <b>Artwork & Metadata:</b> Public catalog lookups across Deezer, Apple Music, and Tidal.<br><br>
+      <b>SponsorBlock:</b> Optional queries using truncated video-ID hash prefixes.<br><br>
+      <b>Updates:</b> GitHub release checks at startup; disabled in F-Droid builds.
     </td>
     <td width="50%">
-      <h3>🛡️ Android Permissions</h3>
-      <ul>
-        <li><code>INTERNET</code> / <code>ACCESS_NETWORK_STATE</code> — Streaming and metadata resolution.</li>
-        <li><code>FOREGROUND_SERVICE_MEDIA_PLAYBACK</code> — Background playback and media controls.</li>
-        <li><code>POST_NOTIFICATIONS</code> — Lockscreen controls and download updates.</li>
-        <li><code>RECORD_AUDIO</code> — Optional music-recognition capture; it is not started when no recognition provider is configured.</li>
-        <li><code>WAKE_LOCK</code> — Keeps playback active with the screen off.</li>
-        <li><code>WRITE_EXTERNAL_STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.</li>
-      </ul>
+      <strong>🛡️ Android Permissions</strong><br><br>
+      <code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code> — Streaming and metadata resolution.<br><br>
+      <code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code> — Background playback and media controls.<br><br>
+      <code>POST_<wbr>NOTIFICATIONS</code> — Lockscreen controls and download updates.<br><br>
+      <code>RECORD_<wbr>AUDIO</code> — Optional music-recognition capture; unused when no provider is configured.<br><br>
+      <code>WAKE_<wbr>LOCK</code> — Keeps playback active with the screen off.<br><br>
+      <code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.
     </td>
   </tr>
 </table>
@@ -335,8 +331,8 @@ We welcome community contributions, bug fixes, localization, and performance enh
 ### Acknowledgments
 
 * **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Architectural inspiration for fluid Compose UI navigation and dynamic OLED palettes.
-* **[LevyraExtractor](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor)** — Dedicated audio stream extraction and metadata parser maintained for high-fidelity playback.
-* **[PipePipe & NewPipe Communities](https://github.com/InfinityLoop1308/PipePipeExtractor)** — Foundational open-source stream extraction logic, parser protocols, and media routing.
+* **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is maintained as a Levyra-specific fork of this project, with additional stream-resolution, playback-reliability, diagnostics, and fallback work.
+* **[NewPipe & PipePipe Communities](https://github.com/TeamNewPipe/NewPipeExtractor)** — Foundational extractor architecture, service implementations, parser protocols, and downstream ecosystem work retained in LevyraExtractor.
 * **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
 
 ---
@@ -352,6 +348,6 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 <div align="center">
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
+  <br><br>
+  <img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&color=0:4A00E0,35:6C5CE7,70:7F52FF,100:00D2FF" width="480" alt="Levyra Acoustic Waves" />
 </div>
-
-<img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&color=0:4A00E0,35:6C5CE7,70:7F52FF,100:00D2FF" width="100%" alt="Levyra Acoustic Waves" />
