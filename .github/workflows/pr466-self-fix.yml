@@ -25,7 +25,9 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          from textwrap import dedent
+
+          def block(*lines: str) -> str:
+              return "\n".join(lines) + "\n"
 
           def replace_once(text: str, old: str, new: str, label: str) -> str:
               count = text.count(old)
@@ -36,293 +38,262 @@ jobs:
           vm_path = Path("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
           vm = vm_path.read_text(encoding="utf-8")
 
-          old_restore = '''    private fun restoreDetailPage(): Boolean {
-              val page = detailBackStack.removeLastOrNull() ?: return false
-              when (page) {
-                  is DetailPage.AlbumPage -> _state.update {
-                      it.copy(
-                          showAlbum = true,
-                          albumLoading = false,
-                          albumError = null,
-                          albumDetail = page.detail,
-                          showArtist = false,
-                          artistLoading = false,
-                          artistError = null,
-                          detailReturnTarget = DetailReturnTarget.None
-                      )
-                  }
-                  is DetailPage.ArtistPage -> {
-                      _state.update {
-                          it.copy(
-                              showArtist = true,
-                              artistLoading = false,
-                              artistError = null,
-                              artistProfile = page.profile,
-                              artistListStateKey = page.listStateKey,
-                              showAlbum = false,
-                              albumLoading = false,
-                              albumError = null,
-                              detailReturnTarget = DetailReturnTarget.None
-                          )
-                      }
-                      startArtistLore(page.profile)
-                  }
-              }
-              return true
-          }
-          '''
-          old_restore = dedent(old_restore).replace("\nprivate fun", "\n    private fun", 1) if old_restore.startswith("private fun") else old_restore
-          # YAML/Python indentation is explicit below; normalize to the source block shape.
-          old_restore = dedent(old_restore)
-          old_restore = "\n".join(("    " + line if line else line) for line in old_restore.split("\n"))
-          old_restore = old_restore.replace("        val page", "        val page", 1)
-          # Rebuild from source indentation to avoid formatter differences in the runner itself.
-          old_restore = '''    private fun restoreDetailPage(): Boolean {
-        val page = detailBackStack.removeLastOrNull() ?: return false
-        when (page) {
-            is DetailPage.AlbumPage -> _state.update {
-                it.copy(
-                    showAlbum = true,
-                    albumLoading = false,
-                    albumError = null,
-                    albumDetail = page.detail,
-                    showArtist = false,
-                    artistLoading = false,
-                    artistError = null,
-                    detailReturnTarget = DetailReturnTarget.None
-                )
-            }
-            is DetailPage.ArtistPage -> {
-                _state.update {
-                    it.copy(
-                        showArtist = true,
-                        artistLoading = false,
-                        artistError = null,
-                        artistProfile = page.profile,
-                        artistListStateKey = page.listStateKey,
-                        showAlbum = false,
-                        albumLoading = false,
-                        albumError = null,
-                        detailReturnTarget = DetailReturnTarget.None
-                    )
-                }
-                startArtistLore(page.profile)
-            }
-        }
-        return true
-    }
-'''
-          new_restore = '''    private fun restoreDetailPage(): Boolean {
-        val page = detailBackStack.removeLastOrNull() ?: return false
-        when (page) {
-            is DetailPage.AlbumPage -> {
-                _state.update {
-                    it.copy(
-                        showAlbum = true,
-                        albumLoading = false,
-                        albumError = null,
-                        albumDetail = page.detail,
-                        albumMotionArtwork = null,
-                        showArtist = false,
-                        artistLoading = false,
-                        artistError = null,
-                        artistMotionArtwork = null,
-                        detailReturnTarget = DetailReturnTarget.None
-                    )
-                }
-                refreshAlbumMotionArtwork(page.detail)
-            }
-            is DetailPage.ArtistPage -> {
-                _state.update {
-                    it.copy(
-                        showArtist = true,
-                        artistLoading = false,
-                        artistError = null,
-                        artistProfile = page.profile,
-                        artistMotionArtwork = null,
-                        artistListStateKey = page.listStateKey,
-                        showAlbum = false,
-                        albumLoading = false,
-                        albumError = null,
-                        albumMotionArtwork = null,
-                        detailReturnTarget = DetailReturnTarget.None
-                    )
-                }
-                refreshArtistMotionArtwork(page.profile)
-                startArtistLore(page.profile)
-            }
-        }
-        return true
-    }
-'''
+          old_restore = block(
+              "    private fun restoreDetailPage(): Boolean {",
+              "        val page = detailBackStack.removeLastOrNull() ?: return false",
+              "        when (page) {",
+              "            is DetailPage.AlbumPage -> _state.update {",
+              "                it.copy(",
+              "                    showAlbum = true,",
+              "                    albumLoading = false,",
+              "                    albumError = null,",
+              "                    albumDetail = page.detail,",
+              "                    showArtist = false,",
+              "                    artistLoading = false,",
+              "                    artistError = null,",
+              "                    detailReturnTarget = DetailReturnTarget.None",
+              "                )",
+              "            }",
+              "            is DetailPage.ArtistPage -> {",
+              "                _state.update {",
+              "                    it.copy(",
+              "                        showArtist = true,",
+              "                        artistLoading = false,",
+              "                        artistError = null,",
+              "                        artistProfile = page.profile,",
+              "                        artistListStateKey = page.listStateKey,",
+              "                        showAlbum = false,",
+              "                        albumLoading = false,",
+              "                        albumError = null,",
+              "                        detailReturnTarget = DetailReturnTarget.None",
+              "                    )",
+              "                }",
+              "                startArtistLore(page.profile)",
+              "            }",
+              "        }",
+              "        return true",
+              "    }",
+          )
+          new_restore = block(
+              "    private fun restoreDetailPage(): Boolean {",
+              "        val page = detailBackStack.removeLastOrNull() ?: return false",
+              "        when (page) {",
+              "            is DetailPage.AlbumPage -> {",
+              "                _state.update {",
+              "                    it.copy(",
+              "                        showAlbum = true,",
+              "                        albumLoading = false,",
+              "                        albumError = null,",
+              "                        albumDetail = page.detail,",
+              "                        albumMotionArtwork = null,",
+              "                        showArtist = false,",
+              "                        artistLoading = false,",
+              "                        artistError = null,",
+              "                        artistMotionArtwork = null,",
+              "                        detailReturnTarget = DetailReturnTarget.None",
+              "                    )",
+              "                }",
+              "                refreshAlbumMotionArtwork(page.detail)",
+              "            }",
+              "            is DetailPage.ArtistPage -> {",
+              "                _state.update {",
+              "                    it.copy(",
+              "                        showArtist = true,",
+              "                        artistLoading = false,",
+              "                        artistError = null,",
+              "                        artistProfile = page.profile,",
+              "                        artistMotionArtwork = null,",
+              "                        artistListStateKey = page.listStateKey,",
+              "                        showAlbum = false,",
+              "                        albumLoading = false,",
+              "                        albumError = null,",
+              "                        albumMotionArtwork = null,",
+              "                        detailReturnTarget = DetailReturnTarget.None",
+              "                    )",
+              "                }",
+              "                refreshArtistMotionArtwork(page.profile)",
+              "                startArtistLore(page.profile)",
+              "            }",
+              "        }",
+              "        return true",
+              "    }",
+          )
           vm = replace_once(vm, old_restore, new_restore, "restoreDetailPage")
 
-          old_save = '''            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                presetId = preset.id,
-                bandLevels = preset.levels,
-                preampDb = preset.preampDb,
-                customPresets = customPresets
-            )
-'''
-          new_save = '''            _state.value.audioSettings.copy(
-                equalizerEnabled = true,
-                presetId = preset.id,
-                bandLevels = preset.levels,
-                bassBoost = preset.bassBoost,
-                virtualizer = preset.virtualizer,
-                preampDb = preset.preampDb,
-                customPresets = customPresets
-            )
-'''
+          old_save = block(
+              "            _state.value.audioSettings.copy(",
+              "                equalizerEnabled = true,",
+              "                presetId = preset.id,",
+              "                bandLevels = preset.levels,",
+              "                preampDb = preset.preampDb,",
+              "                customPresets = customPresets",
+              "            )",
+          )
+          new_save = block(
+              "            _state.value.audioSettings.copy(",
+              "                equalizerEnabled = true,",
+              "                presetId = preset.id,",
+              "                bandLevels = preset.levels,",
+              "                bassBoost = preset.bassBoost,",
+              "                virtualizer = preset.virtualizer,",
+              "                preampDb = preset.preampDb,",
+              "                customPresets = customPresets",
+              "            )",
+          )
           vm = replace_once(vm, old_save, new_save, "saveAutoEqCustomPreset")
 
-          old_helper_anchor = '''private fun playbackArtistTokens(value: String): List<String> {
-    val ignored = setOf("feat", "featuring", "ft", "and", "the", "con", "with", "vs")
-    return playbackTokens(value).filterNot { it in ignored }
-}
+          old_helper = block(
+              "private fun playbackArtistTokens(value: String): List<String> {",
+              "    val ignored = setOf(\"feat\", \"featuring\", \"ft\", \"and\", \"the\", \"con\", \"with\", \"vs\")",
+              "    return playbackTokens(value).filterNot { it in ignored }",
+              "}",
+              "",
+              "class LevyraViewModel(application: Application) : AndroidViewModel(application) {",
+          )
+          new_helper = block(
+              "private fun playbackArtistTokens(value: String): List<String> {",
+              "    val ignored = setOf(\"feat\", \"featuring\", \"ft\", \"and\", \"the\", \"con\", \"with\", \"vs\")",
+              "    return playbackTokens(value).filterNot { it in ignored }",
+              "}",
+              "",
+              "internal fun selectArtistMotionSeed(",
+              "    profileName: String,",
+              "    tracks: List<Track>,",
+              "    isLocal: (Track) -> Boolean",
+              "): Track? = tracks.firstOrNull { candidate ->",
+              "    !isLocal(candidate) &&",
+              "        primaryMotionArtistMatches(",
+              "            MotionTrackIdentity.from(candidate).artists,",
+              "            listOf(profileName)",
+              "        )",
+              "}",
+              "",
+              "class LevyraViewModel(application: Application) : AndroidViewModel(application) {",
+          )
+          vm = replace_once(vm, old_helper, new_helper, "artist motion seed helper")
 
-class LevyraViewModel(application: Application) : AndroidViewModel(application) {
-'''
-          new_helper_anchor = '''private fun playbackArtistTokens(value: String): List<String> {
-    val ignored = setOf("feat", "featuring", "ft", "and", "the", "con", "with", "vs")
-    return playbackTokens(value).filterNot { it in ignored }
-}
-
-internal fun selectArtistMotionSeed(
-    profileName: String,
-    tracks: List<Track>,
-    isLocal: (Track) -> Boolean
-): Track? = tracks.firstOrNull { candidate ->
-    !isLocal(candidate) &&
-        primaryMotionArtistMatches(
-            MotionTrackIdentity.from(candidate).artists,
-            listOf(profileName)
-        )
-}
-
-class LevyraViewModel(application: Application) : AndroidViewModel(application) {
-'''
-          vm = replace_once(vm, old_helper_anchor, new_helper_anchor, "artist motion seed helper")
-
-          old_artist_seed = '''        val seed = profile.topSongs.firstOrNull { !isLocalPlaybackTrack(it) }
-        if (seed == null) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
-        val identity = MotionTrackIdentity.from(seed)
-        if (!primaryMotionArtistMatches(identity.artists, listOf(profile.name))) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
-'''
-          new_artist_seed = '''        val seed = selectArtistMotionSeed(
-            profileName = profile.name,
-            tracks = profile.topSongs,
-            isLocal = ::isLocalPlaybackTrack
-        )
-        if (seed == null) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
-'''
-          vm = replace_once(vm, old_artist_seed, new_artist_seed, "refreshArtistMotionArtwork seed selection")
+          old_seed = block(
+              "        val seed = profile.topSongs.firstOrNull { !isLocalPlaybackTrack(it) }",
+              "        if (seed == null) {",
+              "            _state.update { it.copy(artistMotionArtwork = null) }",
+              "            return",
+              "        }",
+              "        val identity = MotionTrackIdentity.from(seed)",
+              "        if (!primaryMotionArtistMatches(identity.artists, listOf(profile.name))) {",
+              "            _state.update { it.copy(artistMotionArtwork = null) }",
+              "            return",
+              "        }",
+          )
+          new_seed = block(
+              "        val seed = selectArtistMotionSeed(",
+              "            profileName = profile.name,",
+              "            tracks = profile.topSongs,",
+              "            isLocal = ::isLocalPlaybackTrack",
+              "        )",
+              "        if (seed == null) {",
+              "            _state.update { it.copy(artistMotionArtwork = null) }",
+              "            return",
+              "        }",
+          )
+          vm = replace_once(vm, old_seed, new_seed, "refreshArtistMotionArtwork seed selection")
           vm_path.write_text(vm, encoding="utf-8")
 
           ui_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/AudioSettingsPanel.kt")
           ui = ui_path.read_text(encoding="utf-8")
-          old_ui_save = '''            onSavePreset = { name, profile ->
-                // Saved AutoEQ presets declare neutral bass/spatial values. Apply those values
-                // before saving so the audible state matches the preset from the first frame.
-                onBassBoost(0)
-                onVirtualizer(0)
-                onSaveAutoEqPreset(name, profile)
-                showAutoEqImport = false
-            }
-'''
-          new_ui_save = '''            onSavePreset = { name, profile ->
-                onSaveAutoEqPreset(name, profile)
-                showAutoEqImport = false
-            }
-'''
+          old_ui_save = block(
+              "            onSavePreset = { name, profile ->",
+              "                // Saved AutoEQ presets declare neutral bass/spatial values. Apply those values",
+              "                // before saving so the audible state matches the preset from the first frame.",
+              "                onBassBoost(0)",
+              "                onVirtualizer(0)",
+              "                onSaveAutoEqPreset(name, profile)",
+              "                showAutoEqImport = false",
+              "            }",
+          )
+          new_ui_save = block(
+              "            onSavePreset = { name, profile ->",
+              "                onSaveAutoEqPreset(name, profile)",
+              "                showAutoEqImport = false",
+              "            }",
+          )
           ui = replace_once(ui, old_ui_save, new_ui_save, "AutoEQ save callback")
           ui_path.write_text(ui, encoding="utf-8")
 
           test_path = Path("app/src/test/java/com/luc4n3x/levyra/viewmodel/PageMotionArtworkPolicyTest.kt")
           test_path.parent.mkdir(parents=True, exist_ok=True)
-          test_path.write_text(dedent('''\
-              package com.luc4n3x.levyra.viewmodel
-
-              import com.luc4n3x.levyra.domain.Track
-              import org.junit.Assert.assertEquals
-              import org.junit.Assert.assertNull
-              import org.junit.Test
-
-              class PageMotionArtworkPolicyTest {
-
-                  @Test
-                  fun `artist motion seed skips wrong primary artist and keeps searching`() {
-                      val wrongPrimary = track(id = "wrong", artist = "Guest feat. Target")
-                      val matchingLater = track(id = "matching", artist = "Target feat. Guest")
-
-                      val selected = selectArtistMotionSeed(
-                          profileName = "Target",
-                          tracks = listOf(wrongPrimary, matchingLater),
-                          isLocal = { false }
-                      )
-
-                      assertEquals("matching", selected?.id)
-                  }
-
-                  @Test
-                  fun `artist motion seed skips local matching track`() {
-                      val local = track(id = "local", artist = "Target")
-                      val remote = track(id = "remote", artist = "Target")
-
-                      val selected = selectArtistMotionSeed(
-                          profileName = "Target",
-                          tracks = listOf(local, remote),
-                          isLocal = { it.id == "local" }
-                      )
-
-                      assertEquals("remote", selected?.id)
-                  }
-
-                  @Test
-                  fun `artist motion seed returns null when no primary artist matches`() {
-                      val selected = selectArtistMotionSeed(
-                          profileName = "Target",
-                          tracks = listOf(
-                              track(id = "a", artist = "Guest feat. Target"),
-                              track(id = "b", artist = "Another Artist")
-                          ),
-                          isLocal = { false }
-                      )
-
-                      assertNull(selected)
-                  }
-
-                  private fun track(id: String, artist: String): Track = Track(
-                      id = id,
-                      title = "Song",
-                      artist = artist,
-                      album = "Album",
-                      durationMs = 180_000L,
-                      streamUrl = "",
-                      videoUrl = "https://www.youtube.com/watch?v=abcdefghijk",
-                      thumbnailUrl = "",
-                      largeThumbnailUrl = "",
-                      source = "YouTube Music",
-                      moodTags = emptySet(),
-                      energy = 50,
-                      vocal = 50,
-                      replayScore = 0,
-                      cacheScore = 0,
-                      accentStart = 0,
-                      accentEnd = 0
-                  )
-              }
-          '''), encoding="utf-8")
+          test_path.write_text(block(
+              "package com.luc4n3x.levyra.viewmodel",
+              "",
+              "import com.luc4n3x.levyra.domain.Track",
+              "import org.junit.Assert.assertEquals",
+              "import org.junit.Assert.assertNull",
+              "import org.junit.Test",
+              "",
+              "class PageMotionArtworkPolicyTest {",
+              "",
+              "    @Test",
+              "    fun `artist motion seed skips wrong primary artist and keeps searching`() {",
+              "        val wrongPrimary = track(id = \"wrong\", artist = \"Guest feat. Target\")",
+              "        val matchingLater = track(id = \"matching\", artist = \"Target feat. Guest\")",
+              "",
+              "        val selected = selectArtistMotionSeed(",
+              "            profileName = \"Target\",",
+              "            tracks = listOf(wrongPrimary, matchingLater),",
+              "            isLocal = { false }",
+              "        )",
+              "",
+              "        assertEquals(\"matching\", selected?.id)",
+              "    }",
+              "",
+              "    @Test",
+              "    fun `artist motion seed skips local matching track`() {",
+              "        val local = track(id = \"local\", artist = \"Target\")",
+              "        val remote = track(id = \"remote\", artist = \"Target\")",
+              "",
+              "        val selected = selectArtistMotionSeed(",
+              "            profileName = \"Target\",",
+              "            tracks = listOf(local, remote),",
+              "            isLocal = { it.id == \"local\" }",
+              "        )",
+              "",
+              "        assertEquals(\"remote\", selected?.id)",
+              "    }",
+              "",
+              "    @Test",
+              "    fun `artist motion seed returns null when no primary artist matches`() {",
+              "        val selected = selectArtistMotionSeed(",
+              "            profileName = \"Target\",",
+              "            tracks = listOf(",
+              "                track(id = \"a\", artist = \"Guest feat. Target\"),",
+              "                track(id = \"b\", artist = \"Another Artist\"),",
+              "            ),",
+              "            isLocal = { false }",
+              "        )",
+              "",
+              "        assertNull(selected)",
+              "    }",
+              "",
+              "    private fun track(id: String, artist: String): Track = Track(",
+              "        id = id,",
+              "        title = \"Song\",",
+              "        artist = artist,",
+              "        album = \"Album\",",
+              "        durationMs = 180_000L,",
+              "        streamUrl = \"\",",
+              "        videoUrl = \"https://www.youtube.com/watch?v=abcdefghijk\",",
+              "        thumbnailUrl = \"\",",
+              "        largeThumbnailUrl = \"\",",
+              "        source = \"YouTube Music\",",
+              "        moodTags = emptySet(),",
+              "        energy = 50,",
+              "        vocal = 50,",
+              "        replayScore = 0,",
+              "        cacheScore = 0,",
+              "        accentStart = 0,",
+              "        accentEnd = 0,",
+              "    )",
+              "}",
+          ), encoding="utf-8")
           PY
 
       - name: Validate targeted changes
