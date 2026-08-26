@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Release-radar</string>
     <string name="radar_channel_description">Nieuwe releases van artiesten die je volgt</string>
     <string name="radar_new_release_title">Nieuwe release van %1$s</string>
+    <string name="tile_recognize_music">Muziek herkennen</string>
+    <string name="shortcut_search">Zoeken</string>
+    <string name="shortcut_library">Bibliotheek</string>
+    <string name="shortcut_recognition">Muziek herkennen</string>
 </resources>

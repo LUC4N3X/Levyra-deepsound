@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Радар релізів</string>
     <string name="radar_channel_description">Нові релізи виконавців, за якими ви стежите</string>
     <string name="radar_new_release_title">Новий реліз від %1$s</string>
+    <string name="tile_recognize_music">Розпізнати музику</string>
+    <string name="shortcut_search">Пошук</string>
+    <string name="shortcut_library">Бібліотека</string>
+    <string name="shortcut_recognition">Розпізнати музику</string>
 </resources>

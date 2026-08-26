@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Радар релизов</string>
     <string name="radar_channel_description">Новые релизы исполнителей, на которых вы подписаны</string>
     <string name="radar_new_release_title">Новый релиз от %1$s</string>
+    <string name="tile_recognize_music">Распознать музыку</string>
+    <string name="shortcut_search">Поиск</string>
+    <string name="shortcut_library">Библиотека</string>
+    <string name="shortcut_recognition">Распознать музыку</string>
 </resources>

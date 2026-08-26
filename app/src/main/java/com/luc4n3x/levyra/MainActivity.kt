@@ -51,6 +51,7 @@ import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
+import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -115,6 +116,10 @@ class MainActivity : ComponentActivity() {
         resumePendingUpdateInstall()
     }
 
+    private val recognitionPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyOrientationPolicy()
@@ -130,6 +135,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = startPalette.isLight
         }
         LevyraLaunchActions.consumeFrom(intent)
+        handleRecognitionLaunchRequest()
         if (Build.VERSION.SDK_INT >= 28) {
             val params = window.attributes
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -244,6 +250,26 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         LevyraLaunchActions.consumeFrom(intent)
+        handleRecognitionLaunchRequest()
+    }
+
+    private fun handleRecognitionLaunchRequest() {
+        if (LevyraLaunchActions.pendingShortcut.value != LevyraLaunchActions.SHORTCUT_RECOGNITION) return
+        val permissionRequest = intent.getBooleanExtra(
+            LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST,
+            false
+        )
+        intent.removeExtra(LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST)
+
+        // Launcher/deep-link input may navigate, but it never authorizes microphone capture.
+        LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
+        if (!LevyraRecognitionCenter.isAvailable || !permissionRequest) return
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+        ) {
+            recognitionPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     override fun startActivity(intent: Intent) {

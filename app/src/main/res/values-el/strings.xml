@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Ραντάρ κυκλοφοριών</string>
     <string name="radar_channel_description">Νέες κυκλοφορίες από καλλιτέχνες που ακολουθείτε</string>
     <string name="radar_new_release_title">Νέα κυκλοφορία από %1$s</string>
+    <string name="tile_recognize_music">Αναγνώριση μουσικής</string>
+    <string name="shortcut_search">Αναζήτηση</string>
+    <string name="shortcut_library">Βιβλιοθήκη</string>
+    <string name="shortcut_recognition">Αναγνώριση μουσικής</string>
 </resources>

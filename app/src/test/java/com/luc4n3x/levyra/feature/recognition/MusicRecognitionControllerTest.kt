@@ -62,6 +62,25 @@ class MusicRecognitionControllerTest {
     }
 
     @Test
+    fun unavailableProviderCaptureMapsToUnavailable() = runBlocking {
+        val captureCalls = AtomicInteger(0)
+        val capture = AudioCapture {
+            captureCalls.incrementAndGet()
+            throw RecognitionProviderUnavailableException()
+        }
+        val controller = MusicRecognitionController(
+            audioCapture = capture,
+            dispatcher = Dispatchers.Default
+        )
+
+        controller.start()
+        val finalState = awaitTerminalState(controller)
+
+        assertEquals(RecognitionState.Error(RecognitionErrorKind.Unavailable), finalState)
+        assertEquals(1, captureCalls.get())
+    }
+
+    @Test
     fun permissionDeniedDuringCaptureMapsToPermissionDeniedError() = runBlocking {
         val capture = AudioCapture { throw MicrophonePermissionDeniedException() }
         val controller = MusicRecognitionController(
