@@ -6,12 +6,21 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
 import shutil
+import tempfile
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_NAME = ".levyra-runtime-manifest.json"
+MANIFEST_SCHEMA_VERSION = 1
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+class ProjectionError(RuntimeError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -24,6 +33,8 @@ class Mapping:
 class RuntimeSpec:
     target: Path
     mappings: tuple[Mapping, ...]
+    owned_files: tuple[Path, ...]
+    owned_directories: tuple[Path, ...]
 
 
 RUNTIMES = {
@@ -34,10 +45,10 @@ RUNTIMES = {
             Mapping(ROOT / ".agents" / "claude" / "settings.json", Path("settings.json")),
             Mapping(ROOT / ".agents" / "claude" / "agents", Path("agents")),
             Mapping(ROOT / ".agents" / "claude" / "rules", Path("rules")),
-            # Claude Code does not discover .agents/skills directly. Project skills are
-            # projected from the one canonical shared skill tree into .claude/skills.
             Mapping(ROOT / ".agents" / "skills", Path("skills")),
         ),
+        owned_files=(Path("CLAUDE.md"), Path("settings.json")),
+        owned_directories=(Path("agents"), Path("rules"), Path("skills")),
     ),
     "codex": RuntimeSpec(
         target=ROOT / ".codex",
@@ -45,81 +56,17 @@ RUNTIMES = {
             Mapping(ROOT / ".agents" / "codex" / "config.toml", Path("config.toml")),
             Mapping(ROOT / ".agents" / "codex" / "hooks.json", Path("hooks.json")),
         ),
+        owned_files=(Path("config.toml"), Path("hooks.json")),
+        owned_directories=(),
     ),
 }
 
 
 def _relative(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
-
-
-def _source_files(mapping: Mapping) -> list[tuple[Path, Path]]:
-    source = mapping.source
-    if not source.exists():
-        raise SystemExit(f"missing canonical runtime source: {_relative(source)}")
-
-    if source.is_file():
-        return [(source, mapping.target_relative)]
-
-    if not source.is_dir():
-        raise SystemExit(f"unsupported canonical runtime source: {_relative(source)}")
-
-    files: list[tuple[Path, Path]] = []
-    for child in sorted(source.rglob("*")):
-        if child.is_file():
-            files.append((child, mapping.target_relative / child.relative_to(source)))
-    return files
-
-
-def _manifest_path(spec: RuntimeSpec) -> Path:
-    return spec.target / MANIFEST_NAME
-
-
-def _load_previous_manifest(spec: RuntimeSpec) -> set[str]:
-    path = _manifest_path(spec)
-    if not path.is_file():
-        return set()
     try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
-        return set()
-    paths = document.get("managed_files") if isinstance(document, dict) else None
-    if not isinstance(paths, list):
-        return set()
-    return {str(item) for item in paths if isinstance(item, str) and item}
-
-
-def _remove_stale_managed_files(spec: RuntimeSpec, stale: set[str]) -> None:
-    for relative in sorted(stale, key=lambda value: (value.count("/"), value), reverse=True):
-        target = spec.target / Path(relative)
-        if target.is_file() or target.is_symlink():
-            target.unlink()
-
-    # Only remove now-empty directories. Unknown local files are never deleted.
-    for directory in sorted(
-        (path for path in spec.target.rglob("*") if path.is_dir()),
-        key=lambda path: len(path.parts),
-        reverse=True,
-    ):
-        try:
-            directory.rmdir()
-        except OSError:
-            pass
-
-
-def _prepare_target_file(target: Path) -> None:
-    parent = target.parent
-    chain: list[Path] = []
-    while parent != parent.parent and parent != ROOT:
-        chain.append(parent)
-        parent = parent.parent
-    for directory in reversed(chain):
-        if directory.exists() and not directory.is_dir():
-            directory.unlink()
-        directory.mkdir(exist_ok=True)
-
-    if target.exists() and target.is_dir():
-        shutil.rmtree(target)
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def _sha256(path: Path) -> str:
@@ -130,32 +77,284 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def sync_runtime(name: str, *, quiet: bool) -> None:
-    spec = RUNTIMES[name]
-    spec.target.mkdir(parents=True, exist_ok=True)
+def _parse_managed_relative(value: str) -> Path:
+    if not value or "\\" in value:
+        raise ProjectionError(f"unsafe runtime manifest path: {value!r}")
+    pure = PurePosixPath(value)
+    if pure.is_absolute() or pure.as_posix() != value:
+        raise ProjectionError(f"unsafe runtime manifest path: {value!r}")
+    if any(part in ("", ".", "..") for part in pure.parts):
+        raise ProjectionError(f"unsafe runtime manifest path: {value!r}")
+    return Path(*pure.parts)
 
+
+def _is_owned_relative(spec: RuntimeSpec, relative: Path) -> bool:
+    if relative in spec.owned_files:
+        return True
+    for directory in spec.owned_directories:
+        try:
+            nested = relative.relative_to(directory)
+        except ValueError:
+            continue
+        if nested.parts:
+            return True
+    return False
+
+
+def _assert_owned_relative(spec: RuntimeSpec, relative: Path) -> None:
+    if not _is_owned_relative(spec, relative):
+        raise ProjectionError(
+            f"runtime manifest path is outside managed namespaces: {relative.as_posix()}"
+        )
+
+
+def _assert_runtime_root(spec: RuntimeSpec, *, create: bool) -> None:
+    target = spec.target
+    if target.is_symlink():
+        raise ProjectionError(f"native runtime root must not be a symlink: {_relative(target)}")
+    if target.exists():
+        if not target.is_dir():
+            raise ProjectionError(f"native runtime root is not a directory: {_relative(target)}")
+        return
+    if create:
+        target.mkdir(parents=True, exist_ok=False)
+
+
+def _assert_safe_parent_chain(
+    spec: RuntimeSpec, relative: Path, *, create: bool
+) -> None:
+    _assert_owned_relative(spec, relative)
+    current = spec.target
+    for part in relative.parts[:-1]:
+        current = current / part
+        if current.is_symlink():
+            raise ProjectionError(
+                f"runtime projection parent must not be a symlink: {_relative(current)}"
+            )
+        if current.exists():
+            if not current.is_dir():
+                raise ProjectionError(
+                    f"runtime projection parent is not a directory: {_relative(current)}"
+                )
+        elif create:
+            current.mkdir()
+
+
+def _assert_regular_target(spec: RuntimeSpec, relative: Path) -> Path:
+    _assert_safe_parent_chain(spec, relative, create=False)
+    target = spec.target / relative
+    if target.is_symlink():
+        raise ProjectionError(
+            f"runtime projection target must not be a symlink: {_relative(target)}"
+        )
+    if target.exists() and not target.is_file():
+        raise ProjectionError(
+            f"runtime projection target conflicts with local non-file content: {_relative(target)}"
+        )
+    return target
+
+
+def _source_files(mapping: Mapping) -> list[tuple[Path, Path]]:
+    source = mapping.source
+    if source.is_symlink():
+        raise ProjectionError(f"canonical runtime source must not be a symlink: {_relative(source)}")
+    if not source.exists():
+        raise ProjectionError(f"missing canonical runtime source: {_relative(source)}")
+
+    if source.is_file():
+        return [(source, mapping.target_relative)]
+
+    if not source.is_dir():
+        raise ProjectionError(f"unsupported canonical runtime source: {_relative(source)}")
+
+    files: list[tuple[Path, Path]] = []
+    for child in sorted(source.rglob("*")):
+        if child.is_symlink():
+            raise ProjectionError(
+                f"canonical runtime source must not contain symlinks: {_relative(child)}"
+            )
+        if child.is_file():
+            files.append((child, mapping.target_relative / child.relative_to(source)))
+    return files
+
+
+def _manifest_path(spec: RuntimeSpec) -> Path:
+    return spec.target / MANIFEST_NAME
+
+
+def _load_previous_manifest(name: str, spec: RuntimeSpec) -> dict[str, str]:
+    path = _manifest_path(spec)
+    if path.is_symlink():
+        raise ProjectionError(f"runtime manifest must not be a symlink: {_relative(path)}")
+    if not path.exists():
+        return {}
+    if not path.is_file():
+        raise ProjectionError(f"runtime manifest is not a regular file: {_relative(path)}")
+
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ProjectionError(f"runtime manifest is invalid: {_relative(path)}: {exc}") from exc
+
+    if not isinstance(document, dict):
+        raise ProjectionError(f"runtime manifest must contain a JSON object: {_relative(path)}")
+    if document.get("schema_version") != MANIFEST_SCHEMA_VERSION:
+        raise ProjectionError(f"runtime manifest has an unsupported schema: {_relative(path)}")
+    if document.get("runtime") != name or document.get("source") != ".agents":
+        raise ProjectionError(f"runtime manifest identity does not match {name}: {_relative(path)}")
+
+    managed = document.get("managed_files")
+    if not isinstance(managed, dict):
+        raise ProjectionError(f"runtime manifest managed_files must be an object: {_relative(path)}")
+
+    parsed: dict[str, str] = {}
+    for raw_path, digest in managed.items():
+        if not isinstance(raw_path, str) or not isinstance(digest, str):
+            raise ProjectionError(f"runtime manifest contains an invalid managed entry: {_relative(path)}")
+        relative = _parse_managed_relative(raw_path)
+        _assert_owned_relative(spec, relative)
+        if SHA256_RE.fullmatch(digest) is None:
+            raise ProjectionError(
+                f"runtime manifest contains an invalid SHA-256 for {raw_path}: {_relative(path)}"
+            )
+        parsed[relative.as_posix()] = digest
+    return parsed
+
+
+def _collect_sources(spec: RuntimeSpec) -> list[tuple[Path, Path]]:
     sources: list[tuple[Path, Path]] = []
+    seen: set[str] = set()
     for mapping in spec.mappings:
-        sources.extend(_source_files(mapping))
+        for source, relative in _source_files(mapping):
+            _assert_owned_relative(spec, relative)
+            key = relative.as_posix()
+            if key in seen:
+                raise ProjectionError(f"duplicate runtime projection target: {key}")
+            seen.add(key)
+            sources.append((source, relative))
+    return sources
 
-    managed = {relative.as_posix() for _, relative in sources}
-    previous = _load_previous_manifest(spec)
-    _remove_stale_managed_files(spec, previous - managed)
 
-    for source, relative in sources:
-        target = spec.target / relative
-        _prepare_target_file(target)
-        shutil.copy2(source, target)
+def _preflight_current_targets(
+    spec: RuntimeSpec, sources: list[tuple[Path, Path]]
+) -> None:
+    for _, relative in sources:
+        _assert_regular_target(spec, relative)
 
-    manifest = {
+
+def _stale_removal_plan(
+    spec: RuntimeSpec, previous: dict[str, str], current: set[str]
+) -> list[Path]:
+    removals: list[Path] = []
+    for raw_relative in sorted(set(previous) - current):
+        relative = _parse_managed_relative(raw_relative)
+        _assert_owned_relative(spec, relative)
+        target = _assert_regular_target(spec, relative)
+        if not target.exists():
+            continue
+        if _sha256(target) != previous[raw_relative]:
+            raise ProjectionError(
+                f"stale generated file was modified locally; refusing to delete it: {_relative(target)}"
+            )
+        removals.append(target)
+    return removals
+
+
+def _remove_empty_managed_directories(spec: RuntimeSpec) -> None:
+    for directory_root in spec.owned_directories:
+        root = spec.target / directory_root
+        if root.is_symlink() or not root.is_dir():
+            continue
+        directories = [path for path in root.rglob("*") if path.is_dir() and not path.is_symlink()]
+        for directory in sorted(directories, key=lambda path: len(path.parts), reverse=True):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        try:
+            root.rmdir()
+        except OSError:
+            pass
+
+
+def _copy_atomic(source: Path, target: Path) -> None:
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+        shutil.copy2(source, temporary_path)
+        os.replace(temporary_path, target)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _write_manifest(name: str, spec: RuntimeSpec, managed: dict[str, str]) -> None:
+    path = _manifest_path(spec)
+    if path.is_symlink():
+        raise ProjectionError(f"runtime manifest must not be a symlink: {_relative(path)}")
+    if path.exists() and not path.is_file():
+        raise ProjectionError(f"runtime manifest conflicts with local content: {_relative(path)}")
+
+    document = {
+        "schema_version": MANIFEST_SCHEMA_VERSION,
         "runtime": name,
         "source": ".agents",
-        "managed_files": sorted(managed),
+        "managed_files": dict(sorted(managed.items())),
     }
-    _manifest_path(spec).write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=spec.target,
+            prefix=f".{MANIFEST_NAME}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            json.dump(document, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        os.replace(temporary_path, path)
+        temporary_path = None
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def sync_runtime(name: str, *, quiet: bool) -> None:
+    spec = RUNTIMES[name]
+    _assert_runtime_root(spec, create=True)
+    previous = _load_previous_manifest(name, spec)
+    sources = _collect_sources(spec)
+    _preflight_current_targets(spec, sources)
+
+    managed = {relative.as_posix(): _sha256(source) for source, relative in sources}
+    removals = _stale_removal_plan(spec, previous, set(managed))
+
+    for target in removals:
+        target.unlink()
+    _remove_empty_managed_directories(spec)
+
+    for source, relative in sources:
+        _assert_safe_parent_chain(spec, relative, create=True)
+        target = _assert_regular_target(spec, relative)
+        _copy_atomic(source, target)
+
+    _write_manifest(name, spec, managed)
 
     if not quiet:
         print(f"{name}: refreshed {_relative(spec.target)} from canonical .agents sources")
@@ -163,26 +362,26 @@ def sync_runtime(name: str, *, quiet: bool) -> None:
 
 def check_runtime(name: str) -> list[str]:
     spec = RUNTIMES[name]
-    errors: list[str] = []
-    expected: dict[str, Path] = {}
-    for mapping in spec.mappings:
-        for source, relative in _source_files(mapping):
-            expected[relative.as_posix()] = source
+    try:
+        _assert_runtime_root(spec, create=False)
+        if not spec.target.is_dir():
+            return [f"{name}: native runtime projection is missing: {_relative(spec.target)}"]
 
-    if not spec.target.is_dir():
-        return [f"{name}: native runtime projection is missing: {_relative(spec.target)}"]
+        sources = _collect_sources(spec)
+        expected = {relative.as_posix(): _sha256(source) for source, relative in sources}
+        for source, relative in sources:
+            target = _assert_regular_target(spec, relative)
+            if not target.is_file():
+                return [f"{name}: missing projected file {_relative(target)}"]
+            if _sha256(source) != _sha256(target):
+                return [f"{name}: stale projected file {_relative(target)}"]
 
-    for relative, source in expected.items():
-        target = spec.target / relative
-        if not target.is_file():
-            errors.append(f"{name}: missing projected file {target.relative_to(ROOT).as_posix()}")
-        elif _sha256(source) != _sha256(target):
-            errors.append(f"{name}: stale projected file {target.relative_to(ROOT).as_posix()}")
-
-    manifest = _load_previous_manifest(spec)
-    if manifest != set(expected):
-        errors.append(f"{name}: runtime projection manifest is stale")
-    return errors
+        manifest = _load_previous_manifest(name, spec)
+        if manifest != expected:
+            return [f"{name}: runtime projection manifest is stale"]
+        return []
+    except ProjectionError as exc:
+        return [f"{name}: {exc}"]
 
 
 def main() -> int:
@@ -211,8 +410,12 @@ def main() -> int:
             print("runtime projections match canonical .agents sources")
         return 0
 
-    for name in names:
-        sync_runtime(name, quiet=args.quiet)
+    try:
+        for name in names:
+            sync_runtime(name, quiet=args.quiet)
+    except ProjectionError as exc:
+        print(f"runtime projection refused: {exc}")
+        return 1
     return 0
 
 
