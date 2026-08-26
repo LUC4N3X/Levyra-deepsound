@@ -1,0 +1,67 @@
+name: PR 462 Player Canvas toggle
+
+on:
+  push:
+    branches:
+      - feat/sleep-timer-system-actions
+
+permissions:
+  contents: write
+
+jobs:
+  apply-player-canvas-toggle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/sleep-timer-system-actions
+          fetch-depth: 0
+
+      - name: Apply focused player Canvas control
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, got {count}")
+              return text.replace(old, new, 1)
+
+          screen_vm = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt')
+          text = screen_vm.read_text(encoding='utf-8')
+          old = '''    fun toggleAudioNormalization() = root.toggleAudioNormalization()\n    fun toggleFavorite(track: Track) = root.toggleFavorite(track)\n'''
+          new = '''    fun toggleAudioNormalization() = root.toggleAudioNormalization()\n    fun setMotionArtworkEnabled(value: Boolean) = root.setMotionArtworkEnabled(value)\n    fun toggleFavorite(track: Track) = root.toggleFavorite(track)\n'''
+          screen_vm.write_text(replace_once(text, old, new, 'PlayerViewModel Canvas action'), encoding='utf-8')
+
+          app = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = app.read_text(encoding='utf-8')
+          old = '''                if (state.isVideoMode) {\n                    PlayerGlassIconButton(\n                        icon = Icons.Rounded.PictureInPictureAlt,\n                        contentDescription = strings.pictureInPicture,\n                        size = headerButtonSize,\n                        iconSize = 19.dp,\n                        borderTop = primary.copy(alpha = 0.48f),\n                        borderBottom = primary.copy(alpha = 0.14f),\n                        onClick = { LevyraPipBridge.enter() }\n                    )\n                }\n'''
+          new = '''                if (!state.isVideoMode && track != null) {\n                    val canvasActive = state.motionArtworkEnabled && state.animationsEnabled\n                    PlayerGlassIconButton(\n                        icon = Icons.Rounded.AutoAwesome,\n                        contentDescription = strings.motionArtwork,\n                        size = headerButtonSize,\n                        iconSize = 19.dp,\n                        tint = if (canvasActive) primary else Color.White.copy(alpha = 0.54f),\n                        fill = if (canvasActive) {\n                            primary.copy(alpha = 0.13f)\n                        } else {\n                            LevyraPlayerDesign.GlassFill\n                        },\n                        borderTop = if (canvasActive) {\n                            primary.copy(alpha = 0.54f)\n                        } else {\n                            LevyraPlayerDesign.GlassBorderTop\n                        },\n                        borderBottom = if (canvasActive) {\n                            primary.copy(alpha = 0.18f)\n                        } else {\n                            LevyraPlayerDesign.GlassBorderBottom\n                        },\n                        enabled = state.animationsEnabled,\n                        modifier = Modifier.semantics {\n                            toggleableState = ToggleableState(canvasActive)\n                        },\n                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }\n                    )\n                }\n                if (state.isVideoMode) {\n                    PlayerGlassIconButton(\n                        icon = Icons.Rounded.PictureInPictureAlt,\n                        contentDescription = strings.pictureInPicture,\n                        size = headerButtonSize,\n                        iconSize = 19.dp,\n                        borderTop = primary.copy(alpha = 0.48f),\n                        borderBottom = primary.copy(alpha = 0.14f),\n                        onClick = { LevyraPipBridge.enter() }\n                    )\n                }\n'''
+          app.write_text(replace_once(text, old, new, 'Player header Canvas control'), encoding='utf-8')
+          PY
+
+      - name: Focused validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :app:compileDebugKotlin
+          git diff --check
+          grep -F 'fun setMotionArtworkEnabled(value: Boolean) = root.setMotionArtworkEnabled(value)' app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt
+          grep -F 'contentDescription = strings.motionArtwork' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+
+      - name: Commit Canvas control and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/pr462-player-canvas-toggle.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt .github/workflows/pr462-player-canvas-toggle.yml
+          git diff --cached --check
+          git commit -m 'feat(android): add player Canvas toggle'
+          git push origin HEAD:feat/sleep-timer-system-actions
