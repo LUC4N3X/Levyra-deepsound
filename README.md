@@ -257,72 +257,34 @@ levyraDesktopVersion=1.2.0
 ## ✦ Privacy Blueprint & Permissions
 
 <div align="center">
-  <strong>Privacy is part of the architecture, not a settings toggle.</strong><br>
-  <sub>No advertising identifiers · no user profiling · no background telemetry</sub>
-  <br><br>
-
-  <table width="92%" cellpadding="8" cellspacing="0">
-    <tr valign="middle">
-      <td width="33%" align="center">
-        <b>🛡️ ZERO TRACKERS</b><br>
-        <sub>No analytics or profiling</sub>
-      </td>
-      <td width="33%" align="center">
-        <b>💾 LOCAL DATA</b><br>
-        <sub>History and stats stay on device</sub>
-      </td>
-      <td width="34%" align="center">
-        <b>🌐 DIRECT CONNECTIONS</b><br>
-        <sub>No Levyra tracking proxy</sub>
-      </td>
-    </tr>
-  </table>
+  <b>Zero tracking by design.</b><br>
+  <sub>No ads · no analytics · listening data stays on device</sub>
 </div>
 
 <br>
 
-<table align="center" width="100%" cellpadding="10" cellspacing="0">
+<table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
       <h3>🌐 <b>Network Transparency</b></h3>
-      <sub>Every external connection has a clear playback or metadata purpose.</sub>
-      <br><br>
-      <b>🎵 Streams</b><br>
-      <small>Direct YouTube / YT Music CDN connections without proxy tracking.</small>
-      <hr width="88%">
-      <b>📝 Lyrics</b><br>
-      <small>LRCLIB and YouTube Music queries using song metadata.</small>
-      <hr width="88%">
-      <b>🖼️ Artwork & Metadata</b><br>
-      <small>Public catalog lookups across Deezer, Apple Music, and Tidal.</small>
-      <hr width="88%">
-      <b>✂️ SponsorBlock</b><br>
-      <small>Optional queries using truncated video-ID hash prefixes.</small>
-      <hr width="88%">
-      <b>🚀 Updates</b><br>
-      <small>GitHub release checks at startup; disabled in F-Droid builds.</small>
+      <ul>
+        <li><b>Streams:</b> Direct YouTube / YT Music CDN connections without proxy tracking.</li>
+        <li><b>Lyrics:</b> LRCLIB and YouTube Music queries using song metadata.</li>
+        <li><b>Artwork & Metadata:</b> Public catalog lookups across Deezer, Apple Music, and Tidal.</li>
+        <li><b>SponsorBlock:</b> Optional requests using truncated video-ID hash prefixes.</li>
+        <li><b>Updates:</b> GitHub release checks at startup; disabled in F-Droid builds.</li>
+      </ul>
     </td>
     <td width="50%">
       <h3>🛡️ <b>Android Permissions</b></h3>
-      <sub>Only permissions required for playback, notifications, recognition, and offline export.</sub>
-      <br><br>
-      <b><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code></b><br>
-      <small>Streaming and metadata resolution.</small>
-      <hr width="88%">
-      <b><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code></b><br>
-      <small>Background playback and media controls.</small>
-      <hr width="88%">
-      <b><code>POST_<wbr>NOTIFICATIONS</code></b><br>
-      <small>Lockscreen controls and download updates.</small>
-      <hr width="88%">
-      <b><code>RECORD_<wbr>AUDIO</code></b><br>
-      <small>Optional music recognition; unused without a configured provider.</small>
-      <hr width="88%">
-      <b><code>WAKE_<wbr>LOCK</code></b><br>
-      <small>Keeps playback active with the screen off.</small>
-      <hr width="88%">
-      <b><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code> · Android ≤ 9</b><br>
-      <small>Tagged M4A export to <code>Music/Levyra</code>.</small>
+      <ul>
+        <li><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code> — Streaming and metadata.</li>
+        <li><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code> — Background playback and media controls.</li>
+        <li><code>POST_<wbr>NOTIFICATIONS</code> — Lockscreen controls and download updates.</li>
+        <li><code>RECORD_<wbr>AUDIO</code> — Optional music recognition.</li>
+        <li><code>WAKE_<wbr>LOCK</code> — Keeps playback active with the screen off.</li>
+        <li><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.</li>
+      </ul>
     </td>
   </tr>
 </table>
