@@ -2326,6 +2326,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 equalizerEnabled = true,
                 presetId = LevyraAudioPresets.FLAT,
                 bandLevels = profile.bandLevels,
+                bassBoost = 0,
+                virtualizer = 0,
                 preampDb = profile.preampDb
             )
         )
