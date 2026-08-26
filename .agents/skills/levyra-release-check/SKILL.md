@@ -10,7 +10,8 @@ description: Automatically use for Levyra pre-merge/pre-release validation, Andr
 1. Read the root `AGENTS.md`, `app/AGENTS.md`, `desktop/AGENTS.md`, and `.github/AGENTS.md` as applicable.
 2. Read `.claude/skills/levyra-release-check/SKILL.md` and `.claude/rules/testing-release.md`.
 3. Read `docs/ai/RELEASE_NOTES_STYLE.md` whenever preparing, rewriting, reviewing, or publishing release notes.
-4. Inspect the complete diff, version files, build configuration, signing inputs, release workflows, artifact paths, and release notes.
+4. Load `.agents/skills/levyra-humanizer/SKILL.md` whenever authoring or rewriting release notes, Fastlane changelogs, release descriptions, or other product-facing release prose.
+5. Inspect the complete diff, version files, build configuration, signing inputs, release workflows, artifact paths, and release notes.
 
 ## Boundaries
 
@@ -27,11 +28,29 @@ Never update one platform's version merely because the other platform is releasi
 
 Treat release notes as a product-facing artifact, not a generated commit summary.
 
-Follow `docs/ai/RELEASE_NOTES_STYLE.md` as the canonical editorial contract:
+Follow `docs/ai/RELEASE_NOTES_STYLE.md` as the canonical Levyra editorial contract, then apply `levyra-humanizer` in embedded mode as the mandatory final prose pass.
+
+Authoring order:
+
+1. build the factual release story from the current repository, merged changes, version wiring, and direct validation evidence;
+2. write the release notes in Levyra's product voice, preserving every workflow-required heading and exact version field;
+3. run `levyra-humanizer` over the user-facing prose to remove AI-sounding patterns, filler, inflated claims, repetitive structure, stock wording, forced punchlines, unnecessary bold, and chatbot artifacts;
+4. compare the humanized result against the factual draft and restore any claim, caveat, version value, validation detail, Markdown target, or required heading that was accidentally changed or removed;
+5. read the complete final notes once as a user and once as a release reviewer before publication.
+
+The Humanizer pass may rewrite prose and paragraph structure, but it must not:
+
+- invent or strengthen facts, validation, compatibility, privacy, migration, performance, signing, or publication claims;
+- remove a real limitation, failed check, blocked check, unperformed test, or compatibility caveat;
+- alter `# Levyra <version>`, `## Highlights`, `## Validation`, `## Versioning`, `## Upgrade notes`, `## Final note`, version name/code lines, code blocks, Markdown link targets, hashes, artifact names, commands, or machine-required text;
+- turn technical evidence into marketing language;
+- erase intentional Levyra house style merely because a generic Humanizer pattern would normally avoid it. In particular, the `✦` section marker is an allowed Levyra editorial convention when used sparingly and consistently.
+
+Follow these editorial rules:
 
 - write natural, professional English that sounds human rather than AI-generated;
 - open with what the release changes for users, not commit counts, hashes, PR numbers, or file wiring;
-- group meaningful changes into reader-facing sections and prefer `## ✦ ...` headings for those sections;
+- group meaningful changes into reader-facing sections and prefer `## ✦ ...` headings for those sections when the release benefits from them;
 - explain both what changed and why it matters in ordinary use;
 - keep low-level architecture detail only when it explains reliability, compatibility, privacy, performance, or a deliberate design choice;
 - keep exact commit ranges, SHAs, test inventory, workflow responsibilities, and unperformed checks in `## Validation`;
@@ -39,13 +58,14 @@ Follow `docs/ai/RELEASE_NOTES_STYLE.md` as the canonical editorial contract:
 - keep Fastlane changelogs compact and user-facing instead of duplicating the full GitHub release body;
 - never invent validation, device evidence, compatibility, privacy, migration, or publication claims to make the release sound stronger.
 
-Before publication, read the complete release notes once as a user. Rewrite any section that still reads like `git log`, an internal engineering ticket, or a mechanical list of commits.
+Before publication, read the complete release notes once as a user. Rewrite any section that still reads like `git log`, an internal engineering ticket, a mechanical list of commits, or generic AI product copy.
 
 ## Validation checklist
 
 - inspect repository status/diff for unrelated edits, conflict markers, secrets, keystores, APKs, ZIPs, generated output, and private configuration;
 - verify version changes are intentional, monotonic, and limited to the requested platform;
-- verify release notes follow `docs/ai/RELEASE_NOTES_STYLE.md`, remain truthful, and match the current repository;
+- verify release notes follow `docs/ai/RELEASE_NOTES_STYLE.md` and `levyra-humanizer`, remain truthful, and match the current repository;
+- compare the pre-humanizer and post-humanizer factual claims when release prose was rewritten;
 - run focused tests first;
 - run the applicable Android or Desktop wrapper checks when the environment supports them;
 - verify signing and API inputs are supplied only through approved local or CI mechanisms;
