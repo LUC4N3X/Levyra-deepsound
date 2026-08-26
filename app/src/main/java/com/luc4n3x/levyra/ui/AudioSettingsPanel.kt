@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -26,7 +30,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.progressSemantics
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Equalizer
@@ -34,6 +40,9 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -42,8 +51,10 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,6 +68,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
@@ -69,6 +81,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -76,8 +91,11 @@ import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import com.luc4n3x.levyra.ui.theme.LevyraOrange
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -108,11 +126,14 @@ internal fun AudioSettingsPanel(
     onPitch: (Float) -> Unit,
     onGapless: (Boolean) -> Unit,
     onResetEqualizer: () -> Unit,
+    onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
+    onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
+    var showAutoEqImport by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -161,7 +182,10 @@ internal fun AudioSettingsPanel(
 
                 item { AudioSectionLabel(strings.audioSectionEqualizer) }
                 item {
-                    val customCurve = audioSettings.presetId == LevyraAudioPresets.FLAT &&
+                    val selectedCustomPreset = audioSettings.customPresets
+                        .firstOrNull { it.id == audioSettings.presetId }
+                    val customCurve = selectedCustomPreset == null &&
+                        audioSettings.presetId == LevyraAudioPresets.FLAT &&
                         audioSettings.bandLevels != LevyraAudioPresets.flatLevels
                     AudioCard {
                         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -173,10 +197,10 @@ internal fun AudioSettingsPanel(
                             )
                             AudioCardHeader(
                                 title = strings.preset,
-                                trailing = if (customCurve) {
-                                    strings.audioPresetCustom
-                                } else {
-                                    strings.localizedAudioPresetLabel(
+                                trailing = when {
+                                    selectedCustomPreset != null -> selectedCustomPreset.fallbackLabel
+                                    customCurve -> strings.audioPresetCustom
+                                    else -> strings.localizedAudioPresetLabel(
                                         audioSettings.presetId,
                                         LevyraAudioPresets.labelFor(audioSettings.presetId)
                                     )
@@ -186,10 +210,20 @@ internal fun AudioSettingsPanel(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(end = 4.dp)
                             ) {
+                                items(audioSettings.customPresets, key = { "custom:${it.id}" }) { preset ->
+                                    AudioPresetChip(
+                                        label = preset.fallbackLabel,
+                                        selected = audioSettings.presetId == preset.id,
+                                        enabled = equalizerEnabled,
+                                        onClick = { onPreset(preset.id) }
+                                    )
+                                }
                                 items(LevyraAudioPresets.presets, key = { it.id }) { preset ->
                                     AudioPresetChip(
                                         label = strings.localizedAudioPresetLabel(preset.id, preset.fallbackLabel),
-                                        selected = !customCurve && audioSettings.presetId == preset.id,
+                                        selected = selectedCustomPreset == null &&
+                                            !customCurve &&
+                                            audioSettings.presetId == preset.id,
                                         enabled = equalizerEnabled,
                                         onClick = { onPreset(preset.id) }
                                     )
@@ -200,6 +234,11 @@ internal fun AudioSettingsPanel(
                                 enabled = equalizerEnabled,
                                 bandsLabel = strings.audioBands,
                                 onBandLevel = onBandLevel
+                            )
+                            AudioTextAction(
+                                label = strings.autoEqImport,
+                                enabled = equalizerEnabled,
+                                onClick = { showAutoEqImport = true }
                             )
                             AudioTextAction(
                                 label = strings.audioResetEqualizer,
@@ -321,6 +360,275 @@ internal fun AudioSettingsPanel(
             }
         }
     }
+
+    if (showAutoEqImport) {
+        AutoEqImportDialog(
+            onDismiss = { showAutoEqImport = false },
+            onApply = { profile ->
+                onApplyAutoEq(profile)
+                showAutoEqImport = false
+            },
+            onSavePreset = { name, profile ->
+                onSaveAutoEqPreset(name, profile)
+                showAutoEqImport = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun AutoEqImportDialog(
+    onDismiss: () -> Unit,
+    onApply: (AutoEqImporter.ImportedProfile) -> Unit,
+    onSavePreset: (String, AutoEqImporter.ImportedProfile) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    var rawText by remember { mutableStateOf("") }
+    var presetName by remember { mutableStateOf("") }
+    var readError by remember { mutableStateOf<String?>(null) }
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        readError = null
+        pendingUri = uri
+    }
+
+    LaunchedEffect(pendingUri) {
+        val uri = pendingUri ?: return@LaunchedEffect
+        val outcome = withContext(Dispatchers.IO) { readBoundedAutoEqText(context, uri) }
+        pendingUri = null
+        when (outcome) {
+            is AutoEqFileRead.Success -> {
+                rawText = outcome.text
+                readError = null
+            }
+            AutoEqFileRead.TooLarge -> readError = strings.autoEqInputTooLarge
+            AutoEqFileRead.Unreadable -> readError = strings.autoEqInvalidProfile
+        }
+    }
+
+    val parsed = remember(rawText) {
+        if (rawText.isBlank()) null else AutoEqImporter.parse(rawText)
+    }
+    val profile = (parsed as? AutoEqImporter.ParseResult.Success)?.profile
+    LaunchedEffect(profile?.name) {
+        if (presetName.isBlank()) presetName = profile?.name.orEmpty()
+    }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            color = LevyraPanel,
+            shape = CardShape,
+            border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .heightIn(max = 620.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    strings.autoEqImport,
+                    color = LevyraText,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.4).sp
+                )
+                Text(
+                    strings.autoEqImportHint,
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                OutlinedTextField(
+                    value = rawText,
+                    onValueChange = {
+                        readError = null
+                        rawText = it.take(AutoEqImporter.MAX_INPUT_CHARS)
+                    },
+                    placeholder = { Text("GraphicEQ: 20 4.5; 25 4.4; ...", color = LevyraMuted, fontSize = 12.sp) },
+                    minLines = 3,
+                    maxLines = 6,
+                    textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = LevyraText,
+                        unfocusedTextColor = LevyraText,
+                        focusedBorderColor = LevyraCyan.copy(alpha = 0.7f),
+                        unfocusedBorderColor = LevyraAdaptiveHairline,
+                        cursorColor = LevyraCyan
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                AudioTextAction(
+                    label = strings.autoEqPickFile,
+                    enabled = true,
+                    onClick = { picker.launch(AutoEqDocumentMimeTypes) }
+                )
+
+                val errorMessage = readError ?: if (parsed is AutoEqImporter.ParseResult.Error) {
+                    if (parsed.error == AutoEqImporter.ParseError.TOO_LARGE) {
+                        strings.autoEqInputTooLarge
+                    } else {
+                        strings.autoEqInvalidProfile
+                    }
+                } else {
+                    null
+                }
+                if (errorMessage != null) {
+                    Text(errorMessage, color = LevyraOrange, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                if (profile != null) {
+                    AutoEqProfilePreview(profile = profile)
+                    OutlinedTextField(
+                        value = presetName,
+                        onValueChange = { presetName = it.take(48) },
+                        singleLine = true,
+                        label = { Text(strings.autoEqPresetName, color = LevyraMuted, fontSize = 12.sp) },
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = LevyraText,
+                            unfocusedTextColor = LevyraText,
+                            focusedBorderColor = LevyraCyan.copy(alpha = 0.7f),
+                            unfocusedBorderColor = LevyraAdaptiveHairline,
+                            cursorColor = LevyraCyan
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AutoEqDialogButton(
+                        label = strings.cancel,
+                        primary = false,
+                        enabled = true,
+                        modifier = Modifier.weight(1f),
+                        onClick = onDismiss
+                    )
+                    AutoEqDialogButton(
+                        label = strings.autoEqSavePreset,
+                        primary = false,
+                        enabled = profile != null && presetName.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                        onClick = { profile?.let { onSavePreset(presetName.trim(), it) } }
+                    )
+                    AutoEqDialogButton(
+                        label = strings.autoEqApply,
+                        primary = true,
+                        enabled = profile != null,
+                        modifier = Modifier.weight(1f),
+                        onClick = { profile?.let(onApply) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AutoEqProfilePreview(profile: AutoEqImporter.ImportedProfile) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = LevyraAdaptiveCard,
+        shape = CardShape,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AudioCardHeader(
+                title = profile.name ?: strings.audioPresetCustom,
+                trailing = "${strings.preamp} ${decibels(profile.preampDb)}"
+            )
+            LevyraAudioPresets.bandFrequencyLabels.forEachIndexed { index, label ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("$label Hz", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        decibels(profile.bandGainDb.getOrElse(index) { 0f }),
+                        color = LevyraText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            if (profile.clamped || profile.interpolated || profile.skippedPoints > 0) {
+                Text(
+                    strings.autoEqAdjustedNotice,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AutoEqDialogButton(
+    label: String,
+    primary: Boolean,
+    enabled: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (primary) LevyraCyan else LevyraAdaptiveChip,
+        shape = ChipShape,
+        border = if (primary) null else BorderStroke(1.dp, LevyraAdaptiveHairline),
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .alpha(if (enabled) 1f else DISABLED_ALPHA)
+            .clickable(enabled = enabled, onClick = onClick)
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
+            Text(
+                label,
+                color = if (primary) LevyraBlack else LevyraText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+private sealed interface AutoEqFileRead {
+    data class Success(val text: String) : AutoEqFileRead
+    data object TooLarge : AutoEqFileRead
+    data object Unreadable : AutoEqFileRead
+}
+
+private val AutoEqDocumentMimeTypes = arrayOf("text/plain", "application/octet-stream", "*/*")
+
+private fun readBoundedAutoEqText(context: Context, uri: Uri): AutoEqFileRead {
+    val limit = AutoEqImporter.MAX_INPUT_CHARS
+    return runCatching {
+        context.contentResolver.openInputStream(uri)?.use { stream ->
+            val reader = stream.reader(Charsets.UTF_8)
+            val buffer = CharArray(limit + 1)
+            var read = 0
+            while (read <= limit) {
+                val count = reader.read(buffer, read, buffer.size - read)
+                if (count <= 0) break
+                read += count
+            }
+            if (read > limit) AutoEqFileRead.TooLarge else AutoEqFileRead.Success(String(buffer, 0, read))
+        } ?: AutoEqFileRead.Unreadable
+    }.getOrElse { AutoEqFileRead.Unreadable }
 }
 
 @Composable

@@ -1665,6 +1665,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
                     onResetEqualizer = viewModel::resetEqualizer,
+                    onApplyAutoEq = viewModel::applyAutoEqImport,
+                    onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
                     onClose = viewModel::closeAudioQualityPanel
                 )
             }
@@ -2374,6 +2376,9 @@ private fun AlbumOverlay(
                             album = album,
                             cover = cover,
                             description = description,
+                            motionArtwork = state.albumMotionArtwork,
+                            animationsEnabled = state.animationsEnabled && state.motionArtworkEnabled,
+                            canvasQuality = state.interfaceSettings.canvasQuality,
                             trackCount = tracks.size,
                             trackLoadFailed = trackLoadFailed,
                             isPlaying = albumIsPlaying,
@@ -2511,6 +2516,9 @@ private fun AlbumHeroCard(
     album: AlbumHit,
     cover: String,
     description: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
     trackCount: Int,
     trackLoadFailed: Boolean,
     isPlaying: Boolean,
@@ -2539,21 +2547,32 @@ private fun AlbumHeroCard(
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(28.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (cover.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(LevyraArtworkCache.large(cover))
-                        .crossfade(180)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = album.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accentStart, accentEnd))), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Album, null, tint = LevyraText, modifier = Modifier.size(72.dp))
+            MotionArtworkLayer(
+                artwork = motionArtwork,
+                enabled = animationsEnabled,
+                isPlaying = false,
+                pageMode = true,
+                cornerRadius = 28.dp,
+                presentation = MotionArtworkPresentation.Card,
+                quality = canvasQuality,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (cover.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(LevyraArtworkCache.large(cover))
+                            .crossfade(180)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = album.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accentStart, accentEnd))), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Album, null, tint = LevyraText, modifier = Modifier.size(72.dp))
+                    }
                 }
             }
         }
@@ -3053,6 +3072,9 @@ private fun ArtistOverlay(
                                 isFollowed = isFollowed,
                                 accentStart = accentStart,
                                 accentEnd = accentEnd,
+                                motionArtwork = state.artistMotionArtwork,
+                                animationsEnabled = state.animationsEnabled && state.motionArtworkEnabled,
+                                canvasQuality = state.interfaceSettings.canvasQuality,
                                 onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
                                 onToggleFollow = onToggleFollow,
                                 onClose = onClose
@@ -3286,22 +3308,39 @@ private fun ArtistHeader(
     isFollowed: Boolean,
     accentStart: Color,
     accentEnd: Color,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
     onPlay: (() -> Unit)?,
     onToggleFollow: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val heroContext = LocalContext.current
     Box(modifier = Modifier.fillMaxWidth().height(472.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
         val heroArtwork = profile.thumbnailUrl.ifBlank { profile.bannerUrl }
-        if (heroArtwork.isNotBlank()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current).data(heroArtwork).crossfade(true).build(),
-                contentDescription = profile.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize()
-            )
-        } else {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.74f), modifier = Modifier.align(Alignment.Center).size(94.dp))
+        MotionArtworkLayer(
+            artwork = motionArtwork,
+            enabled = animationsEnabled,
+            isPlaying = false,
+            pageMode = true,
+            cornerRadius = 0.dp,
+            presentation = MotionArtworkPresentation.Immersive,
+            quality = canvasQuality,
+            modifier = Modifier.matchParentSize()
+        ) {
+            if (heroArtwork.isNotBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(heroContext).data(heroArtwork).crossfade(true).build(),
+                    contentDescription = profile.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.74f), modifier = Modifier.size(94.dp))
+                }
+            }
         }
         Box(
             modifier = Modifier

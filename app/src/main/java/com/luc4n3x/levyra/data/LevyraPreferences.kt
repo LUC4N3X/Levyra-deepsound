@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
+import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
@@ -107,6 +108,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_AUDIO_BASS_BOOST] = normalizedAudio.bassBoost
             mutable[KEY_AUDIO_VIRTUALIZER] = normalizedAudio.virtualizer
             mutable[KEY_AUDIO_PREAMP_DB] = normalizedAudio.preampDb
+            mutable[KEY_AUDIO_CUSTOM_PRESETS] = customPresetsToJson(normalizedAudio.customPresets)
             mutable[KEY_AUDIO_LIMITER] = normalizedAudio.limiterEnabled
             mutable[KEY_AUDIO_CROSSFADE] = normalizedAudio.crossfadeSeconds
             mutable[KEY_AUDIO_DJ_SOFT] = normalizedAudio.djSoftMode
@@ -306,6 +308,7 @@ class LevyraPreferences(context: Context) {
             it[KEY_AUDIO_BASS_BOOST] = normalized.bassBoost
             it[KEY_AUDIO_VIRTUALIZER] = normalized.virtualizer
             it[KEY_AUDIO_PREAMP_DB] = normalized.preampDb
+            it[KEY_AUDIO_CUSTOM_PRESETS] = customPresetsToJson(normalized.customPresets)
             it[KEY_AUDIO_LIMITER] = normalized.limiterEnabled
             it[KEY_AUDIO_CROSSFADE] = normalized.crossfadeSeconds
             it[KEY_AUDIO_DJ_SOFT] = normalized.djSoftMode
@@ -645,15 +648,18 @@ class LevyraPreferences(context: Context) {
     }
 
     private fun audioSettingsFrom(preferences: Preferences): LevyraAudioSettings {
-        val presetId = LevyraAudioPresets.normalizePreset(preferences[KEY_AUDIO_EQ_PRESET].orEmpty())
-        val fallbackLevels = LevyraAudioPresets.levelsFor(presetId)
+        val customPresets = customPresetsFromJson(preferences[KEY_AUDIO_CUSTOM_PRESETS].orEmpty())
+        val storedPresetId = preferences[KEY_AUDIO_EQ_PRESET].orEmpty()
+        val customPreset = customPresets.firstOrNull { it.id == storedPresetId }
+        val presetId = customPreset?.id ?: LevyraAudioPresets.normalizePreset(storedPresetId)
+        val fallbackLevels = customPreset?.levels ?: LevyraAudioPresets.levelsFor(presetId)
         val levels = parseBandLevels(preferences[KEY_AUDIO_EQ_BANDS].orEmpty()).takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
         return LevyraAudioSettings(
             equalizerEnabled = preferences[KEY_AUDIO_EQ_ENABLED] ?: false,
             presetId = presetId,
             bandLevels = levels,
-            bassBoost = preferences[KEY_AUDIO_BASS_BOOST] ?: LevyraAudioPresets.preset(presetId).bassBoost,
-            virtualizer = preferences[KEY_AUDIO_VIRTUALIZER] ?: LevyraAudioPresets.preset(presetId).virtualizer,
+            bassBoost = preferences[KEY_AUDIO_BASS_BOOST] ?: (customPreset?.bassBoost ?: LevyraAudioPresets.preset(presetId).bassBoost),
+            virtualizer = preferences[KEY_AUDIO_VIRTUALIZER] ?: (customPreset?.virtualizer ?: LevyraAudioPresets.preset(presetId).virtualizer),
             preampDb = preferences[KEY_AUDIO_PREAMP_DB] ?: 0f,
             limiterEnabled = preferences[KEY_AUDIO_LIMITER] ?: true,
             crossfadeSeconds = preferences[KEY_AUDIO_CROSSFADE] ?: 0,
@@ -661,7 +667,8 @@ class LevyraPreferences(context: Context) {
             replayGainEnabled = preferences[KEY_AUDIO_REPLAY_GAIN] ?: (preferences[KEY_AUDIO_NORMALIZATION] ?: false),
             playbackSpeed = preferences[KEY_AUDIO_SPEED] ?: 1f,
             pitch = preferences[KEY_AUDIO_PITCH] ?: 1f,
-            gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true
+            gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true,
+            customPresets = customPresets
         ).normalized()
     }
 
@@ -717,6 +724,7 @@ class LevyraPreferences(context: Context) {
         val KEY_AUDIO_BASS_BOOST = intPreferencesKey("audio_bass_boost")
         val KEY_AUDIO_VIRTUALIZER = intPreferencesKey("audio_virtualizer")
         val KEY_AUDIO_PREAMP_DB = floatPreferencesKey("audio_preamp_db")
+        val KEY_AUDIO_CUSTOM_PRESETS = stringPreferencesKey("audio_custom_presets")
         val KEY_AUDIO_LIMITER = booleanPreferencesKey("audio_limiter_enabled")
         val KEY_AUDIO_CROSSFADE = intPreferencesKey("audio_crossfade_seconds")
         val KEY_AUDIO_DJ_SOFT = booleanPreferencesKey("audio_dj_soft")
@@ -759,3 +767,41 @@ class LevyraPreferences(context: Context) {
         val KEY_BACKUP_CHARGING_ONLY = booleanPreferencesKey("automatic_backup_charging_only")
     }
 }
+
+internal fun customPresetToJson(preset: LevyraAudioPreset): JSONObject = JSONObject()
+    .put("id", preset.id)
+    .put("label", preset.fallbackLabel)
+    .put("levels", JSONArray(preset.levels))
+    .put("bassBoost", preset.bassBoost)
+    .put("virtualizer", preset.virtualizer)
+    .put("preampDb", preset.preampDb.toDouble())
+
+internal fun customPresetsToJson(presets: List<LevyraAudioPreset>): String =
+    JSONArray().apply { presets.forEach { put(customPresetToJson(it)) } }.toString()
+
+internal fun customPresetFromJson(json: JSONObject): LevyraAudioPreset? {
+    val id = json.optString("id").trim()
+    if (!id.startsWith(LevyraAudioPresets.CUSTOM_PRESET_PREFIX)) return null
+    val levelsArray = json.optJSONArray("levels") ?: return null
+    val levels = buildList {
+        for (index in 0 until levelsArray.length()) add(levelsArray.optInt(index))
+    }
+    if (levels.size != LevyraAudioPresets.bandCount) return null
+    return LevyraAudioPreset(
+        id = id,
+        fallbackLabel = json.optString("label").ifBlank { "Custom" },
+        levels = levels,
+        bassBoost = json.optInt("bassBoost"),
+        virtualizer = json.optInt("virtualizer"),
+        preampDb = json.optDouble("preampDb", 0.0).toFloat()
+    )
+}
+
+internal fun customPresetsFromJson(value: String): List<LevyraAudioPreset> = runCatching {
+    val array = JSONArray(value)
+    buildList {
+        for (index in 0 until array.length()) {
+            array.optJSONObject(index)?.let(::customPresetFromJson)?.let(::add)
+        }
+    }
+}.getOrDefault(emptyList())
