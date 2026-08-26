@@ -43,7 +43,8 @@ matches `levyra-real-engineering`; visual redesign/polish work matches
 runtime profiling matches `levyra-android-performance`; R8/Proguard/minification
 work matches `levyra-r8-proguard`; Intent/PendingIntent/component-boundary work
 matches `levyra-android-intent-security` together with
-`levyra-security-review`; other security-sensitive work matches
+`levyra-security-review`; release-note prose is finalized with
+`levyra-humanizer`; other security-sensitive work matches
 `levyra-security-review`.
 
 The setup scripts automatically install the focused Matt Pocock engineering
@@ -77,8 +78,10 @@ with the matching platform UI skill, Android runtime profiling to
 `levyra-r8-proguard`, Android Intent/PendingIntent/exported-component work to
 `levyra-android-intent-security` plus `levyra-security-review`, and other
 security, vulnerability, secrets, trust-boundary, dependency, update-integrity,
-and privacy work to `levyra-security-review` before editing. Claude follows the
-same closed-loop security method documented in `docs/ai/CODEX_SECURITY.md`.
+and privacy work to `levyra-security-review` before editing. Release-note
+writing routes through `levyra-release-check`, which loads `levyra-humanizer`
+for the final prose pass. Claude follows the same closed-loop security method
+documented in `docs/ai/CODEX_SECURITY.md`.
 
 ### ChatGPT Project
 
@@ -90,8 +93,10 @@ visual redesign/polish together with the relevant platform skill,
 `levyra-r8-proguard` for R8/Proguard/minification work,
 `levyra-android-intent-security` plus `levyra-security-review` for Android
 Intent/PendingIntent/component-boundary work, and `levyra-security-review` for
-other security-sensitive analysis. ChatGPT must distinguish suspected findings,
-validated findings, proposed patches, applied patches, CI, and publication state.
+other security-sensitive analysis. Release-note work uses
+`levyra-release-check`, which requires `levyra-humanizer` before publication.
+ChatGPT must distinguish suspected findings, validated findings, proposed
+patches, applied patches, CI, and publication state.
 
 ### Google Antigravity
 
@@ -102,9 +107,10 @@ plus the relevant platform skill, Android runtime profiling through
 `levyra-android-performance`, R8/Proguard/minification through
 `levyra-r8-proguard`, Android component-boundary security through
 `levyra-android-intent-security` plus `levyra-security-review`, and other
-security work through `levyra-security-review`. It keeps exact security evidence
-raw and applies the same threat-model and revalidation workflow. No parallel
-`.gemini/skills/` tree is required.
+security work through `levyra-security-review`. Release-note work loads
+`levyra-humanizer` through `levyra-release-check`. It keeps exact security
+evidence raw and applies the same threat-model and revalidation workflow. No
+parallel `.gemini/skills/` tree is required.
 
 ### OpenCode and OpenClaw
 
@@ -127,6 +133,7 @@ boundaries.
 | `levyra-database` | Room, migrations, stores, backup, and persistent user data |
 | `levyra-compose` | Compose UI, state, navigation, accessibility, RTL, and localization |
 | `levyra-design-taste` | Cross-runtime visual hierarchy, redesign/polish, anti-AI-slop discipline, token reuse, motion intent, and visual pre-flight review |
+| `levyra-humanizer` | Humanizer 2.11.2 prose pass for release notes and product-facing writing, preserving every factual claim and Levyra release invariant |
 | `levyra-android-performance` | Android Perfetto/System Trace, jank, latency, startup, CPU/thread state, graphics, Binder, blocking, memory, I/O, power, and measured runtime bottlenecks |
 | `levyra-r8-proguard` | R8/Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker failures, mapping evidence, and measured APK-size work |
 | `levyra-android-intent-security` | Android Intents, PendingIntents, deep links, exported components, receivers/services/providers, URI grants, FileProvider, and caller verification |
@@ -159,6 +166,15 @@ Levyra more premium, modern, distinctive, cohesive, or less AI-generated. Pair
 it with `levyra-compose` on Android or `levyra-desktop` on Desktop. It is a
 quality layer, not a second design system, and never overrides accessibility,
 performance, lifecycle, localization, current architecture, or product behavior.
+
+Load `levyra-humanizer` for release notes, Fastlane changelogs, release
+descriptions, and other product-facing prose that should sound naturally human.
+For release work it is a mandatory second pass after factual drafting through
+`levyra-release-check`. Use embedded mode and preserve every claim, required
+heading, version field, validation caveat, Markdown target, command, hash, and
+artifact name. The vendored method is based on `blader/humanizer` 2.11.2 under
+the MIT license; Levyra release truthfulness and machine contracts take
+precedence over stylistic rewrites.
 
 Load `levyra-android-performance` for Android jank, frame misses, latency,
 startup, Perfetto/System Trace, CPU scheduling/thread states, graphics, Binder,
@@ -233,7 +249,8 @@ When Codex and `npx` are available, setup also installs the focused
 `mattpocock/skills` workflow globally for Codex. Claude Code discovers the
 project-enabled official plugin from `.claude/settings.json`. Antigravity and
 ChatGPT use the repository-native adapter whether or not the upstream package is
-installed.
+installed. `levyra-humanizer` is vendored in the repository, so release-note
+humanization does not depend on a separate global Humanizer install.
 
 The scripts do not configure Ollama/local-model profiles, unrestricted
 sandboxing, or silent approval bypasses. Root `AGENTS.md` keeps unrelated plugins
@@ -265,6 +282,9 @@ local-model profiles.
   external skill package.
 - Keep `levyra-design-taste` as a compact native product-UI adaptation, not a
   vendored copy of a web-focused external skill.
+- Keep `levyra-humanizer` pinned to a reviewed upstream Humanizer revision, keep
+  the upstream MIT license beside the vendored skill, and do not weaken its
+  no-invented-facts rule when adapting it to Levyra release prose.
 - Keep `levyra-android-performance` evidence-first and focused on measured
   Android runtime profiling; validate Perfetto schemas/queries instead of
   guessing them.
