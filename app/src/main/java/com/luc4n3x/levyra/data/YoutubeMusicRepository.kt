@@ -221,6 +221,101 @@ private val ALBUM_RECOMMENDATION_EDITION_SUFFIX = Regex(
     """(?i)\s+(?:deluxe(?: edition)?|expanded(?: edition)?|anniversary(?: edition)?|remaster(?:ed)?(?: edition)?|bonus(?: track)?s?|special edition|collector(?:s)? edition|legacy edition|tour edition|digital edition|international edition|explicit edition|explicit version)\b.*$"""
 )
 
+private val ALBUM_ARTIST_YEAR_TOKEN = Regex("""\d{4}""")
+private val ALBUM_DURATION_CLOCK_TOKEN = Regex("""\d{1,3}(?::\d{2})+""")
+private const val ALBUM_DURATION_SEPARATOR_CHARS = ".,:;&+-'’/"
+
+private val ALBUM_DURATION_UNIT_WORDS = setOf(
+    "h", "hr", "hrs", "hour", "hours",
+    "m", "min", "mins", "minute", "minutes",
+    "s", "sec", "secs", "second", "seconds",
+    "ora", "ore", "minuto", "minuti", "secondo", "secondi",
+    "hora", "horas", "minutos", "segundo", "segundos",
+    "heure", "heures", "seconde", "secondes",
+    "std", "stunde", "stunden", "minuten", "sekunde", "sekunden",
+    "uur", "minuut", "seconden",
+    "godzina", "godziny", "godzin", "minuta", "minuty", "minut", "sekunda", "sekundy", "sekund",
+    "hodina", "hodiny", "hodin",
+    "timme", "timmar", "time", "timer", "minutt", "minutter", "minuter", "sekunder",
+    "час", "часа", "часов",
+    "минута", "минуты", "минут",
+    "секунда", "секунды", "секунд",
+    "година", "години",
+    "хвилина", "хвилини", "хвилин",
+    "секунди",
+    "saat", "dakika", "saniye",
+    "jam", "menit", "detik",
+    "giờ", "phút", "giây",
+    "oras", "sandali",
+    "ώρα", "ώρες", "λεπτό", "λεπτά",
+    "δευτερόλεπτο", "δευτερόλεπτα",
+    "ชั่วโมง", "นาที", "วินาที",
+    "시간", "분", "초",
+    "小时", "小時", "分钟", "分鐘", "分", "秒", "時間",
+    "ساعة", "ساعات", "دقيقة", "دقائق",
+    "ثانية", "ثواني", "ثوان",
+    "घंटा", "घंटे", "मिनट", "सेकंड",
+    "שעה", "שעות", "דקה", "דקות",
+    "שניה", "שניות"
+)
+
+private val ALBUM_DURATION_CONNECTOR_WORDS = setOf(
+    "e", "and", "y", "et", "und", "och", "og", "en", "i", "ve", "dan", "at", "na",
+    "и", "та", "و", "และ"
+)
+
+private val ALBUM_DURATION_MARK_CATEGORIES = setOf(
+    CharCategory.NON_SPACING_MARK,
+    CharCategory.COMBINING_SPACING_MARK,
+    CharCategory.ENCLOSING_MARK
+)
+
+private fun Char.isDurationWordChar(): Boolean = isLetter() || category in ALBUM_DURATION_MARK_CATEGORIES
+
+/**
+ * A leading count followed only by localized time units ("47 minuten", "1 h 20 min", "47分") or a
+ * clock form ("3:45") is a release length, never an artist credit.
+ */
+internal fun isLocalizedDurationToken(token: String): Boolean {
+    val normalized = token.trim()
+        .replace('\u00A0', ' ')
+        .replace('\u202F', ' ')
+        .lowercase(Locale.ROOT)
+    if (normalized.isEmpty() || !normalized.first().isDigit()) return false
+    if (ALBUM_DURATION_CLOCK_TOKEN.matches(normalized)) return true
+    var sawUnit = false
+    var index = 0
+    while (index < normalized.length) {
+        val current = normalized[index]
+        when {
+            current.isDigit() -> {
+                while (index < normalized.length && normalized[index].isDigit()) index++
+            }
+            current.isDurationWordChar() -> {
+                val start = index
+                while (index < normalized.length && normalized[index].isDurationWordChar()) index++
+                when (normalized.substring(start, index)) {
+                    in ALBUM_DURATION_UNIT_WORDS -> sawUnit = true
+                    in ALBUM_DURATION_CONNECTOR_WORDS -> Unit
+                    else -> return false
+                }
+            }
+            current.isWhitespace() || current in ALBUM_DURATION_SEPARATOR_CHARS -> index++
+            else -> return false
+        }
+    }
+    return sawUnit
+}
+
+private val ALBUM_ARTWORK_SIZE_SUFFIX = Regex("""=w\d+-h\d+.*$""")
+private val ALBUM_ARTWORK_SCALE_SUFFIX = Regex("""=s\d+.*$""")
+
+internal fun albumArtworkIdentityKey(url: String): String = url.trim()
+    .lowercase(Locale.ROOT)
+    .substringBefore('?')
+    .replace(ALBUM_ARTWORK_SIZE_SUFFIX, "")
+    .replace(ALBUM_ARTWORK_SCALE_SUFFIX, "")
+
 private const val RECOMMENDATION_TEXT_KEY_CACHE_LIMIT = 1024
 private const val RECOMMENDATION_TEXT_KEY_MAX_LENGTH = 256
 private val recommendationTextKeyCache =
@@ -519,6 +614,58 @@ private fun matchingArtistSignalIndex(artist: String, signals: List<String>): In
     }
 }
 
+private fun albumArtistCompatibility(album: AlbumHit, candidate: AlbumHit): AlbumArtistCompatibility {
+    val artistKey = albumRecommendationTextKey(album.artist)
+    val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
+    val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
+    val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
+    val artistBrowseId = album.artistBrowseId.trim()
+    val matches = (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
+        (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
+        (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
+    return when {
+        matches -> AlbumArtistCompatibility.Matching
+        artistKey.isNotBlank() && candidateArtistKey.isNotBlank() -> AlbumArtistCompatibility.Conflicting
+        else -> AlbumArtistCompatibility.Unknown
+    }
+}
+
+private enum class AlbumArtistCompatibility {
+    Matching,
+    Conflicting,
+    Unknown
+}
+
+/**
+ * Picks the album a browseId-less hit really refers to. The last resort still requires a real
+ * compatibility signal, so an unrelated release that only shares the title is never selected.
+ */
+internal fun selectResolvedAlbumCandidate(
+    album: AlbumHit,
+    candidates: List<AlbumHit>
+): AlbumHit? {
+    val validInputTitle = isPlausibleYoutubeMusicAlbumTitle(album.title)
+    val titleKey = albumRecommendationTextKey(album.title)
+    val artistKey = albumRecommendationTextKey(album.artist)
+    val artworkKey = albumArtworkIdentityKey(album.thumbnailUrl)
+
+    fun titleMatches(candidate: AlbumHit): Boolean =
+        validInputTitle && titleKey.isNotBlank() && albumRecommendationTextKey(candidate.title) == titleKey
+
+    return candidates.firstOrNull { candidate ->
+        titleMatches(candidate) && albumRecommendationTextKey(candidate.artist) == artistKey
+    } ?: candidates.firstOrNull { candidate ->
+        artworkKey.isNotBlank() &&
+            albumArtworkIdentityKey(candidate.thumbnailUrl) == artworkKey &&
+            (artistKey.isBlank() || albumRecommendationTextKey(candidate.artist) == artistKey)
+    } ?: candidates.firstOrNull { candidate ->
+        artistKey.isNotBlank() && albumRecommendationTextKey(candidate.artist) == artistKey
+    } ?: candidates.firstOrNull { candidate ->
+        titleMatches(candidate) &&
+            albumArtistCompatibility(album, candidate) != AlbumArtistCompatibility.Conflicting
+    }
+}
+
 internal fun selectAlbumRecoveryCandidate(
     album: AlbumHit,
     candidates: List<AlbumHit>,
@@ -527,9 +674,6 @@ internal fun selectAlbumRecoveryCandidate(
     val titleKey = albumRecommendationTextKey(album.title)
     if (titleKey.isBlank()) return null
 
-    val artistKey = albumRecommendationTextKey(album.artist)
-    val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
-    val artistBrowseId = album.artistBrowseId.trim()
     val excluded = excludedBrowseIds
         .map { it.trim().lowercase(Locale.ROOT) }
         .filter(String::isNotBlank)
@@ -544,11 +688,7 @@ internal fun selectAlbumRecoveryCandidate(
             albumRecommendationTextKey(candidate.title) == titleKey
         }
         .firstOrNull { candidate ->
-            val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
-            val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
-            (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
-                (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
-                (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
+            albumArtistCompatibility(album, candidate) == AlbumArtistCompatibility.Matching
         }
 }
 
@@ -1833,8 +1973,15 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }
     }
 
-    private fun searchAlbumHits(query: String, languageCode: String, limit: Int): List<AlbumHit> {
-        val root = searchInnerTubeRaw(query, languageCode) ?: return emptyList()
+    internal fun searchAlbumHits(
+        query: String,
+        languageCode: String,
+        limit: Int,
+        fetchSearchRoot: (String, String, String) -> JSONObject? = { text, language, params ->
+            searchInnerTubeRaw(text, language, params)
+        }
+    ): List<AlbumHit> {
+        val root = fetchSearchRoot(query, languageCode, YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS) ?: return emptyList()
         val albums = LinkedHashMap<String, AlbumHit>()
         val renderers = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
@@ -1917,17 +2064,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val normalized = token.cleanAlbumArtistLabel().lowercase()
         if (normalized.isBlank()) return false
         if (normalized in typeLabels) return false
-        if (normalized.matches(Regex("\\d{4}"))) return false
-        if (normalized.matches(Regex("\\d+:\\d{2}"))) return false
+        if (normalized.matches(ALBUM_ARTIST_YEAR_TOKEN)) return false
+        if (isLocalizedDurationToken(normalized)) return false
         if (normalized.contains("song") || normalized.contains("brani") || normalized.contains("songs")) return false
         return true
     }
-
-    private fun albumArtworkIdentityKey(url: String): String = url.trim()
-        .lowercase(Locale.ROOT)
-        .substringBefore('?')
-        .replace(Regex("""=w\d+-h\d+.*$"""), "")
-        .replace(Regex("""=s\d+.*$"""), "")
 
     private fun resolveAlbumHit(album: AlbumHit, languageCode: String): AlbumHit {
         val validInputTitle = isPlausibleYoutubeMusicAlbumTitle(album.title)
@@ -1944,20 +2085,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
         val candidates = searchAlbumHits(query, languageCode, 12)
             .filter { it.browseId.isNotBlank() && isPlausibleYoutubeMusicAlbumTitle(it.title) }
-        val titleKey = albumRecommendationTextKey(album.title)
-        val artistKey = albumRecommendationTextKey(album.artist)
-        val artworkKey = albumArtworkIdentityKey(album.thumbnailUrl)
-        val found = candidates.firstOrNull {
-            validInputTitle &&
-                albumRecommendationTextKey(it.title) == titleKey &&
-                albumRecommendationTextKey(it.artist) == artistKey
-        } ?: candidates.firstOrNull {
-            artworkKey.isNotBlank() &&
-                albumArtworkIdentityKey(it.thumbnailUrl) == artworkKey &&
-                (artistKey.isBlank() || albumRecommendationTextKey(it.artist) == artistKey)
-        } ?: candidates.firstOrNull {
-            artistKey.isNotBlank() && albumRecommendationTextKey(it.artist) == artistKey
-        } ?: candidates.firstOrNull()
+        val found = selectResolvedAlbumCandidate(album, candidates)
         return found?.let {
             album.copy(
                 title = it.title,
@@ -1971,7 +2099,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         } ?: album.copy(title = album.title.takeIf(::isPlausibleYoutubeMusicAlbumTitle).orEmpty())
     }
 
-    private fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
+    internal fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
         val detailHeaders = mutableListOf<JSONObject>()
         val responsiveHeaders = mutableListOf<JSONObject>()
         val editableHeaders = mutableListOf<JSONObject>()
@@ -2007,8 +2135,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val parsedArtist = tokens.firstNotNullOfOrNull { token ->
             token.cleanAlbumArtistLabel().takeIf(::isAlbumArtistToken)
         }.orEmpty().ifBlank { fallbackArtist }
-        val artistReference = extractYoutubeMusicArtistReference(header, parsedArtist)
-        val artist = artistReference?.name.orEmpty().cleanAlbumArtistLabel().ifBlank { parsedArtist }
+        val artistReferences = extractYoutubeMusicArtistReferences(header, parsedArtist)
+            .ifEmpty { listOfNotNull(extractYoutubeMusicArtistReference(header, parsedArtist)) }
+        val artist = artistReferences.creditLabel(parsedArtist).cleanAlbumArtistLabel().ifBlank { parsedArtist }
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }
             .orEmpty()
             .ifBlank { fallback.year }
@@ -2020,7 +2149,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = upgradeThumbnail(thumbnail),
             query = "$title ${artist.cleanLabel()}".trim(),
             browseId = fallback.browseId.ifBlank { root.optString("browseId") },
-            artistBrowseId = artistReference?.browseId.orEmpty().ifBlank { fallback.artistBrowseId }
+            artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty().ifBlank { fallback.artistBrowseId }
         )
     }
 
@@ -2197,6 +2326,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }
 
         fun parseRenderer(renderer: JSONObject) {
+            parseArtistRuns(renderer.optJSONObject("straplineTextOne")?.optJSONArray("runs"))
             val flexColumns = renderer.optJSONArray("flexColumns") ?: JSONArray()
             for (index in 0 until flexColumns.length()) {
                 parseArtistRuns(

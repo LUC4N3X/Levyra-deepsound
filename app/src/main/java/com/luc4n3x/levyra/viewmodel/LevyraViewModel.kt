@@ -3836,11 +3836,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         artistJob = viewModelScope.launch {
             coroutineScope {
                 val profileDeferred = async {
-                    if (normalizedBrowseId.isNotBlank()) {
-                        runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
-                    } else {
-                        runCatching { artistRepository.profileFor(clean) }.getOrNull()
-                    }
+                    resolveArtistProfileReference(
+                        browseId = normalizedBrowseId,
+                        name = clean,
+                        isActive = { isActive },
+                        profileByBrowseId = artistRepository::profile,
+                        profileByName = artistRepository::profileFor
+                    )
                 }
                 val biographyDeferred = async {
                     runCatching { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
