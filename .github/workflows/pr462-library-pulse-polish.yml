@@ -1,0 +1,490 @@
+name: PR 462 Library Pulse polish
+
+on:
+  push:
+    branches:
+      - feat/sleep-timer-system-actions
+
+permissions:
+  contents: write
+
+jobs:
+  apply-ui-polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/sleep-timer-system-actions
+          fetch-depth: 0
+
+      - name: Apply focused Library UI changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          screen = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LevyraLibraryScreen.kt')
+          text = screen.read_text(encoding='utf-8')
+          album_block = '''                    if (catalog.albums.isNotEmpty()) {
+                        item(key = "overview-albums-title") {
+                            LibrarySectionTitle(
+                                title = strings.albumsPlain,
+                                detail = strings.savedTracks,
+                                action = strings.showAll,
+                                onAction = { switchCategory(LibraryCategory.Albums) }
+                            )
+                        }
+                        item(key = "overview-albums-grid") {
+                            LibraryAlbumGridRows(
+                                albums = catalog.albums.take(4),
+                                selectedKeys = emptySet(),
+                                selectionActive = false,
+                                onOpen = { album -> viewModel.openAlbum(album.toAlbumHit()) },
+                                onSelect = {}
+                            )
+                        }
+                    }
+'''
+          if text.count(album_block) != 1:
+              raise SystemExit('Expected Library overview album block exactly once')
+          screen.write_text(text.replace(album_block, '', 1), encoding='utf-8')
+
+          components = Path('app/src/main/java/com/luc4n3x/levyra/ui/library/LibraryOverviewComponents.kt')
+          text = components.read_text(encoding='utf-8')
+          start_marker = '@Composable\ninternal fun LibraryListeningDashboard('
+          end_marker = 'private const val WEEK_CHART_MIN_PEAK_MS'
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          replacement = r'''@Composable
+internal fun LibraryListeningDashboard(
+    pulse: ListeningPulse,
+    artistCount: Int,
+    trackCount: Int,
+    playlistCount: Int,
+    offlineCount: Int,
+    onOpenYourSound: (() -> Unit)? = null
+) {
+    val strings = LocalLevyraStrings.current
+    val week = pulse.week.takeLast(7)
+    val weekMinutes = week.sumOf { it.listenedMs } / 60_000L
+    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
+    val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
+    val percent = remember(locale) { NumberFormat.getPercentInstance(locale) }
+
+    val openSurface = if (onOpenYourSound != null) {
+        Modifier.levyraPressable(
+            onClick = onOpenYourSound,
+            pressedScale = LevyraPressScale.Surface,
+            role = Role.Button,
+            onClickLabel = strings.yourSound
+        )
+    } else {
+        Modifier
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth().then(openSurface),
+        color = LevyraPanel.copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    color = LevyraCyan.copy(alpha = 0.10f),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.16f))
+                ) {
+                    Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Insights,
+                            contentDescription = null,
+                            tint = LevyraCyan,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = strings.formatLibraryDuration(pulse.totalListenMs),
+                        color = LevyraText,
+                        fontSize = 26.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(26.sp),
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.6).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = strings.pulseMinutes,
+                        color = LevyraMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (onOpenYourSound != null) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.04f),
+                        shape = LibraryPillShape,
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+                    ) {
+                        Text(
+                            text = strings.yourSound,
+                            color = LevyraCyan,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LibraryInsightMetric(
+                        Modifier.weight(1f),
+                        Icons.Rounded.PlayArrow,
+                        number.format(pulse.plays),
+                        strings.pulsePlays,
+                        LevyraCyan
+                    )
+                    LibraryInsightMetric(
+                        Modifier.weight(1f),
+                        Icons.Rounded.Replay,
+                        number.format(pulse.streakDays),
+                        strings.pulseStreak,
+                        LevyraViolet
+                    )
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LibraryInsightMetric(
+                        Modifier.weight(1f),
+                        Icons.Rounded.DoneAll,
+                        percent.format(pulse.completionRate / 100.0),
+                        strings.pulseCompletion,
+                        LevyraPink
+                    )
+                    LibraryInsightMetric(
+                        Modifier.weight(1f),
+                        Icons.Rounded.MusicNote,
+                        number.format(pulse.distinctTracks),
+                        strings.statTracks,
+                        Color(0xFFFFC857)
+                    )
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ReplayPeriodMetric(
+                    modifier = Modifier.weight(1f),
+                    periodLabel = strings.formatReplayPeriod(30),
+                    minutes = pulse.last30Days.totalMinutes,
+                    plays = pulse.last30Days.plays,
+                    minuteLabel = strings.pulseMinuteShort,
+                    playLabel = strings.pulsePlays,
+                    accent = LevyraCyan,
+                    number = number
+                )
+                ReplayPeriodMetric(
+                    modifier = Modifier.weight(1f),
+                    periodLabel = strings.formatReplayPeriod(365),
+                    minutes = pulse.last365Days.totalMinutes,
+                    plays = pulse.last365Days.plays,
+                    minuteLabel = strings.pulseMinuteShort,
+                    playLabel = strings.pulsePlays,
+                    accent = LevyraViolet,
+                    number = number
+                )
+            }
+
+            if (pulse.topTracks.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text(
+                        text = strings.songsPlain,
+                        color = LevyraMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    pulse.topTracks.take(3).forEachIndexed { index, track ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                color = Color.White.copy(alpha = 0.04f),
+                                shape = RoundedCornerShape(9.dp)
+                            ) {
+                                Text(
+                                    text = (index + 1).toString().padStart(2, '0'),
+                                    color = if (index == 0) LevyraCyan else LevyraMuted,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                Text(
+                                    text = track.title,
+                                    color = LevyraText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = track.artist,
+                                    color = LevyraMuted,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = strings.formatPlayCount(track.plays),
+                                color = LevyraMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier.fillMaxWidth().height(1.dp)
+                    .background(Color.White.copy(alpha = 0.06f))
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = strings.pulseWeek,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${number.format(weekMinutes)} ${strings.pulseMinuteShort}",
+                        color = LevyraCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                LibraryWeekChart(
+                    pulse = pulse,
+                    locale = locale,
+                    durationLabel = { strings.formatLibraryDuration(it) }
+                )
+            }
+
+            if (pulse.hourBuckets.any { it > 0L }) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = strings.pulseRhythm,
+                            color = LevyraText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (pulse.peakHour >= 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Schedule,
+                                    contentDescription = null,
+                                    tint = LevyraMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = peakHourLabel(strings.pulsePeakHour, pulse.peakHour),
+                                    color = LevyraMuted,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                    LibraryRhythmChart(
+                        hourBuckets = pulse.hourBuckets,
+                        accent = LevyraCyan.copy(alpha = 0.72f),
+                        peakAccent = LevyraViolet,
+                        mutedColor = Color.White.copy(alpha = 0.10f),
+                        label = strings.pulseRhythm,
+                        peakHourDescription = { hour ->
+                            strings.pulseRhythm + " · " + peakHourLabel(strings.pulsePeakHour, hour)
+                        }
+                    )
+                }
+            }
+
+            val artistShares = remember(pulse.topArtists) {
+                ListeningChartProjection.artistShares(pulse.topArtists)
+            }
+            if (artistShares.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = strings.pulseTopArtists,
+                        color = LevyraMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    LibraryArtistRing(
+                        shares = artistShares,
+                        palette = LibraryRingPalette,
+                        trackColor = Color.White.copy(alpha = 0.07f),
+                        centerLabel = strings.yourSound,
+                        centerValue = number.format(pulse.totalMinutes),
+                        textColor = LevyraText,
+                        mutedColor = LevyraMuted,
+                        percentLabel = { fraction -> percent.format(fraction.toDouble()) },
+                        shareDescription = { name, label -> name + " " + label }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReplayPeriodMetric(
+    modifier: Modifier,
+    periodLabel: String,
+    minutes: Long,
+    plays: Int,
+    minuteLabel: String,
+    playLabel: String,
+    accent: Color,
+    number: NumberFormat
+) {
+    Surface(
+        modifier = modifier,
+        color = Color.White.copy(alpha = 0.025f),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.14f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = periodLabel,
+                color = accent,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Text(
+                text = "${number.format(minutes)} $minuteLabel",
+                color = LevyraText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            Text(
+                text = "${number.format(plays)} $playLabel",
+                color = LevyraMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryInsightMetric(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    accent: Color
+) {
+    Surface(
+        modifier = modifier,
+        color = Color.White.copy(alpha = 0.03f),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = label,
+                    color = LevyraMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = value,
+                color = LevyraText,
+                fontSize = 17.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+'''
+          components.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+          PY
+
+      - name: Focused validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :app:compileDebugKotlin
+          git diff --check
+
+      - name: Commit UI polish and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/pr462-library-pulse-polish.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'refactor(android): polish Library listening pulse'
+          git push origin HEAD:feat/sleep-timer-system-actions
