@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -144,6 +145,11 @@ class AgentRuntimeSyncTest(unittest.TestCase):
 
         with self.assertRaises(self.module.ProjectionError):
             self.module.sync_runtime("claude", quiet=True)
+
+    def test_link_like_detects_runtime_junction_api(self) -> None:
+        probe = self.root / "junction-like"
+        with patch.object(type(probe), "is_junction", return_value=True, create=True):
+            self.assertTrue(self.module._is_link_like(probe))
 
     @unittest.skipUnless(hasattr(os, "symlink"), "symlinks unavailable")
     def test_symlinked_projection_parent_does_not_write_outside_runtime(self) -> None:
