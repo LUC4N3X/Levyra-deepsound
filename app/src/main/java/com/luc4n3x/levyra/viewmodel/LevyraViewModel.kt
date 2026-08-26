@@ -539,6 +539,18 @@ private fun playbackArtistTokens(value: String): List<String> {
     return playbackTokens(value).filterNot { it in ignored }
 }
 
+internal fun selectArtistMotionSeed(
+    profileName: String,
+    tracks: List<Track>,
+    isLocal: (Track) -> Boolean
+): Track? = tracks.firstOrNull { candidate ->
+    !isLocal(candidate) &&
+        primaryMotionArtistMatches(
+            MotionTrackIdentity.from(candidate).artists,
+            listOf(profileName)
+        )
+}
+
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val shortsRepository = YoutubeShortsRepository(application.applicationContext)
@@ -715,17 +727,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun restoreDetailPage(): Boolean {
         val page = detailBackStack.removeLastOrNull() ?: return false
         when (page) {
-            is DetailPage.AlbumPage -> _state.update {
-                it.copy(
-                    showAlbum = true,
-                    albumLoading = false,
-                    albumError = null,
-                    albumDetail = page.detail,
-                    showArtist = false,
-                    artistLoading = false,
-                    artistError = null,
-                    detailReturnTarget = DetailReturnTarget.None
-                )
+            is DetailPage.AlbumPage -> {
+                _state.update {
+                    it.copy(
+                        showAlbum = true,
+                        albumLoading = false,
+                        albumError = null,
+                        albumDetail = page.detail,
+                        albumMotionArtwork = null,
+                        showArtist = false,
+                        artistLoading = false,
+                        artistError = null,
+                        artistMotionArtwork = null,
+                        detailReturnTarget = DetailReturnTarget.None
+                    )
+                }
+                refreshAlbumMotionArtwork(page.detail)
             }
             is DetailPage.ArtistPage -> {
                 _state.update {
@@ -734,13 +751,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistLoading = false,
                         artistError = null,
                         artistProfile = page.profile,
+                        artistMotionArtwork = null,
                         artistListStateKey = page.listStateKey,
                         showAlbum = false,
                         albumLoading = false,
                         albumError = null,
+                        albumMotionArtwork = null,
                         detailReturnTarget = DetailReturnTarget.None
                     )
                 }
+                refreshArtistMotionArtwork(page.profile)
                 startArtistLore(page.profile)
             }
         }
@@ -2329,6 +2349,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 equalizerEnabled = true,
                 presetId = preset.id,
                 bandLevels = preset.levels,
+                bassBoost = preset.bassBoost,
+                virtualizer = preset.virtualizer,
                 preampDb = preset.preampDb,
                 customPresets = customPresets
             )
@@ -6885,13 +6907,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }
-        val seed = profile.topSongs.firstOrNull { !isLocalPlaybackTrack(it) }
+        val seed = selectArtistMotionSeed(
+            profileName = profile.name,
+            tracks = profile.topSongs,
+            isLocal = ::isLocalPlaybackTrack
+        )
         if (seed == null) {
-            _state.update { it.copy(artistMotionArtwork = null) }
-            return
-        }
-        val identity = MotionTrackIdentity.from(seed)
-        if (!primaryMotionArtistMatches(identity.artists, listOf(profile.name))) {
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }

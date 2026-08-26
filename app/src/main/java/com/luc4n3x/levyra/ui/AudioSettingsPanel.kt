@@ -369,10 +369,6 @@ internal fun AudioSettingsPanel(
                 showAutoEqImport = false
             },
             onSavePreset = { name, profile ->
-                // Saved AutoEQ presets declare neutral bass/spatial values. Apply those values
-                // before saving so the audible state matches the preset from the first frame.
-                onBassBoost(0)
-                onVirtualizer(0)
                 onSaveAutoEqPreset(name, profile)
                 showAutoEqImport = false
             }
