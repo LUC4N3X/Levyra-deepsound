@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Radar Rilisan</string>
     <string name="radar_channel_description">Rilisan baru dari artis yang Anda ikuti</string>
     <string name="radar_new_release_title">Rilisan baru dari %1$s</string>
+    <string name="tile_recognize_music">Kenali musik</string>
+    <string name="shortcut_search">Cari</string>
+    <string name="shortcut_library">Koleksi</string>
+    <string name="shortcut_recognition">Kenali musik</string>
 </resources>

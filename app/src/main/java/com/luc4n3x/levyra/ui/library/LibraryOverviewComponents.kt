@@ -656,17 +656,17 @@ internal fun LibraryListeningDashboard(
     }
     Surface(
         modifier = Modifier.fillMaxWidth().then(openSurface),
-        color = LevyraPanel.copy(alpha = 0.92f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-        shape = RoundedCornerShape(26.dp)
+        color = LevyraPanel.copy(alpha = 0.96f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+        shape = RoundedCornerShape(24.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxWidth().background(
                 Brush.linearGradient(
                     listOf(
-                        LevyraViolet.copy(alpha = 0.18f),
-                        LevyraPanel.copy(alpha = 0.96f),
-                        LevyraCyan.copy(alpha = 0.10f)
+                        LevyraViolet.copy(alpha = 0.08f),
+                        LevyraPanel.copy(alpha = 0.98f),
+                        LevyraCyan.copy(alpha = 0.04f)
                     )
                 )
             ).padding(18.dp)
@@ -677,25 +677,39 @@ internal fun LibraryListeningDashboard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Surface(color = LevyraCyan.copy(alpha = 0.14f), shape = CircleShape) {
-                        Icon(
-                            imageVector = Icons.Rounded.Replay,
-                            contentDescription = null,
-                            tint = LevyraCyan,
-                            modifier = Modifier.padding(9.dp).size(18.dp)
-                        )
+                    Surface(
+                        color = LevyraCyan.copy(alpha = 0.10f),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.16f))
+                    ) {
+                        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Insights,
+                                contentDescription = null,
+                                tint = LevyraCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
                             text = strings.formatLibraryDuration(pulse.totalListenMs),
                             color = LevyraText,
-                            fontSize = 24.sp,
+                            fontSize = 26.sp,
+                            lineHeight = LevyraTypeRhythm.lineHeight(26.sp),
                             fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.5).sp,
+                            letterSpacing = (-0.6).sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(strings.pulseMinutes, color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = strings.pulseMinutes,
+                            color = LevyraMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
@@ -847,14 +861,17 @@ private fun ReplayPeriodMetric(
 ) {
     Surface(
         modifier = modifier,
-        color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
+        color = Color.White.copy(alpha = 0.025f),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.14f))
     ) {
-        Column(modifier = Modifier.padding(11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(periodLabel, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Black)
-            Text("${number.format(minutes)} $minuteLabel", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
-            Text("${number.format(plays)} $playLabel", color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(periodLabel, color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text("${number.format(minutes)} $minuteLabel", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
+            Text("${number.format(plays)} $playLabel", color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.Medium, maxLines = 1)
         }
     }
 }
@@ -869,22 +886,37 @@ private fun LibraryInsightMetric(
 ) {
     Surface(
         modifier = modifier,
-        color = Color.Black.copy(alpha = 0.18f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+        color = Color.White.copy(alpha = 0.03f),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Surface(color = accent.copy(alpha = 0.14f), shape = CircleShape) {
-                Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.padding(7.dp).size(16.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(15.dp))
+                Text(
+                    text = label,
+                    color = LevyraMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Column {
-                Text(value, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                Text(label, color = LevyraMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            }
+            Text(
+                text = value,
+                color = LevyraText,
+                fontSize = 17.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

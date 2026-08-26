@@ -9,10 +9,24 @@ object LevyraLaunchActions {
     private const val EXTRA_SHARED_MEDIA_CONSUMED = "levyra.shared_media_consumed"
     const val EXTRA_SHORTCUT = "levyra.shortcut"
     const val EXTRA_ARTIST = "levyra.open_artist"
+    const val EXTRA_RECOGNITION_PERMISSION_REQUEST = "levyra.recognition_permission_request"
     const val SHORTCUT_FAVORITES = "favorites"
     const val SHORTCUT_FLOW = "flow"
     const val SHORTCUT_OFFLINE = "offline"
     const val SHORTCUT_LYRICS = "lyrics"
+    const val SHORTCUT_SEARCH = "search"
+    const val SHORTCUT_LIBRARY = "library"
+    const val SHORTCUT_RECOGNITION = "recognition"
+
+    private val knownShortcuts = setOf(
+        SHORTCUT_FAVORITES,
+        SHORTCUT_FLOW,
+        SHORTCUT_OFFLINE,
+        SHORTCUT_LYRICS,
+        SHORTCUT_SEARCH,
+        SHORTCUT_LIBRARY,
+        SHORTCUT_RECOGNITION
+    )
 
     val pendingShortcut = mutableStateOf<String?>(null)
     val pendingArtist = mutableStateOf<String?>(null)
@@ -20,9 +34,10 @@ object LevyraLaunchActions {
 
     fun consumeFrom(intent: Intent?) {
         intent ?: return
-        intent.getStringExtra(EXTRA_SHORTCUT)?.takeIf { it.isNotBlank() }?.let { value ->
+        val shortcut = intent.getStringExtra(EXTRA_SHORTCUT)
+        intent.removeExtra(EXTRA_SHORTCUT)
+        shortcut?.takeIf { it in knownShortcuts }?.let { value ->
             pendingShortcut.value = value
-            intent.removeExtra(EXTRA_SHORTCUT)
         }
         intent.getStringExtra(EXTRA_ARTIST)?.takeIf { it.isNotBlank() }?.let { value ->
             pendingArtist.value = value

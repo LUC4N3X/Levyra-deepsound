@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Radar des sorties</string>
     <string name="radar_channel_description">Nouvelles sorties des artistes que vous suivez</string>
     <string name="radar_new_release_title">Nouvelle sortie de %1$s</string>
+    <string name="tile_recognize_music">Reconnaître la musique</string>
+    <string name="shortcut_search">Rechercher</string>
+    <string name="shortcut_library">Bibliothèque</string>
+    <string name="shortcut_recognition">Reconnaître la musique</string>
 </resources>

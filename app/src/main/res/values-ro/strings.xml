@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Radarul lansărilor</string>
     <string name="radar_channel_description">Lansări noi de la artiștii pe care îi urmărești</string>
     <string name="radar_new_release_title">Lansare nouă de la %1$s</string>
+    <string name="tile_recognize_music">Recunoaște muzica</string>
+    <string name="shortcut_search">Căutare</string>
+    <string name="shortcut_library">Bibliotecă</string>
+    <string name="shortcut_recognition">Recunoaște muzica</string>
 </resources>
