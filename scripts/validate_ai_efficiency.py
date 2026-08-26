@@ -23,6 +23,8 @@ REQUIRED_FILES = (
     ".agents/rules/levyra-workspace.md",
     ".agents/skills/levyra-context-efficiency/SKILL.md",
     ".agents/skills/levyra-security-review/SKILL.md",
+    f"{CLAUDE_ROOT}/CLAUDE.md",
+    f"{CLAUDE_ROOT}/settings.json",
     f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
     f"{CLAUDE_ROOT}/rules/context-efficiency.md",
     f"{CLAUDE_ROOT}/rules/security.md",
@@ -31,7 +33,6 @@ REQUIRED_FILES = (
     ".github/workflows/dependency-review.yml",
     ".github/workflows/pr-check.yml",
     ".agents/config/codex-plugins.txt",
-    "CLAUDE.md",
     "docs/README.md",
     "docs/ai/ANTIGRAVITY.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
@@ -47,6 +48,7 @@ REQUIRED_FILES = (
 )
 
 FORBIDDEN_PATHS = (
+    "CLAUDE.md",
     "codex-home/ollama.config.toml",
     "codex-home/llamacpp.config.toml",
     f"{CODEX_ROOT}/ollama.config.toml",
@@ -163,7 +165,10 @@ def main() -> int:
             fail(errors, f"missing required AI-efficiency file: {relative_path}")
     for relative_path in FORBIDDEN_PATHS:
         if (ROOT / relative_path).exists():
-            fail(errors, f"local-model profile is outside the approved scope: {relative_path}")
+            if relative_path == "CLAUDE.md":
+                fail(errors, "root CLAUDE.md must stay absent; canonical Claude instructions live under .agents/claude")
+            else:
+                fail(errors, f"local-model profile is outside the approved scope: {relative_path}")
 
     skill_path = ROOT / ".agents/skills/levyra-context-efficiency/SKILL.md"
     if skill_path.is_file():
@@ -227,15 +232,23 @@ def main() -> int:
     )
     require_terms(
         errors,
-        "CLAUDE.md",
-        "Claude root bridge",
-        ("@.agents/claude/CLAUDE.md", "sync_agent_runtime.py", "--runtime claude"),
+        f"{CLAUDE_ROOT}/CLAUDE.md",
+        "canonical Claude instructions",
+        ("Root `AGENTS.md` is canonical", "Mandatory skill load", "levyra-context-efficiency"),
     )
     require_terms(
         errors,
         "scripts/sync_agent_runtime.py",
         "native runtime projection",
-        (".agents", ".claude", ".codex", "settings.json", "hooks.json"),
+        (
+            'ROOT / ".agents" / "skills"',
+            'Path("skills")',
+            'ROOT / ".claude"',
+            'ROOT / ".codex"',
+            "settings.json",
+            "hooks.json",
+            "--check",
+        ),
     )
     require_terms(
         errors,
@@ -278,7 +291,13 @@ def main() -> int:
             errors,
             relative_path,
             label,
-            ("validate_agent_config.py", "validate_ai_efficiency.py", ".agents/config/codex-plugins.txt"),
+            (
+                "validate_agent_config.py",
+                "validate_ai_efficiency.py",
+                ".agents/config/codex-plugins.txt",
+                "sync_agent_runtime.py",
+                "--runtime all",
+            ),
         )
 
     require_terms(
@@ -363,7 +382,7 @@ def main() -> int:
     print(
         "AI efficiency validation passed: canonical .agents runtime layout, "
         f"{len(EXPECTED_FILTERS)} project filters, {len(EXPECTED_PLUGINS)} verified plugin, "
-        "cross-runtime security routing, dependency-review preflight, and no local-model profiles."
+        "cross-runtime security routing, dependency-review preflight, and no root Claude bridge or local-model profiles."
     )
     return 0
 
