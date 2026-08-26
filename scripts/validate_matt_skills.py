@@ -14,9 +14,9 @@ REQUIRED_FILES = (
     "AGENTS.md",
     ".agents/skills/levyra-real-engineering/SKILL.md",
     ".agents/rules/levyra-workspace.md",
-    f"{CLAUDE_ROOT}/skills/levyra-real-engineering/SKILL.md",
     f"{CLAUDE_ROOT}/settings.json",
     f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
+    "scripts/sync_agent_runtime.py",
     "docs/agents/issue-tracker.md",
     "docs/agents/domain.md",
     "docs/ai/MATT_POCOCK_SKILLS.md",
@@ -60,6 +60,9 @@ def main() -> int:
         if not (ROOT / relative_path).is_file():
             errors.append(f"missing Matt skills integration file: {relative_path}")
 
+    if (ROOT / CLAUDE_ROOT / "skills").exists():
+        errors.append("Claude must not keep a second tracked skill tree under .agents/claude/skills")
+
     canonical_path = ROOT / ".agents/skills/levyra-real-engineering/SKILL.md"
     if canonical_path.is_file():
         canonical = text(".agents/skills/levyra-real-engineering/SKILL.md")
@@ -82,26 +85,10 @@ def main() -> int:
     require(
         errors,
         "AGENTS.md",
-        (
-            "## Agent skills",
-            "### Issue tracker",
-            "docs/agents/issue-tracker.md",
-            "### Domain docs",
-            "docs/agents/domain.md",
-            "## Matt Pocock skills bootstrap",
-            "levyra-real-engineering",
-        ),
+        ("## Agent skills", "### Issue tracker", "docs/agents/issue-tracker.md", "### Domain docs", "docs/agents/domain.md", "## Matt Pocock skills bootstrap", "levyra-real-engineering"),
     )
-    require(
-        errors,
-        "docs/agents/issue-tracker.md",
-        ("LUC4N3X/Levyra-deepsound", "explicit owner authorization", "PRs as a request surface: no"),
-    )
-    require(
-        errors,
-        "docs/agents/domain.md",
-        ("CONTEXT.md", "docs/adr/", "created lazily"),
-    )
+    require(errors, "docs/agents/issue-tracker.md", ("LUC4N3X/Levyra-deepsound", "explicit owner authorization", "PRs as a request surface: no"))
+    require(errors, "docs/agents/domain.md", ("CONTEXT.md", "docs/adr/", "created lazily"))
 
     settings_relative = f"{CLAUDE_ROOT}/settings.json"
     settings_path = ROOT / settings_relative
@@ -113,17 +100,13 @@ def main() -> int:
         else:
             enabled = settings.get("enabledPlugins", {}).get("mattpocock-skills@claude-plugins-official")
             if enabled is not True:
-                errors.append(
-                    "Claude mattpocock-skills plugin must be project-enabled from claude-plugins-official"
-                )
+                errors.append("Claude mattpocock-skills plugin must be project-enabled from claude-plugins-official")
 
-    bridge_relative = f"{CLAUDE_ROOT}/skills/levyra-real-engineering/SKILL.md"
-    if (ROOT / bridge_relative).is_file():
-        bridge = text(bridge_relative)
-        if ".agents/skills/levyra-real-engineering/SKILL.md" not in bridge:
-            errors.append("Claude bridge must point to the canonical Levyra adapter")
-        if "mattpocock-skills" not in bridge:
-            errors.append("Claude bridge must use the upstream plugin when available")
+    require(
+        errors,
+        "scripts/sync_agent_runtime.py",
+        ('ROOT / ".agents" / "skills"', 'Path("skills")', 'ROOT / ".claude"'),
+    )
 
     for relative_path, skip_flag in (
         ("scripts/setup-ai.ps1", "SkipMattSkills"),
@@ -139,6 +122,8 @@ def main() -> int:
             errors.append(f"{relative_path} is missing the Matt skills opt-out")
         if "scripts/validate_matt_skills.py" not in setup:
             errors.append(f"{relative_path} does not run the Matt integration validator")
+        if "sync_agent_runtime.py" not in setup or "--runtime all" not in setup:
+            errors.append(f"{relative_path} does not materialize the shared skill tree for Claude")
         for stage in ("setup-matt-pocock-skills", *EXPECTED_STAGES):
             if stage not in setup:
                 errors.append(f"{relative_path} is missing focused skill: {stage}")
@@ -160,8 +145,8 @@ def main() -> int:
         return 1
 
     print(
-        "Matt skills integration validation passed: upstream setup substrate, canonical "
-        ".agents adapter, Claude runtime bridge, Codex bootstrap, ChatGPT routing, and Antigravity routing verified."
+        "Matt skills integration validation passed: upstream setup substrate, one canonical .agents skill tree, "
+        "Claude skill projection, Codex bootstrap, ChatGPT routing, and Antigravity routing verified."
     )
     return 0
 
