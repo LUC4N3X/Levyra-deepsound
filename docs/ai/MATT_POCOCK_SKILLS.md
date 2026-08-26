@@ -64,7 +64,7 @@ Do not repeatedly run `setup-matt-pocock-skills` during ordinary Levyra work. It
 
 ## Claude Code
 
-Matt Pocock's current upstream package is available from Claude Code's official plugin marketplace. Levyra project-enables `mattpocock-skills@claude-plugins-official` in `.claude/settings.json`, so a trusted checkout can install/enable it using Claude Code's normal project plugin controls.
+Matt Pocock's current upstream package is available from Claude Code's official plugin marketplace. Levyra project-enables `mattpocock-skills@claude-plugins-official` in canonical `.agents/claude/settings.json`; `scripts/sync_agent_runtime.py` projects that file to native `.claude/settings.json`, where Claude Code applies its normal project plugin controls.
 
 Equivalent manual command:
 
@@ -72,7 +72,7 @@ Equivalent manual command:
 claude plugin install mattpocock-skills@claude-plugins-official --scope project
 ```
 
-The local `.claude/skills/levyra-real-engineering/SKILL.md` bridge remains the Levyra routing contract. It selects the upstream stage without letting the external plugin override repository rules. After plugin or instruction changes, restart/reload Claude Code so skill discovery is rebuilt.
+The canonical `.agents/skills/levyra-real-engineering/SKILL.md` bridge remains the Levyra routing contract. Claude discovers its generated native counterpart under `.claude/skills/`, but edits belong only in `.agents/skills/`. The bridge selects the upstream stage without letting the external plugin override repository rules. After plugin, projection, or instruction changes, start a new Claude session when needed so project and skill discovery is rebuilt.
 
 ## Codex
 
@@ -95,6 +95,8 @@ npx skills@latest add mattpocock/skills -g -a codex -y \
 ```
 
 The `-g`, `-a codex`, `-s`, and `-y` flags deliberately make the installation global, Codex-specific, focused, and non-interactive. Start a new Codex session after installation. Codex must explicitly load each stage skill when needed; do not assume Claude-specific nested slash-command behavior works cross-runtime.
+
+Codex's Levyra-specific bridge itself is not duplicated or installed globally: Codex discovers canonical `.agents/skills/levyra-real-engineering/SKILL.md` directly from the repository.
 
 ## Google Antigravity
 
