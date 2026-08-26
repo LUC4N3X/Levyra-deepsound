@@ -37,55 +37,50 @@ def main() -> int:
         else:
             hooks = document.get("hooks")
             groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
-            if not isinstance(groups, list) or not groups:
-                errors.append(f"{HOOKS_RELATIVE} must define SessionStart hooks")
+            matching_group = next(
+                (
+                    group
+                    for group in groups or []
+                    if isinstance(group, dict) and group.get("matcher") == "^(startup|resume)$"
+                ),
+                None,
+            )
+            if matching_group is None:
+                errors.append(f"{HOOKS_RELATIVE} must match startup and resume sessions")
             else:
-                matching_group = next(
-                    (
-                        group
-                        for group in groups
-                        if isinstance(group, dict)
-                        and group.get("matcher") == "^(startup|resume)$"
-                    ),
+                handlers = [
+                    handler
+                    for handler in matching_group.get("hooks") or []
+                    if isinstance(handler, dict) and handler.get("type") == "command"
+                ]
+                serialized = json.dumps(handlers)
+                for term in (
+                    "sync_agent_runtime.py",
+                    "--runtime codex",
+                    "ensure-codex-tooling.sh",
+                    "ensure-codex-tooling.ps1",
+                    "git rev-parse --show-toplevel",
+                ):
+                    if term not in serialized:
+                        errors.append(f"Codex SessionStart hooks are missing {term!r}")
+
+                sync_handler = next(
+                    (handler for handler in handlers if "sync_agent_runtime.py" in str(handler.get("command", ""))),
                     None,
                 )
-                if matching_group is None:
-                    errors.append(f"{HOOKS_RELATIVE} must match startup and resume sessions")
-                else:
-                    handlers = matching_group.get("hooks")
-                    if not isinstance(handlers, list):
-                        errors.append("Codex SessionStart hooks must be a list")
-                    else:
-                        command_handler = next(
-                            (
-                                handler
-                                for handler in handlers
-                                if isinstance(handler, dict)
-                                and handler.get("type") == "command"
-                            ),
-                            None,
-                        )
-                        if command_handler is None:
-                            errors.append("Codex SessionStart must contain a command hook")
-                        else:
-                            command = command_handler.get("command", "")
-                            command_windows = command_handler.get("commandWindows", "")
-                            for term in (
-                                "git rev-parse --show-toplevel",
-                                "scripts/ensure-codex-tooling.sh",
-                                "|| true",
-                            ):
-                                if term not in command:
-                                    errors.append(f"Codex Unix SessionStart command is missing {term!r}")
-                            for term in (
-                                "git rev-parse --show-toplevel",
-                                "scripts/ensure-codex-tooling.ps1",
-                                "exit 0",
-                            ):
-                                if term not in command_windows:
-                                    errors.append(f"Codex Windows SessionStart command is missing {term!r}")
-                            if command_handler.get("timeout") != 600:
-                                errors.append("Codex tooling bootstrap hook timeout must be 600 seconds")
+                if sync_handler is None:
+                    errors.append("Codex SessionStart must refresh the generated .codex projection")
+                elif sync_handler.get("timeout") != 30:
+                    errors.append("Codex runtime refresh hook timeout must be 30 seconds")
+
+                tooling_handler = next(
+                    (handler for handler in handlers if "ensure-codex-tooling.sh" in str(handler.get("command", ""))),
+                    None,
+                )
+                if tooling_handler is None:
+                    errors.append("Codex SessionStart must preserve automatic tooling bootstrap")
+                elif tooling_handler.get("timeout") != 600:
+                    errors.append("Codex tooling bootstrap hook timeout must be 600 seconds")
 
     require_terms(
         errors,
@@ -115,8 +110,8 @@ def main() -> int:
         return 1
 
     print(
-        "Codex hook validation passed: canonical .agents/codex hooks preserve "
-        "startup/resume tooling bootstrap and the pinned RTK contract."
+        "Codex hook validation passed: canonical .agents/codex hooks refresh the ignored "
+        "native projection, preserve startup/resume tooling bootstrap, and retain the pinned RTK contract."
     )
     return 0
 
