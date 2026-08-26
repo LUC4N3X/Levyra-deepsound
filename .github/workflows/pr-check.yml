@@ -234,3 +234,63 @@ jobs:
           name: pr-check-reports-${{ github.run_number }}
           path: artifacts
           if-no-files-found: ignore
+
+  pr466-detail-recovery:
+    name: Apply PR 466 detail recovery
+    if: github.event_name == 'pull_request' && github.event.action == 'reopened' && github.event.pull_request.number == 466
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/artist-alive-autoeq-album-canvas
+          fetch-depth: 0
+
+      - name: Apply staged scoped patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          workflow = Path('.github/workflows/pr466-detail-recovery.yml').read_text(encoding='utf-8')
+          start = "          python3 - <<'PY'\n"
+          end = "\n          PY\n"
+          if workflow.count(start) != 1:
+              raise SystemExit('staged patch marker missing or ambiguous')
+          body = workflow.split(start, 1)[1].split(end, 1)[0]
+          lines = [line[10:] if line.startswith('          ') else line for line in body.splitlines()]
+          patcher = Path('/tmp/pr466-detail-recovery.py')
+          patcher.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          subprocess.run([sys.executable, str(patcher)], check=True)
+          PY
+
+          rm -- .github/workflows/pr466-detail-recovery.yml
+          git show "${{ github.event.pull_request.base.sha }}:.github/workflows/pr-check.yml" > .github/workflows/pr-check.yml
+          git diff --check
+          git diff -- app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicRepositoryTest.kt \
+            .github/workflows/pr-check.yml \
+            .github/workflows/pr466-detail-recovery.yml
+
+      - name: Commit scoped fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin feat/artist-alive-autoeq-album-canvas
+          test "$(git rev-parse origin/feat/artist-alive-autoeq-album-canvas)" = "${{ github.event.pull_request.head.sha }}"
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicRepositoryTest.kt \
+            .github/workflows/pr-check.yml \
+            .github/workflows/pr466-detail-recovery.yml
+          git commit -m "fix(android): recover album and artist detail navigation"
+          git push origin HEAD:feat/artist-alive-autoeq-album-canvas
