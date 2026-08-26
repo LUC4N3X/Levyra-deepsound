@@ -9,12 +9,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CLAUDE_ROOT = ".agents/claude"
-CLAUDE_BRIDGES = (
-    "levyra-project-manager",
-    "levyra-desktop",
-    "levyra-engineering",
-    "levyra-openclaw-orchestrator",
-)
 
 
 def read_json(relative_path: str, errors: list[str]) -> dict:
@@ -57,11 +51,10 @@ def reject_terms(relative_path: str, terms: tuple[str, ...], errors: list[str]) 
 def main() -> int:
     errors: list[str] = []
 
-    require_terms(
-        "CLAUDE.md",
-        ("@.agents/claude/CLAUDE.md", "sync_agent_runtime.py", "--runtime claude"),
-        errors,
-    )
+    if (ROOT / "CLAUDE.md").exists():
+        errors.append("root CLAUDE.md must stay absent; canonical Claude sources live under .agents/claude")
+    if (ROOT / CLAUDE_ROOT / "skills").exists():
+        errors.append(".agents/claude/skills must stay absent; .agents/skills is the only tracked skill tree")
 
     mcp = read_json(".mcp.json", errors)
     servers = mcp.get("mcpServers") if isinstance(mcp, dict) else None
@@ -72,9 +65,7 @@ def main() -> int:
         if server.get("command") != "bash":
             errors.append(".mcp.json jcodemunch must launch through bash")
         args = server.get("args")
-        if not isinstance(args, list) or not any(
-            "scripts/claude-jcodemunch-mcp.sh" in str(item) for item in args
-        ):
+        if not isinstance(args, list) or not any("scripts/claude-jcodemunch-mcp.sh" in str(item) for item in args):
             errors.append(".mcp.json jcodemunch must use the checked-in Claude launcher")
 
     settings_relative = f"{CLAUDE_ROOT}/settings.json"
@@ -92,49 +83,48 @@ def main() -> int:
 
     hooks = settings.get("hooks") if isinstance(settings, dict) else None
     groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
-    matching_group = None
-    if isinstance(groups, list):
-        matching_group = next(
-            (
-                group
-                for group in groups
-                if isinstance(group, dict) and group.get("matcher") == "startup|resume"
-            ),
-            None,
-        )
+    matching_group = next(
+        (
+            group
+            for group in groups or []
+            if isinstance(group, dict) and group.get("matcher") == "startup|resume"
+        ),
+        None,
+    )
     if matching_group is None:
         errors.append(f"{settings_relative} must run SessionStart on startup and resume")
     else:
-        handlers = matching_group.get("hooks") or []
-        commands = [
-            handler for handler in handlers
+        handlers = [
+            handler
+            for handler in matching_group.get("hooks") or []
             if isinstance(handler, dict) and handler.get("type") == "command"
         ]
-        command_text = "\n".join(str(handler.get("command", "")) for handler in commands)
-        for required_hook in ("session-start.sh", "jcodemunch-start.sh"):
-            if required_hook not in command_text:
-                errors.append(f"Claude SessionStart is missing automatic hook {required_hook!r}")
+        command_text = "\n".join(str(handler.get("command", "")) for handler in handlers)
+        for required in (
+            "sync_agent_runtime.py",
+            "--runtime claude",
+            ".agents/claude/hooks/session-start.sh",
+            ".agents/claude/hooks/jcodemunch-start.sh",
+        ):
+            if required not in command_text:
+                errors.append(f"Claude SessionStart is missing automatic contract {required!r}")
         jcodemunch_handler = next(
-            (
-                handler for handler in commands
-                if "jcodemunch-start.sh" in str(handler.get("command", ""))
-            ),
+            (handler for handler in handlers if "jcodemunch-start.sh" in str(handler.get("command", ""))),
             None,
         )
         if jcodemunch_handler is not None and jcodemunch_handler.get("timeout") != 600:
             errors.append("Claude jCodeMunch SessionStart timeout must be 600 seconds")
 
     prompt_groups = hooks.get("UserPromptSubmit") if isinstance(hooks, dict) else None
-    prompt_commands: list[str] = []
-    if isinstance(prompt_groups, list):
-        for group in prompt_groups:
-            if not isinstance(group, dict):
-                continue
-            for handler in group.get("hooks") or []:
-                if isinstance(handler, dict) and handler.get("type") == "command":
-                    prompt_commands.append(str(handler.get("command", "")))
-    if not any("user-prompt-submit.sh" in command for command in prompt_commands):
-        errors.append(f"{settings_relative} must run user-prompt-submit.sh on UserPromptSubmit")
+    prompt_commands = [
+        str(handler.get("command", ""))
+        for group in prompt_groups or []
+        if isinstance(group, dict)
+        for handler in group.get("hooks") or []
+        if isinstance(handler, dict) and handler.get("type") == "command"
+    ]
+    if not any(".agents/claude/hooks/user-prompt-submit.sh" in command for command in prompt_commands):
+        errors.append(f"{settings_relative} must run the canonical user-prompt-submit.sh on UserPromptSubmit")
 
     claude_relative = f"{CLAUDE_ROOT}/CLAUDE.md"
     claude_path = ROOT / claude_relative
@@ -161,38 +151,14 @@ def main() -> int:
 
     require_terms(
         f"{CLAUDE_ROOT}/agents/levyra-android-developer.md",
-        (
-            "tools: Read, Grep, Glob, Edit, Write, Bash, Skill",
-            "model: inherit",
-            "effort: high",
-            "Project instructions are already loaded automatically",
-        ),
+        ("tools: Read, Grep, Glob, Edit, Write, Bash, Skill", "model: inherit", "effort: high", "Project instructions are already loaded automatically"),
         errors,
     )
     require_terms(
         f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
-        (
-            "command -v python3",
-            "command -v python",
-            "command -v py",
-            "Mandatory skill load",
-            "Root AGENTS.md remains canonical",
-            "EVIDENCE_GATED_COMPLETION.md",
-            "levyra-project-manager",
-            "levyra-desktop",
-            "levyra-engineering",
-            "levyra-openclaw-orchestrator",
-        ),
+        ("command -v python3", "command -v python", "command -v py", "Mandatory skill load", "Root AGENTS.md remains canonical", "EVIDENCE_GATED_COMPLETION.md", "levyra-project-manager", "levyra-desktop", "levyra-engineering", "levyra-openclaw-orchestrator"),
         errors,
     )
-
-    for skill in CLAUDE_BRIDGES:
-        require_terms(
-            f"{CLAUDE_ROOT}/skills/{skill}/SKILL.md",
-            (f".agents/skills/{skill}/SKILL.md",),
-            errors,
-        )
-
     require_terms(
         f"{CLAUDE_ROOT}/hooks/jcodemunch-start.sh",
         ("codex_jcodemunch.py", "index --quiet", "Read/Grep/Glob/Bash", "Token savings never override correctness", "exit 0"),
@@ -205,7 +171,12 @@ def main() -> int:
     )
     require_terms(
         "scripts/sync_agent_runtime.py",
-        (".agents", ".claude", "settings.json", "hooks", "skills"),
+        ('ROOT / ".agents" / "skills"', 'Path("skills")', 'ROOT / ".claude"', "--check"),
+        errors,
+    )
+    require_terms(
+        "scripts/claude-jcodemunch-mcp.sh",
+        ("sync_agent_runtime.py", "--runtime claude", "--quiet", "|| true"),
         errors,
     )
 
@@ -227,8 +198,8 @@ def main() -> int:
         return 1
 
     print(
-        "Claude bootstrap validation passed: root bridge, canonical .agents/claude config, "
-        "runtime projection, skill routing, evidence gates, jCodeMunch, and permission safety verified."
+        "Claude bootstrap validation passed: canonical .agents/claude config, generated native projection, "
+        "shared skill projection, direct canonical hooks, evidence gates, jCodeMunch, and permission safety verified."
     )
     return 0
 
