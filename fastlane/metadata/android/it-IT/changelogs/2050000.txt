@@ -1,0 +1,1 @@
+Levyra 2.5.0 aggiunge Levyra Mix, Your Sound, Living Artwork, card dei testi, sleep timer, azioni rapide di sistema, Undo della coda, ricerca e riproduzione più affidabili, pannello Audio/EQ ridisegnato e navigazione Android Auto migliorata.
