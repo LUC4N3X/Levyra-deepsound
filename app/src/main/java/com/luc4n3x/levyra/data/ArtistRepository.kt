@@ -189,6 +189,30 @@ internal fun shouldRefreshArtistProfileAlias(cached: ArtistProfile, source: Arti
     return sourceBrowseId.isNotBlank() && cached.browseId.trim().equals(sourceBrowseId, ignoreCase = true)
 }
 
+internal fun artistNameMatches(expectedName: String, resolvedName: String): Boolean {
+    val expected = expectedName.trim().cleanAlbumArtistLabel()
+    val expectedPrimary = primaryArtistSegment(expected).ifBlank { expected }
+    val resolved = resolvedName.cleanAlbumArtistLabel()
+    if (expected.isBlank() || resolved.isBlank()) return true
+    return artistIdentityMatches(resolved, expected) || artistIdentityMatches(resolved, expectedPrimary)
+}
+
+/**
+ * A cached profile may only answer a request whose browseId and requested name both still point at
+ * the same artist, so a warm entry can never be served for, or overwritten by, a different one.
+ */
+internal fun artistProfileMatchesRequest(
+    profile: ArtistProfile,
+    browseId: String,
+    requestedName: String
+): Boolean {
+    val expectedBrowseId = browseId.trim()
+    if (expectedBrowseId.isNotBlank() && !profile.browseId.trim().equals(expectedBrowseId, ignoreCase = true)) {
+        return false
+    }
+    return artistNameMatches(requestedName, profile.name)
+}
+
 internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
     fun textFrom(renderer: JSONObject?): String {
         renderer ?: return ""
@@ -342,14 +366,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             header.optJSONObject("musicHeaderRenderer") != null
     }
 
-    private fun artistNameMatches(expectedName: String, resolvedName: String): Boolean {
-        val expected = expectedName.trim().cleanAlbumArtistLabel()
-        val expectedPrimary = primaryArtistSegment(expected).ifBlank { expected }
-        val resolved = resolvedName.cleanAlbumArtistLabel()
-        if (expected.isBlank() || resolved.isBlank()) return true
-        return artistIdentityMatches(resolved, expected) || artistIdentityMatches(resolved, expectedPrimary)
-    }
-
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
         val requestedName = fallbackName.trim().cleanAlbumArtistLabel()
@@ -406,17 +422,29 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
-        if (browseId.isBlank()) return@withContext profileFor(fallbackName)
-        val browseKey = profileBrowseKey(browseId)
-        memory[browseKey]?.let { return@withContext it }
-        val cacheKey = artistIdentityKey(fallbackName)
-        memory[cacheKey]?.takeIf { it.browseId.equals(browseId, ignoreCase = true) }?.let { return@withContext it }
-        val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
-        resolved?.also { profile ->
-            memory[browseKey] = profile
-            memory[cacheKey] = profile
-            memory[artistIdentityKey(profile.name)] = profile
-        }
+        val cleanBrowseId = browseId.trim()
+        val cleanFallbackName = fallbackName.trim()
+        val lookupName = primaryArtistSegment(cleanFallbackName).ifBlank { cleanFallbackName }
+        if (cleanBrowseId.isBlank()) return@withContext profileFor(lookupName)
+
+        val browseKey = profileBrowseKey(cleanBrowseId)
+        val cacheKey = artistIdentityKey(lookupName)
+        sequenceOf(memory[browseKey], memory[cacheKey])
+            .filterNotNull()
+            .firstOrNull { artistProfileMatchesRequest(it, cleanBrowseId, cleanFallbackName) }
+            ?.let { return@withContext it }
+
+        val resolved = runCatching { fetchProfile(cleanBrowseId, cleanFallbackName) }.getOrNull()
+        resolved
+            ?.takeIf { artistProfileMatchesRequest(it, cleanBrowseId, cleanFallbackName) }
+            ?.also { profile ->
+                memory[browseKey] = profile
+                memory[cacheKey] = profile
+                memory[artistIdentityKey(profile.name)] = profile
+            }
+            ?.let { return@withContext it }
+
+        profileFor(lookupName)
     }
 
     private suspend fun resolveArtist(query: String): ArtistHit? {

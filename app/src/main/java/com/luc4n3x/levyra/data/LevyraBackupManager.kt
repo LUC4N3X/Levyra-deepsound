@@ -524,11 +524,22 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("playbackSpeed", value.playbackSpeed.toDouble())
     .put("pitch", value.pitch.toDouble())
     .put("gaplessEnabled", value.gaplessEnabled)
+    .put("customPresets", JSONArray().apply { value.customPresets.forEach { put(customPresetToJson(it)) } })
 
 internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings {
     if (json == null) return LevyraAudioSettings()
     val levelsArray = json.optJSONArray("bandLevels") ?: JSONArray()
     val levels = buildList { for (index in 0 until levelsArray.length()) add(levelsArray.optInt(index)) }
+    val customPresetsArray = json.optJSONArray("customPresets")
+    val customPresets = if (customPresetsArray == null) {
+        emptyList()
+    } else {
+        buildList {
+            for (index in 0 until customPresetsArray.length()) {
+                customPresetsArray.optJSONObject(index)?.let(::customPresetFromJson)?.let(::add)
+            }
+        }
+    }
     return LevyraAudioSettings(
         equalizerEnabled = json.optBoolean("equalizerEnabled"),
         presetId = json.optString("presetId"),
@@ -542,7 +553,8 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         replayGainEnabled = json.optBoolean("replayGainEnabled"),
         playbackSpeed = json.optDouble("playbackSpeed", 1.0).toFloat(),
         pitch = json.optDouble("pitch", 1.0).toFloat(),
-        gaplessEnabled = json.optBoolean("gaplessEnabled", true)
+        gaplessEnabled = json.optBoolean("gaplessEnabled", true),
+        customPresets = customPresets
     ).normalized()
 }
 
