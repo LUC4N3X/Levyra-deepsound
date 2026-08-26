@@ -378,6 +378,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun seekTo(progress: Float) = root.seekTo(progress)
     fun selectTab(tab: LevyraTab) = root.selectTab(tab)
     fun toggleAudioNormalization() = root.toggleAudioNormalization()
+    fun setMotionArtworkEnabled(value: Boolean) = root.setMotionArtworkEnabled(value)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
     fun toggleRepeat() = root.toggleRepeat()

@@ -12747,6 +12747,36 @@ private fun PlayerScreen(
                         }
                     }
                 }
+                if (!state.isVideoMode && track != null) {
+                    val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.AutoAwesome,
+                        contentDescription = strings.motionArtwork,
+                        size = headerButtonSize,
+                        iconSize = 19.dp,
+                        tint = if (canvasActive) primary else Color.White.copy(alpha = 0.54f),
+                        fill = if (canvasActive) {
+                            primary.copy(alpha = 0.13f)
+                        } else {
+                            LevyraPlayerDesign.GlassFill
+                        },
+                        borderTop = if (canvasActive) {
+                            primary.copy(alpha = 0.54f)
+                        } else {
+                            LevyraPlayerDesign.GlassBorderTop
+                        },
+                        borderBottom = if (canvasActive) {
+                            primary.copy(alpha = 0.18f)
+                        } else {
+                            LevyraPlayerDesign.GlassBorderBottom
+                        },
+                        enabled = state.animationsEnabled,
+                        modifier = Modifier.semantics {
+                            toggleableState = ToggleableState(canvasActive)
+                        },
+                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                    )
+                }
                 if (state.isVideoMode) {
                     PlayerGlassIconButton(
                         icon = Icons.Rounded.PictureInPictureAlt,
