@@ -1,120 +1,129 @@
 # Levyra Claude Code Configuration
 
-Everything is intentionally stored inside `.claude/`.
+Levyra keeps the tracked Claude Code source under `.agents/claude/` and the shared
+project skills under `.agents/skills/`.
 
-Claude Code officially supports `.claude/CLAUDE.md` as the project instruction file, `.claude/rules/` for modular path-aware rules, `.claude/skills/` for reusable procedures, `.claude/agents/` for project-specific subagents, `.claude/settings.json` for shared project settings, and `.claude/hooks/` for scripts those settings invoke.
+The native `.claude/` directory is a generated local runtime projection. It is
+ignored by Git and must never become a second source of truth.
 
-## Structure
+## Canonical structure
+
+```text
+.agents/
+├── claude/
+│   ├── CLAUDE.md
+│   ├── README.md
+│   ├── settings.json
+│   ├── agents/
+│   ├── hooks/
+│   └── rules/
+└── skills/
+    └── */SKILL.md
+```
+
+There is intentionally no tracked root `CLAUDE.md`, `.claude/`, or duplicate
+`.agents/claude/skills/` tree.
+
+## Native Claude projection
+
+Claude Code still receives the paths it expects locally:
 
 ```text
 .claude/
-├── CLAUDE.md
-├── README.md
-├── settings.json
-├── agents/
-│   ├── levyra-android-developer.md
-│   └── levyra-reviewer.md
-├── hooks/
-│   ├── session-start.sh
-│   └── user-prompt-submit.sh
-├── rules/
-│   ├── architecture.md
-│   ├── compose-ui.md
-│   ├── data-room.md
-│   ├── extractor-network.md
-│   ├── localization.md
-│   ├── player.md
-│   ├── security.md
-│   └── testing-release.md
-└── skills/
-    ├── levyra-real-engineering/SKILL.md
-    ├── levyra-compose/SKILL.md
-    ├── levyra-database/SKILL.md
-    ├── levyra-extractor/SKILL.md
-    ├── levyra-motion-artwork/SKILL.md
-    ├── levyra-player/SKILL.md
-    ├── levyra-pr-review/SKILL.md
-    ├── levyra-release-check/SKILL.md
-    └── levyra-security-review/SKILL.md
+├── CLAUDE.md        <- .agents/claude/CLAUDE.md
+├── settings.json    <- .agents/claude/settings.json
+├── agents/          <- .agents/claude/agents/
+├── rules/           <- .agents/claude/rules/
+└── skills/          <- .agents/skills/
 ```
 
-## settings.json
+Run the normal repository setup once after a fresh clone or after pulling this
+migration:
 
-`settings.json` is checked in and applies to everyone who opens the repository in Claude Code.
+```powershell
+.\scripts\setup-ai.ps1
+```
 
-- `permissions.allow` pre-approves the read-only git commands and the Gradle verification tasks from `CLAUDE.md`, so routine checks do not stop for a prompt. The git entries are deliberately narrow: `git branch` is allowed only as `--show-current` and `--list`, since a broader wildcard would also pre-approve `git branch -D`, `-M`, and `-f`, which mutate or delete refs.
-- `permissions.deny` blocks reads and writes of `local.properties`, keystores, and `.env` files. This is a guardrail, not a substitute for the release-safety rules in `CLAUDE.md`.
-- `hooks.SessionStart` runs `hooks/session-start.sh`; `hooks.UserPromptSubmit` runs `hooks/user-prompt-submit.sh`.
-- `extraKnownMarketplaces` opts this repository into three external skill marketplaces: [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Android and Compose), [`Kotlin/kotlin-agent-skills`](https://github.com/Kotlin/kotlin-agent-skills) (Kotlin), and [`multica-ai/andrej-karpathy-skills`](https://github.com/multica-ai/andrej-karpathy-skills) (general coding discipline).
-- `enabledPlugins` also project-enables `mattpocock-skills@claude-plugins-official`, using Claude Code's official marketplace. The upstream skills supplement Levyra; the local `levyra-real-engineering` bridge and repository rules decide when and how they are used.
-
-Personal overrides belong in `.claude/settings.local.json`, which is git-ignored.
-
-## hooks/session-start.sh
-
-`CLAUDE.md` instructs Claude to verify work with `./gradlew :app:testDebugUnitTest`, `:app:lintRelease`, and `assembleRelease`. All three need an Android SDK, and cloud and CI containers frequently do not have one. The hook probes the environment at session start and reports the JDK, the state of the Android SDK, whether the JVM-only desktop build is usable, and the current branch and dirty-path count.
-
-A `platforms/` directory alone is not accepted as proof of a usable SDK, because a partial or stale install still fails at Gradle configuration time. The hook reads `compileSdk` from `app/build.gradle.kts` and requires both `platforms/android-<compileSdk>/android.jar` and a `build-tools` install, so it distinguishes three states: usable, incomplete (naming the missing packages), and absent. Reading `compileSdk` from the build file keeps the check correct when that value is bumped.
-
-Even in the usable case the hook says the tasks *should configure* — a precondition, not a result. Claude must still run the task and report only what actually ran. When the SDK is unusable the hook says so plainly and points at `.github/workflows/pr-check.yml` as the authority.
-
-The hook always exits 0 and always prints valid JSON, including when it cannot enter the project directory, so a probe failure can never break a session.
-
-Run it directly to check its output:
+or:
 
 ```bash
-CLAUDE_PROJECT_DIR="$PWD" ./.claude/hooks/session-start.sh
+./scripts/setup-ai.sh
 ```
 
-## hooks/user-prompt-submit.sh
+Both setup scripts invoke `scripts/sync_agent_runtime.py`, which materializes the
+ignored native Claude and Codex projections from `.agents/` without deleting
+unrelated local files. The projection is also refreshed on Claude
+`SessionStart`/resume after the native settings are active. The project-scoped
+jCodeMunch launcher performs a best-effort Claude projection refresh as an
+additional clean-clone bootstrap path.
 
-Three loading mechanisms behave differently, and only two of them are automatic:
-
-| Layer | Loads |
-| --- | --- |
-| `CLAUDE.md` | Always, every session |
-| `rules/*.md` | Automatically, when a file matching the rule's `paths:` is in play |
-| `skills/*/SKILL.md` | Only the `description` is visible up front; the body loads when the skill is invoked |
-
-That third row is the gap. A description is a hint the model may or may not act on, so a skill could be skipped on exactly the request it was written for. This hook closes the gap: it matches each incoming request against the topics the skills cover and states, as an instruction, which ones to invoke before editing. Patterns cover Italian as well as English terms. Several skills can match at once — a non-trivial player feature can route both `levyra-real-engineering` and `levyra-player`.
-
-For `levyra-real-engineering`, the local bridge reads the canonical adapter under `.agents/skills/` and then invokes the exact Matt Pocock stage from the official plugin when available. Tiny unambiguous changes deliberately bypass the full clarify/spec/tickets pipeline.
-
-The hook stays silent when nothing matches, when the payload is unreadable, and when `python3` is absent, so an unrelated request costs nothing. It always exits 0.
-
-It also stays silent on automated payloads — GitHub webhook activity and wrapped external data arrive as user turns but are bot prose, not requests. Without that guard a CodeRabbit rate-limit notice matches `review`, `release`, `security`, and `ui` at once and routes four skills for a message asking no work at all.
-
-`CLAUDE.md` carries the same routing table, so the behavior degrades to documented-but-unenforced rather than disappearing if the hook cannot run.
-
-To see what a given request would route to:
+To refresh or verify only Claude manually:
 
 ```bash
-printf '{"prompt":"design a new playback feature across multiple modules"}' \
-  | ./.claude/hooks/user-prompt-submit.sh
+python3 scripts/sync_agent_runtime.py --runtime claude --quiet
+python3 scripts/sync_agent_runtime.py --runtime claude --check
 ```
+
+On Windows, `python` or `py` can be used when `python3` is not available.
+
+## Automatic skill loading
+
+`.agents/skills/` is the only tracked Levyra skill tree.
+
+- Codex discovers `.agents/skills/` directly.
+- Claude Code discovers the generated `.claude/skills/` projection.
+- Every projected Claude skill comes directly from the same canonical
+  `.agents/skills/<skill>/SKILL.md` file.
+- `UserPromptSubmit` continues routing matching requests to the required Levyra
+  skills before editing.
+- `settings.json` keeps the project plugins and lifecycle hooks active.
+
+This means adding or changing a Levyra skill requires editing it once under
+`.agents/skills/`. The next runtime sync updates Claude's native view; Codex uses
+the canonical file directly.
+
+## Settings and hooks
+
+The tracked settings file is `.agents/claude/settings.json`. Its generated
+`.claude/settings.json` counterpart is what Claude Code consumes locally.
+
+The settings preserve the existing permission guardrails, project plugins,
+SessionStart environment/tooling checks, jCodeMunch bootstrap, prompt routing,
+always-on agent harness, checkpointing, comment guard, and completion audit.
+
+Canonical hook scripts stay under `.agents/claude/hooks/`. The generated
+settings call those canonical scripts directly, so hook logic is not duplicated
+inside `.claude/`.
+
+The hooks are fail-open for optional tooling and must never turn an unavailable
+optimizer or indexer into a blocked coding session. Validation evidence remains
+truthful: a setup probe is a precondition check, not proof that a build or test
+passed.
+
+## Personal local overrides
+
+Generated `.claude/` is ignored by Git. The runtime synchronizer only owns files
+listed in its `.levyra-runtime-manifest.json`; it does not delete unrelated
+machine-specific files. Local-only Claude configuration can therefore coexist
+with the generated project projection.
 
 ## Usage
 
-Start Claude Code from the repository root. Use `/context` to confirm that `.claude/CLAUDE.md` and the unconditional rules loaded.
+After setup, start Claude Code normally from the repository. No custom skill path
+is required. Claude sees the normal `.claude` runtime surface while the GitHub
+repository remains organized under `.agents/`.
 
-Skills are invoked automatically via the routing table above. Invoke one by hand when you want it regardless of wording:
-
-- `/levyra-real-engineering`
-- `/levyra-player`
-- `/levyra-extractor`
-- `/levyra-motion-artwork`
-- `/levyra-database`
-- `/levyra-compose`
-- `/levyra-security-review`
-- `/levyra-pr-review`
-- `/levyra-release-check`
-
-The upstream plugin stages are namespaced by Claude Code. Prefer the local `/levyra-real-engineering` entry point for Levyra work so repository precedence, issue publication rules, and quality gates are applied before an upstream stage runs.
-
-Ask Claude to use `levyra-android-developer` for implementation work or `levyra-reviewer` for a read-only review.
-
-If this is the first time the `agents/` or `skills/` directory exists during an already-running Claude Code session, restart the session once so every entry is discovered. Reload plugins after Claude reports an upstream plugin update.
+If a new skill is added while Claude Code is already running, start a new session
+when necessary so Claude refreshes its discovered skill inventory.
 
 ## Maintenance
 
-Keep `.claude/CLAUDE.md` concise and reserve multi-step procedures for skills. Update the matching rule whenever a review identifies a project-specific mistake that should not recur.
+- edit canonical Claude configuration only under `.agents/claude/`;
+- edit Levyra skills only under `.agents/skills/`;
+- never commit root `CLAUDE.md`, `.claude/`, `.codex/`, or
+  `.agents/claude/skills/`;
+- keep `scripts/sync_agent_runtime.py` idempotent and non-destructive to unknown
+  local files;
+- preserve Claude's native automatic discovery by keeping the generated
+  `.claude` projection compatible with the current runtime;
+- run the AI quality gate after structural agent changes.
