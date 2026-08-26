@@ -369,6 +369,10 @@ internal fun AudioSettingsPanel(
                 showAutoEqImport = false
             },
             onSavePreset = { name, profile ->
+                // Saved AutoEQ presets declare neutral bass/spatial values. Apply those values
+                // before saving so the audible state matches the preset from the first frame.
+                onBassBoost(0)
+                onVirtualizer(0)
                 onSaveAutoEqPreset(name, profile)
                 showAutoEqImport = false
             }
@@ -386,6 +390,7 @@ private fun AutoEqImportDialog(
     val context = LocalContext.current
     var rawText by remember { mutableStateOf("") }
     var presetName by remember { mutableStateOf("") }
+    var presetNameDirty by remember { mutableStateOf(false) }
     var readError by remember { mutableStateOf<String?>(null) }
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -410,9 +415,13 @@ private fun AutoEqImportDialog(
     val parsed = remember(rawText) {
         if (rawText.isBlank()) null else AutoEqImporter.parse(rawText)
     }
-    val profile = (parsed as? AutoEqImporter.ParseResult.Success)?.profile
+    val profile = if (readError == null) {
+        (parsed as? AutoEqImporter.ParseResult.Success)?.profile
+    } else {
+        null
+    }
     LaunchedEffect(profile?.name) {
-        if (presetName.isBlank()) presetName = profile?.name.orEmpty()
+        if (!presetNameDirty) presetName = profile?.name.orEmpty()
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -446,9 +455,13 @@ private fun AutoEqImportDialog(
                 )
                 OutlinedTextField(
                     value = rawText,
-                    onValueChange = {
-                        readError = null
-                        rawText = it.take(AutoEqImporter.MAX_INPUT_CHARS)
+                    onValueChange = { candidate ->
+                        if (candidate.length > AutoEqImporter.MAX_INPUT_CHARS) {
+                            readError = strings.autoEqInputTooLarge
+                        } else {
+                            readError = null
+                            rawText = candidate
+                        }
                     },
                     placeholder = { Text("GraphicEQ: 20 4.5; 25 4.4; ...", color = LevyraMuted, fontSize = 12.sp) },
                     minLines = 3,
@@ -486,7 +499,10 @@ private fun AutoEqImportDialog(
                     AutoEqProfilePreview(profile = profile)
                     OutlinedTextField(
                         value = presetName,
-                        onValueChange = { presetName = it.take(48) },
+                        onValueChange = {
+                            presetNameDirty = true
+                            presetName = it.take(48)
+                        },
                         singleLine = true,
                         label = { Text(strings.autoEqPresetName, color = LevyraMuted, fontSize = 12.sp) },
                         textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
