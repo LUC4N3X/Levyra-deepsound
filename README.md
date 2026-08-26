@@ -256,30 +256,73 @@ levyraDesktopVersion=1.2.0
 
 ## ✦ Privacy Blueprint & Permissions
 
-Levyra is built on strict zero-tracking principles: no advertising identifiers, no user profiling, and no background telemetry.
+<div align="center">
+  <strong>Privacy is part of the architecture, not a settings toggle.</strong><br>
+  <sub>No advertising identifiers · no user profiling · no background telemetry</sub>
+  <br><br>
 
-<table align="center" width="100%">
+  <table width="92%" cellpadding="8" cellspacing="0">
+    <tr valign="middle">
+      <td width="33%" align="center">
+        <b>🛡️ ZERO TRACKERS</b><br>
+        <sub>No analytics or profiling</sub>
+      </td>
+      <td width="33%" align="center">
+        <b>💾 LOCAL DATA</b><br>
+        <sub>History and stats stay on device</sub>
+      </td>
+      <td width="34%" align="center">
+        <b>🌐 DIRECT CONNECTIONS</b><br>
+        <sub>No Levyra tracking proxy</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br>
+
+<table align="center" width="100%" cellpadding="10" cellspacing="0">
   <tr valign="top">
     <td width="50%">
       <h3>🌐 <b>Network Transparency</b></h3>
-      <ul>
-        <li><b>Streams:</b> Direct YouTube / YT Music CDN connections without proxy tracking.</li>
-        <li><b>Lyrics:</b> LRCLIB and YouTube Music queries using song metadata.</li>
-        <li><b>Artwork & Metadata:</b> Public catalog lookups across Deezer, Apple Music, and Tidal.</li>
-        <li><b>SponsorBlock:</b> Optional queries using truncated video-ID hash prefixes.</li>
-        <li><b>Updates:</b> GitHub release checks at startup; disabled in F-Droid builds.</li>
-      </ul>
+      <sub>Every external connection has a clear playback or metadata purpose.</sub>
+      <br><br>
+      <b>🎵 Streams</b><br>
+      <small>Direct YouTube / YT Music CDN connections without proxy tracking.</small>
+      <hr width="88%">
+      <b>📝 Lyrics</b><br>
+      <small>LRCLIB and YouTube Music queries using song metadata.</small>
+      <hr width="88%">
+      <b>🖼️ Artwork & Metadata</b><br>
+      <small>Public catalog lookups across Deezer, Apple Music, and Tidal.</small>
+      <hr width="88%">
+      <b>✂️ SponsorBlock</b><br>
+      <small>Optional queries using truncated video-ID hash prefixes.</small>
+      <hr width="88%">
+      <b>🚀 Updates</b><br>
+      <small>GitHub release checks at startup; disabled in F-Droid builds.</small>
     </td>
     <td width="50%">
       <h3>🛡️ <b>Android Permissions</b></h3>
-      <ul>
-        <li><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code> — Streaming and metadata resolution.</li>
-        <li><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code> — Background playback and media controls.</li>
-        <li><code>POST_<wbr>NOTIFICATIONS</code> — Lockscreen controls and download updates.</li>
-        <li><code>RECORD_<wbr>AUDIO</code> — Optional music recognition; unused without a provider.</li>
-        <li><code>WAKE_<wbr>LOCK</code> — Keeps playback active with the screen off.</li>
-        <li><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.</li>
-      </ul>
+      <sub>Only permissions required for playback, notifications, recognition, and offline export.</sub>
+      <br><br>
+      <b><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code></b><br>
+      <small>Streaming and metadata resolution.</small>
+      <hr width="88%">
+      <b><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code></b><br>
+      <small>Background playback and media controls.</small>
+      <hr width="88%">
+      <b><code>POST_<wbr>NOTIFICATIONS</code></b><br>
+      <small>Lockscreen controls and download updates.</small>
+      <hr width="88%">
+      <b><code>RECORD_<wbr>AUDIO</code></b><br>
+      <small>Optional music recognition; unused without a configured provider.</small>
+      <hr width="88%">
+      <b><code>WAKE_<wbr>LOCK</code></b><br>
+      <small>Keeps playback active with the screen off.</small>
+      <hr width="88%">
+      <b><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code> · Android ≤ 9</b><br>
+      <small>Tagged M4A export to <code>Music/Levyra</code>.</small>
     </td>
   </tr>
 </table>
@@ -338,7 +381,7 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 ### Acknowledgments
 
-* **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Architectural inspiration for fluid Compose UI navigation and dynamic OLED palettes.
+* **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Reference for Levyra's renderer-recovery backoff policy and BetterLyrics TTML parsing behavior, reimplemented for Levyra.
 * **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is maintained as a Levyra-specific fork of this project, with additional stream-resolution, playback-reliability, diagnostics, and fallback work.
 * **[NewPipe & PipePipe Communities](https://github.com/TeamNewPipe/NewPipeExtractor)** — Foundational extractor architecture, service implementations, parser protocols, and downstream ecosystem work retained in LevyraExtractor.
 * **[LRCLIB](https://lrclib.net/)** — Community synchronized lyric database and open API powering real-time karaoke synchronization.
