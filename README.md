@@ -257,33 +257,38 @@ levyraDesktopVersion=1.2.0
 ## ✦ Privacy Blueprint & Permissions
 
 <div align="center">
-  <b>Zero tracking by design.</b><br>
-  <sub>No ads · no analytics · listening data stays on device</sub>
+  <h3>🛡️ <b>Private by default. Transparent by design.</b></h3>
+  <p>
+    <code>NO ADS</code> &nbsp;·&nbsp;
+    <code>NO ANALYTICS</code> &nbsp;·&nbsp;
+    <code>LOCAL LISTENING DATA</code> &nbsp;·&nbsp;
+    <code>DIRECT CONNECTIONS</code>
+  </p>
 </div>
-
-<br>
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
       <h3>🌐 <b>Network Transparency</b></h3>
+      <p><b>Only what playback needs.</b><br><sub>Connections go directly to the services Levyra uses—never through a Levyra tracking proxy.</sub></p>
       <ul>
-        <li><b>Streams:</b> Direct YouTube / YT Music CDN connections without proxy tracking.</li>
-        <li><b>Lyrics:</b> LRCLIB and YouTube Music queries using song metadata.</li>
-        <li><b>Artwork & Metadata:</b> Public catalog lookups across Deezer, Apple Music, and Tidal.</li>
-        <li><b>SponsorBlock:</b> Optional requests using truncated video-ID hash prefixes.</li>
-        <li><b>Updates:</b> GitHub release checks at startup; disabled in F-Droid builds.</li>
+        <li><b>🎵 Streams:</b> Direct YouTube / YT Music CDN connections.</li>
+        <li><b>📝 Lyrics:</b> LRCLIB and YouTube Music metadata queries.</li>
+        <li><b>🖼️ Artwork:</b> Public Deezer, Apple Music, and Tidal catalog lookups.</li>
+        <li><b>✂️ SponsorBlock:</b> Optional truncated video-ID hash requests.</li>
+        <li><b>🚀 Updates:</b> GitHub release checks; disabled in F-Droid builds.</li>
       </ul>
     </td>
     <td width="50%">
-      <h3>🛡️ <b>Android Permissions</b></h3>
+      <h3>🔐 <b>Permission Surface</b></h3>
+      <p><b>Access stays narrow.</b><br><sub>Android permissions are limited to playback, notifications, optional recognition, and offline export.</sub></p>
       <ul>
-        <li><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code> — Streaming and metadata.</li>
-        <li><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code> — Background playback and media controls.</li>
-        <li><code>POST_<wbr>NOTIFICATIONS</code> — Lockscreen controls and download updates.</li>
-        <li><code>RECORD_<wbr>AUDIO</code> — Optional music recognition.</li>
-        <li><code>WAKE_<wbr>LOCK</code> — Keeps playback active with the screen off.</li>
-        <li><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code> (Android ≤ 9) — Tagged M4A export to <code>Music/Levyra</code>.</li>
+        <li><b><code>INTERNET</code> / <code>ACCESS_<wbr>NETWORK_STATE</code></b><br><sub>Streaming and metadata.</sub></li>
+        <li><b><code>FOREGROUND_<wbr>SERVICE_<wbr>MEDIA_<wbr>PLAYBACK</code></b><br><sub>Background playback and media controls.</sub></li>
+        <li><b><code>POST_<wbr>NOTIFICATIONS</code></b><br><sub>Lockscreen controls and download updates.</sub></li>
+        <li><b><code>RECORD_<wbr>AUDIO</code></b><br><sub>Optional music recognition only.</sub></li>
+        <li><b><code>WAKE_<wbr>LOCK</code></b><br><sub>Keeps playback active with the screen off.</sub></li>
+        <li><b><code>WRITE_<wbr>EXTERNAL_<wbr>STORAGE</code></b> <sub>Android ≤ 9</sub><br><sub>Tagged M4A export to <code>Music/Levyra</code>.</sub></li>
       </ul>
     </td>
   </tr>
