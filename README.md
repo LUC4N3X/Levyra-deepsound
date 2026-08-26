@@ -168,12 +168,23 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 ## ✦ Architecture & Engineering Blueprint
 
+<div align="center">
+  <h3>🏗️ <b>Native architecture. Modular by design.</b></h3>
+  <p>
+    <code>ANDROID</code> &nbsp;·&nbsp;
+    <code>WINDOWS</code> &nbsp;·&nbsp;
+    <code>LOW-LATENCY PLAYBACK</code> &nbsp;·&nbsp;
+    <code>LOCAL-FIRST STORAGE</code>
+  </p>
+</div>
+
 Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
       <h3>📱 <b>Android Native Suite</b> (<code>app/</code>)</h3>
+      <p><b>Modern Android stack.</b><br><sub>Compose-first UI, Media3 playback, offline export, and local data orchestration.</sub></p>
       <ul>
         <li>🎨 <b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a>:</b> Compose & Material 3 screens, gestures, Canvas, and OLED palettes.</li>
         <li>🧠 <b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a>:</b> Immutable UI state and unidirectional coordination.</li>
@@ -184,6 +195,7 @@ Levyra is built from the ground up as a native, modular audio suite for Android 
     </td>
     <td width="50%">
       <h3>💻 <b>Windows Desktop Suite</b> (<code>desktop/</code>)</h3>
+      <p><b>Standalone desktop core.</b><br><sub>Compose Multiplatform interface, libvlc playback, packaging, and desktop-native controls.</sub></p>
       <ul>
         <li>🖥️ <b><a href="desktop/app"><code>app/</code></a>:</b> Compose Multiplatform UI, windows, and updater.</li>
         <li>🔊 <b><a href="desktop/player"><code>player/</code></a>:</b> libvlc playback, hardware acceleration, tray, and global hotkeys.</li>
@@ -195,9 +207,23 @@ Levyra is built from the ground up as a native, modular audio suite for Android 
 </table>
 
 ### ✦ Under the Hood
-* **Unidirectional State Flow**: User actions update immutable state in the ViewModel, dispatching synchronized changes across the Compose UI, MediaSession notification, and Android Auto.
-* **Dual Stream Resolver**: Queries InnerTube and LevyraExtractor with automatic fallback, selecting the highest-fidelity Opus or AAC stream while prefetching upcoming queue tracks.
-* **Standard File Vault**: Offline tracks save as tagged M4A files directly into `Music/Levyra`, playable in external DAPs, car stereos, and third-party media players.
+
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h4>🔄 <b>State Flow</b></h4>
+      <sub>User actions update immutable ViewModel state, keeping Compose UI, MediaSession, and Android Auto in sync.</sub>
+    </td>
+    <td width="33%">
+      <h4>🎯 <b>Stream Resolver</b></h4>
+      <sub>InnerTube and LevyraExtractor work with automatic fallback, fidelity selection, and queue prefetch.</sub>
+    </td>
+    <td width="34%">
+      <h4>💿 <b>File Vault</b></h4>
+      <sub>Offline tracks are exported as tagged M4A files in <code>Music/Levyra</code>, ready for external players and car systems.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
