@@ -9,7 +9,7 @@ description: Implement, debug, or review Levyra playback, queue, Media3, MediaSe
 
 1. Read the root `AGENTS.md` and the nearest applicable `AGENTS.md`.
 2. Read `docs/ARCHITECTURE.md`.
-3. Read `.claude/skills/levyra-player/SKILL.md`, `.claude/rules/player.md`, and `.claude/rules/architecture.md`.
+3. Read `.agents/claude/rules/player.md` and `.agents/claude/rules/architecture.md`.
 4. Inspect the complete current path through user intent, ViewModel/controller, queue, resolver, player, service, MediaSession, notification, and tests.
 
 ## Change contract
