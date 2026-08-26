@@ -1868,6 +1868,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startMusicRecognition() {
+        if (!_state.value.recognitionAvailable) return
         if (recognitionCollectorJob == null) {
             recognitionCollectorJob = viewModelScope.launch {
                 recognitionController.state.collect { recognitionState ->
@@ -7824,7 +7825,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         officialMetadataSignal.close()
         chartEnrichJob?.cancel()
         sleepTimerCollectorJob?.cancel()
-        PlaybackService.cancelSleepTimer()
         lyricsJob?.cancel()
         lyricsPrefetchJob?.cancel()
         sponsorJob?.cancel()

@@ -4170,7 +4170,7 @@ private fun QueueOverlay(
                     val queuePosition = LevyraConnectedPosition.of(index, state.queue.size)
                     val dismissState = rememberSwipeToDismissBoxState()
                     LaunchedEffect(dismissState.currentValue) {
-                        if (dismissState.currentValue != SwipeToDismissBoxValue.EndToStart) return@LaunchedEffect
+                        if (isCurrent || dismissState.currentValue != SwipeToDismissBoxValue.EndToStart) return@LaunchedEffect
                         haptics.perform(LevyraHapticAction.TrackSwipe)
                         val removalIndex = latestQueue.indexOfFirst { it === track }
                             .takeIf { it >= 0 }
@@ -4182,7 +4182,7 @@ private fun QueueOverlay(
                     SwipeToDismissBox(
                         state = dismissState,
                         enableDismissFromStartToEnd = false,
-                        enableDismissFromEndToStart = true,
+                        enableDismissFromEndToStart = !isCurrent,
                         backgroundContent = {
                             Box(
                                 modifier = Modifier
@@ -4203,12 +4203,14 @@ private fun QueueOverlay(
                         modifier = Modifier
                             .fillMaxWidth()
                             .semantics {
-                                customActions = listOf(
-                                    CustomAccessibilityAction(strings.remove) {
-                                        onRemove(index)
-                                        true
-                                    }
-                                )
+                                if (!isCurrent) {
+                                    customActions = listOf(
+                                        CustomAccessibilityAction(strings.remove) {
+                                            onRemove(index)
+                                            true
+                                        }
+                                    )
+                                }
                             }
                     ) {
                         Box(
@@ -14164,7 +14166,7 @@ private fun PlayerOptionsRow(
             icon = Icons.Rounded.Bedtime,
             label = when {
                 sleepTimerEndOfTrack -> LocalLevyraStrings.current.sleepTimerEndOfTrack
-                sleepMinutes > 0 -> "${sleepMinutes}m"
+                sleepMinutes > 0 -> LocalLevyraStrings.current.formatSleepTimerMinutes(sleepMinutes)
                 else -> LocalLevyraStrings.current.timer
             },
             active = sleepMinutes > 0 || sleepTimerEndOfTrack,

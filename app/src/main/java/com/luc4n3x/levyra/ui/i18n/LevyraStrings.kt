@@ -634,7 +634,30 @@ class LevyraStrings private constructor(
     val recognitionListening: String get() = value("recognitionListening")
     val recognitionProcessing: String get() = value("recognitionProcessing")
     val recognitionTapToListen: String get() = value("recognitionTapToListen")
-    fun formatSleepTimerMinutes(minutes: Int): String = "$minutes min"
+    fun formatSleepTimerMinutes(minutes: Int): String {
+        val amount = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
+            .format(minutes.coerceAtLeast(0))
+        val normalizedCode = LevyraLanguageCatalog.normalize(code)
+        val unit = when (normalizedCode) {
+            "de" -> "Min."
+            "el" -> "λεπ."
+            "uk" -> "хв"
+            "ru" -> "мин"
+            "tr" -> "dk"
+            "ar" -> "د"
+            "zh" -> "分钟"
+            "ja" -> "分"
+            "ko" -> "분"
+            "hi" -> "मि"
+            "id" -> "mnt"
+            "vi" -> "phút"
+            "th" -> "นาที"
+            "he" -> "דק׳"
+            else -> "min"
+        }
+        val separator = if (normalizedCode in setOf("zh", "ja", "ko")) "" else " "
+        return directionalValue("$amount$separator$unit")
+    }
     val normalizationShort: String get() = value("normalizationShort")
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
