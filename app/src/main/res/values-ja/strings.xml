@@ -12,4 +12,8 @@
     <string name="radar_channel_name">リリースレーダー</string>
     <string name="radar_channel_description">フォロー中のアーティストの新着リリース</string>
     <string name="radar_new_release_title">%1$sの新着リリース</string>
+    <string name="tile_recognize_music">音楽を認識</string>
+    <string name="shortcut_search">検索</string>
+    <string name="shortcut_library">ライブラリ</string>
+    <string name="shortcut_recognition">音楽を認識</string>
 </resources>

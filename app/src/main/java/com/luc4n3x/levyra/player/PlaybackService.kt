@@ -186,12 +186,37 @@ class PlaybackService : MediaLibraryService() {
         private val _activePlayerFlow = MutableStateFlow<ExoPlayer?>(null)
         val activePlayerFlow: StateFlow<ExoPlayer?> = _activePlayerFlow.asStateFlow()
 
+        private val _sleepTimerStateFlow = MutableStateFlow<PlaybackSleepTimerState>(PlaybackSleepTimerState.Disabled)
+        val sleepTimerStateFlow: StateFlow<PlaybackSleepTimerState> = _sleepTimerStateFlow.asStateFlow()
+
         @Volatile
         var activePlayer: ExoPlayer? = null
             private set(value) {
                 field = value
                 _activePlayerFlow.value = value
             }
+
+        fun startSleepTimer(minutes: Int): Boolean {
+            val service = activeService ?: return false
+            if (minutes <= 0) {
+                service.sleepTimer.cancel()
+                return true
+            }
+            service.sleepTimer.startCountdown(minutes * 60_000L)
+            return true
+        }
+
+        fun startSleepTimerEndOfTrack(): Boolean {
+            val service = activeService ?: return false
+            service.sleepTimer.startEndOfTrack()
+            return true
+        }
+
+        fun cancelSleepTimer(): Boolean {
+            val service = activeService ?: return false
+            service.sleepTimer.cancel()
+            return true
+        }
 
         @Volatile
         private var activeService: PlaybackService? = null
@@ -252,6 +277,8 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val sleepTimer by lazy { PlaybackSleepTimer(serviceScope) { pausePlaybackForSleepTimer() } }
+    private var sleepTimerStateJob: Job? = null
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
@@ -385,6 +412,10 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = player
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT && sleepTimer.consumeEndOfTrackBoundary()) {
+                    pausePlaybackForSleepTimer()
+                    return
+                }
                 updatePlayerWakeMode(player, mediaItem)
                 applyPlaybackTrackSelection(player, mediaItem)
                 if (serviceRecoveryJob?.isActive != true && stickyRestoreJob?.isActive != true) {
@@ -403,10 +434,12 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED &&
-                    LevyraWidgetBridge.onNext == null &&
-                    !isQueueTransitionInProgress
-                ) {
+                if (playbackState != Player.STATE_ENDED) return
+                if (sleepTimer.consumeEndOfTrackBoundary()) {
+                    pausePlaybackForSleepTimer()
+                    return
+                }
+                if (LevyraWidgetBridge.onNext == null && !isQueueTransitionInProgress) {
                     skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
                 }
             }
@@ -440,6 +473,10 @@ class PlaybackService : MediaLibraryService() {
             }
         })
         startPlaybackWatchdog(player)
+        sleepTimerStateJob?.cancel()
+        sleepTimerStateJob = serviceScope.launch {
+            sleepTimer.state.collect { state -> _sleepTimerStateFlow.value = state }
+        }
         serviceScope.launch {
             while (isActive) {
                 if (player.mediaItemCount > 0) queueEngine.updatePosition(player.currentPosition)
@@ -1059,6 +1096,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun maybePrepareQueueTransition(player: ExoPlayer) {
+        if (sleepTimer.isEndOfTrackActive()) return
         if (queueTransitionJob?.isActive == true || !player.isPlaying || player.playbackState != Player.STATE_READY) return
         val duration = player.duration.takeIf { it > 0L && it != C.TIME_UNSET } ?: return
         val remaining = duration - player.currentPosition
@@ -1338,6 +1376,7 @@ class PlaybackService : MediaLibraryService() {
         return current.generation == generation &&
             playbackQueueIdentity(current.currentTrack ?: return false) == currentIdentity &&
             current.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.One &&
+            !sleepTimer.isEndOfTrackActive() &&
             queueEngine.upcoming(1).firstOrNull()?.let(::playbackQueueIdentity) == targetIdentity &&
             player.playWhenReady &&
             player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
@@ -1426,6 +1465,11 @@ class PlaybackService : MediaLibraryService() {
         releaseTransitionPlayer()
     }
 
+    private fun pausePlaybackForSleepTimer() {
+        cancelQueueTransition()
+        mediaSession?.player?.pause()
+    }
+
     private fun releaseTransitionPlayer(expected: ExoPlayer? = null) {
         val player = transitionPlayer ?: return
         if (expected != null && player !== expected) return
@@ -1472,6 +1516,9 @@ class PlaybackService : MediaLibraryService() {
         cancelQueueTransition()
         memoryGuardJob?.cancel()
         queueTransitionMonitorJob?.cancel()
+        sleepTimerStateJob?.cancel()
+        sleepTimer.cancel()
+        _sleepTimerStateFlow.value = PlaybackSleepTimerState.Disabled
         mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         releasePlaybackWakeLock()
         synchronized(premiumAudioSettingsLock) {

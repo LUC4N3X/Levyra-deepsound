@@ -12,4 +12,8 @@
     <string name="radar_channel_name">Släppradar</string>
     <string name="radar_channel_description">Nya släpp från artister du följer</string>
     <string name="radar_new_release_title">Nytt släpp från %1$s</string>
+    <string name="tile_recognize_music">Känn igen musik</string>
+    <string name="shortcut_search">Sök</string>
+    <string name="shortcut_library">Bibliotek</string>
+    <string name="shortcut_recognition">Känn igen musik</string>
 </resources>

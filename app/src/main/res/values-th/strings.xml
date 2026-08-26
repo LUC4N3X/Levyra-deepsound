@@ -12,4 +12,8 @@
     <string name="radar_channel_name">เรดาร์ผลงานใหม่</string>
     <string name="radar_channel_description">ผลงานใหม่จากศิลปินที่คุณติดตาม</string>
     <string name="radar_new_release_title">ผลงานใหม่จาก %1$s</string>
+    <string name="tile_recognize_music">จดจำเพลง</string>
+    <string name="shortcut_search">ค้นหา</string>
+    <string name="shortcut_library">คลัง</string>
+    <string name="shortcut_recognition">จดจำเพลง</string>
 </resources>

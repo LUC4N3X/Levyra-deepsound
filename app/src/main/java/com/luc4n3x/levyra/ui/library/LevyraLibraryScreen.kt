@@ -341,25 +341,6 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
-                    if (catalog.albums.isNotEmpty()) {
-                        item(key = "overview-albums-title") {
-                            LibrarySectionTitle(
-                                title = strings.albumsPlain,
-                                detail = strings.savedTracks,
-                                action = strings.showAll,
-                                onAction = { switchCategory(LibraryCategory.Albums) }
-                            )
-                        }
-                        item(key = "overview-albums-grid") {
-                            LibraryAlbumGridRows(
-                                albums = catalog.albums.take(4),
-                                selectedKeys = emptySet(),
-                                selectionActive = false,
-                                onOpen = { album -> viewModel.openAlbum(album.toAlbumHit()) },
-                                onSelect = {}
-                            )
-                        }
-                    }
                 }
 
                 LibraryCategory.Playlists -> {
