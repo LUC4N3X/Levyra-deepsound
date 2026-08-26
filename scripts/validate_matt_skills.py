@@ -8,14 +8,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+CLAUDE_ROOT = ".agents/claude"
 
 REQUIRED_FILES = (
     "AGENTS.md",
     ".agents/skills/levyra-real-engineering/SKILL.md",
     ".agents/rules/levyra-workspace.md",
-    ".claude/skills/levyra-real-engineering/SKILL.md",
-    ".claude/settings.json",
-    ".claude/hooks/user-prompt-submit.sh",
+    f"{CLAUDE_ROOT}/skills/levyra-real-engineering/SKILL.md",
+    f"{CLAUDE_ROOT}/settings.json",
+    f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
     "docs/agents/issue-tracker.md",
     "docs/agents/domain.md",
     "docs/ai/MATT_POCOCK_SKILLS.md",
@@ -94,40 +95,31 @@ def main() -> int:
     require(
         errors,
         "docs/agents/issue-tracker.md",
-        (
-            "LUC4N3X/Levyra-deepsound",
-            "explicit owner authorization",
-            "PRs as a request surface: no",
-        ),
+        ("LUC4N3X/Levyra-deepsound", "explicit owner authorization", "PRs as a request surface: no"),
     )
     require(
         errors,
         "docs/agents/domain.md",
-        (
-            "CONTEXT.md",
-            "docs/adr/",
-            "created lazily",
-        ),
+        ("CONTEXT.md", "docs/adr/", "created lazily"),
     )
 
-    settings_path = ROOT / ".claude/settings.json"
+    settings_relative = f"{CLAUDE_ROOT}/settings.json"
+    settings_path = ROOT / settings_relative
     if settings_path.is_file():
         try:
             settings = json.loads(settings_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            errors.append(f".claude/settings.json is invalid: {exc}")
+            errors.append(f"{settings_relative} is invalid: {exc}")
         else:
-            enabled = settings.get("enabledPlugins", {}).get(
-                "mattpocock-skills@claude-plugins-official"
-            )
+            enabled = settings.get("enabledPlugins", {}).get("mattpocock-skills@claude-plugins-official")
             if enabled is not True:
                 errors.append(
-                    "Claude mattpocock-skills plugin must be project-enabled from "
-                    "claude-plugins-official"
+                    "Claude mattpocock-skills plugin must be project-enabled from claude-plugins-official"
                 )
 
-    if (ROOT / ".claude/skills/levyra-real-engineering/SKILL.md").is_file():
-        bridge = text(".claude/skills/levyra-real-engineering/SKILL.md")
+    bridge_relative = f"{CLAUDE_ROOT}/skills/levyra-real-engineering/SKILL.md"
+    if (ROOT / bridge_relative).is_file():
+        bridge = text(bridge_relative)
         if ".agents/skills/levyra-real-engineering/SKILL.md" not in bridge:
             errors.append("Claude bridge must point to the canonical Levyra adapter")
         if "mattpocock-skills" not in bridge:
@@ -153,7 +145,7 @@ def main() -> int:
 
     for relative_path in (
         ".agents/rules/levyra-workspace.md",
-        ".claude/hooks/user-prompt-submit.sh",
+        f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
         "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
         "docs/ai/ANTIGRAVITY.md",
     ):
@@ -169,8 +161,7 @@ def main() -> int:
 
     print(
         "Matt skills integration validation passed: upstream setup substrate, canonical "
-        "adapter, official Claude plugin/bridge, Codex bootstrap, ChatGPT routing, and "
-        "Antigravity routing verified."
+        ".agents adapter, Claude runtime bridge, Codex bootstrap, ChatGPT routing, and Antigravity routing verified."
     )
     return 0
 

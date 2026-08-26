@@ -10,10 +10,12 @@ from typing import Any
 
 try:
     import tomllib
-except ModuleNotFoundError:  # Python < 3.11
+except ModuleNotFoundError:  # pragma: no cover
     tomllib = None  # type: ignore[assignment]
 
 ROOT = Path(__file__).resolve().parents[1]
+CLAUDE_ROOT = ".agents/claude"
+CODEX_ROOT = ".agents/codex"
 
 REQUIRED_FILES = (
     ".rtk/filters.toml",
@@ -21,12 +23,15 @@ REQUIRED_FILES = (
     ".agents/rules/levyra-workspace.md",
     ".agents/skills/levyra-context-efficiency/SKILL.md",
     ".agents/skills/levyra-security-review/SKILL.md",
-    ".claude/hooks/user-prompt-submit.sh",
-    ".claude/rules/context-efficiency.md",
-    ".claude/rules/security.md",
+    f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
+    f"{CLAUDE_ROOT}/rules/context-efficiency.md",
+    f"{CLAUDE_ROOT}/rules/security.md",
+    f"{CODEX_ROOT}/config.toml",
+    f"{CODEX_ROOT}/hooks.json",
     ".github/workflows/dependency-review.yml",
     ".github/workflows/pr-check.yml",
     ".agents/config/codex-plugins.txt",
+    "CLAUDE.md",
     "docs/README.md",
     "docs/ai/ANTIGRAVITY.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
@@ -35,6 +40,7 @@ REQUIRED_FILES = (
     "docs/ai/RTK.md",
     "scripts/ai_quality_gate.py",
     "scripts/ai_quality_gate_allowlist.txt",
+    "scripts/sync_agent_runtime.py",
     "scripts/tests/test_ai_quality_gate.py",
     "scripts/setup-ai.ps1",
     "scripts/setup-ai.sh",
@@ -43,10 +49,9 @@ REQUIRED_FILES = (
 FORBIDDEN_PATHS = (
     "codex-home/ollama.config.toml",
     "codex-home/llamacpp.config.toml",
-    ".codex/ollama.config.toml",
-    ".codex/llamacpp.config.toml",
+    f"{CODEX_ROOT}/ollama.config.toml",
+    f"{CODEX_ROOT}/llamacpp.config.toml",
 )
-
 EXPECTED_SKILL_NAME = "levyra-context-efficiency"
 EXPECTED_PLUGINS = ("superpowers@openai-curated",)
 EXPECTED_FILTERS = (
@@ -59,17 +64,12 @@ FORBIDDEN_GRADLE_MARKERS = ("BUILD SUCCESSFUL", "BUILD FAILED")
 
 
 def fail(errors: list[str], message: str) -> None:
-    """Append one validation error without interrupting the remaining checks."""
     errors.append(message)
 
 
 def require_terms(
-    errors: list[str],
-    relative_path: str,
-    label: str,
-    terms: tuple[str, ...],
+    errors: list[str], relative_path: str, label: str, terms: tuple[str, ...]
 ) -> None:
-    """Require literal contract terms in a repository file when it exists."""
     path = ROOT / relative_path
     if not path.is_file():
         return
@@ -80,7 +80,6 @@ def require_terms(
 
 
 def iter_strings(value: Any) -> list[str]:
-    """Flatten nested TOML values and keys into strings for policy inspection."""
     if isinstance(value, str):
         return [value]
     if isinstance(value, dict):
@@ -90,7 +89,7 @@ def iter_strings(value: Any) -> list[str]:
             strings.extend(iter_strings(child))
         return strings
     if isinstance(value, list):
-        strings = []
+        strings: list[str] = []
         for child in value:
             strings.extend(iter_strings(child))
         return strings
@@ -98,14 +97,12 @@ def iter_strings(value: Any) -> list[str]:
 
 
 def validate_filters(errors: list[str]) -> None:
-    """Parse and validate Levyra's project-local RTK filter configuration."""
     filters_path = ROOT / ".rtk/filters.toml"
     if not filters_path.is_file():
         return
     if tomllib is None:
         fail(errors, "Python 3.11 or newer is required to parse .rtk/filters.toml")
         return
-
     try:
         with filters_path.open("rb") as source:
             document = tomllib.load(source)
@@ -115,7 +112,6 @@ def validate_filters(errors: list[str]) -> None:
 
     if document.get("schema_version") != 1:
         fail(errors, ".rtk/filters.toml must declare integer schema_version = 1")
-
     filters = document.get("filters")
     if not isinstance(filters, dict):
         fail(errors, ".rtk/filters.toml must contain a filters table")
@@ -134,55 +130,37 @@ def validate_filters(errors: list[str]) -> None:
             fail(errors, f"RTK filter {filter_name!r} is missing match_command")
             continue
         if re.search(r"\bgradle(?:w|w\.bat)?\b", match_command, re.IGNORECASE):
-            fail(
-                errors,
-                f"RTK filter {filter_name!r} must not replace RTK's Gradle handler",
-            )
-        filtered_values = {
-            key: value for key, value in config.items() if key != "description"
-        }
-        parsed_strings = iter_strings(filtered_values)
+            fail(errors, f"RTK filter {filter_name!r} must not replace RTK's Gradle handler")
+        parsed_strings = iter_strings({k: v for k, v in config.items() if k != "description"})
         for marker in FORBIDDEN_GRADLE_MARKERS:
             if any(marker in value for value in parsed_strings):
-                fail(
-                    errors,
-                    f"RTK filter {filter_name!r} must not encode Gradle marker {marker!r}",
-                )
+                fail(errors, f"RTK filter {filter_name!r} must not encode Gradle marker {marker!r}")
 
     setup_filter = filters.get("levyra-agent-tests")
-    if not isinstance(setup_filter, dict):
-        return
-    pattern = setup_filter.get("match_command")
-    if not isinstance(pattern, str):
-        fail(errors, "levyra-agent-tests is missing a string match_command")
-        return
-    try:
-        matcher = re.compile(pattern)
-    except re.error as exc:
-        fail(errors, f"levyra-agent-tests match_command is invalid regex: {exc}")
-        return
-
-    for command in (
-        r".\scripts\setup-ai.ps1 -DryRun",
-        "./scripts/setup-ai.sh --dry-run",
-        r"pwsh .\scripts\setup-ai.ps1 -DryRun",
-        "bash ./scripts/setup-ai.sh --dry-run",
-    ):
-        if matcher.search(command) is None:
-            fail(
-                errors,
-                f"levyra-agent-tests does not match documented command: {command}",
-            )
+    if isinstance(setup_filter, dict):
+        pattern = setup_filter.get("match_command")
+        if isinstance(pattern, str):
+            try:
+                matcher = re.compile(pattern)
+            except re.error as exc:
+                fail(errors, f"levyra-agent-tests match_command is invalid regex: {exc}")
+            else:
+                for command in (
+                    r".\scripts\setup-ai.ps1 -DryRun",
+                    "./scripts/setup-ai.sh --dry-run",
+                    r"pwsh .\scripts\setup-ai.ps1 -DryRun",
+                    "bash ./scripts/setup-ai.sh --dry-run",
+                ):
+                    if matcher.search(command) is None:
+                        fail(errors, f"levyra-agent-tests does not match documented command: {command}")
 
 
 def main() -> int:
-    """Run every repository-level AI efficiency and security contract check."""
     errors: list[str] = []
 
     for relative_path in REQUIRED_FILES:
         if not (ROOT / relative_path).is_file():
             fail(errors, f"missing required AI-efficiency file: {relative_path}")
-
     for relative_path in FORBIDDEN_PATHS:
         if (ROOT / relative_path).exists():
             fail(errors, f"local-model profile is outside the approved scope: {relative_path}")
@@ -249,6 +227,18 @@ def main() -> int:
     )
     require_terms(
         errors,
+        "CLAUDE.md",
+        "Claude root bridge",
+        ("@.agents/claude/CLAUDE.md", "sync_agent_runtime.py", "--runtime claude"),
+    )
+    require_terms(
+        errors,
+        "scripts/sync_agent_runtime.py",
+        "native runtime projection",
+        (".agents", ".claude", ".codex", "settings.json", "hooks.json"),
+    )
+    require_terms(
+        errors,
         "scripts/ai_quality_gate.py",
         "cross-runtime AI quality gate",
         (
@@ -266,9 +256,10 @@ def main() -> int:
             "AI quality gate failed.",
         ),
     )
+
     for relative_path, label in (
         (".agents/rules/levyra-workspace.md", "shared workspace quality gate"),
-        (".claude/rules/testing-release.md", "Claude quality gate"),
+        (f"{CLAUDE_ROOT}/rules/testing-release.md", "Claude quality gate"),
         ("docs/ai/OPENCLAW.md", "OpenClaw quality gate"),
         ("docs/ai/WORKFLOW.md", "shared AI workflow quality gate"),
     ):
@@ -276,56 +267,20 @@ def main() -> int:
             errors,
             relative_path,
             label,
-            (
-                "scripts/ai_quality_gate.py --profile fast",
-                "scripts/ai_quality_gate.py --profile full",
-            ),
+            ("scripts/ai_quality_gate.py --profile fast", "scripts/ai_quality_gate.py --profile full"),
         )
-    require_terms(
-        errors,
-        "scripts/setup-ai.ps1",
-        "Windows setup script",
-        (
-            "[switch] $DryRun",
-            "[switch] $InstallRtk",
-            "$rtkGitRevision = 'b34be37caf3796b69a50952a28e60e32b5daad43'",
-            "Test-RtkTokenKiller",
-            "--rev $rtkGitRevision --force",
-            "[switch] $Plugins",
-            "Install global RTK instructions for Codex",
-            "rtk init -g --codex",
-            "rtk init --agent antigravity",
-            "rtk init -g --opencode",
-            "codex plugin add",
-            ".agents/config/codex-plugins.txt",
-            "Validation blocked: Python",
-            "validate_agent_config.py",
-            "validate_ai_efficiency.py",
-        ),
-    )
-    require_terms(
-        errors,
-        "scripts/setup-ai.sh",
-        "Unix setup script",
-        (
-            "set -euo pipefail",
-            "--dry-run",
-            "--install-rtk",
-            'RTK_GIT_REVISION="b34be37caf3796b69a50952a28e60e32b5daad43"',
-            "is_token_killer_rtk",
-            '--rev "$RTK_GIT_REVISION" --force',
-            "--plugins",
-            "Install global RTK instructions for Codex",
-            "rtk init -g --codex",
-            "rtk init --agent antigravity",
-            "rtk init -g --opencode",
-            "codex plugin add",
-            ".agents/config/codex-plugins.txt",
-            "[blocked] Python",
-            "validate_agent_config.py",
-            "validate_ai_efficiency.py",
-        ),
-    )
+
+    for relative_path, label in (
+        ("scripts/setup-ai.ps1", "Windows setup script"),
+        ("scripts/setup-ai.sh", "Unix setup script"),
+    ):
+        require_terms(
+            errors,
+            relative_path,
+            label,
+            ("validate_agent_config.py", "validate_ai_efficiency.py", ".agents/config/codex-plugins.txt"),
+        )
+
     require_terms(
         errors,
         "docs/ai/RTK.md",
@@ -338,7 +293,6 @@ def main() -> int:
             "docs/ai/CODEX_SECURITY.md",
             "Codex Security",
             "rtk gain",
-            "ChrisTitusTech/titus-ai",
             "rtk-ai/rtk",
         ),
     )
@@ -346,28 +300,13 @@ def main() -> int:
         errors,
         "docs/ai/CODEX_SECURITY.md",
         "security workflow documentation",
-        (
-            "threat model",
-            "identification",
-            "validation",
-            "remediation",
-            "human review",
-            "revalidation",
-            "dependency-review-action",
-        ),
+        ("threat model", "identification", "validation", "remediation", "human review", "revalidation", "dependency-review-action"),
     )
     require_terms(
         errors,
         ".agents/skills/levyra-security-review/SKILL.md",
         "security review skill",
-        (
-            "Threat model",
-            "Identification",
-            "Validation",
-            "Remediation",
-            "Revalidation",
-            "Codex Security",
-        ),
+        ("Threat model", "Identification", "Validation", "Remediation", "Revalidation", "Codex Security"),
     )
     require_terms(
         errors,
@@ -386,94 +325,33 @@ def main() -> int:
     )
     require_terms(
         errors,
-        ".agents/rules/levyra-workspace.md",
-        "workspace rule",
-        (
-            "levyra-context-efficiency",
-            "levyra-security-review",
-            "threat model",
-            "revalidation",
-            "rerun the exact command",
-        ),
-    )
-    require_terms(
-        errors,
-        ".claude/rules/security.md",
+        f"{CLAUDE_ROOT}/rules/security.md",
         "Claude security rule",
-        (
-            "levyra-security-review",
-            "Threat model",
-            "Validation",
-            "Revalidation",
-            "docs/ai/CODEX_SECURITY.md",
-        ),
+        ("levyra-security-review", "Threat model", "Validation", "Revalidation", "docs/ai/CODEX_SECURITY.md"),
     )
     require_terms(
         errors,
-        ".claude/hooks/user-prompt-submit.sh",
+        f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
         "Claude security hook",
-        (
-            "levyra-security-review",
-            "threat model",
-            "trust boundary",
-            "supply.?chain",
-        ),
+        ("levyra-security-review", "threat model", "trust boundary", "supply.?chain"),
     )
     require_terms(
         errors,
-        "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
-        "ChatGPT Project instructions",
-        (
-            "levyra-security-review",
-            "Require security review",
-            "Preparing work for Codex or Claude Code",
-            "Mandatory ChatGPT quality gate",
-            "scripts/ai_quality_gate.py --profile full",
-        ),
-    )
-    require_terms(
-        errors,
-        "docs/ai/ANTIGRAVITY.md",
-        "Antigravity documentation",
-        (
-            "levyra-security-review",
-            "threat model",
-            "revalidation",
-            ".agents/rules/levyra-workspace.md",
-            "scripts/ai_quality_gate.py --profile full",
-        ),
-    )
-    require_terms(
-        errors,
-        ".claude/rules/context-efficiency.md",
+        f"{CLAUDE_ROOT}/rules/context-efficiency.md",
         "Claude context-efficiency rule",
-        (
-            "levyra-context-efficiency",
-            ".rtk/filters.toml",
-            "Rerun the exact command raw",
-        ),
+        ("levyra-context-efficiency", ".rtk/filters.toml", "Rerun the exact command raw"),
     )
     require_terms(
         errors,
         ".github/workflows/dependency-review.yml",
         "dependency review workflow",
-        (
-            "Check Dependency Graph availability",
-            "actions/dependency-review-action@",
-            "fail-on-severity: high",
-            "Status: **blocked**, not passed.",
-            "contents: read",
-        ),
+        ("Check Dependency Graph availability", "actions/dependency-review-action@", "fail-on-severity: high", "Status: **blocked**, not passed.", "contents: read"),
     )
     require_terms(
         errors,
         ".github/workflows/pr-check.yml",
         "PR workflow",
-        (
-            "fetch-depth: 0",
-            "AI Quality Gate",
-            "python3 scripts/ai_quality_gate.py --profile fast",
-        ),
+        ("fetch-depth: 0", "AI Quality Gate", "python3 scripts/ai_quality_gate.py --profile fast"),
     )
 
     if errors:
@@ -483,12 +361,9 @@ def main() -> int:
         return 1
 
     print(
-        "AI efficiency validation passed: "
-        f"{len(REQUIRED_FILES)} required files, "
-        f"{len(EXPECTED_FILTERS)} project filters, "
-        f"{len(EXPECTED_PLUGINS)} verified plugin, "
-        "Codex/Claude/ChatGPT/Antigravity security routing, "
-        "dependency-review preflight, and no local-model profiles."
+        "AI efficiency validation passed: canonical .agents runtime layout, "
+        f"{len(EXPECTED_FILTERS)} project filters, {len(EXPECTED_PLUGINS)} verified plugin, "
+        "cross-runtime security routing, dependency-review preflight, and no local-model profiles."
     )
     return 0
 

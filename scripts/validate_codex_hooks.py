@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Levyra's project-local Codex lifecycle hook contract."""
+"""Validate Levyra's canonical Codex lifecycle hook contract."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-HOOKS_PATH = ROOT / ".codex" / "hooks.json"
+HOOKS_RELATIVE = ".agents/codex/hooks.json"
+HOOKS_PATH = ROOT / HOOKS_RELATIVE
 PIN = "b34be37caf3796b69a50952a28e60e32b5daad43"
 
 
@@ -27,17 +28,17 @@ def main() -> int:
     errors: list[str] = []
 
     if not HOOKS_PATH.is_file():
-        errors.append("missing Codex project hook file: .codex/hooks.json")
+        errors.append(f"missing canonical Codex project hook file: {HOOKS_RELATIVE}")
     else:
         try:
             document = json.loads(HOOKS_PATH.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            errors.append(f".codex/hooks.json is invalid: {exc}")
+            errors.append(f"{HOOKS_RELATIVE} is invalid: {exc}")
         else:
             hooks = document.get("hooks")
             groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
             if not isinstance(groups, list) or not groups:
-                errors.append(".codex/hooks.json must define SessionStart hooks")
+                errors.append(f"{HOOKS_RELATIVE} must define SessionStart hooks")
             else:
                 matching_group = next(
                     (
@@ -49,9 +50,7 @@ def main() -> int:
                     None,
                 )
                 if matching_group is None:
-                    errors.append(
-                        ".codex/hooks.json must match startup and resume sessions"
-                    )
+                    errors.append(f"{HOOKS_RELATIVE} must match startup and resume sessions")
                 else:
                     handlers = matching_group.get("hooks")
                     if not isinstance(handlers, list):
@@ -77,22 +76,16 @@ def main() -> int:
                                 "|| true",
                             ):
                                 if term not in command:
-                                    errors.append(
-                                        f"Codex Unix SessionStart command is missing {term!r}"
-                                    )
+                                    errors.append(f"Codex Unix SessionStart command is missing {term!r}")
                             for term in (
                                 "git rev-parse --show-toplevel",
                                 "scripts/ensure-codex-tooling.ps1",
                                 "exit 0",
                             ):
                                 if term not in command_windows:
-                                    errors.append(
-                                        f"Codex Windows SessionStart command is missing {term!r}"
-                                    )
+                                    errors.append(f"Codex Windows SessionStart command is missing {term!r}")
                             if command_handler.get("timeout") != 600:
-                                errors.append(
-                                    "Codex tooling bootstrap hook timeout must be 600 seconds"
-                                )
+                                errors.append("Codex tooling bootstrap hook timeout must be 600 seconds")
 
     require_terms(
         errors,
@@ -122,9 +115,8 @@ def main() -> int:
         return 1
 
     print(
-        "Codex hook validation passed: project SessionStart automatically "
-        "runs the fail-open unified tooling bootstrap on startup/resume, and the "
-        "bootstrap still delegates to the pinned RTK contract."
+        "Codex hook validation passed: canonical .agents/codex hooks preserve "
+        "startup/resume tooling bootstrap and the pinned RTK contract."
     )
     return 0
 
