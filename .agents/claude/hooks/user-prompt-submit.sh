@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+root="${CLAUDE_PROJECT_DIR:-}"
+if [[ -z "$root" ]] && command -v git >/dev/null 2>&1; then
+  root="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+if [[ -z "$root" ]]; then
+  exit 0
+fi
 router="$root/scripts/agent_skill_router.py"
 
 # Compatibility contract for repository validators; routing logic stays canonical in agent_skill_router.py.
