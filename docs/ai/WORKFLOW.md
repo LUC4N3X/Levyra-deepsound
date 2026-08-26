@@ -14,9 +14,11 @@ The repository keeps four responsibilities separate:
 | `docs/project/ROADMAP.md` | Ordered outcomes, risks, and phase exit criteria |
 | `docs/project/TASKS.md` | One active reviewable phase and its truthful validation state |
 
-Native skills under `.agents/skills/` define repeatable workflows. Detailed
-domain playbooks remain under `.claude/skills/` and `.claude/rules/` where
-existing OpenAI skills reference them.
+Native skills under `.agents/skills/` define repeatable workflows. Claude-specific
+canonical rules and runtime configuration live under `.agents/claude/`; the
+ignored native `.claude/` tree is only a generated projection. Codex-specific
+canonical project configuration lives under `.agents/codex/` and is projected to
+ignored `.codex/` when needed.
 
 For non-trivial work, `levyra-real-engineering` adapts Matt Pocock's workflow to
 Levyra. It separates unresolved decisions, specification, ticket decomposition,
