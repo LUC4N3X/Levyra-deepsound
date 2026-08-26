@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-26T02:00:45Z",
+  "generatedAt": "2026-08-26T07:11:05Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -2709,6 +2709,13 @@
       "artist": "Yzomandias, Ektor",
       "album": "EXIT U PALICE",
       "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/c3941ceedb98446e827d93f26cb131b0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "The One That Got Away",
+      "artist": "Katy Perry",
+      "album": "Teenage Dream",
+      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
       "scope": "track"
     },
     {
