@@ -34,6 +34,7 @@ object AutoEqImporter {
         TOO_LARGE,
         NO_GRAPHIC_EQ,
         INVALID_POINT,
+        INVALID_PREAMP,
         NON_FINITE_VALUE,
         TOO_MANY_POINTS,
         INSUFFICIENT_POINTS
@@ -55,11 +56,10 @@ object AutoEqImporter {
 
             if (line.startsWith("Preamp", ignoreCase = true)) {
                 val match = PREAMP_LINE.matchEntire(line)
-                if (match == null) {
-                    skipped += 1
-                    continue
-                }
-                val raw = match.groupValues[1].toDouble()
+                    ?: return ParseResult.Error(ParseError.INVALID_PREAMP)
+                val raw = match.groupValues[1].toDoubleOrNull()
+                    ?: return ParseResult.Error(ParseError.INVALID_PREAMP)
+                if (!raw.isFinite()) return ParseResult.Error(ParseError.NON_FINITE_VALUE)
                 val clampedValue = raw.coerceIn(MIN_PREAMP_DB.toDouble(), MAX_PREAMP_DB.toDouble()).toFloat()
                 if (raw < MIN_PREAMP_DB || raw > MAX_PREAMP_DB) preampClamped = true
                 preampDb = clampedValue

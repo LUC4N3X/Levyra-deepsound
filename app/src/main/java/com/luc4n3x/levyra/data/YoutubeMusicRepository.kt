@@ -486,6 +486,7 @@ private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
 private const val ALBUM_RESULTS_PER_SEED = 8
 private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
+private const val MAX_ALBUM_RECOVERY_ATTEMPTS = 3
 private const val SUGGESTION_RESPONSE_LIMIT_CHARS = 64 * 1024
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
@@ -619,9 +620,20 @@ private fun albumArtistCompatibility(album: AlbumHit, candidate: AlbumHit): Albu
     val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
     val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
     val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
+    val artistKeys = album.artist
+        .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
+        .map(::albumRecommendationTextKey)
+        .filter(String::isNotBlank)
+        .toSet()
+    val candidateArtistKeys = candidate.artist
+        .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
+        .map(::albumRecommendationTextKey)
+        .filter(String::isNotBlank)
+        .toSet()
     val artistBrowseId = album.artistBrowseId.trim()
     val matches = (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
         (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
+        (artistKeys.isNotEmpty() && candidateArtistKeys.any(artistKeys::contains)) ||
         (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
     return when {
         matches -> AlbumArtistCompatibility.Matching
@@ -666,13 +678,13 @@ internal fun selectResolvedAlbumCandidate(
     }
 }
 
-internal fun selectAlbumRecoveryCandidate(
+internal fun selectAlbumRecoveryCandidates(
     album: AlbumHit,
     candidates: List<AlbumHit>,
     excludedBrowseIds: Set<String> = emptySet()
-): AlbumHit? {
+): List<AlbumHit> {
     val titleKey = albumRecommendationTextKey(album.title)
-    if (titleKey.isBlank()) return null
+    if (titleKey.isBlank()) return emptyList()
 
     val excluded = excludedBrowseIds
         .map { it.trim().lowercase(Locale.ROOT) }
@@ -687,10 +699,18 @@ internal fun selectAlbumRecoveryCandidate(
         .filter { candidate ->
             albumRecommendationTextKey(candidate.title) == titleKey
         }
-        .firstOrNull { candidate ->
+        .filter { candidate ->
             albumArtistCompatibility(album, candidate) == AlbumArtistCompatibility.Matching
         }
+        .distinctBy { it.browseId.trim().lowercase(Locale.ROOT) }
+        .toList()
 }
+
+internal fun selectAlbumRecoveryCandidate(
+    album: AlbumHit,
+    candidates: List<AlbumHit>,
+    excludedBrowseIds: Set<String> = emptySet()
+): AlbumHit? = selectAlbumRecoveryCandidates(album, candidates, excludedBrowseIds).firstOrNull()
 
 class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
@@ -1458,14 +1478,17 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .map(String::trim)
             .filter(String::isNotBlank)
             .toSet()
-        val recovery = findAlbumRecoveryCandidate(
+        val recoveryCandidates = findAlbumRecoveryCandidates(
             album = album,
             languageCode = languageCode,
             excludedBrowseIds = attemptedBrowseIds
-        ) ?: return@withContext initial
+        ).take(MAX_ALBUM_RECOVERY_ATTEMPTS)
 
-        val recovered = loadAlbumDetailOnce(recovery, languageCode)
-        if (recovered.tracks.isNotEmpty()) recovered else initial
+        recoveryCandidates.forEach { recovery ->
+            val recovered = loadAlbumDetailOnce(recovery, languageCode)
+            if (recovered.tracks.isNotEmpty()) return@withContext recovered
+        }
+        initial
     }
 
     private suspend fun loadAlbumDetailOnce(album: AlbumHit, languageCode: String): AlbumDetail {
@@ -1541,16 +1564,16 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun findAlbumRecoveryCandidate(
+    private fun findAlbumRecoveryCandidates(
         album: AlbumHit,
         languageCode: String,
         excludedBrowseIds: Set<String>
-    ): AlbumHit? {
-        if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return null
+    ): List<AlbumHit> {
+        if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return emptyList()
         val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
-        if (query.length < 2) return null
+        if (query.length < 2) return emptyList()
         val candidates = searchAlbumHits(query, languageCode, 12)
-        return selectAlbumRecoveryCandidate(album, candidates, excludedBrowseIds)
+        return selectAlbumRecoveryCandidates(album, candidates, excludedBrowseIds)
     }
 
     suspend fun resolveAlbumDescription(
@@ -2072,7 +2095,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     private fun resolveAlbumHit(album: AlbumHit, languageCode: String): AlbumHit {
         val validInputTitle = isPlausibleYoutubeMusicAlbumTitle(album.title)
-        if (album.browseId.isNotBlank() && validInputTitle) return album
+        if (album.browseId.trim().startsWith("MPRE", ignoreCase = true) && validInputTitle) return album
 
         val query = when {
             validInputTitle -> album.query.ifBlank { "${album.title} ${album.artist}" }

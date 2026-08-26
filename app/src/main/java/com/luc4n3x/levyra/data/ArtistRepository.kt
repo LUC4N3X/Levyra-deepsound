@@ -422,19 +422,29 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
-        if (browseId.isBlank()) return@withContext profileFor(fallbackName)
-        val browseKey = profileBrowseKey(browseId)
-        val cacheKey = artistIdentityKey(fallbackName)
+        val cleanBrowseId = browseId.trim()
+        val cleanFallbackName = fallbackName.trim()
+        val lookupName = primaryArtistSegment(cleanFallbackName).ifBlank { cleanFallbackName }
+        if (cleanBrowseId.isBlank()) return@withContext profileFor(lookupName)
+
+        val browseKey = profileBrowseKey(cleanBrowseId)
+        val cacheKey = artistIdentityKey(lookupName)
         sequenceOf(memory[browseKey], memory[cacheKey])
             .filterNotNull()
-            .firstOrNull { artistProfileMatchesRequest(it, browseId, fallbackName) }
+            .firstOrNull { artistProfileMatchesRequest(it, cleanBrowseId, cleanFallbackName) }
             ?.let { return@withContext it }
-        val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
-        resolved?.takeIf { artistProfileMatchesRequest(it, browseId, fallbackName) }?.also { profile ->
-            memory[browseKey] = profile
-            memory[cacheKey] = profile
-            memory[artistIdentityKey(profile.name)] = profile
-        }
+
+        val resolved = runCatching { fetchProfile(cleanBrowseId, cleanFallbackName) }.getOrNull()
+        resolved
+            ?.takeIf { artistProfileMatchesRequest(it, cleanBrowseId, cleanFallbackName) }
+            ?.also { profile ->
+                memory[browseKey] = profile
+                memory[cacheKey] = profile
+                memory[artistIdentityKey(profile.name)] = profile
+            }
+            ?.let { return@withContext it }
+
+        profileFor(lookupName)
     }
 
     private suspend fun resolveArtist(query: String): ArtistHit? {
