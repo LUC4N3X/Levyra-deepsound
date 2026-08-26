@@ -31,10 +31,8 @@ RUNTIMES = {
         target=ROOT / ".claude",
         mappings=(
             Mapping(ROOT / ".agents" / "claude" / "CLAUDE.md", Path("CLAUDE.md")),
-            Mapping(ROOT / ".agents" / "claude" / "README.md", Path("README.md")),
             Mapping(ROOT / ".agents" / "claude" / "settings.json", Path("settings.json")),
             Mapping(ROOT / ".agents" / "claude" / "agents", Path("agents")),
-            Mapping(ROOT / ".agents" / "claude" / "hooks", Path("hooks")),
             Mapping(ROOT / ".agents" / "claude" / "rules", Path("rules")),
             # Claude Code does not discover .agents/skills directly. Project skills are
             # projected from the one canonical shared skill tree into .claude/skills.
