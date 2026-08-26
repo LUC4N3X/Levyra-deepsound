@@ -128,6 +128,14 @@ def require_terms(
             errors.append(f"{relative_path}: missing {label}: {term}")
 
 
+def reject_terms(
+    errors: list[str], relative_path: str, text: str, terms: tuple[str, ...], label: str
+) -> None:
+    for term in terms:
+        if term in text:
+            errors.append(f"{relative_path}: contains {label}: {term}")
+
+
 def tracked_root_runtime_paths() -> list[str]:
     try:
         result = subprocess.run(
@@ -211,8 +219,10 @@ def main() -> int:
                 "levyra-context-efficiency",
                 "AI_ENGINEERING_GUARDRAILS.md",
                 "Do not add explanatory source-code comments",
+                ".agents/claude/",
+                ".agents/codex/",
             ),
-            "Codex context/code-quality contract",
+            "Codex context/code-quality/runtime-source contract",
         )
 
     chatgpt_path = ROOT / CHATGPT_INSTRUCTIONS_PATH
@@ -225,8 +235,15 @@ def main() -> int:
             errors,
             CHATGPT_INSTRUCTIONS_PATH,
             chatgpt,
-            ("AI_ENGINEERING_GUARDRAILS.md", "code-review"),
-            "ChatGPT shared guardrail/review route",
+            ("AI_ENGINEERING_GUARDRAILS.md", "code-review", ".agents/claude/rules/"),
+            "ChatGPT shared guardrail/review/canonical-rule route",
+        )
+        reject_terms(
+            errors,
+            CHATGPT_INSTRUCTIONS_PATH,
+            chatgpt,
+            ("under `.claude/skills/`", "under `.claude/rules/`"),
+            "legacy generated Claude source reference",
         )
 
     claude_path = ROOT / CLAUDE_INSTRUCTIONS_PATH
@@ -297,6 +314,9 @@ def main() -> int:
                 'ROOT / ".claude"',
                 'ROOT / ".codex"',
                 "MANIFEST_NAME",
+                "MANIFEST_SCHEMA_VERSION",
+                "ProjectionError",
+                "FILE_ATTRIBUTE_REPARSE_POINT",
                 "--check",
             ),
             "runtime projection contract",
