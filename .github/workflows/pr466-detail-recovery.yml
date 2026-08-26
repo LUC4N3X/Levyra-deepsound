@@ -1,0 +1,306 @@
+name: PR 466 detail recovery
+
+on:
+  push:
+    branches:
+      - feat/artist-alive-autoeq-album-canvas
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr466-detail-recovery
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.repository == 'LUC4N3X/Levyra-deepsound'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v7
+        with:
+          ref: feat/artist-alive-autoeq-album-canvas
+          fetch-depth: 0
+
+      - name: Apply scoped detail recovery patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one patch anchor in {path}, found {count}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          artist_repo = Path("app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt")
+          replace_once(
+              artist_repo,
+              '''    suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
+                  if (browseId.isBlank()) return@withContext profileFor(fallbackName)
+                  val browseKey = profileBrowseKey(browseId)
+                  memory[browseKey]?.let { return@withContext it }
+                  val cacheKey = artistIdentityKey(fallbackName)
+                  memory[cacheKey]?.takeIf { it.browseId.equals(browseId, ignoreCase = true) }?.let { return@withContext it }
+                  val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
+                  resolved?.also { profile ->
+                      memory[browseKey] = profile
+                      memory[cacheKey] = profile
+                      memory[artistIdentityKey(profile.name)] = profile
+                  }
+              }
+          ''',
+              '''    suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
+                  val cleanBrowseId = browseId.trim()
+                  val cleanFallbackName = fallbackName.trim()
+                  val lookupName = primaryArtistSegment(cleanFallbackName).ifBlank { cleanFallbackName }
+                  if (cleanBrowseId.isBlank()) return@withContext profileFor(lookupName)
+
+                  val browseKey = profileBrowseKey(cleanBrowseId)
+                  memory[browseKey]?.let { return@withContext it }
+                  val cacheKey = artistIdentityKey(lookupName)
+                  memory[cacheKey]
+                      ?.takeIf { it.browseId.equals(cleanBrowseId, ignoreCase = true) }
+                      ?.let { return@withContext it }
+
+                  val resolved = runCatching { fetchProfile(cleanBrowseId, cleanFallbackName) }.getOrNull()
+                  if (resolved != null) {
+                      memory[browseKey] = resolved
+                      memory[cacheKey] = resolved
+                      memory[artistIdentityKey(resolved.name)] = resolved
+                      return@withContext resolved
+                  }
+
+                  profileFor(lookupName)
+              }
+          '''
+          )
+
+          music_repo = Path("app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt")
+          replace_once(
+              music_repo,
+              'private const val ALBUM_RESULT_RANK_PENALTY = 18\n',
+              'private const val ALBUM_RESULT_RANK_PENALTY = 18\nprivate const val MAX_ALBUM_RECOVERY_ATTEMPTS = 3\n'
+          )
+          replace_once(
+              music_repo,
+              '''internal fun selectAlbumRecoveryCandidate(
+              album: AlbumHit,
+              candidates: List<AlbumHit>,
+              excludedBrowseIds: Set<String> = emptySet()
+          ): AlbumHit? {
+              val titleKey = albumRecommendationTextKey(album.title)
+              if (titleKey.isBlank()) return null
+
+              val artistKey = albumRecommendationTextKey(album.artist)
+              val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
+              val artistBrowseId = album.artistBrowseId.trim()
+              val excluded = excludedBrowseIds
+                  .map { it.trim().lowercase(Locale.ROOT) }
+                  .filter(String::isNotBlank)
+                  .toSet()
+
+              return candidates.asSequence()
+                  .filter { candidate ->
+                      val browseId = candidate.browseId.trim()
+                      browseId.isNotBlank() && browseId.lowercase(Locale.ROOT) !in excluded
+                  }
+                  .filter { candidate ->
+                      albumRecommendationTextKey(candidate.title) == titleKey
+                  }
+                  .firstOrNull { candidate ->
+                      val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
+                      val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
+                      (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
+                          (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
+                          (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
+                  }
+          }
+          ''',
+              '''internal fun selectAlbumRecoveryCandidates(
+              album: AlbumHit,
+              candidates: List<AlbumHit>,
+              excludedBrowseIds: Set<String> = emptySet()
+          ): List<AlbumHit> {
+              val titleKey = albumRecommendationTextKey(album.title)
+              if (titleKey.isBlank()) return emptyList()
+
+              val artistKeys = album.artist
+                  .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
+                  .map(::albumRecommendationTextKey)
+                  .filter(String::isNotBlank)
+                  .toSet()
+              val artistKey = albumRecommendationTextKey(album.artist)
+              val primaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(album.artist))
+              val artistBrowseId = album.artistBrowseId.trim()
+              val excluded = excludedBrowseIds
+                  .map { it.trim().lowercase(Locale.ROOT) }
+                  .filter(String::isNotBlank)
+                  .toSet()
+
+              return candidates.asSequence()
+                  .filter { candidate ->
+                      val browseId = candidate.browseId.trim()
+                      browseId.isNotBlank() && browseId.lowercase(Locale.ROOT) !in excluded
+                  }
+                  .filter { candidate ->
+                      albumRecommendationTextKey(candidate.title) == titleKey
+                  }
+                  .filter { candidate ->
+                      val candidateArtistKey = albumRecommendationTextKey(candidate.artist)
+                      val candidatePrimaryArtistKey = albumRecommendationTextKey(primaryArtistSegment(candidate.artist))
+                      val candidateArtistKeys = candidate.artist
+                          .split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR)
+                          .map(::albumRecommendationTextKey)
+                          .filter(String::isNotBlank)
+                          .toSet()
+                      (artistKey.isNotBlank() && candidateArtistKey == artistKey) ||
+                          (primaryArtistKey.isNotBlank() && candidatePrimaryArtistKey == primaryArtistKey) ||
+                          (artistKeys.isNotEmpty() && candidateArtistKeys.any(artistKeys::contains)) ||
+                          (artistBrowseId.isNotBlank() && candidate.artistBrowseId.equals(artistBrowseId, ignoreCase = true))
+                  }
+                  .distinctBy { it.browseId.trim().lowercase(Locale.ROOT) }
+                  .toList()
+          }
+
+          internal fun selectAlbumRecoveryCandidate(
+              album: AlbumHit,
+              candidates: List<AlbumHit>,
+              excludedBrowseIds: Set<String> = emptySet()
+          ): AlbumHit? = selectAlbumRecoveryCandidates(album, candidates, excludedBrowseIds).firstOrNull()
+          '''
+          )
+          replace_once(
+              music_repo,
+              '''        val recovery = findAlbumRecoveryCandidate(
+                      album = album,
+                      languageCode = languageCode,
+                      excludedBrowseIds = attemptedBrowseIds
+                  ) ?: return@withContext initial
+
+                  val recovered = loadAlbumDetailOnce(recovery, languageCode)
+                  if (recovered.tracks.isNotEmpty()) recovered else initial
+          ''',
+              '''        val recoveryCandidates = findAlbumRecoveryCandidates(
+                      album = album,
+                      languageCode = languageCode,
+                      excludedBrowseIds = attemptedBrowseIds
+                  ).take(MAX_ALBUM_RECOVERY_ATTEMPTS)
+
+                  recoveryCandidates.forEach { recovery ->
+                      val recovered = loadAlbumDetailOnce(recovery, languageCode)
+                      if (recovered.tracks.isNotEmpty()) return@withContext recovered
+                  }
+                  initial
+          '''
+          )
+          replace_once(
+              music_repo,
+              '''    private fun findAlbumRecoveryCandidate(
+                  album: AlbumHit,
+                  languageCode: String,
+                  excludedBrowseIds: Set<String>
+              ): AlbumHit? {
+                  if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return null
+                  val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
+                  if (query.length < 2) return null
+                  val candidates = searchAlbumHits(query, languageCode, 12)
+                  return selectAlbumRecoveryCandidate(album, candidates, excludedBrowseIds)
+              }
+          ''',
+              '''    private fun findAlbumRecoveryCandidates(
+                  album: AlbumHit,
+                  languageCode: String,
+                  excludedBrowseIds: Set<String>
+              ): List<AlbumHit> {
+                  if (!isPlausibleYoutubeMusicAlbumTitle(album.title)) return emptyList()
+                  val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
+                  if (query.length < 2) return emptyList()
+                  val candidates = searchAlbumHits(query, languageCode, 12)
+                  return selectAlbumRecoveryCandidates(album, candidates, excludedBrowseIds)
+              }
+          '''
+          )
+          replace_once(
+              music_repo,
+              '        if (album.browseId.isNotBlank() && validInputTitle) return album\n',
+              '        if (album.browseId.trim().startsWith("MPRE", ignoreCase = true) && validInputTitle) return album\n'
+          )
+
+          test_file = Path("app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicRepositoryTest.kt")
+          insertion = '''
+
+              @Test
+              fun albumRecoveryKeepsMultipleMatchingAlternativesInSearchOrder() {
+                  val seed = AlbumHit(
+                      title = "AMATORE",
+                      artist = "Samurai Jay, Vito Salamanca",
+                      year = "2026",
+                      thumbnailUrl = "",
+                      query = "AMATORE Samurai Jay Vito Salamanca",
+                      browseId = "MPRE_OLD"
+                  )
+                  val first = seed.copy(artist = "Samurai Jay", browseId = "MPRE_FIRST")
+                  val second = seed.copy(artist = "Vito Salamanca, Samurai Jay", browseId = "MPRE_SECOND")
+
+                  val selected = selectAlbumRecoveryCandidates(
+                      album = seed,
+                      candidates = listOf(first, second),
+                      excludedBrowseIds = setOf(seed.browseId)
+                  )
+
+                  assertEquals(listOf("MPRE_FIRST", "MPRE_SECOND"), selected.map { it.browseId })
+              }
+
+              @Test
+              fun albumRecoveryCandidatesExcludeAlreadyAttemptedAndDifferentArtists() {
+                  val seed = AlbumHit(
+                      title = "AMATORE",
+                      artist = "Samurai Jay, Vito Salamanca",
+                      year = "2026",
+                      thumbnailUrl = "",
+                      query = "AMATORE Samurai Jay Vito Salamanca",
+                      browseId = "MPRE_OLD"
+                  )
+                  val attempted = seed.copy(artist = "Samurai Jay", browseId = "MPRE_TRIED")
+                  val unrelated = seed.copy(artist = "Different Artist", browseId = "MPRE_OTHER")
+                  val valid = seed.copy(artist = "Vito Salamanca", browseId = "MPRE_VALID")
+
+                  val selected = selectAlbumRecoveryCandidates(
+                      album = seed,
+                      candidates = listOf(attempted, unrelated, valid),
+                      excludedBrowseIds = setOf(seed.browseId, attempted.browseId)
+                  )
+
+                  assertEquals(listOf("MPRE_VALID"), selected.map { it.browseId })
+              }
+          '''
+          replace_once(test_file, '\n}\n', insertion + '\n}\n')
+          PY
+
+          rm -- .github/workflows/pr466-detail-recovery.yml
+          git diff --check
+          git diff -- app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicRepositoryTest.kt \
+            .github/workflows/pr466-detail-recovery.yml
+
+      - name: Commit scoped fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin feat/artist-alive-autoeq-album-canvas
+          test "$(git rev-parse origin/feat/artist-alive-autoeq-album-canvas)" = "${GITHUB_SHA}"
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicRepositoryTest.kt \
+            .github/workflows/pr466-detail-recovery.yml
+          git commit -m "fix(android): recover album and artist detail navigation"
+          git push origin HEAD:feat/artist-alive-autoeq-album-canvas
