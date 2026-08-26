@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-26T07:11:05Z",
+  "generatedAt": "2026-08-26T13:18:38Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -327,7 +327,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -546,6 +546,13 @@
       "artist": "Ella Langley, Riley Green",
       "album": "hungover",
       "url": "https://canvaz.scdn.co/upload/artist/6BRxQ8cD3eqnrVj6WKDok8/video/be418eec4f3f44cba3741ed811b50a3e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1823,6 +1830,13 @@
       "scope": "track"
     },
     {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Maak Me Nou Niet Gek",
       "artist": "Lil Kleine, Samuel Welten, De Amsterdamse Zomer",
       "album": "Maak Me Nou Niet Gek",
@@ -2418,13 +2432,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Dancing On My Own",
       "artist": "Robyn",
       "album": "Body Talk",
@@ -2709,13 +2716,6 @@
       "artist": "Yzomandias, Ektor",
       "album": "EXIT U PALICE",
       "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/c3941ceedb98446e827d93f26cb131b0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "The One That Got Away",
-      "artist": "Katy Perry",
-      "album": "Teenage Dream",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3388,6 +3388,13 @@
       "artist": "sakanaction",
       "album": "Kaiju",
       "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/b96045df14a3449a9eea660c12f9726f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "show time...",
+      "artist": "Snow Man",
+      "album": "AMENITY",
+      "url": "https://canvaz.scdn.co/upload/artist/0UuiWPm9FpWvRuWNrXO98N/video/16400fdc4abb4c3798f8e399c84c7f65.cnvs.mp4",
       "scope": "track"
     },
     {
