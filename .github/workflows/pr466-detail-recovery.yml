@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - feat/artist-alive-autoeq-album-canvas
+  pull_request:
+    types: [ready_for_review]
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -295,7 +299,8 @@ jobs:
         run: |
           set -euo pipefail
           git fetch origin feat/artist-alive-autoeq-album-canvas
-          test "$(git rev-parse origin/feat/artist-alive-autoeq-album-canvas)" = "${GITHUB_SHA}"
+          EXPECTED_HEAD="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse origin/feat/artist-alive-autoeq-album-canvas)" = "$EXPECTED_HEAD"
           git config user.name "LUC4N3X"
           git config user.email "241364318+LUC4N3X@users.noreply.github.com"
           git add app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
