@@ -1,6 +1,6 @@
 ---
 name: levyra-release-check
-description: Automatically use for Levyra pre-merge/pre-release validation, Android emulator or physical-device runtime verification, versions, signing, builds, packaging, artifacts, checksums, workflows, secrets, and truthful manual evidence.
+description: Automatically use for Levyra pre-merge/pre-release validation, Android emulator or physical-device runtime verification, versions, signing, builds, packaging, artifacts, checksums, workflows, secrets, release-note authoring, and truthful manual evidence.
 ---
 
 # Levyra release validation workflow
@@ -9,7 +9,8 @@ description: Automatically use for Levyra pre-merge/pre-release validation, Andr
 
 1. Read the root `AGENTS.md`, `app/AGENTS.md`, `desktop/AGENTS.md`, and `.github/AGENTS.md` as applicable.
 2. Read `.claude/skills/levyra-release-check/SKILL.md` and `.claude/rules/testing-release.md`.
-3. Inspect the complete diff, version files, build configuration, signing inputs, release workflows, artifact paths, and release notes.
+3. Read `docs/ai/RELEASE_NOTES_STYLE.md` whenever preparing, rewriting, reviewing, or publishing release notes.
+4. Inspect the complete diff, version files, build configuration, signing inputs, release workflows, artifact paths, and release notes.
 
 ## Boundaries
 
@@ -22,10 +23,29 @@ Android and Desktop versioning are independent:
 
 Never update one platform's version merely because the other platform is releasing.
 
+## Release-note authoring contract
+
+Treat release notes as a product-facing artifact, not a generated commit summary.
+
+Follow `docs/ai/RELEASE_NOTES_STYLE.md` as the canonical editorial contract:
+
+- write natural, professional English that sounds human rather than AI-generated;
+- open with what the release changes for users, not commit counts, hashes, PR numbers, or file wiring;
+- group meaningful changes into reader-facing sections and prefer `## ✦ ...` headings for those sections;
+- explain both what changed and why it matters in ordinary use;
+- keep low-level architecture detail only when it explains reliability, compatibility, privacy, performance, or a deliberate design choice;
+- keep exact commit ranges, SHAs, test inventory, workflow responsibilities, and unperformed checks in `## Validation`;
+- preserve the exact workflow-required headings `## Highlights`, `## Validation`, `## Versioning`, `## Upgrade notes`, and `## Final note`;
+- keep Fastlane changelogs compact and user-facing instead of duplicating the full GitHub release body;
+- never invent validation, device evidence, compatibility, privacy, migration, or publication claims to make the release sound stronger.
+
+Before publication, read the complete release notes once as a user. Rewrite any section that still reads like `git log`, an internal engineering ticket, or a mechanical list of commits.
+
 ## Validation checklist
 
 - inspect repository status/diff for unrelated edits, conflict markers, secrets, keystores, APKs, ZIPs, generated output, and private configuration;
 - verify version changes are intentional, monotonic, and limited to the requested platform;
+- verify release notes follow `docs/ai/RELEASE_NOTES_STYLE.md`, remain truthful, and match the current repository;
 - run focused tests first;
 - run the applicable Android or Desktop wrapper checks when the environment supports them;
 - verify signing and API inputs are supplied only through approved local or CI mechanisms;
