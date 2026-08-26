@@ -7,6 +7,13 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel)\"; for p in python3 python py; do if command -v \"$p\" >/dev/null 2>&1; then \"$p\" \"$root/scripts/sync_agent_runtime.py\" --runtime codex --quiet >/dev/null 2>&1 || true; break; fi; done; exit 0'",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); if (Get-Command python3 -ErrorAction SilentlyContinue) { python3 (Join-Path $root 'scripts/sync_agent_runtime.py') --runtime codex --quiet *> $null } elseif (Get-Command python -ErrorAction SilentlyContinue) { python (Join-Path $root 'scripts/sync_agent_runtime.py') --runtime codex --quiet *> $null } elseif (Get-Command py -ErrorAction SilentlyContinue) { py (Join-Path $root 'scripts/sync_agent_runtime.py') --runtime codex --quiet *> $null }; exit 0\"",
+            "timeout": 30,
+            "statusMessage": "Refreshing Levyra Codex runtime"
+          },
+          {
+            "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/ensure-codex-tooling.sh\" --quiet >/dev/null 2>&1 || true; printf \"%s\\n\" \"Levyra Codex bootstrap is automatic. Prefer jCodeMunch for non-trivial code discovery, but use native reads/search whenever broader context is needed for correctness. Token savings never override correctness.\"'",
             "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/ensure-codex-tooling.ps1') -Quiet *> $null; Write-Output 'Levyra Codex bootstrap is automatic. Prefer jCodeMunch for non-trivial code discovery, but use native reads/search whenever broader context is needed for correctness. Token savings never override correctness.'; exit 0\"",
             "timeout": 600,
