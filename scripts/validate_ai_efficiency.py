@@ -234,7 +234,7 @@ def main() -> int:
         errors,
         f"{CLAUDE_ROOT}/CLAUDE.md",
         "canonical Claude instructions",
-        ("Root `AGENTS.md` is canonical", "Mandatory skill load", "levyra-context-efficiency"),
+        ("cross-runtime source of truth", "Mandatory skill load", "levyra-context-efficiency"),
     )
     require_terms(
         errors,
@@ -247,6 +247,8 @@ def main() -> int:
             'ROOT / ".codex"',
             "settings.json",
             "hooks.json",
+            "MANIFEST_SCHEMA_VERSION",
+            "ProjectionError",
             "--check",
         ),
     )
