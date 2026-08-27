@@ -4,8 +4,8 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import java.security.GeneralSecurityException
 import java.security.KeyStore
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -23,7 +23,7 @@ class AndroidKeystoreCredentialStore(context: Context) {
                 init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_BITS, Base64.decode(parts[0], Base64.NO_WRAP)))
             }.doFinal(Base64.decode(parts[1], Base64.NO_WRAP))
             plaintext.toString(Charsets.UTF_8).takeIf(String::isNotBlank) ?: clearInvalid(name)
-        } catch (_: GeneralSecurityException) {
+        } catch (_: AEADBadTagException) {
             clearInvalid(name)
         } catch (_: IllegalArgumentException) {
             clearInvalid(name)
@@ -45,7 +45,6 @@ class AndroidKeystoreCredentialStore(context: Context) {
                 "${Base64.encodeToString(cipher.iv, Base64.NO_WRAP)}:${Base64.encodeToString(encrypted, Base64.NO_WRAP)}"
             ).apply()
         } catch (_: Throwable) {
-            clear(name)
         }
     }
 

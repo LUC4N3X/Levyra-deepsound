@@ -1620,6 +1620,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return artworkSafe.copy(
             streamUrl = resolved.streamUrl,
             videoStreamUrl = resolved.videoStreamUrl,
+            videoSubtitleTracks = resolved.videoSubtitleTracks,
             videoUrl = resolved.videoUrl.ifBlank { original.videoUrl },
             durationMs = resolved.durationMs.takeIf { it > 0L } ?: original.durationMs,
             source = resolved.source,
