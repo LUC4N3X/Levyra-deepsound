@@ -66,11 +66,13 @@ Do not repeatedly run `setup-matt-pocock-skills` during ordinary Levyra work. It
 
 Matt Pocock's current upstream package is available from Claude Code's official plugin marketplace. Levyra project-enables `mattpocock-skills@claude-plugins-official` in canonical `.agents/claude/settings.json`; `scripts/sync_agent_runtime.py` projects that file to native `.claude/settings.json`, where Claude Code applies its normal project plugin controls.
 
-Equivalent manual command:
+For a temporary local project install, Claude Code also supports:
 
 ```bash
 claude plugin install mattpocock-skills@claude-plugins-official --scope project
 ```
+
+That command writes native `.claude/settings.json`; it is not equivalent to changing Levyra's canonical configuration. For a persistent repository change, update `.agents/claude/settings.json` and run `python3 scripts/sync_agent_runtime.py --runtime claude` to refresh the native projection.
 
 The canonical `.agents/skills/levyra-real-engineering/SKILL.md` bridge remains the Levyra routing contract. Claude discovers its generated native counterpart under `.claude/skills/`, but edits belong only in `.agents/skills/`. The bridge selects the upstream stage without letting the external plugin override repository rules. After plugin, projection, or instruction changes, start a new Claude session when needed so project and skill discovery is rebuilt.
 
