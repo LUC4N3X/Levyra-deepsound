@@ -14,9 +14,9 @@ The integration:
   runtimes;
 - adds project filters in `.rtk/filters.toml`;
 - automatically ensures the pinned official RTK build for Claude Code and Codex
-  when a Levyra session starts;
+  when an active Levyra lifecycle hook runs;
 - keeps the earlier instruction-based Codex setup as a fallback when lifecycle
-  hooks are unavailable or disabled;
+  hooks are unavailable, not yet materialized, untrusted, or disabled;
 - never weakens sandbox or approval controls to make tooling bootstrap succeed;
 - keeps exact security, signing, checksum, release, and decisive diagnostic
   evidence raw.
@@ -60,32 +60,43 @@ permissions.
 
 ### Claude Code
 
-`.claude/settings.json` registers a `SessionStart` hook for `startup|resume`.
-`.claude/hooks/session-start.sh` invokes `scripts/ensure-rtk.sh --quiet` before
-normal work and injects a short environment note telling Claude whether RTK is
-ready. The hook remains fail-open: an RTK bootstrap failure does not block the
-Claude session.
+The tracked Claude configuration lives under `.agents/claude/`.
+`scripts/sync_agent_runtime.py` materializes the ignored native `.claude/`
+projection that Claude Code consumes.
 
-Claude also receives repository-specific routing through `.claude/CLAUDE.md`,
-`.claude/rules/context-efficiency.md`, and the prompt-submission hook.
+`.agents/claude/settings.json` projects to `.claude/settings.json` and registers a
+`SessionStart` hook for `startup|resume`. The hook calls canonical
+`.agents/claude/hooks/session-start.sh`, which invokes `scripts/ensure-rtk.sh
+--quiet` before normal work and injects a short environment note telling Claude
+whether RTK is ready. The hook remains fail-open: an RTK bootstrap failure does
+not block the Claude session.
+
+Claude also receives repository-specific routing through projected
+`.claude/CLAUDE.md`, `.claude/rules/context-efficiency.md`, and the canonical
+prompt-submission hook. If the native projection is created only after an
+already-running Claude process built its project inventory, start a new session
+before treating those files as loaded.
 
 ### Codex
 
-`.codex/hooks.json` registers a project-local `SessionStart` hook for
-`startup|resume` with separate Unix and Windows commands. It resolves the Git
-root, runs the appropriate `scripts/ensure-rtk.*` helper, and exits successfully
-even when RTK cannot be installed so Codex can continue raw.
+The tracked project hook contract lives at `.agents/codex/hooks.json` and is
+projected to native `.codex/hooks.json`. Once that native project hook surface is
+materialized and trusted, its `SessionStart` hook for `startup|resume` resolves
+the Git root, runs the appropriate `scripts/ensure-rtk.*` helper, and exits
+successfully even when RTK cannot be installed so Codex can continue raw.
 
 Codex requires a one-time trust review for a new or changed non-managed
 project-local command hook. This is a Codex security boundary, not a Levyra
-setup step to bypass. Once the exact hook is trusted, future Levyra
-startup/resume sessions run it automatically.
+setup step to bypass. The projected hook cannot bootstrap itself on a pristine
+clone before `.codex/hooks.json` exists, so root `AGENTS.md` and the setup path
+remain the non-circular fallback. Codex skill discovery itself is independent of
+that projection because canonical Levyra skills live under `.agents/skills/`.
 
-The previous **instruction-based Codex setup** remains a deliberate fallback:
-root `AGENTS.md` and `.agents/rules/levyra-workspace.md` still tell Codex to run
-the ensure helper before noisy work if project hooks are unavailable, disabled,
-or not yet trusted. The broader setup scripts may also initialize RTK guidance
-with `rtk init -g --codex`.
+The previous **instruction-based Codex setup** remains deliberate: root
+`AGENTS.md` and `.agents/rules/levyra-workspace.md` still tell Codex to run the
+ensure helper before noisy work if project hooks are unavailable, disabled, or
+not yet trusted. The broader setup scripts may also initialize RTK guidance with
+`rtk init -g --codex`.
 
 ### Google Antigravity
 
@@ -125,34 +136,50 @@ same repository-native skill. It is intentionally documented separately in
 
 ## Automatic repository discovery
 
+Tracked sources:
+
 ```text
 AGENTS.md
 app/AGENTS.md
 desktop/AGENTS.md
 .github/AGENTS.md
 docs/AGENTS.md
-.codex/hooks.json
+.agents/codex/hooks.json
+.agents/claude/CLAUDE.md
+.agents/claude/settings.json
+.agents/claude/hooks/session-start.sh
+.agents/claude/rules/context-efficiency.md
 .agents/rules/levyra-workspace.md
 .agents/skills/levyra-context-efficiency/SKILL.md
 .agents/skills/levyra-security-review/SKILL.md
-.claude/CLAUDE.md
-.claude/settings.json
-.claude/hooks/session-start.sh
-.claude/rules/context-efficiency.md
 .rtk/filters.toml
+scripts/sync_agent_runtime.py
 scripts/ensure-rtk.ps1
 scripts/ensure-rtk.sh
 ```
 
+Generated native surfaces consumed by Claude/Codex when materialized:
+
+```text
+.claude/CLAUDE.md
+.claude/settings.json
+.claude/rules/
+.claude/skills/
+.codex/hooks.json
+.codex/config.toml
+```
+
 Restart the coding agent or begin a new conversation after pulling changes to
-instructions, rules, skills, hooks, or plugins. Codex may request trust review
-when a project-local command hook is new or its definition changes.
+instructions, rules, skills, hooks, or plugins when the runtime needs to rebuild
+its project inventory. Codex may request trust review when a project-local
+command hook is new or its definition changes.
 
 ## Broader setup and repair
 
-The automatic session ensure is the normal path for RTK. The broader setup
-scripts remain useful for provisioning, repairing integrations, plugin setup,
-or validating the complete AI environment.
+The automatic session ensure is the normal path after native lifecycle hooks are
+active. The broader setup scripts remain the deterministic path for first
+projection, provisioning, repairing integrations, plugin setup, or validating
+the complete AI environment.
 
 Windows:
 

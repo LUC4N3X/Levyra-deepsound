@@ -8,7 +8,7 @@ description: Implement, debug, or review Levyra decorative motion artwork, provi
 ## Required context
 
 1. Read the root `AGENTS.md` and `app/AGENTS.md`.
-2. Read `.claude/skills/levyra-motion-artwork/SKILL.md`, `.claude/rules/player.md`, `.claude/rules/security.md`, and the relevant architecture sections.
+2. Read `.agents/claude/rules/player.md`, `.agents/claude/rules/security.md`, and the relevant architecture sections.
 3. Inspect the motion engine, provider matching, ViewModel ownership, artwork layer, cache, verifier, player lifecycle, and tests.
 
 ## Non-negotiable behavior

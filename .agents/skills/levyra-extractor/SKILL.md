@@ -9,7 +9,7 @@ description: Implement, debug, or review Levyra InnerTube, YouTube extraction, s
 
 1. Read the root `AGENTS.md` and the nearest applicable `AGENTS.md`.
 2. Read `docs/ARCHITECTURE.md`.
-3. Read `.claude/skills/levyra-extractor/SKILL.md`, `.claude/rules/extractor-network.md`, and `.claude/rules/security.md`.
+3. Read `.agents/claude/rules/extractor-network.md` and `.agents/claude/rules/security.md`.
 4. Inspect the resolver, clients, runtime configuration, caches, in-flight work, fallback order, workflows, and nearby tests.
 
 ## Change contract

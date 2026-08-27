@@ -29,8 +29,9 @@ These instructions extend the root `AGENTS.md` for documentation under `docs/`.
 - `docs/project/ROADMAP.md` defines ordered outcomes, risks, and phase exit criteria; it does not authorize implementation or release.
 - `docs/project/TASKS.md` records one active reviewable phase and direct validation evidence.
 - `docs/project/README.md` explains how specification, roadmap, and active tasks work together.
-- `.agents/skills/` contains native OpenAI/Codex/OpenClaw-compatible task skills.
-- `.claude/` contains Claude Code configuration and shared Levyra engineering playbooks.
+- `.agents/skills/` contains the single canonical Levyra skill tree shared across supported runtimes.
+- `.agents/claude/` contains the tracked Claude Code instructions, settings, agents, hooks, and rules. The native `.claude/` directory is an ignored local projection generated from `.agents/claude/` and `.agents/skills/`.
+- `.agents/codex/` contains the tracked Codex project configuration projected locally to the ignored native `.codex/` directory.
 - `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` is the source text for the Levyra ChatGPT Project; repository files cannot apply those Project instructions automatically.
 - `docs/ai/WORKFLOW.md` defines the complete AI-assisted engineering lifecycle and its independent review, CI, manual testing, merge, and release gates.
 - `docs/ai/OPENCLAW.md` defines the recommended OpenClaw workspace, delegation, tool, and publication boundaries.
