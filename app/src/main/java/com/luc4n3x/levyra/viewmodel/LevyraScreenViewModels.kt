@@ -384,6 +384,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun toggleRepeat() = root.toggleRepeat()
     fun toggleShuffle() = root.toggleShuffle()
     fun toggleVideoMode() = root.toggleVideoMode()
+    fun selectVideoSubtitle(trackId: String?) = root.selectVideoSubtitle(trackId)
     fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
 }
 
@@ -1089,6 +1090,7 @@ private data class PlayerProjection(
     val isPlaying: Boolean,
     val isResolving: Boolean,
     val isVideoMode: Boolean,
+    val selectedVideoSubtitleId: String?,
     val lyrics: List<LyricLine>,
     val lyricsLoading: Boolean,
     val playbackSpeed: Float,
@@ -1116,6 +1118,7 @@ private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPro
     isPlaying = state.isPlaying,
     isResolving = state.isResolving,
     isVideoMode = state.isVideoMode,
+    selectedVideoSubtitleId = state.selectedVideoSubtitleId,
     lyrics = state.lyrics,
     lyricsLoading = state.lyricsLoading,
     playbackSpeed = state.playbackSpeed,
