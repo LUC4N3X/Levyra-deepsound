@@ -1400,7 +1400,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
                 source = "YouTube Android Reel · ${selection.reason}",
-                manifest = manifest
+                manifest = manifest,
+                videoSubtitleTracks = videoSubtitleTracks(playerResponse)
             )
         )
     }
@@ -2888,7 +2889,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 videoStreamUrl = selectedVideoUrl,
                 durationMs = durationMs,
                 source = "LevyraExtractor · ${selection.reason}",
-                playbackManifest = manifest
+                playbackManifest = manifest,
+                videoSubtitleTracks = extractorVideoSubtitleTracks(info)
             )
         }
         val hls = info.hlsUrl.takeIf { it.isNotBlank() && !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
@@ -2906,7 +2908,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 videoStreamUrl = "",
                 durationMs = durationMs,
                 source = LEVYRA_EXTRACTOR_HLS_PROVIDER,
-                playbackManifest = manifest
+                playbackManifest = manifest,
+                videoSubtitleTracks = extractorVideoSubtitleTracks(info)
             )
         }
         throw IllegalStateException("Nessuno stream video compatibile per ${track.title}")
@@ -3425,8 +3428,22 @@ private fun trustedVideoCaptionUrl(value: String): String? {
     if (uri.port !in listOf(-1, 443)) return null
     if (host != "youtube.com" && !host.endsWith(".youtube.com")) return null
     if (uri.path != "/api/timedtext") return null
-    return uri.buildUpon().appendQueryParameter("fmt", "vtt").build().toString()
+    val builder = uri.buildUpon().clearQuery()
+    uri.queryParameterNames
+        .filterNot { it.equals("fmt", ignoreCase = true) }
+        .forEach { name -> uri.getQueryParameters(name).forEach { builder.appendQueryParameter(name, it) } }
+    return builder.appendQueryParameter("fmt", "vtt").build().toString()
 }
+
+private fun extractorVideoSubtitleTracks(info: StreamInfo): List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> =
+    info.subtitles.orEmpty().mapIndexedNotNull { index, subtitle ->
+        if (!subtitle.isUrl) return@mapIndexedNotNull null
+        val vttUrl = trustedVideoCaptionUrl(subtitle.content.orEmpty()) ?: return@mapIndexedNotNull null
+        val languageCode = subtitle.languageTag.orEmpty().ifBlank { subtitle.locale?.language.orEmpty() }
+        val label = subtitle.displayLanguageName.orEmpty().ifBlank { languageCode }
+        if (label.isBlank()) return@mapIndexedNotNull null
+        com.luc4n3x.levyra.domain.VideoSubtitleTrack("$languageCode:$index", label, languageCode, vttUrl)
+    }
 
 private data class DirectStream(
     val url: String,

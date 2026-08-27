@@ -152,10 +152,11 @@ private fun InternalDiagnosticsDialog(onClose: () -> Unit) {
                             stringResource(R.string.internal_diagnostics_anomalies) to snapshot.anomalies.size.toString(),
                             stringResource(R.string.internal_diagnostics_current_memory) to snapshot.currentMemory?.pssKb?.let(::formatKb).orEmpty(),
                             stringResource(R.string.internal_diagnostics_peak_memory) to snapshot.currentMemory?.peakPssKb?.let(::formatKb).orEmpty(),
-                            stringResource(R.string.internal_diagnostics_player_state) to snapshot.playerState.name,
+                            stringResource(R.string.internal_diagnostics_player_state) to playerStateLabel(snapshot.playerState),
                             stringResource(R.string.internal_diagnostics_resolver_state) to resolverLabel(snapshot.resolverState),
                             stringResource(R.string.internal_diagnostics_preflight_status) to (
-                                snapshot.preflight?.status?.name ?: stringResource(R.string.internal_diagnostics_not_run)
+                                snapshot.preflight?.status?.let { preflightStatusLabel(it) }
+                                    ?: stringResource(R.string.internal_diagnostics_not_run)
                             )
                         )
                     )
@@ -203,7 +204,7 @@ private fun InternalDiagnosticsDialog(onClose: () -> Unit) {
                     items(snapshot.preflight!!.results, key = { it.checkId }) { result ->
                         DiagnosticsCard(
                             listOf(
-                                result.checkId to result.status.name,
+                                result.checkId to preflightStatusLabel(result.status),
                                 result.component to result.message,
                                 stringResource(R.string.internal_diagnostics_details) to result.details.orEmpty()
                             )
@@ -217,7 +218,7 @@ private fun InternalDiagnosticsDialog(onClose: () -> Unit) {
                     items(snapshot.anomalies.takeLast(12).reversed(), key = { "${it.timestampMs}:${it.type}:${it.operation}" }) { anomaly ->
                         DiagnosticsCard(
                             listOf(
-                                anomaly.type.name to anomaly.severity.name,
+                                anomalyTypeLabel(anomaly.type) to anomalySeverityLabel(anomaly.severity),
                                 stringResource(R.string.internal_diagnostics_occurrences) to anomaly.occurrenceCount.toString(),
                                 stringResource(R.string.internal_diagnostics_window_ms) to anomaly.windowMs.toString()
                             )
@@ -250,6 +251,82 @@ private fun DiagnosticsCard(rows: List<Pair<String, String>>) {
 
 private fun formatKb(value: Long): String = "${value / 1024L} MiB"
 
-private fun resolverLabel(event: ResolverEvent?): String = event?.let {
-    "${it.mode.name}/${it.strategy.name}/${it.outcome.name}"
-}.orEmpty()
+@Composable
+private fun playerStateLabel(value: DiagnosticPlayerState): String = stringResource(
+    when (value) {
+        DiagnosticPlayerState.IDLE -> R.string.internal_diagnostics_state_idle
+        DiagnosticPlayerState.BUFFERING -> R.string.internal_diagnostics_state_buffering
+        DiagnosticPlayerState.READY -> R.string.internal_diagnostics_state_ready
+        DiagnosticPlayerState.ENDED -> R.string.internal_diagnostics_state_ended
+        DiagnosticPlayerState.UNKNOWN -> R.string.internal_diagnostics_state_unknown
+    }
+)
+
+@Composable
+private fun preflightStatusLabel(value: PreflightStatus): String = stringResource(
+    when (value) {
+        PreflightStatus.PASS -> R.string.internal_diagnostics_status_pass
+        PreflightStatus.WARNING -> R.string.internal_diagnostics_status_warning
+        PreflightStatus.FAIL -> R.string.internal_diagnostics_status_fail
+    }
+)
+
+@Composable
+private fun anomalySeverityLabel(value: AnomalySeverity): String = stringResource(
+    when (value) {
+        AnomalySeverity.INFO -> R.string.internal_diagnostics_severity_info
+        AnomalySeverity.WARNING -> R.string.internal_diagnostics_severity_warning
+        AnomalySeverity.CRITICAL -> R.string.internal_diagnostics_severity_critical
+    }
+)
+
+@Composable
+private fun anomalyTypeLabel(value: AnomalyType): String = stringResource(
+    when (value) {
+        AnomalyType.MEMORY_GROWTH -> R.string.internal_diagnostics_anomaly_memory_growth
+        AnomalyType.PLAYER_RECREATION_STORM -> R.string.internal_diagnostics_anomaly_player_recreation
+        AnomalyType.PREPARE_LOOP -> R.string.internal_diagnostics_anomaly_prepare_loop
+        AnomalyType.BUFFERING_LOOP -> R.string.internal_diagnostics_anomaly_buffering_loop
+        AnomalyType.RESOLVER_RETRY_STORM -> R.string.internal_diagnostics_anomaly_resolver_retry
+        AnomalyType.FALLBACK_LOOP -> R.string.internal_diagnostics_anomaly_fallback_loop
+        AnomalyType.NETWORK_RETRY_STORM -> R.string.internal_diagnostics_anomaly_network_retry
+        AnomalyType.CACHE_CHURN -> R.string.internal_diagnostics_anomaly_cache_churn
+        AnomalyType.DSP_RECREATE_STORM -> R.string.internal_diagnostics_anomaly_dsp_recreate
+        AnomalyType.CANVAS_RESTART_LOOP -> R.string.internal_diagnostics_anomaly_canvas_restart
+        AnomalyType.HOT_OPERATION_STORM -> R.string.internal_diagnostics_anomaly_hot_operation
+    }
+)
+
+@Composable
+private fun resolverLabel(event: ResolverEvent?): String {
+    if (event == null) return ""
+    val mode = stringResource(
+        when (event.mode) {
+            PlaybackMode.AUDIO -> R.string.internal_diagnostics_mode_audio
+            PlaybackMode.VIDEO -> R.string.internal_diagnostics_mode_video
+            PlaybackMode.DECORATIVE -> R.string.internal_diagnostics_mode_decorative
+            PlaybackMode.UNKNOWN -> R.string.internal_diagnostics_state_unknown
+        }
+    )
+    val strategy = stringResource(
+        when (event.strategy) {
+            ResolverStrategy.REEL_MUXED -> R.string.internal_diagnostics_strategy_reel_muxed
+            ResolverStrategy.REEL_AUDIO -> R.string.internal_diagnostics_strategy_reel_audio
+            ResolverStrategy.PERSISTED -> R.string.internal_diagnostics_strategy_persisted
+            ResolverStrategy.DIRECT -> R.string.internal_diagnostics_strategy_direct
+            ResolverStrategy.SEARCH -> R.string.internal_diagnostics_strategy_search
+            ResolverStrategy.STANDARD_VIDEO -> R.string.internal_diagnostics_strategy_standard_video
+            ResolverStrategy.REEL_VIDEO -> R.string.internal_diagnostics_strategy_reel_video
+            ResolverStrategy.UNKNOWN -> R.string.internal_diagnostics_state_unknown
+        }
+    )
+    val outcome = stringResource(
+        when (event.outcome) {
+            DiagnosticOutcome.SUCCESS -> R.string.internal_diagnostics_outcome_success
+            DiagnosticOutcome.FAILURE -> R.string.internal_diagnostics_outcome_failure
+            DiagnosticOutcome.TIMEOUT -> R.string.internal_diagnostics_outcome_timeout
+            DiagnosticOutcome.CANCELLED -> R.string.internal_diagnostics_outcome_cancelled
+        }
+    )
+    return stringResource(R.string.internal_diagnostics_resolver_format, mode, strategy, outcome)
+}

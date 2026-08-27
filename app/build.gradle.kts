@@ -43,6 +43,11 @@ fun isPerformanceTaskRequested(): Boolean =
 
 fun isPrDiagnosticsTaskRequested(): Boolean =
     gradle.startParameter.taskNames.any { task ->
+        task.contains("PrDiagnostics", ignoreCase = true)
+    }
+
+fun isPrDiagnosticsArtifactTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
         task.contains("assemblePrDiagnostics", ignoreCase = true) ||
             task.contains("bundlePrDiagnostics", ignoreCase = true) ||
             task.contains("packagePrDiagnostics", ignoreCase = true) ||
@@ -51,7 +56,7 @@ fun isPrDiagnosticsTaskRequested(): Boolean =
 
 fun isReleaseTaskRequested(): Boolean =
     !isPerformanceTaskRequested() && (
-        isPrDiagnosticsTaskRequested() ||
+        isPrDiagnosticsArtifactTaskRequested() ||
             gradle.startParameter.taskNames.any { task ->
                 task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
             }

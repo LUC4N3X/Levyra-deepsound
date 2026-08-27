@@ -4,10 +4,12 @@ import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.PlaybackAudioStrategy
 import com.luc4n3x.levyra.data.PlaybackVideoStrategy
+import com.luc4n3x.levyra.data.AppUpdateRepository
+import com.luc4n3x.levyra.data.validateLevyraReleaseMetadataUrl
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import java.io.ByteArrayOutputStream
-import java.net.URI
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import org.json.JSONArray
 import org.json.JSONObject
@@ -56,7 +58,7 @@ internal object RuntimePreflight {
             diagnosticsVariantCheck(),
             extractorRegistryCheck(),
             runtimeConfigCheck(context),
-            providerAllowlistCheck(),
+            providerAllowlistCheck(context),
             canvasConfigurationCheck(),
             editorialCatalogCheck(context)
         )
@@ -90,12 +92,13 @@ internal object RuntimePreflight {
         }
     }
 
-    private fun providerAllowlistCheck(): PreflightResult {
-        val valid = providerEndpointAllowed(BuildConfig.UPDATE_LATEST_URL)
-        return if (valid) {
-            pass("provider.allowlist", "network", "Provider endpoint allowlist is valid")
-        } else {
-            fail("provider.allowlist", "network", "Provider endpoint allowlist is invalid")
+    private fun providerAllowlistCheck(context: Context): PreflightResult {
+        return when (providerPreflightStatus(providerEndpointAllowed(BuildConfig.UPDATE_LATEST_URL)) {
+            AppUpdateRepository(context).validateLatestReleaseMetadata()
+        }) {
+            PreflightStatus.PASS -> pass("provider.allowlist", "network", "Provider endpoint and bounded metadata response are valid")
+            PreflightStatus.WARNING -> warning("provider.allowlist", "network", "Provider endpoint is valid but metadata is unavailable")
+            PreflightStatus.FAIL -> fail("provider.allowlist", "network", "Provider endpoint allowlist is invalid")
         }
     }
 
@@ -150,14 +153,18 @@ internal fun extractorRegistryComplete(audio: Set<String>, video: Set<String>): 
     audio.containsAll(setOf("REEL_MUXED", "REEL_AUDIO", "PERSISTED", "DIRECT", "SEARCH")) &&
         video.containsAll(setOf("PERSISTED", "STANDARD", "REEL"))
 
-internal fun providerEndpointAllowed(value: String): Boolean = runCatching {
-    val uri = URI(value)
-    uri.scheme.equals("https", ignoreCase = true) &&
-        uri.host.equals("api.github.com", ignoreCase = true) &&
-        uri.userInfo == null &&
-        uri.port == -1 &&
-        uri.rawPath.orEmpty().startsWith("/repos/LUC4N3X/Levyra-deepsound/")
-}.getOrDefault(false)
+internal fun providerEndpointAllowed(value: String): Boolean = validateLevyraReleaseMetadataUrl(value) != null
+
+internal fun providerPreflightStatus(configAllowed: Boolean, probe: () -> Boolean): PreflightStatus {
+    if (!configAllowed) return PreflightStatus.FAIL
+    return try {
+        if (probe()) PreflightStatus.PASS else PreflightStatus.WARNING
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        PreflightStatus.WARNING
+    }
+}
 
 internal fun canvasConfigurationComplete(quality: Set<String>, source: Set<String>): Boolean =
     quality.containsAll(setOf("Auto", "DataSaver", "High")) &&
