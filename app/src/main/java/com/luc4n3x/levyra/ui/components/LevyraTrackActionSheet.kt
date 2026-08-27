@@ -136,6 +136,7 @@ internal fun LevyraTrackActionSheet(
     onDeleteDownload: () -> Unit,
     onOpenAlbum: () -> Unit,
     onOpenArtist: () -> Unit,
+    onUniversalShare: () -> Unit,
     onRemoveFromHistory: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -334,6 +335,13 @@ internal fun LevyraTrackActionSheet(
                                         context.startActivity(Intent.createChooser(intent, strings.shareSong))
                                     }
                                 }
+                            )
+                            TrackActionTile(
+                                icon = Icons.Rounded.Share,
+                                label = strings.universalShare,
+                                animationsEnabled = animationsEnabled,
+                                modifier = Modifier.weight(1f),
+                                onClick = { perform(onUniversalShare) }
                             )
                         }
 

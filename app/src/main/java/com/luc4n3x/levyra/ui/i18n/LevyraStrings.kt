@@ -318,6 +318,28 @@ class LevyraStrings private constructor(
     val deleteDownload: String get() = value("deleteDownload")
     val share: String get() = value("share")
     val shareSong: String get() = value("shareSong")
+    val universalShare: String get() = when (code) {
+        "it" -> "Condivisione universale"
+        else -> "Universal share"
+    }
+    val integrations: String get() = when (code) {
+        "it" -> "Integrazioni"
+        else -> "Integrations"
+    }
+    val apiKeyLabel: String get() = "API key"
+    val sharedSecretLabel: String get() = when (code) {
+        "it" -> "Segreto condiviso"
+        else -> "Shared secret"
+    }
+    val credentialTokenLabel: String get() = "Token"
+    val lastFmApprovalHint: String get() = when (code) {
+        "it" -> "Dopo l'approvazione nel browser, torna qui e completa il collegamento."
+        else -> "After approving in the browser, return here and complete the connection."
+    }
+    val subtitlesOff: String get() = when (code) {
+        "it" -> "Sottotitoli disattivati"
+        else -> "Subtitles off"
+    }
     val removeFromRecentSearches: String get() = value("removeFromRecentSearches")
     val songOptions: String get() = value("songOptions")
     val goToPlayer: String get() = value("goToPlayer")

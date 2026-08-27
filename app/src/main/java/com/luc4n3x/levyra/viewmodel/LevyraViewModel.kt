@@ -188,8 +188,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -614,10 +616,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
     private val smartMusicProfileStore = LevyraSmartMusicProfileStore(application.applicationContext)
     private val listeningPulseStore = ListeningPulseStore(application.applicationContext)
+    private val externalCredentialStore = com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(application.applicationContext)
+    private val lastFmScrobbling = com.luc4n3x.levyra.feature.scrobbling.LastFmScrobbleProvider(externalCredentialStore)
+    private val listenBrainzScrobbling = com.luc4n3x.levyra.feature.scrobbling.ListenBrainzScrobbleProvider(externalCredentialStore)
+    private val scrobbling = com.luc4n3x.levyra.feature.scrobbling.ScrobblingCoordinator(
+        listOf(lastFmScrobbling, listenBrainzScrobbling)
+    )
+    private val universalMusicShare = com.luc4n3x.levyra.feature.sharing.UniversalMusicShare()
     private val listeningPulseEngine = ListeningPulseEngine()
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
     private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
+    private val _integrationAuthorizationUrls = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val integrationAuthorizationUrls = _integrationAuthorizationUrls.asSharedFlow()
     private val _state = MutableStateFlow(
         LevyraUiState(
             moods = startupMoods,
@@ -779,6 +790,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listenSessionCompleted = false
     private var listenTickElapsedMs = 0L
     private var listenSessionPersistedMs = 0L
+    @Volatile private var pendingLastFmToken: String? = null
     private var listenSessionPersistJob: Job? = null
     private var listeningPulseRefreshJob: Job? = null
     private var lastPlaybackSaveJob: Job? = null
@@ -934,6 +946,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val playerController get() = player.controller
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.restoreAudD(
+                getApplication<Application>().applicationContext
+            )
+            resetRecognitionCollector()
+            val audDConfigured = com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.isAvailable
+            _state.update {
+                it.copy(
+                    lastFmConfigured = lastFmScrobbling.isConfigured(),
+                    listenBrainzConfigured = listenBrainzScrobbling.isConfigured(),
+                    audDConfigured = audDConfigured,
+                    recognitionAvailable = audDConfigured
+                )
+            }
+        }
         val favorites = favoritesStore.load()
         val settings = startupSettings
         val repairedRecentSearches = settings.recentSearches
@@ -1913,6 +1940,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         recognitionController.start()
     }
 
+    private fun resetRecognitionCollector() {
+        recognitionCollectorJob?.cancel()
+        recognitionCollectorJob = null
+        _state.update { it.copy(recognitionState = RecognitionState.Idle) }
+    }
+
     fun cancelMusicRecognition() {
         recognitionController.cancel()
         _state.update { it.copy(recognitionState = RecognitionState.Idle) }
@@ -2137,7 +2170,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val transitionId = ++streamTransitionId
         streamRecoveryJob?.cancel()
         modeSwitchJob?.cancel()
-        _state.update { it.copy(pendingVideoMode = targetMode, isResolving = true, playerError = null) }
+        player.selectVideoSubtitle(null)
+        _state.update {
+            it.copy(
+                pendingVideoMode = targetMode,
+                selectedVideoSubtitleId = null,
+                isResolving = true,
+                playerError = null
+            )
+        }
         modeSwitchJob = viewModelScope.launch {
             try {
                 val selectedSource = if (targetMode) {
@@ -2166,6 +2207,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         currentTrack = resolved,
                         isVideoMode = targetMode,
                         pendingVideoMode = null,
+                        selectedVideoSubtitleId = null,
                         isResolving = false,
                         isPlaying = shouldPlay,
                         positionMs = positionMs,
@@ -2194,6 +2236,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    fun selectVideoSubtitle(trackId: String?) {
+        val snapshot = _state.value
+        if (!snapshot.isVideoMode) return
+        val subtitle = snapshot.currentTrack?.videoSubtitleTracks
+            ?.firstOrNull { it.id == trackId }
+        player.selectVideoSubtitle(subtitle?.id)
+        _state.update { it.copy(selectedVideoSubtitleId = subtitle?.id) }
     }
 
     private fun recoverPlaybackStream(
@@ -2234,6 +2285,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     it.copy(
                         currentTrack = resolved,
                         isVideoMode = videoMode,
+                        selectedVideoSubtitleId = null,
                         isResolving = false,
                         isPlaying = playWhenReady,
                         positionMs = positionMs,
@@ -6191,6 +6243,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update {
             it.copy(
                 currentTrack = playable,
+                selectedVideoSubtitleId = null,
                 tracks = mergeTracks(it.tracks, listOf(playable)),
                 searchResults = mergeTracks(it.searchResults, listOf(playable)),
                 activeLyric = lyricsEngine.currentLine(resumeMs, it.lyrics),
@@ -7809,6 +7862,90 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listenSessionCompleted = false
         listenTickElapsedMs = android.os.SystemClock.elapsedRealtime()
         listenSessionPersistedMs = 0L
+        val startedAt = listenSessionStartedAt
+        viewModelScope.launch(Dispatchers.IO) { scrobbling.nowPlaying(track, startedAt) }
+    }
+
+    fun beginLastFmAuthorization(apiKey: String, sharedSecret: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            lastFmScrobbling.saveApiCredentials(apiKey, sharedSecret)
+            val authorizationProof = lastFmScrobbling.requestToken()
+            val url = authorizationProof?.let(lastFmScrobbling::authorizationUrl)
+            pendingLastFmToken = authorizationProof.takeIf { url != null }
+            _state.update {
+                it.copy(
+                    lastFmAuthorizationPending = pendingLastFmToken != null,
+                    lastFmConfigured = false
+                )
+            }
+            url?.let { _integrationAuthorizationUrls.emit(it) }
+        }
+    }
+
+    fun completeLastFmAuthorization() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val authorizationProof = pendingLastFmToken ?: return@launch
+            val configured = lastFmScrobbling.completeAuthorization(authorizationProof)
+            if (configured) pendingLastFmToken = null
+            _state.update {
+                it.copy(
+                    lastFmAuthorizationPending = !configured,
+                    lastFmConfigured = configured
+                )
+            }
+        }
+    }
+
+    fun clearLastFmAuthorization() {
+        pendingLastFmToken = null
+        viewModelScope.launch(Dispatchers.IO) {
+            lastFmScrobbling.clear()
+            _state.update { it.copy(lastFmAuthorizationPending = false, lastFmConfigured = false) }
+        }
+    }
+
+    fun saveListenBrainzToken(token: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.update { it.copy(listenBrainzConfigured = listenBrainzScrobbling.saveToken(token)) }
+        }
+    }
+
+    fun clearListenBrainzToken() {
+        viewModelScope.launch(Dispatchers.IO) {
+            listenBrainzScrobbling.clear()
+            _state.update { it.copy(listenBrainzConfigured = false) }
+        }
+    }
+
+    fun saveAudDToken(token: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>().applicationContext
+            com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.configureAudD(context, token)
+            resetRecognitionCollector()
+            val configured = com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.isAvailable
+            _state.update { it.copy(audDConfigured = configured, recognitionAvailable = configured) }
+        }
+    }
+
+    fun clearAudDToken() {
+        viewModelScope.launch(Dispatchers.IO) {
+            com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.clearAudD(
+                getApplication<Application>().applicationContext
+            )
+            resetRecognitionCollector()
+            _state.update { it.copy(audDConfigured = false, recognitionAvailable = false) }
+        }
+    }
+
+    fun shareUniversally(track: Track) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val url = universalMusicShare.resolve(track)
+            if (url.isNotBlank()) _state.update { it.copy(universalShareUrl = url) }
+        }
+    }
+
+    fun consumeUniversalShare() {
+        _state.update { it.copy(universalShareUrl = null) }
     }
 
     private data class ListenSession(
@@ -7831,6 +7968,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun flushListenSession() {
         val session = takeListenSession() ?: return
         viewModelScope.launch(Dispatchers.IO) {
+            scrobbling.scrobble(session.track, session.startedAt, session.listenedMs)
             listeningPulseStore.record(session.track, session.listenedMs, session.completed, session.startedAt)
             refreshListeningPulse()
         }
@@ -7849,6 +7987,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (listenSessionPersistJob?.isActive == true) return
         val startedAt = listenSessionStartedAt
         listenSessionPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            scrobbling.scrobble(track, startedAt, listenedMs)
             listeningPulseStore.record(track, listenedMs, completed = false, startedAt = startedAt)
             if (listenSessionStartedAt == startedAt && listenSessionTrack?.id == track.id) {
                 listenSessionPersistedMs = maxOf(listenSessionPersistedMs, listenedMs)

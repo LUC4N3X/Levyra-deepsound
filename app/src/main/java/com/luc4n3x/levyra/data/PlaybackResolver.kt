@@ -1847,7 +1847,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             source = stream.source,
             youtubeLoudnessDb = stream.loudnessDb ?: youtubeLoudnessDb,
             youtubePerceptualLoudnessDb = stream.perceptualLoudnessDb ?: youtubePerceptualLoudnessDb,
-            playbackManifest = stream.manifest
+            playbackManifest = stream.manifest,
+            videoSubtitleTracks = stream.videoSubtitleTracks
         )
     }
 
@@ -2485,6 +2486,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val details = root.optJSONObject("videoDetails")
                 val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
+                val videoSubtitleTracks = videoSubtitleTracks(root)
                 return@responseUse when {
                     selection?.candidate?.muxed == true -> {
                         val manifest = buildManifest(
@@ -2504,7 +2506,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             source = "YouTube ${profile.label} · ${selection.reason}",
                             manifest = manifest,
                             loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
                     selection != null && bestAudioUrl.isNotBlank() -> {
@@ -2528,7 +2531,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             source = "YouTube ${profile.label} · ${selection.reason}",
                             manifest = manifest,
                             loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
                     hlsUrl.isNotBlank() -> {
@@ -2549,7 +2553,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             source = "YouTube HLS ${profile.label}",
                             manifest = manifest,
                             loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
                     else -> throw YoutubePlayerRequestException(null, "Nessuno stream video compatibile disponibile")
@@ -3301,6 +3306,35 @@ private data class PlaybackLoudness(
     val perceptualLoudnessDb: Float? = null
 )
 
+private fun videoSubtitleTracks(root: JSONObject): List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> {
+    val captions = root.optJSONObject("captions")
+        ?.optJSONObject("playerCaptionsTracklistRenderer")
+        ?.optJSONArray("captionTracks")
+        ?: return emptyList()
+    return buildList {
+        for (index in 0 until captions.length()) {
+            val caption = captions.optJSONObject(index) ?: continue
+            val baseUrl = caption.optString("baseUrl")
+            val languageCode = caption.optString("languageCode")
+            val label = caption.optJSONObject("name")?.optJSONArray("runs")
+                ?.optJSONObject(0)?.optString("text").orEmpty().ifBlank { languageCode }
+            val vttUrl = trustedVideoCaptionUrl(baseUrl) ?: continue
+            if (label.isBlank()) continue
+            add(com.luc4n3x.levyra.domain.VideoSubtitleTrack("$languageCode:$index", label, languageCode, vttUrl))
+        }
+    }
+}
+
+private fun trustedVideoCaptionUrl(value: String): String? {
+    val uri = runCatching { android.net.Uri.parse(value) }.getOrNull() ?: return null
+    val host = uri.host?.lowercase().orEmpty()
+    if (uri.scheme?.lowercase() != "https" || !uri.encodedUserInfo.isNullOrBlank()) return null
+    if (uri.port !in listOf(-1, 443)) return null
+    if (host != "youtube.com" && !host.endsWith(".youtube.com")) return null
+    if (uri.path != "/api/timedtext") return null
+    return uri.buildUpon().appendQueryParameter("fmt", "vtt").build().toString()
+}
+
 private data class DirectStream(
     val url: String,
     val videoUrl: String = "",
@@ -3309,7 +3343,8 @@ private data class DirectStream(
     val source: String,
     val manifest: ResolvedPlaybackManifest,
     val loudnessDb: Float? = null,
-    val perceptualLoudnessDb: Float? = null
+    val perceptualLoudnessDb: Float? = null,
+    val videoSubtitleTracks: List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> = emptyList()
 )
 
 private data class PlaybackStrategyOrigin(
