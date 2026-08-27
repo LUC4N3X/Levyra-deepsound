@@ -111,7 +111,7 @@ def main() -> int:
 
     print(
         "Codex bootstrap validation passed: canonical .agents/codex config, "
-        "runtime projection, pinned jCodeMunch, fail-open behavior, and quality-first policy verified."
+        "runtime projection contract, pinned jCodeMunch, fail-open behavior, and quality-first policy verified."
     )
     return 0
 
