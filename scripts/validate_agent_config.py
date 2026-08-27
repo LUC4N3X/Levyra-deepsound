@@ -17,6 +17,7 @@ REQUIRED_FILES = (
     "app/AGENTS.md",
     "desktop/AGENTS.md",
     ".github/AGENTS.md",
+    ".github/pull_request_template.md",
     "docs/README.md",
     "docs/AGENTS.md",
     "docs/ARCHITECTURE.md",
@@ -36,6 +37,7 @@ REQUIRED_FILES = (
     f"{CODEX_ROOT}/config.toml",
     f"{CODEX_ROOT}/hooks.json",
     "scripts/sync_agent_runtime.py",
+    "scripts/agent_skill_router.py",
     "scripts/setup-ai.ps1",
     "scripts/setup-ai.sh",
     "docs/ai/README.md",
@@ -227,6 +229,8 @@ def main() -> int:
                 "Do not add explanatory source-code comments",
                 ".agents/claude/",
                 ".agents/codex/",
+                ".github/pull_request_template.md",
+                "levyra-humanizer",
             ),
             "Codex context/code-quality/runtime-source contract",
         )
@@ -241,7 +245,13 @@ def main() -> int:
             errors,
             CHATGPT_INSTRUCTIONS_PATH,
             chatgpt,
-            ("AI_ENGINEERING_GUARDRAILS.md", "code-review", ".agents/claude/rules/"),
+            (
+                "AI_ENGINEERING_GUARDRAILS.md",
+                "code-review",
+                ".agents/claude/rules/",
+                ".github/pull_request_template.md",
+                "levyra-humanizer",
+            ),
             "ChatGPT shared guardrail/review/canonical-rule route",
         )
         reject_terms(
@@ -268,6 +278,8 @@ def main() -> int:
                 "levyra-context-efficiency",
                 "/code-review",
                 "Do not add explanatory source-code comments",
+                ".github/pull_request_template.md",
+                "levyra-humanizer",
             ),
             "Claude immediate context/review contract",
         )
@@ -282,9 +294,31 @@ def main() -> int:
             errors,
             CLAUDE_ROUTER_PATH,
             claude_router,
-            ("Levyra context budget", "code-review"),
+            ("Levyra context budget", "code-review", "levyra-humanizer"),
             "Claude hook context/review reminder",
         )
+
+    require_terms(
+        errors,
+        "scripts/agent_skill_router.py",
+        read_text("scripts/agent_skill_router.py"),
+        ("levyra-humanizer", "pull request description"),
+        "shared PR-description skill route",
+    )
+    require_terms(
+        errors,
+        ".github/pull_request_template.md",
+        read_text(".github/pull_request_template.md"),
+        ("complete Levyra", "levyra-humanizer", "without changing"),
+        "mandatory PR-description schema/humanizer contract",
+    )
+    require_terms(
+        errors,
+        "docs/ai/WORKFLOW.md",
+        read_text("docs/ai/WORKFLOW.md"),
+        (".github/pull_request_template.md", "levyra-humanizer", "leave unperformed"),
+        "shared PR publication prose contract",
+    )
 
     guardrails_path = ROOT / GUARDRAILS_PATH
     if guardrails_path.is_file():

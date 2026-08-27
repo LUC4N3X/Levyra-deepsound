@@ -138,6 +138,10 @@ architecture, domain skills, validation, or owner-controlled publication. See
     - Use a focused professional commit message.
     - Push a dedicated branch and open a draft pull request by default unless
       the owner explicitly authorized direct `main` publication for the scope.
+    - Use the complete `.github/pull_request_template.md` schema for every new
+      or updated pull request. Fill it from current evidence, leave unperformed
+      checks unmarked, and run `levyra-humanizer` as the final prose pass without
+      changing any claim.
     - Record problem, approach, impact, exact checks, blocked checks, manual
       checks, limitations, and rollback/revert scope.
     - Specification or ticket generation does not imply permission to create or

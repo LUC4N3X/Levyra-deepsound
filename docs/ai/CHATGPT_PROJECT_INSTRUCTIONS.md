@@ -403,6 +403,9 @@ When publication is authorized:
 - stage only intended files;
 - use a professional focused commit message;
 - use a dedicated branch and draft pull request by default;
+- preserve the complete `.github/pull_request_template.md` schema, fill every
+  section truthfully, and apply `levyra-humanizer` as the final PR-description
+  prose pass without changing facts or validation claims;
 - write a truthful PR body covering reason, changes, impact, validation, blocked
   checks and manual verification;
 - push directly to `main` only when explicitly requested for the exact scope.

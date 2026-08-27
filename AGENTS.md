@@ -302,6 +302,7 @@ coordinator and never preload the whole skill tree.
 | GitHub Actions, CI, F-Droid, configuration sync, artifacts, build/release automation | `levyra-ci-workflows` |
 | Non-trivial repository exploration; builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy context | `levyra-context-efficiency` |
 | Branch, commit, patch, or pull request review | `levyra-pr-review` |
+| Opening or updating a pull request, including its title or description | `levyra-pr-review` plus `levyra-humanizer` |
 | Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
 | Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
 
@@ -533,6 +534,10 @@ review, or CI success without direct evidence.
 - When publication is authorized, use a dedicated branch and draft pull request
   by default. Push directly to `main` only when explicitly requested for the
   exact scope.
+- When opening or updating a pull request, follow `.github/pull_request_template.md`
+  without dropping required sections. Fill every section truthfully, use `N/A`
+  where allowed, keep unperformed checks unmarked, and apply `levyra-humanizer`
+  as the final prose pass without changing facts or validation claims.
 - OpenClaw or any delegated coding runtime must not infer publication, merge,
   tag, or release permission from an implementation request.
 - Keep PR descriptions and checklists truthful; leave manual/device checks

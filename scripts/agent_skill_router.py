@@ -109,6 +109,11 @@ ROUTES = (
         r"review|revision|pull request|\bpr\b|merge|\bdiff\b|commit review|branch review|before merging|prima di merg",
     ),
     route(
+        "levyra-humanizer",
+        "authoring or updating a Levyra pull request description",
+        r"(?:open|create|draft|prepare|write|update|edit|rewrite|publish|apr|crea|prepara|scriv|aggiorn|modific|riscriv).{0,40}(?:pull request|\bpr\b)|(?:pull request|\bpr\b).{0,30}(?:description|body|descrizion)",
+    ),
+    route(
         "levyra-release-check",
         "runtime, pre-merge, or release validation",
         r"release|rilasci|versionname|versioncode|app version|release version|versione (?:app|release)|\bapk\b|signing|firma|tag\b|publish|pubblic|emulator|emulatore|physical device|device test|test dispositivo|\badb\b|connectedcheck|smoke test|runtime verification|runtime validation|verifica runtime|pre.?merge",

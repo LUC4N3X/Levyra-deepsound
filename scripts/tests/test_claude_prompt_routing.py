@@ -157,6 +157,17 @@ class ClaudePromptRoutingTest(unittest.TestCase):
         self.assertIn("levyra-engineering", context)
         self.assertIn("levyra-real-engineering", context)
 
+    def test_pr_authoring_routes_humanizer(self) -> None:
+        for prompt in (
+            "Open a pull request for this branch",
+            "Update the PR description",
+            "Apri una PR con la descrizione Levyra",
+        ):
+            with self.subTest(prompt=prompt):
+                context = route(prompt)
+                self.assertIn("levyra-humanizer", context)
+                self.assertIn("levyra-pr-review", context)
+
 
 if __name__ == "__main__":
     unittest.main()
