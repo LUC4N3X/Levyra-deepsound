@@ -826,6 +826,13 @@ public final class YoutubeSabrSession {
                 skipBackoffWhenBootstrapReady, MAX_BACKOFF_MS);
     }
 
+    private static int attestationRotationLimit(@Nonnull final SabrDecodedResponse decoded) {
+        final int advertisedMaxRetries = decoded.getStreamProtectionMaxRetries();
+        return advertisedMaxRetries < 0
+                ? MAX_ATTESTATION_IDENTITY_ROTATIONS
+                : Math.min(MAX_ATTESTATION_IDENTITY_ROTATIONS, advertisedMaxRetries);
+    }
+
     @Nonnull
     private PolicyControlOutcome applyControlPolicy(
             @Nonnull final Localization localization,
@@ -837,7 +844,7 @@ public final class YoutubeSabrSession {
             final int deferredBackoffLimitMs) throws IOException, ExtractionException {
         final SabrDecodedResponse decoded = result.getDecodedResponse();
         if (decoded.isAttestationPending()
-                && attestationIdentityRotations < MAX_ATTESTATION_IDENTITY_ROTATIONS
+                && attestationIdentityRotations < attestationRotationLimit(decoded)
                 && rotatePendingAttestationIdentity(localization)) {
             // The rejected response belongs to the old server session, but completed media and its
             // headers are local playback progress retained across the rotation. Apply only that
