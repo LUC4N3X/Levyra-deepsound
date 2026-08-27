@@ -15,6 +15,8 @@ import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +63,16 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
+
+private fun PlaybackFailureKind.httpStatusCode(): Int = when (this) {
+    PlaybackFailureKind.Forbidden -> 403
+    PlaybackFailureKind.NotFound -> 404
+    PlaybackFailureKind.Gone -> 410
+    PlaybackFailureKind.RangeNotSatisfiable -> 416
+    PlaybackFailureKind.RateLimited -> 429
+    PlaybackFailureKind.ServerError -> 500
+    else -> 0
+}
 
 internal fun isMp4OfflineAudioCandidate(mimeOrFormat: String, url: String): Boolean {
     val format = mimeOrFormat.lowercase()
@@ -470,25 +482,35 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
-            if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
-            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
-            return if (streamStillFresh(track.streamUrl)) track else null
+            val valid = !isPlaybackUrlBlocked(track.streamUrl) &&
+                (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
+                (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
+                (!isVideoMode || track.hasVideoPlaybackPayload()) &&
+                streamStillFresh(track.streamUrl)
+            RuntimeHooks.cache(if (valid) RuntimeSignal.CACHE_HIT else RuntimeSignal.CACHE_MISS)
+            return track.takeIf { valid }
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
-        val hit = streamCache[key] ?: return null
+        val hit = streamCache[key] ?: run {
+            RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
+            return null
+        }
         if (!isFresh(hit.expiresAt)) {
             remove(key)
+            RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
         }
         if (!isVideoMode && !isPlayableAudioUrl(hit.track.streamUrl)) {
             remove(key)
+            RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
         }
         if (isVideoMode && !hit.track.hasVideoPlaybackPayload()) {
             remove(key)
+            RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
         }
+        RuntimeHooks.cache(RuntimeSignal.CACHE_HIT)
         return hit.track
     }
 
@@ -808,6 +830,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
+        RuntimeHooks.cache(RuntimeSignal.CACHE_PREFETCH)
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
@@ -926,8 +949,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for (strategy in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies)) {
+        for ((attemptIndex, strategy) in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies).withIndex()) {
             currentCoroutineContext().ensureActive()
+            RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
+            if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
             val resolved = when (strategy) {
@@ -969,6 +994,16 @@ class PlaybackResolver private constructor(private val context: Context) {
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(AUDIO_HEALTH_MODE, strategy.name, elapsedMs)
+                RuntimeHooks.resolver(
+                    mode = RuntimeSignal.MODE_AUDIO,
+                    strategy = strategy.ordinal,
+                    client = -1,
+                    attempt = attemptIndex + 1,
+                    latencyMs = elapsedMs,
+                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                    failure = -1,
+                    manifest = resolved.playbackManifest
+                )
                 rememberStrategyOrigin(resolved, AUDIO_HEALTH_MODE, strategy.name, expectedGeneration)
                 store(track, resolved, false, audioQuality, false, expectedGeneration)
                 val confidence = when (strategy) {
@@ -994,11 +1029,21 @@ class PlaybackResolver private constructor(private val context: Context) {
             val failureReason = synchronized(errors) { errors.toList() }
         .drop(errorsBefore)
         .lastOrNull()
+            val failureKind = failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
             strategyHealth.recordFailure(
                 AUDIO_HEALTH_MODE,
                 strategy.name,
                 elapsedMs,
-                failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
+                failureKind
+            )
+            RuntimeHooks.resolver(
+                mode = RuntimeSignal.MODE_AUDIO,
+                strategy = strategy.ordinal,
+                client = -1,
+                attempt = attemptIndex + 1,
+                latencyMs = elapsedMs,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = failureKind.ordinal
             )
         }
         return null
@@ -1011,8 +1056,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for (strategy in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies)) {
+        for ((attemptIndex, strategy) in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies).withIndex()) {
             currentCoroutineContext().ensureActive()
+            RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
+            if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
             val resolved = when (strategy) {
@@ -1035,6 +1082,16 @@ class PlaybackResolver private constructor(private val context: Context) {
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(VIDEO_HEALTH_MODE, strategy.name, elapsedMs)
+                RuntimeHooks.resolver(
+                    mode = RuntimeSignal.MODE_VIDEO,
+                    strategy = strategy.ordinal,
+                    client = -1,
+                    attempt = attemptIndex + 1,
+                    latencyMs = elapsedMs,
+                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                    failure = -1,
+                    manifest = resolved.playbackManifest
+                )
                 rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name, expectedGeneration)
                 store(track, resolved, true, audioQuality, expectedGeneration = expectedGeneration)
                 val confidence = when (strategy) {
@@ -1058,11 +1115,21 @@ class PlaybackResolver private constructor(private val context: Context) {
             val failureReason = synchronized(errors) { errors.toList() }
         .drop(errorsBefore)
         .lastOrNull()
+            val failureKind = failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
             strategyHealth.recordFailure(
                 VIDEO_HEALTH_MODE,
                 strategy.name,
                 elapsedMs,
-                failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
+                failureKind
+            )
+            RuntimeHooks.resolver(
+                mode = RuntimeSignal.MODE_VIDEO,
+                strategy = strategy.ordinal,
+                client = -1,
+                attempt = attemptIndex + 1,
+                latencyMs = elapsedMs,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = failureKind.ordinal
             )
         }
         return null
@@ -1333,7 +1400,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
                 source = "YouTube Android Reel · ${selection.reason}",
-                manifest = manifest
+                manifest = manifest,
+                videoSubtitleTracks = videoSubtitleTracks(playerResponse)
             )
         )
     }
@@ -1620,6 +1688,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return artworkSafe.copy(
             streamUrl = resolved.streamUrl,
             videoStreamUrl = resolved.videoStreamUrl,
+            videoSubtitleTracks = resolved.videoSubtitleTracks,
             videoUrl = resolved.videoUrl.ifBlank { original.videoUrl },
             durationMs = resolved.durationMs.takeIf { it > 0L } ?: original.durationMs,
             source = resolved.source,
@@ -1847,7 +1916,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             source = stream.source,
             youtubeLoudnessDb = stream.loudnessDb ?: youtubeLoudnessDb,
             youtubePerceptualLoudnessDb = stream.perceptualLoudnessDb ?: youtubePerceptualLoudnessDb,
-            playbackManifest = stream.manifest
+            playbackManifest = stream.manifest,
+            videoSubtitleTracks = stream.videoSubtitleTracks
         )
     }
 
@@ -2274,18 +2344,33 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): DirectStream {
         val startedAt = System.nanoTime()
         val mode = if (isVideoMode) "video" else if (preferMp4Audio) "offline" else "audio"
+        val diagnosticMode = if (isVideoMode) RuntimeSignal.MODE_VIDEO else RuntimeSignal.MODE_AUDIO
+        var diagnosticAttempt = 1
         resilienceEngine.recordAttempt(profile.label, mode)
+        RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
         return try {
             val firstAttempt = runCatchingPreservingCancellation {
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             val stream = firstAttempt.getOrElse { firstError ->
                 if (!playbackSecurity.rotateIfNeeded(firstError)) throw firstError
+                diagnosticAttempt = 2
+                RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             playbackSecurity.resetFailureState()
             val latency = elapsedMs(startedAt)
             recordClientSuccess(profile, latency)
+            RuntimeHooks.resolver(
+                mode = diagnosticMode,
+                strategy = -1,
+                client = profiles.indexOf(profile),
+                attempt = diagnosticAttempt,
+                latencyMs = latency,
+                outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                failure = -1,
+                manifest = stream.manifest
+            )
             resilienceEngine.recordSuccess(profile.label, mode, latency, stream.source)
             stream
         } catch (error: CancellationException) {
@@ -2293,6 +2378,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         } catch (error: Throwable) {
             currentCoroutineContext().ensureActive()
             val latency = elapsedMs(startedAt)
+            val failureKind = classifyPlaybackFailureReason(error.message.orEmpty())
+            RuntimeHooks.resolver(
+                mode = diagnosticMode,
+                strategy = -1,
+                client = profiles.indexOf(profile),
+                attempt = diagnosticAttempt,
+                latencyMs = latency,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = failureKind.ordinal
+            )
             if (hasValidatedInternet()) {
                 recordClientFailure(profile, latency, error)
                 resilienceEngine.recordFailure(profile.label, mode, latency, error)
@@ -2485,6 +2580,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val details = root.optJSONObject("videoDetails")
                 val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
+                val videoSubtitleTracks = videoSubtitleTracks(root)
                 return@responseUse when {
                     selection?.candidate?.muxed == true -> {
                         val manifest = buildManifest(
@@ -2504,7 +2600,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             source = "YouTube ${profile.label} · ${selection.reason}",
                             manifest = manifest,
                             loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
                     selection != null && bestAudioUrl.isNotBlank() -> {
@@ -2528,7 +2625,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             source = "YouTube ${profile.label} · ${selection.reason}",
                             manifest = manifest,
                             loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
                     hlsUrl.isNotBlank() -> {
@@ -2549,7 +2647,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             source = "YouTube HLS ${profile.label}",
                             manifest = manifest,
                             loudnessDb = loudnessDb,
-                            perceptualLoudnessDb = perceptualLoudnessDb
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
                     else -> throw YoutubePlayerRequestException(null, "Nessuno stream video compatibile disponibile")
@@ -2790,7 +2889,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 videoStreamUrl = selectedVideoUrl,
                 durationMs = durationMs,
                 source = "LevyraExtractor · ${selection.reason}",
-                playbackManifest = manifest
+                playbackManifest = manifest,
+                videoSubtitleTracks = extractorVideoSubtitleTracks(info)
             )
         }
         val hls = info.hlsUrl.takeIf { it.isNotBlank() && !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
@@ -2808,7 +2908,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 videoStreamUrl = "",
                 durationMs = durationMs,
                 source = LEVYRA_EXTRACTOR_HLS_PROVIDER,
-                playbackManifest = manifest
+                playbackManifest = manifest,
+                videoSubtitleTracks = extractorVideoSubtitleTracks(info)
             )
         }
         throw IllegalStateException("Nessuno stream video compatibile per ${track.title}")
@@ -3301,6 +3402,49 @@ private data class PlaybackLoudness(
     val perceptualLoudnessDb: Float? = null
 )
 
+private fun videoSubtitleTracks(root: JSONObject): List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> {
+    val captions = root.optJSONObject("captions")
+        ?.optJSONObject("playerCaptionsTracklistRenderer")
+        ?.optJSONArray("captionTracks")
+        ?: return emptyList()
+    return buildList {
+        for (index in 0 until captions.length()) {
+            val caption = captions.optJSONObject(index) ?: continue
+            val baseUrl = caption.optString("baseUrl")
+            val languageCode = caption.optString("languageCode")
+            val label = caption.optJSONObject("name")?.optJSONArray("runs")
+                ?.optJSONObject(0)?.optString("text").orEmpty().ifBlank { languageCode }
+            val vttUrl = trustedVideoCaptionUrl(baseUrl) ?: continue
+            if (label.isBlank()) continue
+            add(com.luc4n3x.levyra.domain.VideoSubtitleTrack("$languageCode:$index", label, languageCode, vttUrl))
+        }
+    }
+}
+
+private fun trustedVideoCaptionUrl(value: String): String? {
+    val uri = runCatching { android.net.Uri.parse(value) }.getOrNull() ?: return null
+    val host = uri.host?.lowercase().orEmpty()
+    if (uri.scheme?.lowercase() != "https" || !uri.encodedUserInfo.isNullOrBlank()) return null
+    if (uri.port !in listOf(-1, 443)) return null
+    if (host != "youtube.com" && !host.endsWith(".youtube.com")) return null
+    if (uri.path != "/api/timedtext") return null
+    val builder = uri.buildUpon().clearQuery()
+    uri.queryParameterNames
+        .filterNot { it.equals("fmt", ignoreCase = true) }
+        .forEach { name -> uri.getQueryParameters(name).forEach { builder.appendQueryParameter(name, it) } }
+    return builder.appendQueryParameter("fmt", "vtt").build().toString()
+}
+
+private fun extractorVideoSubtitleTracks(info: StreamInfo): List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> =
+    info.subtitles.orEmpty().mapIndexedNotNull { index, subtitle ->
+        if (!subtitle.isUrl) return@mapIndexedNotNull null
+        val vttUrl = trustedVideoCaptionUrl(subtitle.content.orEmpty()) ?: return@mapIndexedNotNull null
+        val languageCode = subtitle.languageTag.orEmpty().ifBlank { subtitle.locale?.language.orEmpty() }
+        val label = subtitle.displayLanguageName.orEmpty().ifBlank { languageCode }
+        if (label.isBlank()) return@mapIndexedNotNull null
+        com.luc4n3x.levyra.domain.VideoSubtitleTrack("$languageCode:$index", label, languageCode, vttUrl)
+    }
+
 private data class DirectStream(
     val url: String,
     val videoUrl: String = "",
@@ -3309,7 +3453,8 @@ private data class DirectStream(
     val source: String,
     val manifest: ResolvedPlaybackManifest,
     val loudnessDb: Float? = null,
-    val perceptualLoudnessDb: Float? = null
+    val perceptualLoudnessDb: Float? = null,
+    val videoSubtitleTracks: List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> = emptyList()
 )
 
 private data class PlaybackStrategyOrigin(

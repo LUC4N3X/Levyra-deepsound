@@ -47,6 +47,26 @@ object LevyraHttpClientFactory {
     @Volatile
     private var feedClient: OkHttpClient? = null
 
+    @Volatile
+    private var externalIntegrationClient: OkHttpClient? = null
+
+    fun externalIntegrations(): OkHttpClient {
+        return externalIntegrationClient ?: synchronized(this) {
+            externalIntegrationClient ?: OkHttpClient.Builder()
+                .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+                .connectTimeout(4, TimeUnit.SECONDS)
+                .readTimeout(8, TimeUnit.SECONDS)
+                .writeTimeout(8, TimeUnit.SECONDS)
+                .callTimeout(10, TimeUnit.SECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .retryOnConnectionFailure(false)
+                .let { applyNetworkIntelligence(it, null) }
+                .build()
+                .also { externalIntegrationClient = it }
+        }
+    }
+
     fun feeds(context: Context): OkHttpClient {
         return feedClient ?: synchronized(this) {
             feedClient ?: media(context).newBuilder()

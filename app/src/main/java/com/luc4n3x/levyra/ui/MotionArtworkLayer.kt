@@ -56,6 +56,8 @@ import com.luc4n3x.levyra.feature.motion.MotionCanvasConditions
 import com.luc4n3x.levyra.feature.motion.MotionCanvasProfile
 import com.luc4n3x.levyra.feature.motion.MotionCanvasQualityPolicy
 import com.luc4n3x.levyra.feature.motion.MotionCanvasSurface
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -75,6 +77,7 @@ internal fun MotionArtworkLayer(
     modifier: Modifier = Modifier,
     presentation: MotionArtworkPresentation = MotionArtworkPresentation.Card,
     quality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
+    pageMode: Boolean = false,
     livingArtwork: LivingArtworkColors? = null,
     staticArtwork: @Composable () -> Unit
 ) {
@@ -91,6 +94,7 @@ internal fun MotionArtworkLayer(
             conditions = environment.conditions
         )
     }
+    val layerActive = isPlaying || pageMode
     var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType, presentation, profile) {
         mutableStateOf(false)
     }
@@ -114,14 +118,14 @@ internal fun MotionArtworkLayer(
         enabled,
         lifecycleActive,
         environment.remoteAllowed,
-        isPlaying,
+        layerActive,
     ) {
         if (
             !videoUnavailable ||
             !enabled ||
             !lifecycleActive ||
             !environment.remoteAllowed ||
-            !isPlaying ||
+            !layerActive ||
             videoRetryCount >= MAX_VIDEO_RETRIES
         ) {
             return@LaunchedEffect
@@ -131,7 +135,7 @@ internal fun MotionArtworkLayer(
             enabled &&
             lifecycleActive &&
             environment.remoteAllowed &&
-            isPlaying &&
+            layerActive &&
             videoRetryCount < MAX_VIDEO_RETRIES
         ) {
             videoRetryCount += 1
@@ -141,7 +145,7 @@ internal fun MotionArtworkLayer(
     val animateStatic = enabled &&
         lifecycleActive &&
         environment.localAllowed &&
-        isPlaying &&
+        layerActive &&
         !videoReady
     val staticBedAlpha by animateFloatAsState(
         targetValue = if (videoReady) 0f else 1f,
@@ -169,7 +173,7 @@ internal fun MotionArtworkLayer(
                     enabled = enabled,
                     lifecycleActive = lifecycleActive,
                     localAllowed = environment.localAllowed,
-                    isPlaying = isPlaying,
+                    isPlaying = layerActive,
                     realCanvasReady = videoReady
                 ),
                 modifier = Modifier
@@ -180,7 +184,7 @@ internal fun MotionArtworkLayer(
         if (videoArtwork != null) {
             MotionArtworkVideo(
                 artwork = videoArtwork,
-                isPlaying = isPlaying,
+                isPlaying = layerActive,
                 cornerRadius = cornerRadius,
                 presentation = presentation,
                 profile = profile,
@@ -458,6 +462,7 @@ private fun MotionArtworkVideo(
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 firstFrameRendered = true
+                RuntimeHooks.canvas(RuntimeSignal.CANVAS_FIRST_FRAME)
                 currentOnFirstFrame()
             }
 
@@ -467,9 +472,11 @@ private fun MotionArtworkVideo(
 
             override fun onPlayerError(error: PlaybackException) {
                 failed = true
+                RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
                 currentOnUnavailable()
             }
         }
+        RuntimeHooks.canvas(RuntimeSignal.CANVAS_STARTED)
         player.addListener(listener)
         player.setVideoTextureView(textureView)
         player.setMediaItem(
@@ -480,6 +487,7 @@ private fun MotionArtworkVideo(
         )
         player.prepare()
         onDispose {
+            RuntimeHooks.canvas(RuntimeSignal.CANVAS_STOPPED)
             player.removeListener(listener)
             player.clearVideoTextureView(textureView)
             player.release()
@@ -499,7 +507,10 @@ private fun MotionArtworkVideo(
     LaunchedEffect(player, isPlaying, firstFrameRendered, failed) {
         if (!isPlaying || firstFrameRendered || failed) return@LaunchedEffect
         delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
-        if (!firstFrameRendered && !failed) currentOnUnavailable()
+        if (!firstFrameRendered && !failed) {
+            RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
+            currentOnUnavailable()
+        }
     }
 
     AndroidView(

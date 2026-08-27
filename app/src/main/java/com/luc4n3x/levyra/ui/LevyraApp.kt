@@ -5,6 +5,8 @@ import com.luc4n3x.levyra.ui.components.PlayerAccentColors
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.PlayerTransportControls
+import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
+import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
@@ -320,6 +322,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -1116,6 +1119,11 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         return
     }
     val toastContext = LocalContext.current
+    LaunchedEffect(viewModel) {
+        viewModel.integrationAuthorizationUrls.collect { url ->
+            openExternalUrl(toastContext, url, currentStrings)
+        }
+    }
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
@@ -1581,6 +1589,10 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     backupSettings = state.backupSettings,
                     downloadQueue = state.downloadQueue,
                     playbackDiagnostics = state.playbackDiagnostics,
+                    lastFmConfigured = state.lastFmConfigured,
+                    lastFmAuthorizationPending = state.lastFmAuthorizationPending,
+                    listenBrainzConfigured = state.listenBrainzConfigured,
+                    audDConfigured = state.audDConfigured,
                     onThemePreset = viewModel::setThemePreset,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onDownloadSettings = viewModel::setDownloadSettings,
@@ -1626,6 +1638,13 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         }
                         toastContext.startActivity(Intent.createChooser(intent, currentStrings.shareDiagnostics))
                     },
+                    onBeginLastFm = viewModel::beginLastFmAuthorization,
+                    onCompleteLastFm = viewModel::completeLastFmAuthorization,
+                    onClearLastFm = viewModel::clearLastFmAuthorization,
+                    onSaveListenBrainz = viewModel::saveListenBrainzToken,
+                    onClearListenBrainz = viewModel::clearListenBrainzToken,
+                    onSaveAudD = viewModel::saveAudDToken,
+                    onClearAudD = viewModel::clearAudDToken,
                     onRedoQuestionnaire = viewModel::restartOnboarding,
                     onClose = viewModel::closeSettings
                 )
@@ -1665,6 +1684,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
                     onResetEqualizer = viewModel::resetEqualizer,
+                    onApplyAutoEq = viewModel::applyAutoEqImport,
+                    onSaveAutoEqPreset = viewModel::saveAutoEqCustomPreset,
                     onClose = viewModel::closeAudioQualityPanel
                 )
             }
@@ -2374,6 +2395,9 @@ private fun AlbumOverlay(
                             album = album,
                             cover = cover,
                             description = description,
+                            motionArtwork = state.albumMotionArtwork,
+                            animationsEnabled = state.animationsEnabled && state.motionArtworkEnabled,
+                            canvasQuality = state.interfaceSettings.canvasQuality,
                             trackCount = tracks.size,
                             trackLoadFailed = trackLoadFailed,
                             isPlaying = albumIsPlaying,
@@ -2511,6 +2535,9 @@ private fun AlbumHeroCard(
     album: AlbumHit,
     cover: String,
     description: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
     trackCount: Int,
     trackLoadFailed: Boolean,
     isPlaying: Boolean,
@@ -2539,21 +2566,32 @@ private fun AlbumHeroCard(
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(28.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (cover.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(LevyraArtworkCache.large(cover))
-                        .crossfade(180)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = album.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accentStart, accentEnd))), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Album, null, tint = LevyraText, modifier = Modifier.size(72.dp))
+            MotionArtworkLayer(
+                artwork = motionArtwork,
+                enabled = animationsEnabled,
+                isPlaying = false,
+                pageMode = true,
+                cornerRadius = 28.dp,
+                presentation = MotionArtworkPresentation.Card,
+                quality = canvasQuality,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (cover.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(LevyraArtworkCache.large(cover))
+                            .crossfade(180)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = album.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(accentStart, accentEnd))), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Album, null, tint = LevyraText, modifier = Modifier.size(72.dp))
+                    }
                 }
             }
         }
@@ -3053,6 +3091,9 @@ private fun ArtistOverlay(
                                 isFollowed = isFollowed,
                                 accentStart = accentStart,
                                 accentEnd = accentEnd,
+                                motionArtwork = state.artistMotionArtwork,
+                                animationsEnabled = state.animationsEnabled && state.motionArtworkEnabled,
+                                canvasQuality = state.interfaceSettings.canvasQuality,
                                 onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
                                 onToggleFollow = onToggleFollow,
                                 onClose = onClose
@@ -3286,22 +3327,39 @@ private fun ArtistHeader(
     isFollowed: Boolean,
     accentStart: Color,
     accentEnd: Color,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
     onPlay: (() -> Unit)?,
     onToggleFollow: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val heroContext = LocalContext.current
     Box(modifier = Modifier.fillMaxWidth().height(472.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
         val heroArtwork = profile.thumbnailUrl.ifBlank { profile.bannerUrl }
-        if (heroArtwork.isNotBlank()) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current).data(heroArtwork).crossfade(true).build(),
-                contentDescription = profile.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize()
-            )
-        } else {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.74f), modifier = Modifier.align(Alignment.Center).size(94.dp))
+        MotionArtworkLayer(
+            artwork = motionArtwork,
+            enabled = animationsEnabled,
+            isPlaying = false,
+            pageMode = true,
+            cornerRadius = 0.dp,
+            presentation = MotionArtworkPresentation.Immersive,
+            quality = canvasQuality,
+            modifier = Modifier.matchParentSize()
+        ) {
+            if (heroArtwork.isNotBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(heroContext).data(heroArtwork).crossfade(true).build(),
+                    contentDescription = profile.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.74f), modifier = Modifier.size(94.dp))
+                }
+            }
         }
         Box(
             modifier = Modifier
@@ -12778,6 +12836,52 @@ private fun PlayerScreen(
                     )
                 }
                 if (state.isVideoMode) {
+                    if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
+                        var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
+                        Box {
+                            PlayerGlassIconButton(
+                                icon = Icons.Rounded.Subtitles,
+                                contentDescription = strings.subtitlesLabel,
+                                size = headerButtonSize,
+                                iconSize = 19.dp,
+                                tint = if (state.selectedVideoSubtitleId != null) primary else Color.White.copy(alpha = 0.72f),
+                                borderTop = primary.copy(alpha = 0.48f),
+                                borderBottom = primary.copy(alpha = 0.14f),
+                                onClick = { subtitleMenuExpanded = true }
+                            )
+                            DropdownMenu(
+                                expanded = subtitleMenuExpanded,
+                                onDismissRequest = { subtitleMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(strings.subtitlesOff) },
+                                    leadingIcon = {
+                                        if (state.selectedVideoSubtitleId == null) {
+                                            Icon(Icons.Rounded.Check, contentDescription = null)
+                                        }
+                                    },
+                                    onClick = {
+                                        subtitleMenuExpanded = false
+                                        viewModel.selectVideoSubtitle(null)
+                                    }
+                                )
+                                track.videoSubtitleTracks.forEach { subtitle ->
+                                    DropdownMenuItem(
+                                        text = { Text(subtitle.label.ifBlank { subtitle.languageCode }) },
+                                        leadingIcon = {
+                                            if (state.selectedVideoSubtitleId == subtitle.id) {
+                                                Icon(Icons.Rounded.Check, contentDescription = null)
+                                            }
+                                        },
+                                        onClick = {
+                                            subtitleMenuExpanded = false
+                                            viewModel.selectVideoSubtitle(subtitle.id)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     PlayerGlassIconButton(
                         icon = Icons.Rounded.PictureInPictureAlt,
                         contentDescription = strings.pictureInPicture,
@@ -14918,6 +15022,10 @@ private fun SettingsOverlay(
     backupSettings: LevyraBackupSettings,
     downloadQueue: List<OfflineDownloadTask>,
     playbackDiagnostics: String,
+    lastFmConfigured: Boolean,
+    lastFmAuthorizationPending: Boolean,
+    listenBrainzConfigured: Boolean,
+    audDConfigured: Boolean,
     onThemePreset: (String) -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
@@ -14936,12 +15044,20 @@ private fun SettingsOverlay(
     onResumeDownload: (String) -> Unit,
     onCancelDownload: (String) -> Unit,
     onShareDiagnostics: () -> Unit,
+    onBeginLastFm: (String, String) -> Unit,
+    onCompleteLastFm: () -> Unit,
+    onClearLastFm: () -> Unit,
+    onSaveListenBrainz: (String) -> Unit,
+    onClearListenBrainz: () -> Unit,
+    onSaveAudD: (String) -> Unit,
+    onClearAudD: () -> Unit,
     onRedoQuestionnaire: () -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var settingsQuery by rememberSaveable { mutableStateOf("") }
     val batteryContext = LocalContext.current
     val batteryLifecycleOwner = LocalLifecycleOwner.current
     var batteryCheckToken by remember { mutableStateOf(0) }
@@ -14961,16 +15077,47 @@ private fun SettingsOverlay(
     fun categoryTitle(value: String): String = value.trim().lowercase(categoryLocale).replaceFirstChar { character ->
         if (character.isLowerCase()) character.titlecase(categoryLocale) else character.toString()
     }
-    val categories = listOf(
-        SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
-        SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
-        SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
-        SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
-        SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
-        SettingsCategoryMeta("backup", categoryTitle(strings.backupRestoreSection), "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
-        SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
-        SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
-    )
+    val categories = remember(strings.code) {
+        listOf(
+            SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
+            SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
+            SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
+            SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
+            SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
+            SettingsCategoryMeta("backup", categoryTitle(strings.backupRestoreSection), "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
+            SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
+            SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
+            , SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Settings, LevyraCyan)
+        )
+    }
+    val settingsSearchIndex = remember(strings.code) {
+        SettingsSearchIndex(
+            entries = listOf(
+                SettingsSearchEntry(strings.theme, strings.themeSubtitle, strings.design, "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.animations, strings.animationsSubtitle, strings.motionArtwork, "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.dynamicColor, strings.dynamicColorSubtitle, strings.design, "design", categoryTitle(strings.design)),
+                SettingsSearchEntry(strings.compactHome, strings.compactHomeSubtitle, "home releases charts", "home", categoryTitle(strings.homeInterfaceSection)),
+                SettingsSearchEntry(strings.newReleases, strings.homeInterfaceSection, "releases", "home", categoryTitle(strings.homeInterfaceSection)),
+                SettingsSearchEntry(strings.top50Charts, strings.homeInterfaceSection, "charts", "home", categoryTitle(strings.homeInterfaceSection)),
+                SettingsSearchEntry(strings.advancedGestures, strings.advancedGesturesSubtitle, strings.player, "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.sponsorBlock, strings.sponsorBlockSubtitle, "segments", "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.skipSilence, strings.skipSilenceSubtitle, "silence", "player", categoryTitle(strings.player)),
+                SettingsSearchEntry(strings.wifiOnly, strings.wifiOnlySubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
+                SettingsSearchEntry(strings.simultaneousDownloads, strings.simultaneousDownloadsSubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
+                SettingsSearchEntry(strings.lyricsAnalysisSection, strings.lyricsAnalysisCompactSubtitle, strings.lyrics, "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
+                SettingsSearchEntry(strings.createDataBackup, strings.createDataBackupSubtitle, "backup", "backup", categoryTitle(strings.backupRestoreSection)),
+                SettingsSearchEntry(strings.restoreBackup, strings.restoreBackupSubtitle, "backup", "backup", categoryTitle(strings.backupRestoreSection)),
+                SettingsSearchEntry(strings.batteryUnrestricted, strings.batteryUnrestrictedSubtitle, "battery", "system", categoryTitle(strings.preferences)),
+                SettingsSearchEntry(strings.language, strings.languageSubtitle, "locale", "system", categoryTitle(strings.preferences)),
+                SettingsSearchEntry(strings.updates, strings.checkNewVersions, "version", "app", categoryTitle(strings.app))
+                , SettingsSearchEntry(strings.integrations, "Last.fm ListenBrainz AudD", "scrobbling recognition", "integrations", categoryTitle(strings.integrations))
+            ),
+            locale = categoryLocale
+        )
+    }
+    val settingsSearchResults = remember(settingsQuery, settingsSearchIndex) {
+        settingsSearchIndex.search(settingsQuery)
+    }
     Box(
         modifier = Modifier
         .fillMaxSize()
@@ -15019,6 +15166,44 @@ private fun SettingsOverlay(
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                     }
+                    item {
+                        BasicTextField(
+                            value = settingsQuery,
+                            onValueChange = { settingsQuery = it },
+                            singleLine = true,
+                            textStyle = TextStyle(color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                            cursorBrush = SolidColor(LevyraCyan),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { contentDescription = strings.search }
+                                .background(LevyraAdaptiveCardDeep, RoundedCornerShape(16.dp))
+                                .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(16.dp))
+                                .padding(horizontal = 14.dp, vertical = 13.dp),
+                            decorationBox = { innerTextField ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Icon(Icons.Rounded.Search, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        if (settingsQuery.isBlank()) Text(strings.search, color = LevyraMuted, fontSize = 15.sp)
+                                        innerTextField()
+                                    }
+                                    if (settingsQuery.isNotBlank()) {
+                                        IconButton(onClick = { settingsQuery = "" }, modifier = Modifier.size(48.dp)) {
+                                            Icon(Icons.Rounded.Close, strings.clear, tint = LevyraMuted)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                    if (settingsQuery.isNotBlank()) {
+                        items(settingsSearchResults, key = { result -> "${result.categoryId}:${result.title}" }) { result ->
+                            SettingsSearchResultRow(result.title, result.categoryLabel) {
+                                activeCategory = result.categoryId
+                                settingsQuery = ""
+                            }
+                        }
+                    } else {
                     itemsIndexed(categories, key = { _, item -> item.id }) { index, category ->
                         SettingsCategoryCard(
                             meta = category,
@@ -15026,6 +15211,7 @@ private fun SettingsOverlay(
                         ) { activeCategory = category.id }
                     }
                     item { SettingsHubFooter() }
+                    }
                 } else {
                     item {
                         SettingsDetailHeader(
@@ -15036,6 +15222,21 @@ private fun SettingsOverlay(
                         )
                     }
                     when (current) {
+                        "integrations" -> item {
+                            IntegrationSettingsPanel(
+                                lastFmConfigured,
+                                lastFmAuthorizationPending,
+                                listenBrainzConfigured,
+                                audDConfigured,
+                                onBeginLastFm,
+                                onCompleteLastFm,
+                                onClearLastFm,
+                                onSaveListenBrainz,
+                                onClearListenBrainz,
+                                onSaveAudD,
+                                onClearAudD
+                            )
+                        }
                         "design" -> {
                             item {
                                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -15554,6 +15755,128 @@ private fun SettingsOverlay(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSearchResultRow(title: String, category: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClick = onClick),
+        color = LevyraAdaptiveCard,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(category, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun IntegrationSettingsPanel(
+    lastFmConfigured: Boolean, lastFmAuthorizationPending: Boolean,
+    listenBrainzConfigured: Boolean, audDConfigured: Boolean,
+    onBeginLastFm: (String, String) -> Unit, onCompleteLastFm: () -> Unit, onClearLastFm: () -> Unit,
+    onSaveListenBrainz: (String) -> Unit, onClearListenBrainz: () -> Unit,
+    onSaveAudD: (String) -> Unit, onClearAudD: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    var lastFmKey by remember { mutableStateOf("") }
+    var lastFmSecret by remember { mutableStateOf("") }
+    var listenBrainzToken by remember { mutableStateOf("") }
+    var audDToken by remember { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Last.fm", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+        OutlinedTextField(
+            lastFmKey,
+            { lastFmKey = it },
+            label = { Text(strings.apiKeyLabel) },
+            visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            lastFmSecret,
+            { lastFmSecret = it },
+            label = { Text(strings.sharedSecretLabel) },
+            visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        SettingsButton(Icons.Rounded.Settings, if (lastFmConfigured) strings.delete else strings.save, "Last.fm") {
+            if (lastFmConfigured) {
+                onClearLastFm()
+            } else if (lastFmKey.isNotBlank() && lastFmSecret.isNotBlank()) {
+                onBeginLastFm(lastFmKey, lastFmSecret)
+                lastFmKey = ""
+                lastFmSecret = ""
+            }
+        }
+        if (lastFmAuthorizationPending) {
+            Text(strings.lastFmApprovalHint, color = LevyraMuted, fontSize = 13.sp)
+            SettingsButton(Icons.Rounded.Check, strings.complete, "Last.fm") { onCompleteLastFm() }
+        }
+        Text("ListenBrainz", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+        OutlinedTextField(
+            listenBrainzToken,
+            { listenBrainzToken = it },
+            label = { Text(strings.credentialTokenLabel) },
+            visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        SettingsButton(Icons.Rounded.Settings, if (listenBrainzConfigured) strings.delete else strings.save, "ListenBrainz") {
+            if (listenBrainzConfigured) {
+                onClearListenBrainz()
+            } else if (listenBrainzToken.isNotBlank()) {
+                onSaveListenBrainz(listenBrainzToken)
+                listenBrainzToken = ""
+            }
+        }
+        Text("AudD", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+        OutlinedTextField(
+            audDToken,
+            { audDToken = it },
+            label = { Text(strings.credentialTokenLabel) },
+            visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        SettingsButton(Icons.Rounded.Settings, if (audDConfigured) strings.delete else strings.save, "AudD") {
+            if (audDConfigured) {
+                onClearAudD()
+            } else if (audDToken.isNotBlank()) {
+                onSaveAudD(audDToken)
+                audDToken = ""
             }
         }
     }

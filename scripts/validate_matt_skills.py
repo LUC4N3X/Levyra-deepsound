@@ -75,7 +75,7 @@ def main() -> int:
             "tiny obvious edits",
             "Levyra wins",
             "fresh context",
-            "owner explicitly asks",
+            "owner did not approve",
             "scripts/ai_quality_gate.py --profile fast",
             "scripts/ai_quality_gate.py --profile full",
         ):
@@ -87,7 +87,7 @@ def main() -> int:
         "AGENTS.md",
         ("## Agent skills", "### Issue tracker", "docs/agents/issue-tracker.md", "### Domain docs", "docs/agents/domain.md", "## Matt Pocock skills bootstrap", "levyra-real-engineering"),
     )
-    require(errors, "docs/agents/issue-tracker.md", ("LUC4N3X/Levyra-deepsound", "explicit owner authorization", "PRs as a request surface: no"))
+    require(errors, "docs/agents/issue-tracker.md", ("LUC4N3X/Levyra-deepsound", "owner explicitly authorizes", "PRs as a request surface: no"))
     require(errors, "docs/agents/domain.md", ("CONTEXT.md", "docs/adr/", "created lazily"))
 
     settings_relative = f"{CLAUDE_ROOT}/settings.json"

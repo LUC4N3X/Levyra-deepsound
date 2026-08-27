@@ -255,10 +255,17 @@ def _collect_sources(spec: RuntimeSpec) -> list[tuple[Path, Path]]:
 
 
 def _preflight_current_targets(
-    spec: RuntimeSpec, sources: list[tuple[Path, Path]]
+    spec: RuntimeSpec,
+    sources: list[tuple[Path, Path]],
+    previous: dict[str, str],
 ) -> None:
-    for _, relative in sources:
-        _assert_regular_target(spec, relative)
+    for source, relative in sources:
+        target = _assert_regular_target(spec, relative)
+        key = relative.as_posix()
+        if target.exists() and key not in previous and _sha256(target) != _sha256(source):
+            raise ProjectionError(
+                f"unmanaged local file conflicts with runtime projection; refusing to overwrite it: {_relative(target)}"
+            )
 
 
 def _stale_removal_plan(
@@ -363,7 +370,7 @@ def sync_runtime(name: str, *, quiet: bool) -> None:
     _assert_runtime_root(spec, create=True)
     previous = _load_previous_manifest(name, spec)
     sources = _collect_sources(spec)
-    _preflight_current_targets(spec, sources)
+    _preflight_current_targets(spec, sources, previous)
 
     managed = {relative.as_posix(): _sha256(source) for source, relative in sources}
     removals = _stale_removal_plan(spec, previous, set(managed))

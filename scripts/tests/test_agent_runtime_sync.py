@@ -139,6 +139,25 @@ class AgentRuntimeSyncTest(unittest.TestCase):
 
         self.assertEqual(marker.read_text(encoding="utf-8"), "keep\n")
 
+    def test_unmanaged_file_conflict_is_preserved(self) -> None:
+        self.runtime.mkdir(parents=True)
+        conflict = self.runtime / "settings.json"
+        conflict.write_text('{"local": true}\n', encoding="utf-8")
+
+        with self.assertRaises(self.module.ProjectionError):
+            self.module.sync_runtime("claude", quiet=True)
+
+        self.assertEqual(conflict.read_text(encoding="utf-8"), '{"local": true}\n')
+
+    def test_identical_unmanaged_file_is_safely_adopted(self) -> None:
+        self.runtime.mkdir(parents=True)
+        target = self.runtime / "settings.json"
+        target.write_bytes(self.settings.read_bytes())
+
+        self.module.sync_runtime("claude", quiet=True)
+
+        self.assertEqual(self.module.check_runtime("claude"), [])
+
     def test_corrupt_manifest_blocks_sync_instead_of_forgetting_managed_state(self) -> None:
         self.runtime.mkdir(parents=True)
         (self.runtime / self.module.MANIFEST_NAME).write_text("{broken", encoding="utf-8")

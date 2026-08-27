@@ -136,7 +136,7 @@ def reject_terms(
             errors.append(f"{relative_path}: contains {label}: {term}")
 
 
-def tracked_root_runtime_paths() -> list[str]:
+def tracked_root_runtime_paths(errors: list[str]) -> list[str]:
     try:
         result = subprocess.run(
             ["git", "ls-files", "--", "CLAUDE.md", ".claude", ".codex"],
@@ -146,9 +146,15 @@ def tracked_root_runtime_paths() -> list[str]:
             capture_output=True,
             timeout=30,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError as exc:
+        errors.append(f"unable to inspect tracked runtime surfaces with Git: {exc}")
+        return []
+    except subprocess.TimeoutExpired:
+        errors.append("timed out while inspecting tracked runtime surfaces with Git")
         return []
     if result.returncode != 0:
+        detail = result.stderr.strip() or f"exit code {result.returncode}"
+        errors.append(f"Git failed while inspecting tracked runtime surfaces: {detail}")
         return []
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
@@ -164,7 +170,7 @@ def main() -> int:
         if (ROOT / relative_path).exists():
             errors.append(f"obsolete root planning file must be removed: {relative_path}")
 
-    tracked_adapters = tracked_root_runtime_paths()
+    tracked_adapters = tracked_root_runtime_paths(errors)
     if tracked_adapters:
         errors.append(
             "root CLAUDE.md/.claude/.codex runtime surfaces must not be tracked; canonical sources belong under .agents: "

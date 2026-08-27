@@ -11,6 +11,14 @@ ROOT = Path(__file__).resolve().parents[1]
 HOOKS_RELATIVE = ".agents/codex/hooks.json"
 HOOKS_PATH = ROOT / HOOKS_RELATIVE
 PIN = "b34be37caf3796b69a50952a28e60e32b5daad43"
+SUPPORTED_EVENTS = {
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "PostCompact",
+    "Stop",
+}
 
 
 def require_terms(errors: list[str], relative_path: str, terms: tuple[str, ...]) -> None:
@@ -36,6 +44,20 @@ def main() -> int:
             errors.append(f"{HOOKS_RELATIVE} is invalid: {exc}")
         else:
             hooks = document.get("hooks")
+            if isinstance(hooks, dict):
+                unsupported = sorted(set(hooks) - SUPPORTED_EVENTS)
+                if unsupported:
+                    errors.append(
+                        f"{HOOKS_RELATIVE}: unsupported Codex hook events: {', '.join(unsupported)}"
+                    )
+                for event, event_groups in hooks.items():
+                    for group in event_groups if isinstance(event_groups, list) else []:
+                        for handler in group.get("hooks", []) if isinstance(group, dict) else []:
+                            command_windows = handler.get("commandWindows", "") if isinstance(handler, dict) else ""
+                            if "scripts/" in command_windows and "git rev-parse --show-toplevel" not in command_windows:
+                                errors.append(
+                                    f"{HOOKS_RELATIVE}: {event} commandWindows must resolve scripts from the Git root"
+                                )
             groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
             matching_group = next(
                 (
