@@ -122,6 +122,7 @@ class AiQualityGateTest(unittest.TestCase):
 
         self.assertEqual([], blocked)
         self.assertIn("Validate claude-mem integration", labels)
+        self.assertIn("Validate Matt skills integration", labels)
 
     def test_codex_startup_hook_contract_is_valid(self) -> None:
         self.assertEqual(0, validate_codex_hooks())

@@ -19,7 +19,7 @@ boundary belongs to that area.
 
 1. Read root `AGENTS.md` and `app/AGENTS.md`.
 2. Read `docs/ARCHITECTURE.md`, `docs/ai/CODEX_SECURITY.md`, and
-   `.claude/rules/security.md`.
+   `.agents/claude/rules/security.md`.
 3. Inspect the affected manifest entries, intent filters, exported state,
    permissions, component implementation, caller path, URI/provider contract,
    PendingIntent creation, and tests.

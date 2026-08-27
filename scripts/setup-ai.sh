@@ -171,11 +171,20 @@ if has_command python3; then
   PYTHON_COMMAND="python3"
 elif has_command python; then
   PYTHON_COMMAND="python"
+elif has_command py; then
+  PYTHON_COMMAND="py"
 fi
 
 if [[ -z "$PYTHON_COMMAND" ]]; then
-  echo "[blocked] Python is required to verify Levyra agent and AI-efficiency configuration." >&2
+  echo "[blocked] Python is required to materialize and verify Levyra agent runtime configuration." >&2
   exit 1
+fi
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo "[dry-run] Refresh Claude Code and Codex native runtime projections: (cd '$REPO_ROOT' && $PYTHON_COMMAND scripts/sync_agent_runtime.py --runtime all --quiet)"
+else
+  echo "[run] Refresh Claude Code and Codex native runtime projections from .agents"
+  (cd "$REPO_ROOT" && "$PYTHON_COMMAND" scripts/sync_agent_runtime.py --runtime all --quiet)
 fi
 
 for validation_script in \
@@ -194,8 +203,10 @@ done
 
 echo
 echo "Setup complete."
-echo "Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded."
-echo "Claude Code will discover the project-enabled mattpocock-skills plugin through .claude/settings.json and may request normal marketplace trust/installation approval."
+echo "The tracked source of truth is .agents/. Native .claude/ and .codex/ directories are generated locally, ignored by Git, and refreshed from .agents."
+echo "Restart each detected coding agent or start a new conversation so newly projected settings, hooks, rules, and skills are loaded."
+echo "Claude Code discovers Levyra skills from the generated .claude/skills projection of canonical .agents/skills."
+echo "Codex discovers canonical .agents/skills directly; its generated .codex projection supplies project config and hooks."
 echo "Use --claude-mem once when you explicitly want the pinned claude-mem integration for detected Claude Code, Codex CLI, and Antigravity runtimes."
 echo "ChatGPT uses claude-mem only when a compatible MCP app is connected; see docs/ai/CLAUDE_MEM.md."
 echo "Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md."

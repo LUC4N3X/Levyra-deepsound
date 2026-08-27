@@ -8,7 +8,7 @@ description: Automatically use for Levyra pre-merge/pre-release validation, Andr
 ## Required context
 
 1. Read the root `AGENTS.md`, `app/AGENTS.md`, `desktop/AGENTS.md`, and `.github/AGENTS.md` as applicable.
-2. Read `.claude/skills/levyra-release-check/SKILL.md` and `.claude/rules/testing-release.md`.
+2. Read `.agents/claude/rules/testing-release.md`.
 3. Read `docs/ai/RELEASE_NOTES_STYLE.md` whenever preparing, rewriting, reviewing, or publishing release notes.
 4. Load `.agents/skills/levyra-humanizer/SKILL.md` whenever authoring or rewriting release notes, Fastlane changelogs, release descriptions, or other product-facing release prose.
 5. Inspect the complete diff, version files, build configuration, signing inputs, release workflows, artifact paths, and release notes.

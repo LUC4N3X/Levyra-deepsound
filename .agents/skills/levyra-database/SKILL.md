@@ -9,7 +9,7 @@ description: Implement, debug, or review Levyra Room entities, DAOs, migrations,
 
 1. Read the root `AGENTS.md` and `app/AGENTS.md` when working in the Android module.
 2. Read `docs/ARCHITECTURE.md`.
-3. Read `.claude/skills/levyra-database/SKILL.md`, `.claude/rules/data-room.md`, and `.claude/rules/architecture.md`.
+3. Read `.agents/claude/rules/data-room.md` and `.agents/claude/rules/architecture.md`.
 4. Inspect every affected entity, DAO, repository/store, schema version, migration, backup path, and test.
 
 ## Change contract

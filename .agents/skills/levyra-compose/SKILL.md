@@ -9,7 +9,7 @@ description: Implement, debug, or review Levyra Jetpack Compose screens, state p
 
 1. Read the root `AGENTS.md` and `app/AGENTS.md`.
 2. Read `docs/ARCHITECTURE.md`.
-3. Read `.claude/skills/levyra-compose/SKILL.md`, `.claude/rules/compose-ui.md`, `.claude/rules/localization.md`, and `.claude/rules/architecture.md`.
+3. Read `.agents/claude/rules/compose-ui.md`, `.agents/claude/rules/localization.md`, and `.agents/claude/rules/architecture.md`.
 4. Inspect the affected composable, state holder, ViewModel, navigation path, theme, resources, and nearby tests.
 
 ## Change contract

@@ -1,6 +1,6 @@
 ---
 name: levyra-humanizer
-description: Rewrite AI-sounding prose so it reads naturally without changing its claims; use as the final prose pass for Levyra release notes and other owner-facing writing.
+description: Rewrite AI-sounding prose so it reads naturally without changing its claims; use as the mandatory final prose pass for Levyra pull request descriptions, release notes, and other owner-facing writing.
 license: MIT
 metadata:
   version: "2.11.2"

@@ -197,7 +197,17 @@ else {
 }
 
 if (-not $pythonCommand) {
-    throw 'Validation blocked: Python is required to verify Levyra agent and AI-efficiency configuration.'
+    throw 'Validation blocked: Python is required to materialize and verify Levyra agent runtime configuration.'
+}
+
+Invoke-SetupCommand 'Refresh Claude Code and Codex native runtime projections from .agents' {
+    Push-Location $repoRoot
+    try {
+        & $pythonCommand scripts/sync_agent_runtime.py --runtime all --quiet
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 foreach ($validationScript in @(
@@ -219,8 +229,10 @@ foreach ($validationScript in @(
 
 Write-Output ''
 Write-Output 'Setup complete.'
-Write-Output 'Restart each detected coding agent or start a new conversation so instructions, hooks, rules, plugins, and Levyra skills are reloaded.'
-Write-Output 'Claude Code will discover the project-enabled mattpocock-skills plugin through .claude/settings.json and may request normal marketplace trust/installation approval.'
+Write-Output 'The tracked source of truth is .agents/. Native .claude/ and .codex/ directories are generated locally, ignored by Git, and refreshed from .agents.'
+Write-Output 'Restart each detected coding agent or start a new conversation so newly projected settings, hooks, rules, and skills are loaded.'
+Write-Output 'Claude Code discovers Levyra skills from the generated .claude/skills projection of canonical .agents/skills.'
+Write-Output 'Codex discovers canonical .agents/skills directly; its generated .codex projection supplies project config and hooks.'
 Write-Output 'Use -ClaudeMem once when you explicitly want the pinned claude-mem integration for detected Claude Code, Codex CLI, and Antigravity runtimes.'
 Write-Output 'ChatGPT uses claude-mem only when a compatible MCP app is connected; see docs/ai/CLAUDE_MEM.md.'
 Write-Output 'Antigravity and ChatGPT use the repository-native levyra-real-engineering adapter; see docs/ai/MATT_POCOCK_SKILLS.md.'

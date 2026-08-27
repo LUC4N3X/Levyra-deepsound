@@ -8,8 +8,7 @@ description: Perform an evidence-based Levyra security review and Codex Security
 ## Required context
 
 1. Read the root `AGENTS.md` and the nearest applicable `AGENTS.md`.
-2. Read `.claude/skills/levyra-security-review/SKILL.md`,
-   `.claude/rules/security.md`, and `docs/ai/CODEX_SECURITY.md`.
+2. Read `.agents/claude/rules/security.md` and `docs/ai/CODEX_SECURITY.md`.
 3. Inspect the complete diff plus surrounding code, tests, build files,
    manifests, dependency catalogs, clients, parsers, shell commands,
    persistence, signing, release, update, and GitHub workflow configuration.

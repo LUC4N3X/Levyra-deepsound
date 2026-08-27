@@ -3,8 +3,11 @@ set -uo pipefail
 
 fallback_json='{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Levyra environment probe unavailable. Verify the toolchain before claiming any build or test result."}}'
 
-project_dir="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-if ! cd "$project_dir" 2>/dev/null; then
+project_dir="${CLAUDE_PROJECT_DIR:-}"
+if [[ -z "$project_dir" ]] && command -v git >/dev/null 2>&1; then
+  project_dir="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+if [[ -z "$project_dir" ]] || ! cd "$project_dir" 2>/dev/null; then
   printf '%s\n' "$fallback_json"
   exit 0
 fi
