@@ -32,7 +32,16 @@ class AudDRecognitionProvider(private val credentials: AndroidKeystoreCredential
         val request = Request.Builder().url(AUDD_URL).post(body).build()
         return try {
             LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
-                parseAudDResponse(response.isSuccessful, response.body?.string().orEmpty())
+                val responseBody = response.body
+                if (responseBody.contentLength() > AUDD_MAX_RESPONSE_BYTES) {
+                    return RecognitionOutcome.Error(RecognitionErrorKind.Network)
+                }
+                val payload = responseBody.source()
+                payload.request(AUDD_MAX_RESPONSE_BYTES + 1L)
+                if (payload.buffer.size > AUDD_MAX_RESPONSE_BYTES) {
+                    return RecognitionOutcome.Error(RecognitionErrorKind.Network)
+                }
+                parseAudDResponse(response.isSuccessful, payload.buffer.readUtf8())
             }
         } catch (error: CancellationException) {
             throw error
@@ -92,5 +101,6 @@ internal fun parseAudDResponse(successful: Boolean, payload: String): Recognitio
     }.getOrElse { RecognitionOutcome.Error(RecognitionErrorKind.Network) }
 }
 
+internal const val AUDD_MAX_RESPONSE_BYTES = 256L * 1024L
 internal const val AUDD_WAV_HEADER_BYTES = 44L
 internal const val AUDD_MAX_WAV_BYTES = 9L * 1024L * 1024L

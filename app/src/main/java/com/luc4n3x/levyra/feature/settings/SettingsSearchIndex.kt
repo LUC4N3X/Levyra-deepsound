@@ -53,14 +53,16 @@ class SettingsSearchIndex(entries: List<SettingsSearchEntry>, locale: Locale) {
 
     companion object {
         private fun normalize(value: String, locale: Locale): String {
-            val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
+            // Lowercase first: NFD strips the combining dot from "İ", and a Turkish lowercase of
+            // the bare "I" then yields "ı", which no longer matches a plain "i" query.
+            val decomposed = Normalizer.normalize(value.lowercase(locale), Normalizer.Form.NFD)
             return buildString(decomposed.length) {
                 decomposed.forEach { character ->
                     if (Character.getType(character) != Character.NON_SPACING_MARK.toInt()) {
                         append(character)
                     }
                 }
-            }.lowercase(locale).trim()
+            }.trim()
         }
     }
 }

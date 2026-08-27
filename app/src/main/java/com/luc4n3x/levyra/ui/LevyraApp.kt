@@ -15797,6 +15797,13 @@ private fun IntegrationSettingsPanel(
             { lastFmKey = it },
             label = { Text(strings.apiKeyLabel) },
             visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
@@ -15804,12 +15811,19 @@ private fun IntegrationSettingsPanel(
             { lastFmSecret = it },
             label = { Text(strings.sharedSecretLabel) },
             visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         SettingsButton(Icons.Rounded.Settings, if (lastFmConfigured) strings.delete else strings.save, "Last.fm") {
             if (lastFmConfigured) {
                 onClearLastFm()
-            } else {
+            } else if (lastFmKey.isNotBlank() && lastFmSecret.isNotBlank()) {
                 onBeginLastFm(lastFmKey, lastFmSecret)
                 lastFmKey = ""
                 lastFmSecret = ""
@@ -15825,12 +15839,19 @@ private fun IntegrationSettingsPanel(
             { listenBrainzToken = it },
             label = { Text(strings.credentialTokenLabel) },
             visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         SettingsButton(Icons.Rounded.Settings, if (listenBrainzConfigured) strings.delete else strings.save, "ListenBrainz") {
             if (listenBrainzConfigured) {
                 onClearListenBrainz()
-            } else {
+            } else if (listenBrainzToken.isNotBlank()) {
                 onSaveListenBrainz(listenBrainzToken)
                 listenBrainzToken = ""
             }
@@ -15841,12 +15862,19 @@ private fun IntegrationSettingsPanel(
             { audDToken = it },
             label = { Text(strings.credentialTokenLabel) },
             visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
             modifier = Modifier.fillMaxWidth()
         )
         SettingsButton(Icons.Rounded.Settings, if (audDConfigured) strings.delete else strings.save, "AudD") {
             if (audDConfigured) {
                 onClearAudD()
-            } else {
+            } else if (audDToken.isNotBlank()) {
                 onSaveAudD(audDToken)
                 audDToken = ""
             }

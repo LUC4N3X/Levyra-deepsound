@@ -6,7 +6,9 @@ import com.luc4n3x.levyra.domain.Track
 import java.math.BigInteger
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
@@ -70,7 +72,10 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         call(method, trackParameters(listen) + extra)
     }
 
-    private suspend fun call(method: String, parameters: Map<String, String>): JSONObject? {
+    private suspend fun call(method: String, parameters: Map<String, String>): JSONObject? =
+        withContext(Dispatchers.IO) { callOnIo(method, parameters) }
+
+    private suspend fun callOnIo(method: String, parameters: Map<String, String>): JSONObject? {
         val apiCredential = credentials.read(LAST_FM_API_SLOT) ?: return null
         val signingCredential = credentials.read(LAST_FM_SECRET_SLOT) ?: return null
         val session = credentials.read(KEY_SESSION)
@@ -90,7 +95,7 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         try {
             repeat(2) { attempt ->
                 LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
-                    val root = response.body?.string()?.let(::JSONObject) ?: return null
+                    val root = JSONObject(response.body.string())
                     val errorCode = root.optInt("error", 0)
                     if (errorCode == 9) {
                         credentials.clear(KEY_SESSION)
@@ -132,14 +137,14 @@ class ListenBrainzScrobbleProvider(private val credentials: AndroidKeystoreCrede
 
     override fun isConfigured(): Boolean = credentials.read(LISTEN_BRAINZ_CREDENTIAL_SLOT) != null
 
-    suspend fun saveToken(token: String): Boolean {
+    suspend fun saveToken(token: String): Boolean = withContext(Dispatchers.IO) {
         val clean = token.trim()
-        if (clean.isBlank()) return false
+        if (clean.isBlank()) return@withContext false
         val request = Request.Builder().url("https://api.listenbrainz.org/1/validate-token")
             .header("Authorization", "Token $clean").build()
-        return try {
+        try {
             LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
-                val valid = response.isSuccessful && JSONObject(response.body?.string().orEmpty()).optBoolean("valid")
+                val valid = response.isSuccessful && JSONObject(response.body.string()).optBoolean("valid")
                 if (valid) credentials.write(LISTEN_BRAINZ_CREDENTIAL_SLOT, clean)
                 valid
             }
@@ -156,8 +161,8 @@ class ListenBrainzScrobbleProvider(private val credentials: AndroidKeystoreCrede
 
     override fun clear() = credentials.clear(LISTEN_BRAINZ_CREDENTIAL_SLOT)
 
-    private suspend fun submit(type: String, listen: ScrobbleListen) {
-        val credentialValue = credentials.read(LISTEN_BRAINZ_CREDENTIAL_SLOT) ?: return
+    private suspend fun submit(type: String, listen: ScrobbleListen): Unit = withContext(Dispatchers.IO) {
+        val credentialValue = credentials.read(LISTEN_BRAINZ_CREDENTIAL_SLOT) ?: return@withContext
         val payload = listenBrainzPayload(type, listen)
         val request = Request.Builder().url("https://api.listenbrainz.org/1/submit-listens")
             .header("Authorization", "Token $credentialValue")

@@ -43,4 +43,22 @@ class SettingsSearchIndexTest {
     fun `blank query has no synthetic category results`() {
         assertTrue(index.search("   ").isEmpty())
     }
+
+    @Test
+    fun `turkish dotted capital stays reachable from a plain ascii query`() {
+        val turkish = SettingsSearchIndex(
+            entries = listOf(
+                SettingsSearchEntry(
+                    title = "İstanbul",
+                    description = "Bölge",
+                    keywords = "region",
+                    categoryId = "system",
+                    categoryLabel = "Tercihler"
+                )
+            ),
+            locale = Locale("tr")
+        )
+
+        assertEquals("system", turkish.search("istanbul").single().categoryId)
+    }
 }
