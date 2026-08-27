@@ -21,6 +21,9 @@
 </p>
 <p align="center">
   <a href="https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/LUC4N3X/Levyra-deepsound"><img src="docs/assets/levyra-obtainium-download.svg" alt="Install via Obtainium" width="365" /></a>&nbsp;&nbsp;
+  <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" alt="Get Levyra on IzzyOnDroid" width="365" /></a>
+</p>
+<p align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Windows Desktop" width="365" /></a>
 </p>
 
@@ -77,7 +80,6 @@ Modern music streaming applications often treat music as temporary, disposable b
 | Now Playing Canvas | Synchronized Lyrics |
 | :---: | :---: |
 | <img src="docs/assets/screenshots/player_nowplaying.webp" width="380" alt="Now Playing Canvas"> | <img src="docs/assets/screenshots/lyrics_synced.webp" width="380" alt="Synchronized Lyrics"> |
-
 #### 🪐 Home & Discovery
 | Home Selection & Orbit | Global Top 50 Charts | Editorial Collections |
 | :---: | :---: | :---: |
@@ -197,7 +199,6 @@ Modern music streaming applications often treat music as temporary, disposable b
     <code>LOCAL-FIRST STORAGE</code>
   </p>
 </div>
-
 Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
 
 <table align="center" width="100%">
