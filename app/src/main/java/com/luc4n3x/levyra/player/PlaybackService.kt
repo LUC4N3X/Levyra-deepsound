@@ -28,6 +28,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -61,6 +62,7 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
 import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
@@ -2129,6 +2131,13 @@ private class LevyraMediaSourceFactory(
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
 
+    // Captions are sideloaded from a provider-supplied URL, so they get their own transport. The
+    // shared integrations client refuses redirects and caps the call, which keeps a redirected
+    // caption request from reaching a destination the initial URL validation never saw.
+    private val subtitleDataSourceFactory: DataSource.Factory by lazy {
+        OkHttpDataSource.Factory(LevyraHttpClientFactory.externalIntegrations())
+    }
+
     override fun getSupportedTypes(): IntArray = delegate.supportedTypes
 
     override fun setDrmSessionManagerProvider(
@@ -2176,7 +2185,7 @@ private class LevyraMediaSourceFactory(
         val configurations = mediaItem.localConfiguration?.subtitleConfigurations.orEmpty()
         if (configurations.isEmpty()) return primarySource
         val subtitleSources = configurations.map { configuration ->
-            SingleSampleMediaSource.Factory(dataSourceFactory)
+            SingleSampleMediaSource.Factory(subtitleDataSourceFactory)
                 .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
                 .createMediaSource(configuration, C.TIME_UNSET)
         }
