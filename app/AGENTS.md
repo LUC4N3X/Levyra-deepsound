@@ -6,7 +6,7 @@ These instructions extend the root `AGENTS.md` for every file under `app/`. The 
 
 The Android application is built with Kotlin, Jetpack Compose, AndroidX Media3, Room, WorkManager, OkHttp, Coil, and the existing extractor integration.
 
-Before editing, load every matching native skill under `.agents/skills/` and the referenced domain procedure/rules under `.claude/`.
+Before editing, load every matching native skill under `.agents/skills/` and the referenced canonical Claude/domain rules under `.agents/claude/rules/` when they apply. The ignored `.claude/` runtime projection is generated from these tracked sources and is not a second source of truth.
 
 For any visual redesign, UI polish, hierarchy, spacing, typography, color, shape, motion, screenshot/reference recreation, or request to make the Android UI more premium, modern, distinctive, cohesive, or less AI-generated, automatically load both `levyra-compose` and `levyra-design-taste` before editing. The design-taste skill supplements Compose engineering rules; it never overrides accessibility, performance, lifecycle, localization, product behavior, or architecture.
 

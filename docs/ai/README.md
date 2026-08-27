@@ -16,11 +16,15 @@ docs/AGENTS.md                    documentation rules
 docs/project/                     specification, roadmap, and active tasks
 docs/agents/                      issue-tracker/domain config for agent skills
 docs/ARCHITECTURE.md              current implementation ownership and flow
-.agents/skills/*/SKILL.md         canonical repository-native skills
+.agents/skills/*/SKILL.md         single canonical Levyra skill tree
 .agents/rules/levyra-workspace.md shared workspace-routing bridge
+.agents/claude/                   canonical Claude instructions/settings/hooks/rules
+.agents/codex/                    canonical Codex project config/hooks
 .agents/config/codex-plugins.txt  verified opt-in plugin manifest
-.claude/                          Claude Code rules, skills, agents, and hooks
+.claude/                          ignored generated Claude native projection
+.codex/                           ignored generated Codex native projection
 .rtk/filters.toml                 Levyra-specific RTK filters
+scripts/sync_agent_runtime.py     materializes native projections from .agents
 scripts/setup-ai.ps1              Windows setup and validation
 scripts/setup-ai.sh               Linux/macOS setup and validation
 docs/ai/RTK.md                    RTK routing, measurement, and raw fallback
@@ -138,6 +142,13 @@ is runtime-independent.
 7. Make the smallest coherent change.
 8. Report exact validation and publication state.
 
+Codex discovers the canonical `.agents/skills/` tree directly. Project-specific
+configuration and lifecycle hooks are tracked under `.agents/codex/` and
+materialized to the ignored native `.codex/` directory by
+`scripts/sync_agent_runtime.py`. The lifecycle hook can refresh that projection
+on later startup/resume once the native project hook surface is active; it is
+not a circular clean-clone bootstrap for itself.
+
 When both `codex` and `npx` are available, the setup scripts install the focused
 `mattpocock/skills` allowlist globally for Codex with the Agent Skills CLI. Use
 `-SkipMattSkills` or `--skip-matt-skills` to opt out on a machine.
@@ -152,14 +163,22 @@ manifest identifier for it.
 
 ## Claude Code
 
-Claude uses:
+Tracked Claude sources live under `.agents/claude/`, while Claude consumes its
+normal native project paths from the ignored generated `.claude/` projection:
 
-- `.claude/CLAUDE.md`;
-- `.claude/rules/`;
-- `.claude/skills/`;
-- `.claude/agents/`;
-- `.claude/hooks/`;
-- `.claude/settings.json`.
+- `.agents/claude/CLAUDE.md` → `.claude/CLAUDE.md`;
+- `.agents/claude/rules/` → `.claude/rules/`;
+- `.agents/skills/` → `.claude/skills/`;
+- `.agents/claude/agents/` → `.claude/agents/`;
+- `.agents/claude/settings.json` → `.claude/settings.json`.
+
+The setup scripts are the deterministic first projection path. `.mcp.json` and
+`scripts/claude-jcodemunch-mcp.sh` provide an additional best-effort clean-clone
+projection path before launching the project-scoped jCodeMunch server. If the
+projection first appears after a Claude process has already built its project
+inventory, start a new session so native instructions, settings, and skills are
+actually discovered; creating the files mid-session is not treated as proof they
+were loaded.
 
 The project enables `mattpocock-skills@claude-plugins-official`. The local
 `levyra-real-engineering` bridge and `UserPromptSubmit` routing decide when to
@@ -232,12 +251,13 @@ Linux/macOS:
 
 The scripts:
 
+- materialize Claude Code and Codex native runtime projections from `.agents/`;
 - support the automatic agent bootstrap of the pinned `rtk-ai/rtk` build;
 - configure detected supported runtimes;
 - install the focused Matt Pocock skill allowlist for Codex when Codex and
   `npx` are available;
 - install verified `.agents/config/codex-plugins.txt` entries only when requested;
-- run all three repository AI-configuration validators;
+- run the repository AI-configuration validators;
 - fail closed when required Python validation cannot run;
 - do not install Ollama or local-model profiles;
 - do not enable unrestricted sandboxing or silent approval bypasses.
@@ -265,8 +285,8 @@ severity remain blocking.
 | Runtime | Primary role | Main configuration |
 | --- | --- | --- |
 | ChatGPT Project | Requirements, investigation, architecture, planning, PR interpretation, and task preparation | Project instructions plus connected repository |
-| Codex | Focused implementation, tests, validation, and authorized repository delivery | root/path `AGENTS.md`, shared skills, focused Matt skills, automatic pinned RTK |
-| Claude Code | Implementation and independent review with automatic skill routing | `.claude/` plus official Matt plugin and shared planning/skills |
+| Codex | Focused implementation, tests, validation, and authorized repository delivery | root/path `AGENTS.md`, `.agents/skills/`, `.agents/codex/` projected to native `.codex/`, focused Matt skills, automatic pinned RTK |
+| Claude Code | Implementation and independent review with automatic skill routing | `.agents/claude/` + `.agents/skills/`, projected to native `.claude/`, plus official Matt plugin |
 | Antigravity/OpenCode | Workspace implementation and review using shared rules and skills | `.agents/`, root/path instructions, repository real-engineering adapter |
 | OpenClaw | Explicit delegation, status collection, and handoff | dedicated workspace, shared skills, narrow tool policy |
 | RTK | Compact non-sensitive terminal output and measure reductions | executable, supported runtime integration, `.rtk/filters.toml` |
@@ -311,19 +331,23 @@ in its implementation handoff and must not report them as passed.
 python3 scripts/validate_agent_config.py
 python3 scripts/validate_ai_efficiency.py
 python3 scripts/validate_matt_skills.py
+python3 scripts/validate_claude_mem.py
 ```
 
-Run all three after changing instructions, skills, hooks, AI docs, RTK filters,
-setup scripts, plugins, real-engineering routing, security routing, or
-dependency-review configuration.
+Run these after changing instructions, skills, hooks, AI docs, RTK filters,
+setup scripts, plugins, real-engineering routing, security routing, persistent
+memory integration, or dependency-review configuration.
 
 ## Maintenance rules
 
 - Update root/path `AGENTS.md` for operating invariants.
-- Update one focused native skill for a repeatable workflow.
+- Update one focused native skill under `.agents/skills/` for a repeatable workflow.
+- Keep `.agents/skills/` as the only tracked Levyra skill tree.
+- Keep tracked Claude-specific sources under `.agents/claude/` and Codex-specific
+  sources under `.agents/codex/`; native `.claude/` and `.codex/` are generated
+  local projections only.
 - Keep `levyra-real-engineering` as the stable Levyra adapter instead of
   vendoring a parallel fork of Matt Pocock's package.
-- Keep runtime-specific files as thin routing bridges.
 - Update `RTK.md`, `.rtk/filters.toml`, and setup scripts together.
 - Update `MATT_POCOCK_SKILLS.md`, real-engineering routing, setup scripts, and
   validator together when upstream integration behavior changes.

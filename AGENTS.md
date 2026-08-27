@@ -15,7 +15,8 @@ Instruction order:
    `docs/project/ROADMAP.md`, and `docs/project/TASKS.md`;
 4. matching native skills under `.agents/skills/`;
 5. current architecture, implementation, tests, build files, and workflows;
-6. detailed Levyra playbooks under `.claude/skills/` and `.claude/rules/`.
+6. runtime-specific canonical configuration under `.agents/claude/` and
+   `.agents/codex/` when that runtime is in use.
 
 Current repository evidence always overrides remembered behavior, old
 discussions, stale comments, previous agent output, or stale task status.
@@ -48,10 +49,13 @@ complexity-budget, and diff-quality rules.
   collaboration guidance.
 - `.agents/rules/`: lightweight workspace rules that link to this canonical
   contract.
-- `.agents/skills/`: native Codex, Antigravity, OpenAI, and OpenClaw-compatible
-  skills.
-- `.claude/`: Claude Code configuration plus reusable Levyra engineering
-  playbooks.
+- `.agents/skills/`: the single canonical Levyra skill tree shared by supported
+  coding runtimes.
+- `.agents/claude/`: tracked Claude Code instructions, settings, agents, hooks,
+  and rules.
+- `.agents/codex/`: tracked Codex project configuration and lifecycle hooks.
+- `.claude/` and `.codex/`: ignored native runtime projections generated
+  locally from `.agents/`; never treat them as tracked sources of truth.
 
 ## Agent runtime discovery
 
@@ -59,12 +63,24 @@ complexity-budget, and diff-quality rules.
   agents.
 - Google Antigravity discovers workspace skills from
   `.agents/skills/<skill-name>/SKILL.md` when a conversation starts.
+- Codex discovers the canonical `.agents/skills/` tree directly. Its projected
+  `.codex/` surface supplies project-specific configuration and lifecycle hooks
+  after the native projection is materialized.
+- Claude Code consumes the native `.claude/` surface. Levyra generates that
+  ignored projection from `.agents/claude/` and projects `.agents/skills/`
+  directly to `.claude/skills/`; `scripts/setup-ai.*` is the deterministic
+  bootstrap and the project jCodeMunch launcher provides an additional
+  best-effort clean-clone projection path.
+- When the Claude/Codex native hook surface is active, user prompts execute
+  `scripts/agent_skill_router.py` automatically. Other supported runtimes must
+  infer the same routes from the current task and canonical table below without
+  requiring the owner to name a skill; shell-capable runtimes may invoke the
+  shared router directly.
+- A native runtime may need a new session after its projection or skill inventory
+  first appears so the runtime can rebuild discovery. Do not represent a file
+  generated mid-session as proof that the already-running process loaded it.
 - `.agents/rules/levyra-workspace.md` links back to this file with a relative
   `@../../AGENTS.md` reference instead of maintaining a duplicate contract.
-- Claude Code and Codex execute `scripts/agent_skill_router.py` automatically on
-  user prompts. Other supported runtimes must infer the same routes from the
-  current task and canonical table below without requiring the owner to name a
-  skill; shell-capable runtimes may invoke the shared router directly.
 - Open the repository root as the workspace. Starting only from `app/`,
   `desktop/`, or another nested folder may hide repository-level agent
   configuration.
@@ -220,9 +236,9 @@ integration defined by this repository:
   `skills` CLI through `npx` to install only the focused allowlist declared in
   those scripts, globally for the Codex agent. Use `-SkipMattSkills` or
   `--skip-matt-skills` to opt out on a machine.
-- Claude Code: `.claude/settings.json` enables
-  `mattpocock-skills@claude-plugins-official`; Claude's normal project trust and
-  plugin installation controls remain intact.
+- Claude Code: `.agents/claude/settings.json`, projected locally to native
+  `.claude/settings.json`, enables `mattpocock-skills@claude-plugins-official`;
+  Claude's normal project trust and plugin installation controls remain intact.
 - ChatGPT and Antigravity: use the repository-native
   `levyra-real-engineering` adapter whether or not an upstream package is
   installed in the runtime.
@@ -262,9 +278,9 @@ owner publication controls always take precedence. See
 
 Select every matching skill automatically from the task before reading widely or
 editing. The owner never needs to name a skill. Claude Code and Codex use the
-shared prompt router; other runtimes must apply this table directly. Prefer
-focused skills over the general coordinator and never preload the whole skill
-tree.
+shared prompt router when their native hook surface is active; other runtimes
+must apply this table directly. Prefer focused skills over the general
+coordinator and never preload the whole skill tree.
 
 | Task | Skill |
 | --- | --- |
@@ -286,6 +302,7 @@ tree.
 | GitHub Actions, CI, F-Droid, configuration sync, artifacts, build/release automation | `levyra-ci-workflows` |
 | Non-trivial repository exploration; builds, tests, lint, logs, broad searches, dependency reports, Git/GitHub, CI diagnostics, or other noisy context | `levyra-context-efficiency` |
 | Branch, commit, patch, or pull request review | `levyra-pr-review` |
+| Opening or updating a pull request, including its title or description | `levyra-pr-review` plus `levyra-humanizer` |
 | Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
 | Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
 
@@ -517,6 +534,10 @@ review, or CI success without direct evidence.
 - When publication is authorized, use a dedicated branch and draft pull request
   by default. Push directly to `main` only when explicitly requested for the
   exact scope.
+- When opening or updating a pull request, follow `.github/pull_request_template.md`
+  without dropping required sections. Fill every section truthfully, use `N/A`
+  where allowed, keep unperformed checks unmarked, and apply `levyra-humanizer`
+  as the final prose pass without changing facts or validation claims.
 - OpenClaw or any delegated coding runtime must not infer publication, merge,
   tag, or release permission from an implementation request.
 - Keep PR descriptions and checklists truthful; leave manual/device checks

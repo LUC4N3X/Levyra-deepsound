@@ -7,6 +7,13 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel)\"; for p in python3 python py; do if command -v \"$p\" >/dev/null 2>&1; then \"$p\" \"$root/scripts/sync_agent_runtime.py\" --runtime codex --quiet >/dev/null 2>&1 || true; break; fi; done; exit 0'",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); if (Get-Command python3 -ErrorAction SilentlyContinue) { python3 (Join-Path $root 'scripts/sync_agent_runtime.py') --runtime codex --quiet *> $null } elseif (Get-Command python -ErrorAction SilentlyContinue) { python (Join-Path $root 'scripts/sync_agent_runtime.py') --runtime codex --quiet *> $null } elseif (Get-Command py -ErrorAction SilentlyContinue) { py (Join-Path $root 'scripts/sync_agent_runtime.py') --runtime codex --quiet *> $null }; exit 0\"",
+            "timeout": 30,
+            "statusMessage": "Refreshing Levyra Codex runtime"
+          },
+          {
+            "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/ensure-codex-tooling.sh\" --quiet >/dev/null 2>&1 || true; printf \"%s\\n\" \"Levyra Codex bootstrap is automatic. Prefer jCodeMunch for non-trivial code discovery, but use native reads/search whenever broader context is needed for correctness. Token savings never override correctness.\"'",
             "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/ensure-codex-tooling.ps1') -Quiet *> $null; Write-Output 'Levyra Codex bootstrap is automatic. Prefer jCodeMunch for non-trivial code discovery, but use native reads/search whenever broader context is needed for correctness. Token savings never override correctness.'; exit 0\"",
             "timeout": 600,
@@ -15,14 +22,14 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" session-start'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 session-start",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') session-start\"",
             "timeout": 30,
             "statusMessage": "Loading Levyra always-on guards"
           },
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" checkpoint session-start'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 checkpoint session-start",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') checkpoint session-start\"",
             "timeout": 30,
             "statusMessage": "Restoring Levyra task checkpoint"
           }
@@ -35,21 +42,21 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" checkpoint user-prompt'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 checkpoint user-prompt",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') checkpoint user-prompt\"",
             "timeout": 30,
             "statusMessage": "Restoring Levyra task checkpoint"
           },
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" user-prompt'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 user-prompt",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') user-prompt\"",
             "timeout": 30,
             "statusMessage": "Applying Levyra always-on task contract"
           },
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" router'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 router",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') router\"",
             "timeout": 30,
             "statusMessage": "Routing Levyra skills"
           }
@@ -63,7 +70,7 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" pre-tool'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 pre-tool",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') pre-tool\"",
             "timeout": 30,
             "statusMessage": "Applying Levyra mutation guards"
           }
@@ -75,7 +82,7 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" checkpoint pre-tool'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 checkpoint pre-tool",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') checkpoint pre-tool\"",
             "timeout": 30,
             "statusMessage": "Checking Levyra retry discipline"
           }
@@ -89,7 +96,7 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" post-tool'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 post-tool",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') post-tool\"",
             "timeout": 30
           }
         ]
@@ -100,23 +107,9 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-comment-guard.sh\"'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-comment-guard.ps1",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-comment-guard.ps1')\"",
             "timeout": 30,
             "statusMessage": "Checking new source comments"
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "^(Bash|bash|shell|exec_command)$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" checkpoint post-failure'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 checkpoint post-failure",
-            "timeout": 30,
-            "statusMessage": "Recording Levyra failure checkpoint"
           }
         ]
       }
@@ -128,7 +121,7 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" post-compact'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 post-compact",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') post-compact\"",
             "timeout": 30,
             "statusMessage": "Re-anchoring Levyra task state"
           }
@@ -141,7 +134,7 @@
           {
             "type": "command",
             "command": "bash -lc '\"$(git rev-parse --show-toplevel)/scripts/run-agent-harness.sh\" audit stop'",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-agent-harness.ps1 audit stop",
+            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$root=(git rev-parse --show-toplevel); & (Join-Path $root 'scripts/run-agent-harness.ps1') audit stop\"",
             "timeout": 90,
             "statusMessage": "Auditing Levyra completion evidence"
           }

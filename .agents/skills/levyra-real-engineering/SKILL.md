@@ -169,6 +169,12 @@ Before push or pull-request publication:
 python3 scripts/ai_quality_gate.py --profile full
 ```
 
+When opening or updating a pull request, use the complete
+`.github/pull_request_template.md` schema and fill it from current evidence.
+Keep blocked or unperformed checks explicit and unmarked. Apply
+`levyra-humanizer` in embedded mode as the final prose pass, then verify that it
+did not add, remove, or strengthen any implementation or validation claim.
+
 Commit, push, pull request, merge, tag, release, deployment, version changes, and repository settings remain owner-controlled exactly as defined by `AGENTS.md`.
 
 ## Provenance

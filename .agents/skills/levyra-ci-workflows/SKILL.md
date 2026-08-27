@@ -8,7 +8,7 @@ description: Automatically use for Levyra GitHub Actions, CI, F-Droid, Gradle/AG
 ## Required context
 
 1. Read the root `AGENTS.md` and `.github/AGENTS.md`.
-2. Read `.claude/rules/testing-release.md` and `.claude/rules/security.md`.
+2. Read `.agents/claude/rules/testing-release.md` and `.agents/claude/rules/security.md`.
 3. Inspect every workflow, reusable action, script, build file, secret/input contract, artifact path, and trigger affected by the change.
 4. Inspect recent failing job logs when the task is a CI failure; do not infer a root cause from the check title alone.
 

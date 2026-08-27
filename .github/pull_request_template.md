@@ -1,6 +1,7 @@
 <!--
 Thank you for contributing to Levyra.
-Keep the description concise, remove guidance comments, and use "N/A" where a section does not apply.
+Keep the complete Levyra section structure, make every claim evidence-based, remove guidance comments, and use "N/A" where a section does not apply.
+Apply the repository-native levyra-humanizer skill as the final prose pass without changing facts, validation results, or unchecked evidence.
 -->
 
 ## Summary
@@ -83,3 +84,4 @@ None
 - [ ] No secrets, keystores, generated packages, archives, or local-only files were committed
 - [ ] Android and Desktop versioning and release channels remain independent
 - [ ] CI is green, or every remaining failure is explained in this PR
+- [ ] The complete Levyra PR template is preserved and the final description passed through `levyra-humanizer` without changing its claims
