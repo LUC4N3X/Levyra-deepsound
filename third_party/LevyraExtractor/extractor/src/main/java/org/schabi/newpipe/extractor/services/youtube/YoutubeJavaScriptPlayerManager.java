@@ -44,11 +44,17 @@ public final class YoutubeJavaScriptPlayerManager {
     private static final String USER_AGENT = "PipePipe/4.9.0";
     private static final long PLAYER_METADATA_TTL_MILLIS = 24L * 60L * 60L * 1000L;
     private static final long LOCAL_PLAYER_METADATA_TTL_MILLIS = 6L * 60L * 60L * 1000L;
+    private static final long STALE_PLAYER_METADATA_GRACE_MILLIS = 30L * 60L * 1000L;
+    private static final long REFRESH_FAILURE_BACKOFF_MILLIS = 10L * 1000L;
 
     private static final Object PLAYER_METADATA_LOCK = new Object();
 
     @Nullable
     private static volatile PlayerMetadata playerMetadata;
+
+    private static long nextRefreshAttemptAtMillis;
+    @Nullable
+    private static ParsingException lastRefreshFailure;
 
     private YoutubeJavaScriptPlayerManager() {
     }
@@ -157,7 +163,11 @@ public final class YoutubeJavaScriptPlayerManager {
     }
 
     static void clearPlayerMetadataCache() {
-        playerMetadata = null;
+        synchronized (PLAYER_METADATA_LOCK) {
+            playerMetadata = null;
+            nextRefreshAttemptAtMillis = 0L;
+            lastRefreshFailure = null;
+        }
     }
 
     public static void clearThrottlingParametersCache() {
@@ -231,6 +241,8 @@ public final class YoutubeJavaScriptPlayerManager {
                             data.getPlayerId(), data.getSignatureTimestamp(),
                             System.currentTimeMillis() + LOCAL_PLAYER_METADATA_TTL_MILLIS);
                     playerMetadata = localMetadata;
+                    nextRefreshAttemptAtMillis = 0L;
+                    lastRefreshFailure = null;
                     return localMetadata;
                 } catch (final Exception error) {
                     localFailure = error instanceof ParsingException
@@ -239,11 +251,46 @@ public final class YoutubeJavaScriptPlayerManager {
                 }
             }
 
+            final long now = System.currentTimeMillis();
+            if (now < nextRefreshAttemptAtMillis) {
+                if (currentMetadata != null && currentMetadata.isUsableWhileStale(now)) {
+                    return currentMetadata;
+                }
+                if (lastRefreshFailure != null) {
+                    final ParsingException backoffFailure = new ParsingException(
+                            "Player metadata refresh is backing off", lastRefreshFailure);
+                    if (localFailure != null) {
+                        backoffFailure.addSuppressed(localFailure);
+                    }
+                    throw backoffFailure;
+                }
+            }
+
             try {
                 final PlayerMetadata remoteMetadata = fetchLatestPlayerMetadata();
                 playerMetadata = remoteMetadata;
+                nextRefreshAttemptAtMillis = 0L;
+                lastRefreshFailure = null;
                 return remoteMetadata;
+            } catch (final TransientPlayerMetadataException remoteFailure) {
+                nextRefreshAttemptAtMillis = 0L;
+                lastRefreshFailure = null;
+                if (currentMetadata != null
+                        && currentMetadata.isUsableWhileStale(System.currentTimeMillis())) {
+                    return currentMetadata;
+                }
+                if (localFailure != null) {
+                    remoteFailure.addSuppressed(localFailure);
+                }
+                throw remoteFailure;
             } catch (final ParsingException remoteFailure) {
+                nextRefreshAttemptAtMillis =
+                        System.currentTimeMillis() + REFRESH_FAILURE_BACKOFF_MILLIS;
+                lastRefreshFailure = remoteFailure;
+                if (currentMetadata != null
+                        && currentMetadata.isUsableWhileStale(System.currentTimeMillis())) {
+                    return currentMetadata;
+                }
                 if (localFailure != null) {
                     remoteFailure.addSuppressed(localFailure);
                 }
@@ -275,11 +322,18 @@ public final class YoutubeJavaScriptPlayerManager {
             return new PlayerMetadata(playerId, signatureTimestamp,
                     System.currentTimeMillis() + PLAYER_METADATA_TTL_MILLIS);
         } catch (final IOException e) {
-            throw new ParsingException("Failed to fetch latest player metadata", e);
+            throw new TransientPlayerMetadataException("Failed to fetch latest player metadata", e);
         } catch (final ReCaptchaException e) {
-            throw new ParsingException("Failed to fetch latest player metadata", e);
+            throw new TransientPlayerMetadataException("Failed to fetch latest player metadata", e);
         } catch (final JsonParserException e) {
             throw new ParsingException("Failed to parse latest player metadata", e);
+        }
+    }
+
+    private static final class TransientPlayerMetadataException extends ParsingException {
+        private TransientPlayerMetadataException(@Nonnull final String message,
+                                                  @Nonnull final Throwable cause) {
+            super(message, cause);
         }
     }
 
@@ -299,6 +353,10 @@ public final class YoutubeJavaScriptPlayerManager {
 
         private boolean isExpired() {
             return System.currentTimeMillis() >= expiresAt;
+        }
+
+        private boolean isUsableWhileStale(final long nowMillis) {
+            return nowMillis < expiresAt + STALE_PLAYER_METADATA_GRACE_MILLIS;
         }
     }
 }

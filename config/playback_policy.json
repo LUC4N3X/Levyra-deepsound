@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "revision": 2026082101,
+  "revision": 2026082701,
   "audioStrategy": [
     "REEL_AUDIO",
     "REEL_MUXED",
@@ -14,5 +14,9 @@
     "REEL"
   ],
   "androidReelClientVersion": "21.03.36",
-  "clients": {}
+  "clients": {
+    "ANDROID_VR": {
+      "enabled": false
+    }
+  }
 }
