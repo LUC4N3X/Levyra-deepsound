@@ -18,7 +18,7 @@ The MCP is deliberately `required = false`. If Python, networking, installation,
 
 ## First trust
 
-Codex requires review/trust for non-managed project hooks. That trust decision is intentionally not bypassed. After the project hook is trusted, normal sessions require no manual setup command. Changing the hook may cause Codex to request trust again.
+Codex requires review/trust for non-managed project hooks. That trust decision is intentionally not bypassed. After setup, review and trust the project hooks with `/hooks`, then start a new Codex session so project config and lifecycle hooks are loaded from startup. After that first trust, normal sessions require no manual setup command. Changing the hook may cause Codex to request trust again.
 
 ## Repair and verification
 

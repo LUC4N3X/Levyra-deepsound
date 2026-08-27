@@ -15,12 +15,11 @@ __pycache__/
 .ruff_cache/
 *.pyc
 *.egg-info/
-.agents/
-.claude/
 skills-lock.json
+
+# Generated native runtime projections. Canonical tracked sources live under .agents/.
+/.claude/
+/.codex/
 
 # Local build diagnostics
 /[Bb]uild log.txt
-
-# Claude Code personal overrides (shared config lives in .claude/settings.json)
-.claude/settings.local.json

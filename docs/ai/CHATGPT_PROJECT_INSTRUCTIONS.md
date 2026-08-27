@@ -26,8 +26,9 @@ preparing work for Codex, Claude Code, or OpenClaw:
    implementation or broad review.
 6. Read `docs/ARCHITECTURE.md` and the relevant platform documentation.
 7. Inspect the current implementation and nearby tests.
-8. Read matching detailed playbooks under `.claude/skills/` and
-   `.claude/rules/` when referenced by the native skill.
+8. Read matching canonical Claude/domain rules under `.agents/claude/rules/`
+   when referenced by the selected skill or affected platform. Do not treat the
+   generated `.claude/` runtime projection as a repository source of truth.
 9. Inspect build files and GitHub workflows for CI, signing, packaging,
    configuration sync, versioning, artifacts, or releases.
 
@@ -402,6 +403,9 @@ When publication is authorized:
 - stage only intended files;
 - use a professional focused commit message;
 - use a dedicated branch and draft pull request by default;
+- preserve the complete `.github/pull_request_template.md` schema, fill every
+  section truthfully, and apply `levyra-humanizer` as the final PR-description
+  prose pass without changing facts or validation claims;
 - write a truthful PR body covering reason, changes, impact, validation, blocked
   checks and manual verification;
 - push directly to `main` only when explicitly requested for the exact scope.

@@ -8,7 +8,7 @@ description: Review a Levyra branch, commit, patch, or pull request for correctn
 ## Required context
 
 1. Read the root `AGENTS.md` and every nearest `AGENTS.md` covering changed files.
-2. Read `.claude/skills/levyra-pr-review/SKILL.md` and all domain skills/rules relevant to the diff.
+2. Read all canonical `.agents/skills/` and `.agents/claude/rules/` owners relevant to the diff.
 3. Inspect the complete diff, surrounding implementation, tests, build files, workflows, and current review discussion.
 4. Ignore comments that no longer apply to the current head revision.
 

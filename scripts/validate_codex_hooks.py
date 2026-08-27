@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Levyra's project-local Codex lifecycle hook contract."""
+"""Validate Levyra's canonical Codex lifecycle hook contract."""
 
 from __future__ import annotations
 
@@ -8,8 +8,17 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-HOOKS_PATH = ROOT / ".codex" / "hooks.json"
+HOOKS_RELATIVE = ".agents/codex/hooks.json"
+HOOKS_PATH = ROOT / HOOKS_RELATIVE
 PIN = "b34be37caf3796b69a50952a28e60e32b5daad43"
+SUPPORTED_EVENTS = {
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "PostCompact",
+    "Stop",
+}
 
 
 def require_terms(errors: list[str], relative_path: str, terms: tuple[str, ...]) -> None:
@@ -27,72 +36,73 @@ def main() -> int:
     errors: list[str] = []
 
     if not HOOKS_PATH.is_file():
-        errors.append("missing Codex project hook file: .codex/hooks.json")
+        errors.append(f"missing canonical Codex project hook file: {HOOKS_RELATIVE}")
     else:
         try:
             document = json.loads(HOOKS_PATH.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            errors.append(f".codex/hooks.json is invalid: {exc}")
+            errors.append(f"{HOOKS_RELATIVE} is invalid: {exc}")
         else:
             hooks = document.get("hooks")
+            if isinstance(hooks, dict):
+                unsupported = sorted(set(hooks) - SUPPORTED_EVENTS)
+                if unsupported:
+                    errors.append(
+                        f"{HOOKS_RELATIVE}: unsupported Codex hook events: {', '.join(unsupported)}"
+                    )
+                for event, event_groups in hooks.items():
+                    for group in event_groups if isinstance(event_groups, list) else []:
+                        for handler in group.get("hooks", []) if isinstance(group, dict) else []:
+                            command_windows = handler.get("commandWindows", "") if isinstance(handler, dict) else ""
+                            if "scripts/" in command_windows and "git rev-parse --show-toplevel" not in command_windows:
+                                errors.append(
+                                    f"{HOOKS_RELATIVE}: {event} commandWindows must resolve scripts from the Git root"
+                                )
             groups = hooks.get("SessionStart") if isinstance(hooks, dict) else None
-            if not isinstance(groups, list) or not groups:
-                errors.append(".codex/hooks.json must define SessionStart hooks")
+            matching_group = next(
+                (
+                    group
+                    for group in groups or []
+                    if isinstance(group, dict) and group.get("matcher") == "^(startup|resume)$"
+                ),
+                None,
+            )
+            if matching_group is None:
+                errors.append(f"{HOOKS_RELATIVE} must match startup and resume sessions")
             else:
-                matching_group = next(
-                    (
-                        group
-                        for group in groups
-                        if isinstance(group, dict)
-                        and group.get("matcher") == "^(startup|resume)$"
-                    ),
+                handlers = [
+                    handler
+                    for handler in matching_group.get("hooks") or []
+                    if isinstance(handler, dict) and handler.get("type") == "command"
+                ]
+                serialized = json.dumps(handlers)
+                for term in (
+                    "sync_agent_runtime.py",
+                    "--runtime codex",
+                    "ensure-codex-tooling.sh",
+                    "ensure-codex-tooling.ps1",
+                    "git rev-parse --show-toplevel",
+                ):
+                    if term not in serialized:
+                        errors.append(f"Codex SessionStart hooks are missing {term!r}")
+
+                sync_handler = next(
+                    (handler for handler in handlers if "sync_agent_runtime.py" in str(handler.get("command", ""))),
                     None,
                 )
-                if matching_group is None:
-                    errors.append(
-                        ".codex/hooks.json must match startup and resume sessions"
-                    )
-                else:
-                    handlers = matching_group.get("hooks")
-                    if not isinstance(handlers, list):
-                        errors.append("Codex SessionStart hooks must be a list")
-                    else:
-                        command_handler = next(
-                            (
-                                handler
-                                for handler in handlers
-                                if isinstance(handler, dict)
-                                and handler.get("type") == "command"
-                            ),
-                            None,
-                        )
-                        if command_handler is None:
-                            errors.append("Codex SessionStart must contain a command hook")
-                        else:
-                            command = command_handler.get("command", "")
-                            command_windows = command_handler.get("commandWindows", "")
-                            for term in (
-                                "git rev-parse --show-toplevel",
-                                "scripts/ensure-codex-tooling.sh",
-                                "|| true",
-                            ):
-                                if term not in command:
-                                    errors.append(
-                                        f"Codex Unix SessionStart command is missing {term!r}"
-                                    )
-                            for term in (
-                                "git rev-parse --show-toplevel",
-                                "scripts/ensure-codex-tooling.ps1",
-                                "exit 0",
-                            ):
-                                if term not in command_windows:
-                                    errors.append(
-                                        f"Codex Windows SessionStart command is missing {term!r}"
-                                    )
-                            if command_handler.get("timeout") != 600:
-                                errors.append(
-                                    "Codex tooling bootstrap hook timeout must be 600 seconds"
-                                )
+                if sync_handler is None:
+                    errors.append("Codex SessionStart must refresh the generated .codex projection")
+                elif sync_handler.get("timeout") != 30:
+                    errors.append("Codex runtime refresh hook timeout must be 30 seconds")
+
+                tooling_handler = next(
+                    (handler for handler in handlers if "ensure-codex-tooling.sh" in str(handler.get("command", ""))),
+                    None,
+                )
+                if tooling_handler is None:
+                    errors.append("Codex SessionStart must preserve automatic tooling bootstrap")
+                elif tooling_handler.get("timeout") != 600:
+                    errors.append("Codex tooling bootstrap hook timeout must be 600 seconds")
 
     require_terms(
         errors,
@@ -122,9 +132,8 @@ def main() -> int:
         return 1
 
     print(
-        "Codex hook validation passed: project SessionStart automatically "
-        "runs the fail-open unified tooling bootstrap on startup/resume, and the "
-        "bootstrap still delegates to the pinned RTK contract."
+        "Codex hook validation passed: canonical .agents/codex hooks refresh the ignored "
+        "native projection, preserve startup/resume tooling bootstrap, and retain the pinned RTK contract."
     )
     return 0
 

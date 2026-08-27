@@ -316,6 +316,7 @@ def build_commands(
     commands = [
         GateCommand("Validate agent configuration", (python, "scripts/validate_agent_config.py")),
         GateCommand("Validate AI efficiency", (python, "scripts/validate_ai_efficiency.py")),
+        GateCommand("Validate Matt skills integration", (python, "scripts/validate_matt_skills.py")),
         GateCommand(
             "Validate claude-mem integration",
             (python, "scripts/validate_claude_mem.py"),

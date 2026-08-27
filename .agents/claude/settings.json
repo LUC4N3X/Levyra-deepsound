@@ -72,13 +72,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh\"",
+            "command": "bash -lc 'root=\"${CLAUDE_PROJECT_DIR}\"; for p in python3 python py; do if command -v \"$p\" >/dev/null 2>&1; then \"$p\" \"$root/scripts/sync_agent_runtime.py\" --runtime claude --quiet >/dev/null 2>&1 || true; break; fi; done; exit 0'",
+            "timeout": 30,
+            "statusMessage": "Refreshing Levyra Claude runtime"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.agents/claude/hooks/session-start.sh\"",
             "timeout": 600,
             "statusMessage": "Preparing Levyra tooling"
           },
           {
             "type": "command",
-            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/jcodemunch-start.sh\"",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.agents/claude/hooks/jcodemunch-start.sh\"",
             "timeout": 600,
             "statusMessage": "Preparing Levyra jCodeMunch"
           },
@@ -129,7 +135,7 @@
           },
           {
             "type": "command",
-            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/user-prompt-submit.sh\"",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.agents/claude/hooks/user-prompt-submit.sh\"",
             "timeout": 30,
             "statusMessage": "Routing Levyra skills"
           }

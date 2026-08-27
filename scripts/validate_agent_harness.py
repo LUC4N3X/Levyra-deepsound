@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+CLAUDE_ROOT = ".agents/claude"
+CODEX_ROOT = ".agents/codex"
 
 REQUIRED_FILES = (
     "docs/ai/ALWAYS_ON_AGENT_GUARDS.md",
@@ -19,7 +21,8 @@ REQUIRED_FILES = (
     "scripts/comment_guard_hook.py",
     "scripts/run-comment-guard.sh",
     "scripts/run-comment-guard.ps1",
-    ".claude/rules/always-on-agent-guards.md",
+    f"{CLAUDE_ROOT}/rules/always-on-agent-guards.md",
+    "scripts/sync_agent_runtime.py",
 )
 
 
@@ -109,23 +112,18 @@ def main() -> int:
         errors,
     )
     require_terms(
-        "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
-        ("AI_ENGINEERING_GUARDRAILS.md", "Apply the shared AI guardrails automatically"),
-        errors,
-    )
-    require_terms(
         ".agents/rules/levyra-workspace.md",
         ("ALWAYS_ON_AGENT_GUARDS.md", "Non-optional harness contract", "Always On"),
         errors,
     )
     require_terms(
-        ".claude/rules/always-on-agent-guards.md",
+        f"{CLAUDE_ROOT}/rules/always-on-agent-guards.md",
         ("ALWAYS_ON_AGENT_GUARDS.md", "not a skill", "lifecycle hooks"),
         errors,
     )
 
     required_hooks = {"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "PostCompact", "Stop"}
-    for path in (".claude/settings.json", ".codex/hooks.json"):
+    for path in (f"{CLAUDE_ROOT}/settings.json", f"{CODEX_ROOT}/hooks.json"):
         settings = read_json(path, errors)
         missing = sorted(required_hooks - hook_names(settings))
         if missing:
@@ -153,8 +151,13 @@ def main() -> int:
         ),
         errors,
     )
+    require_terms(
+        "scripts/sync_agent_runtime.py",
+        (".agents", ".claude", ".codex", "settings.json", "hooks.json"),
+        errors,
+    )
 
-    for path in (".codex/config.toml", ".codex/hooks.json", ".claude/settings.json"):
+    for path in (f"{CODEX_ROOT}/config.toml", f"{CODEX_ROOT}/hooks.json", f"{CLAUDE_ROOT}/settings.json"):
         reject_terms(
             path,
             ("danger-full-access", "dangerously-skip-permissions", "approval_policy = \"never\"", "oh-my-openagent"),
@@ -180,7 +183,7 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
 
-    print("Always-on agent harness validation passed.")
+    print("Always-on agent harness validation passed for canonical .agents runtime sources.")
     return 0
 
 

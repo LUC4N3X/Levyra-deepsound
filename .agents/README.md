@@ -1,11 +1,13 @@
 # Levyra Agent Configuration
 
-Levyra keeps one repository-native instruction and skill tree for Codex, Claude
-Code, ChatGPT Projects, Google Antigravity, OpenCode, OpenClaw, and compatible
-coding agents. The same project rules, domain skills, context-efficiency policy,
-real-engineering workflow, design-taste quality layer, Android performance/R8
-workflows, Android Intent security workflow, and evidence-based security review
-apply across runtimes.
+`.agents/` is Levyra's single tracked control center for coding agents.
+
+The repository keeps one canonical skill tree and one canonical set of
+runtime-specific configuration sources. Native `.claude/` and `.codex/`
+directories are generated locally when a runtime needs them and are ignored by
+Git.
+
+There is intentionally no tracked root `CLAUDE.md`.
 
 ## Configuration hierarchy
 
@@ -15,290 +17,170 @@ app/AGENTS.md                     Android rules
 desktop/AGENTS.md                 Windows Desktop rules
 .github/AGENTS.md                 CI and workflow rules
 docs/AGENTS.md                    documentation rules
-docs/project/                     specification, roadmap, and active tasks
-docs/agents/                      Matt skills issue-tracker/domain configuration
-docs/ARCHITECTURE.md              current architecture and ownership
-docs/ai/                          runtime, RTK, workflow, and security guidance
-.agents/rules/                    shared workspace-routing bridges
-.agents/skills/*/SKILL.md         canonical repository-native skills
-.agents/config/codex-plugins.txt  verified opt-in Codex plugin identifiers
-.claude/                          Claude Code rules, skills, agents, and hooks
-.rtk/filters.toml                 Levyra-specific RTK output filters
-scripts/setup-ai.ps1              Windows setup and validation
-scripts/setup-ai.sh               Linux/macOS setup and validation
+
+.agents/
+├── README.md                     this inventory and maintenance contract
+├── config/                       shared agent/plugin manifests
+├── rules/                        cross-runtime workspace rules
+├── skills/                       one canonical Levyra skill tree
+├── claude/                       canonical Claude Code config sources
+│   ├── CLAUDE.md
+│   ├── settings.json
+│   ├── agents/
+│   ├── hooks/
+│   └── rules/
+└── codex/                        canonical Codex project config sources
+    ├── config.toml
+    └── hooks.json
+
+scripts/sync_agent_runtime.py     native runtime projection manager
 ```
 
-Planning files, skills, plugins, and scans do not replace current code, direct
-validation, human review, or owner decisions.
+## Native runtime projection
 
-## Cross-runtime discovery
+Claude Code and Codex still receive the paths they expect. Levyra does not ask
+those tools to understand a custom unsupported runtime path.
 
-### Codex
-
-Codex reads root and path-specific `AGENTS.md` files and discovers matching
-skills under `.agents/skills/`. High-output work matches
-`levyra-context-efficiency`; non-trivial ambiguous or multi-step engineering
-matches `levyra-real-engineering`; visual redesign/polish work matches
-`levyra-design-taste` together with the matching platform UI skill; Android
-runtime profiling matches `levyra-android-performance`; R8/Proguard/minification
-work matches `levyra-r8-proguard`; Intent/PendingIntent/component-boundary work
-matches `levyra-android-intent-security` together with
-`levyra-security-review`; release-note prose is finalized with
-`levyra-humanizer`; other security-sensitive work matches
-`levyra-security-review`.
-
-The setup scripts automatically install the focused Matt Pocock engineering
-skills for Codex when both `codex` and `npx` are detected. Use
-`-SkipMattSkills` on Windows or `--skip-matt-skills` on Linux/macOS to opt out.
-The repository-native adapter remains authoritative if the upstream package is
-unavailable.
-
-RTK uses an **instruction-based Codex setup**. `rtk init -g --codex` installs
-instructions that teach Codex when to invoke RTK commands; it is not a native
-transparent shell-rewrite hook. Codex must rerun the original command raw when
-compact output is insufficient.
-
-Codex Security is an optional security engine enabled through the official
-Codex Security setup. It complements the shared Levyra security skill with a
-repository-specific threat model, safe validation, minimal remediation
-proposals, human review, and revalidation. See
-`docs/ai/CODEX_SECURITY.md`.
-
-### Claude Code
-
-Claude Code uses `.claude/CLAUDE.md`, path rules, skills, and the
-`UserPromptSubmit` hook. The project enables
-`mattpocock-skills@claude-plugins-official` from Claude Code's official
-marketplace. The local `levyra-real-engineering` bridge selects the appropriate
-upstream stage without letting it override Levyra.
-
-The hook routes visual redesign/polish work to `levyra-design-taste` together
-with the matching platform UI skill, Android runtime profiling to
-`levyra-android-performance`, R8/Proguard/minification work to
-`levyra-r8-proguard`, Android Intent/PendingIntent/exported-component work to
-`levyra-android-intent-security` plus `levyra-security-review`, and other
-security, vulnerability, secrets, trust-boundary, dependency, update-integrity,
-and privacy work to `levyra-security-review` before editing. Release-note
-writing routes through `levyra-release-check`, which loads `levyra-humanizer`
-for the final prose pass. Claude follows the same closed-loop security method
-documented in `docs/ai/CODEX_SECURITY.md`.
-
-### ChatGPT Project
-
-Copy `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` into the Levyra Project
-instructions and connect the repository. Those instructions require ChatGPT to
-load `levyra-real-engineering` for non-trivial work, `levyra-design-taste` for
-visual redesign/polish together with the relevant platform skill,
-`levyra-android-performance` for Android runtime profiling,
-`levyra-r8-proguard` for R8/Proguard/minification work,
-`levyra-android-intent-security` plus `levyra-security-review` for Android
-Intent/PendingIntent/component-boundary work, and `levyra-security-review` for
-other security-sensitive analysis. Release-note work uses
-`levyra-release-check`, which requires `levyra-humanizer` before publication.
-ChatGPT must distinguish suspected findings, validated findings, proposed
-patches, applied patches, CI, and publication state.
-
-### Google Antigravity
-
-Antigravity reads `.agents/rules/levyra-workspace.md` and exposes skills under
-`.agents/skills/`. The workspace rule routes non-trivial work through
-`levyra-real-engineering`, visual redesign/polish through `levyra-design-taste`
-plus the relevant platform skill, Android runtime profiling through
-`levyra-android-performance`, R8/Proguard/minification through
-`levyra-r8-proguard`, Android component-boundary security through
-`levyra-android-intent-security` plus `levyra-security-review`, and other
-security work through `levyra-security-review`. Release-note work loads
-`levyra-humanizer` through `levyra-release-check`. It keeps exact security
-evidence raw and applies the same threat-model and revalidation workflow. No
-parallel `.gemini/skills/` tree is required.
-
-### OpenCode and OpenClaw
-
-OpenCode uses the same root/path instructions and workspace skills. OpenClaw
-should use a dedicated Levyra workspace and delegate substantial implementation
-to a coding runtime while preserving the same skills, evidence, and publication
-boundaries.
-
-## Native skills
-
-| Skill | Primary use |
-| --- | --- |
-| `levyra-project-manager` | Specification, roadmap, active phase, acceptance criteria, and handoff |
-| `levyra-openclaw-orchestrator` | OpenClaw delegation, coding-runtime coordination, review, and evidence |
-| `levyra-context-efficiency` | RTK routing, focused context selection, measured savings, and raw-output fallback |
-| `levyra-codex-bootstrap` | Codex SessionStart tooling bootstrap, jCodeMunch/RTK/Matt skill setup, and fail-open validation |
-| `levyra-real-engineering` | Matt Pocock-style clarify/spec/tickets/implement/review routing for non-trivial work |
-| `levyra-player` | Android playback, queue, Media3, MediaSession, notification, and audio/video modes |
-| `levyra-extractor` | InnerTube, extraction, stream resolution, fallback, retry, and cache |
-| `levyra-database` | Room, migrations, stores, backup, and persistent user data |
-| `levyra-compose` | Compose UI, state, navigation, accessibility, RTL, and localization |
-| `levyra-design-taste` | Cross-runtime visual hierarchy, redesign/polish, anti-AI-slop discipline, token reuse, motion intent, and visual pre-flight review |
-| `levyra-humanizer` | Humanizer 2.11.2 prose pass for release notes and product-facing writing, preserving every factual claim and Levyra release invariant |
-| `levyra-android-performance` | Android Perfetto/System Trace, jank, latency, startup, CPU/thread state, graphics, Binder, blocking, memory, I/O, power, and measured runtime bottlenecks |
-| `levyra-r8-proguard` | R8/Proguard, minification, resource shrinking, keep/consumer rules, release-only shrinker failures, mapping evidence, and measured APK-size work |
-| `levyra-android-intent-security` | Android Intents, PendingIntents, deep links, exported components, receivers/services/providers, URI grants, FileProvider, and caller verification |
-| `levyra-android-reverse-engineering` | APK/XAPK/AAB/DEX/JAR/AAR fingerprinting, decompilation, Kotlin/R8 metadata recovery, compiled API/call-flow extraction, and static artifact security analysis |
-| `levyra-motion-artwork` | Decorative motion artwork and muted playback boundaries |
-| `levyra-desktop` | Windows Desktop, libvlc, downloads, mini player, updates, and packaging |
-| `levyra-security-review` | Cross-runtime threat modeling, vulnerability validation, minimal remediation, privacy, supply chain, and revalidation |
-| `levyra-ci-workflows` | GitHub Actions, CI, F-Droid, artifacts, and automation |
-| `levyra-pr-review` | Evidence-based branch, commit, patch, and pull-request review |
-| `levyra-release-check` | Pre-merge and pre-release validation |
-| `levyra-engineering` | Genuine cross-domain coordination |
-
-Load every matching focused skill. Coordinator, real-engineering,
-context-efficiency, design-taste, performance, shrinker, Android Intent security,
-and general security skills do not replace the applicable product-domain skill.
-
-## Automatic routing
-
-Load `levyra-real-engineering` for non-trivial features, architectural changes,
-unclear defects, or multi-step work where requirements and implementation should
-be separated. Use the lightest stage necessary and skip the full workflow for
-tiny, already-unambiguous changes. See `docs/ai/MATT_POCOCK_SKILLS.md`.
-
-Load `levyra-context-efficiency` for verbose builds, tests, lint, logs, searches,
-dependencies, Git/GitHub, CI, CodeRabbit, and setup work.
-
-Load `levyra-design-taste` for visual redesign, UI polish, hierarchy, spacing,
-typography, color, shape, motion, screenshots/references, or requests to make
-Levyra more premium, modern, distinctive, cohesive, or less AI-generated. Pair
-it with `levyra-compose` on Android or `levyra-desktop` on Desktop. It is a
-quality layer, not a second design system, and never overrides accessibility,
-performance, lifecycle, localization, current architecture, or product behavior.
-
-Load `levyra-humanizer` for release notes, Fastlane changelogs, release
-descriptions, and other product-facing prose that should sound naturally human.
-For release work it is a mandatory second pass after factual drafting through
-`levyra-release-check`. Use embedded mode and preserve every claim, required
-heading, version field, validation caveat, Markdown target, command, hash, and
-artifact name. The vendored method is based on `blader/humanizer` 2.11.2 under
-the MIT license; Levyra release truthfulness and machine contracts take
-precedence over stylistic rewrites.
-
-Load `levyra-android-performance` for Android jank, frame misses, latency,
-startup, Perfetto/System Trace, CPU scheduling/thread states, graphics, Binder,
-blocking, memory, I/O, power, or any runtime-performance conclusion that should
-be measured rather than guessed. Pair it with `levyra-compose`, `levyra-player`,
-or another affected domain skill as appropriate.
-
-Load `levyra-r8-proguard` for R8/Proguard, minification, resource shrinking,
-keep rules, consumer rules, release-only crashes after shrinking, reflection,
-serialization/JNI shrinking issues, mapping files, missing classes, or measured
-APK-size optimization. Pair it with `levyra-ci-workflows` for toolchain changes
-and `levyra-release-check` for release/minified runtime validation.
-
-Load `levyra-android-intent-security` for Android Intent/deep-link/PendingIntent
-handling, exported activities/services/receivers/providers, nested Intent
-forwarding, `onNewIntent`, mutable PendingIntents, URI grants, FileProvider,
-ContentProvider, signature/caller verification, or component-boundary audits.
-Always pair it with `levyra-security-review` and the affected Android domain
-skill.
-
-Load `levyra-android-reverse-engineering` automatically for APK/XAPK/AAB/DEX/JAR/AAR
-analysis, jadx/smali work, compiled API extraction, binary call-flow tracing, or
-Kotlin/R8 metadata recovery. Pair it with `levyra-security-review`, and add
-`levyra-r8-proguard` when obfuscation or shrinker behavior is material.
-
-Load `levyra-security-review` for vulnerability scans, attacker-controlled
-input, trust-boundary changes, authentication, tokens, cookies, signing,
-secrets, URLs, redirects, SSRF, MIME, paths, permissions, privacy, dependency
-risk, workflow security, artifacts, updates, and security-related pull requests.
-
-All runtimes use this security cycle:
+`scripts/sync_agent_runtime.py` materializes:
 
 ```text
-threat model
-→ identification
-→ safe validation
-→ minimal remediation
-→ human review
-→ revalidation
+.agents/claude/...  -> .claude/...
+.agents/skills/...  -> .claude/skills/...
+.agents/codex/...   -> .codex/...
 ```
 
-A suspicion is not a confirmed vulnerability until evidence supports the attack
-path or concrete security failure.
+The generated `.claude/` and `.codex/` directories are ignored by Git. The
+synchronizer keeps a manifest of files it owns, removes only stale managed
+entries, and preserves unrelated machine-specific local files.
 
-## RTK safety
-
-Use RTK selectively for noisy supported commands. Keep exact output, exploit
-evidence, security validation, hashes, signatures, secret scans, signing,
-release evidence, and incomplete failure diagnostics raw. Verify exit status and
-success/failure markers, and rerun the exact original command raw whenever
-compact output hides required evidence.
-
-## Setup
-
-Windows:
+The normal setup commands refresh both projections:
 
 ```powershell
-.\scripts\setup-ai.ps1 -DryRun
 .\scripts\setup-ai.ps1
-.\scripts\setup-ai.ps1 -InstallRtk -Plugins
 ```
 
-Linux/macOS:
-
 ```bash
-./scripts/setup-ai.sh --dry-run
 ./scripts/setup-ai.sh
-./scripts/setup-ai.sh --install-rtk --plugins
 ```
 
-When Codex and `npx` are available, setup also installs the focused
-`mattpocock/skills` workflow globally for Codex. Claude Code discovers the
-project-enabled official plugin from `.claude/settings.json`. Antigravity and
-ChatGPT use the repository-native adapter whether or not the upstream package is
-installed. `levyra-humanizer` is vendored in the repository, so release-note
-humanization does not depend on a separate global Humanizer install.
+After the native runtime config is active, Claude Code and Codex refresh their
+projection again on startup/resume. The project jCodeMunch launcher also performs
+a best-effort Claude projection refresh as an additional clean-clone bootstrap.
 
-The scripts do not configure Ollama/local-model profiles, unrestricted
-sandboxing, or silent approval bypasses. Root `AGENTS.md` keeps unrelated plugins
-and executables opt-in. A tool genuinely required by the active task may be
-installed only under the narrow, verified installation policy in
-`docs/ai/ALWAYS_ON_AGENT_GUARDS.md`.
+## Automatic skill discovery
 
-## Validation
+`.agents/skills/` is the only tracked Levyra skill tree.
 
-```bash
-python3 scripts/validate_agent_config.py
-python3 scripts/validate_ai_efficiency.py
-python3 scripts/validate_matt_skills.py
-python3 scripts/validate_claude_mem.py
-```
+- **Codex** discovers `.agents/skills/` directly.
+- **Claude Code** discovers the generated `.claude/skills/` projection, which is
+  copied directly from `.agents/skills/`.
+- **Google Antigravity** uses `.agents/rules/levyra-workspace.md` and the same
+  repository-native skills.
+- **ChatGPT Project** instructions route to the same skills through
+  `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md`.
+- OpenClaw and compatible coding agents use the same canonical contracts where
+  supported.
 
-The validators check shared discovery, skill inventory, RTK TOML, setup
-behavior, real-engineering integration, cross-runtime
-design/performance/R8/Intent-security/general-security routing, dependency
-review, plugin scope, claude-mem integration, and absence of unapproved
-local-model profiles.
+This keeps automatic routing while preventing skill drift: edit a Levyra skill
+once under `.agents/skills/`; Codex uses it directly and Claude sees the synced
+native projection.
 
-## Maintenance rules
+## Canonical skill inventory
 
-- Keep `AGENTS.md` as the canonical repository contract.
-- Keep one canonical Levyra skill tree under `.agents/skills/`; runtime-specific
-  files may be thin routing bridges only.
-- Keep `levyra-real-engineering` as a routing adapter, not a copied fork of the
-  external skill package.
-- Keep `levyra-design-taste` as a compact native product-UI adaptation, not a
-  vendored copy of a web-focused external skill.
-- Keep `levyra-humanizer` pinned to a reviewed upstream Humanizer revision, keep
-  the upstream MIT license beside the vendored skill, and do not weaken its
-  no-invented-facts rule when adapting it to Levyra release prose.
-- Keep `levyra-android-performance` evidence-first and focused on measured
-  Android runtime profiling; validate Perfetto schemas/queries instead of
-  guessing them.
-- Keep `levyra-r8-proguard` focused on the current toolchain and actual runtime
-  mechanisms; do not accumulate blanket keep rules or disable shrinking to make
-  a failure disappear.
-- Keep `levyra-android-intent-security` focused on real Android component trust
-  boundaries and reachable attack paths; do not copy generic sample contracts.
-- Keep RTK as an output layer, never validation authority.
-- Keep security findings evidence-based and revalidate every remediation.
-- Keep the pinned RTK bootstrap and focused Matt integration narrow; unrelated
-  plugins and executables remain opt-in, while genuinely task-required tools may
-  use the verified narrow-install policy in `docs/ai/ALWAYS_ON_AGENT_GUARDS.md`.
-- Keep commit, push, PR, merge, tag, release, upload, and repository settings
-  under explicit owner authorization.
-- Verify paths, commands, skills, workflows, and documentation after structural
-  changes.
+- `levyra-android-intent-security`
+- `levyra-android-performance`
+- `levyra-android-reverse-engineering`
+- `levyra-ci-workflows`
+- `levyra-codex-bootstrap`
+- `levyra-compose`
+- `levyra-context-efficiency`
+- `levyra-database`
+- `levyra-design-taste`
+- `levyra-desktop`
+- `levyra-engineering`
+- `levyra-extractor`
+- `levyra-humanizer`
+- `levyra-motion-artwork`
+- `levyra-openclaw-orchestrator`
+- `levyra-player`
+- `levyra-pr-review`
+- `levyra-project-manager`
+- `levyra-r8-proguard`
+- `levyra-real-engineering`
+- `levyra-release-check`
+- `levyra-security-review`
+
+Skill descriptions are routing metadata; `SKILL.md` bodies are loaded only when
+the task requires them. Keep descriptions narrow enough to avoid unnecessary
+context expansion.
+
+## Cross-runtime routing
+
+The main automatic routes remain:
+
+- substantial implementation: `levyra-real-engineering`;
+- Compose/UI: `levyra-compose` and, when visual quality is central,
+  `levyra-design-taste`;
+- performance/memory/jank: `levyra-android-performance`;
+- R8/minification: `levyra-r8-proguard`;
+- Intent/component boundaries: `levyra-android-intent-security` plus
+  `levyra-security-review`;
+- CI/workflows: `levyra-ci-workflows`;
+- noisy command-output work: `levyra-context-efficiency`;
+- reviews: `levyra-pr-review`;
+- releases: `levyra-release-check`;
+- security-sensitive changes: `levyra-security-review`.
+
+Security work follows the **Codex Security** closed-loop workflow documented in
+`docs/ai/CODEX_SECURITY.md`: threat model, identification, validation,
+remediation, human review, and revalidation.
+
+## Codex
+
+Codex uses root `AGENTS.md` as its repository operating contract and discovers
+the canonical `.agents/skills/` tree directly. Levyra keeps the existing
+instruction-based Codex setup for optional tooling and plugins.
+
+Canonical project config and lifecycle hooks live under `.agents/codex/` and are
+projected to ignored `.codex/` native paths. Do not maintain a second tracked
+Codex config tree.
+
+## Claude Code
+
+Canonical Claude Code instructions, settings, subagents, hooks, and rules live
+under `.agents/claude/`. Claude's native `.claude/` projection is generated
+locally. `.claude/skills/` comes directly from the shared `.agents/skills/` tree;
+there is no tracked `.agents/claude/skills/` bridge.
+
+See `.agents/claude/README.md` for the detailed projection and bootstrap contract.
+
+## Context efficiency
+
+Use `levyra-context-efficiency` when large command output would otherwise waste
+context. RTK/jCodeMunch are optimization layers only: correctness, exact failure
+evidence, security output, and validation results must remain complete when
+needed. Re-run raw commands whenever compressed output hides decisive evidence.
+
+## Security
+
+Use `levyra-security-review` for secrets, authentication, provider URLs,
+redirects, SSRF, permissions, privacy, workflow trust boundaries, dependency
+risk, update verification, or other security-sensitive changes. Never weaken
+security merely to make a test or provider response pass.
+
+## Maintenance contract
+
+When changing agent infrastructure:
+
+1. keep `.agents/skills/` as the only tracked Levyra skill tree;
+2. keep Claude-specific canonical configuration under `.agents/claude/`;
+3. keep Codex-specific canonical configuration under `.agents/codex/`;
+4. never commit root `CLAUDE.md`, `.claude/`, `.codex/`, or
+   `.agents/claude/skills/`;
+5. keep `scripts/sync_agent_runtime.py` idempotent and non-destructive to
+   unrelated local files;
+6. update runtime setup/hooks and validators together when a native path changes;
+7. run `python3 scripts/ai_quality_gate.py --profile fast` for focused agent
+   changes and the repository-required full gate before publication/merge;
+8. do not claim automatic discovery, a build, test, device check, or security
+   validation unless the current evidence proves it.

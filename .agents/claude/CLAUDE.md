@@ -128,3 +128,8 @@ python3 scripts/ai_quality_gate.py --profile full
 Run `fast` before commit and `full` before push/PR publication. Missing or
 blocked checks are not passes. Report exactly what ran and what remains
 unverified.
+
+When opening or updating a pull request, keep the complete
+`.github/pull_request_template.md` structure, fill it with verified evidence,
+leave unperformed checks unmarked, and invoke `levyra-humanizer` as the final
+prose pass without changing any claim.
