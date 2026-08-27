@@ -24,9 +24,11 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -42,6 +44,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.session.CommandButton
@@ -59,6 +62,7 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
 import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
 import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
@@ -160,7 +164,9 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
         const val ACTION_GET_PLATFORM_TOKEN = "levyra.media.GET_PLATFORM_TOKEN"
+        const val ACTION_SET_VIDEO_SUBTITLE = "levyra.media.SET_VIDEO_SUBTITLE"
         const val KEY_PLATFORM_TOKEN = "levyra.media.PLATFORM_TOKEN"
+        const val KEY_VIDEO_SUBTITLE_ID = "levyra.media.VIDEO_SUBTITLE_ID"
         private const val PLAYBACK_STATE_PREFS = "levyra.playback.service.state"
         private const val KEY_PLAYBACK_EXPECTED = "playbackExpected"
         private const val KEY_PLAYBACK_HEARTBEAT_AT = "playbackHeartbeatAt"
@@ -282,6 +288,7 @@ class PlaybackService : MediaLibraryService() {
     private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
     private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
     private val platformTokenCommand by lazy { SessionCommand(ACTION_GET_PLATFORM_TOKEN, Bundle.EMPTY) }
+    private val videoSubtitleCommand by lazy { SessionCommand(ACTION_SET_VIDEO_SUBTITLE, Bundle.EMPTY) }
 
     private fun applyPremiumAudioSettingsInternal(
         settings: LevyraAudioSettings,
@@ -506,6 +513,7 @@ class PlaybackService : MediaLibraryService() {
                     .add(queueLikeCommand)
                 if (controller.packageName == packageName) {
                     commandBuilder.add(platformTokenCommand)
+                    commandBuilder.add(videoSubtitleCommand)
                 }
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
                     .setAvailableSessionCommands(commandBuilder.build())
@@ -566,6 +574,19 @@ class PlaybackService : MediaLibraryService() {
                                 putParcelable(KEY_PLATFORM_TOKEN, session.platformToken)
                             }
                             Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, extras))
+                        }
+                    }
+                    ACTION_SET_VIDEO_SUBTITLE -> {
+                        if (controller.packageName != packageName) {
+                            Futures.immediateFuture(
+                                SessionResult(androidx.media3.session.SessionError.ERROR_PERMISSION_DENIED)
+                            )
+                        } else {
+                            applyVideoSubtitleSelection(
+                                player,
+                                args.getString(KEY_VIDEO_SUBTITLE_ID)?.trim().orEmpty()
+                            )
+                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                         }
                     }
                     "levyra.queue.shuffle" -> {
@@ -1388,8 +1409,31 @@ class PlaybackService : MediaLibraryService() {
         runCatching {
             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, disableVideo)
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .setPreferredTextLanguage(null)
                 .build()
         }.onFailure { Timber.w(it, "Track selection update failed") }
+    }
+
+    private fun applyVideoSubtitleSelection(player: ExoPlayer, subtitleId: String) {
+        val videoMode = player.currentMediaItem?.mediaMetadata?.extras
+            ?.getBoolean(EXTRA_VIDEO_MODE, false) == true
+        val selection = subtitleId.takeIf { videoMode && it.isNotBlank() }?.let { requestedId ->
+            player.currentTracks.groups.firstNotNullOfOrNull { group ->
+                if (group.type != C.TRACK_TYPE_TEXT) return@firstNotNullOfOrNull null
+                val index = (0 until group.length).firstOrNull { group.getTrackFormat(it).id == requestedId }
+                    ?: return@firstNotNullOfOrNull null
+                TrackSelectionOverride(group.mediaTrackGroup, listOf(index))
+            }
+        }
+        runCatching {
+            val builder = player.trackSelectionParameters.buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, selection == null)
+                .setPreferredTextLanguage(null)
+            if (selection != null) builder.setOverrideForType(selection)
+            player.trackSelectionParameters = builder.build()
+        }.onFailure { Timber.w(it, "Subtitle track selection update failed") }
     }
 
     private fun startMemoryGuard(player: ExoPlayer) {
@@ -2087,6 +2131,10 @@ private class LevyraMediaSourceFactory(
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
 
+    private val subtitleDataSourceFactory: DataSource.Factory by lazy {
+        OkHttpDataSource.Factory(LevyraHttpClientFactory.externalIntegrations())
+    }
+
     override fun getSupportedTypes(): IntArray = delegate.supportedTypes
 
     override fun setDrmSessionManagerProvider(
@@ -2109,7 +2157,7 @@ private class LevyraMediaSourceFactory(
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL)
 
         if (videoUrl.isNullOrBlank()) {
-            return mediaSourceFor(mediaItem)
+            return mergeSubtitles(mediaItem, mediaSourceFor(mediaItem))
         }
 
         val videoCacheKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
@@ -2127,7 +2175,18 @@ private class LevyraMediaSourceFactory(
             .build()
         val videoSource = mediaSourceFor(videoItem)
 
-        return MergingMediaSource(true, true, videoSource, audioSource)
+        return mergeSubtitles(mediaItem, MergingMediaSource(true, true, videoSource, audioSource))
+    }
+
+    private fun mergeSubtitles(mediaItem: MediaItem, primarySource: MediaSource): MediaSource {
+        val configurations = mediaItem.localConfiguration?.subtitleConfigurations.orEmpty()
+        if (configurations.isEmpty()) return primarySource
+        val subtitleSources = configurations.map { configuration ->
+            SingleSampleMediaSource.Factory(subtitleDataSourceFactory)
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+                .createMediaSource(configuration, C.TIME_UNSET)
+        }
+        return MergingMediaSource(true, true, primarySource, *subtitleSources.toTypedArray())
     }
 
     private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {

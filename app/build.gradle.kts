@@ -135,7 +135,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
 
     sourceSets.getByName("main").kotlin.directories.add(
         if (isFdroidBuild) "src/fdroid/java" else "src/upstream/java"

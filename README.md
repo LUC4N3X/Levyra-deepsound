@@ -162,6 +162,26 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
   </tr>
+  <tr valign="top">
+    <td width="50%">
+      <h3>🔗 <b>Optional Integrations</b></h3>
+      <ul>
+        <li><b>Scrobbling:</b> Last.fm and ListenBrainz, submitted on a real listen threshold with bounded deduplication.</li>
+        <li><b>Song Recognition:</b> Optional AudD lookup from a short, size-bounded microphone capture.</li>
+        <li><b>Encrypted Credentials:</b> Keys stay on device under an Android Keystore AES/GCM key, never in plain text.</li>
+        <li><b>Opt-In by Design:</b> Nothing is configured by default, and playback is untouched when no integration is set up.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>🎛️ <b>Settings Search & Video Subtitles</b></h3>
+      <ul>
+        <li><b>Searchable Settings:</b> Type to jump straight to a setting, matching titles, descriptions, and keywords.</li>
+        <li><b>Accent & Case Insensitive:</b> Locale-aware normalization across all 26 supported languages.</li>
+        <li><b>Video Mode Subtitles:</b> Captions discovered from validated sources and selectable per language in the player.</li>
+        <li><b>Music Mode Untouched:</b> Subtitle handling only ever activates during native-video playback.</li>
+      </ul>
+    </td>
+  </tr>
 </table>
 
 ---

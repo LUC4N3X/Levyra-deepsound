@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import com.luc4n3x.levyra.domain.Track
 
 object LevyraMediaItemFactory {
@@ -28,6 +29,18 @@ object LevyraMediaItemFactory {
             .setMediaId(mediaId(track))
             .setMediaMetadata(metadata(track, videoMode))
         mimeTypeFor(streamUrl, videoMode)?.let { builder.setMimeType(it) }
+        if (videoMode && track.videoSubtitleTracks.isNotEmpty()) {
+            builder.setSubtitleConfigurations(
+                track.videoSubtitleTracks.map { subtitle ->
+                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.vttUrl))
+                        .setId(subtitle.id)
+                        .setMimeType(MimeTypes.TEXT_VTT)
+                        .setLanguage(subtitle.languageCode)
+                        .setLabel(subtitle.label)
+                        .build()
+                }
+            )
+        }
         return builder.build()
     }
 
