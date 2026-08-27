@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="internal_diagnostics_title">Internal diagnostics</string>
+    <string name="internal_diagnostics_subtitle">Bounded runtime recorder, anomaly detection and preflight</string>
+    <string name="internal_diagnostics_close">Close internal diagnostics</string>
+    <string name="internal_diagnostics_status">Recorder status</string>
+    <string name="internal_diagnostics_active">Active</string>
+    <string name="internal_diagnostics_stopped">Stopped</string>
+    <string name="internal_diagnostics_events">Event count</string>
+    <string name="internal_diagnostics_anomalies">Anomaly count</string>
+    <string name="internal_diagnostics_current_memory">Current memory</string>
+    <string name="internal_diagnostics_peak_memory">Peak memory</string>
+    <string name="internal_diagnostics_player_state">Player state</string>
+    <string name="internal_diagnostics_resolver_state">Resolver state</string>
+    <string name="internal_diagnostics_preflight_status">Preflight status</string>
+    <string name="internal_diagnostics_not_run">Not run</string>
+    <string name="internal_diagnostics_run_preflight">Run preflight</string>
+    <string name="internal_diagnostics_export">Export</string>
+    <string name="internal_diagnostics_reset">Reset</string>
+    <string name="internal_diagnostics_preflight">Preflight</string>
+    <string name="internal_diagnostics_recent_anomalies">Recent anomalies</string>
+    <string name="internal_diagnostics_no_anomalies">No anomalies detected</string>
+    <string name="internal_diagnostics_details">Details</string>
+    <string name="internal_diagnostics_occurrences">Occurrences</string>
+    <string name="internal_diagnostics_window_ms">Window (ms)</string>
+    <string name="internal_diagnostics_exported">Diagnostics exported</string>
+    <string name="internal_diagnostics_export_failed">Diagnostics export failed</string>
+</resources>

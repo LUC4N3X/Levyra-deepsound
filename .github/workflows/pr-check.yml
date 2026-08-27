@@ -134,8 +134,23 @@ jobs:
       - name: Android Full Unit Test Suite
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 
+      - name: PR Diagnostics Unit Tests
+        run: ./gradlew --no-daemon :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*'
+
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+
+      - name: PR Diagnostics Compile
+        run: ./gradlew --no-daemon --no-configuration-cache assemblePrDiagnostics
+
+      - name: Verify Upstream Artifact Isolation
+        run: |
+          python3 scripts/verify_diagnostics_isolation.py \
+            --apk app/build/outputs/apk/release/app-release.apk \
+            --expect absent
+          python3 scripts/verify_diagnostics_isolation.py \
+            --apk app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk \
+            --expect present
 
       - name: Upstream updater manifest contract
         shell: bash
@@ -191,6 +206,10 @@ jobs:
             echo "F-Droid source build must remain unsigned."
             exit 1
           fi
+
+          python3 scripts/verify_diagnostics_isolation.py \
+            --apk "${FDROID_APK}" \
+            --expect absent
 
           APK_ANALYZER="${ANDROID_HOME}/cmdline-tools/latest/bin/apkanalyzer"
           test -x "${APK_ANALYZER}"

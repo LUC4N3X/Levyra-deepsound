@@ -15,6 +15,8 @@ import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +63,16 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
+
+private fun PlaybackFailureKind.httpStatusCode(): Int = when (this) {
+    PlaybackFailureKind.Forbidden -> 403
+    PlaybackFailureKind.NotFound -> 404
+    PlaybackFailureKind.Gone -> 410
+    PlaybackFailureKind.RangeNotSatisfiable -> 416
+    PlaybackFailureKind.RateLimited -> 429
+    PlaybackFailureKind.ServerError -> 500
+    else -> 0
+}
 
 internal fun isMp4OfflineAudioCandidate(mimeOrFormat: String, url: String): Boolean {
     val format = mimeOrFormat.lowercase()
@@ -470,25 +482,38 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
-            if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
-            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
-            if (isVideoMode && !track.hasVideoPlaybackPayload()) return null
-            return if (streamStillFresh(track.streamUrl)) track else null
+            val valid = !isPlaybackUrlBlocked(track.streamUrl) &&
+                (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
+                (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
+                (!isVideoMode || track.hasVideoPlaybackPayload()) &&
+                streamStillFresh(track.streamUrl)
+            RuntimeHooks.cache(if (valid) RuntimeSignal.CACHE_HIT else RuntimeSignal.CACHE_MISS)
+            RuntimeHooks.hot(RuntimeSignal.HOT_CACHE_ACCESS)
+            return track.takeIf { valid }
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
-        val hit = streamCache[key] ?: return null
+        val hit = streamCache[key] ?: run {
+            RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
+            RuntimeHooks.hot(RuntimeSignal.HOT_CACHE_ACCESS)
+            return null
+        }
         if (!isFresh(hit.expiresAt)) {
             remove(key)
+            RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
         }
         if (!isVideoMode && !isPlayableAudioUrl(hit.track.streamUrl)) {
             remove(key)
+            RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
         }
         if (isVideoMode && !hit.track.hasVideoPlaybackPayload()) {
             remove(key)
+            RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
             return null
         }
+        RuntimeHooks.cache(RuntimeSignal.CACHE_HIT)
+        RuntimeHooks.hot(RuntimeSignal.HOT_CACHE_ACCESS)
         return hit.track
     }
 
@@ -808,6 +833,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
+        RuntimeHooks.cache(RuntimeSignal.CACHE_PREFETCH)
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
@@ -926,8 +952,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for (strategy in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies)) {
+        for ((attemptIndex, strategy) in strategyHealth.order(AUDIO_HEALTH_MODE, policy.audioStrategies).withIndex()) {
             currentCoroutineContext().ensureActive()
+            RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
+            if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
             val resolved = when (strategy) {
@@ -969,6 +997,23 @@ class PlaybackResolver private constructor(private val context: Context) {
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(AUDIO_HEALTH_MODE, strategy.name, elapsedMs)
+                RuntimeHooks.resolver(
+                    mode = RuntimeSignal.MODE_AUDIO,
+                    strategy = strategy.ordinal,
+                    client = -1,
+                    attempt = attemptIndex + 1,
+                    latencyMs = elapsedMs,
+                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                    failure = -1,
+                    manifest = resolved.playbackManifest
+                )
+                RuntimeHooks.network(
+                    host = "youtube.com",
+                    category = RuntimeSignal.NETWORK_RESOLVE,
+                    latencyMs = elapsedMs,
+                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                    retry = attemptIndex
+                )
                 rememberStrategyOrigin(resolved, AUDIO_HEALTH_MODE, strategy.name, expectedGeneration)
                 store(track, resolved, false, audioQuality, false, expectedGeneration)
                 val confidence = when (strategy) {
@@ -994,11 +1039,30 @@ class PlaybackResolver private constructor(private val context: Context) {
             val failureReason = synchronized(errors) { errors.toList() }
         .drop(errorsBefore)
         .lastOrNull()
+            val failureKind = failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
             strategyHealth.recordFailure(
                 AUDIO_HEALTH_MODE,
                 strategy.name,
                 elapsedMs,
-                failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
+                failureKind
+            )
+            RuntimeHooks.resolver(
+                mode = RuntimeSignal.MODE_AUDIO,
+                strategy = strategy.ordinal,
+                client = -1,
+                attempt = attemptIndex + 1,
+                latencyMs = elapsedMs,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = failureKind.ordinal
+            )
+            RuntimeHooks.network(
+                host = "youtube.com",
+                category = RuntimeSignal.NETWORK_RESOLVE,
+                latencyMs = elapsedMs,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                statusCode = failureKind.httpStatusCode(),
+                retry = attemptIndex,
+                failure = failureKind.ordinal
             )
         }
         return null
@@ -1011,8 +1075,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val policy = playbackPolicyStore.current()
-        for (strategy in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies)) {
+        for ((attemptIndex, strategy) in strategyHealth.order(VIDEO_HEALTH_MODE, policy.videoStrategies).withIndex()) {
             currentCoroutineContext().ensureActive()
+            RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
+            if (attemptIndex > 0) RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
             val startedAt = System.currentTimeMillis()
             val errorsBefore = errors.size
             val resolved = when (strategy) {
@@ -1035,6 +1101,23 @@ class PlaybackResolver private constructor(private val context: Context) {
             val elapsedMs = System.currentTimeMillis() - startedAt
             if (resolved != null) {
                 strategyHealth.recordSuccess(VIDEO_HEALTH_MODE, strategy.name, elapsedMs)
+                RuntimeHooks.resolver(
+                    mode = RuntimeSignal.MODE_VIDEO,
+                    strategy = strategy.ordinal,
+                    client = -1,
+                    attempt = attemptIndex + 1,
+                    latencyMs = elapsedMs,
+                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                    failure = -1,
+                    manifest = resolved.playbackManifest
+                )
+                RuntimeHooks.network(
+                    host = "youtube.com",
+                    category = RuntimeSignal.NETWORK_RESOLVE,
+                    latencyMs = elapsedMs,
+                    outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                    retry = attemptIndex
+                )
                 rememberStrategyOrigin(resolved, VIDEO_HEALTH_MODE, strategy.name, expectedGeneration)
                 store(track, resolved, true, audioQuality, expectedGeneration = expectedGeneration)
                 val confidence = when (strategy) {
@@ -1058,11 +1141,30 @@ class PlaybackResolver private constructor(private val context: Context) {
             val failureReason = synchronized(errors) { errors.toList() }
         .drop(errorsBefore)
         .lastOrNull()
+            val failureKind = failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
             strategyHealth.recordFailure(
                 VIDEO_HEALTH_MODE,
                 strategy.name,
                 elapsedMs,
-                failureReason?.let(::classifyPlaybackFailureReason) ?: PlaybackFailureKind.Unknown
+                failureKind
+            )
+            RuntimeHooks.resolver(
+                mode = RuntimeSignal.MODE_VIDEO,
+                strategy = strategy.ordinal,
+                client = -1,
+                attempt = attemptIndex + 1,
+                latencyMs = elapsedMs,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = failureKind.ordinal
+            )
+            RuntimeHooks.network(
+                host = "youtube.com",
+                category = RuntimeSignal.NETWORK_RESOLVE,
+                latencyMs = elapsedMs,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                statusCode = failureKind.httpStatusCode(),
+                retry = attemptIndex,
+                failure = failureKind.ordinal
             )
         }
         return null
@@ -1333,7 +1435,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
                 source = "YouTube Android Reel · ${selection.reason}",
-                manifest = manifest
+                manifest = manifest,
+                videoSubtitleTracks = videoSubtitleTracks(playerResponse)
             )
         )
     }
@@ -2276,18 +2379,33 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): DirectStream {
         val startedAt = System.nanoTime()
         val mode = if (isVideoMode) "video" else if (preferMp4Audio) "offline" else "audio"
+        val diagnosticMode = if (isVideoMode) RuntimeSignal.MODE_VIDEO else RuntimeSignal.MODE_AUDIO
+        var diagnosticAttempt = 1
         resilienceEngine.recordAttempt(profile.label, mode)
+        RuntimeHooks.hot(RuntimeSignal.HOT_RESOLVER_ATTEMPT)
         return try {
             val firstAttempt = runCatchingPreservingCancellation {
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             val stream = firstAttempt.getOrElse { firstError ->
                 if (!playbackSecurity.rotateIfNeeded(firstError)) throw firstError
+                diagnosticAttempt = 2
+                RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             playbackSecurity.resetFailureState()
             val latency = elapsedMs(startedAt)
             recordClientSuccess(profile, latency)
+            RuntimeHooks.resolver(
+                mode = diagnosticMode,
+                strategy = -1,
+                client = profiles.indexOf(profile),
+                attempt = diagnosticAttempt,
+                latencyMs = latency,
+                outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                failure = -1,
+                manifest = stream.manifest
+            )
             resilienceEngine.recordSuccess(profile.label, mode, latency, stream.source)
             stream
         } catch (error: CancellationException) {
@@ -2295,6 +2413,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         } catch (error: Throwable) {
             currentCoroutineContext().ensureActive()
             val latency = elapsedMs(startedAt)
+            val failureKind = classifyPlaybackFailureReason(error.message.orEmpty())
+            RuntimeHooks.resolver(
+                mode = diagnosticMode,
+                strategy = -1,
+                client = profiles.indexOf(profile),
+                attempt = diagnosticAttempt,
+                latencyMs = latency,
+                outcome = if (failureKind == PlaybackFailureKind.Timeout) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = failureKind.ordinal
+            )
             if (hasValidatedInternet()) {
                 recordClientFailure(profile, latency, error)
                 resilienceEngine.recordFailure(profile.label, mode, latency, error)

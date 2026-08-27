@@ -354,6 +354,7 @@ import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
 import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
+import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
@@ -15719,6 +15720,7 @@ private fun SettingsOverlay(
                                     onClick = onShareDiagnostics
                                 )
                             }
+                            RuntimeHooks.internalPanelEntry(this)
                             item { SettingsSectionLabel(strings.preferences) }
                             item {
                                 SettingsButton(

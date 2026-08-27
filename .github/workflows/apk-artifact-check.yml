@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   apk:
-    name: Signed Release APK
+    name: Signed PR Diagnostics APK
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -76,6 +76,7 @@ jobs:
           {
             echo "VERSION=${VERSION}"
             echo "VERSION_CODE=${VERSION_CODE}"
+            echo "PR_NUMBER=${{ github.event.pull_request.number || github.run_number }}"
             echo "SOURCE_REF=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           } >> "${GITHUB_ENV}"
 
@@ -98,48 +99,52 @@ jobs:
             -alias "${LEVYRA_KEY_ALIAS}" \
             >/dev/null
 
-      - name: Build Release APK
+      - name: Build PR Diagnostics APK
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew --no-daemon --no-configuration-cache clean assembleRelease \
+          ./gradlew --no-daemon --no-configuration-cache clean assemblePrDiagnostics \
             -PlevyraVersionName="${VERSION}" \
             -PlevyraVersionCode="${VERSION_CODE}"
 
-      - name: Verify Release APK
+      - name: Verify PR Diagnostics APK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/prDiagnostics/app-prDiagnostics.apk"
           test -f "${APK}"
           SIZE_BYTES="$(stat -c%s "${APK}")"
           test "${SIZE_BYTES}" -gt 1048576
           BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}")"
           printf '%s\n' "${BADGING}" > artifacts/apk-badging.txt
-          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf '%s\n' "${BADGING}" | grep -F "package: name='com.luc4n3x.levyra.prdiagnostics'"
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}-pr-diagnostics'"
           printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
-          cp "${APK}" "artifacts/LEVYRA-${VERSION}.apk"
-          sha256sum "artifacts/LEVYRA-${VERSION}.apk" > "artifacts/LEVYRA-${VERSION}.apk.sha256"
+          python3 scripts/verify_diagnostics_isolation.py --apk "${APK}" --expect present
+          cp "${APK}" "artifacts/LEVYRA-${VERSION}-PR-${PR_NUMBER}-DIAGNOSTICS.apk"
+          sha256sum "artifacts/LEVYRA-${VERSION}-PR-${PR_NUMBER}-DIAGNOSTICS.apk" > "artifacts/LEVYRA-${VERSION}-PR-${PR_NUMBER}-DIAGNOSTICS.apk.sha256"
           {
-            echo "LEVYRA signed release APK"
+            echo "LEVYRA signed PR diagnostics APK"
             echo "version=${VERSION}"
             echo "versionCode=${VERSION_CODE}"
-            echo "signingProfile=release"
+            echo "pullRequest=${PR_NUMBER}"
+            echo "signingProfile=release-pr-diagnostics"
+            echo "diagnosticsMarker=LEVYRA_PR_DIAGNOSTICS_V1"
             echo "commit=${GITHUB_SHA}"
             echo "branch=${SOURCE_REF}"
             echo "sizeBytes=${SIZE_BYTES}"
             echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } > artifacts/build-info.txt
-          if [ -f app/build/outputs/mapping/release/mapping.txt ]; then
-            cp app/build/outputs/mapping/release/mapping.txt artifacts/mapping.txt
+          if [ -f app/build/outputs/mapping/prDiagnostics/mapping.txt ]; then
+            cp app/build/outputs/mapping/prDiagnostics/mapping.txt artifacts/mapping.txt
           fi
 
-      - name: Upload Signed Release APK
+      - name: Upload Signed PR Diagnostics APK
         uses: actions/upload-artifact@v7
         with:
-          name: levyra-release-${{ env.VERSION }}-run-${{ github.run_number }}
+          name: levyra-pr-${{ env.PR_NUMBER }}-diagnostics-${{ env.VERSION }}-run-${{ github.run_number }}
           path: artifacts
           if-no-files-found: error
 

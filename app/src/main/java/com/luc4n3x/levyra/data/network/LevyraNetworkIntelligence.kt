@@ -9,6 +9,8 @@ import com.luc4n3x.levyra.nexus.network.LevyraRoute
 import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
 import com.luc4n3x.levyra.nexus.network.LevyraRouteFailure
 import com.luc4n3x.levyra.nexus.network.LevyraTransport
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -125,9 +127,16 @@ internal object LevyraNetworkIntelligence {
             protocol: Protocol?
         ) {
             val address = inetSocketAddress.address ?: return
+            val latencyMs = elapsedMs(inetSocketAddress)
             routeEngine.recordSuccess(
                 route = route(call.request().url.host, address),
-                latencyMs = elapsedMs(inetSocketAddress)
+                latencyMs = latencyMs
+            )
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_CONNECT,
+                latencyMs = latencyMs,
+                outcome = RuntimeSignal.OUTCOME_SUCCESS
             )
         }
 
@@ -139,6 +148,7 @@ internal object LevyraNetworkIntelligence {
             ioe: IOException
         ) {
             val address = inetSocketAddress.address ?: return
+            val latencyMs = elapsedMs(inetSocketAddress)
             routeEngine.recordFailure(
                 route = route(call.request().url.host, address),
                 failure = when (ioe) {
@@ -147,7 +157,14 @@ internal object LevyraNetworkIntelligence {
                     is UnknownHostException -> LevyraRouteFailure.CONNECTION
                     else -> LevyraRouteFailure.CONNECTION
                 },
-                latencyMs = elapsedMs(inetSocketAddress)
+                latencyMs = latencyMs
+            )
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_CONNECT,
+                latencyMs = latencyMs,
+                outcome = if (ioe is SocketTimeoutException) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
             )
         }
 

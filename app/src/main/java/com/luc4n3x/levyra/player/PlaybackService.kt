@@ -72,6 +72,8 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import kotlinx.coroutines.CoroutineScope
@@ -407,18 +409,30 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+        RuntimeHooks.attachPlayer(player)
+        RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
+        RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)
         val prefs = LevyraPreferences(this)
         val snapshot = prefs.snapshot()
         currentAudioSettings = snapshot.audioSettings.normalized()
         currentAudioNormalization = snapshot.audioNormalization
         player.skipSilenceEnabled = snapshot.skipSilence
         applyPremiumAudioSettingsInternal(snapshot.audioSettings, snapshot.audioNormalization)
+        RuntimeHooks.dsp(RuntimeSignal.DSP_CREATED)
         (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
         refreshAudioOutputProfile()
 
         activePlayer = player
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                RuntimeHooks.player(
+                    action = RuntimeSignal.PLAYER_TRANSITION,
+                    mode = if (mediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
+                        RuntimeSignal.MODE_VIDEO
+                    } else {
+                        RuntimeSignal.MODE_AUDIO
+                    }
+                )
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT && sleepTimer.consumeEndOfTrackBoundary()) {
                     pausePlaybackForSleepTimer()
                     return
@@ -441,6 +455,15 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                RuntimeHooks.player(
+                    action = RuntimeSignal.PLAYER_STATE,
+                    value = playbackState,
+                    mode = if (player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
+                        RuntimeSignal.MODE_VIDEO
+                    } else {
+                        RuntimeSignal.MODE_AUDIO
+                    }
+                )
                 if (playbackState != Player.STATE_ENDED) return
                 if (sleepTimer.consumeEndOfTrackBoundary()) {
                     pausePlaybackForSleepTimer()
@@ -455,6 +478,15 @@ class PlaybackService : MediaLibraryService() {
                 updatePlaybackProtection(player)
                 discardIncompatiblePlaybackCache(error)
                 val failureKind = classifyPlaybackFailureReason(playbackFailureReasonOf(error))
+                RuntimeHooks.player(
+                    action = RuntimeSignal.PLAYER_ERROR,
+                    mode = if (player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
+                        RuntimeSignal.MODE_VIDEO
+                    } else {
+                        RuntimeSignal.MODE_AUDIO
+                    },
+                    failure = failureKind.ordinal
+                )
                 if (isTerminalPlaybackFailure(failureKind)) {
                     serviceRecoveryExhausted = true
                     markPlaybackExpected(false, force = true)
@@ -848,6 +880,8 @@ class PlaybackService : MediaLibraryService() {
     private fun playSkipTarget(player: ExoPlayer, resolved: com.luc4n3x.levyra.domain.Track) {
         queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
         player.setMediaItem(LevyraMediaItemFactory.build(resolved))
+        RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+        RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
         player.prepare()
         player.play()
         queueEngine.updatePosition(0L)
@@ -1160,6 +1194,8 @@ class PlaybackService : MediaLibraryService() {
             )
             secondary.volume = 0f
             secondary.setMediaItem(LevyraMediaItemFactory.build(resolved))
+            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
             secondary.prepare()
             val prepared = withTimeoutOrNull(TRANSITION_PREPARE_TIMEOUT_MS) {
                 while (secondary.playbackState != Player.STATE_READY) {
@@ -1201,6 +1237,8 @@ class PlaybackService : MediaLibraryService() {
                 LevyraMediaItemFactory.build(resolved),
                 secondary.currentPosition.coerceAtLeast(0L)
             )
+            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
             primary.prepare()
 
             if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return
@@ -1363,6 +1401,11 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(false)
             .build()
+            .also {
+                RuntimeHooks.attachPlayer(it)
+                RuntimeHooks.player(RuntimeSignal.PLAYER_CREATED)
+                RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_CREATE)
+            }
     }
 
     private suspend fun fadePlayers(
@@ -1496,6 +1539,15 @@ class PlaybackService : MediaLibraryService() {
         runCatching { player.clearMediaItems() }.onFailure { Timber.w(it, "Memory guard clear failed") }
         runCatching {
             player.setMediaItem(item, position)
+            RuntimeHooks.player(
+                action = RuntimeSignal.PLAYER_PREPARE,
+                mode = if (item.mediaMetadata.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
+                    RuntimeSignal.MODE_VIDEO
+                } else {
+                    RuntimeSignal.MODE_AUDIO
+                }
+            )
+            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
             player.prepare()
             player.playWhenReady = resumePlayback
         }.onFailure { Timber.w(it, "Memory guard playback restore failed") }
@@ -1522,7 +1574,10 @@ class PlaybackService : MediaLibraryService() {
             .onFailure { Timber.w(it, "Queue crossfade secondary pause failed") }
         runCatching { player.clearMediaItems() }
             .onFailure { Timber.w(it, "Queue crossfade secondary clear failed") }
-        runCatching { player.release() }
+        runCatching {
+            RuntimeHooks.player(RuntimeSignal.PLAYER_RELEASED)
+            player.release()
+        }
             .onFailure { Timber.w(it, "Queue crossfade secondary release failed") }
     }
 
@@ -1552,6 +1607,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        RuntimeHooks.dsp(RuntimeSignal.DSP_RELEASED)
         queueSkipJob?.cancel()
         clearPreparedQueueNextInternal()
         serviceRecoveryJob?.cancel()
@@ -1571,6 +1627,7 @@ class PlaybackService : MediaLibraryService() {
         if (::autoLibrary.isInitialized) autoLibrary.close()
         serviceScope.cancel()
         mediaSession?.run {
+            RuntimeHooks.player(RuntimeSignal.PLAYER_RELEASED)
             player.release()
             release()
         }
@@ -1686,6 +1743,7 @@ class PlaybackService : MediaLibraryService() {
             val cache = runCatching { LevyraMediaCache.get(this@PlaybackService) }.getOrNull() ?: return@launch
             keys.forEach { key ->
                 if (removePlaybackCacheResource(cache, key)) {
+                    RuntimeHooks.cache(RuntimeSignal.CACHE_EVICTION)
                     Timber.w("Discarded unplayable cache entry key=%s", key)
                 }
             }
@@ -1694,6 +1752,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun scheduleServiceRecovery(error: PlaybackException) {
         val plan = serviceRecoveryPlan() ?: return
+        RuntimeHooks.player(RuntimeSignal.PLAYER_RECOVERY)
         serviceRecoveryJob = serviceScope.launch {
             runServiceRecovery(error, plan)
         }
@@ -1933,6 +1992,15 @@ class PlaybackService : MediaLibraryService() {
         (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, mediaItem) }
         acquirePlaybackWakeLock()
         player.setMediaItem(mediaItem, positionMs.coerceAtLeast(0L))
+        RuntimeHooks.player(
+            action = RuntimeSignal.PLAYER_PREPARE,
+            mode = if (mediaItem.mediaMetadata.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
+                RuntimeSignal.MODE_VIDEO
+            } else {
+                RuntimeSignal.MODE_AUDIO
+            }
+        )
+        RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
         player.prepare()
         player.play()
         updatePlaybackProtection(player)

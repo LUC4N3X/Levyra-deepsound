@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="internal_diagnostics_title">Diagnostica interna</string>
+    <string name="internal_diagnostics_subtitle">Recorder runtime limitato, anomalie e preflight</string>
+    <string name="internal_diagnostics_close">Chiudi diagnostica interna</string>
+    <string name="internal_diagnostics_status">Stato recorder</string>
+    <string name="internal_diagnostics_active">Attivo</string>
+    <string name="internal_diagnostics_stopped">Fermo</string>
+    <string name="internal_diagnostics_events">Numero eventi</string>
+    <string name="internal_diagnostics_anomalies">Numero anomalie</string>
+    <string name="internal_diagnostics_current_memory">Memoria corrente</string>
+    <string name="internal_diagnostics_peak_memory">Picco memoria</string>
+    <string name="internal_diagnostics_player_state">Stato player</string>
+    <string name="internal_diagnostics_resolver_state">Stato resolver</string>
+    <string name="internal_diagnostics_preflight_status">Stato preflight</string>
+    <string name="internal_diagnostics_not_run">Non eseguito</string>
+    <string name="internal_diagnostics_run_preflight">Esegui preflight</string>
+    <string name="internal_diagnostics_export">Esporta</string>
+    <string name="internal_diagnostics_reset">Azzera</string>
+    <string name="internal_diagnostics_preflight">Preflight</string>
+    <string name="internal_diagnostics_recent_anomalies">Anomalie recenti</string>
+    <string name="internal_diagnostics_no_anomalies">Nessuna anomalia rilevata</string>
+    <string name="internal_diagnostics_details">Dettagli</string>
+    <string name="internal_diagnostics_occurrences">Occorrenze</string>
+    <string name="internal_diagnostics_window_ms">Finestra (ms)</string>
+    <string name="internal_diagnostics_exported">Diagnostica esportata</string>
+    <string name="internal_diagnostics_export_failed">Esportazione diagnostica non riuscita</string>
+</resources>
