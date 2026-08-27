@@ -41,10 +41,26 @@ fun isPerformanceTaskRequested(): Boolean =
         task.contains("baselineprofile", ignoreCase = true) || task.contains("benchmark", ignoreCase = true)
     }
 
-fun isReleaseTaskRequested(): Boolean =
-    !isPerformanceTaskRequested() && gradle.startParameter.taskNames.any { task ->
-        task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
+fun isPrDiagnosticsTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
+        task.contains("PrDiagnostics", ignoreCase = true)
     }
+
+fun isPrDiagnosticsArtifactTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
+        task.contains("assemblePrDiagnostics", ignoreCase = true) ||
+            task.contains("bundlePrDiagnostics", ignoreCase = true) ||
+            task.contains("packagePrDiagnostics", ignoreCase = true) ||
+            task.contains("installPrDiagnostics", ignoreCase = true)
+    }
+
+fun isReleaseTaskRequested(): Boolean =
+    !isPerformanceTaskRequested() && (
+        isPrDiagnosticsArtifactTaskRequested() ||
+            gradle.startParameter.taskNames.any { task ->
+                task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
+            }
+        )
 
 val isFdroidBuild = providers.gradleProperty("levyraFdroidBuild")
     .map(String::toBoolean)
@@ -63,6 +79,10 @@ val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
 val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword")
 val releaseStoreFile = rootProject.file(releaseStoreFilePath)
 val releaseSigningAvailable = releaseStoreFile.isFile && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
+
+if (isFdroidBuild && isPrDiagnosticsTaskRequested()) {
+    throw GradleException("PR diagnostics and F-Droid builds are mutually exclusive.")
+}
 
 if (isReleaseTaskRequested() && !isFdroidBuild && youtubeInnertubeApiKey.isBlank()) {
     throw GradleException("Missing YOUTUBE_INNERTUBE_API_KEY. Set it as a GitHub Actions secret or in local.properties as youtubeInnertubeApiKey.")
@@ -140,6 +160,13 @@ android {
     sourceSets.getByName("main").kotlin.directories.add(
         if (isFdroidBuild) "src/fdroid/java" else "src/upstream/java"
     )
+    sourceSets.getByName("debug").kotlin.directories.add("src/noDiagnostics/java")
+    sourceSets.getByName("release").kotlin.directories.add("src/noDiagnostics/java")
+    sourceSets.configureEach {
+        if (name == "benchmark" || name == "nonMinifiedRelease") {
+            kotlin.directories.add("src/noDiagnostics/java")
+        }
+    }
     if (isFdroidBuild) {
         sourceSets.getByName("debug").manifest.srcFile("src/fdroid/AndroidManifest.xml")
         sourceSets.getByName("release").manifest.srcFile("src/fdroid/AndroidManifest.xml")
@@ -175,6 +202,23 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        create("prDiagnostics") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prdiagnostics"
+            versionNameSuffix = "-pr-diagnostics"
+            isDebuggable = false
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "INTERNAL_DIAGNOSTICS", "true")
+            buildConfigField("String", "INTERNAL_DIAGNOSTICS_MARKER", "\"LEVYRA_PR_DIAGNOSTICS_V1\"")
+            buildConfigField(
+                "String",
+                "INTERNAL_DIAGNOSTICS_COMMIT",
+                buildConfigString(System.getenv("GITHUB_SHA").orEmpty().take(40))
+            )
+            if (releaseSigningAvailable) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -282,6 +326,7 @@ dependencies {
     implementation(libs.timber)
     debugImplementation(libs.chucker)
     releaseImplementation(libs.chucker.no.op)
+    add("prDiagnosticsImplementation", libs.chucker.no.op)
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)

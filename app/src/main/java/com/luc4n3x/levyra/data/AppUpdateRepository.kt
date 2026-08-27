@@ -9,10 +9,20 @@ import com.luc4n3x.levyra.nexus.update.LevyraUpdateArtifact
 import com.luc4n3x.levyra.nexus.update.LevyraUpdateSelector
 import com.luc4n3x.levyra.nexus.update.LevyraVersionComparator
 import com.luc4n3x.levyra.update.AppUpdateContract
+import com.luc4n3x.levyra.update.isPublicUpdateAddress
+import java.io.IOException
+import java.net.InetAddress
+import java.net.UnknownHostException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Dns
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
+import okhttp3.ResponseBody
 import java.time.Instant
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 
 internal data class InstallableAppUpdate(
@@ -22,7 +32,28 @@ internal data class InstallableAppUpdate(
 )
 
 class AppUpdateRepository(context: Context) {
-    private val client = LevyraHttpClientFactory.general(context.applicationContext)
+    private val baseClient = LevyraHttpClientFactory.general(context.applicationContext)
+    private val client = baseClient.newBuilder()
+        .dns(object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                if (!hostname.equals(UPDATE_METADATA_HOST, ignoreCase = true)) {
+                    throw UnknownHostException("Update metadata host not allowed")
+                }
+                val addresses = baseClient.dns.lookup(hostname)
+                if (addresses.isEmpty() || addresses.any { !isPublicUpdateAddress(it) }) {
+                    throw UnknownHostException("Update metadata destination is not public")
+                }
+                return addresses
+            }
+        })
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .retryOnConnectionFailure(false)
+        .connectTimeout(UPDATE_METADATA_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(UPDATE_METADATA_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(UPDATE_METADATA_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .callTimeout(UPDATE_METADATA_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
 
     suspend fun latest(): AppUpdateInfo = withContext(Dispatchers.IO) {
         parseLatestRelease(fetchLatestRelease()).info
@@ -37,14 +68,21 @@ class AppUpdateRepository(context: Context) {
         update
     }
 
+    internal fun validateLatestReleaseMetadata(): Boolean {
+        val root = fetchLatestRelease()
+        return root.optString("tag_name").isNotBlank() || root.optString("name").isNotBlank()
+    }
+
     private fun fetchLatestRelease(): JSONObject {
+        val endpoint = validateLevyraReleaseMetadataUrl(BuildConfig.UPDATE_LATEST_URL)
+            ?: throw IOException("Invalid update metadata endpoint")
         val request = Request.Builder()
-            .url(BuildConfig.UPDATE_LATEST_URL)
+            .url(endpoint)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "LEVYRA/${BuildConfig.VERSION_NAME}")
             .build()
         client.newCall(request).execute().use { response ->
-            val body = response.body.string()
+            if (response.isRedirect) throw IOException("Update metadata redirect rejected")
             if (!response.isSuccessful) {
                 val message = when (response.code) {
                     404 -> "Nessuna release pubblicata per LEVYRA"
@@ -53,6 +91,10 @@ class AppUpdateRepository(context: Context) {
                 }
                 throw IllegalStateException(message)
             }
+            if (!updateMetadataContentTypeAccepted(response.header("Content-Type"))) {
+                throw IOException("Unexpected update metadata content type")
+            }
+            val body = readUpdateMetadataBody(response.body)
             return JSONObject(body)
         }
     }
@@ -144,6 +186,36 @@ class AppUpdateRepository(context: Context) {
             abi = LevyraUpdateSelector.inferAbi(name)
         )
     }
+}
+
+internal const val MAX_UPDATE_METADATA_BYTES = 1_048_576L
+internal const val UPDATE_METADATA_CONNECT_TIMEOUT_SECONDS = 5L
+internal const val UPDATE_METADATA_READ_TIMEOUT_SECONDS = 10L
+internal const val UPDATE_METADATA_CALL_TIMEOUT_SECONDS = 12L
+private const val UPDATE_METADATA_HOST = "api.github.com"
+private const val UPDATE_METADATA_PATH = "/repos/LUC4N3X/Levyra-deepsound/releases/latest"
+
+internal fun validateLevyraReleaseMetadataUrl(value: String): HttpUrl? {
+    val url = value.trim().toHttpUrlOrNull() ?: return null
+    if (!url.isHttps || url.port != 443) return null
+    if (url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null) return null
+    if (!url.host.equals(UPDATE_METADATA_HOST, ignoreCase = true)) return null
+    if (url.encodedPath != UPDATE_METADATA_PATH || url.query != null) return null
+    return url
+}
+
+internal fun updateMetadataContentTypeAccepted(value: String?): Boolean {
+    val mime = value?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT).orEmpty()
+    return mime == "application/json" || mime == "application/vnd.github+json"
+}
+
+internal fun readUpdateMetadataBody(body: ResponseBody): String {
+    val declaredLength = body.contentLength()
+    if (declaredLength > MAX_UPDATE_METADATA_BYTES) throw IOException("Update metadata is too large")
+    val source = body.source()
+    source.request(MAX_UPDATE_METADATA_BYTES + 1L)
+    if (source.buffer.size > MAX_UPDATE_METADATA_BYTES) throw IOException("Update metadata exceeded size limit")
+    return source.buffer.readUtf8()
 }
 
 internal fun parseUpdatePublishedAt(raw: String): Long {
