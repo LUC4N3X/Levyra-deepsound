@@ -1,0 +1,174 @@
+package com.luc4n3x.levyra.runtime
+
+import android.content.Context
+import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.PlaybackAudioStrategy
+import com.luc4n3x.levyra.data.PlaybackVideoStrategy
+import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.LevyraCanvasSource
+import java.io.ByteArrayOutputStream
+import java.net.URI
+import kotlinx.serialization.Serializable
+import org.json.JSONArray
+import org.json.JSONObject
+
+@Serializable
+internal enum class PreflightStatus {
+    PASS,
+    WARNING,
+    FAIL
+}
+
+@Serializable
+internal data class PreflightResult(
+    val checkId: String,
+    val component: String,
+    val status: PreflightStatus,
+    val message: String,
+    val details: String? = null
+)
+
+@Serializable
+internal data class PreflightReport(
+    val schemaVersion: Int = 1,
+    val generatedAtMs: Long,
+    val status: PreflightStatus,
+    val results: List<PreflightResult>
+) {
+    companion object {
+        fun from(generatedAtMs: Long, results: List<PreflightResult>): PreflightReport {
+            val status = when {
+                results.any { it.status == PreflightStatus.FAIL } -> PreflightStatus.FAIL
+                results.any { it.status == PreflightStatus.WARNING } -> PreflightStatus.WARNING
+                else -> PreflightStatus.PASS
+            }
+            return PreflightReport(generatedAtMs = generatedAtMs, status = status, results = results)
+        }
+    }
+}
+
+internal object RuntimePreflight {
+    private const val MAX_ASSET_BYTES = 1_048_576
+
+    fun run(context: Context): PreflightReport = PreflightReport.from(
+        generatedAtMs = System.currentTimeMillis(),
+        results = listOf(
+            diagnosticsVariantCheck(),
+            extractorRegistryCheck(),
+            runtimeConfigCheck(context),
+            providerAllowlistCheck(),
+            canvasConfigurationCheck(),
+            editorialCatalogCheck(context)
+        )
+    )
+
+    private fun diagnosticsVariantCheck(): PreflightResult = if (
+        BuildConfig.INTERNAL_DIAGNOSTICS && BuildConfig.INTERNAL_DIAGNOSTICS_MARKER == DIAGNOSTICS_MARKER
+    ) {
+        pass("build.variant", "build", "PR diagnostics variant marker is valid")
+    } else {
+        fail("build.variant", "build", "PR diagnostics variant marker is invalid")
+    }
+
+    private fun extractorRegistryCheck(): PreflightResult {
+        val audio = PlaybackAudioStrategy.entries.toSet()
+        val video = PlaybackVideoStrategy.entries.toSet()
+        val valid = extractorRegistryComplete(audio.map { it.name }.toSet(), video.map { it.name }.toSet())
+        return if (valid) {
+            pass("resolver.registry", "resolver", "Resolver strategy registry is complete", "audio=${audio.size},video=${video.size}")
+        } else {
+            fail("resolver.registry", "resolver", "Resolver strategy registry is incomplete")
+        }
+    }
+
+    private fun runtimeConfigCheck(context: Context): PreflightResult {
+        val valid = readJsonAsset(context, "player_configs.json")
+        return when {
+            !valid -> fail("runtime.player-config", "extractor", "Bundled player configuration is invalid")
+            BuildConfig.YOUTUBE_INNERTUBE_API_KEY.isBlank() -> warning("runtime.player-config", "extractor", "Runtime API identifier is unavailable")
+            else -> pass("runtime.player-config", "extractor", "Bundled player configuration is valid")
+        }
+    }
+
+    private fun providerAllowlistCheck(): PreflightResult {
+        val valid = providerEndpointAllowed(BuildConfig.UPDATE_LATEST_URL)
+        return if (valid) {
+            pass("provider.allowlist", "network", "Provider endpoint allowlist is valid")
+        } else {
+            fail("provider.allowlist", "network", "Provider endpoint allowlist is invalid")
+        }
+    }
+
+    private fun canvasConfigurationCheck(): PreflightResult {
+        val quality = LevyraCanvasQuality.entries.map { it.name }.toSet()
+        val source = LevyraCanvasSource.entries.map { it.name }.toSet()
+        val valid = canvasConfigurationComplete(quality, source)
+        return if (valid) {
+            pass("canvas.configuration", "canvas", "Canvas configuration is internally consistent", "quality=${quality.size},source=${source.size}")
+        } else {
+            fail("canvas.configuration", "canvas", "Canvas configuration contains duplicate values")
+        }
+    }
+
+    private fun editorialCatalogCheck(context: Context): PreflightResult {
+        val catalogValid = readJsonAsset(context, "editorial/spotify-bootstrap.json")
+        val announcementsValid = readJsonAsset(context, "config/announcements.json")
+        return if (catalogValid && announcementsValid) {
+            pass("catalog.assets", "catalog", "Bundled catalog assets are valid JSON")
+        } else {
+            fail("catalog.assets", "catalog", "A bundled catalog asset is invalid")
+        }
+    }
+
+    private fun readJsonAsset(context: Context, path: String): Boolean = runCatching {
+        val output = ByteArrayOutputStream()
+        context.assets.open(path).use { input ->
+            val buffer = ByteArray(8_192)
+            var total = 0
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                total += read
+                check(total <= MAX_ASSET_BYTES)
+                output.write(buffer, 0, read)
+            }
+        }
+        jsonDocumentValid(output.toString(Charsets.UTF_8.name()))
+    }.getOrDefault(false)
+
+    private fun pass(id: String, component: String, message: String, details: String? = null) =
+        PreflightResult(id, component, PreflightStatus.PASS, message, details)
+
+    private fun warning(id: String, component: String, message: String, details: String? = null) =
+        PreflightResult(id, component, PreflightStatus.WARNING, message, details)
+
+    private fun fail(id: String, component: String, message: String, details: String? = null) =
+        PreflightResult(id, component, PreflightStatus.FAIL, message, details)
+}
+
+internal fun extractorRegistryComplete(audio: Set<String>, video: Set<String>): Boolean =
+    audio.containsAll(setOf("REEL_MUXED", "REEL_AUDIO", "PERSISTED", "DIRECT", "SEARCH")) &&
+        video.containsAll(setOf("PERSISTED", "STANDARD", "REEL"))
+
+internal fun providerEndpointAllowed(value: String): Boolean = runCatching {
+    val uri = URI(value)
+    uri.scheme.equals("https", ignoreCase = true) &&
+        uri.host.equals("api.github.com", ignoreCase = true) &&
+        uri.userInfo == null &&
+        uri.port == -1 &&
+        uri.rawPath.orEmpty().startsWith("/repos/LUC4N3X/Levyra-deepsound/")
+}.getOrDefault(false)
+
+internal fun canvasConfigurationComplete(quality: Set<String>, source: Set<String>): Boolean =
+    quality.containsAll(setOf("Auto", "DataSaver", "High")) &&
+        source.containsAll(setOf("Auto", "Community", "Apple", "Tidal"))
+
+internal fun jsonDocumentValid(value: String): Boolean = runCatching {
+    val normalized = value.trim()
+    when {
+        normalized.startsWith("{") -> JSONObject(normalized)
+        normalized.startsWith("[") -> JSONArray(normalized)
+        else -> return@runCatching false
+    }
+    true
+}.getOrDefault(false)
