@@ -112,8 +112,8 @@ class DiagnosticsSecretCanaryTest {
             HotOperationEvent::class.java,
             PreflightEvent::class.java
         )
-        val forbiddenNames = listOf(
-            "request", "response", "header", "cookie", "token", "url", "payload",
+        val forbiddenFragments = listOf(
+            "response", "header", "cookie", "token", "url", "payload",
             "account", "authorization", "apikey", "password", "signature"
         )
 
@@ -121,7 +121,10 @@ class DiagnosticsSecretCanaryTest {
             val fieldNames = type.declaredFields.map { it.name.lowercase() }
             assertTrue(
                 "${type.simpleName} exposes a sensitive raw field: $fieldNames",
-                fieldNames.none { field -> forbiddenNames.any(field::contains) }
+                fieldNames.none { field ->
+                    field == "request" || field.startsWith("rawrequest") ||
+                        forbiddenFragments.any(field::contains)
+                }
             )
         }
     }

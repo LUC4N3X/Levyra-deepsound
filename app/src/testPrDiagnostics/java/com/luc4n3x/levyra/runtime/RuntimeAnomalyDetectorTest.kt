@@ -56,8 +56,8 @@ class RuntimeAnomalyDetectorTest {
         repeat(40) { index ->
             harness.record(
                 HotOperationEvent(
-                    timestampMs = index * 1_000L,
-                    uptimeMs = index * 1_000L,
+                    timestampMs = index * 500L,
+                    uptimeMs = index * 500L,
                     operation = DiagnosticOperation.PLAYER_PREPARE
                 )
             )
