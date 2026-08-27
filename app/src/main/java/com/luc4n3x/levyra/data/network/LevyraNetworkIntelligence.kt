@@ -9,6 +9,8 @@ import com.luc4n3x.levyra.nexus.network.LevyraRoute
 import com.luc4n3x.levyra.nexus.network.LevyraRouteEngine
 import com.luc4n3x.levyra.nexus.network.LevyraRouteFailure
 import com.luc4n3x.levyra.nexus.network.LevyraTransport
+import com.luc4n3x.levyra.runtime.RuntimeHooks
+import com.luc4n3x.levyra.runtime.RuntimeSignal
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -19,12 +21,14 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.SSLException
 import okhttp3.Call
 import okhttp3.Dns
 import okhttp3.EventListener
 import okhttp3.Protocol
+import okhttp3.Response
 
 internal object LevyraNetworkIntelligence {
     private val routeEngine = LevyraRouteEngine()
@@ -113,8 +117,16 @@ internal object LevyraNetworkIntelligence {
 
     private class AdaptiveEventListener : EventListener() {
         private val connectStartedAt = ConcurrentHashMap<String, Long>()
+        private val connectAttempts = AtomicInteger(0)
+        private val responseCount = AtomicInteger(0)
+        @Volatile private var callStartedAtNanos = 0L
+
+        override fun callStart(call: Call) {
+            callStartedAtNanos = System.nanoTime()
+        }
 
         override fun connectStart(call: Call, inetSocketAddress: InetSocketAddress, proxy: Proxy) {
+            connectAttempts.incrementAndGet()
             connectStartedAt[key(inetSocketAddress)] = System.nanoTime()
         }
 
@@ -125,9 +137,17 @@ internal object LevyraNetworkIntelligence {
             protocol: Protocol?
         ) {
             val address = inetSocketAddress.address ?: return
+            val latencyMs = elapsedMs(inetSocketAddress)
             routeEngine.recordSuccess(
                 route = route(call.request().url.host, address),
-                latencyMs = elapsedMs(inetSocketAddress)
+                latencyMs = latencyMs
+            )
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_CONNECT,
+                latencyMs = latencyMs,
+                outcome = RuntimeSignal.OUTCOME_SUCCESS,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0)
             )
         }
 
@@ -139,6 +159,7 @@ internal object LevyraNetworkIntelligence {
             ioe: IOException
         ) {
             val address = inetSocketAddress.address ?: return
+            val latencyMs = elapsedMs(inetSocketAddress)
             routeEngine.recordFailure(
                 route = route(call.request().url.host, address),
                 failure = when (ioe) {
@@ -147,7 +168,32 @@ internal object LevyraNetworkIntelligence {
                     is UnknownHostException -> LevyraRouteFailure.CONNECTION
                     else -> LevyraRouteFailure.CONNECTION
                 },
-                latencyMs = elapsedMs(inetSocketAddress)
+                latencyMs = latencyMs
+            )
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_CONNECT,
+                latencyMs = latencyMs,
+                outcome = if (ioe is SocketTimeoutException) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0),
+                failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
+            )
+        }
+
+        override fun responseHeadersEnd(call: Call, response: Response) {
+            val count = responseCount.incrementAndGet()
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_HTTP,
+                latencyMs = callElapsedMs(),
+                outcome = if (response.isSuccessful || response.isRedirect) {
+                    RuntimeSignal.OUTCOME_SUCCESS
+                } else {
+                    RuntimeSignal.OUTCOME_FAILURE
+                },
+                statusCode = response.code,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0),
+                redirects = (count - 1).coerceAtLeast(0)
             )
         }
 
@@ -156,11 +202,26 @@ internal object LevyraNetworkIntelligence {
         }
 
         override fun callFailed(call: Call, ioe: IOException) {
+            RuntimeHooks.network(
+                host = call.request().url.host,
+                category = RuntimeSignal.NETWORK_HTTP,
+                latencyMs = callElapsedMs(),
+                outcome = if (ioe is SocketTimeoutException) RuntimeSignal.OUTCOME_TIMEOUT else RuntimeSignal.OUTCOME_FAILURE,
+                retry = (connectAttempts.get() - 1).coerceAtLeast(0),
+                redirects = (responseCount.get() - 1).coerceAtLeast(0),
+                failure = if (ioe is SocketTimeoutException) RuntimeSignal.FAILURE_TIMEOUT else RuntimeSignal.FAILURE_NETWORK
+            )
             connectStartedAt.clear()
         }
 
         private fun elapsedMs(address: InetSocketAddress): Long {
             val startedAt = connectStartedAt.remove(key(address)) ?: return 1L
+            return ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
+        }
+
+        private fun callElapsedMs(): Long {
+            val startedAt = callStartedAtNanos
+            if (startedAt <= 0L) return 1L
             return ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
         }
 
