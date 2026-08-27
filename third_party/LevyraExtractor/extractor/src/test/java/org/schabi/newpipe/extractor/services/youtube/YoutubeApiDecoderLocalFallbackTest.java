@@ -41,7 +41,7 @@ class YoutubeApiDecoderLocalFallbackTest {
     }
 
     @Test
-    void partialLocalBatchCachesValidValuesBeforeRemoteFallback() {
+    void partialLocalBatchCachesValidValuesBeforeRemoteFallback() throws Exception {
         YoutubeApiDecoder.setLocalDecoder(new StubDecoder(1));
 
         assertThrows(ParsingException.class, () -> YoutubeApiDecoder.decodeBatch(
