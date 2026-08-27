@@ -44,11 +44,15 @@ public final class YoutubeJavaScriptPlayerManager {
     private static final String USER_AGENT = "PipePipe/4.9.0";
     private static final long PLAYER_METADATA_TTL_MILLIS = 24L * 60L * 60L * 1000L;
     private static final long LOCAL_PLAYER_METADATA_TTL_MILLIS = 6L * 60L * 60L * 1000L;
+    private static final long STALE_PLAYER_METADATA_GRACE_MILLIS = 30L * 60L * 1000L;
+    private static final long REFRESH_FAILURE_BACKOFF_MILLIS = 10L * 1000L;
 
     private static final Object PLAYER_METADATA_LOCK = new Object();
 
     @Nullable
     private static volatile PlayerMetadata playerMetadata;
+
+    private static long nextRefreshAttemptAtMillis;
 
     private YoutubeJavaScriptPlayerManager() {
     }
@@ -66,7 +70,8 @@ public final class YoutubeJavaScriptPlayerManager {
      * </p>
      *
      * <p>
-     * The metadata is reused for up to 24 hours before being refreshed from the API.
+     * The metadata is reused until it expires, and the last known good value is still served for a
+     * short grace period when a refresh fails.
      * </p>
      *
      * @param videoId the video ID used to get the JavaScript base player file (an empty one can be
@@ -157,7 +162,10 @@ public final class YoutubeJavaScriptPlayerManager {
     }
 
     static void clearPlayerMetadataCache() {
-        playerMetadata = null;
+        synchronized (PLAYER_METADATA_LOCK) {
+            playerMetadata = null;
+            nextRefreshAttemptAtMillis = 0L;
+        }
     }
 
     public static void clearThrottlingParametersCache() {
@@ -222,6 +230,12 @@ public final class YoutubeJavaScriptPlayerManager {
                 return currentMetadata;
             }
 
+            final long now = System.currentTimeMillis();
+            if (now < nextRefreshAttemptAtMillis && currentMetadata != null
+                    && currentMetadata.isUsableWhileStale(now)) {
+                return currentMetadata;
+            }
+
             ParsingException localFailure = null;
             final YoutubeJavaScriptDecoder decoder = YoutubeApiDecoder.getLocalDecoder();
             if (decoder != null) {
@@ -231,6 +245,7 @@ public final class YoutubeJavaScriptPlayerManager {
                             data.getPlayerId(), data.getSignatureTimestamp(),
                             System.currentTimeMillis() + LOCAL_PLAYER_METADATA_TTL_MILLIS);
                     playerMetadata = localMetadata;
+                    nextRefreshAttemptAtMillis = 0L;
                     return localMetadata;
                 } catch (final Exception error) {
                     localFailure = error instanceof ParsingException
@@ -242,8 +257,15 @@ public final class YoutubeJavaScriptPlayerManager {
             try {
                 final PlayerMetadata remoteMetadata = fetchLatestPlayerMetadata();
                 playerMetadata = remoteMetadata;
+                nextRefreshAttemptAtMillis = 0L;
                 return remoteMetadata;
             } catch (final ParsingException remoteFailure) {
+                nextRefreshAttemptAtMillis =
+                        System.currentTimeMillis() + REFRESH_FAILURE_BACKOFF_MILLIS;
+                if (currentMetadata != null
+                        && currentMetadata.isUsableWhileStale(System.currentTimeMillis())) {
+                    return currentMetadata;
+                }
                 if (localFailure != null) {
                     remoteFailure.addSuppressed(localFailure);
                 }
@@ -299,6 +321,10 @@ public final class YoutubeJavaScriptPlayerManager {
 
         private boolean isExpired() {
             return System.currentTimeMillis() >= expiresAt;
+        }
+
+        private boolean isUsableWhileStale(final long nowMillis) {
+            return nowMillis < expiresAt + STALE_PLAYER_METADATA_GRACE_MILLIS;
         }
     }
 }

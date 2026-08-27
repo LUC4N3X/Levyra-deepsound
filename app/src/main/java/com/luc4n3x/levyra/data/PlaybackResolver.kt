@@ -42,6 +42,7 @@ import org.schabi.newpipe.extractor.stream.AudioTrackType
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerManager
+import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor
 import timber.log.Timber
 import okhttp3.Call
 import okhttp3.Callback
@@ -374,7 +375,15 @@ class PlaybackResolver private constructor(private val context: Context) {
     init {
         restoreCache()
         restoreClientHealth()
+        applyExtractorClientPolicy()
         refreshPlaybackPolicyInBackground(force = true, reason = "startup")
+    }
+
+    private fun applyExtractorClientPolicy() {
+        val overrides = playbackPolicyStore.current().clientOverrides
+        val androidVrEnabled = overrides["ANDROID_VR"]?.enabled ?: true
+        YoutubeStreamExtractor.setAndroidVrPlayerClientEnabled(androidVrEnabled)
+        Timber.i("Playback compatibility clients androidVrEnabled=%s", androidVrEnabled)
     }
 
     fun setAudioQuality(value: String) {
@@ -389,6 +398,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             }.onFailure { error ->
                 Timber.w(error, "Playback compatibility policy refresh failed reason=%s", reason)
             }.getOrDefault(false)
+            applyExtractorClientPolicy()
             if (changed) clearResolvedStreamCaches()
         }
     }

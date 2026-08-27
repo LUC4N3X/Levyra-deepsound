@@ -16,16 +16,17 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Decoder for YouTube signature and throttling parameters using the PipePipe API.
+ * Decoder for YouTube signature and throttling parameters.
  *
  * <p>
- * This class replaces the local JavaScript-based decoding with API calls to
- * https://api.pipepipe.dev/decoder/decode
+ * A registered local JavaScript decoder is always used first. Requests fall back to
+ * https://api.pipepipe.dev/decoder/decode only when no local decoder is available or the local
+ * decoder fails to produce every requested value.
  * </p>
  */
 public final class YoutubeApiDecoder {
@@ -33,8 +34,11 @@ public final class YoutubeApiDecoder {
     private static final String API_BASE_URL = "https://api.pipepipe.dev/decoder/decode";
     private static final String USER_AGENT = "PipePipe/4.9.0";
 
+    private static final int DECODE_CACHE_MAX_ENTRIES = 512;
+
     @Nonnull
-    private static final Map<String, String> DECODE_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, String> DECODE_CACHE =
+            Collections.synchronizedMap(new BoundedDecodeCache());
 
     @Nullable
     private static volatile YoutubeJavaScriptDecoder localDecoder;
@@ -188,7 +192,12 @@ public final class YoutubeApiDecoder {
         final YoutubeJavaScriptDecoder decoder = localDecoder;
         if (decoder != null) {
             try {
-                return decoder.decodeBatch(playerId, signatureParams, nParams);
+                final BatchDecodeResult local = decoder.decodeBatch(
+                        playerId, signatureParams, nParams);
+                requireComplete(local.getSignatures(), signatureParams, "signature");
+                requireComplete(local.getNParameters(), nParams, "n parameter");
+                cacheBatchResult(playerId, local);
+                return local;
             } catch (final Exception error) {
                 localFailure = error instanceof ParsingException
                         ? (ParsingException) error
@@ -203,6 +212,31 @@ public final class YoutubeApiDecoder {
                 remoteFailure.addSuppressed(localFailure);
             }
             throw remoteFailure;
+        }
+    }
+
+    private static void requireComplete(@Nonnull final Map<String, String> decoded,
+                                        @Nullable final List<String> requested,
+                                        @Nonnull final String label) throws ParsingException {
+        if (requested == null) {
+            return;
+        }
+        for (final String value : requested) {
+            final String result = decoded.get(value);
+            if (result == null || result.isEmpty()) {
+                throw new ParsingException(
+                        "Local decoder returned no " + label + " for: " + value);
+            }
+        }
+    }
+
+    private static void cacheBatchResult(@Nonnull final String playerId,
+                                         @Nonnull final BatchDecodeResult result) {
+        for (final Map.Entry<String, String> entry : result.getSignatures().entrySet()) {
+            DECODE_CACHE.put(playerId + ":sig:" + entry.getKey(), entry.getValue());
+        }
+        for (final Map.Entry<String, String> entry : result.getNParameters().entrySet()) {
+            DECODE_CACHE.put(playerId + ":n:" + entry.getKey(), entry.getValue());
         }
     }
 
@@ -330,6 +364,19 @@ public final class YoutubeApiDecoder {
             throw e instanceof ParsingException
                     ? (ParsingException) e
                     : new ParsingException("Unexpected error during batch decoding", e);
+        }
+    }
+
+    private static final class BoundedDecodeCache extends LinkedHashMap<String, String> {
+        private static final long serialVersionUID = 1L;
+
+        private BoundedDecodeCache() {
+            super(64, 0.75f, true);
+        }
+
+        @Override
+        protected boolean removeEldestEntry(final Map.Entry<String, String> eldest) {
+            return size() > DECODE_CACHE_MAX_ENTRIES;
         }
     }
 

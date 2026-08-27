@@ -31,7 +31,10 @@ class PlaybackCompatibilityPolicyTest {
             policy.videoStrategies
         )
         assertEquals("21.03.36", policy.androidReelClientVersion)
-        assertTrue(policy.clientOverrides.isEmpty())
+        assertEquals(
+            mapOf("ANDROID_VR" to PlaybackClientOverride(enabled = false)),
+            policy.clientOverrides
+        )
     }
 
     @Test
