@@ -33,9 +33,6 @@ def scan_apk(path: pathlib.Path) -> dict[str, list[str]]:
                 if marker in payload:
                     matches[marker.decode()].append(name)
 
-        # Resource optimization can rename raw resource entries in release-like APKs.
-        # Search the compiled resource table and packaged res/ payloads instead of
-        # requiring the original source-set filename to survive unchanged.
         resource_candidates = [
             name
             for name in names
