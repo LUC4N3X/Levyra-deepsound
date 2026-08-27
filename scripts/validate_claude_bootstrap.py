@@ -198,8 +198,8 @@ def main() -> int:
         return 1
 
     print(
-        "Claude bootstrap validation passed: canonical .agents/claude config, generated native projection, "
-        "shared skill projection, direct canonical hooks, evidence gates, jCodeMunch, and permission safety verified."
+        "Claude bootstrap validation passed: canonical .agents/claude config, native projection contract, "
+        "shared skill projection contract, direct canonical hooks, evidence gates, jCodeMunch, and permission safety verified."
     )
     return 0
 
