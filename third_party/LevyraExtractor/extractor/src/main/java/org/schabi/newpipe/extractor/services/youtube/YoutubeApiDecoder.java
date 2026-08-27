@@ -21,12 +21,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Decoder for YouTube signature and throttling parameters.
+ * Decoder for YouTube signature and throttling parameters using the PipePipe API.
  *
  * <p>
- * A registered local JavaScript decoder is always used first. Requests fall back to
- * https://api.pipepipe.dev/decoder/decode only when no local decoder is available or the local
- * decoder fails to produce every requested value.
+ * This class replaces the local JavaScript-based decoding with API calls to
+ * https://api.pipepipe.dev/decoder/decode
  * </p>
  */
 public final class YoutubeApiDecoder {
@@ -194,9 +193,9 @@ public final class YoutubeApiDecoder {
             try {
                 final BatchDecodeResult local = decoder.decodeBatch(
                         playerId, signatureParams, nParams);
+                cacheBatchResult(playerId, local, signatureParams, nParams);
                 requireComplete(local.getSignatures(), signatureParams, "signature");
                 requireComplete(local.getNParameters(), nParams, "n parameter");
-                cacheBatchResult(playerId, local);
                 return local;
             } catch (final Exception error) {
                 localFailure = error instanceof ParsingException
@@ -231,12 +230,25 @@ public final class YoutubeApiDecoder {
     }
 
     private static void cacheBatchResult(@Nonnull final String playerId,
-                                         @Nonnull final BatchDecodeResult result) {
-        for (final Map.Entry<String, String> entry : result.getSignatures().entrySet()) {
-            DECODE_CACHE.put(playerId + ":sig:" + entry.getKey(), entry.getValue());
+                                         @Nonnull final BatchDecodeResult result,
+                                         @Nullable final List<String> requestedSignatures,
+                                         @Nullable final List<String> requestedNParameters) {
+        cacheRequestedValues(playerId, "sig", result.getSignatures(), requestedSignatures);
+        cacheRequestedValues(playerId, "n", result.getNParameters(), requestedNParameters);
+    }
+
+    private static void cacheRequestedValues(@Nonnull final String playerId,
+                                             @Nonnull final String type,
+                                             @Nonnull final Map<String, String> decoded,
+                                             @Nullable final List<String> requested) {
+        if (requested == null) {
+            return;
         }
-        for (final Map.Entry<String, String> entry : result.getNParameters().entrySet()) {
-            DECODE_CACHE.put(playerId + ":n:" + entry.getKey(), entry.getValue());
+        for (final String value : requested) {
+            final String result = decoded.get(value);
+            if (result != null && !result.isEmpty()) {
+                DECODE_CACHE.put(playerId + ':' + type + ':' + value, result);
+            }
         }
     }
 

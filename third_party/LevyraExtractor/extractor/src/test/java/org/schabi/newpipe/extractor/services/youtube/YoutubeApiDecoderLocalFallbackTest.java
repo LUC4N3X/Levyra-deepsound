@@ -41,11 +41,14 @@ class YoutubeApiDecoderLocalFallbackTest {
     }
 
     @Test
-    void partialLocalBatchDoesNotSilentlyReturnUndecodedValues() {
+    void partialLocalBatchCachesValidValuesBeforeRemoteFallback() {
         YoutubeApiDecoder.setLocalDecoder(new StubDecoder(1));
 
         assertThrows(ParsingException.class, () -> YoutubeApiDecoder.decodeBatch(
                 "player", Arrays.asList("s1", "s2"), null));
+
+        assertEquals(1, YoutubeApiDecoder.getCacheSize());
+        assertEquals("decoded-s1", YoutubeApiDecoder.decodeSignature("player", "s1"));
     }
 
     @Test

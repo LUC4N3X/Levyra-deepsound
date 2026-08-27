@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -59,6 +60,7 @@ public class YoutubeMixPlaylistExtractor extends PlaylistExtractor {
 
     private static final String CHANNEL_MIX_ID_PREFIX = "RDCM";
     private static final String PLAYLIST_PANEL_VIDEO_RENDERER = "playlistPanelVideoRenderer";
+    private static final Pattern CHANNEL_ID_PATTERN = Pattern.compile("^UC[A-Za-z0-9_-]{22}$");
 
     private JsonObject initialData;
     private JsonObject playlistData;
@@ -136,7 +138,7 @@ public class YoutubeMixPlaylistExtractor extends PlaylistExtractor {
         final String mixPlaylistId = playlistData.getString("playlistId", EMPTY_STRING);
         if (mixPlaylistId.startsWith(CHANNEL_MIX_ID_PREFIX)) {
             final String channelId = mixPlaylistId.substring(CHANNEL_MIX_ID_PREFIX.length());
-            if (channelId.startsWith("UC")) {
+            if (CHANNEL_ID_PATTERN.matcher(channelId).matches()) {
                 return "https://www.youtube.com/channel/" + channelId;
             }
         }

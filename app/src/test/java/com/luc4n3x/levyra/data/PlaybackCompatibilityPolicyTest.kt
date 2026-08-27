@@ -80,6 +80,61 @@ class PlaybackCompatibilityPolicyTest {
     }
 
     @Test
+    fun emptyClientsPreserveBundledOverrides() {
+        val base = PlaybackCompatibilityPolicy.bundled()
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """{"schema":1,"revision":2026082801,"clients":{}}""",
+            base
+        )
+
+        assertNotNull(parsed)
+        assertEquals(base.clientOverrides, parsed!!.clientOverrides)
+    }
+
+    @Test
+    fun partialClientOverridePreservesBundledEnabledFlag() {
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026082801,
+              "clients": {
+                "ANDROID_VR": {
+                  "priority": 3
+                }
+              }
+            }
+            """.trimIndent(),
+            PlaybackCompatibilityPolicy.bundled()
+        )
+
+        assertNotNull(parsed)
+        assertEquals(false, parsed!!.clientOverrides.getValue("ANDROID_VR").enabled)
+        assertEquals(3, parsed.clientOverrides.getValue("ANDROID_VR").priority)
+    }
+
+    @Test
+    fun explicitClientEnableOverridesBundledDisable() {
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026082801,
+              "clients": {
+                "ANDROID_VR": {
+                  "enabled": true
+                }
+              }
+            }
+            """.trimIndent(),
+            PlaybackCompatibilityPolicy.bundled()
+        )
+
+        assertNotNull(parsed)
+        assertEquals(true, parsed!!.clientOverrides.getValue("ANDROID_VR").enabled)
+    }
+
+    @Test
     fun policyCanMoveReelAheadOfStandardVideoPath() {
         val parsed = PlaybackCompatibilityPolicyParser.parse(
             """
@@ -133,7 +188,8 @@ class PlaybackCompatibilityPolicyTest {
         )
 
         assertNotNull(parsed)
-        assertTrue(parsed!!.clientOverrides.isEmpty())
+        assertEquals(false, parsed!!.clientOverrides.getValue("ANDROID_VR").enabled)
+        assertFalse(parsed.clientOverrides.containsKey("FUTURE_CLIENT"))
     }
 
     @Test

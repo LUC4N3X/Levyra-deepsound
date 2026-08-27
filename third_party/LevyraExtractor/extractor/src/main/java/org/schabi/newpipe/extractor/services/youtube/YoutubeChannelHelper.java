@@ -97,8 +97,18 @@ public final class YoutubeChannelHelper {
             }
         }
 
-        // return the unresolved handle, custom name or channel id
-        return channelId.length > 1 ? channelId[1] : channelId[0];
+        if (channelId[0].equals("channel")) {
+            if (channelId.length < 2 || isNullOrEmpty(channelId[1])) {
+                throw new ExtractionException("Failed to resolve channelId for " + idOrPath);
+            }
+            return channelId[1];
+        }
+        for (int i = 1; i < channelId.length; i++) {
+            if (!isNullOrEmpty(channelId[i])) {
+                return channelId[i];
+            }
+        }
+        return channelId[0];
     }
 
     /**
@@ -181,8 +191,8 @@ public final class YoutubeChannelHelper {
             final String browseId = endpoint.getObject(BROWSE_ENDPOINT)
                     .getString(BROWSE_ID, "");
 
-            if (webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_BROWSE")
-                    || webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_CHANNEL")
+            if ((webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_BROWSE")
+                    || webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_CHANNEL"))
                     && !browseId.isEmpty()) {
                 if (!browseId.startsWith("UC")) {
                     throw new ExtractionException("Redirected id is not pointing to a channel");
