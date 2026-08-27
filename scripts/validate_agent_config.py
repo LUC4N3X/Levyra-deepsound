@@ -298,27 +298,25 @@ def main() -> int:
             "Claude hook context/review reminder",
         )
 
-    require_terms(
-        errors,
-        "scripts/agent_skill_router.py",
-        read_text("scripts/agent_skill_router.py"),
-        ("levyra-humanizer", "pull request description"),
-        "shared PR-description skill route",
-    )
-    require_terms(
-        errors,
-        ".github/pull_request_template.md",
-        read_text(".github/pull_request_template.md"),
-        ("complete Levyra", "levyra-humanizer", "without changing"),
-        "mandatory PR-description schema/humanizer contract",
-    )
-    require_terms(
-        errors,
-        "docs/ai/WORKFLOW.md",
-        read_text("docs/ai/WORKFLOW.md"),
-        (".github/pull_request_template.md", "levyra-humanizer", "leave unperformed"),
-        "shared PR publication prose contract",
-    )
+    for relative_path, terms, label in (
+        (
+            "scripts/agent_skill_router.py",
+            ("levyra-humanizer", "pull request description"),
+            "shared PR-description skill route",
+        ),
+        (
+            ".github/pull_request_template.md",
+            ("complete Levyra", "levyra-humanizer", "without changing"),
+            "mandatory PR-description schema/humanizer contract",
+        ),
+        (
+            "docs/ai/WORKFLOW.md",
+            (".github/pull_request_template.md", "levyra-humanizer", "leave unperformed"),
+            "shared PR publication prose contract",
+        ),
+    ):
+        if (ROOT / relative_path).is_file():
+            require_terms(errors, relative_path, read_text(relative_path), terms, label)
 
     guardrails_path = ROOT / GUARDRAILS_PATH
     if guardrails_path.is_file():
