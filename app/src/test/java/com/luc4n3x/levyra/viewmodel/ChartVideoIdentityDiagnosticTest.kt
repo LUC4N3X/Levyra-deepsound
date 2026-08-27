@@ -6,11 +6,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * A chart-origin track carries no authoritative pairing (no counterpart, no browse ids), so these
- * cases pin the two halves of native-video selection for it: a confirmed official video must win,
- * and an unverified identity must never be promoted to video mode.
- */
 class ChartVideoIdentitySelectionTest {
 
     private fun track(

@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import okhttp3.ResponseBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -95,6 +96,7 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         try {
             repeat(2) { attempt ->
                 LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
+                    if (!response.body.isJson()) return null
                     val root = JSONObject(response.body.string())
                     val errorCode = root.optInt("error", 0)
                     if (errorCode == 9) {
@@ -144,7 +146,8 @@ class ListenBrainzScrobbleProvider(private val credentials: AndroidKeystoreCrede
             .header("Authorization", "Token $clean").build()
         try {
             LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
-                val valid = response.isSuccessful && JSONObject(response.body.string()).optBoolean("valid")
+                val valid = response.isSuccessful && response.body.isJson() &&
+                    JSONObject(response.body.string()).optBoolean("valid")
                 if (valid) credentials.write(LISTEN_BRAINZ_CREDENTIAL_SLOT, clean)
                 valid
             }
@@ -215,6 +218,8 @@ class ScrobblingCoordinator(private val providers: List<ScrobbleProvider>) {
         const val MAX_SUBMITTED_LISTENS = 512
     }
 }
+
+internal fun ResponseBody.isJson(): Boolean = contentType()?.subtype.orEmpty().endsWith("json", ignoreCase = true)
 
 internal fun scrobbleThresholdMs(durationMs: Long): Long? = durationMs.takeIf { it >= 30_000L }?.let { minOf(it / 2L, 240_000L) }
 

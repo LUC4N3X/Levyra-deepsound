@@ -2131,9 +2131,6 @@ private class LevyraMediaSourceFactory(
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
 
-    // Captions are sideloaded from a provider-supplied URL, so they get their own transport. The
-    // shared integrations client refuses redirects and caps the call, which keeps a redirected
-    // caption request from reaching a destination the initial URL validation never saw.
     private val subtitleDataSourceFactory: DataSource.Factory by lazy {
         OkHttpDataSource.Factory(LevyraHttpClientFactory.externalIntegrations())
     }
