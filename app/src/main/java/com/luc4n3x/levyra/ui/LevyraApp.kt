@@ -1119,19 +1119,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         return
     }
     val toastContext = LocalContext.current
-    LaunchedEffect(state.universalShareUrl) {
-        val url = state.universalShareUrl ?: return@LaunchedEffect
-        toastContext.startActivity(
-            Intent.createChooser(
-                Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, url)
-                },
-                currentStrings.universalShare
-            )
-        )
-        viewModel.consumeUniversalShare()
-    }
     LaunchedEffect(viewModel) {
         viewModel.integrationAuthorizationUrls.collect { url ->
             openExternalUrl(toastContext, url, currentStrings)
@@ -1825,7 +1812,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onDeleteDownload = { download?.let(viewModel::deleteDownload) },
                     onOpenAlbum = { viewModel.openAlbum(trackAlbumHit(target)) },
                     onOpenArtist = { viewModel.openArtist(target) },
-                    onUniversalShare = { viewModel.shareUniversally(target) },
                     onRemoveFromHistory = { viewModel.removeRecentSearch(target) }
                 )
             }
@@ -12855,7 +12841,7 @@ private fun PlayerScreen(
                         Box {
                             PlayerGlassIconButton(
                                 icon = Icons.Rounded.Subtitles,
-                                contentDescription = "${strings.video} · CC",
+                                contentDescription = strings.subtitlesLabel,
                                 size = headerButtonSize,
                                 iconSize = 19.dp,
                                 tint = if (state.selectedVideoSubtitleId != null) primary else Color.White.copy(alpha = 0.72f),
@@ -15820,7 +15806,7 @@ private fun IntegrationSettingsPanel(
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
-        SettingsButton(Icons.Rounded.Settings, if (lastFmConfigured) strings.connected else strings.save, "Last.fm") {
+        SettingsButton(Icons.Rounded.Settings, if (lastFmConfigured) strings.delete else strings.save, "Last.fm") {
             if (lastFmConfigured) {
                 onClearLastFm()
             } else {

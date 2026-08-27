@@ -622,7 +622,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val scrobbling = com.luc4n3x.levyra.feature.scrobbling.ScrobblingCoordinator(
         listOf(lastFmScrobbling, listenBrainzScrobbling)
     )
-    private val universalMusicShare = com.luc4n3x.levyra.feature.sharing.UniversalMusicShare()
     private val listeningPulseEngine = ListeningPulseEngine()
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
@@ -7935,17 +7934,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             resetRecognitionCollector()
             _state.update { it.copy(audDConfigured = false, recognitionAvailable = false) }
         }
-    }
-
-    fun shareUniversally(track: Track) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val url = universalMusicShare.resolve(track)
-            if (url.isNotBlank()) _state.update { it.copy(universalShareUrl = url) }
-        }
-    }
-
-    fun consumeUniversalShare() {
-        _state.update { it.copy(universalShareUrl = null) }
     }
 
     private data class ListenSession(

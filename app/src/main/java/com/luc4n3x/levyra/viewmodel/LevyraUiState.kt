@@ -64,7 +64,6 @@ data class LevyraUiState(
     val lastFmAuthorizationPending: Boolean = false,
     val listenBrainzConfigured: Boolean = false,
     val audDConfigured: Boolean = false,
-    val universalShareUrl: String? = null,
     val recognitionState: com.luc4n3x.levyra.feature.recognition.RecognitionState =
         com.luc4n3x.levyra.feature.recognition.RecognitionState.Idle,
     val dynamicColor: Boolean = true,
