@@ -12,6 +12,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
+import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor
 import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -55,7 +56,7 @@ internal data class PlaybackCompatibilityPolicy(
 ) {
     companion object {
         const val SCHEMA = 1
-        const val BUNDLED_REVISION = 2026082101L
+        const val BUNDLED_REVISION = 2026082701L
         const val DEFAULT_ANDROID_REEL_CLIENT_VERSION = "21.03.36"
 
         fun bundled(): PlaybackCompatibilityPolicy = PlaybackCompatibilityPolicy(
@@ -74,7 +75,9 @@ internal data class PlaybackCompatibilityPolicy(
                 PlaybackVideoStrategy.REEL
             ),
             androidReelClientVersion = DEFAULT_ANDROID_REEL_CLIENT_VERSION,
-            clientOverrides = emptyMap(),
+            clientOverrides = mapOf(
+                "ANDROID_VR" to PlaybackClientOverride(enabled = false)
+            ),
             expiresAt = 0L,
             minSupportedAppVersion = 0,
             maxSupportedAppVersion = 0
@@ -151,7 +154,10 @@ internal object PlaybackCompatibilityPolicyParser {
             }
 
             val clientOverrides = if (root.has("clients")) {
-                parseClientOverrides(root.getJSONObject("clients"))
+                mergeClientOverrides(
+                    base.clientOverrides,
+                    parseClientOverrides(root.getJSONObject("clients"))
+                )
             } else {
                 base.clientOverrides
             }
@@ -227,6 +233,23 @@ internal object PlaybackCompatibilityPolicyParser {
                 priority = priority,
                 requiresPoToken = requiresPoToken,
                 clientVersion = clientVersion
+            )
+        }
+        return output
+    }
+
+    private fun mergeClientOverrides(
+        base: Map<String, PlaybackClientOverride>,
+        remote: Map<String, PlaybackClientOverride>
+    ): Map<String, PlaybackClientOverride> {
+        val output = LinkedHashMap(base)
+        remote.forEach { (name, override) ->
+            val previous = base[name]
+            output[name] = PlaybackClientOverride(
+                enabled = override.enabled ?: previous?.enabled,
+                priority = override.priority ?: previous?.priority,
+                requiresPoToken = override.requiresPoToken ?: previous?.requiresPoToken,
+                clientVersion = override.clientVersion ?: previous?.clientVersion
             )
         }
         return output
@@ -335,7 +358,14 @@ internal class PlaybackCompatibilityPolicyStore(
             if (previous > 0L && now - previous < REJECTION_REFRESH_COOLDOWN_MS) return false
             if (rejectionRefreshAtMs.compareAndSet(previous, now)) break
         }
-        return refresh(force = true, reason = "stream-rejected")
+        val changed = refresh(force = true, reason = "stream-rejected")
+        syncExtractorClientPolicy()
+        return changed
+    }
+
+    private fun syncExtractorClientPolicy() {
+        val androidVrEnabled = current().clientOverrides["ANDROID_VR"]?.enabled ?: true
+        YoutubeStreamExtractor.setAndroidVrPlayerClientEnabled(androidVrEnabled)
     }
 
     private suspend fun refreshLocked(reason: String): Boolean {
