@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Get Levyra on IzzyOnDroid">
+  <title>Get Levyra on IzzyOnDroid</title>
+  <defs>
+    <linearGradient id="iz-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="60%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="iz-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="iz-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00D2FF"/>
+      <stop offset="55%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#65E572"/>
+    </linearGradient>
+    <radialGradient id="iz-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00D2FF" stop-opacity="0.42"/>
+      <stop offset="65%" stop-color="#22D3EE" stop-opacity="0.13"/>
+      <stop offset="100%" stop-color="#00D2FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#iz-bg)" stroke="url(#iz-border)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#iz-accent)"/>
+
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="43" fill="url(#iz-glow)"/>
+
+  <!-- Curated repository / verified package icon -->
+  <path d="M86 43l28 10v20c0 20-11.7 31.8-28 39-16.3-7.2-28-19-28-39V53l28-10z" fill="#0B2230" stroke="#00D2FF" stroke-width="2.2"/>
+  <path d="M86 49l21 7.5v16.2c0 14.8-8.1 24.6-21 31.1-12.9-6.5-21-16.3-21-31.1V56.5L86 49z" fill="#00D2FF" fill-opacity="0.12"/>
+  <path d="M74 77l8.5 8.5L99 68" fill="none" stroke="#65E572" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="86" cy="77" r="31" fill="none" stroke="#FFFFFF" stroke-opacity="0.08"/>
+
+  <g transform="translate(156 30)">
+    <rect width="238" height="22" rx="6" fill="#00D2FF" fill-opacity="0.11" stroke="#22D3EE" stroke-opacity="0.28"/>
+    <circle cx="10" cy="11" r="3" fill="#65E572"/>
+    <text x="20" y="15" fill="#67E8F9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.08">IZZYONDROID · CURATED F-DROID REPO</text>
+  </g>
+
+  <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Get it on IzzyOnDroid</text>
+
+  <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">Developer-signed APK · Security scans · F-Droid compatible</text>
+
+  <g transform="translate(156 118)" fill="#22D3EE" fill-opacity="0.45">
+    <rect x="0" y="7" width="4" height="9" rx="2"/>
+    <rect x="8" y="2" width="4" height="14" rx="2"/>
+    <rect x="16" y="5" width="4" height="11" rx="2"/>
+    <rect x="24" y="0" width="4" height="16" rx="2"/>
+    <rect x="32" y="6" width="4" height="10" rx="2"/>
+    <rect x="40" y="3" width="4" height="13" rx="2"/>
+    <rect x="48" y="8" width="4" height="8" rx="2"/>
+  </g>
+
+  <g transform="translate(548 50)">
+    <rect width="176" height="54" rx="16" fill="url(#iz-accent)"/>
+    <rect width="176" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.23"/>
+    <text x="68" y="34" text-anchor="middle" fill="#03242B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14.5" font-weight="900" letter-spacing="0.15">Open listing</text>
+    <path d="M146 27h-16M140 21l6 6-6 6" fill="none" stroke="#03242B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
