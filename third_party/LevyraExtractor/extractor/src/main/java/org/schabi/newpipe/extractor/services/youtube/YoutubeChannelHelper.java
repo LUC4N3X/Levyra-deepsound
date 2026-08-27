@@ -53,6 +53,9 @@ public final class YoutubeChannelHelper {
     public static String resolveChannelId(@Nonnull final String idOrPath)
             throws ExtractionException, IOException {
         final String[] channelId = idOrPath.split("/");
+        if (channelId.length == 0 || isNullOrEmpty(channelId[0])) {
+            throw new ExtractionException("Could not resolve an empty channel id or path");
+        }
 
         if (channelId[0].startsWith("UC")) {
             return channelId[0];
@@ -83,8 +86,8 @@ public final class YoutubeChannelHelper {
             final JsonObject browseEndpoint = endpoint.getObject(BROWSE_ENDPOINT);
             final String browseId = browseEndpoint.getString(BROWSE_ID, "");
 
-            if (webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_BROWSE")
-                    || webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_CHANNEL")
+            if ((webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_BROWSE")
+                    || webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_CHANNEL"))
                     && !browseId.isEmpty()) {
                 if (!browseId.startsWith("UC")) {
                     throw new ExtractionException("Redirected id is not pointing to a channel");
@@ -94,8 +97,18 @@ public final class YoutubeChannelHelper {
             }
         }
 
-        // return the unresolved URL
-        return channelId[1];
+        if (channelId[0].equals("channel")) {
+            if (channelId.length < 2 || isNullOrEmpty(channelId[1])) {
+                throw new ExtractionException("Failed to resolve channelId for " + idOrPath);
+            }
+            return channelId[1];
+        }
+        for (int i = 1; i < channelId.length; i++) {
+            if (!isNullOrEmpty(channelId[i])) {
+                return channelId[i];
+            }
+        }
+        return channelId[0];
     }
 
     /**
@@ -178,8 +191,8 @@ public final class YoutubeChannelHelper {
             final String browseId = endpoint.getObject(BROWSE_ENDPOINT)
                     .getString(BROWSE_ID, "");
 
-            if (webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_BROWSE")
-                    || webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_CHANNEL")
+            if ((webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_BROWSE")
+                    || webPageType.equalsIgnoreCase("WEB_PAGE_TYPE_CHANNEL"))
                     && !browseId.isEmpty()) {
                 if (!browseId.startsWith("UC")) {
                     throw new ExtractionException("Redirected id is not pointing to a channel");
@@ -434,9 +447,7 @@ public final class YoutubeChannelHelper {
             final ChannelHeader channelHeader = header.get();
             switch (channelHeader.headerType) {
                 case C4_TABBED:
-                    final String channelId = channelHeader.json.getObject(HEADER)
-                            .getObject(C4_TABBED_HEADER_RENDERER)
-                            .getString("channelId", "");
+                    final String channelId = channelHeader.json.getString("channelId", "");
                     if (!isNullOrEmpty(channelId)) {
                         return channelId;
                     }
@@ -449,16 +460,7 @@ public final class YoutubeChannelHelper {
                     }
                     break;
                 case CAROUSEL:
-                    final String navigationCarouselChannelId = channelHeader.json.getObject(HEADER)
-                            .getObject(CAROUSEL_HEADER_RENDERER)
-                            .getArray(CONTENTS)
-                            .stream()
-                            .filter(JsonObject.class::isInstance)
-                            .map(JsonObject.class::cast)
-                            .filter(item -> item.has(TOPIC_CHANNEL_DETAILS_RENDERER))
-                            .findFirst()
-                            .orElse(new JsonObject())
-                            .getObject(TOPIC_CHANNEL_DETAILS_RENDERER)
+                    final String navigationCarouselChannelId = channelHeader.json
                             .getObject("navigationEndpoint")
                             .getObject(BROWSE_ENDPOINT)
                             .getString(BROWSE_ID);
