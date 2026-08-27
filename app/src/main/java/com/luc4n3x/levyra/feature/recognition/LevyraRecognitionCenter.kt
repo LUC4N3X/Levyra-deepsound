@@ -6,7 +6,8 @@ internal class RecognitionProviderUnavailableException : IllegalStateException("
 
 object LevyraRecognitionCenter {
     private val lock = Any()
-    private val provider: RecognitionProvider = NoOpRecognitionProvider
+    @Volatile
+    private var provider: RecognitionProvider = NoOpRecognitionProvider
     private val unavailableCapture = AudioCapture { throw RecognitionProviderUnavailableException() }
 
     @Volatile
@@ -24,6 +25,39 @@ object LevyraRecognitionCenter {
 
     fun start(context: Context) {
         if (isAvailable) get(context).start()
+    }
+
+    fun configureAudD(context: Context, token: String) {
+        synchronized(lock) {
+            val credentials = com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(context.applicationContext)
+            val audD = AudDRecognitionProvider(credentials)
+            audD.saveToken(token)
+            provider = if (audD.isConfigured()) audD else NoOpRecognitionProvider
+            controller?.cancel()
+            controller = null
+        }
+    }
+
+    fun restoreAudD(context: Context) {
+        synchronized(lock) {
+            val audD = AudDRecognitionProvider(
+                com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(context.applicationContext)
+            )
+            provider = if (audD.isConfigured()) audD else NoOpRecognitionProvider
+            controller?.cancel()
+            controller = null
+        }
+    }
+
+    fun clearAudD(context: Context) {
+        synchronized(lock) {
+            AudDRecognitionProvider(
+                com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(context.applicationContext)
+            ).clear()
+            provider = NoOpRecognitionProvider
+            controller?.cancel()
+            controller = null
+        }
     }
 
     fun cancel(context: Context) {

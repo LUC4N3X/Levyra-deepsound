@@ -3,6 +3,13 @@ package com.luc4n3x.levyra.domain
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlin.math.absoluteValue
 
+data class VideoSubtitleTrack(
+    val id: String,
+    val label: String,
+    val languageCode: String,
+    val vttUrl: String
+)
+
 data class Track(
     val id: String,
     val title: String,
@@ -42,7 +49,8 @@ data class Track(
     val canonicalAlbumUrl: String = "",
     val youtubeLikeCount: Long = -1L,
     val youtubeViewCount: Long = -1L,
-    val playbackManifest: ResolvedPlaybackManifest? = null
+    val playbackManifest: ResolvedPlaybackManifest? = null,
+    val videoSubtitleTracks: List<VideoSubtitleTrack> = emptyList()
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()

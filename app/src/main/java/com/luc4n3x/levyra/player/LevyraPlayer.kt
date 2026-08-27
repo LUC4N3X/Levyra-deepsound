@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
@@ -10,6 +11,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
 import com.luc4n3x.levyra.data.isTerminalPlaybackFailure
@@ -326,6 +328,17 @@ class LevyraPlayer(context: Context) {
         active.play()
         startSponsorBlockMonitor(track)
         scheduleVideoFrameWatchdog()
+    }
+
+    fun selectVideoSubtitle(subtitleId: String?) {
+        val active = controller ?: return
+        val args = Bundle().apply {
+            putString(PlaybackService.KEY_VIDEO_SUBTITLE_ID, subtitleId?.trim().orEmpty())
+        }
+        active.sendCustomCommand(
+            SessionCommand(PlaybackService.ACTION_SET_VIDEO_SUBTITLE, Bundle.EMPTY),
+            args
+        )
     }
 
     fun replaceSource(

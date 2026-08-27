@@ -19,6 +19,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, exploreLocalizationCodes())
         assertEquals(catalogCodes, experienceLocalizationCodes())
         assertEquals(catalogCodes, insightLocalizationCodes())
+        assertEquals(catalogCodes, integrationLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.introHeadline.isNotBlank())
             assertTrue(strings.introBody.isNotBlank())
@@ -48,6 +49,13 @@ class LevyraStringsTest {
             assertTrue(strings.exploreSamplesSubtitle.isNotBlank())
             assertTrue(strings.exploreSamplesError.isNotBlank())
             assertTrue(strings.exploreSamplesRetry.isNotBlank())
+            assertTrue(strings.integrations.isNotBlank())
+            assertTrue(strings.apiKeyLabel.isNotBlank())
+            assertTrue(strings.sharedSecretLabel.isNotBlank())
+            assertTrue(strings.credentialTokenLabel.isNotBlank())
+            assertTrue(strings.lastFmApprovalHint.isNotBlank())
+            assertTrue(strings.subtitlesOff.isNotBlank())
+            assertTrue(strings.subtitlesLabel.isNotBlank())
         }
     }
 
