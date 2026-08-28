@@ -54,19 +54,9 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
     private var player: CastPlayer? = null
 
     private val transferCallback = CastPlayer.TransferCallback { sourcePlayer, targetPlayer ->
-        if (sourcePlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE) {
-            val current = sourcePlayer.currentMediaItem
-            if (current == null || !isReceiverSafe(current)) {
-                Timber.w("Cast transfer skipped because the local media URL is not receiver-safe")
-                return@TransferCallback
-            }
-            CastPlayer.TransferCallback.DEFAULT.transferState(sourcePlayer, targetPlayer)
-            return@TransferCallback
-        }
-
-        val current = sourcePlayer.currentMediaItem
-        if (current == null) {
-            CastPlayer.TransferCallback.DEFAULT.transferState(sourcePlayer, targetPlayer)
+        val current = sourcePlayer.currentMediaItem ?: return@TransferCallback
+        if (sourcePlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE && !isReceiverSafe(current)) {
+            Timber.w("Cast transfer skipped because the local media URL is not receiver-safe")
             return@TransferCallback
         }
 
@@ -76,13 +66,7 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
             .setCurrentMediaItemIndex(0)
             .setCurrentPosition(sourcePlayer.currentPosition.coerceAtLeast(0L))
             .setShuffleModeEnabled(false)
-            .setRepeatMode(
-                if (sourcePlayer.repeatMode == Player.REPEAT_MODE_ONE) {
-                    Player.REPEAT_MODE_ONE
-                } else {
-                    Player.REPEAT_MODE_OFF
-                }
-            )
+            .setRepeatMode(remoteRepeatModeFromPlayer(sourcePlayer.repeatMode))
             .build()
             .setToPlayer(targetPlayer)
     }
@@ -185,6 +169,14 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
                     return
                 }
                 super.setMediaItems(mediaItems, startIndex, startPositionMs)
+            }
+
+            override fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
+                super.setShuffleModeEnabled(false)
+            }
+
+            override fun setRepeatMode(repeatMode: Int) {
+                super.setRepeatMode(remoteRepeatModeFromPlayer(repeatMode))
             }
 
             override fun release() {
@@ -328,6 +320,9 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
 
     private fun remoteRepeatMode(mode: RepeatMode): Int =
         if (mode == RepeatMode.One) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+
+    private fun remoteRepeatModeFromPlayer(mode: Int): Int =
+        if (mode == Player.REPEAT_MODE_ONE) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
 
     private fun publish(active: Player) {
         val connected = active.deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE
