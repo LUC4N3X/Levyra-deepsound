@@ -31,7 +31,7 @@ data class LocalResumeState(
 )
 
 object CastHandoffConverter {
-    const val DEFAULT_QUEUE_WINDOW_RADIUS = 10
+    const val DEFAULT_QUEUE_WINDOW_RADIUS = 2
 
     fun toHandoff(
         snapshot: LocalPlaybackSnapshot,

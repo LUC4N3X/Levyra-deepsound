@@ -296,6 +296,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.session)
+    if (!isFdroidBuild) implementation(libs.androidx.media3.cast)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.car.app)
     implementation(libs.androidx.car.app.projected)

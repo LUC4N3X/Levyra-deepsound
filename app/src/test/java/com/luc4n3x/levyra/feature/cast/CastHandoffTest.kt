@@ -90,8 +90,9 @@ class CastHandoffTest {
     }
 
     @Test
-    fun handoffDefaultWindowRadiusIsTen() {
-        assertEquals(10, CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS)
+    fun handoffDefaultWindowContainsAtMostFiveItems() {
+        assertEquals(2, CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS)
+        assertEquals(5, CastHandoffConverter.toHandoff(snapshot(size = 20, currentIndex = 10)).queueWindowIds.size)
     }
 
     @Test

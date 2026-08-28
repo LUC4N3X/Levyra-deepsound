@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/recognition_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <ImageButton
+        android:id="@+id/recognition_widget_action"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:background="@drawable/widget_artwork_background"
+        android:contentDescription="@string/recognition_widget_description"
+        android:padding="13dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_qs_recognize" />
+
+    <LinearLayout
+        android:id="@+id/recognition_widget_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/recognition_widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#F8F7FF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/recognition_widget_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#B9B2CC"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

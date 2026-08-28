@@ -38,7 +38,13 @@ class LevyraApplication : Application() {
         warmPlaybackPipeline()
         startupScope.launch {
             delay(1800L)
-            runCatching { ReleaseRadarWorker.schedule(this@LevyraApplication) }
+            runCatching {
+                if (com.luc4n3x.levyra.data.FollowedArtistsStore(this@LevyraApplication).load().isEmpty()) {
+                    ReleaseRadarWorker.cancel(this@LevyraApplication)
+                } else {
+                    ReleaseRadarWorker.schedule(this@LevyraApplication)
+                }
+            }
                 .onFailure { Timber.w(it, "Release radar scheduling failed") }
             runCatching {
                 AutomaticBackupScheduler.schedule(

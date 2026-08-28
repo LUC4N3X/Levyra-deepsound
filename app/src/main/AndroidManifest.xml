@@ -32,6 +32,14 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Levyra">
 
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="androidx.media3.cast.DefaultCastOptionsProvider" />
+
+        <receiver
+            android:name="androidx.mediarouter.media.MediaTransferReceiver"
+            android:exported="true" />
+
         <provider
             android:name=".data.SpotifyChartBootstrapProvider"
             android:authorities="${applicationId}.spotify-chart-bootstrap"
@@ -144,6 +152,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/levyra_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.RecognitionWidgetProvider"
+            android:exported="false"
+            android:label="@string/recognition_widget_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/recognition_widget_info" />
         </receiver>
 
         <service

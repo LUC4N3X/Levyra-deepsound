@@ -476,11 +476,16 @@ class PersistentQueueEngine private constructor(context: Context) {
 
     fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val existing = current.tracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
+        val existingTitles = current.tracks.mapTo(LinkedHashSet()) {
+            "${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}"
+        }
+        val available = (MAX_RADIO_QUEUE_SIZE - current.tracks.size).coerceAtLeast(0)
         val additions = tracks
             .filter { it.title.isNotBlank() }
             .filter { existing.add(playbackQueueIdentity(it)) }
+            .filter { existingTitles.add("${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}") }
             .map { it.queueStoredCopy() }
-            .take(20)
+            .take(minOf(RADIO_BATCH_SIZE, available))
         if (additions.isEmpty()) return@mutate current
         rebuildAfterStructureChange(current, current.tracks + additions, current.currentIndex)
     }
@@ -669,6 +674,8 @@ class PersistentQueueEngine private constructor(context: Context) {
     private data class QueueRemoval(val track: Track, val index: Int)
 
     companion object {
+        private const val RADIO_BATCH_SIZE = 5
+        private const val MAX_RADIO_QUEUE_SIZE = 100
         @Volatile
         private var instance: PersistentQueueEngine? = null
 

@@ -1,60 +1,57 @@
 package com.luc4n3x.levyra.data
 
-import android.annotation.SuppressLint
 import android.content.Context
+import androidx.room.withTransaction
+import com.luc4n3x.levyra.data.local.FollowedArtistEntity
+import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.FollowedArtist
 import org.json.JSONArray
-import org.json.JSONObject
 import timber.log.Timber
-import java.io.IOException
 
 class FollowedArtistsStore(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val database = LevyraDatabase.get(appContext)
+    private val dao = database.followedArtistsDao()
 
-    fun load(): List<FollowedArtist> {
+    suspend fun load(): List<FollowedArtist> {
+        migrateLegacyRowsIfNeeded()
+        return dao.all().map { it.toDomain() }
+    }
+
+    private suspend fun migrateLegacyRowsIfNeeded() {
+        if (dao.all().isNotEmpty()) return
         val raw = prefs.getString(KEY_ARTISTS, null).orEmpty()
-        if (raw.isBlank()) return emptyList()
-        return runCatching {
+        if (raw.isBlank()) return
+        val legacy = runCatching {
             val array = JSONArray(raw)
             (0 until array.length()).mapNotNull { index ->
                 array.optJSONObject(index)?.let { json ->
                     val name = json.optString("name").trim()
+                    val browseId = json.optString("browseId").trim()
                     if (name.isBlank()) return@let null
                     FollowedArtist(
-                        browseId = json.optString("browseId"),
+                        browseId = browseId,
                         name = name,
                         thumbnailUrl = json.optString("thumbnailUrl"),
                         followedAt = json.optLong("followedAt", 0L)
                     )
                 }
             }
-        }.onFailure { Timber.w(it, "Followed artists load failed") }.getOrDefault(emptyList())
+        }.onFailure { Timber.w(it, "Followed artists migration failed") }.getOrDefault(emptyList())
+        if (legacy.isNotEmpty()) dao.upsertAll(legacy.map(FollowedArtist::toEntity))
+        prefs.edit().remove(KEY_ARTISTS).apply()
     }
 
-    fun save(artists: List<FollowedArtist>) {
-        prefs.edit().putString(KEY_ARTISTS, encode(artists)).apply()
-    }
-
-    @SuppressLint("ApplySharedPref")
-    fun saveDurable(artists: List<FollowedArtist>) {
-        if (!prefs.edit().putString(KEY_ARTISTS, encode(artists)).commit()) {
-            throw IOException("Impossibile salvare gli artisti seguiti")
+    suspend fun save(artists: List<FollowedArtist>) {
+        val rows = artists.map(FollowedArtist::toEntity)
+        database.withTransaction {
+            dao.clear()
+            dao.upsertAll(rows)
         }
     }
 
-    private fun encode(artists: List<FollowedArtist>): String {
-        val array = JSONArray()
-        artists.forEach { artist ->
-            array.put(
-                JSONObject()
-                    .put("browseId", artist.browseId)
-                    .put("name", artist.name)
-                    .put("thumbnailUrl", artist.thumbnailUrl)
-                    .put("followedAt", artist.followedAt)
-            )
-        }
-        return array.toString()
-    }
+    suspend fun saveDurable(artists: List<FollowedArtist>) = save(artists)
 
     fun hasReleaseBaseline(artistKey: String): Boolean = prefs.contains(KEY_KNOWN_PREFIX + artistKey)
 
@@ -82,3 +79,18 @@ class FollowedArtistsStore(context: Context) {
         const val KEY_RADAR_OFFSET = "radar_offset"
     }
 }
+
+private fun FollowedArtist.toEntity() = FollowedArtistEntity(
+    artistKey = browseId.ifBlank { "legacy:${name.trim().lowercase()}" },
+    browseId = browseId,
+    name = name,
+    thumbnailUrl = thumbnailUrl,
+    followedAt = followedAt
+)
+
+private fun FollowedArtistEntity.toDomain() = FollowedArtist(
+    browseId = browseId,
+    name = name,
+    thumbnailUrl = thumbnailUrl,
+    followedAt = followedAt
+)
