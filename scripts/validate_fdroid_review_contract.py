@@ -44,6 +44,7 @@ FDROID_RUNTIME_DEPENDENCIES = {
     "coil.network.okhttp": "io.coil-kt.coil3:coil-network-okhttp",
     "okhttp": "com.squareup.okhttp3:okhttp",
     "okhttp.brotli": "com.squareup.okhttp3:okhttp-brotli",
+    "okhttp.dnsoverhttps": "com.squareup.okhttp3:okhttp-dnsoverhttps",
     "newpipe.extractor": "com.github.LUC4N3X:LevyraExtractor",
     "androidx.room.runtime": "androidx.room:room-runtime",
     "androidx.room.ktx": "androidx.room:room-ktx",

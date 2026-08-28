@@ -141,6 +141,28 @@ class MusicRecognitionControllerTest {
     }
 
     @Test
+    fun captureTimeoutMapsToTimeoutAndCancelsCapture() = runBlocking {
+        val released = CompletableDeferred<Unit>()
+        val capture = AudioCapture {
+            try {
+                awaitCancellation()
+            } finally {
+                released.complete(Unit)
+            }
+        }
+        val controller = MusicRecognitionController(
+            audioCapture = capture,
+            captureTimeoutMs = 30L,
+            dispatcher = Dispatchers.Default
+        )
+
+        controller.start()
+
+        assertEquals(RecognitionState.Error(RecognitionErrorKind.Timeout), awaitTerminalState(controller))
+        withTimeout(5_000L) { released.await() }
+    }
+
+    @Test
     fun duplicateStartWhileActiveIsIgnored() = runBlocking {
         val callCount = AtomicInteger(0)
         val entered = CompletableDeferred<Unit>()

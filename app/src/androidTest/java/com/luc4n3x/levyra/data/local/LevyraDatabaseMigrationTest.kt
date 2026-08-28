@@ -72,6 +72,35 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate16To17KeepsUserDataAndAddsRecognitionHistory() {
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            db.execSQL(
+                "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt) " +
+                    "VALUES ('p2', 'Recognition saves', '', 200, 200)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 17, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name FROM playlists WHERE id = 'p2'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Recognition saves", cursor.getString(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM recognition_history").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("PRAGMA index_list('recognition_history')").use { cursor ->
+            var found = false
+            while (cursor.moveToNext()) {
+                if (cursor.getString(1) == "index_recognition_history_recognizedAt") found = true
+            }
+            assertTrue(found)
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

@@ -767,7 +767,39 @@ Geographic restrictions do not trigger security-session churn.
  
 ---
  
-## 18. Tests and release gates
+## 18. Recognition, Jam, and network configuration
+
+Music recognition is process-owned by `LevyraRecognitionCenter`. A foreground
+`MusicRecognitionService` owns each microphone or media-projection run and its
+notification lifecycle. `MusicRecognitionController` bounds capture and
+provider time, applies the Shazam-first/AudD-fallback policy, and publishes one
+generation-checked state flow. Successful results pass through
+`RecognitionCatalogMatcher` and the Room-backed bounded history.
+
+Jam preserves the existing queue and player as the playback source of truth:
+
+```text
+local player intent -> JamController -> host authorization -> JamPlayerBridge
+host snapshot -> bounded LAN protocol -> guest JamController -> existing queue/player
+```
+
+`LanJamHostTransport` binds only to a private IPv4 interface. Session codes
+carry the private address, ephemeral port, and random join secret. The host
+binds authenticated sockets to participant identities, validates guest
+permissions, publishes monotonic revisions, and closes authenticated and
+pre-authentication sockets on release. Guests ignore stale revisions and use
+bounded reconnect attempts without a permanent background service.
+
+`LevyraNetworkConfiguration` is the single runtime owner of DNS and proxy
+selection. `LevyraNetworkStore` persists non-secret settings while proxy
+passwords remain in the Android keystore-backed credential store. A generation
+change invalidates shared HTTP clients and rebuilds DNS/proxy behavior; the
+stream client may explicitly bypass the proxy without changing catalog and
+integration clients.
+
+---
+
+## 19. Tests and release gates
  
 Regression coverage includes:
  
@@ -802,7 +834,7 @@ GitHub Actions also checks APK structure, artifact naming, version metadata, wor
  
 ---
  
-## 19. Project layout
+## 20. Project layout
  
 ```text
 app/src/main/java/com/luc4n3x/levyra
@@ -824,7 +856,7 @@ LevyraExtractor
  
 ---
  
-## 20. Extension rules
+## 21. Extension rules
  
 New features should preserve these invariants:
  

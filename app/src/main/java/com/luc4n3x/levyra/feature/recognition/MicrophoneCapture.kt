@@ -11,7 +11,6 @@ import androidx.core.content.ContextCompat
 import kotlin.math.max
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
@@ -42,23 +41,25 @@ class MicrophoneCapture(private val context: Context) : AudioCapture {
             throw MicrophonePermissionDeniedException()
         }
 
-        val sampleRate = TARGET_SAMPLE_RATE_HZ
         val minBufferBytes = AudioRecord.getMinBufferSize(
-            sampleRate,
-            AudioFormat.CHANNEL_IN_STEREO,
+            TARGET_SAMPLE_RATE_HZ,
+            AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         )
         if (minBufferBytes <= 0) {
             throw MicrophoneCaptureException("AudioRecord reported an invalid buffer size")
         }
 
-        val recordingBufferBytes = max(minBufferBytes, READ_CHUNK_SAMPLE_COUNT * BYTES_PER_SAMPLE) *
-            RECORDING_BUFFER_MULTIPLIER
-        val record = openAudioRecord(sampleRate, recordingBufferBytes)
+        val recordingBufferBytes = max(
+            minBufferBytes,
+            READ_CHUNK_SAMPLE_COUNT * BYTES_PER_SAMPLE
+        ) * RECORDING_BUFFER_MULTIPLIER
+        val record = createAudioRecord(TARGET_SAMPLE_RATE_HZ, recordingBufferBytes)
             ?: throw MicrophoneCaptureException("Unable to initialize AudioRecord for capture")
 
-        val targetFrameCount = ((durationMs * sampleRate) / 1000L).toInt().coerceAtLeast(1)
-        val targetSampleCount = targetFrameCount * CHANNEL_COUNT
+        val targetSampleCount = ((durationMs * TARGET_SAMPLE_RATE_HZ) / 1000L)
+            .toInt()
+            .coerceAtLeast(1)
         val output = ShortArray(targetSampleCount)
         val chunk = ShortArray(READ_CHUNK_SAMPLE_COUNT)
         var samplesCaptured = 0
@@ -71,14 +72,11 @@ class MicrophoneCapture(private val context: Context) : AudioCapture {
             while (samplesCaptured < targetSampleCount) {
                 currentCoroutineContext().ensureActive()
                 val samplesToRead = minOf(chunk.size, targetSampleCount - samplesCaptured)
-                val read = record.read(chunk, 0, samplesToRead, AudioRecord.READ_NON_BLOCKING)
+                val read = record.read(chunk, 0, samplesToRead, AudioRecord.READ_BLOCKING)
                 if (read < 0) {
                     throw MicrophoneCaptureException("AudioRecord read failed with error code $read")
                 }
-                if (read == 0) {
-                    delay(READ_RETRY_DELAY_MS)
-                    continue
-                }
+                if (read == 0) continue
                 System.arraycopy(chunk, 0, output, samplesCaptured, read)
                 samplesCaptured += read
             }
@@ -87,27 +85,20 @@ class MicrophoneCapture(private val context: Context) : AudioCapture {
             record.release()
         }
 
-        val capturedSamples = if (samplesCaptured == output.size) output else output.copyOf(samplesCaptured)
         CapturedAudio(
-            samples = capturedSamples,
-            sampleRateHz = sampleRate,
+            samples = if (samplesCaptured == output.size) output else output.copyOf(samplesCaptured),
+            sampleRateHz = TARGET_SAMPLE_RATE_HZ,
             channelCount = CHANNEL_COUNT
         )
     }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    private fun openAudioRecord(sampleRate: Int, bufferBytes: Int): AudioRecord? {
-        return createAudioRecord(MediaRecorder.AudioSource.UNPROCESSED, sampleRate, bufferBytes)
-            ?: createAudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, bufferBytes)
-    }
-
-    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    private fun createAudioRecord(source: Int, sampleRate: Int, bufferBytes: Int): AudioRecord? {
+    private fun createAudioRecord(sampleRate: Int, bufferBytes: Int): AudioRecord? {
         val record = runCatching {
             AudioRecord(
-                source,
+                MediaRecorder.AudioSource.MIC,
                 sampleRate,
-                AudioFormat.CHANNEL_IN_STEREO,
+                AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,
                 bufferBytes
             )
@@ -120,13 +111,12 @@ class MicrophoneCapture(private val context: Context) : AudioCapture {
     }
 
     companion object {
-        const val RELIABLE_FINGERPRINT_CAPTURE_DURATION_MS = 7_000L
+        const val RELIABLE_FINGERPRINT_CAPTURE_DURATION_MS = 8_400L
         internal const val MAX_CAPTURE_DURATION_MS = 15_000L
-        private const val READ_RETRY_DELAY_MS = 5L
-        private const val TARGET_SAMPLE_RATE_HZ = 44_100
-        private const val CHANNEL_COUNT = 2
+        private const val TARGET_SAMPLE_RATE_HZ = 16_000
+        private const val CHANNEL_COUNT = 1
         private const val READ_CHUNK_SAMPLE_COUNT = 4_096
         private const val BYTES_PER_SAMPLE = 2
-        private const val RECORDING_BUFFER_MULTIPLIER = 4
+        private const val RECORDING_BUFFER_MULTIPLIER = 2
     }
 }
