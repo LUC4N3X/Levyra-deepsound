@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.media3.cast.Cast
 import androidx.media3.cast.CastPlayer
 import androidx.media3.common.DeviceInfo
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.PlayerTransferState
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -130,19 +131,25 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
 
     override fun attachLocalPlayer(localPlayer: Player): Player {
         if (!available) return localPlayer
-        return runCatching {
+        val castPlayer = runCatching {
             CastPlayer.Builder(appContext)
                 .setLocalPlayer(localPlayer)
                 .setTransferCallback(transferCallback)
                 .build()
-                .also { castPlayer ->
+                .also { attached ->
                     player?.removeListener(listener)
                     player?.release()
-                    player = castPlayer
-                    castPlayer.addListener(listener)
-                    publish(castPlayer)
+                    player = attached
+                    attached.addListener(listener)
+                    publish(attached)
                 }
-        }.getOrElse { localPlayer }
+        }.getOrElse { return localPlayer }
+
+        return object : ForwardingPlayer(castPlayer) {
+            override fun release() {
+                this@GoogleCastBackend.release()
+            }
+        }
     }
 
     override fun release() {
