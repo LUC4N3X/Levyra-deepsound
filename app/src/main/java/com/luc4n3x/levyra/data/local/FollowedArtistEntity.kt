@@ -21,6 +21,9 @@ interface FollowedArtistsDao {
     @Query("SELECT * FROM followed_artists ORDER BY followedAt DESC")
     suspend fun all(): List<FollowedArtistEntity>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM followed_artists WHERE artistKey = :artistKey)")
+    suspend fun contains(artistKey: String): Boolean
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(rows: List<FollowedArtistEntity>)
 
