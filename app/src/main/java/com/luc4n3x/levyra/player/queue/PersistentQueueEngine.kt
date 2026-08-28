@@ -50,6 +50,21 @@ internal fun replacementQueuePositionMs(
     }
 }
 
+internal fun radioHistoryTrimIndices(
+    history: List<Int>,
+    currentIndex: Int,
+    slotsNeeded: Int,
+    historyReserve: Int = 8
+): Set<Int> {
+    if (slotsNeeded <= 0 || history.isEmpty()) return emptySet()
+    val protected = history.takeLast(historyReserve.coerceAtLeast(0)).toSet() + currentIndex
+    return history.asSequence()
+        .filter { it >= 0 && it !in protected }
+        .distinct()
+        .take(slotsNeeded)
+        .toCollection(LinkedHashSet())
+}
+
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -475,19 +490,76 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val candidatePool = tracks
+            .asSequence()
+            .filter { it.title.isNotBlank() }
+            .distinctBy(::playbackQueueIdentity)
+            .distinctBy { "${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}" }
+            .take(RADIO_BATCH_SIZE)
+            .toList()
+        if (candidatePool.isEmpty()) return@mutate current
+
+        var prepared = trimPlayedRadioHistory(current, candidatePool.size)
+        var additions = radioAdditions(prepared, candidatePool)
+        val trimmed = current.tracks.size - prepared.tracks.size
+        if (trimmed > additions.size) {
+            prepared = trimPlayedRadioHistory(current, additions.size)
+            additions = radioAdditions(prepared, candidatePool)
+        }
+        if (additions.isEmpty()) return@mutate current
+        rebuildAfterStructureChange(prepared, prepared.tracks + additions, prepared.currentIndex)
+    }
+
+    private fun radioAdditions(current: PlaybackQueueSnapshot, candidates: List<Track>): List<Track> {
         val existing = current.tracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
         val existingTitles = current.tracks.mapTo(LinkedHashSet()) {
             "${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}"
         }
         val available = (MAX_RADIO_QUEUE_SIZE - current.tracks.size).coerceAtLeast(0)
-        val additions = tracks
-            .filter { it.title.isNotBlank() }
+        return candidates
+            .asSequence()
             .filter { existing.add(playbackQueueIdentity(it)) }
             .filter { existingTitles.add("${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}") }
             .map { it.queueStoredCopy() }
             .take(minOf(RADIO_BATCH_SIZE, available))
-        if (additions.isEmpty()) return@mutate current
-        rebuildAfterStructureChange(current, current.tracks + additions, current.currentIndex)
+            .toList()
+    }
+
+    private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
+        if (!current.radioEnabled || desiredSlots <= 0) return current
+        val slotsNeeded = (current.tracks.size + desiredSlots - MAX_RADIO_QUEUE_SIZE).coerceAtLeast(0)
+        if (slotsNeeded == 0) return current
+        val remove = radioHistoryTrimIndices(
+            history = current.history,
+            currentIndex = current.currentIndex,
+            slotsNeeded = slotsNeeded,
+            historyReserve = RADIO_HISTORY_RESERVE
+        ).filterTo(LinkedHashSet()) { it in current.tracks.indices && it != current.currentIndex }
+        if (remove.isEmpty()) return current
+
+        val indexMap = IntArray(current.tracks.size) { -1 }
+        val nextTracks = ArrayList<Track>(current.tracks.size - remove.size)
+        current.tracks.forEachIndexed { oldIndex, track ->
+            if (oldIndex !in remove) {
+                indexMap[oldIndex] = nextTracks.size
+                nextTracks += track
+            }
+        }
+        val nextCurrentIndex = current.currentIndex.takeIf { it in indexMap.indices }
+            ?.let { indexMap[it] }
+            ?.takeIf { it >= 0 }
+            ?: return current
+        val sourceOrder = if (current.shuffleEnabled) normalizedShuffleOrder(current) else emptyList()
+        val nextOrder = sourceOrder.mapNotNull { oldIndex -> indexMap.getOrNull(oldIndex)?.takeIf { it >= 0 } }
+        val nextHistory = current.history.mapNotNull { oldIndex -> indexMap.getOrNull(oldIndex)?.takeIf { it >= 0 } }.takeLast(200)
+        return current.copy(
+            tracks = nextTracks,
+            currentIndex = nextCurrentIndex,
+            shuffleOrder = nextOrder,
+            shuffleCursor = if (current.shuffleEnabled) nextOrder.indexOf(nextCurrentIndex).coerceAtLeast(0) else -1,
+            history = nextHistory,
+            generation = current.generation + 1L
+        )
     }
 
     suspend fun flush() {
@@ -675,6 +747,7 @@ class PersistentQueueEngine private constructor(context: Context) {
 
     companion object {
         private const val RADIO_BATCH_SIZE = 5
+        private const val RADIO_HISTORY_RESERVE = 8
         private const val MAX_RADIO_QUEUE_SIZE = 100
         @Volatile
         private var instance: PersistentQueueEngine? = null

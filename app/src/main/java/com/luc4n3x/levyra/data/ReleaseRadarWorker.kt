@@ -50,7 +50,7 @@ class ReleaseRadarWorker(
             }
             val known = store.knownReleases(artist.key)
             val fresh = releases.distinctBy(::releaseKey).filter { releaseKey(it) !in known }
-            if (store.load().none { it.browseId == artist.browseId }) return@forEach
+            if (store.load().none { it.key == artist.key }) return@forEach
             val notifiedKeys = mutableSetOf<String>()
             fresh.take(MAX_NOTIFICATIONS_PER_ARTIST).forEach { release ->
                 if (notified < MAX_NOTIFICATIONS_PER_RUN && notifyRelease(artist, release)) {
@@ -91,7 +91,7 @@ class ReleaseRadarWorker(
             putExtra(LevyraLaunchActions.EXTRA_RELEASE_ARTWORK, release.thumbnailUrl)
             putExtra(LevyraLaunchActions.EXTRA_RELEASE_YEAR, release.year)
         }
-        val requestCode = (artist.key + release.title).hashCode()
+        val requestCode = (artist.key + "|" + releaseKey(release)).hashCode()
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,
             requestCode,

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.cast
 
 import com.luc4n3x.levyra.domain.RepeatMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -106,5 +107,36 @@ class CastHandoffTest {
         assertEquals(-1, handoff.currentIndex)
         assertTrue(resumed.queueIds.isEmpty())
         assertEquals(-1, resumed.currentIndex)
+    }
+
+    @Test
+    fun remoteHandoffNeverRewindsSameMediaItem() {
+        assertEquals(
+            48_000L,
+            castHandoffStartPositionMs(
+                sameMediaItem = true,
+                requestedPositionMs = 42_000L,
+                livePositionMs = 48_000L,
+                remotePlayback = true
+            )
+        )
+        assertEquals(
+            42_000L,
+            castHandoffStartPositionMs(
+                sameMediaItem = false,
+                requestedPositionMs = 42_000L,
+                livePositionMs = 48_000L,
+                remotePlayback = true
+            )
+        )
+    }
+
+    @Test
+    fun managedWindowRefreshesNearEdgeOrWhenLogicalOrderChanges() {
+        val expected = listOf("b", "c", "d", "e")
+        assertFalse(castWindowNeedsRefresh(expected, listOf("b", "c", "d")))
+        assertTrue(castWindowNeedsRefresh(expected, listOf("b", "c")))
+        assertTrue(castWindowNeedsRefresh(expected, listOf("b", "x", "d")))
+        assertFalse(castWindowNeedsRefresh(emptyList(), emptyList()))
     }
 }

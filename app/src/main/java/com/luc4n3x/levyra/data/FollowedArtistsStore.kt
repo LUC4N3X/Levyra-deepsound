@@ -23,7 +23,7 @@ class FollowedArtistsStore(context: Context) {
         if (dao.all().isNotEmpty()) return
         val raw = prefs.getString(KEY_ARTISTS, null).orEmpty()
         if (raw.isBlank()) return
-        val legacy = runCatching {
+        val legacy = try {
             val array = JSONArray(raw)
             (0 until array.length()).mapNotNull { index ->
                 array.optJSONObject(index)?.let { json ->
@@ -38,9 +38,19 @@ class FollowedArtistsStore(context: Context) {
                     )
                 }
             }
-        }.onFailure { Timber.w(it, "Followed artists migration failed") }.getOrDefault(emptyList())
-        if (legacy.isNotEmpty()) dao.upsertAll(legacy.map(FollowedArtist::toEntity))
-        prefs.edit().remove(KEY_ARTISTS).apply()
+        } catch (error: Exception) {
+            Timber.w(error, "Followed artists migration failed; preserving legacy data")
+            return
+        }
+        val migrated = runCatching {
+            database.withTransaction {
+                if (legacy.isNotEmpty()) dao.upsertAll(legacy.map(FollowedArtist::toEntity))
+            }
+        }.onFailure { Timber.w(it, "Followed artists Room migration failed; preserving legacy data") }
+        if (migrated.isFailure) return
+        if (!prefs.edit().remove(KEY_ARTISTS).commit()) {
+            Timber.w("Followed artists legacy cleanup was not persisted")
+        }
     }
 
     suspend fun save(artists: List<FollowedArtist>) {

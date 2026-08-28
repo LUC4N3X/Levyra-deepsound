@@ -15,15 +15,30 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 object RecognitionWidgetCenter {
     @Volatile private var artworkUrl = ""
     @Volatile private var artwork: Bitmap? = null
-    private val fetching = AtomicBoolean(false)
+    @Volatile private var latestState: RecognitionState = RecognitionState.Idle
+    @Volatile private var desiredArtworkUrl = ""
+    @Volatile private var fetchingArtworkUrl = ""
+    private val artworkGeneration = AtomicLong(0L)
+    private val fetchLock = Any()
 
     fun render(context: Context, state: RecognitionState) {
         val appContext = context.applicationContext
+        latestState = state
+        val resultArtworkUrl = (state as? RecognitionState.Result)?.result?.artworkUrl.orEmpty()
+        if (resultArtworkUrl != desiredArtworkUrl) {
+            desiredArtworkUrl = resultArtworkUrl
+            artworkGeneration.incrementAndGet()
+            if (resultArtworkUrl.isBlank()) {
+                artwork = null
+                artworkUrl = ""
+            }
+        }
+
         val manager = AppWidgetManager.getInstance(appContext)
         val ids = manager.getAppWidgetIds(ComponentName(appContext, RecognitionWidgetProvider::class.java))
         val strings = LevyraStrings.forCode(LevyraPreferences(appContext).snapshot().languageCode)
@@ -52,21 +67,27 @@ object RecognitionWidgetCenter {
                 if (state is RecognitionState.Listening || state is RecognitionState.Identifying) R.drawable.ic_widget_pause
                 else R.drawable.ic_qs_recognize
             )
-            val resultArtworkUrl = (state as? RecognitionState.Result)?.result?.artworkUrl.orEmpty()
             val cached = artwork?.takeIf { resultArtworkUrl.isNotBlank() && artworkUrl == resultArtworkUrl }
             if (cached != null) views.setImageViewBitmap(R.id.recognition_widget_action, cached)
             views.setOnClickPendingIntent(R.id.recognition_widget_root, RecognitionWidgetProvider.toggleIntent(appContext))
             views.setOnClickPendingIntent(R.id.recognition_widget_action, RecognitionWidgetProvider.toggleIntent(appContext))
             manager.updateAppWidget(id, views)
-            if (cached == null && resultArtworkUrl.isNotBlank()) fetchArtwork(appContext, resultArtworkUrl, state)
+        }
+        if (artwork?.takeIf { artworkUrl == resultArtworkUrl } == null && resultArtworkUrl.isNotBlank()) {
+            fetchArtwork(appContext, resultArtworkUrl, artworkGeneration.get())
         }
     }
 
-    private fun fetchArtwork(context: Context, rawUrl: String, state: RecognitionState) {
+    private fun fetchArtwork(context: Context, rawUrl: String, generation: Long) {
         val safeUrl = SafeImageUrlPolicy.sanitize(rawUrl)
-        if (safeUrl.isEmpty() || !fetching.compareAndSet(false, true)) return
+        if (safeUrl.isEmpty()) return
+        synchronized(fetchLock) {
+            if (fetchingArtworkUrl.isNotBlank()) return
+            fetchingArtworkUrl = rawUrl
+        }
         Thread {
             var connection: HttpURLConnection? = null
+            var published = false
             try {
                 connection = URL(safeUrl).openConnection() as HttpURLConnection
                 connection.instanceFollowRedirects = false
@@ -92,17 +113,26 @@ object RecognitionWidgetCenter {
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
                 var sample = 1
                 while (bounds.outWidth / sample > 128 || bounds.outHeight / sample > 128) sample *= 2
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
-                    ?.let { decoded ->
-                        artwork = decoded
-                        artworkUrl = rawUrl
-                        render(context, state)
-                    }
+                val decoded = BitmapFactory.decodeByteArray(
+                    bytes,
+                    0,
+                    bytes.size,
+                    BitmapFactory.Options().apply { inSampleSize = sample }
+                )
+                if (decoded != null && generation == artworkGeneration.get() && desiredArtworkUrl == rawUrl) {
+                    artwork = decoded
+                    artworkUrl = rawUrl
+                    published = true
+                }
             } catch (_: Exception) {
-                Unit
+                // Artwork is optional; keep the recognition state usable without it.
             } finally {
                 connection?.disconnect()
-                fetching.set(false)
+                val superseded = generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl
+                synchronized(fetchLock) {
+                    if (fetchingArtworkUrl == rawUrl) fetchingArtworkUrl = ""
+                }
+                if (published || superseded) render(context, latestState)
             }
         }.start()
     }
