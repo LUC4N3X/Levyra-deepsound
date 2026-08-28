@@ -13,7 +13,7 @@
         android:layout_width="52dp"
         android:layout_height="52dp"
         android:background="@drawable/widget_artwork_background"
-        android:contentDescription="@string/recognition_widget_description"
+        android:contentDescription="@string/tile_recognize_music"
         android:padding="13dp"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_qs_recognize" />
