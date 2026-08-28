@@ -11,6 +11,7 @@ import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cronet.CronetDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import java.io.EOFException
 import java.io.InterruptedIOException
 import java.net.ConnectException
@@ -111,6 +112,7 @@ object PlaybackNetworkStack {
     }
 
     private fun createCronetFactory(requestPriority: Int): HttpDataSource.Factory? {
+        if (shouldBypassCronetForProxy()) return null
         ensureCronetInitialization()
         val engine = cronetEngine ?: return null
         if (SystemClock.elapsedRealtime() < disabledUntilMs.get()) return null
@@ -123,9 +125,14 @@ object PlaybackNetworkStack {
             .setResetTimeoutOnRedirects(true)
     }
 
+    private fun shouldBypassCronetForProxy(): Boolean {
+        val settings = LevyraNetworkConfiguration.current()
+        return settings.usesProxy && !settings.bypassProxyForStreams
+    }
+
     private fun createOkHttpFactory(): HttpDataSource.Factory {
         val context = appContext
-        return OkHttpDataSource.Factory(LevyraHttpClientFactory.media(context))
+        return OkHttpDataSource.Factory(LevyraHttpClientFactory.streaming(context))
             .setUserAgent(USER_AGENT)
     }
 

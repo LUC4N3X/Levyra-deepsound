@@ -23,9 +23,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackSourceMatchEntity::class,
         ArtistLoreEntity::class,
         ListenLifetimeTrackEntity::class,
-        ListenLifetimeArtistEntity::class
+        ListenLifetimeArtistEntity::class,
+        RecognitionHistoryEntity::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -41,6 +42,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun playbackSourceMatchDao(): PlaybackSourceMatchDao
     abstract fun artistLoreDao(): ArtistLoreDao
     abstract fun listenLifetimeDao(): ListenLifetimeDao
+    abstract fun recognitionHistoryDao(): RecognitionHistoryDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -504,6 +506,30 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS recognition_history (" +
+                        "id TEXT NOT NULL, " +
+                        "recognizedAt INTEGER NOT NULL, " +
+                        "title TEXT NOT NULL, " +
+                        "artist TEXT NOT NULL, " +
+                        "album TEXT NOT NULL, " +
+                        "artworkUrl TEXT NOT NULL, " +
+                        "provider TEXT NOT NULL, " +
+                        "providerTrackId TEXT NOT NULL, " +
+                        "isrc TEXT NOT NULL, " +
+                        "youtubeVideoId TEXT NOT NULL, " +
+                        "year TEXT NOT NULL, " +
+                        "PRIMARY KEY(id))"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_recognition_history_recognizedAt " +
+                        "ON recognition_history(recognizedAt)"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -519,7 +545,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
-            MIGRATION_15_16
+            MIGRATION_15_16,
+            MIGRATION_16_17
         )
 
         fun get(context: Context): LevyraDatabase {

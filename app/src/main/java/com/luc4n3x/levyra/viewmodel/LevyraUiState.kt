@@ -36,7 +36,12 @@ import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.data.LyricsRepository
+import com.luc4n3x.levyra.domain.LevyraNetworkSettings
+import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
+import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
+import com.luc4n3x.levyra.feature.jam.JamUiState
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
@@ -59,13 +64,26 @@ data class LevyraUiState(
     val showSettings: Boolean = false,
     val animationsEnabled: Boolean = true,
     val motionArtworkEnabled: Boolean = true,
-    val recognitionAvailable: Boolean = false,
+    val recognitionAvailable: Boolean = true,
     val lastFmConfigured: Boolean = false,
     val lastFmAuthorizationPending: Boolean = false,
     val listenBrainzConfigured: Boolean = false,
     val audDConfigured: Boolean = false,
     val recognitionState: com.luc4n3x.levyra.feature.recognition.RecognitionState =
         com.luc4n3x.levyra.feature.recognition.RecognitionState.Idle,
+    val showRecognition: Boolean = false,
+    val recognitionHistory: List<RecognitionHistoryEntry> = emptyList(),
+    val recognitionMatch: Track? = null,
+    val recognitionMatching: Boolean = false,
+    val recognitionDeviceCaptureSupported: Boolean = false,
+    val jam: JamUiState = JamUiState(),
+    val jamDisplayName: String = "",
+    val showJam: Boolean = false,
+    val networkSettings: LevyraNetworkSettings = LevyraNetworkSettings(),
+    val networkProxyPasswordSet: Boolean = false,
+    val networkTesting: Boolean = false,
+    val networkTestOutcome: LevyraNetworkTestOutcome? = null,
+    val networkErrors: List<LevyraNetworkSettingsError> = emptyList(),
     val dynamicColor: Boolean = true,
     val userName: String = "",
     val languageCode: String = "en",

@@ -19,8 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class MusicRecognitionTileService : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -31,9 +31,7 @@ class MusicRecognitionTileService : TileService() {
         renderTile(LevyraRecognitionCenter.get(this).state.value)
         stateJob?.cancel()
         stateJob = scope.launch {
-            LevyraRecognitionCenter.get(this@MusicRecognitionTileService).state.collect { state ->
-                renderTile(state)
-            }
+            LevyraRecognitionCenter.get(this@MusicRecognitionTileService).state.collect(::renderTile)
         }
     }
 
@@ -41,28 +39,6 @@ class MusicRecognitionTileService : TileService() {
         stateJob?.cancel()
         stateJob = null
         super.onStopListening()
-    }
-
-    override fun onClick() {
-        super.onClick()
-        if (!LevyraRecognitionCenter.isAvailable) {
-            renderTile(LevyraRecognitionCenter.get(this).state.value)
-            return
-        }
-        if (!hasRecordAudioPermission()) {
-            openAppForPermission()
-            return
-        }
-        val controller = LevyraRecognitionCenter.get(this)
-        when (controller.state.value) {
-            is RecognitionState.Idle,
-            is RecognitionState.Result,
-            is RecognitionState.NoMatch,
-            is RecognitionState.Error -> controller.start()
-            RecognitionState.Listening,
-            RecognitionState.Identifying -> controller.cancel()
-        }
-        renderTile(controller.state.value)
     }
 
     override fun onTileAdded() {
@@ -77,16 +53,39 @@ class MusicRecognitionTileService : TileService() {
         super.onDestroy()
     }
 
+    override fun onClick() {
+        super.onClick()
+        when (LevyraRecognitionCenter.get(this).state.value) {
+            RecognitionState.Listening,
+            RecognitionState.Identifying -> cancelRecognition()
+            else -> startRecognition()
+        }
+        renderTile(LevyraRecognitionCenter.get(this).state.value)
+    }
+
+    private fun startRecognition() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            collapseAndLaunch(RecognitionProjectionActivity.intent(this))
+            return
+        }
+        if (!hasRecordAudioPermission()) {
+            collapseAndLaunch(permissionRequestIntent())
+            return
+        }
+        runCatching { ContextCompat.startForegroundService(this, MusicRecognitionService.microphoneIntent(this)) }
+            .onFailure { Timber.w(it, "Recognition service could not start from the tile") }
+    }
+
+    private fun cancelRecognition() {
+        runCatching { ContextCompat.startForegroundService(this, MusicRecognitionService.cancelIntent(this)) }
+            .onFailure { Timber.w(it, "Recognition cancel could not be delivered") }
+        LevyraRecognitionCenter.cancel(this)
+    }
+
     private fun renderTile(state: RecognitionState) {
         val tile = qsTile ?: return
         val strings = LevyraStrings.forCode(LevyraPreferences(this).snapshot().languageCode)
         tile.label = strings.recognizeMusic
-        if (!LevyraRecognitionCenter.isAvailable) {
-            tile.state = Tile.STATE_UNAVAILABLE
-            setStateDescription(null)
-            tile.updateTile()
-            return
-        }
         val projection = recognitionTileProjection(state)
         tile.state = if (projection.kind == RecognitionTileProjectionKind.Active) {
             Tile.STATE_ACTIVE
@@ -114,21 +113,26 @@ class MusicRecognitionTileService : TileService() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun openAppForPermission() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra(LevyraLaunchActions.EXTRA_SHORTCUT, LevyraLaunchActions.SHORTCUT_RECOGNITION)
-            putExtra(LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST, true)
-        }
+    private fun permissionRequestIntent(): Intent = Intent(this, MainActivity::class.java).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        putExtra(LevyraLaunchActions.EXTRA_SHORTCUT, LevyraLaunchActions.SHORTCUT_RECOGNITION)
+        putExtra(LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST, true)
+    }
+
+    private fun collapseAndLaunch(intent: Intent) {
         TileServiceCompat.startActivityAndCollapse(
             this,
             PendingIntentActivityWrapper(
                 this,
-                0,
+                REQUEST_TILE_LAUNCH,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT,
                 false
             )
         )
+    }
+
+    private companion object {
+        const val REQUEST_TILE_LAUNCH = 5420
     }
 }

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra
 
 import android.content.Intent
 import androidx.compose.runtime.mutableStateOf
+import com.luc4n3x.levyra.feature.jam.JamSessionCode
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaIntentParser
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 
@@ -31,6 +32,7 @@ object LevyraLaunchActions {
     val pendingShortcut = mutableStateOf<String?>(null)
     val pendingArtist = mutableStateOf<String?>(null)
     val pendingSharedMedia = mutableStateOf<SharedMediaRequest?>(null)
+    val pendingJamCode = mutableStateOf<String?>(null)
 
     fun consumeFrom(intent: Intent?) {
         intent ?: return
@@ -42,6 +44,14 @@ object LevyraLaunchActions {
         intent.getStringExtra(EXTRA_ARTIST)?.takeIf { it.isNotBlank() }?.let { value ->
             pendingArtist.value = value
             intent.removeExtra(EXTRA_ARTIST)
+        }
+        val jamLink = intent.takeIf { it.action == Intent.ACTION_VIEW }?.data
+            ?.takeIf { it.scheme.equals("levyra", ignoreCase = true) && it.host.equals("jam", ignoreCase = true) }
+            ?.toString()
+        if (jamLink != null && JamSessionCode.parse(jamLink) != null) {
+            pendingJamCode.value = jamLink
+            intent.setDataAndType(null, null)
+            return
         }
         if (
             !intent.getBooleanExtra(EXTRA_SHARED_MEDIA_CONSUMED, false) &&

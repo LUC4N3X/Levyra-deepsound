@@ -52,7 +52,7 @@ class ScreenProjectionCoverageTest {
     fun `search projection reacts to recognition availability`() {
         assertNotEquals(
             searchProjection(base),
-            searchProjection(base.copy(recognitionAvailable = true))
+            searchProjection(base.copy(recognitionAvailable = false))
         )
     }
 
