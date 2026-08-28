@@ -32,10 +32,6 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Levyra">
 
-        <meta-data
-            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            android:value="androidx.media3.cast.DefaultCastOptionsProvider" />
-
         <receiver
             android:name="androidx.mediarouter.media.MediaTransferReceiver"
             android:exported="true" />
@@ -102,12 +98,6 @@
             <intent-filter>
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/*" />
             </intent-filter>
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
