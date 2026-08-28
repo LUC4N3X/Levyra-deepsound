@@ -24,7 +24,9 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
-        override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) = publish(player ?: return)
+        override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) {
+            player?.let(::publish)
+        }
     }
 
     override fun devices(): Flow<List<RemoteDevice>> = flowOf(emptyList())
