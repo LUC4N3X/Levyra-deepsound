@@ -16,7 +16,7 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 |:---|:---|:---|:---|
 | LevyraExtractor | https://github.com/LUC4N3X/LevyraExtractor | Primary extractor playback core used by Levyra resolver logic | GPL-3.0 derivative source and upstream notices must be preserved |
 | Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
-| ArchiveTune | https://github.com/rukamori/ArchiveTune | Reference implementation for Shazam-compatible acoustic fingerprint encoding and recognition request behavior | GPL-3.0; adapted fingerprint logic retains upstream attribution and notices |
+| ArchiveTune | https://github.com/rukamori/ArchiveTune | Behavioral reference for music-recognition UX and interoperability research | No ArchiveTune recognition source is vendored or adapted in Levyra |
 | zemer-cipher | https://github.com/ZemerTeam/zemer-cipher | Reference design and validated player configuration data for the local YouTube signature and n-parameter decoder | GPL-3.0; adapted decoder logic and configuration validation retain upstream attribution |
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
 | Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
@@ -38,13 +38,13 @@ Upstream project: https://github.com/MetrolistGroup/Metrolist
 
 Upstream license: GNU General Public License v3.0
 
-## ArchiveTune Attribution
+## Recognition Interoperability Reference
 
-Levyra's Shazam-compatible recognition fingerprint encoder is adapted from ArchiveTune's ShazamKit implementation. Levyra keeps the integration inside its existing recognition provider, capture, lifecycle, networking, history and UI architecture while preserving ArchiveTune's upstream copyright notice on the adapted source.
+Levyra's `:levyra-recognition` module is an independent pure-Kotlin implementation owned and maintained inside this repository. It contains Levyra's acoustic fingerprint analysis, bounded signature generation and wire-format encoding without vendoring or adapting ArchiveTune's `shazamkit` source. ArchiveTune was consulted only as an external behavioral reference while validating recognition interoperability and Android product behavior.
 
-Upstream project: https://github.com/rukamori/ArchiveTune
+Reference project: https://github.com/rukamori/ArchiveTune
 
-Upstream license: GNU General Public License v3.0
+Reference license: GNU General Public License v3.0
 
 ## Runtime and Build Dependencies
 
