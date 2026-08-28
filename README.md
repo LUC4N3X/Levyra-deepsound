@@ -166,21 +166,37 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🔗 <b>Optional Integrations</b></h3>
+      <h3>🎙️ <b>Music Recognition 2.0</b></h3>
       <ul>
-        <li><b>Scrobbling:</b> Last.fm and ListenBrainz, submitted on a real listen threshold with bounded deduplication.</li>
-        <li><b>Song Recognition:</b> Optional AudD lookup from a short, size-bounded microphone capture.</li>
-        <li><b>Encrypted Credentials:</b> Keys stay on device under an Android Keystore AES/GCM key, never in plain text.</li>
-        <li><b>Opt-In by Design:</b> Nothing is configured by default, and playback is untouched when no integration is set up.</li>
+        <li><b>Shazam-Compatible:</b> Credential-free acoustic fingerprint matching directly on device.</li>
+        <li><b>Dual Audio Capture:</b> Listens via microphone or internal device playback (Android 10+ MediaProjection).</li>
+        <li><b>AudD Fallback & History:</b> Optional secondary provider with Keystore token, plus local recognition history.</li>
       </ul>
     </td>
     <td width="50%">
-      <h3>🎛️ <b>Settings Search & Video Subtitles</b></h3>
+      <h3>📻 <b>Levyra Jam Local Sync</b></h3>
       <ul>
-        <li><b>Searchable Settings:</b> Type to jump straight to a setting, matching titles, descriptions, and keywords.</li>
-        <li><b>Accent & Case Insensitive:</b> Locale-aware normalization across all 26 supported languages.</li>
-        <li><b>Video Mode Subtitles:</b> Captions discovered from validated sources and selectable per language in the player.</li>
-        <li><b>Music Mode Untouched:</b> Subtitle handling only ever activates during native-video playback.</li>
+        <li><b>Local Network Listening:</b> Synchronized playback and shared queues across devices on the same Wi-Fi.</li>
+        <li><b>Host Authority & Permissions:</b> Granular controls for host-only, guest queue additions, or collaborative sessions.</li>
+        <li><b>Mutual Auth Security:</b> Cryptographic challenge-response handshake over HMAC-SHA256 with deep link invites.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr valign="top">
+    <td width="50%">
+      <h3>🛡️ <b>Network Resilience & Proxies</b></h3>
+      <ul>
+        <li><b>DNS-over-HTTPS:</b> Built-in presets for Cloudflare, Google, AdGuard, and Quad9, plus custom HTTPS resolvers.</li>
+        <li><b>HTTP & SOCKS Proxies:</b> Authenticated proxy routing with Keystore-encrypted credentials and anti-loop safety.</li>
+        <li><b>Stream Bypass & Diagnostics:</b> Option to bypass proxies for direct audio streams, and an in-app network probe.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>🔗 <b>Integrations & Settings Search</b></h3>
+      <ul>
+        <li><b>Scrobbling:</b> Last.fm and ListenBrainz integration with bounded deduplication.</li>
+        <li><b>Searchable Settings:</b> Instant search across settings, titles, and keywords in 26 languages.</li>
+        <li><b>Video Subtitles:</b> Selectable multi-language subtitles during native-video playback.</li>
       </ul>
     </td>
   </tr>

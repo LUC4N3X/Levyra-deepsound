@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
+import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.ui.LevyraApp
@@ -117,8 +118,9 @@ class MainActivity : ComponentActivity() {
         resumePendingUpdateInstall()
     }
 
-    private val recognitionPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+    private val recognitionPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
+        if (granted) startMicrophoneRecognitionService()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -265,7 +267,6 @@ class MainActivity : ComponentActivity() {
         )
         intent.removeExtra(LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST)
 
-        // Launcher/deep-link input may navigate, but it never authorizes microphone capture.
         LevyraLaunchActions.pendingShortcut.value = LevyraLaunchActions.SHORTCUT_SEARCH
         if (!LevyraRecognitionCenter.isAvailable || !permissionRequest) return
         if (
@@ -273,7 +274,15 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
         ) {
             recognitionPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        } else {
+            startMicrophoneRecognitionService()
         }
+    }
+
+    private fun startMicrophoneRecognitionService() {
+        runCatching {
+            ContextCompat.startForegroundService(this, MusicRecognitionService.microphoneIntent(this))
+        }.onFailure { Timber.w(it, "Recognition service could not start") }
     }
 
     override fun startActivity(intent: Intent) {

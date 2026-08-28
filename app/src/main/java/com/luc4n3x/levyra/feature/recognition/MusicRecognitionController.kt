@@ -11,6 +11,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
@@ -27,6 +28,7 @@ class MusicRecognitionController(
     private val audioCapture: AudioCapture,
     private val provider: RecognitionProvider = NoOpRecognitionProvider,
     private val captureDurationMs: Long = MicrophoneCapture.RELIABLE_FINGERPRINT_CAPTURE_DURATION_MS,
+    private val captureTimeoutMs: Long = captureDurationMs + DEFAULT_CAPTURE_TIMEOUT_GRACE_MS,
     private val targetSampleRateHz: Int = DEFAULT_TARGET_SAMPLE_RATE_HZ,
     private val identifyTimeoutMs: Long = DEFAULT_IDENTIFY_TIMEOUT_MS,
     dispatcher: CoroutineDispatcher = Dispatchers.Default
@@ -41,7 +43,7 @@ class MusicRecognitionController(
     private var runGeneration: Long = 0L
     private var activeRunGeneration: Long = 0L
 
-    fun start() {
+    fun start(capture: AudioCapture = audioCapture) {
         synchronized(startLock) {
             if (activeJob?.isActive == true) return
             val generation = ++runGeneration
@@ -49,7 +51,7 @@ class MusicRecognitionController(
             _state.value = RecognitionState.Listening
             val job = scope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    runRecognition(generation)
+                    runRecognition(generation, capture)
                 } catch (error: CancellationException) {
                     publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.Cancelled))
                     throw error
@@ -67,6 +69,14 @@ class MusicRecognitionController(
         }
     }
 
+    fun reset() {
+        synchronized(startLock) {
+            if (activeJob?.isActive == true) return
+            activeRunGeneration = 0L
+            _state.value = RecognitionState.Idle
+        }
+    }
+
     fun cancel() {
         val job = synchronized(startLock) {
             val current = activeJob ?: return@synchronized null
@@ -78,17 +88,28 @@ class MusicRecognitionController(
         job?.cancel()
     }
 
-    private suspend fun runRecognition(generation: Long) {
+    fun close() {
+        cancel()
+        scope.cancel()
+    }
+
+    private suspend fun runRecognition(generation: Long, capture: AudioCapture) {
         if (!publishIfActive(generation, RecognitionState.Listening)) return
         val captured = try {
-            audioCapture.capture(captureDurationMs)
+            withTimeout(captureTimeoutMs) { capture.capture(captureDurationMs) }
+        } catch (_: TimeoutCancellationException) {
+            publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.Timeout))
+            return
         } catch (error: CancellationException) {
             throw error
         } catch (_: RecognitionProviderUnavailableException) {
             publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.Unavailable))
             return
-        } catch (error: MicrophonePermissionDeniedException) {
+        } catch (_: MicrophonePermissionDeniedException) {
             publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.PermissionDenied))
+            return
+        } catch (_: DevicePlaybackCaptureUnsupportedException) {
+            publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.Unavailable))
             return
         } catch (_: Throwable) {
             publishTerminalIfActive(generation, RecognitionState.Error(RecognitionErrorKind.Fingerprint))
@@ -166,5 +187,6 @@ class MusicRecognitionController(
     companion object {
         const val DEFAULT_TARGET_SAMPLE_RATE_HZ = 16_000
         const val DEFAULT_IDENTIFY_TIMEOUT_MS = 12_000L
+        const val DEFAULT_CAPTURE_TIMEOUT_GRACE_MS = 5_000L
     }
 }

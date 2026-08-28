@@ -23,7 +23,7 @@ object PlaybackNetworkStack {
     }
 
     private fun createOkHttpFactory(context: Context): HttpDataSource.Factory {
-        return OkHttpDataSource.Factory(LevyraHttpClientFactory.media(context.applicationContext))
+        return OkHttpDataSource.Factory(LevyraHttpClientFactory.streaming(context.applicationContext))
             .setUserAgent(USER_AGENT)
     }
 }
