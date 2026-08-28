@@ -5,7 +5,15 @@ data class RecognitionResult(
     val artist: String,
     val album: String = "",
     val confidence: Int? = null,
-    val externalId: String = ""
+    val externalId: String = "",
+    val provider: String = "",
+    val providerTrackId: String = "",
+    val artworkUrl: String = "",
+    val isrc: String = "",
+    val youtubeVideoId: String = "",
+    val year: String = "",
+    val label: String = "",
+    val genre: String = ""
 )
 
 sealed interface RecognitionOutcome {
@@ -21,4 +29,9 @@ enum class RecognitionErrorKind {
     Fingerprint,
     Cancelled,
     Unavailable
+}
+
+enum class RecognitionSource {
+    Microphone,
+    DevicePlayback
 }

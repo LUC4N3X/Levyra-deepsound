@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.viewmodel
 
+import android.content.Context
+import android.os.Build
+import android.os.SystemClock
 import android.app.Application
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -149,6 +152,27 @@ import com.luc4n3x.levyra.feature.dearrow.DEARROW_VIDEO_ID_PATTERN
 import com.luc4n3x.levyra.feature.dearrow.VideoMetadata
 import com.luc4n3x.levyra.feature.dearrow.VideoMetadataEnhancer
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
+import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
+import com.luc4n3x.levyra.data.network.LevyraNetworkController
+import com.luc4n3x.levyra.data.network.LevyraNetworkStore
+import com.luc4n3x.levyra.data.network.LevyraNetworkTester
+import com.luc4n3x.levyra.domain.LevyraNetworkSettings
+import com.luc4n3x.levyra.domain.LevyraNetworkSettingsValidator
+import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
+import com.luc4n3x.levyra.feature.jam.JamAction
+import com.luc4n3x.levyra.feature.jam.JamController
+import com.luc4n3x.levyra.feature.jam.JamGuestPermission
+import com.luc4n3x.levyra.feature.jam.JamPlaybackSnapshot
+import com.luc4n3x.levyra.feature.jam.JamPlaybackSync
+import com.luc4n3x.levyra.feature.jam.JamPlayerBridge
+import com.luc4n3x.levyra.feature.jam.JamRole
+import com.luc4n3x.levyra.feature.jam.JamSessionState
+import com.luc4n3x.levyra.feature.jam.JamTrack
+import com.luc4n3x.levyra.feature.recognition.RecognitionCatalogMatcher
+import com.luc4n3x.levyra.feature.recognition.RecognitionErrorKind
+import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
+import com.luc4n3x.levyra.feature.recognition.RecognitionProjectionActivity
+import com.luc4n3x.levyra.feature.recognition.RecognitionResult
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionController
 import com.luc4n3x.levyra.feature.recognition.NoOpRecognitionProvider
 import com.luc4n3x.levyra.feature.recognition.RecognitionProvider
@@ -588,9 +612,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
-    private val recognitionProvider: RecognitionProvider = NoOpRecognitionProvider
+    private val levyraContext: Context get() = getApplication<Application>().applicationContext
     private val recognitionController: MusicRecognitionController
-        get() = LevyraRecognitionCenter.get(getApplication<Application>().applicationContext)
+        get() = LevyraRecognitionCenter.get(levyraContext)
+    private val recognitionCatalogMatcher by lazy { RecognitionCatalogMatcher(repository) }
+    private val networkStore by lazy { LevyraNetworkStore(levyraContext) }
+    private val jamBridge = object : JamPlayerBridge {
+        override fun snapshot(): JamPlaybackSnapshot = jamPlaybackSnapshot()
+
+        override suspend fun applyRemoteState(state: JamSessionState) = applyJamRemoteState(state)
+
+        override suspend fun applyAction(action: JamAction) = applyJamAction(action)
+    }
+    private val jamControllerDelegate = lazy { JamController(viewModelScope, jamBridge) }
+    private val jamController by jamControllerDelegate
     private val sharedMediaResolver = SharedMediaResolver(
         providerRouter = providerRouter,
         sharedPlaylistTracks = { playlist, languageCode ->
@@ -645,7 +680,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             downloadSettings = startupSettings.downloadSettings,
             backupSettings = startupSettings.backupSettings,
             playbackDiagnostics = resolver.playbackDiagnostics(),
-            recognitionAvailable = recognitionProvider !== NoOpRecognitionProvider
+            recognitionAvailable = LevyraRecognitionCenter.isAvailable
         )
     )
     private var searchJob: Job? = null
@@ -654,6 +689,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var playlistImportJob: Job? = null
     private var sharedMediaJob: Job? = null
     private var recognitionCollectorJob: Job? = null
+    private var recognitionHistoryJob: Job? = null
+    private var recognitionMatchJob: Job? = null
+    private var jamStateJob: Job? = null
+    private var networkTestJob: Job? = null
     private var videoMetadataJob: Job? = null
     private var playJob: Job? = null
     private var modeSwitchJob: Job? = null
@@ -950,16 +989,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 getApplication<Application>().applicationContext
             )
             resetRecognitionCollector()
-            val audDConfigured = com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.isAvailable
+            val audDConfigured = LevyraRecognitionCenter.isFallbackConfigured
+            val storedNetwork = networkStore.settings()
+            val hasProxyPassword = networkStore.hasProxyPassword()
+            val storedJamName = preferences.jamDisplayName()
             _state.update {
                 it.copy(
                     lastFmConfigured = lastFmScrobbling.isConfigured(),
                     listenBrainzConfigured = listenBrainzScrobbling.isConfigured(),
                     audDConfigured = audDConfigured,
-                    recognitionAvailable = audDConfigured
+                    recognitionAvailable = LevyraRecognitionCenter.isAvailable,
+                    recognitionDeviceCaptureSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q,
+                    networkSettings = storedNetwork,
+                    networkProxyPasswordSet = hasProxyPassword,
+                    jamDisplayName = storedJamName
                 )
             }
         }
+        observeRecognitionHistory()
+        observeJamState()
         val favorites = favoritesStore.load()
         val settings = startupSettings
         val repairedRecentSearches = settings.recentSearches
@@ -1921,33 +1969,340 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startMusicRecognition() {
-        if (!_state.value.recognitionAvailable) return
-        if (recognitionCollectorJob == null) {
-            recognitionCollectorJob = viewModelScope.launch {
-                recognitionController.state.collect { recognitionState ->
-                    _state.update { it.copy(recognitionState = recognitionState) }
-                    if (recognitionState is RecognitionState.Result) {
-                        val query = RecognitionSearchQuery.from(recognitionState.result)
-                        if (query.isNotBlank()) {
-                            setQuery(query)
-                            searchNow(query)
-                        }
-                    }
+        ensureRecognitionCollector()
+        _state.update { it.copy(showRecognition = true, recognitionMatch = null) }
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            levyraContext,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) {
+            _state.update { it.copy(recognitionState = RecognitionState.Error(RecognitionErrorKind.PermissionDenied)) }
+            return
+        }
+        runCatching {
+            androidx.core.content.ContextCompat.startForegroundService(
+                levyraContext,
+                MusicRecognitionService.microphoneIntent(levyraContext)
+            )
+        }.onFailure { Timber.w(it, "Microphone recognition service could not start") }
+    }
+
+    fun startDeviceRecognition() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        ensureRecognitionCollector()
+        _state.update { it.copy(showRecognition = true, recognitionMatch = null) }
+        runCatching { levyraContext.startActivity(RecognitionProjectionActivity.intent(levyraContext)) }
+            .onFailure { Timber.w(it, "Device playback recognition could not start") }
+    }
+
+    fun openRecognition() {
+        ensureRecognitionCollector()
+        _state.update { it.copy(showRecognition = true) }
+    }
+
+    fun closeRecognition() {
+        _state.update { it.copy(showRecognition = false) }
+    }
+
+    fun deleteRecognitionEntry(id: String) {
+        viewModelScope.launch { LevyraRecognitionCenter.history(levyraContext).delete(id) }
+    }
+
+    fun clearRecognitionHistory() {
+        viewModelScope.launch { LevyraRecognitionCenter.history(levyraContext).clear() }
+    }
+
+    fun openRecognitionResult(entry: RecognitionHistoryEntry) {
+        _state.update {
+            it.copy(
+                showRecognition = true,
+                recognitionState = RecognitionState.Result(entry.result),
+                recognitionMatch = null
+            )
+        }
+        matchRecognitionResult(entry.result)
+    }
+
+    fun playRecognitionMatch() {
+        val track = _state.value.recognitionMatch ?: return
+        _state.update { it.copy(showRecognition = false) }
+        play(track)
+    }
+
+    fun searchRecognitionResult(result: RecognitionResult) {
+        val query = RecognitionSearchQuery.from(result)
+        if (query.isBlank()) return
+        _state.update { it.copy(showRecognition = false) }
+        setQuery(query)
+        searchNow(query)
+    }
+
+    private fun ensureRecognitionCollector() {
+        if (recognitionCollectorJob != null) return
+        recognitionCollectorJob = viewModelScope.launch {
+            recognitionController.state.collect { recognitionState ->
+                _state.update { it.copy(recognitionState = recognitionState) }
+                if (recognitionState is RecognitionState.Result) {
+                    matchRecognitionResult(recognitionState.result)
                 }
             }
         }
-        recognitionController.start()
+    }
+
+    private fun observeRecognitionHistory() {
+        recognitionHistoryJob?.cancel()
+        recognitionHistoryJob = viewModelScope.launch {
+            LevyraRecognitionCenter.observeHistory(levyraContext).collect { entries ->
+                _state.update { it.copy(recognitionHistory = entries) }
+            }
+        }
+    }
+
+    private fun matchRecognitionResult(result: RecognitionResult) {
+        recognitionMatchJob?.cancel()
+        _state.update { it.copy(recognitionMatching = true, recognitionMatch = null) }
+        recognitionMatchJob = viewModelScope.launch(Dispatchers.IO) {
+            val match = runCatching {
+                recognitionCatalogMatcher.match(result, _state.value.languageCode)
+            }.getOrNull()
+            _state.update { it.copy(recognitionMatching = false, recognitionMatch = match) }
+        }
     }
 
     private fun resetRecognitionCollector() {
         recognitionCollectorJob?.cancel()
         recognitionCollectorJob = null
-        _state.update { it.copy(recognitionState = RecognitionState.Idle) }
+        recognitionMatchJob?.cancel()
+        recognitionMatchJob = null
+        _state.update {
+            it.copy(
+                recognitionState = RecognitionState.Idle,
+                recognitionMatch = null,
+                recognitionMatching = false
+            )
+        }
     }
 
     fun cancelMusicRecognition() {
         recognitionController.cancel()
-        _state.update { it.copy(recognitionState = RecognitionState.Idle) }
+        recognitionMatchJob?.cancel()
+        recognitionMatchJob = null
+        _state.update {
+            it.copy(
+                recognitionState = RecognitionState.Idle,
+                recognitionMatch = null,
+                recognitionMatching = false
+            )
+        }
+    }
+
+    fun openJam() {
+        _state.update { it.copy(showJam = true) }
+    }
+
+    fun closeJam() {
+        _state.update { it.copy(showJam = false) }
+    }
+
+    fun setJamDisplayName(value: String) {
+        val trimmed = value.take(JAM_DISPLAY_NAME_MAX_LENGTH)
+        _state.update { it.copy(jamDisplayName = trimmed) }
+        viewModelScope.launch(Dispatchers.IO) { preferences.setJamDisplayName(trimmed) }
+    }
+
+    fun createJam(permission: JamGuestPermission) {
+        viewModelScope.launch { jamController.createJam(jamDisplayNameOrDefault(), permission) }
+    }
+
+    fun joinJam(code: String) {
+        viewModelScope.launch { jamController.joinJam(code, jamDisplayNameOrDefault()) }
+    }
+
+    fun leaveJam() {
+        viewModelScope.launch { jamController.leave() }
+    }
+
+    fun endJam() {
+        viewModelScope.launch { jamController.endJam() }
+    }
+
+    fun setJamPermission(permission: JamGuestPermission) {
+        viewModelScope.launch { jamController.setGuestPermission(permission) }
+    }
+
+    fun removeJamParticipant(participantId: String) {
+        viewModelScope.launch { jamController.removeParticipant(participantId) }
+    }
+
+    fun clearJamFailure() = jamController.clearFailure()
+
+    private fun jamDisplayNameOrDefault(): String {
+        val name = _state.value.jamDisplayName.trim()
+        return name.ifBlank { _state.value.userName.trim().ifBlank { "Levyra" } }
+    }
+
+    private fun observeJamState() {
+        jamStateJob?.cancel()
+        jamStateJob = viewModelScope.launch {
+            jamController.state.collect { jam -> _state.update { it.copy(jam = jam) } }
+        }
+    }
+
+    private fun jamPlaybackSnapshot(): JamPlaybackSnapshot {
+        val current = _state.value
+        return JamPlaybackSnapshot(
+            queue = current.queue.take(JamSessionState.MAX_QUEUE_SIZE).map(::toJamTrack),
+            currentIndex = current.queueCurrentIndex,
+            currentMediaId = current.currentTrack?.id.orEmpty(),
+            positionMs = player.positionMs.coerceAtLeast(0L),
+            playWhenReady = current.isPlaying,
+            shuffle = current.shuffleEnabled,
+            repeatMode = current.repeatMode.ordinal
+        )
+    }
+
+    private fun applyJamAction(action: JamAction) {
+        when (action) {
+            is JamAction.AddTrack -> addToQueueLocal(fromJamTrack(action.track))
+            is JamAction.RemoveTrack -> {
+                val index = _state.value.queue.indexOfFirst { it.id == action.trackId }
+                if (index >= 0) removeFromQueueLocal(index)
+            }
+            is JamAction.SelectIndex -> queueEngine.select(action.index)?.let(::startResolve)
+            is JamAction.SetPlayWhenReady -> if (_state.value.isPlaying != action.playWhenReady) togglePlayLocal()
+            is JamAction.Seek -> seekToPositionMs(action.positionMs)
+            JamAction.Next -> nextLocal()
+            JamAction.Previous -> previousLocal()
+        }
+    }
+
+    private fun applyJamRemoteState(state: JamSessionState) {
+        if (_state.value.jam.isHost) return
+        val desiredIds = state.queue.map(JamTrack::id)
+        if (desiredIds.isEmpty()) {
+            queueEngine.replace(emptyList(), -1, keepPlaybackModes = true, radioEnabled = false)
+            closePlayer()
+            return
+        }
+        val localIds = _state.value.queue.map(Track::id)
+        val targetIndex = state.currentIndex.coerceIn(0, desiredIds.lastIndex)
+        val predicted = JamPlaybackSync.predictedPositionMs(
+            state = state,
+            receivedAtElapsedMs = state.updatedAtElapsedMs,
+            nowElapsedMs = SystemClock.elapsedRealtime()
+        )
+        queueEngine.setShuffle(state.shuffle)
+        val repeatMode = RepeatMode.entries.getOrElse(state.repeatMode) { RepeatMode.Off }
+        queueEngine.setRepeatMode(repeatMode)
+        player.setRepeatOne(repeatMode == RepeatMode.One)
+        if (desiredIds != localIds) {
+            val tracks = state.queue.map(::fromJamTrack)
+            queueEngine.replace(
+                tracks,
+                targetIndex,
+                positionMs = predicted,
+                keepPlaybackModes = true,
+                radioEnabled = false
+            )
+            pendingSeekMs = predicted
+            startResolve(tracks[targetIndex], startPaused = !state.playWhenReady)
+            return
+        }
+        if (targetIndex != _state.value.queueCurrentIndex) {
+            queueEngine.select(targetIndex, positionMs = predicted)?.let { track ->
+                pendingSeekMs = predicted
+                startResolve(track, startPaused = !state.playWhenReady)
+            }
+            return
+        }
+        if (_state.value.isPlaying != state.playWhenReady) togglePlayLocal()
+        if (JamPlaybackSync.shouldSeek(player.positionMs, predicted, state.playWhenReady)) {
+            seekToPositionMs(predicted)
+        }
+    }
+
+    private fun seekToPositionMs(positionMs: Long) {
+        val target = positionMs.coerceAtLeast(0L)
+        player.seekTo(target)
+        queueEngine.updatePosition(target)
+        _state.update { it.copy(positionMs = target) }
+    }
+
+    private fun routeJamAction(action: JamAction): Boolean {
+        if (!_state.value.jam.isActive) return false
+        viewModelScope.launch { jamController.requestAction(action) }
+        return true
+    }
+
+    private fun toJamTrack(track: Track): JamTrack = JamTrack(
+        id = track.id,
+        title = track.title,
+        artist = track.artist,
+        durationMs = track.durationMs,
+        thumbnailUrl = track.thumbnailUrl
+    )
+
+    private fun fromJamTrack(track: JamTrack): Track = Track(
+        id = track.id,
+        title = track.title,
+        artist = track.artist,
+        album = "",
+        durationMs = track.durationMs,
+        streamUrl = "",
+        videoUrl = "",
+        thumbnailUrl = track.thumbnailUrl,
+        largeThumbnailUrl = track.thumbnailUrl,
+        source = JAM_TRACK_SOURCE,
+        moodTags = emptySet(),
+        energy = 0,
+        vocal = 0,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0
+    )
+
+    fun updateNetworkSettings(settings: LevyraNetworkSettings, proxyPassword: String?) {
+        val willHavePassword = when {
+            proxyPassword == null -> _state.value.networkProxyPasswordSet
+            proxyPassword.isEmpty() -> false
+            else -> true
+        }
+        val errors = LevyraNetworkSettingsValidator.validate(settings, willHavePassword)
+        if (errors.isNotEmpty()) {
+            _state.update { it.copy(networkErrors = errors) }
+            return
+        }
+        val normalized = settings.normalized()
+        _state.update { it.copy(networkErrors = emptyList()) }
+        viewModelScope.launch(Dispatchers.IO) {
+            LevyraNetworkController.apply(levyraContext, normalized, proxyPassword)
+            val stored = networkStore.settings()
+            val hasPassword = networkStore.hasProxyPassword()
+            _state.update {
+                it.copy(
+                    networkSettings = stored,
+                    networkProxyPasswordSet = hasPassword,
+                    networkTestOutcome = null
+                )
+            }
+        }
+    }
+
+    fun testNetworkConfiguration(settings: LevyraNetworkSettings, proxyPassword: String?) {
+        networkTestJob?.cancel()
+        _state.update { it.copy(networkTesting = true, networkTestOutcome = null) }
+        networkTestJob = viewModelScope.launch {
+            val resolvedProxyPassword: String =
+                proxyPassword ?: withContext(Dispatchers.IO) { networkStore.proxyPassword() }
+            val outcome = runCatching { LevyraNetworkTester.test(settings, resolvedProxyPassword) }
+                .getOrDefault(LevyraNetworkTestOutcome.UnknownError)
+            _state.update { it.copy(networkTesting = false, networkTestOutcome = outcome) }
+        }
+    }
+
+    fun clearNetworkTestOutcome() {
+        _state.update { it.copy(networkTestOutcome = null, networkErrors = emptyList()) }
     }
 
     fun renamePlaylist(playlistId: String, name: String) {
@@ -2148,6 +2503,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleRepeat() {
+        if (jamController.rejectGuestLocalMutation()) return
         val mode = when (queueEngine.state.value.repeatMode) {
             RepeatMode.Off -> RepeatMode.All
             RepeatMode.All -> RepeatMode.One
@@ -2329,6 +2685,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleShuffle() {
+        if (jamController.rejectGuestLocalMutation()) return
         queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
         refreshQueuePrefetch()
     }
@@ -3418,6 +3775,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun addToQueue(track: Track) {
+        if (routeJamAction(JamAction.AddTrack(toJamTrack(track)))) return
+        addToQueueLocal(track)
+    }
+
+    private fun addToQueueLocal(track: Track) {
         queueEngine.addLast(track)
         refreshQueuePrefetch()
         _state.update { it.copy(offlineExportMessage = "Aggiunto alla coda: ${track.title}") }
@@ -3426,18 +3788,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun addTracksToQueue(tracks: List<Track>) {
         val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
         if (cleanTracks.isEmpty()) return
+        if (_state.value.jam.isActive) {
+            cleanTracks.forEach { track -> routeJamAction(JamAction.AddTrack(toJamTrack(track))) }
+            return
+        }
         cleanTracks.forEach { track -> queueEngine.addLast(track) }
         refreshQueuePrefetch()
         _state.update { it.copy(offlineExportMessage = "Aggiunti alla coda: ${cleanTracks.size} brani") }
     }
 
     fun playNext(track: Track) {
+        if (_state.value.jam.isActive) {
+            routeJamAction(JamAction.AddTrack(toJamTrack(track)))
+            return
+        }
         queueEngine.playNext(track)
         refreshQueuePrefetch()
         _state.update { it.copy(offlineExportMessage = "Riproduci dopo: ${track.title}") }
     }
 
     fun removeFromQueue(index: Int) {
+        val track = _state.value.queue.getOrNull(index) ?: return
+        if (routeJamAction(JamAction.RemoveTrack(track.id))) return
+        removeFromQueueLocal(index)
+    }
+
+    private fun removeFromQueueLocal(index: Int) {
         val snapshot = queueEngine.remove(index)
         if (snapshot.tracks.isEmpty()) {
             closePlayer()
@@ -3447,11 +3823,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun undoQueueRemoval() {
+        if (jamController.rejectGuestLocalMutation()) return
         queueEngine.undoRemove()
         refreshQueuePrefetch()
     }
 
     fun moveQueueItem(from: Int, to: Int) {
+        if (jamController.rejectGuestLocalMutation()) return
         queueEngine.move(from, to)
         refreshQueuePrefetch()
     }
@@ -5471,12 +5849,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             play(track)
             return
         }
+        if (routeJamAction(JamAction.SelectIndex(index))) return
         queueEngine.select(index, positionMs = 0L, rememberCurrent = true)
         loopCurrentQueueOnCompletion = snapshot.tracks.size > 1
         startResolve(snapshot.tracks[index])
     }
 
     fun play(track: Track) {
+        if (_state.value.jam.role == JamRole.Guest) {
+            val index = _state.value.jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1
+            routeJamAction(if (index >= 0) JamAction.SelectIndex(index) else JamAction.AddTrack(toJamTrack(track)))
+            return
+        }
         val contextualQueue = queueForTrack(track)
         loopCurrentQueueOnCompletion = contextualQueue.size > 1
         val index = contextualQueue.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
@@ -5487,6 +5871,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         if (list.isEmpty()) return
+        if (_state.value.jam.role == JamRole.Guest) {
+            play(track)
+            return
+        }
         loopCurrentQueueOnCompletion = loopOnCompletion
         val index = list.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
         queueEngine.replace(list, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
@@ -7305,6 +7693,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun pause() = player.pause()
 
     fun togglePlay() {
+        if (routeJamAction(JamAction.SetPlayWhenReady(!_state.value.isPlaying))) return
+        togglePlayLocal()
+    }
+
+    private fun togglePlayLocal() {
         val current = _state.value.currentTrack ?: return
         if (current.streamUrl.isBlank()) {
             play(current)
@@ -7399,6 +7792,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun next() {
+        if (routeJamAction(JamAction.Next)) return
+        nextLocal()
+    }
+
+    private fun nextLocal() {
         val nextTrack = queueEngine.next(respectRepeatOne = false)
         if (nextTrack != null) {
             startResolve(nextTrack)
@@ -7408,6 +7806,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun previous() {
+        if (routeJamAction(JamAction.Previous)) return
+        previousLocal()
+    }
+
+    private fun previousLocal() {
         if (player.positionMs > 5_000L) {
             player.seekTo(0L)
             queueEngine.updatePosition(0L)
@@ -7420,9 +7823,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun seekTo(progress: Float) {
         val duration = _state.value.durationMs.coerceAtLeast(1L)
         val target = (duration * progress.coerceIn(0f, 1f)).toLong()
-        player.seekTo(target)
-        queueEngine.updatePosition(target)
-        _state.update { it.copy(positionMs = target) }
+        if (routeJamAction(JamAction.Seek(target))) return
+        seekToPositionMs(target)
     }
 
     fun seekBy(deltaMs: Long) {
@@ -7431,9 +7833,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val duration = player.durationMs.takeIf { it > 0L } ?: _state.value.durationMs
         val unboundedTarget = (currentPosition + deltaMs).coerceAtLeast(0L)
         val target = if (duration > 0L) unboundedTarget.coerceAtMost(duration) else unboundedTarget
-        player.seekTo(target)
-        queueEngine.updatePosition(target)
-        _state.update { it.copy(positionMs = target) }
+        if (routeJamAction(JamAction.Seek(target))) return
+        seekToPositionMs(target)
     }
 
     private suspend fun loadFallbackHome(
@@ -7918,21 +8319,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun saveAudDToken(token: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>().applicationContext
-            com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.configureAudD(context, token)
+            LevyraRecognitionCenter.configureAudD(levyraContext, token)
             resetRecognitionCollector()
-            val configured = com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.isAvailable
-            _state.update { it.copy(audDConfigured = configured, recognitionAvailable = configured) }
+            _state.update { it.copy(audDConfigured = LevyraRecognitionCenter.isFallbackConfigured) }
         }
     }
 
     fun clearAudDToken() {
         viewModelScope.launch(Dispatchers.IO) {
-            com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.clearAudD(
-                getApplication<Application>().applicationContext
-            )
+            LevyraRecognitionCenter.clearAudD(levyraContext)
             resetRecognitionCollector()
-            _state.update { it.copy(audDConfigured = false, recognitionAvailable = false) }
+            _state.update { it.copy(audDConfigured = false) }
         }
     }
 
@@ -8125,6 +8522,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         const val MIX_HISTORY_DAYS = 180
         const val MIX_SURPRISE_ANCHORS = 3
         const val MIX_UNAVAILABLE_MARKER = "levyra_mix_unavailable"
+        const val JAM_TRACK_SOURCE = "jam"
+        const val JAM_DISPLAY_NAME_MAX_LENGTH = 32
     }
 
     override fun onCleared() {
@@ -8133,6 +8532,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             recognitionCollectorJob?.cancel()
             recognitionController.cancel()
         }
+        recognitionHistoryJob?.cancel()
+        recognitionMatchJob?.cancel()
+        networkTestJob?.cancel()
+        jamStateJob?.cancel()
+        if (jamControllerDelegate.isInitialized()) jamController.close()
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
         audioSettingsPersistJob?.cancel()
         audioSettingsPersistence.flush()

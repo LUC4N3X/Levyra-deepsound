@@ -220,6 +220,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("interfaceSettings", interfaceSettingsToJson(snapshot.interfaceSettings))
             .put("downloadSettings", downloadSettingsToJson(snapshot.downloadSettings))
             .put("backupSettings", backupSettingsToJson(snapshot.backupSettings))
+            .put("jamDisplayName", snapshot.jamDisplayName)
             .put("recentSearches", JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } })
             .put("personalOrbitTracks", JSONArray().apply { snapshot.personalOrbitTracks.forEach { put(TrackJson.toJson(it)) } })
             .put("lastTrack", snapshot.lastTrack?.let(TrackJson::toJson) ?: JSONObject.NULL)
@@ -249,7 +250,8 @@ class LevyraBackupManager(private val context: Context) {
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
             interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings")),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
-            backupSettings = parseBackupSettings(json.optJSONObject("backupSettings"))
+            backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
+            jamDisplayName = json.optString("jamDisplayName")
         )
     }
 

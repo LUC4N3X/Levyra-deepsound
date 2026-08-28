@@ -650,6 +650,71 @@ class LevyraStrings private constructor(
     val recognitionListening: String get() = value("recognitionListening")
     val recognitionProcessing: String get() = value("recognitionProcessing")
     val recognitionTapToListen: String get() = value("recognitionTapToListen")
+    val recognitionTitle: String get() = value("recognitionTitle")
+    val recognitionSubtitle: String get() = value("recognitionSubtitle")
+    val recognitionListenMicrophone: String get() = value("recognitionListenMicrophone")
+    val recognitionListenDevice: String get() = value("recognitionListenDevice")
+    val recognitionCancelAction: String get() = value("recognitionCancelAction")
+    val recognitionNoMatch: String get() = value("recognitionNoMatch")
+    val recognitionFailed: String get() = value("recognitionFailed")
+    val recognitionPermissionRequired: String get() = value("recognitionPermissionRequired")
+    val recognitionUnavailable: String get() = value("recognitionUnavailable")
+    val recognitionHistoryEmpty: String get() = value("recognitionHistoryEmpty")
+    val recognitionClearHistory: String get() = value("recognitionClearHistory")
+    val recognitionCatalogMatch: String get() = value("recognitionCatalogMatch")
+    val recognitionCatalogMissing: String get() = value("recognitionCatalogMissing")
+    val jamTitle: String get() = value("jamTitle")
+    val jamSubtitle: String get() = value("jamSubtitle")
+    val jamCreate: String get() = value("jamCreate")
+    val jamJoin: String get() = value("jamJoin")
+    val jamLeave: String get() = value("jamLeave")
+    val jamEnd: String get() = value("jamEnd")
+    val jamSessionCode: String get() = value("jamSessionCode")
+    val jamCodeHint: String get() = value("jamCodeHint")
+    val jamParticipants: String get() = value("jamParticipants")
+    val jamPermissions: String get() = value("jamPermissions")
+    val jamPermissionHostOnly: String get() = value("jamPermissionHostOnly")
+    val jamPermissionAddSongs: String get() = value("jamPermissionAddSongs")
+    val jamPermissionCollaborative: String get() = value("jamPermissionCollaborative")
+    val jamDisplayName: String get() = value("jamDisplayName")
+    val jamRoleHost: String get() = value("jamRoleHost")
+    val jamRoleGuest: String get() = value("jamRoleGuest")
+    val jamConnecting: String get() = value("jamConnecting")
+    val jamDisconnected: String get() = value("jamDisconnected")
+    val jamInvalidCode: String get() = value("jamInvalidCode")
+    val jamConnectionFailed: String get() = value("jamConnectionFailed")
+    val jamNotAuthorized: String get() = value("jamNotAuthorized")
+    val jamHostEnded: String get() = value("jamHostEnded")
+    val jamLocalNetworkOnly: String get() = value("jamLocalNetworkOnly")
+    val networkTitle: String get() = value("networkTitle")
+    val networkSubtitle: String get() = value("networkSubtitle")
+    val networkDns: String get() = value("networkDns")
+    val networkDnsSystem: String get() = value("networkDnsSystem")
+    val networkDnsCustom: String get() = value("networkDnsCustom")
+    val networkCustomDohUrl: String get() = value("networkCustomDohUrl")
+    val networkProxy: String get() = value("networkProxy")
+    val networkProxyDisabled: String get() = value("networkProxyDisabled")
+    val networkProxyHost: String get() = value("networkProxyHost")
+    val networkProxyPort: String get() = value("networkProxyPort")
+    val networkProxyAuthentication: String get() = value("networkProxyAuthentication")
+    val networkProxyUsername: String get() = value("networkProxyUsername")
+    val networkProxyPassword: String get() = value("networkProxyPassword")
+    val networkBypassStreams: String get() = value("networkBypassStreams")
+    val networkBypassStreamsSubtitle: String get() = value("networkBypassStreamsSubtitle")
+    val networkTest: String get() = value("networkTest")
+    val networkTestSuccess: String get() = value("networkTestSuccess")
+    val networkTestDnsFailed: String get() = value("networkTestDnsFailed")
+    val networkTestProxyAuthFailed: String get() = value("networkTestProxyAuthFailed")
+    val networkTestTimeout: String get() = value("networkTestTimeout")
+    val networkTestRefused: String get() = value("networkTestRefused")
+    val networkTestTls: String get() = value("networkTestTls")
+    val networkTestInvalid: String get() = value("networkTestInvalid")
+    val networkTestUnknown: String get() = value("networkTestUnknown")
+    val networkErrorProxyHost: String get() = value("networkErrorProxyHost")
+    val networkErrorProxyPort: String get() = value("networkErrorProxyPort")
+    val networkErrorProxyCredentials: String get() = value("networkErrorProxyCredentials")
+    val networkErrorDohUrl: String get() = value("networkErrorDohUrl")
+    val networkApplied: String get() = value("networkApplied")
     fun formatSleepTimerMinutes(minutes: Int): String {
         val amount = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(minutes.coerceAtLeast(0))
@@ -1171,6 +1236,80 @@ class LevyraStrings private constructor(
             "recognitionTapToListen"
         )
 
+        private val recognitionKeys = setOf(
+            "recognitionTitle",
+            "recognitionSubtitle",
+            "recognitionListenMicrophone",
+            "recognitionListenDevice",
+            "recognitionCancelAction",
+            "recognitionNoMatch",
+            "recognitionFailed",
+            "recognitionPermissionRequired",
+            "recognitionUnavailable",
+            "recognitionHistoryEmpty",
+            "recognitionClearHistory",
+            "recognitionCatalogMatch",
+            "recognitionCatalogMissing"
+        )
+
+        private val jamKeys = setOf(
+            "jamTitle",
+            "jamSubtitle",
+            "jamCreate",
+            "jamJoin",
+            "jamLeave",
+            "jamEnd",
+            "jamSessionCode",
+            "jamCodeHint",
+            "jamParticipants",
+            "jamPermissions",
+            "jamPermissionHostOnly",
+            "jamPermissionAddSongs",
+            "jamPermissionCollaborative",
+            "jamDisplayName",
+            "jamRoleHost",
+            "jamRoleGuest",
+            "jamConnecting",
+            "jamDisconnected",
+            "jamInvalidCode",
+            "jamConnectionFailed",
+            "jamNotAuthorized",
+            "jamHostEnded",
+            "jamLocalNetworkOnly"
+        )
+
+        private val networkKeys = setOf(
+            "networkTitle",
+            "networkSubtitle",
+            "networkDns",
+            "networkDnsSystem",
+            "networkDnsCustom",
+            "networkCustomDohUrl",
+            "networkProxy",
+            "networkProxyDisabled",
+            "networkProxyHost",
+            "networkProxyPort",
+            "networkProxyAuthentication",
+            "networkProxyUsername",
+            "networkProxyPassword",
+            "networkBypassStreams",
+            "networkBypassStreamsSubtitle",
+            "networkTest",
+            "networkTestSuccess",
+            "networkTestDnsFailed",
+            "networkTestProxyAuthFailed",
+            "networkTestTimeout",
+            "networkTestRefused",
+            "networkTestTls",
+            "networkTestInvalid",
+            "networkTestUnknown",
+            "networkErrorProxyHost",
+            "networkErrorProxyPort",
+            "networkErrorProxyCredentials",
+            "networkErrorDohUrl",
+            "networkApplied"
+        )
+
         private val integrationKeys = setOf(
             "integrations",
             "apiKeyLabel",
@@ -1213,8 +1352,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
