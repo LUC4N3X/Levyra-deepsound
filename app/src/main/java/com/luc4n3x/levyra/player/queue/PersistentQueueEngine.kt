@@ -65,6 +65,28 @@ internal fun radioHistoryTrimIndices(
         .toCollection(LinkedHashSet())
 }
 
+internal fun radioCandidateTracks(
+    existingTracks: List<Track>,
+    candidates: List<Track>,
+    limit: Int = 5
+): List<Track> {
+    if (limit <= 0 || candidates.isEmpty()) return emptyList()
+    val existingIds = existingTracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
+    val existingTitles = existingTracks.mapTo(LinkedHashSet(), ::radioTitleKey)
+    return candidates
+        .asSequence()
+        .filter { it.title.isNotBlank() }
+        .distinctBy(::playbackQueueIdentity)
+        .distinctBy(::radioTitleKey)
+        .filter { playbackQueueIdentity(it) !in existingIds }
+        .filter { radioTitleKey(it) !in existingTitles }
+        .take(limit)
+        .toList()
+}
+
+private fun radioTitleKey(track: Track): String =
+    "${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
+
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -490,39 +512,20 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
-        val candidatePool = tracks
-            .asSequence()
-            .filter { it.title.isNotBlank() }
-            .distinctBy(::playbackQueueIdentity)
-            .distinctBy { "${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}" }
-            .take(RADIO_BATCH_SIZE)
-            .toList()
-        if (candidatePool.isEmpty()) return@mutate current
+        val candidates = radioCandidateTracks(
+            existingTracks = current.tracks,
+            candidates = tracks,
+            limit = RADIO_BATCH_SIZE
+        )
+        if (candidates.isEmpty()) return@mutate current
 
-        var prepared = trimPlayedRadioHistory(current, candidatePool.size)
-        var additions = radioAdditions(prepared, candidatePool)
-        val trimmed = current.tracks.size - prepared.tracks.size
-        if (trimmed > additions.size) {
-            prepared = trimPlayedRadioHistory(current, additions.size)
-            additions = radioAdditions(prepared, candidatePool)
-        }
+        val prepared = trimPlayedRadioHistory(current, candidates.size)
+        val available = (MAX_RADIO_QUEUE_SIZE - prepared.tracks.size).coerceAtLeast(0)
+        val additions = candidates
+            .take(minOf(RADIO_BATCH_SIZE, available))
+            .map { it.queueStoredCopy() }
         if (additions.isEmpty()) return@mutate current
         rebuildAfterStructureChange(prepared, prepared.tracks + additions, prepared.currentIndex)
-    }
-
-    private fun radioAdditions(current: PlaybackQueueSnapshot, candidates: List<Track>): List<Track> {
-        val existing = current.tracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
-        val existingTitles = current.tracks.mapTo(LinkedHashSet()) {
-            "${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}"
-        }
-        val available = (MAX_RADIO_QUEUE_SIZE - current.tracks.size).coerceAtLeast(0)
-        return candidates
-            .asSequence()
-            .filter { existing.add(playbackQueueIdentity(it)) }
-            .filter { existingTitles.add("${it.artist.trim().lowercase()}|${it.title.trim().lowercase()}") }
-            .map { it.queueStoredCopy() }
-            .take(minOf(RADIO_BATCH_SIZE, available))
-            .toList()
     }
 
     private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
