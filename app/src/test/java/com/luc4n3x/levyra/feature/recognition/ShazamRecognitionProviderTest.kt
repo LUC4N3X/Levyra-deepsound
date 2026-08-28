@@ -6,6 +6,7 @@ import java.util.zip.CRC32
 import kotlin.math.PI
 import kotlin.math.sin
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,6 +60,42 @@ class ShazamRecognitionProviderTest {
             RecognitionOutcome.Error(RecognitionErrorKind.Network),
             parseShazamResponse("not-json")
         )
+    }
+
+    @Test
+    fun requestBodyUsesCurrentShazamMobileShape() {
+        val signature = ShazamSignature(
+            payload = byteArrayOf(1, 2, 3, 4),
+            sampleDurationMs = 3_120L,
+            peakCount = 12
+        )
+        val before = System.currentTimeMillis()
+        val body = ShazamRecognitionProvider().requestBody(signature)
+        val after = System.currentTimeMillis()
+
+        assertEquals("Europe/Moscow", body.getString("timezone"))
+        assertTrue(body.getLong("timestamp") in before..after)
+        assertEquals(0, body.getJSONObject("context").length())
+        assertEquals(0, body.getJSONObject("geolocation").length())
+
+        val encodedSignature = body.getJSONObject("signature")
+        assertEquals(3_120L, encodedSignature.getLong("samplems"))
+        assertTrue(
+            encodedSignature.getString("uri")
+                .startsWith(ShazamSignatureGenerator.SIGNATURE_URI_PREFIX)
+        )
+        assertFalse(encodedSignature.has("timestamp"))
+    }
+
+    @Test
+    fun discoveryEndpointCarriesCurrentRecognitionParameters() {
+        val endpoint = defaultShazamEndpoint("REQUEST", "DEVICE")
+
+        assertTrue(endpoint.startsWith("https://amp.shazam.com/discovery/v5/en-US/US/android/-/tag/REQUEST/DEVICE?"))
+        assertTrue(endpoint.contains("shazamapiversion=v3"))
+        assertTrue(endpoint.contains("hubv5minorversion=v5.1"))
+        assertTrue(endpoint.contains("hidelb=true"))
+        assertTrue(endpoint.contains("video=v3"))
     }
 
     @Test
