@@ -11,14 +11,11 @@ import org.junit.Test
 class ShazamSignatureGeneratorTest {
 
     @Test
-    fun generatorRespectsDurationLimitOnSilentAudio() {
+    fun generatorReturnsNullForSilentAudio() {
         val silentSamples = ShortArray(ShazamSignatureGenerator.SAMPLE_RATE_HZ * 10) { 0 }
         val generator = ShazamSignatureGenerator(maxDurationSeconds = 3.1)
-        val sig = generator.generate(silentSamples)
 
-        if (sig != null) {
-            assertTrue(sig.sampleDurationMs <= 3200L)
-        }
+        assertNull(generator.generate(silentSamples))
     }
 
     @Test
