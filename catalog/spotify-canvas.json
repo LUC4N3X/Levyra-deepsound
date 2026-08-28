@@ -1,7 +1,14 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-28T11:28:34Z",
+  "generatedAt": "2026-08-28T22:24:33Z",
   "items": [
+    {
+      "song": "Bugie",
+      "artist": "Shiva",
+      "album": "Vangelo",
+      "url": "https://canvaz.scdn.co/upload/artist/2K5nCggbhSZ00YCYP5qkZS/video/411ffcd2c682465eb46ebf5403c6f53f.cnvs.mp4",
+      "scope": "track"
+    },
     {
       "song": "CANZONE D'AMORE",
       "artist": "Geolier",
@@ -24,17 +31,17 @@
       "scope": "track"
     },
     {
-      "song": "LA TESTA GIRA",
-      "artist": "Fred De Palma, Anitta, Emis Killa",
-      "album": "LA TESTA GIRA",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/074c16545dc241a398b08740ddaaa339.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "2 GIORNI DI FILA (feat. Sfera Ebbasta, ANNA)",
       "artist": "Geolier, Sfera Ebbasta, ANNA",
       "album": "TUTTO È POSSIBILE",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/54f882b9ef2a4f85a138a0b1fcc311b9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "LA TESTA GIRA",
+      "artist": "Fred De Palma, Anitta, Emis Killa",
+      "album": "LA TESTA GIRA",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/074c16545dc241a398b08740ddaaa339.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -52,17 +59,17 @@
       "scope": "track"
     },
     {
+      "song": "DAVVERODAVVERO",
+      "artist": "Artie 5ive",
+      "album": "LA BELLAVITA",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d0ded7de7a314da78c8c6edd2d837dca.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "AL MIO PAESE",
       "artist": "Serena Brancale, Levante, DELIA",
       "album": "SACRO",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/c5e14ae6c7a64cd98767de60380c0794.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Sorry Scusa Lo Siento",
-      "artist": "Pinguini Tattici Nucleari",
-      "album": "Sorry Scusa Lo Siento",
-      "url": "https://canvaz.scdn.co/upload/artist/6RdcIWVKYYzNzjQRd3oyHS/video/cc0587648f3343b09ef2aa30fc51a56f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -73,17 +80,10 @@
       "scope": "track"
     },
     {
-      "song": "DAVVERODAVVERO",
-      "artist": "Artie 5ive",
-      "album": "LA BELLAVITA",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d0ded7de7a314da78c8c6edd2d837dca.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "FLAMENCO PARANOIA",
-      "artist": "Samurai Jay, Vito Salamanca",
-      "album": "AMATORE",
-      "url": "https://canvaz.scdn.co/upload/artist/2n0Ki4A5tKTEloq3WCt1IH/video/ba8271e560b34e468637b41f78f5c7a0.cnvs.mp4",
+      "song": "Sorry Scusa Lo Siento",
+      "artist": "Pinguini Tattici Nucleari",
+      "album": "Sorry Scusa Lo Siento",
+      "url": "https://canvaz.scdn.co/upload/artist/6RdcIWVKYYzNzjQRd3oyHS/video/cc0587648f3343b09ef2aa30fc51a56f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -94,10 +94,10 @@
       "scope": "track"
     },
     {
-      "song": "Canto d’amore (con Marco Mengoni)",
-      "artist": "Angelina Mango, Marco Mengoni",
-      "album": "Canto d’amore (con Marco Mengoni)",
-      "url": "https://canvaz.scdn.co/upload/artist/1A6HBLulvBFzNtlMb7b08f/video/3d3f400f6d734298ab9c1bb0b67f054b.cnvs.mp4",
+      "song": "FLAMENCO PARANOIA",
+      "artist": "Samurai Jay, Vito Salamanca",
+      "album": "AMATORE",
+      "url": "https://canvaz.scdn.co/upload/artist/2n0Ki4A5tKTEloq3WCt1IH/video/ba8271e560b34e468637b41f78f5c7a0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -108,10 +108,10 @@
       "scope": "track"
     },
     {
-      "song": "BAILE INoLVIDABLE",
-      "artist": "Bad Bunny",
-      "album": "DeBÍ TiRAR MáS FOToS",
-      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/d43f1c91233045d0866163d46bfa3076.cnvs.mp4",
+      "song": "Canto d’amore (con Marco Mengoni)",
+      "artist": "Angelina Mango, Marco Mengoni",
+      "album": "Canto d’amore (con Marco Mengoni)",
+      "url": "https://canvaz.scdn.co/upload/artist/1A6HBLulvBFzNtlMb7b08f/video/3d3f400f6d734298ab9c1bb0b67f054b.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -122,17 +122,10 @@
       "scope": "track"
     },
     {
-      "song": "ROMANTICA",
-      "artist": "Ultimo",
-      "album": "IL GIORNO CHE ASPETTAVO",
-      "url": "https://canvaz.scdn.co/upload/artist/3hN3iJMbbBmqBSAMx5veDa/video/6479e767a56a4636a2c748b70787ffb8.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Cabana",
-      "artist": "Irama",
-      "album": "Antologia Della Vita e Della Morte",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/0648360dbe6345659103dcbc5156ff8b.cnvs.mp4",
+      "song": "BAILE INoLVIDABLE",
+      "artist": "Bad Bunny",
+      "album": "DeBÍ TiRAR MáS FOToS",
+      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/d43f1c91233045d0866163d46bfa3076.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -143,24 +136,24 @@
       "scope": "track"
     },
     {
+      "song": "ROMANTICA",
+      "artist": "Ultimo",
+      "album": "IL GIORNO CHE ASPETTAVO",
+      "url": "https://canvaz.scdn.co/upload/artist/3hN3iJMbbBmqBSAMx5veDa/video/6479e767a56a4636a2c748b70787ffb8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ora che non ho più te",
+      "artist": "Cesare Cremonini",
+      "album": "ALASKA BABY",
+      "url": "https://canvaz.scdn.co/upload/artist/396Jr76018oUMR6QBnqT8T/video/908caaa500684b7588ff933103df8620.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "La Plena - W Sound 05",
       "artist": "W Sound, Beéle, Ovy On The Drums",
       "album": "La Plena (W Sound 05)",
       "url": "https://canvaz.scdn.co/upload/artist/3m5qlPf2OkihLz3dRYnkPA/video/fa4e45ba70184c1eb123802434394313.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Stupida sfortuna",
-      "artist": "Fulminacci",
-      "album": "CALCINACCI",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/f9b24e0cdbdd436eb683640f81ec52ff.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Self Aware",
-      "artist": "Temper City",
-      "album": "Self Aware",
-      "url": "https://canvaz.scdn.co/upload/artist/5mHUmlJWkcoOk1NbjfrXWz/video/d625435b5713482d8b1344fe0c7842a9.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -171,10 +164,17 @@
       "scope": "track"
     },
     {
-      "song": "NUEVAYoL",
-      "artist": "Bad Bunny",
-      "album": "DeBÍ TiRAR MáS FOToS",
-      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/3682a2abaa784108b9c644ad62c4e3a8.cnvs.mp4",
+      "song": "Cabana",
+      "artist": "Irama",
+      "album": "Antologia Della Vita e Della Morte",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/0648360dbe6345659103dcbc5156ff8b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Stupida sfortuna",
+      "artist": "Fulminacci",
+      "album": "CALCINACCI",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/f9b24e0cdbdd436eb683640f81ec52ff.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -185,17 +185,17 @@
       "scope": "track"
     },
     {
-      "song": "AMOR",
-      "artist": "Achille Lauro",
-      "album": "Comuni Mortali",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/db2ef76126be4c43a435c43cadc3a52f.cnvs.mp4",
+      "song": "NEON",
+      "artist": "Sfera Ebbasta, Shiva",
+      "album": "SANTANA MONEY GANG",
+      "url": "https://canvaz.scdn.co/upload/artist/23TFHmajVfBtlRx5MXqgoz/video/e50b411bf5f444039e6e36b8a6f3b17c.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "DtMF",
+      "song": "NUEVAYoL",
       "artist": "Bad Bunny",
       "album": "DeBÍ TiRAR MáS FOToS",
-      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/c47c377d4a334d86a5cbb3b6726339ef.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/3682a2abaa784108b9c644ad62c4e3a8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -213,31 +213,24 @@
       "scope": "track"
     },
     {
-      "song": "ARCOBALENO (feat. Anuel AA)",
-      "artist": "Geolier, Anuel AA",
-      "album": "TUTTO È POSSIBILE",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/f9baa2b68ead45c8b351330302882691.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "NEON",
-      "artist": "Sfera Ebbasta, Shiva",
-      "album": "SANTANA MONEY GANG",
-      "url": "https://canvaz.scdn.co/upload/artist/23TFHmajVfBtlRx5MXqgoz/video/e50b411bf5f444039e6e36b8a6f3b17c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Ora che non ho più te",
-      "artist": "Cesare Cremonini",
-      "album": "ALASKA BABY",
-      "url": "https://canvaz.scdn.co/upload/artist/396Jr76018oUMR6QBnqT8T/video/908caaa500684b7588ff933103df8620.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "SOGNO AMERICANO",
       "artist": "Artie 5ive",
       "album": "LA BELLAVITA",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/e722f45a1bd64ac2927c1418768b1123.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "DtMF",
+      "artist": "Bad Bunny",
+      "album": "DeBÍ TiRAR MáS FOToS",
+      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/c47c377d4a334d86a5cbb3b6726339ef.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Self Aware",
+      "artist": "Temper City",
+      "album": "Self Aware",
+      "url": "https://canvaz.scdn.co/upload/artist/5mHUmlJWkcoOk1NbjfrXWz/video/d625435b5713482d8b1344fe0c7842a9.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -248,6 +241,13 @@
       "scope": "track"
     },
     {
+      "song": "AMOR",
+      "artist": "Achille Lauro",
+      "album": "Comuni Mortali",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/db2ef76126be4c43a435c43cadc3a52f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Questa domenica",
       "artist": "Olly, Juli",
       "album": "TUTTA VITA (SEMPRE)",
@@ -255,24 +255,10 @@
       "scope": "track"
     },
     {
-      "song": "Magnetic",
-      "artist": "The Bausa",
-      "album": "Magnetic / Addicted To Your Love",
-      "url": "https://canvaz.scdn.co/upload/artist/7krakxeyEmge6pzTthKNyg/video/d92ffc67d90947dc87128c794eeb0196.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "BERLINO",
-      "artist": "Ernia",
-      "album": "PER SOLDI E PER AMORE",
-      "url": "https://canvaz.scdn.co/upload/artist/3fhMfkPPzksWuw0hEm4ldm/video/481f30358ce14146a09d54983d4d2d21.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Jolene",
-      "artist": "Dolly Parton",
-      "album": "Jolene (Expanded Edition)",
-      "url": "https://canvaz.scdn.co/upload/artist/32vWCbZh0xZ4o9gkz4PsEU/video/a418cf1e46304c6f9f2eafcb18cdf663.cnvs.mp4",
+      "song": "COME SE NON FOSSI NEI GUAI",
+      "artist": "Sfera Ebbasta, Shiva",
+      "album": "SANTANA MONEY GANG",
+      "url": "https://canvaz.scdn.co/upload/artist/23TFHmajVfBtlRx5MXqgoz/video/8f26505659494d7683cf78e522098d5f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -283,6 +269,13 @@
       "scope": "track"
     },
     {
+      "song": "Jolene",
+      "artist": "Dolly Parton",
+      "album": "Jolene (Expanded Edition)",
+      "url": "https://canvaz.scdn.co/upload/artist/32vWCbZh0xZ4o9gkz4PsEU/video/a418cf1e46304c6f9f2eafcb18cdf663.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Earrings",
       "artist": "Malcolm Todd",
       "album": "Sweet Boy",
@@ -290,10 +283,10 @@
       "scope": "track"
     },
     {
-      "song": "I Will Always Love You",
-      "artist": "Dolly Parton",
-      "album": "Jolene (Expanded Edition)",
-      "url": "https://canvaz.scdn.co/upload/artist/32vWCbZh0xZ4o9gkz4PsEU/video/92d21b5fb9ba4cd1914798fb38a06501.cnvs.mp4",
+      "song": "stupid song",
+      "artist": "Olivia Rodrigo",
+      "album": "you seem pretty sad for a girl so in love",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/46a4663163214209ba58767ec8f47213.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -301,13 +294,6 @@
       "artist": "Tame Impala",
       "album": "Deadbeat",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/156336c0ba7a41d49a884eda00f0574e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "stupid song",
-      "artist": "Olivia Rodrigo",
-      "album": "you seem pretty sad for a girl so in love",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/46a4663163214209ba58767ec8f47213.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -332,17 +318,17 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "BbY WOW",
       "artist": "KAROL G, Judeline, rusowsky",
       "album": "NO ME ARREPIENTO DE SENTIR TANTO",
       "url": "https://canvaz.scdn.co/upload/artist/790FomKkXshlbRYZFtlgla/video/baa693734a0f416b8f9c6a79bf7bbb42.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -353,20 +339,6 @@
       "scope": "track"
     },
     {
-      "song": "hate that i made you love me",
-      "artist": "Ariana Grande",
-      "album": "petal",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2b79c1e7a2204ccc9d614477d510c800.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Dreams - 2004 Remaster",
-      "artist": "Fleetwood Mac",
-      "album": "Rumours (Super Deluxe)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "weren't for the wind",
       "artist": "Ella Langley",
       "album": "still hungover",
@@ -374,10 +346,17 @@
       "scope": "track"
     },
     {
-      "song": "Been By Now",
-      "artist": "Morgan Wallen",
-      "album": "Been By Now",
-      "url": "https://canvaz.scdn.co/upload/artist/4oUHIQIBe0LHzYfvXNW4QM/video/15ce2ef8169f4ad98b47aa633cc43115.cnvs.mp4",
+      "song": "I Will Always Love You",
+      "artist": "Dolly Parton",
+      "album": "Jolene (Expanded Edition)",
+      "url": "https://canvaz.scdn.co/upload/artist/32vWCbZh0xZ4o9gkz4PsEU/video/92d21b5fb9ba4cd1914798fb38a06501.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "hate that i made you love me",
+      "artist": "Ariana Grande",
+      "album": "petal",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2b79c1e7a2204ccc9d614477d510c800.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -388,17 +367,10 @@
       "scope": "track"
     },
     {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Dizzy up the Girl",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "drop dead",
-      "artist": "Olivia Rodrigo",
-      "album": "you seem pretty sad for a girl so in love",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/fd765912b26b45acb888b486178f4e11.cnvs.mp4",
+      "song": "Been By Now",
+      "artist": "Morgan Wallen",
+      "album": "Been By Now",
+      "url": "https://canvaz.scdn.co/upload/artist/4oUHIQIBe0LHzYfvXNW4QM/video/15ce2ef8169f4ad98b47aa633cc43115.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -409,24 +381,17 @@
       "scope": "track"
     },
     {
-      "song": "NOBLE",
-      "artist": "F3miii",
-      "album": "NOBLE (Slowed Down)",
-      "url": "https://canvaz.scdn.co/upload/artist/0gmx7cndNJbFM0DAO7fT0s/video/183a96ef74ee49aa9ef92ad634854f8e.cnvs.mp4",
+      "song": "Dreams - 2004 Remaster",
+      "artist": "Fleetwood Mac",
+      "album": "Rumours (Super Deluxe)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "So Easy (To Fall In Love)",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2c92898d3bcd432abbecf16a85706f90.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Billie Jean",
-      "artist": "Michael Jackson",
-      "album": "Thriller",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3b68bf125e4a4badaf18e6ad55957a4a.cnvs.mp4",
+      "song": "drop dead",
+      "artist": "Olivia Rodrigo",
+      "album": "you seem pretty sad for a girl so in love",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/fd765912b26b45acb888b486178f4e11.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -437,10 +402,17 @@
       "scope": "track"
     },
     {
-      "song": "petal",
-      "artist": "Ariana Grande",
-      "album": "petal",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/be9219fd924b4f92bc8f3bc3ad728385.cnvs.mp4",
+      "song": "So Easy (To Fall In Love)",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2c92898d3bcd432abbecf16a85706f90.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Dizzy up the Girl",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -451,38 +423,10 @@
       "scope": "track"
     },
     {
-      "song": "bloodstream",
-      "artist": "Alyssa Grace",
-      "album": "bloodstream",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/875ae3c14ffc4efe92ace00302204901.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Everlong",
-      "artist": "Foo Fighters",
-      "album": "The Colour And The Shape",
-      "url": "https://canvaz.scdn.co/upload/artist/7jy3rLJdDQY21OgRLCZ9sD/video/efebf7d4e5eb4561881de4ddbadb799d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Some of Your Love",
-      "artist": "PARTYNEXTDOOR",
-      "album": "PARTYNEXTDOOR 3 (P3) [10-YEAR EDITION]",
-      "url": "https://canvaz.scdn.co/upload/artist/2HPaUgqeutzr3jx5a9WyDV/video/21ce1a23ead24a3c9db48c86d0ab9552.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "E85",
-      "artist": "Don Toliver",
-      "album": "OCTANE",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/49fdc41331eb4aec8e954f27de59ea6a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Sweater Weather",
-      "artist": "The Neighbourhood",
-      "album": "I Love You.",
-      "url": "https://canvaz.scdn.co/upload/artist/77SW9BnxLY8rJ0RciFqkHh/video/b1b4dc3baa884d92844ff776a131150f.cnvs.mp4",
+      "song": "Billie Jean",
+      "artist": "Michael Jackson",
+      "album": "Thriller",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/3b68bf125e4a4badaf18e6ad55957a4a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -493,6 +437,48 @@
       "scope": "track"
     },
     {
+      "song": "back to friends",
+      "artist": "sombr",
+      "album": "I Barely Know Her",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/cd3937c8f6f246ee830f3b7748495fb8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sailor Song",
+      "artist": "Gigi Perez",
+      "album": "At The Beach, In Every Life",
+      "url": "https://canvaz.scdn.co/upload/artist/1iCnM8foFssWlPRLfAbIwo/video/8cc216885a234230adc817d76adb5149.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "The One That Got Away",
+      "artist": "Katy Perry",
+      "album": "Teenage Dream",
+      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Everlong",
+      "artist": "Foo Fighters",
+      "album": "The Colour And The Shape",
+      "url": "https://canvaz.scdn.co/upload/artist/7jy3rLJdDQY21OgRLCZ9sD/video/efebf7d4e5eb4561881de4ddbadb799d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sweater Weather",
+      "artist": "The Neighbourhood",
+      "album": "I Love You.",
+      "url": "https://canvaz.scdn.co/upload/artist/77SW9BnxLY8rJ0RciFqkHh/video/b1b4dc3baa884d92844ff776a131150f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "E85",
+      "artist": "Don Toliver",
+      "album": "OCTANE",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/49fdc41331eb4aec8e954f27de59ea6a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Willing and Able",
       "artist": "Noah Kahan",
       "album": "The Great Divide",
@@ -500,17 +486,24 @@
       "scope": "track"
     },
     {
-      "song": "Animal",
-      "artist": "KATSEYE",
-      "album": "Animal",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/11429bb997bc4d8e8d0f8940faddbc31.cnvs.mp4",
+      "song": "petal",
+      "artist": "Ariana Grande",
+      "album": "petal",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/be9219fd924b4f92bc8f3bc3ad728385.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "back to friends",
-      "artist": "sombr",
-      "album": "I Barely Know Her",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/cd3937c8f6f246ee830f3b7748495fb8.cnvs.mp4",
+      "song": "NOBLE",
+      "artist": "F3miii",
+      "album": "NOBLE (Slowed Down)",
+      "url": "https://canvaz.scdn.co/upload/artist/0gmx7cndNJbFM0DAO7fT0s/video/183a96ef74ee49aa9ef92ad634854f8e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "bloodstream",
+      "artist": "Alyssa Grace",
+      "album": "bloodstream",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/875ae3c14ffc4efe92ace00302204901.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -542,31 +535,10 @@
       "scope": "track"
     },
     {
-      "song": "Midnight Sun",
-      "artist": "Zara Larsson",
-      "album": "Midnight Sun",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "WHERE IS MY HUSBAND!",
       "artist": "RAYE",
       "album": "THIS MUSIC MAY CONTAIN HOPE.",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/f3a17ad81c6143de8e1967de8c799b1d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Ordinary",
-      "artist": "Alex Warren",
-      "album": "You'll Be Alright, Kid (Chapter 1)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fa41c665765f46f9bc0cba39028b00d5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Material Lover - from The Devil Wears Prada 2 Original Motion Picture",
-      "artist": "SIENNA SPIRO",
-      "album": "Visitor (Deluxe)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/7217bb849c04487abf708678fea8b6a8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -577,13 +549,6 @@
       "scope": "track"
     },
     {
-      "song": "12 to 12",
-      "artist": "sombr",
-      "album": "I Barely Know Her",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/f99635fb6b854ca9936b35049e18a215.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
       "album": "Nice To Each Other",
@@ -591,31 +556,31 @@
       "scope": "track"
     },
     {
-      "song": "Riptide",
-      "artist": "Vance Joy",
-      "album": "Dream Your Life Away (Deluxe Edition)",
-      "url": "https://canvaz.scdn.co/upload/artist/10exVja0key0uqUkk6LJRT/video/1b039ce09dcb4121ae37198d73e24be5.cnvs.mp4",
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Wonderwall - Remastered",
-      "artist": "Oasis",
-      "album": "(What's The Story) Morning Glory? (Deluxe Remastered Edition)",
-      "url": "https://canvaz.scdn.co/upload/artist/2DaxqgrOhkeH0fpeiQq2f4/video/f26c934586d54500bc619d64fb8322f0.cnvs.mp4",
+      "song": "Material Lover - from The Devil Wears Prada 2 Original Motion Picture",
+      "artist": "SIENNA SPIRO",
+      "album": "Visitor (Deluxe)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/7217bb849c04487abf708678fea8b6a8.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "On 2nite",
-      "artist": "Silva Bumpa",
-      "album": "On 2nite",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/c44158fad0e446d99a2aac6177bd8ea9.cnvs.mp4",
+      "song": "Ordinary",
+      "artist": "Alex Warren",
+      "album": "You'll Be Alright, Kid (Chapter 1)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fa41c665765f46f9bc0cba39028b00d5.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "End of Beginning",
-      "artist": "Djo",
-      "album": "DECIDE",
-      "url": "https://canvaz.scdn.co/upload/artist/5p9HO3XC5P3BLxJs5Mtrhm/video/16c466305c364c5ea0859796e1f2a48b.cnvs.mp4",
+      "song": "12 to 12",
+      "artist": "sombr",
+      "album": "I Barely Know Her",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/f99635fb6b854ca9936b35049e18a215.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -626,10 +591,31 @@
       "scope": "track"
     },
     {
-      "song": "De Lejitos - Remix",
-      "artist": "Jay Wheeler, Omar Courtz",
-      "album": "La Voz Favorita",
-      "url": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/487deab6f9764fd3baeb69c3474b9458.cnvs.mp4",
+      "song": "End of Beginning",
+      "artist": "Djo",
+      "album": "DECIDE",
+      "url": "https://canvaz.scdn.co/upload/artist/5p9HO3XC5P3BLxJs5Mtrhm/video/16c466305c364c5ea0859796e1f2a48b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "On 2nite",
+      "artist": "Silva Bumpa",
+      "album": "On 2nite",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/c44158fad0e446d99a2aac6177bd8ea9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Lush Life",
+      "artist": "Zara Larsson",
+      "album": "So Good",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/ce949667b1dd4c168dd7ea376de075a1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Wonderwall - Remastered",
+      "artist": "Oasis",
+      "album": "(What's The Story) Morning Glory? (Deluxe Remastered Edition)",
+      "url": "https://canvaz.scdn.co/upload/artist/2DaxqgrOhkeH0fpeiQq2f4/video/f26c934586d54500bc619d64fb8322f0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -637,6 +623,13 @@
       "artist": "Quevedo, Nueva Línea",
       "album": "EL BAIFO",
       "url": "https://canvaz.scdn.co/upload/artist/52iwsT98xCoGgiGntTiR7K/video/0838f728f8564a7b955c0e343773af3b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "De Lejitos - Remix",
+      "artist": "Jay Wheeler, Omar Courtz",
+      "album": "La Voz Favorita",
+      "url": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/487deab6f9764fd3baeb69c3474b9458.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -661,17 +654,17 @@
       "scope": "track"
     },
     {
-      "song": "Las mas bonitas son p#tas",
-      "artist": "Anuel AA",
-      "album": "Las mas bonitas son p#tas",
-      "url": "https://canvaz.scdn.co/upload/artist/2R21vXR83lH98kGeO99Y66/video/6909c377cd4242129c8d1443c17ff220.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "SUPERESTRELLA",
       "artist": "Aitana",
       "album": "CUARTO AZUL",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/9af0ebd2ec104a819b6f3c84746b55da.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Las mas bonitas son p#tas",
+      "artist": "Anuel AA",
+      "album": "Las mas bonitas son p#tas",
+      "url": "https://canvaz.scdn.co/upload/artist/2R21vXR83lH98kGeO99Y66/video/6909c377cd4242129c8d1443c17ff220.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -731,17 +724,10 @@
       "scope": "track"
     },
     {
-      "song": "Fuga",
-      "artist": "Jay Wheeler",
-      "album": "La Voz Favorita",
-      "url": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/d06bed9711324107bf7d7c45873f0e79.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "SCANDIC",
-      "artist": "Quevedo",
-      "album": "EL BAIFO",
-      "url": "https://canvaz.scdn.co/upload/artist/52iwsT98xCoGgiGntTiR7K/video/78f544e9410d43faa27139d81a5367cf.cnvs.mp4",
+      "song": "TU VAS SIN (fav)",
+      "artist": "Rels B",
+      "album": "afroLOVA 25'",
+      "url": "https://canvaz.scdn.co/upload/artist/2IMZYfNi21MGqxopj9fWx8/video/c2cad9818036453eb76ab053acf82493.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -752,17 +738,10 @@
       "scope": "track"
     },
     {
-      "song": "TU VAS SIN (fav)",
-      "artist": "Rels B",
-      "album": "afroLOVA 25'",
-      "url": "https://canvaz.scdn.co/upload/artist/2IMZYfNi21MGqxopj9fWx8/video/c2cad9818036453eb76ab053acf82493.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Fin del Mundo",
-      "artist": "La La Love You, Axolotes Mexicanos",
-      "album": "La la Love You Bonus",
-      "url": "https://canvaz.scdn.co/upload/artist/5Q30fhTc0Sl0Q4C5dOjhhQ/video/70b153ac7a3b465989d93ff2a586ac96.cnvs.mp4",
+      "song": "SCANDIC",
+      "artist": "Quevedo",
+      "album": "EL BAIFO",
+      "url": "https://canvaz.scdn.co/upload/artist/52iwsT98xCoGgiGntTiR7K/video/78f544e9410d43faa27139d81a5367cf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -773,10 +752,17 @@
       "scope": "track"
     },
     {
-      "song": "TOCATE SOLA",
-      "artist": "Lucho RK, La Pantera",
-      "album": "TA FACIL",
-      "url": "https://canvaz.scdn.co/upload/artist/1y6tVxTqgNfqxTayfohSKJ/video/9306da73d47d4f149549e4ecf147a6af.cnvs.mp4",
+      "song": "El Fin del Mundo",
+      "artist": "La La Love You, Axolotes Mexicanos",
+      "album": "La la Love You Bonus",
+      "url": "https://canvaz.scdn.co/upload/artist/5Q30fhTc0Sl0Q4C5dOjhhQ/video/70b153ac7a3b465989d93ff2a586ac96.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Fuga",
+      "artist": "Jay Wheeler",
+      "album": "La Voz Favorita",
+      "url": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/d06bed9711324107bf7d7c45873f0e79.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -784,6 +770,13 @@
       "artist": "Yapi, SOUNDPLUG",
       "album": "POR TI",
       "url": "https://canvaz.scdn.co/upload/artist/3V27gyl5V5dvei7a0U8zuX/video/c5793b3d04ea45f5bfb638c6edc42184.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "TOCATE SOLA",
+      "artist": "Lucho RK, La Pantera",
+      "album": "TA FACIL",
+      "url": "https://canvaz.scdn.co/upload/artist/1y6tVxTqgNfqxTayfohSKJ/video/9306da73d47d4f149549e4ecf147a6af.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -801,34 +794,6 @@
       "scope": "track"
     },
     {
-      "song": "Columbia",
-      "artist": "Quevedo",
-      "album": "Columbia",
-      "url": "https://canvaz.scdn.co/upload/artist/52iwsT98xCoGgiGntTiR7K/video/2053ca1f4c4d415ca0f86ef099c4b4b5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "SPICY",
-      "artist": "Fronti, Brytiago, Myke Towers",
-      "album": "EL DIAMOND FOREVER",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/08363e936bff4cc9b9143010850b2bc7.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Donde Hubo Fuego Cenizas Quedan",
-      "artist": "Anuel AA",
-      "album": "Donde Hubo Fuego Cenizas Quedan",
-      "url": "https://canvaz.scdn.co/upload/artist/2R21vXR83lH98kGeO99Y66/video/a0856cf17fa1488abb6873a36c35a3dd.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "YO y TÚ",
-      "artist": "Ovy On The Drums, Quevedo, Beéle",
-      "album": "YO y TÚ",
-      "url": "https://canvaz.scdn.co/upload/artist/3m5qlPf2OkihLz3dRYnkPA/video/bc99f16fbf6b405eba3c8ea4f9afba91.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "WO OH OH",
       "artist": "Omar Courtz, ROA",
       "album": "POR SI MAÑANA NO ESTOY",
@@ -843,6 +808,27 @@
       "scope": "track"
     },
     {
+      "song": "SPICY",
+      "artist": "Fronti, Brytiago, Myke Towers",
+      "album": "EL DIAMOND FOREVER",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/08363e936bff4cc9b9143010850b2bc7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Columbia",
+      "artist": "Quevedo",
+      "album": "Columbia",
+      "url": "https://canvaz.scdn.co/upload/artist/52iwsT98xCoGgiGntTiR7K/video/2053ca1f4c4d415ca0f86ef099c4b4b5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "YO y TÚ",
+      "artist": "Ovy On The Drums, Quevedo, Beéle",
+      "album": "YO y TÚ",
+      "url": "https://canvaz.scdn.co/upload/artist/3m5qlPf2OkihLz3dRYnkPA/video/bc99f16fbf6b405eba3c8ea4f9afba91.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "TUCHAT",
       "artist": "Quevedo",
       "album": "TUCHAT",
@@ -854,6 +840,13 @@
       "artist": "Luck Ra, BM",
       "album": "QUE NOS FALTE TODO",
       "url": "https://canvaz.scdn.co/upload/artist/4kcQWQDK0u9AftVSpdrAgk/video/a5db9e92d3b243d58d497e5827a0dedd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "SOLEAO",
+      "artist": "Myke Towers, Quevedo",
+      "album": "ISLAND BOYZ",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/ce525f046f9547278ad10ec70ab7211d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -892,17 +885,17 @@
       "scope": "track"
     },
     {
-      "song": "RENÉ CAOVILLA",
-      "artist": "Gambi",
-      "album": "RENÉ CAOVILLA",
-      "url": "https://canvaz.scdn.co/upload/artist/1lB3I3SI30v2ZOpR4XQqzJ/video/ea82b781c7384cb68449cdf05a4ce922.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "melodrama",
       "artist": "disiz, Theodora",
       "album": "on s'en rappellera pas",
       "url": "https://canvaz.scdn.co/upload/artist/7rz6ZZErn5YFDteXKhyf3g/video/4a903e204d244592895d9da77a25f614.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "RENÉ CAOVILLA",
+      "artist": "Gambi",
+      "album": "RENÉ CAOVILLA",
+      "url": "https://canvaz.scdn.co/upload/artist/1lB3I3SI30v2ZOpR4XQqzJ/video/ea82b781c7384cb68449cdf05a4ce922.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -934,20 +927,6 @@
       "scope": "track"
     },
     {
-      "song": "Jalouse",
-      "artist": "Werenoi, SDM, Vacra",
-      "album": "Diamant Noir",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/97800bcc276842c9b2325e96011e13ab.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "MON BÉBÉ",
-      "artist": "RnBoi",
-      "album": "My Eyes Only - Flashback",
-      "url": "https://canvaz.scdn.co/upload/licensor/0PpU8PcCrKiciHAMoUxASX/video/20d39270471a4774a3b772f26c7e1851.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Cote à la hausse",
       "artist": "Bouss",
       "album": "Et si j'échoue ?",
@@ -959,6 +938,20 @@
       "artist": "GIMS",
       "album": "Soleil",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/8e77d5d39ac34d1089ad1fc9b41b72d9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Jalouse",
+      "artist": "Werenoi, SDM, Vacra",
+      "album": "Diamant Noir",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/97800bcc276842c9b2325e96011e13ab.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "MON BÉBÉ",
+      "artist": "RnBoi",
+      "album": "My Eyes Only - Flashback",
+      "url": "https://canvaz.scdn.co/upload/licensor/0PpU8PcCrKiciHAMoUxASX/video/20d39270471a4774a3b772f26c7e1851.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -976,17 +969,24 @@
       "scope": "track"
     },
     {
-      "song": "Mopao aye",
-      "artist": "TRIANGLE DES BERMUDES, MC YOSHI, Mauvais djo, Kokosvoice",
-      "album": "404",
-      "url": "https://canvaz.scdn.co/upload/artist/3HmSuQk0VaGhv9hX22h10J/video/d0e4d4b51d804c70ae794ef2dcfe571d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "ELLE VOULAIT",
       "artist": "RnBoi",
       "album": "My Eyes Only - Flashback",
       "url": "https://canvaz.scdn.co/upload/licensor/0PpU8PcCrKiciHAMoUxASX/video/9cfdc2f239f64c64b5fa29c176cb3d1e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Argent Sale - A COLORS SHOW",
+      "artist": "La Rvfleuze, COLORS",
+      "album": "Argent Sale - A COLORS SHOW",
+      "url": "https://canvaz.scdn.co/upload/artist/3FvwVFWRyvxmLyVBO9nBmM/video/5665e379bf7b4801a84a9ce6ff7557bc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mopao aye",
+      "artist": "TRIANGLE DES BERMUDES, MC YOSHI, Mauvais djo, Kokosvoice",
+      "album": "404",
+      "url": "https://canvaz.scdn.co/upload/artist/3HmSuQk0VaGhv9hX22h10J/video/d0e4d4b51d804c70ae794ef2dcfe571d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -997,17 +997,24 @@
       "scope": "track"
     },
     {
-      "song": "Pétunias",
+      "song": "Chemin d'or",
       "artist": "Werenoi",
-      "album": "Pyramide",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/d6c8300319de42b296b18e4721ead57c.cnvs.mp4",
+      "album": "Carré",
+      "url": "https://canvaz.scdn.co/upload/artist/3YBJLs7RqR0aPGBgU27nDh/video/1287ece0a1d94096adb9c71e1fa80d46.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Pa Pa Paw",
-      "artist": "Damso, SARAH SEY",
-      "album": "BĒYĀH",
-      "url": "https://canvaz.scdn.co/upload/artist/2UwqpfQtNuhBwviIC0f2ie/video/d38caddf73554f32a17ba927264e730d.cnvs.mp4",
+      "song": "Full",
+      "artist": "Bilouki",
+      "album": "24 KARA",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/70005e065f6b43ed82ddfeddbfa696de.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Olivia Valere",
+      "artist": "Lagui",
+      "album": "En Croix",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/f75c167fe116478eb2ce1a5dc6b38077.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1046,13 +1053,6 @@
       "scope": "track"
     },
     {
-      "song": "The One That Got Away",
-      "artist": "Katy Perry",
-      "album": "Teenage Dream",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "panzerknacker.wav",
       "artist": "LENNSKO",
       "album": "panzerknacker.wav",
@@ -1060,17 +1060,17 @@
       "scope": "track"
     },
     {
-      "song": "Lush Life",
-      "artist": "Zara Larsson",
-      "album": "So Good",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/ce949667b1dd4c168dd7ea376de075a1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Gut Genug (mit Blumengarten & Shirin David)",
       "artist": "KITSCHKRIEG, Blumengarten, Shirin David",
       "album": "KITSCHKRIEG ZWEI",
       "url": "https://canvaz.scdn.co/upload/artist/5tHiL8SKSaZGMBUPIiSmX4/video/8f664a49e2904c3c80a500031a4f114e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "In the End",
+      "artist": "Linkin Park",
+      "album": "Hybrid Theory (Bonus Edition)",
+      "url": "https://canvaz.scdn.co/upload/artist/6XyY86QOPPrYVGvF9ch6wz/video/2f7e86b6a70d48c684c056a0556d78bf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1095,27 +1095,6 @@
       "scope": "track"
     },
     {
-      "song": "In the End",
-      "artist": "Linkin Park",
-      "album": "Hybrid Theory (Bonus Edition)",
-      "url": "https://canvaz.scdn.co/upload/artist/6XyY86QOPPrYVGvF9ch6wz/video/2f7e86b6a70d48c684c056a0556d78bf.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "The Emptiness Machine",
-      "artist": "Linkin Park",
-      "album": "From Zero",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/511aa272ce474f51ad5c2058f5b9e77a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Can't Hold Us (feat. Ray Dalton)",
-      "artist": "Macklemore, Ryan Lewis, Macklemore & Ryan Lewis, Ray Dalton",
-      "album": "The Heist",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/94d812b636744ddcbf42a76798e638f4.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Self Aware",
       "artist": "LUM!X",
       "album": "Self Aware",
@@ -1130,10 +1109,10 @@
       "scope": "track"
     },
     {
-      "song": "New Religion",
-      "artist": "Bebe Rexha, Faithless",
-      "album": "DIRTY BLONDE",
-      "url": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/31b84d73f7c34892a75b1e2a21e1a309.cnvs.mp4",
+      "song": "The Emptiness Machine",
+      "artist": "Linkin Park",
+      "album": "From Zero",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/511aa272ce474f51ad5c2058f5b9e77a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1144,10 +1123,45 @@
       "scope": "track"
     },
     {
+      "song": "New Religion",
+      "artist": "Bebe Rexha, Faithless",
+      "album": "DIRTY BLONDE",
+      "url": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/31b84d73f7c34892a75b1e2a21e1a309.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Can't Hold Us (feat. Ray Dalton)",
+      "artist": "Macklemore, Ryan Lewis, Macklemore & Ryan Lewis, Ray Dalton",
+      "album": "The Heist",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/94d812b636744ddcbf42a76798e638f4.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Riptide",
+      "artist": "Vance Joy",
+      "album": "Dream Your Life Away (Deluxe Edition)",
+      "url": "https://canvaz.scdn.co/upload/artist/10exVja0key0uqUkk6LJRT/video/1b039ce09dcb4121ae37198d73e24be5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Zittern",
+      "artist": "HWZ",
+      "album": "Zittern",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/eea55c5cad394bfc86c2aa7f848328bd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Unwritten",
       "artist": "Natasha Bedingfield",
       "album": "Unwritten",
       "url": "https://canvaz.scdn.co/upload/artist/7o95ZoZt5ZYn31e9z1Hc0a/video/aeb078a018ab48ed9a8f41a7784e4f4b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Numb",
+      "artist": "Linkin Park",
+      "album": "Meteora",
+      "url": "https://canvaz.scdn.co/upload/artist/6XyY86QOPPrYVGvF9ch6wz/video/9a0f140b8031468f8507361848700d84.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1179,17 +1193,17 @@
       "scope": "track"
     },
     {
-      "song": "Cadeira Cativa - Ao Vivo",
-      "artist": "Zé Neto & Cristiano",
-      "album": "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
-      "url": "https://canvaz.scdn.co/upload/artist/487N2T9nIPEHrlTZLL3SQs/video/261375e9e97b4b1d80ae037bfae35c48.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Eu Te Seguro - Ao Vivo",
       "artist": "Panda, MJ Records",
       "album": "Panda Sem Moderação 2, Vol.3",
       "url": "https://canvaz.scdn.co/upload/artist/5qIpstBGrGteJZg1xIvbiz/video/f3601981c366421d84a42ad456fe6b29.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Cadeira Cativa - Ao Vivo",
+      "artist": "Zé Neto & Cristiano",
+      "album": "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
+      "url": "https://canvaz.scdn.co/upload/artist/487N2T9nIPEHrlTZLL3SQs/video/261375e9e97b4b1d80ae037bfae35c48.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1221,13 +1235,6 @@
       "scope": "track"
     },
     {
-      "song": "GRWM",
-      "artist": "Mc Iguinho Ct, Dj Aladin GDB, MC Willian, MC GP, MC LUUKY, DU'L",
-      "album": "É O Iguinho Da CT",
-      "url": "https://canvaz.scdn.co/upload/artist/3oAVbOfRvgOoCAEKnpohSo/video/f63d775f085f4d8c9578e3f6d3648f1e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Ignora (Ao Vivo)",
       "artist": "Felipe e Rodrigo",
       "album": "Velhos Hábitos, Vol. 2 (Ao Vivo)",
@@ -1235,10 +1242,10 @@
       "scope": "track"
     },
     {
-      "song": "Beatriz",
-      "artist": "2ZDinizz, Leborato, HHR",
-      "album": "Beatriz",
-      "url": "https://canvaz.scdn.co/upload/artist/13zmjclMwzz8kIxRrN7JOV/video/d4fb714a7c52445dad9ffe707bd4bb47.cnvs.mp4",
+      "song": "GRWM",
+      "artist": "Mc Iguinho Ct, Dj Aladin GDB, MC Willian, MC GP, MC LUUKY, DU'L",
+      "album": "É O Iguinho Da CT",
+      "url": "https://canvaz.scdn.co/upload/artist/3oAVbOfRvgOoCAEKnpohSo/video/f63d775f085f4d8c9578e3f6d3648f1e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1249,17 +1256,10 @@
       "scope": "track"
     },
     {
-      "song": "EXAGERADO",
-      "artist": "MC Jvila, MC Meno K, Mc Rodrigo do CN, DJ Glenner",
-      "album": "EXAGERADO",
-      "url": "https://canvaz.scdn.co/upload/artist/2f8xoxornfSw6ePzgyM9NO/video/af64a546712a4d19980b66215beedde6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Apaga Apaga Apaga - Ao Vivo",
-      "artist": "Danilo e Davi",
-      "album": "Toma Essa Verdade (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/5DaqVKaxeqDbJuxaIP9m4u/video/906b2e0a5a6445a195a4f7802d868ad7.cnvs.mp4",
+      "song": "Cheiro De Culpado - Ao Vivo",
+      "artist": "Júnior e Cézar",
+      "album": "Cheiro De Culpado (Ao Vivo)",
+      "url": "https://canvaz.scdn.co/upload/artist/5fWvTvWy2NCaVy8pFmWIvk/video/a9975d276e5a461e8a63c1b6708b1977.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1270,10 +1270,10 @@
       "scope": "track"
     },
     {
-      "song": "Cheiro De Culpado - Ao Vivo",
-      "artist": "Júnior e Cézar",
-      "album": "Cheiro De Culpado (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/5fWvTvWy2NCaVy8pFmWIvk/video/a9975d276e5a461e8a63c1b6708b1977.cnvs.mp4",
+      "song": "Apaga Apaga Apaga - Ao Vivo",
+      "artist": "Danilo e Davi",
+      "album": "Toma Essa Verdade (Ao Vivo)",
+      "url": "https://canvaz.scdn.co/upload/artist/5DaqVKaxeqDbJuxaIP9m4u/video/906b2e0a5a6445a195a4f7802d868ad7.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1284,10 +1284,38 @@
       "scope": "track"
     },
     {
+      "song": "EXAGERADO",
+      "artist": "MC Jvila, MC Meno K, Mc Rodrigo do CN, DJ Glenner",
+      "album": "EXAGERADO",
+      "url": "https://canvaz.scdn.co/upload/artist/2f8xoxornfSw6ePzgyM9NO/video/af64a546712a4d19980b66215beedde6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Última Saudade (Ao Vivo)",
       "artist": "Henrique & Juliano",
       "album": "Manifesto Musical 2, Vol. 1 (Ao Vivo)",
       "url": "https://canvaz.scdn.co/upload/artist/3p7PcrEHaaKLJnPUGOtRlT/video/bdb3c03be2e349529018d6a58e614c95.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Beatriz",
+      "artist": "2ZDinizz, Leborato, HHR",
+      "album": "Beatriz",
+      "url": "https://canvaz.scdn.co/upload/artist/13zmjclMwzz8kIxRrN7JOV/video/d4fb714a7c52445dad9ffe707bd4bb47.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Eu Duvido - Ao Vivo",
+      "artist": "Guilherme & Benuto, Panda",
+      "album": "Deu Rolo No Barretão (Verão) - Vol. 02 [Ao Vivo]",
+      "url": "https://canvaz.scdn.co/upload/artist/6m6e7D2TnV0aYMllFFwMxu/video/e1d5cff4bd5746eba0b191494c93850e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Oi, Tudo Bem? - Ao Vivo",
+      "artist": "Zé Neto & Cristiano",
+      "album": "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
+      "url": "https://canvaz.scdn.co/upload/artist/487N2T9nIPEHrlTZLL3SQs/video/80c567da0aec4a7c896e52354784294f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1305,10 +1333,10 @@
       "scope": "track"
     },
     {
-      "song": "Oi, Tudo Bem? - Ao Vivo",
-      "artist": "Zé Neto & Cristiano",
-      "album": "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
-      "url": "https://canvaz.scdn.co/upload/artist/487N2T9nIPEHrlTZLL3SQs/video/80c567da0aec4a7c896e52354784294f.cnvs.mp4",
+      "song": "P do Pecado - Ao Vivo",
+      "artist": "Grupo Menos É Mais, Simone Mendes",
+      "album": "MOLHO (Ao Vivo)",
+      "url": "https://canvaz.scdn.co/upload/artist/6vTqEFbTtTRJsuIpzZgjxi/video/569fb5851fc2407ab1696af60fdb5662.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1319,17 +1347,10 @@
       "scope": "track"
     },
     {
-      "song": "Eu Duvido - Ao Vivo",
-      "artist": "Guilherme & Benuto, Panda",
-      "album": "Deu Rolo No Barretão (Verão) - Vol. 02 [Ao Vivo]",
-      "url": "https://canvaz.scdn.co/upload/artist/6m6e7D2TnV0aYMllFFwMxu/video/e1d5cff4bd5746eba0b191494c93850e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Displicente - Ao Vivo",
-      "artist": "Wesley Safadão, Rey Vaqueiro",
-      "album": "Meu Forró É Mundo (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/b3d5bffde0744fbbb8272a8682000c12.cnvs.mp4",
+      "song": "Baqueado - Ao Vivo",
+      "artist": "Panda, Ícaro e Gilmar, MJ Records",
+      "album": "Panda Sem Moderação (Ao Vivo)",
+      "url": "https://canvaz.scdn.co/upload/artist/5qIpstBGrGteJZg1xIvbiz/video/2eb290f4fc5f4886aab8fb0cac157659.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1340,10 +1361,17 @@
       "scope": "track"
     },
     {
-      "song": "SWIM",
-      "artist": "BTS",
-      "album": "ARIRANG",
-      "url": "https://canvaz.scdn.co/upload/artist/3Nrfpe0tUJi4K4DXYWgMUX/video/a3432e0db2454bcdafa695632f99e0a9.cnvs.mp4",
+      "song": "Aproveita Que Eu Tô Brigado - Ao Vivo",
+      "artist": "NATTAN, Zé Vaqueiro",
+      "album": "Paredão do Nattan (Ao Vivo Em Fortaleza)",
+      "url": "https://canvaz.scdn.co/upload/artist/1SXhEXzOTF7YeuQX59m7pT/video/02758c7d2a494528b94f726b7cc4fb7d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Displicente - Ao Vivo",
+      "artist": "Wesley Safadão, Rey Vaqueiro",
+      "album": "Meu Forró É Mundo (Ao Vivo)",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/b3d5bffde0744fbbb8272a8682000c12.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1361,31 +1389,10 @@
       "scope": "track"
     },
     {
-      "song": "P do Pecado - Ao Vivo",
-      "artist": "Grupo Menos É Mais, Simone Mendes",
-      "album": "MOLHO (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/6vTqEFbTtTRJsuIpzZgjxi/video/569fb5851fc2407ab1696af60fdb5662.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Baqueado - Ao Vivo",
-      "artist": "Panda, Ícaro e Gilmar, MJ Records",
-      "album": "Panda Sem Moderação (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/5qIpstBGrGteJZg1xIvbiz/video/2eb290f4fc5f4886aab8fb0cac157659.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Eu Me Apaixonei",
       "artist": "Vitinho Imperador",
       "album": "Eu Me Apaixonei",
       "url": "https://canvaz.scdn.co/upload/artist/6xrc4RXcso9uKlYWlIANPU/video/4c1f7fd7dbf34e139d17c43f2e6939c5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Aproveita Que Eu Tô Brigado - Ao Vivo",
-      "artist": "NATTAN, Zé Vaqueiro",
-      "album": "Paredão do Nattan (Ao Vivo Em Fortaleza)",
-      "url": "https://canvaz.scdn.co/upload/artist/1SXhEXzOTF7YeuQX59m7pT/video/02758c7d2a494528b94f726b7cc4fb7d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1396,17 +1403,17 @@
       "scope": "track"
     },
     {
-      "song": "Flash - Ao Vivo",
-      "artist": "Lucas & Higor",
-      "album": "Explodiuu BB - Vol.1 (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/5VZd327ttMeMCOBfNHged8/video/18b3551c9db94e6eaa66ddb1151d602e.cnvs.mp4",
+      "song": "Tubarões - Ao Vivo",
+      "artist": "Diego & Victor Hugo",
+      "album": "Ao Vivo Em Uberlândia",
+      "url": "https://canvaz.scdn.co/upload/artist/3k68C6mNMJL6OaAdWeW2ZF/video/5e6fc9414c424163bed4270009f737b1.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Me Fala Qual Necessidade - Ao Vivo",
-      "artist": "Henry Freitas",
-      "album": "Paralelos (Ao Vivo)",
-      "url": "https://canvaz.scdn.co/upload/artist/6wduHvHCH5QZtWs6ULilDM/video/c1ce6666af6147259dd7e3c03006fbc3.cnvs.mp4",
+      "song": "SWIM",
+      "artist": "BTS",
+      "album": "ARIRANG",
+      "url": "https://canvaz.scdn.co/upload/artist/3Nrfpe0tUJi4K4DXYWgMUX/video/a3432e0db2454bcdafa695632f99e0a9.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1431,17 +1438,17 @@
       "scope": "track"
     },
     {
-      "song": "King of Watches",
-      "artist": "Omar Camacho",
-      "album": "Nunca Voy a Morir",
-      "url": "https://canvaz.scdn.co/upload/artist/0rUu2qzqezBrCddX1RuUyJ/video/13389b815851471194c501e07ceab26b.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "DEMENCIA",
       "artist": "Junior H, Gael Valenzuela",
       "album": "DEPR</3$$ED MFKZ",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/6aede855ceec41f8953a2259081a8a6d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "King of Watches",
+      "artist": "Omar Camacho",
+      "album": "Nunca Voy a Morir",
+      "url": "https://canvaz.scdn.co/upload/artist/0rUu2qzqezBrCddX1RuUyJ/video/13389b815851471194c501e07ceab26b.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1452,10 +1459,10 @@
       "scope": "track"
     },
     {
-      "song": "Todo Lo Fue",
+      "song": "Polvo Rosita",
       "artist": "Lenin Ramírez",
       "album": "Reinicio",
-      "url": "https://canvaz.scdn.co/upload/licensor/5Qv3A1EWBnkL2mW63OCLY3/video/95ff3210707b4cc59e5efba095e04cfa.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/5Qv3A1EWBnkL2mW63OCLY3/video/3bb7139365eb4fc793fbad9c019cace9.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1466,17 +1473,10 @@
       "scope": "track"
     },
     {
-      "song": "Polvo Rosita",
+      "song": "Todo Lo Fue",
       "artist": "Lenin Ramírez",
       "album": "Reinicio",
-      "url": "https://canvaz.scdn.co/upload/licensor/5Qv3A1EWBnkL2mW63OCLY3/video/3bb7139365eb4fc793fbad9c019cace9.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "La Formula",
-      "artist": "El Rabbanito",
-      "album": "La Formula",
-      "url": "https://canvaz.scdn.co/upload/licensor/5Qv3A1EWBnkL2mW63OCLY3/video/d44f137985094a90bcf5b8b1d1c81c18.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/5Qv3A1EWBnkL2mW63OCLY3/video/95ff3210707b4cc59e5efba095e04cfa.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1487,17 +1487,10 @@
       "scope": "track"
     },
     {
-      "song": "2+2",
-      "artist": "Omar Camacho, Victor Mendivil",
-      "album": "Nunca Voy a Morir",
-      "url": "https://canvaz.scdn.co/upload/artist/5YqI7p8zYsOpKJtjxYdOce/video/d48afb0d03c74e4791d69841c35ef791.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Final De Nuestra Historia",
-      "artist": "La Arrolladora Banda El Limón De Rene Camacho",
-      "album": "Y Que Quede Claro",
-      "url": "https://canvaz.scdn.co/upload/artist/5bSfBBCxY8QAk4Pifveisz/video/412d2b6e300c45a286c9dd585df7cef1.cnvs.mp4",
+      "song": "La Formula",
+      "artist": "El Rabbanito",
+      "album": "La Formula",
+      "url": "https://canvaz.scdn.co/upload/licensor/5Qv3A1EWBnkL2mW63OCLY3/video/d44f137985094a90bcf5b8b1d1c81c18.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1508,6 +1501,13 @@
       "scope": "track"
     },
     {
+      "song": "2+2",
+      "artist": "Omar Camacho, Victor Mendivil",
+      "album": "Nunca Voy a Morir",
+      "url": "https://canvaz.scdn.co/upload/artist/5YqI7p8zYsOpKJtjxYdOce/video/d48afb0d03c74e4791d69841c35ef791.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "ME VALE V",
       "artist": "Tito Double P",
       "album": "ACOMODO",
@@ -1515,24 +1515,10 @@
       "scope": "track"
     },
     {
-      "song": "PUES YA NI PEDO",
-      "artist": "Chuyin, Fuerza Regida",
-      "album": "Los Locos Nunca Mueren",
-      "url": "https://canvaz.scdn.co/upload/artist/5c8ZR64evQ00Spl73s76fo/video/cd654acc66794284af30d4f05d38f738.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Tu Boda",
-      "artist": "Oscar Maydon, Fuerza Regida",
-      "album": "Rico o Muerto, Vol. 1",
-      "url": "https://canvaz.scdn.co/upload/artist/3l9G1G9MxH6DaRhwLklaf5/video/e2a362ceac094662bb398b494053d24c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Tiroteo - Remix",
-      "artist": "Marc Seguí, Rauw Alejandro, Pol Granch",
-      "album": "Tiroteo (Remix)",
-      "url": "https://canvaz.scdn.co/upload/artist/5FQ8tBUtIamA2hRtatrYUF/video/a162a407a4f74a4c9fe4841fdb2c0fe4.cnvs.mp4",
+      "song": "El Final De Nuestra Historia",
+      "artist": "La Arrolladora Banda El Limón De Rene Camacho",
+      "album": "Y Que Quede Claro",
+      "url": "https://canvaz.scdn.co/upload/artist/5bSfBBCxY8QAk4Pifveisz/video/412d2b6e300c45a286c9dd585df7cef1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1543,6 +1529,20 @@
       "scope": "track"
     },
     {
+      "song": "Table Dance",
+      "artist": "La Santa Grifa, Chino El Don",
+      "album": "Table Dance",
+      "url": "https://canvaz.scdn.co/upload/artist/5jH7ecfniD5healoIkHVHa/video/9d9c8e0f0ad349a6904077c24fef662c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "PUES YA NI PEDO",
+      "artist": "Chuyin, Fuerza Regida",
+      "album": "Los Locos Nunca Mueren",
+      "url": "https://canvaz.scdn.co/upload/artist/5c8ZR64evQ00Spl73s76fo/video/cd654acc66794284af30d4f05d38f738.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Oye Mi Amor",
       "artist": "Maná",
       "album": "¿Dónde Jugarán Los Niños?",
@@ -1550,17 +1550,24 @@
       "scope": "track"
     },
     {
-      "song": "Perlas Negras",
-      "artist": "Natanael Cano, Gabito Ballesteros",
-      "album": "Porque La Demora",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/a1a98d84210b419fb2c1a53cee7716b6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "MATCHA",
       "artist": "Los Dareyes De La Sierra",
       "album": "SABIA",
       "url": "https://canvaz.scdn.co/upload/artist/1ZMJSCQw8DIefcLb1FIpY0/video/cd1cfc869aff47bd8a247f242751d550.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Tu Boda",
+      "artist": "Oscar Maydon, Fuerza Regida",
+      "album": "Rico o Muerto, Vol. 1",
+      "url": "https://canvaz.scdn.co/upload/artist/3l9G1G9MxH6DaRhwLklaf5/video/e2a362ceac094662bb398b494053d24c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Perlas Negras",
+      "artist": "Natanael Cano, Gabito Ballesteros",
+      "album": "Porque La Demora",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/a1a98d84210b419fb2c1a53cee7716b6.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1578,17 +1585,17 @@
       "scope": "track"
     },
     {
-      "song": "Table Dance",
-      "artist": "La Santa Grifa, Chino El Don",
-      "album": "Table Dance",
-      "url": "https://canvaz.scdn.co/upload/artist/5jH7ecfniD5healoIkHVHa/video/9d9c8e0f0ad349a6904077c24fef662c.cnvs.mp4",
+      "song": "4x4",
+      "artist": "Omar Camacho, Victor Mendivil, Angel Almaguer, $HUPE",
+      "album": "Nunca Voy a Morir",
+      "url": "https://canvaz.scdn.co/upload/artist/0rUu2qzqezBrCddX1RuUyJ/video/4531d85e0afd42ce9acd7b3028697f84.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "EoO",
-      "artist": "Bad Bunny",
-      "album": "DeBÍ TiRAR MáS FOToS",
-      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/8e55d97e5a5e47c2a65bf122c1ba3377.cnvs.mp4",
+      "song": "PUES QUE LE HAGO ?",
+      "artist": "Chuyin",
+      "album": "Los Locos Nunca Mueren",
+      "url": "https://canvaz.scdn.co/upload/artist/5c8ZR64evQ00Spl73s76fo/video/9012cb58ef294a0582a5af4334fff630.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1599,6 +1606,20 @@
       "scope": "track"
     },
     {
+      "song": "Tiroteo - Remix",
+      "artist": "Marc Seguí, Rauw Alejandro, Pol Granch",
+      "album": "Tiroteo (Remix)",
+      "url": "https://canvaz.scdn.co/upload/artist/5FQ8tBUtIamA2hRtatrYUF/video/a162a407a4f74a4c9fe4841fdb2c0fe4.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "EoO",
+      "artist": "Bad Bunny",
+      "album": "DeBÍ TiRAR MáS FOToS",
+      "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/8e55d97e5a5e47c2a65bf122c1ba3377.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Cuando No Era Cantante",
       "artist": "El Bogueto, Yung Beef",
       "album": "No Hay Loco Que No Corone",
@@ -1606,24 +1627,10 @@
       "scope": "track"
     },
     {
-      "song": "4x4",
-      "artist": "Omar Camacho, Victor Mendivil, Angel Almaguer, $HUPE",
-      "album": "Nunca Voy a Morir",
-      "url": "https://canvaz.scdn.co/upload/artist/0rUu2qzqezBrCddX1RuUyJ/video/4531d85e0afd42ce9acd7b3028697f84.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "LA CITA FRESITA 2",
-      "artist": "Grupo Aztteca, Luis R Conriquez, Oscar Maydon",
-      "album": "LA CITA FRESITA 2",
-      "url": "https://canvaz.scdn.co/upload/artist/38HFrt2a7X2wCIBJMuVuDS/video/b4b5fce1205145fdb6454c0adb75035d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "PUES QUE LE HAGO ?",
-      "artist": "Chuyin",
-      "album": "Los Locos Nunca Mueren",
-      "url": "https://canvaz.scdn.co/upload/artist/5c8ZR64evQ00Spl73s76fo/video/9012cb58ef294a0582a5af4334fff630.cnvs.mp4",
+      "song": "POR SUS BESOS",
+      "artist": "Tito Double P",
+      "album": "ACOMODO",
+      "url": "https://canvaz.scdn.co/upload/artist/5eumcnUkdmGvkvcsx1WFNG/video/18f7827243ed4bc4ba5d7d0d1c76012a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1655,6 +1662,13 @@
       "scope": "track"
     },
     {
+      "song": "Magnetic",
+      "artist": "The Bausa",
+      "album": "Magnetic / Addicted To Your Love",
+      "url": "https://canvaz.scdn.co/upload/artist/7krakxeyEmge6pzTthKNyg/video/d92ffc67d90947dc87128c794eeb0196.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Zonnebank",
       "artist": "Ray & Beer",
       "album": "Zonnebank",
@@ -1669,17 +1683,17 @@
       "scope": "track"
     },
     {
-      "song": "Mr. Know It All",
-      "artist": "Teddy Swims",
-      "album": "Mr. Know It All",
-      "url": "https://canvaz.scdn.co/upload/artist/33qOK5uJ8AR2xuQQAhHump/video/45cf800cfbfe46588380cfb008862405.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Bare Minimum (Starboy)",
       "artist": "Frsh, KM, LA$$A",
       "album": "Bare Minimum (Starboy)",
       "url": "https://canvaz.scdn.co/upload/artist/19CxlXaWOlZh2pqZrJlHxN/video/05892c856200440b9f37c4c5b851ee06.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mr. Know It All",
+      "artist": "Teddy Swims",
+      "album": "Mr. Know It All",
+      "url": "https://canvaz.scdn.co/upload/artist/33qOK5uJ8AR2xuQQAhHump/video/45cf800cfbfe46588380cfb008862405.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1697,13 +1711,6 @@
       "scope": "track"
     },
     {
-      "song": "Rozen & Blaadjes",
-      "artist": "Frsh, Cristian D, LA$$A",
-      "album": "Rozen & Blaadjes",
-      "url": "https://canvaz.scdn.co/upload/artist/19CxlXaWOlZh2pqZrJlHxN/video/943f1a68af4e4382bd2293253968ee99.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Zandloopster",
       "artist": "Robert van Hemert",
       "album": "Zandloopster",
@@ -1711,10 +1718,24 @@
       "scope": "track"
     },
     {
+      "song": "Rozen & Blaadjes",
+      "artist": "Frsh, Cristian D, LA$$A",
+      "album": "Rozen & Blaadjes",
+      "url": "https://canvaz.scdn.co/upload/artist/19CxlXaWOlZh2pqZrJlHxN/video/943f1a68af4e4382bd2293253968ee99.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Edge of Desire",
       "artist": "Jonas Blue, Malive",
       "album": "Edge of Desire",
       "url": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/397ef99d08524ede84690769f59ddb7c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Animal",
+      "artist": "KATSEYE",
+      "album": "Animal",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/11429bb997bc4d8e8d0f8940faddbc31.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1739,20 +1760,6 @@
       "scope": "track"
     },
     {
-      "song": "My Body Isn't Ready",
-      "artist": "sombr",
-      "album": "My Body Isn't Ready",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/39e83efadaca4f59b862c6bcdf37d859.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Crush",
       "artist": "Roxy Dekker",
       "album": "SUPERSTAR",
@@ -1760,10 +1767,31 @@
       "scope": "track"
     },
     {
-      "song": "DELI SUPREME",
-      "artist": "MJ Deli",
-      "album": "DELI SUPREME",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0683aaa55ce9408a9366e05dff7f42c8.cnvs.mp4",
+      "song": "My Body Isn't Ready",
+      "artist": "sombr",
+      "album": "My Body Isn't Ready",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/39e83efadaca4f59b862c6bcdf37d859.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Jij Hebt Mij",
+      "artist": "Kevin, Roxy Dekker",
+      "album": "Jij Hebt Mij",
+      "url": "https://canvaz.scdn.co/upload/artist/0IxgA9wO4Op3CSnPlhfwV1/video/79563f6832424db28854274120fa68e7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Maak Me Nou Niet Gek",
+      "artist": "Lil Kleine, Samuel Welten, De Amsterdamse Zomer",
+      "album": "Maak Me Nou Niet Gek",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/2a4992244e9345a6a8fb6f6db4de9f0f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Door Het Oog Van De Nacht",
+      "artist": "Flaire",
+      "album": "Door Het Oog Van De Nacht",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/d21911c7507d4a7d9c63c5d8528d8ebf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1774,6 +1802,13 @@
       "scope": "track"
     },
     {
+      "song": "DELI SUPREME",
+      "artist": "MJ Deli",
+      "album": "DELI SUPREME",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/0683aaa55ce9408a9366e05dff7f42c8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "STRAIGHT OUTTA CRACKHOUSE",
       "artist": "CrackHouse, Divix, Macias, Amar, Bandura, Isiah Hilt",
       "album": "STRAIGHT OUTTA CRACKHOUSE",
@@ -1781,17 +1816,17 @@
       "scope": "track"
     },
     {
-      "song": "Tajlandia",
-      "artist": "Major SPZ, Kemzy",
-      "album": "Tajlandia",
-      "url": "https://canvaz.scdn.co/upload/artist/5iM4dDbBN6a4OqxKPuxgS6/video/d730448c7ddb424498a35e216d4fc2a5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Nareszcie",
       "artist": "Męskie Granie Orkiestra, Igor Herbut, Zalia, Vito Bambino",
       "album": "Nareszcie",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/169fc05c51744d738b7f6f05d47d0e44.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Tajlandia",
+      "artist": "Major SPZ, Kemzy",
+      "album": "Tajlandia",
+      "url": "https://canvaz.scdn.co/upload/artist/5iM4dDbBN6a4OqxKPuxgS6/video/d730448c7ddb424498a35e216d4fc2a5.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1823,17 +1858,17 @@
       "scope": "track"
     },
     {
-      "song": "Abi Mosa",
-      "artist": "Malik Montana, CUZCO$",
-      "album": "Abi Mosa",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/7500b31ce2224ab7a08766f3fc2efed7.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Mallorca",
       "artist": "Hellfield, Sentino, CrackHouse",
       "album": "Cartel Season",
       "url": "https://canvaz.scdn.co/upload/artist/0PN0H94fqF9G9FiJrw1R3Q/video/adb0b3092d5e4c809deb5195db8c8bbf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Abi Mosa",
+      "artist": "Malik Montana, CUZCO$",
+      "album": "Abi Mosa",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/7500b31ce2224ab7a08766f3fc2efed7.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1844,17 +1879,17 @@
       "scope": "track"
     },
     {
+      "song": "dopóki się nie znüdzisz",
+      "artist": "MIÜ, Zalia",
+      "album": "Ü UP? mixtape",
+      "url": "https://canvaz.scdn.co/upload/artist/5NpwJ9XcZH35RxF2PUIqs2/video/361bced176e648cc93e6c186e9c190c5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "tylko kochaj mnie",
       "artist": "Zalia",
       "album": "tylko kochaj mnie",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/03d20acb8af942e9847d787f18a5e37c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Sopot",
-      "artist": "Żabson, Hellfield, Sentino",
-      "album": "Sopot",
-      "url": "https://canvaz.scdn.co/upload/artist/0QR764k0D36npmTMWx5bft/video/b2edc56372b445b39e971d354fa252fe.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1865,10 +1900,10 @@
       "scope": "track"
     },
     {
-      "song": "dopóki się nie znüdzisz",
-      "artist": "MIÜ, Zalia",
-      "album": "Ü UP? mixtape",
-      "url": "https://canvaz.scdn.co/upload/artist/5NpwJ9XcZH35RxF2PUIqs2/video/361bced176e648cc93e6c186e9c190c5.cnvs.mp4",
+      "song": "Sopot",
+      "artist": "Żabson, Hellfield, Sentino",
+      "album": "Sopot",
+      "url": "https://canvaz.scdn.co/upload/artist/0QR764k0D36npmTMWx5bft/video/b2edc56372b445b39e971d354fa252fe.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1876,13 +1911,6 @@
       "artist": "Sequento, Maka, Pancio",
       "album": "Bamboleo",
       "url": "https://canvaz.scdn.co/upload/artist/3ZUkXGT2dwFiEVEV5JfD6K/video/f5d841f8af254dfcac4081d8fac6f193.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Stuku Puku",
-      "artist": "NEWGEN, Mortal, Postirol, ogmarceli, Suzan, Daniel Koszczuk, Kwolczi",
-      "album": "Stuku Puku",
-      "url": "https://canvaz.scdn.co/upload/artist/6t1FWcWt56g45JgJcMd7wA/video/ed07ca60d11147b883bc538d7e24b62a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1900,31 +1928,17 @@
       "scope": "track"
     },
     {
+      "song": "Stuku Puku",
+      "artist": "NEWGEN, Mortal, Postirol, ogmarceli, Suzan, Daniel Koszczuk, Kwolczi",
+      "album": "Stuku Puku",
+      "url": "https://canvaz.scdn.co/upload/artist/6t1FWcWt56g45JgJcMd7wA/video/ed07ca60d11147b883bc538d7e24b62a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "SERIO",
       "artist": "Bary, White Widow",
       "album": "Kuba vs Bary",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/704647649df849fbbaeada14de101a10.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Plan B",
-      "artist": "Pezet, Mata, Kaz Bałagane, Pedro, Frenkie G",
-      "album": "Muzyka Popularna",
-      "url": "https://canvaz.scdn.co/upload/artist/4z93wkjfGntA0XFqnv4wj7/video/1d47c46ba1694ba883e599cb61595cb0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "poza Tobą nic",
-      "artist": "Livka",
-      "album": "poza Tobą nic",
-      "url": "https://canvaz.scdn.co/upload/artist/0eWYWLizN5us1MOF1rdyh9/video/80c5c5b3ce4e416a85d0dd7ab6564ccb.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Piękny sen",
-      "artist": "Malik Montana, SRNO",
-      "album": "Piękny sen",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/22adf1e0c18849f09229d05d602db66e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1935,6 +1949,13 @@
       "scope": "track"
     },
     {
+      "song": "Plan B",
+      "artist": "Pezet, Mata, Kaz Bałagane, Pedro, Frenkie G",
+      "album": "Muzyka Popularna",
+      "url": "https://canvaz.scdn.co/upload/artist/4z93wkjfGntA0XFqnv4wj7/video/1d47c46ba1694ba883e599cb61595cb0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "NIE CHCĘ WRACAĆ",
       "artist": "Fukaj, charlie moncler, Hubert.",
       "album": "INTERLUDIUM",
@@ -1942,24 +1963,24 @@
       "scope": "track"
     },
     {
+      "song": "Luty",
+      "artist": "Otsochodzi",
+      "album": "Tarcho Terror",
+      "url": "https://canvaz.scdn.co/upload/artist/4zvO09rVUIVTeALhs6xLoB/video/cbea3f1dde0b4bf18fba41b0015347b9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Piękny sen",
+      "artist": "Malik Montana, SRNO",
+      "album": "Piękny sen",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/22adf1e0c18849f09229d05d602db66e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "KRÓLEWNA",
       "artist": "APTEKARZE, fedak",
       "album": "KRÓLEWNA",
       "url": "https://canvaz.scdn.co/upload/artist/3xZUupcKe5ejopZ2oC0KtD/video/43afa8c9ca7b4ff5ba732a2799d409b6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "GORSET",
-      "artist": "bambi",
-      "album": "GORSET",
-      "url": "https://canvaz.scdn.co/upload/artist/5ic8bWWvZHWf0dDBi9ThNk/video/f2722de1a0d64ab4890edf824e31fd1f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "SAMA",
-      "artist": "Per Dżinn",
-      "album": "SAMA",
-      "url": "https://canvaz.scdn.co/upload/artist/1YBCQ1OTBgrHOX7wCTWvmM/video/a14ea4b5d374410c85c607759bb4b656.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2012,13 +2033,6 @@
       "scope": "track"
     },
     {
-      "song": "Regele pe reggaeton",
-      "artist": "rares, Ursaru",
-      "album": "Regele pe reggaeton",
-      "url": "https://canvaz.scdn.co/upload/artist/6Lovpq3UamSOdAbcQAqbz9/video/6eecac961eee4258b20003b5756f06ad.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Mandarina",
       "artist": "Babasha, VANILLA",
       "album": "Carrera",
@@ -2026,17 +2040,17 @@
       "scope": "track"
     },
     {
+      "song": "Regele pe reggaeton",
+      "artist": "rares, Ursaru",
+      "album": "Regele pe reggaeton",
+      "url": "https://canvaz.scdn.co/upload/artist/6Lovpq3UamSOdAbcQAqbz9/video/6eecac961eee4258b20003b5756f06ad.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Mesterul Manele",
       "artist": "Alex Botea",
       "album": "Mesterul Manele",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/b534bd15d7a24085990cda154c96fde9.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Mor după tine",
-      "artist": "Lazy Ed, JO",
-      "album": "Mor după tine",
-      "url": "https://canvaz.scdn.co/upload/artist/3ArPP8R2oGr81W8i4XBPpP/video/dbc2facb54e74de8a6ef27e4a27eaaf0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2054,17 +2068,10 @@
       "scope": "track"
     },
     {
-      "song": "SA TE PUP",
-      "artist": "Connect-R",
-      "album": "SA TE PUP",
-      "url": "https://canvaz.scdn.co/upload/artist/1omKDrKCcMD79tfK8Vb2Hr/video/49fca48e0cc64b3aadabaf666a834260.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Peter Parker - Balkanic Version",
-      "artist": "Lele, Petre Stefan, Manele VTM",
-      "album": "Peter Parker (Balkanic Version)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/ce913f2aa43b4e1ab472dab6c988ba7b.cnvs.mp4",
+      "song": "Mor după tine",
+      "artist": "Lazy Ed, JO",
+      "album": "Mor după tine",
+      "url": "https://canvaz.scdn.co/upload/artist/3ArPP8R2oGr81W8i4XBPpP/video/dbc2facb54e74de8a6ef27e4a27eaaf0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2075,17 +2082,24 @@
       "scope": "track"
     },
     {
+      "song": "Peter Parker - Balkanic Version",
+      "artist": "Lele, Petre Stefan, Manele VTM",
+      "album": "Peter Parker (Balkanic Version)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/ce913f2aa43b4e1ab472dab6c988ba7b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "MODEL",
+      "artist": "VANILLA, Berechet, 21SIIEMPRE, Marrio Nadal",
+      "album": "MODEL",
+      "url": "https://canvaz.scdn.co/upload/artist/50vNYJ9Cj5MfsFqGqI7JXQ/video/97a6ce16c8ea4954aec0cee710225957.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Hootie Frutti",
       "artist": "KATSEYE",
       "album": "WILD",
       "url": "https://canvaz.scdn.co/upload/artist/3c0gDdb9lhnHGFtP4prQpn/video/5f464c11c29e4fb094ac5d9ae94ed139.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "IN MINTEA TA",
-      "artist": "VANILLA, Marrio Nadal",
-      "album": "IN MINTEA TA",
-      "url": "https://canvaz.scdn.co/upload/artist/1fofiypUoSWqYH2i4frmHn/video/31058e9f8d1e454b94d1cd9cd60e5469.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2103,17 +2117,17 @@
       "scope": "track"
     },
     {
-      "song": "OI KAIROI ALLAZOUNE",
-      "artist": "Saske",
-      "album": "I TRIED",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/207c4982f6c84ce7bbd6e196cd216c01.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "BANANA",
       "artist": "FLY LO, Trannos, BLVD",
       "album": "VEGANZE",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/ef5f95916dfc4502aa73f6d8f1ef602c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "OI KAIROI ALLAZOUNE",
+      "artist": "Saske",
+      "album": "I TRIED",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/207c4982f6c84ce7bbd6e196cd216c01.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2138,10 +2152,10 @@
       "scope": "track"
     },
     {
-      "song": "TAN LINES",
-      "artist": "Saske",
-      "album": "I TRIED",
-      "url": "https://canvaz.scdn.co/upload/artist/1LxWE4LOhnqeaAx2tVUK6p/video/115aadb33d474691948cebbebd0a1eb2.cnvs.mp4",
+      "song": "€€€",
+      "artist": "TOQUEL, FLY LO, Beyond",
+      "album": "10",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b742a18562724343b60e08df789f2457.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2152,17 +2166,10 @@
       "scope": "track"
     },
     {
-      "song": "€€€",
-      "artist": "TOQUEL, FLY LO, Beyond",
-      "album": "10",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b742a18562724343b60e08df789f2457.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "THALASSA AKRIVI",
-      "artist": "RACK, LILA, Beyond, Sin Laurent",
-      "album": "Love, Rack.",
-      "url": "https://canvaz.scdn.co/upload/artist/6YYOTK6Qyv6PuFipPxCCoe/video/41d9066bea944d7bac0e6e21b2664ec4.cnvs.mp4",
+      "song": "TAN LINES",
+      "artist": "Saske",
+      "album": "I TRIED",
+      "url": "https://canvaz.scdn.co/upload/artist/1LxWE4LOhnqeaAx2tVUK6p/video/115aadb33d474691948cebbebd0a1eb2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2170,6 +2177,13 @@
       "artist": "TOQUEL, Beyond",
       "album": "10",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/3f96e39070544a07a55f95512ed2a4da.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "THALASSA AKRIVI",
+      "artist": "RACK, LILA, Beyond, Sin Laurent",
+      "album": "Love, Rack.",
+      "url": "https://canvaz.scdn.co/upload/artist/6YYOTK6Qyv6PuFipPxCCoe/video/41d9066bea944d7bac0e6e21b2664ec4.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2194,10 +2208,10 @@
       "scope": "track"
     },
     {
-      "song": "Summertime Sadness",
-      "artist": "Bossikan",
-      "album": "Summertime Sadness",
-      "url": "https://canvaz.scdn.co/upload/artist/2Iy8kK89T3l62dJcAkflqM/video/e1d5ffa0aed34455b62966d7075d2c10.cnvs.mp4",
+      "song": "BOGOTA",
+      "artist": "Ivan Greko",
+      "album": "TIGER LUV",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/657ef88010c74478b95701b8476c8c71.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2208,10 +2222,17 @@
       "scope": "track"
     },
     {
-      "song": "ONE NIGHT STANDS",
-      "artist": "Saske, SIDARTA",
-      "album": "I TRIED",
-      "url": "https://canvaz.scdn.co/upload/artist/1LxWE4LOhnqeaAx2tVUK6p/video/6244136222c24e4d81edc04280c181ca.cnvs.mp4",
+      "song": "YG",
+      "artist": "FLY LO, TOQUEL, BLVD",
+      "album": "VEGANZE",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/d441b07ba98a4098973b7c322753901e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "AGAINST ALL",
+      "artist": "Trannos, SKEZ, HermesHermes, LOSHA",
+      "album": "WHY ALWAYS ME?",
+      "url": "https://canvaz.scdn.co/upload/artist/6WzxopGY3sy97IeNFaDELc/video/2cbd3b13c57f44ee99a6b7b6d29b1e8d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2219,13 +2240,6 @@
       "artist": "Saske",
       "album": "I TRIED",
       "url": "https://canvaz.scdn.co/upload/artist/1LxWE4LOhnqeaAx2tVUK6p/video/254745b1021a4278983629551c59c3ad.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "BOGOTA",
-      "artist": "Ivan Greko",
-      "album": "TIGER LUV",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/657ef88010c74478b95701b8476c8c71.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2285,17 +2299,17 @@
       "scope": "track"
     },
     {
-      "song": "1991",
-      "artist": "Yasin",
-      "album": "1991",
-      "url": "https://canvaz.scdn.co/upload/artist/6rYEqmajzlhGVaayOJ2bpJ/video/0310c7dec15d477f8f6931aeda403433.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Midnight Sun",
       "artist": "Zara Larsson",
       "album": "Midnight Sun",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Matadoren",
+      "artist": "Yasin",
+      "album": "Matadoren",
+      "url": "https://canvaz.scdn.co/upload/artist/6rYEqmajzlhGVaayOJ2bpJ/video/d3c159c46c7443589ee97a44177c53e9.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2313,10 +2327,10 @@
       "scope": "track"
     },
     {
-      "song": "Matadoren",
+      "song": "1991",
       "artist": "Yasin",
-      "album": "Matadoren",
-      "url": "https://canvaz.scdn.co/upload/artist/6rYEqmajzlhGVaayOJ2bpJ/video/d3c159c46c7443589ee97a44177c53e9.cnvs.mp4",
+      "album": "1991",
+      "url": "https://canvaz.scdn.co/upload/artist/6rYEqmajzlhGVaayOJ2bpJ/video/0310c7dec15d477f8f6931aeda403433.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2327,20 +2341,6 @@
       "scope": "track"
     },
     {
-      "song": "Vila med mig",
-      "artist": "Humlan Djojj, Josefine Götestam",
-      "album": "Sov med Humlan Djojj",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a744e9eff47e44d8b5409567c2a71126.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Är det här det är party",
       "artist": "Korslagda",
       "album": "Är det här det är party",
@@ -2348,10 +2348,24 @@
       "scope": "track"
     },
     {
-      "song": "Dancing On My Own",
-      "artist": "Robyn",
-      "album": "Body Talk",
-      "url": "https://canvaz.scdn.co/upload/artist/6UE7nl9mha6s8z0wFQFIZ2/video/c5ca328dbd4d4971a911431e6e1d51a1.cnvs.mp4",
+      "song": "Moth To A Flame (with The Weeknd)",
+      "artist": "Swedish House Mafia, The Weeknd",
+      "album": "Paradise Again",
+      "url": "https://canvaz.scdn.co/upload/artist/1h6Cn3P4NGzXbaXidqURXs/video/ffd8663738c94335b7f60db97bfe17cb.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Vila med mig",
+      "artist": "Humlan Djojj, Josefine Götestam",
+      "album": "Sov med Humlan Djojj",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a744e9eff47e44d8b5409567c2a71126.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Kan Inte Gå",
+      "artist": "Bolaget",
+      "album": "Kan Inte Gå",
+      "url": "https://canvaz.scdn.co/upload/artist/55ZGFvikpNjQHvtTWS5aZF/video/59c5b81bcce44c81bdd0409a16a63099.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2362,17 +2376,17 @@
       "scope": "track"
     },
     {
-      "song": "I Will Always Love You - (from the Original Motion Picture Soundtrack Album, \"The Best Little Whorehouse In Texas\")",
-      "artist": "Dolly Parton",
-      "album": "Greatest Hits",
-      "url": "https://canvaz.scdn.co/upload/artist/32vWCbZh0xZ4o9gkz4PsEU/video/92d21b5fb9ba4cd1914798fb38a06501.cnvs.mp4",
+      "song": "Heaven Takes You Home (feat. Connie Constance)",
+      "artist": "Swedish House Mafia, Connie Constance",
+      "album": "Paradise Again",
+      "url": "https://canvaz.scdn.co/upload/artist/1h6Cn3P4NGzXbaXidqURXs/video/3902e96ee18c43aeabb66f6dc6a984b3.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Kan Inte Gå",
-      "artist": "Bolaget",
-      "album": "Kan Inte Gå",
-      "url": "https://canvaz.scdn.co/upload/artist/55ZGFvikpNjQHvtTWS5aZF/video/59c5b81bcce44c81bdd0409a16a63099.cnvs.mp4",
+      "song": "Dancing On My Own",
+      "artist": "Robyn",
+      "album": "Body Talk",
+      "url": "https://canvaz.scdn.co/upload/artist/6UE7nl9mha6s8z0wFQFIZ2/video/c5ca328dbd4d4971a911431e6e1d51a1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2432,20 +2446,6 @@
       "scope": "track"
     },
     {
-      "song": "GØR NOGET",
-      "artist": "Mille",
-      "album": "VÆRD AT ELSKE",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/63ab03892bed43ff85b986d34273eb9c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Hele Vejen (feat. Mumle)",
-      "artist": "Omar, Mumle",
-      "album": "Højt At Flyve Dybt At Falde",
-      "url": "https://canvaz.scdn.co/upload/artist/1GLzVjVa7bLnAcD1At98j3/video/099abd2e2f224404ba3ec20b73c34fa0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Flue i et spind",
       "artist": "APHACA",
       "album": "VILD UNGDOM",
@@ -2453,10 +2453,24 @@
       "scope": "track"
     },
     {
+      "song": "GØR NOGET",
+      "artist": "Mille",
+      "album": "VÆRD AT ELSKE",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/63ab03892bed43ff85b986d34273eb9c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Ærlig Freestyle",
       "artist": "Anton Westerlin, Annika",
       "album": "Bag Gardinerne S1+S2",
       "url": "https://canvaz.scdn.co/upload/artist/5NYUb39ntjgN7cRtN4y25T/video/cc3896ba7ee24cf7a2bf4d3b6badbae5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Hele Vejen (feat. Mumle)",
+      "artist": "Omar, Mumle",
+      "album": "Højt At Flyve Dybt At Falde",
+      "url": "https://canvaz.scdn.co/upload/artist/1GLzVjVa7bLnAcD1At98j3/video/099abd2e2f224404ba3ec20b73c34fa0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2495,24 +2509,10 @@
       "scope": "track"
     },
     {
-      "song": "De Der Dage (feat. KESI)",
-      "artist": "OLIVVER, KESI",
-      "album": "De Der Dage (feat. KESI)",
-      "url": "https://canvaz.scdn.co/upload/artist/7qdfsnEchf1XUtIJBsBTTO/video/61fdd6c8dd4a460191522164d8e8e79a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "den forbandede kærlighed",
       "artist": "andreas odbjerg, Medina",
       "album": "den forbandede kærlighed",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b53e9a79b8024765bff3d51f5a6e5079.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Before You Go",
-      "artist": "Lukas Graham",
-      "album": "Good Times",
-      "url": "https://canvaz.scdn.co/upload/artist/25u4wHJWxCA9vO0CzxAbK7/video/bdcb0d2da91040fc89bf630f96b673fa.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2523,10 +2523,24 @@
       "scope": "track"
     },
     {
+      "song": "Before You Go",
+      "artist": "Lukas Graham",
+      "album": "Good Times",
+      "url": "https://canvaz.scdn.co/upload/artist/25u4wHJWxCA9vO0CzxAbK7/video/bdcb0d2da91040fc89bf630f96b673fa.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Kogeplade",
       "artist": "Katinka",
       "album": "Ved du jeg en snerle",
       "url": "https://canvaz.scdn.co/upload/artist/05tsGKo76eTXi0yrK4e4rZ/video/bfc620e2802a4d65a01c1b434f6f5681.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "De Der Dage (feat. KESI)",
+      "artist": "OLIVVER, KESI",
+      "album": "De Der Dage (feat. KESI)",
+      "url": "https://canvaz.scdn.co/upload/artist/7qdfsnEchf1XUtIJBsBTTO/video/61fdd6c8dd4a460191522164d8e8e79a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2537,17 +2551,17 @@
       "scope": "track"
     },
     {
+      "song": "drømmefanger (feat. URO)",
+      "artist": "Mille, URO",
+      "album": "(over)lever",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/f84eb1415d3d436387de55bfc1eafc62.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "PERPETUUM MOBILE",
       "artist": "Ewa Farna",
       "album": "ADHD POP",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/c0db209daf0a4df280ec08607ed6e98e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "KENPACHI&YACHIRU",
-      "artist": "P T K",
-      "album": "KARAKORAM DLC",
-      "url": "https://canvaz.scdn.co/upload/artist/5iYtjtFv6SvHX95ny4fVEz/video/f007923f2a264ae1907651916db230cf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2558,10 +2572,10 @@
       "scope": "track"
     },
     {
-      "song": "thank you based god",
-      "artist": "Yzomandias, Nik Tendo",
-      "album": "EXIT U PALICE",
-      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/5ce4c66cf91b49f1a84ba5b0612b9735.cnvs.mp4",
+      "song": "KENPACHI&YACHIRU",
+      "artist": "P T K",
+      "album": "KARAKORAM DLC",
+      "url": "https://canvaz.scdn.co/upload/artist/5iYtjtFv6SvHX95ny4fVEz/video/f007923f2a264ae1907651916db230cf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2579,6 +2593,13 @@
       "scope": "track"
     },
     {
+      "song": "thank you based god",
+      "artist": "Yzomandias, Nik Tendo",
+      "album": "EXIT U PALICE",
+      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/5ce4c66cf91b49f1a84ba5b0612b9735.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Vodka není voda",
       "artist": "Lboy Bsc, Dorian, Freez247",
       "album": "Napoleon",
@@ -2593,20 +2614,6 @@
       "scope": "track"
     },
     {
-      "song": "Vzpomeneš si?",
-      "artist": "Ewa Farna, Mirai",
-      "album": "ADHD POP",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/976de4c9d40845e192e7a1a1587478a3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Pistácie (feat. Sofian Medjmedj)",
-      "artist": "Calin, Sofian Medjmedj",
-      "album": "Bieber Fever Tour Life",
-      "url": "https://canvaz.scdn.co/upload/artist/5lEkQtWa3UKlI1hj7sktcd/video/b7c07d0a316641b186c1b2d522a5f2f6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "ONLY WAY OUT IS THROUGH THE SHITS 2",
       "artist": "P T K",
       "album": "KARAKORAM",
@@ -2614,17 +2621,10 @@
       "scope": "track"
     },
     {
-      "song": "AMAMRAD",
-      "artist": "Yzomandias, Ektor",
-      "album": "EXIT U PALICE",
-      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/c3941ceedb98446e827d93f26cb131b0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Painkillers",
-      "artist": "Yzomandias, P T K, Luca Brassi10x, Le Winter",
-      "album": "Painkillers",
-      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/7910898279034c3ab9e4d96f6a9a5e6c.cnvs.mp4",
+      "song": "Vzpomeneš si?",
+      "artist": "Ewa Farna, Mirai",
+      "album": "ADHD POP",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/976de4c9d40845e192e7a1a1587478a3.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2635,6 +2635,20 @@
       "scope": "track"
     },
     {
+      "song": "AMAMRAD",
+      "artist": "Yzomandias, Ektor",
+      "album": "EXIT U PALICE",
+      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/c3941ceedb98446e827d93f26cb131b0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Pistácie (feat. Sofian Medjmedj)",
+      "artist": "Calin, Sofian Medjmedj",
+      "album": "Bieber Fever Tour Life",
+      "url": "https://canvaz.scdn.co/upload/artist/5lEkQtWa3UKlI1hj7sktcd/video/b7c07d0a316641b186c1b2d522a5f2f6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Givenchy",
       "artist": "Robin Zoot",
       "album": "PONYA",
@@ -2642,10 +2656,10 @@
       "scope": "track"
     },
     {
-      "song": "Rockstar Lifestyle",
-      "artist": "Yzomandias",
-      "album": "Rockstar Lifestyle (EUP SUMMER SEASON - 1st DROP)",
-      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/605019b8312f4c10824409e54a117a8f.cnvs.mp4",
+      "song": "Painkillers",
+      "artist": "Yzomandias, P T K, Luca Brassi10x, Le Winter",
+      "album": "Painkillers",
+      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/7910898279034c3ab9e4d96f6a9a5e6c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2653,6 +2667,13 @@
       "artist": "Separ, Jerry Lee, P T K",
       "album": "FLOWDEMORT",
       "url": "https://canvaz.scdn.co/upload/licensor/3SsAbYhFh9DZSCLSCmwXqF/video/913ab695bbbb4657b56e6b17ee92eb37.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Rockstar Lifestyle",
+      "artist": "Yzomandias",
+      "album": "Rockstar Lifestyle (EUP SUMMER SEASON - 1st DROP)",
+      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/605019b8312f4c10824409e54a117a8f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2670,10 +2691,17 @@
       "scope": "track"
     },
     {
-      "song": "TINTED WINDOWS",
-      "artist": "P T K",
-      "album": "KARAKORAM",
-      "url": "https://canvaz.scdn.co/upload/artist/5iYtjtFv6SvHX95ny4fVEz/video/e2cdcc7d264b4e28a88d49f6d345b787.cnvs.mp4",
+      "song": "On The Floor",
+      "artist": "Jennifer Lopez, Pitbull",
+      "album": "Love?",
+      "url": "https://canvaz.scdn.co/upload/artist/2DlGxzQSjYe5N6G9nkYghR/video/bd0b903fa29d4483862f9a265e7677e0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Vítej mezi náma (feat. STEIN27)",
+      "artist": "Calin, STEIN27",
+      "album": "Bieber Fever Tour Life",
+      "url": "https://canvaz.scdn.co/upload/artist/5lEkQtWa3UKlI1hj7sktcd/video/7f16f47930174d17a967db55477d82ab.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2684,24 +2712,24 @@
       "scope": "track"
     },
     {
+      "song": "Bandolero",
+      "artist": "Hard Rico",
+      "album": "Focus",
+      "url": "https://canvaz.scdn.co/upload/artist/4Vmja4orT3sZ2F3x3DanBZ/video/5183d4e964ed438ea08d96149cdf0efc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "TINTED WINDOWS",
+      "artist": "P T K",
+      "album": "KARAKORAM",
+      "url": "https://canvaz.scdn.co/upload/artist/5iYtjtFv6SvHX95ny4fVEz/video/e2cdcc7d264b4e28a88d49f6d345b787.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "WTF",
       "artist": "Yzomandias, P T K",
       "album": "EXIT U PALICE",
       "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/1a385aaa43784e929a931b4e17f67fe6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Svoboda",
-      "artist": "Yzomandias, P T K, Sara Rikas",
-      "album": "Painkillers",
-      "url": "https://canvaz.scdn.co/upload/artist/721o1Z0J6jQupyzLt9RnEk/video/3932120d99ed41289ec207d19f0731fc.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "VÍŠ JAK BOLÍ ŘÍKAT RIP",
-      "artist": "P T K",
-      "album": "KARAKORAM",
-      "url": "https://canvaz.scdn.co/upload/artist/5iYtjtFv6SvHX95ny4fVEz/video/1ffb3ae7e4194dae9f1a1b0bba513303.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2733,17 +2761,17 @@
       "scope": "track"
     },
     {
-      "song": "Не Пʼяна - Закохана - за участі ансамблю «Кралиця»",
-      "artist": "Alena Omargalieva",
-      "album": "Не Пʼяна - Закохана (за участі ансамблю «Кралиця»)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/d36079b579f144a2b9f86f5f952c5338.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Смарагдове небо",
       "artist": "Drevo",
       "album": "Смарагдове небо",
       "url": "https://canvaz.scdn.co/upload/artist/2FbcO51yLIYdfqIQXocwVg/video/3272b88e3f3847f8b207fe1c407cbe05.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Не Пʼяна - Закохана - за участі ансамблю «Кралиця»",
+      "artist": "Alena Omargalieva",
+      "album": "Не Пʼяна - Закохана (за участі ансамблю «Кралиця»)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/d36079b579f144a2b9f86f5f952c5338.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2761,17 +2789,17 @@
       "scope": "track"
     },
     {
+      "song": "Врубай",
+      "artist": "Parfeniuk",
+      "album": "Врубай",
+      "url": "https://canvaz.scdn.co/upload/artist/64XGTiElvPUfmJjyWJnW8C/video/2420c233d2bc493681a367c9297965f3.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Smells Like Teen Spirit",
       "artist": "Nirvana",
       "album": "Nevermind (Remastered)",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/16e27656f0b74077bde27273d669352f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Зійшла Зоря",
-      "artist": "Alena Omargalieva",
-      "album": "Зійшла Зоря",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/db65fd28a12444cdab722db06546f218.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2782,17 +2810,24 @@
       "scope": "track"
     },
     {
+      "song": "Между нами",
+      "artist": "Lizer",
+      "album": "Не ангел",
+      "url": "https://canvaz.scdn.co/upload/artist/0j6G5eiOcrSdlyqaYwtxwS/video/089e7af774da45f7ba6cce8cef3d6f0d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Зійшла Зоря",
+      "artist": "Alena Omargalieva",
+      "album": "Зійшла Зоря",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/db65fd28a12444cdab722db06546f218.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Sebebi Yar",
       "artist": "BLOK3",
       "album": "KAYIP PERSONA",
       "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/b92c9d87d2804cc6ada689cea2541049.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Çok Güzel Gülüyorsun",
-      "artist": "BLOK3, Poizi",
-      "album": "KAYIP PERSONA",
-      "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/26c8a8e6455c482a84248ab61fc068bf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2803,10 +2838,10 @@
       "scope": "track"
     },
     {
-      "song": "Hileli",
-      "artist": "manifest, Ajda Pekkan",
-      "album": "Hileli",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/f4f3db048d2c4d1593014f4c5f5df3d6.cnvs.mp4",
+      "song": "Çok Güzel Gülüyorsun",
+      "artist": "BLOK3, Poizi",
+      "album": "KAYIP PERSONA",
+      "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/26c8a8e6455c482a84248ab61fc068bf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2817,10 +2852,10 @@
       "scope": "track"
     },
     {
-      "song": "Ah Be Manolya",
-      "artist": "Burak Bulut",
-      "album": "Ah Be Manolya",
-      "url": "https://canvaz.scdn.co/upload/artist/2a2YSCx78HHWVOsCuMpeXz/video/a09eb12366fa4e69bf1b727676942eb8.cnvs.mp4",
+      "song": "Hileli",
+      "artist": "manifest, Ajda Pekkan",
+      "album": "Hileli",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/f4f3db048d2c4d1593014f4c5f5df3d6.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2831,13 +2866,6 @@
       "scope": "track"
     },
     {
-      "song": "pVg - Manifest Live Remix",
-      "artist": "manifest, Motive, Pango",
-      "album": "pVg (Manifest Live Remix)",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/f28731d5b2d44133baebacc80e5ccb90.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Kırgınım",
       "artist": "BLOK3",
       "album": "KAYIP PERSONA",
@@ -2845,10 +2873,17 @@
       "scope": "track"
     },
     {
-      "song": "Bana Ne Bu Sevdalardan",
-      "artist": "Ezhel",
-      "album": "Bana Ne Bu Sevdalardan",
-      "url": "https://canvaz.scdn.co/upload/artist/6LnJKrtFnTEGdbWQ2riWCL/video/1dea4a647b34444d8c682e47a1b42f68.cnvs.mp4",
+      "song": "Ah Be Manolya",
+      "artist": "Burak Bulut",
+      "album": "Ah Be Manolya",
+      "url": "https://canvaz.scdn.co/upload/artist/2a2YSCx78HHWVOsCuMpeXz/video/a09eb12366fa4e69bf1b727676942eb8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "pVg - Manifest Live Remix",
+      "artist": "manifest, Motive, Pango",
+      "album": "pVg (Manifest Live Remix)",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/f28731d5b2d44133baebacc80e5ccb90.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2856,6 +2891,13 @@
       "artist": "Candan Erçetin",
       "album": "Neden",
       "url": "https://canvaz.scdn.co/upload/artist/51YBtWvwOP37hIGmnxf4yC/video/c233fc0c1a95499db7b0461216134e67.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Bana Ne Bu Sevdalardan",
+      "artist": "Ezhel",
+      "album": "Bana Ne Bu Sevdalardan",
+      "url": "https://canvaz.scdn.co/upload/artist/6LnJKrtFnTEGdbWQ2riWCL/video/1dea4a647b34444d8c682e47a1b42f68.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2873,10 +2915,10 @@
       "scope": "track"
     },
     {
-      "song": "Noldu Böyle",
-      "artist": "Asil Gök",
-      "album": "Noldu Böyle",
-      "url": "https://canvaz.scdn.co/upload/artist/0d43Fqs68Oboh6XXo4ztgn/video/7d856774fe9e4c5c93756cedfe4a046f.cnvs.mp4",
+      "song": "Ha Leylim",
+      "artist": "Mabel Matiz",
+      "album": "Ha Leylim",
+      "url": "https://canvaz.scdn.co/upload/artist/1dpqJqIuNqideTvmxBsSku/video/8db6c1fafeba4d7cb9b1746a6b797b4c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2887,10 +2929,17 @@
       "scope": "track"
     },
     {
-      "song": "Ha Leylim",
-      "artist": "Mabel Matiz",
-      "album": "Ha Leylim",
-      "url": "https://canvaz.scdn.co/upload/artist/1dpqJqIuNqideTvmxBsSku/video/8db6c1fafeba4d7cb9b1746a6b797b4c.cnvs.mp4",
+      "song": "TSS",
+      "artist": "KAVAK, BAKAN",
+      "album": "VAKKO",
+      "url": "https://canvaz.scdn.co/upload/artist/24OGdBr3r58ksMLJkMXZZY/video/2ecadb431403467da078ebb13a04bd2c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Noldu Böyle",
+      "artist": "Asil Gök",
+      "album": "Noldu Böyle",
+      "url": "https://canvaz.scdn.co/upload/artist/0d43Fqs68Oboh6XXo4ztgn/video/7d856774fe9e4c5c93756cedfe4a046f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2901,31 +2950,10 @@
       "scope": "track"
     },
     {
-      "song": "Sakin Ol Champ",
-      "artist": "BLOK3",
-      "album": "KAYIP PERSONA",
-      "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/a537ba2df0274e0a98238f0963a6f6a0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "TSS",
-      "artist": "KAVAK, BAKAN",
-      "album": "VAKKO",
-      "url": "https://canvaz.scdn.co/upload/artist/24OGdBr3r58ksMLJkMXZZY/video/2ecadb431403467da078ebb13a04bd2c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Eller Üzer",
       "artist": "Serkan Nişancı",
       "album": "Unutacağım",
       "url": "https://canvaz.scdn.co/upload/artist/5fEL815uzQRkyzW9wOfUTd/video/3bd5894302f345cca388ab10349a0629.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Snap",
-      "artist": "manifest",
-      "album": "manifestival",
-      "url": "https://canvaz.scdn.co/upload/artist/2WjzL05RyqIk5n53sZc9nf/video/9d3b21c0d59d40c59f081fdf48a2b3c0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2936,45 +2964,10 @@
       "scope": "track"
     },
     {
-      "song": "TAMPONTAMPONA",
-      "artist": "Ati242",
-      "album": "TAMPONTAMPONA",
-      "url": "https://canvaz.scdn.co/upload/artist/6bGOmNBU1AOgttgOjh0ldf/video/157954e72ebe4399a406bd9c0b91c950.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "KTS",
+      "song": "Snap",
       "artist": "manifest",
       "album": "manifestival",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/29d735709227481da13df6e84e2dd2bc.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Gidişat",
-      "artist": "Tan Taşçı",
-      "album": "Gidişat",
-      "url": "https://canvaz.scdn.co/upload/artist/2rNgr1pkSDfxQTYhqCT45D/video/6d49438d28464fb0ba1942ad45efa48c.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Sen Orda Yoksun",
-      "artist": "Göksel",
-      "album": "Sen Orda Yoksun",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/2c4971d21e4b4bc7ac2ac003e5f63806.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Amatör",
-      "artist": "manifest",
-      "album": "Amatör",
-      "url": "https://canvaz.scdn.co/upload/artist/2WjzL05RyqIk5n53sZc9nf/video/b975536e0cba47a4a80c3184b82d00ab.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Yaşanacaksa",
-      "artist": "manifest",
-      "album": "manifestival",
-      "url": "https://canvaz.scdn.co/upload/artist/2WjzL05RyqIk5n53sZc9nf/video/dd42082b33534274b26d949b80a553c6.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/2WjzL05RyqIk5n53sZc9nf/video/9d3b21c0d59d40c59f081fdf48a2b3c0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2992,17 +2985,52 @@
       "scope": "track"
     },
     {
-      "song": "Geri Ver",
-      "artist": "Wegh",
-      "album": "CURCUNA",
-      "url": "https://canvaz.scdn.co/upload/artist/747jtvVsxwzOLCJeOOz3oT/video/77ae2c9a26e5490d823beaa1c5bb3e87.cnvs.mp4",
+      "song": "Sakin Ol Champ",
+      "artist": "BLOK3",
+      "album": "KAYIP PERSONA",
+      "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/a537ba2df0274e0a98238f0963a6f6a0.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "KIYAMAM",
-      "artist": "Sibel Can, Eypio",
-      "album": "KIYAMAM",
-      "url": "https://canvaz.scdn.co/upload/artist/2IiSMrjpXiteqhISWXkdUG/video/b5c0cd84f3834be6a6410e8fe52605de.cnvs.mp4",
+      "song": "TAMPONTAMPONA",
+      "artist": "Ati242",
+      "album": "TAMPONTAMPONA",
+      "url": "https://canvaz.scdn.co/upload/artist/6bGOmNBU1AOgttgOjh0ldf/video/157954e72ebe4399a406bd9c0b91c950.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Yaşanacaksa",
+      "artist": "manifest",
+      "album": "manifestival",
+      "url": "https://canvaz.scdn.co/upload/artist/2WjzL05RyqIk5n53sZc9nf/video/dd42082b33534274b26d949b80a553c6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Değiştiremezsin Yazılmışsa",
+      "artist": "BLOK3",
+      "album": "KAYIP PERSONA",
+      "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/16d2a76302c844f2863e4d3fd5598bd3.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Gidişat",
+      "artist": "Tan Taşçı",
+      "album": "Gidişat",
+      "url": "https://canvaz.scdn.co/upload/artist/2rNgr1pkSDfxQTYhqCT45D/video/6d49438d28464fb0ba1942ad45efa48c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "KTS",
+      "artist": "manifest",
+      "album": "manifestival",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/29d735709227481da13df6e84e2dd2bc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Amatör",
+      "artist": "manifest",
+      "album": "Amatör",
+      "url": "https://canvaz.scdn.co/upload/artist/2WjzL05RyqIk5n53sZc9nf/video/b975536e0cba47a4a80c3184b82d00ab.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3013,10 +3041,24 @@
       "scope": "track"
     },
     {
-      "song": "Allah Allah ?",
-      "artist": "BLOK3",
-      "album": "KAYIP PERSONA",
-      "url": "https://canvaz.scdn.co/upload/artist/1GMwSpFzrLd12jUX15bHB6/video/629134c43f844a9b9b9a90c9079519e6.cnvs.mp4",
+      "song": "Geri Ver",
+      "artist": "Wegh",
+      "album": "CURCUNA",
+      "url": "https://canvaz.scdn.co/upload/artist/747jtvVsxwzOLCJeOOz3oT/video/77ae2c9a26e5490d823beaa1c5bb3e87.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sen Orda Yoksun",
+      "artist": "Göksel",
+      "album": "Sen Orda Yoksun",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/2c4971d21e4b4bc7ac2ac003e5f63806.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "KIYAMAM",
+      "artist": "Sibel Can, Eypio",
+      "album": "KIYAMAM",
+      "url": "https://canvaz.scdn.co/upload/artist/2IiSMrjpXiteqhISWXkdUG/video/b5c0cd84f3834be6a6410e8fe52605de.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3062,13 +3104,6 @@
       "scope": "track"
     },
     {
-      "song": "Sailor Song",
-      "artist": "Gigi Perez",
-      "album": "At The Beach, In Every Life",
-      "url": "https://canvaz.scdn.co/upload/artist/1iCnM8foFssWlPRLfAbIwo/video/8cc216885a234230adc817d76adb5149.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Runaway",
       "artist": "AURORA",
       "album": "All My Demons Greeting Me As A Friend (Deluxe)",
@@ -3090,24 +3125,17 @@
       "scope": "track"
     },
     {
+      "song": "Zombie - 2025 Remastered",
+      "artist": "The Cranberries",
+      "album": "No Need To Argue (2025 Remastered)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/277c1fc2ba274d6581c81c0d9890fbad.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Yes! 東京",
       "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, 原因は自分にある。, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
       "album": "Yes! 東京",
-      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/1b8098f6e4db4713a6dc835710e2747b.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "青と夏",
-      "artist": "Mrs. GREEN APPLE",
-      "album": "Attitude",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/607fe132587248c4bc05163174ba7c6e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "点描の唄",
-      "artist": "Mrs. GREEN APPLE, Sonoko Inoue",
-      "album": "青と夏",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b481b871d88245d48151032a2dfe7c0d.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/8b75ef33c5a543989030d01ada1d5e48.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3118,10 +3146,24 @@
       "scope": "track"
     },
     {
+      "song": "青と夏",
+      "artist": "Mrs. GREEN APPLE",
+      "album": "Attitude",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/607fe132587248c4bc05163174ba7c6e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "It's Me",
       "artist": "ILLIT",
       "album": "MAMIHLAPINATAPAI",
       "url": "https://canvaz.scdn.co/upload/artist/36cgvBn0aadzOijnjjwqMN/video/259a8fc810494f5c97a962b5ce4a8f69.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "点描の唄",
+      "artist": "Mrs. GREEN APPLE, Sonoko Inoue",
+      "album": "青と夏",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b481b871d88245d48151032a2dfe7c0d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3167,13 +3209,6 @@
       "scope": "track"
     },
     {
-      "song": "夢中",
-      "artist": "BE:FIRST",
-      "album": "夢中",
-      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/865bc0413a7a45159c4a0be4524a05fd.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "烏 - Raven",
       "artist": "Kenshi Yonezu",
       "album": "烏 - Raven",
@@ -3181,10 +3216,17 @@
       "scope": "track"
     },
     {
-      "song": "愛をこめて花束を",
-      "artist": "Superfly",
-      "album": "Superfly",
-      "url": "https://canvaz.scdn.co/upload/artist/5M8AXrOifBT8elkLKbGPQZ/video/22507a1d20f542598e7b6f2c88998bc2.cnvs.mp4",
+      "song": "Don’t Say You Love Me",
+      "artist": "Jin",
+      "album": "Echo",
+      "url": "https://canvaz.scdn.co/upload/artist/5vV3bFXnN6D6N3Nj4xRvaV/video/5f805765aa84425caaa003ed6022f874.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "夢中",
+      "artist": "BE:FIRST",
+      "album": "夢中",
+      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/865bc0413a7a45159c4a0be4524a05fd.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3195,10 +3237,24 @@
       "scope": "track"
     },
     {
-      "song": "革命道中 - On The Way",
-      "artist": "AiNA THE END",
-      "album": "革命道中 - On The Way",
-      "url": "https://canvaz.scdn.co/upload/artist/5k7KS34gxQbzdQaXWSOVKC/video/cd4d2e05ff0c4355ba3b1009e1327ab8.cnvs.mp4",
+      "song": "恋、はじめました。",
+      "artist": "=LOVE",
+      "album": "恋、はじめました。",
+      "url": "https://canvaz.scdn.co/upload/artist/1j2WhcTW00Zd2SjFYsJVc6/video/345a74a9abe145fab149765b731674d0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "3XL",
+      "artist": "Number_i",
+      "album": "3XL",
+      "url": "https://canvaz.scdn.co/upload/artist/4XFkDALFTsSHVnRtJSsaMN/video/db833a97ca07425cb9e67536e4fed900.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "愛をこめて花束を",
+      "artist": "Superfly",
+      "album": "Superfly",
+      "url": "https://canvaz.scdn.co/upload/artist/5M8AXrOifBT8elkLKbGPQZ/video/22507a1d20f542598e7b6f2c88998bc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3216,31 +3272,10 @@
       "scope": "track"
     },
     {
-      "song": "3XL",
-      "artist": "Number_i",
-      "album": "3XL",
-      "url": "https://canvaz.scdn.co/upload/artist/4XFkDALFTsSHVnRtJSsaMN/video/db833a97ca07425cb9e67536e4fed900.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Don’t Say You Love Me",
-      "artist": "Jin",
-      "album": "Echo",
-      "url": "https://canvaz.scdn.co/upload/artist/5vV3bFXnN6D6N3Nj4xRvaV/video/5f805765aa84425caaa003ed6022f874.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Missing",
-      "artist": "BE:FIRST",
-      "album": "Missing",
-      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/d1d8492a1a1d4a2aa8450114f97a63d8.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Kaiju",
-      "artist": "sakanaction",
-      "album": "Kaiju",
-      "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/b96045df14a3449a9eea660c12f9726f.cnvs.mp4",
+      "song": "革命道中 - On The Way",
+      "artist": "AiNA THE END",
+      "album": "革命道中 - On The Way",
+      "url": "https://canvaz.scdn.co/upload/artist/5k7KS34gxQbzdQaXWSOVKC/video/cd4d2e05ff0c4355ba3b1009e1327ab8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3251,6 +3286,20 @@
       "scope": "track"
     },
     {
+      "song": "Kaiju",
+      "artist": "sakanaction",
+      "album": "Kaiju",
+      "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/b96045df14a3449a9eea660c12f9726f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Missing",
+      "artist": "BE:FIRST",
+      "album": "Missing",
+      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/d1d8492a1a1d4a2aa8450114f97a63d8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "ROSE",
       "artist": "HANA",
       "album": "HANA",
@@ -3258,24 +3307,17 @@
       "scope": "track"
     },
     {
-      "song": "恋、はじめました。",
-      "artist": "=LOVE",
-      "album": "恋、はじめました。",
-      "url": "https://canvaz.scdn.co/upload/artist/1j2WhcTW00Zd2SjFYsJVc6/video/345a74a9abe145fab149765b731674d0.cnvs.mp4",
+      "song": "夜鷹 - Yodaka",
+      "artist": "Kenshi Yonezu",
+      "album": "夜鷹 - Yodaka",
+      "url": "https://canvaz.scdn.co/upload/artist/1snhtMLeb2DYoMOcVbb8iB/video/0180674fcfc74f1ea5443f1aa9cf043c.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "show time...",
-      "artist": "Snow Man",
-      "album": "AMENITY",
-      "url": "https://canvaz.scdn.co/upload/artist/0UuiWPm9FpWvRuWNrXO98N/video/16400fdc4abb4c3798f8e399c84c7f65.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "BiiiG",
-      "artist": "BIGBANG",
-      "album": "BiiiG",
-      "url": "https://canvaz.scdn.co/upload/artist/4Kxlr1PRlDKEB0ekOCyHgX/video/83622ee93435434d8e26e75579c58217.cnvs.mp4",
+      "song": "Five",
+      "artist": "ARASHI",
+      "album": "Five",
+      "url": "https://canvaz.scdn.co/upload/artist/1XYuC1vxinTjHCNd5clB8C/video/89244b5e489745c6a03b44687ce9047c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3286,31 +3328,17 @@
       "scope": "track"
     },
     {
+      "song": "BiiiG",
+      "artist": "BIGBANG",
+      "album": "BiiiG",
+      "url": "https://canvaz.scdn.co/upload/artist/4Kxlr1PRlDKEB0ekOCyHgX/video/83622ee93435434d8e26e75579c58217.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Pop Off Pop Off",
       "artist": "KiiiKiii",
       "album": "WhyKiiiKiii",
       "url": "https://canvaz.scdn.co/upload/artist/63sat2XSMKdwKfqspmYQKP/video/d01d8f0f18a04dfbb57af473248dc0fd.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Pretty Girl",
-      "artist": "RESCENE",
-      "album": "Pretty Girl - Special Single",
-      "url": "https://canvaz.scdn.co/upload/artist/5deOsjuFTKrNMJW3rKuL8S/video/73231a78d5564ce3a9c09d6b2eac8bc0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "LEMONADE",
-      "artist": "aespa",
-      "album": "LEMONADE - The 2nd Album (NINGNING Special Version)",
-      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/e1031bd044024cb7a4234727646827a1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Seven (feat. Latto) (Explicit Ver.)",
-      "artist": "Jung Kook, Latto",
-      "album": "GOLDEN",
-      "url": "https://canvaz.scdn.co/upload/artist/6HaGTQPmzraVmaVxvz6EUc/video/b517f06a41d04bfbb1293729c32eb18c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3321,10 +3349,31 @@
       "scope": "track"
     },
     {
+      "song": "LEMONADE",
+      "artist": "aespa",
+      "album": "LEMONADE - The 2nd Album (NINGNING Special Version)",
+      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/e1031bd044024cb7a4234727646827a1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Pretty Girl",
+      "artist": "RESCENE",
+      "album": "Pretty Girl - Special Single",
+      "url": "https://canvaz.scdn.co/upload/artist/5deOsjuFTKrNMJW3rKuL8S/video/73231a78d5564ce3a9c09d6b2eac8bc0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "BAD",
       "artist": "ATEEZ",
       "album": "GOLDEN HOUR : Part.5",
       "url": "https://canvaz.scdn.co/upload/artist/68KmkJeZGfwe1OUaivBa2L/video/678a38104e8445ed954ee75c9bd06c4d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Seven (feat. Latto) (Explicit Ver.)",
+      "artist": "Jung Kook, Latto",
+      "album": "GOLDEN",
+      "url": "https://canvaz.scdn.co/upload/artist/6HaGTQPmzraVmaVxvz6EUc/video/b517f06a41d04bfbb1293729c32eb18c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3342,13 +3391,6 @@
       "scope": "track"
     },
     {
-      "song": "Lemon Tang",
-      "artist": "Hearts2Hearts",
-      "album": "Lemon Tang - The 2nd Mini Album",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/8ca5be47a2e94735b4c309ff3f91ef92.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Landing in Love",
       "artist": "HANRORO",
       "album": "Take-off",
@@ -3356,10 +3398,10 @@
       "scope": "track"
     },
     {
-      "song": "RUDE!",
+      "song": "Lemon Tang",
       "artist": "Hearts2Hearts",
-      "album": "RUDE!",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
+      "album": "Lemon Tang - The 2nd Mini Album",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/8ca5be47a2e94735b4c309ff3f91ef92.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3370,38 +3412,17 @@
       "scope": "track"
     },
     {
+      "song": "RUDE!",
+      "artist": "Hearts2Hearts",
+      "album": "RUDE!",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/96d3ecc141f84386ae2f7bd0d1990739.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Less than a Lover",
       "artist": "JENNIE",
       "album": "Less than a Lover",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/ce4fb0df41e0450cb6710b031ecf5902.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "404 (New Era)",
-      "artist": "KiiiKiii",
-      "album": "Delulu Pack",
-      "url": "https://canvaz.scdn.co/upload/artist/63sat2XSMKdwKfqspmYQKP/video/96c42a2035e24be9ab26d1569835eb63.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Surfin' Boy",
-      "artist": "Red Velvet",
-      "album": "Velvet Summer - Summer Mini Album",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/24353e81378841ccac2feb18f710f2a7.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Pretender",
-      "artist": "OFFICIAL HIGE DANDISM",
-      "album": "Traveler",
-      "url": "https://canvaz.scdn.co/upload/licensor/5A7DxXtxcmziE1jFdhik5R/video/1401fd540da042229ffcfe09b87f64b9.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Runaway",
-      "artist": "RESCENE",
-      "album": "Runaway",
-      "url": "https://canvaz.scdn.co/upload/artist/5deOsjuFTKrNMJW3rKuL8S/video/89dd197f0a8c43bc92ef2ee284a99f0f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3412,10 +3433,24 @@
       "scope": "track"
     },
     {
-      "song": "FOCUS",
-      "artist": "Hearts2Hearts",
-      "album": "FOCUS - The 1st Mini Album",
-      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/cb1481e4ca9148ce872561b596ac2d90.cnvs.mp4",
+      "song": "404 (New Era)",
+      "artist": "KiiiKiii",
+      "album": "Delulu Pack",
+      "url": "https://canvaz.scdn.co/upload/artist/63sat2XSMKdwKfqspmYQKP/video/96c42a2035e24be9ab26d1569835eb63.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Pretender",
+      "artist": "OFFICIAL HIGE DANDISM",
+      "album": "Traveler",
+      "url": "https://canvaz.scdn.co/upload/licensor/5A7DxXtxcmziE1jFdhik5R/video/1401fd540da042229ffcfe09b87f64b9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Surfin' Boy",
+      "artist": "Red Velvet",
+      "album": "Velvet Summer - Summer Mini Album",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/24353e81378841ccac2feb18f710f2a7.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3426,6 +3461,20 @@
       "scope": "track"
     },
     {
+      "song": "Runaway",
+      "artist": "RESCENE",
+      "album": "Runaway",
+      "url": "https://canvaz.scdn.co/upload/artist/5deOsjuFTKrNMJW3rKuL8S/video/89dd197f0a8c43bc92ef2ee284a99f0f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "FOCUS",
+      "artist": "Hearts2Hearts",
+      "album": "FOCUS - The 1st Mini Album",
+      "url": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/cb1481e4ca9148ce872561b596ac2d90.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "STYLE",
       "artist": "Hearts2Hearts",
       "album": "STYLE",
@@ -3433,10 +3482,10 @@
       "scope": "track"
     },
     {
-      "song": "Barsaat",
-      "artist": "Banjaare, Roni",
-      "album": "Barsaat",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a8f447051bba40bead21992c30ac07ee.cnvs.mp4",
+      "song": "晩餐歌 - Bansanka",
+      "artist": "tuki.",
+      "album": "15",
+      "url": "https://canvaz.scdn.co/upload/licensor/3PEIH2JPGaeN7UJxZVhGvW/video/b41a4d78b3044a2999b79bb5b673b919.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3444,6 +3493,13 @@
       "artist": "Anuv Jain",
       "album": "Arz Kiya Hai | Coke Studio Bharat",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/201a896f620a43e5bd12466795f8972e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Barsaat",
+      "artist": "Banjaare, Roni",
+      "album": "Barsaat",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a8f447051bba40bead21992c30ac07ee.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3468,10 +3524,10 @@
       "scope": "track"
     },
     {
-      "song": "Mann Mera",
-      "artist": "Gajendra Verma",
-      "album": "Table No. 21 (Original Motion Picture Soundtrack)",
-      "url": "https://canvaz.scdn.co/upload/artist/1yzgJmZf5CxtFfGfRFm4Si/video/6b5a4ccd55dd4797bc7e2b2a9b4edd06.cnvs.mp4",
+      "song": "Finding Her",
+      "artist": "Kushagra, Bharath, Saaheal",
+      "album": "Finding Her",
+      "url": "https://canvaz.scdn.co/upload/artist/2IKfr1JgPRXmXKAWwrABc6/video/c62660b466a941f8b54d85bd28081228.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3482,10 +3538,10 @@
       "scope": "track"
     },
     {
-      "song": "Finding Her",
-      "artist": "Kushagra, Bharath, Saaheal",
-      "album": "Finding Her",
-      "url": "https://canvaz.scdn.co/upload/artist/2IKfr1JgPRXmXKAWwrABc6/video/c62660b466a941f8b54d85bd28081228.cnvs.mp4",
+      "song": "Mann Mera",
+      "artist": "Gajendra Verma",
+      "album": "Table No. 21 (Original Motion Picture Soundtrack)",
+      "url": "https://canvaz.scdn.co/upload/artist/1yzgJmZf5CxtFfGfRFm4Si/video/6b5a4ccd55dd4797bc7e2b2a9b4edd06.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3503,13 +3559,6 @@
       "scope": "track"
     },
     {
-      "song": "Pavazha Malli - From \"Think Indie\"",
-      "artist": "Sai Abhyankkar, Shruti Haasan, Vivek",
-      "album": "Pavazha Malli (From \"Think Indie\")",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/4897cdbbe1fc4f42bd47d81469791ed1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Jo Tum Mere Ho",
       "artist": "Anuv Jain",
       "album": "Jo Tum Mere Ho",
@@ -3517,10 +3566,10 @@
       "scope": "track"
     },
     {
-      "song": "Barbaad (From \"Saiyaara\")",
-      "artist": "The Rish, Jubin Nautiyal",
-      "album": "Barbaad (From \"Saiyaara\")",
-      "url": "https://canvaz.scdn.co/upload/licensor/6swn1VJU0CsQj6LLvYqoj1/video/4e2a4f1f83954b9f97d5ad5a82a252f0.cnvs.mp4",
+      "song": "Pavazha Malli - From \"Think Indie\"",
+      "artist": "Sai Abhyankkar, Shruti Haasan, Vivek",
+      "album": "Pavazha Malli (From \"Think Indie\")",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/4897cdbbe1fc4f42bd47d81469791ed1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3531,24 +3580,10 @@
       "scope": "track"
     },
     {
-      "song": "Tu Thodi Der Aur Thehar Ja - From \"Half Girlfriend\"",
-      "artist": "Shreya Ghoshal, Farhan Saeed, Kumaar",
-      "album": "Tu Thodi Der Aur Thehar Ja (From \"Half Girlfriend\")",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/074b3423f74f47b8b29e987572599de1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Ishq de Fanniyar - Female Version",
-      "artist": "Jyotica Tangri, Shaarib Toshi, Kumaar",
-      "album": "Bollywood Love Lounge Vol 1",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/45d1b3f3521b4e8f844d8f04bb9e19cc.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Boyfriend",
-      "artist": "Karan Aujla, Ikky",
-      "album": "P-POP CULTURE",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/12b061440782441cb42606bd1bf8e5a3.cnvs.mp4",
+      "song": "Barbaad (From \"Saiyaara\")",
+      "artist": "The Rish, Jubin Nautiyal",
+      "album": "Barbaad (From \"Saiyaara\")",
+      "url": "https://canvaz.scdn.co/upload/licensor/6swn1VJU0CsQj6LLvYqoj1/video/4e2a4f1f83954b9f97d5ad5a82a252f0.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3559,10 +3594,45 @@
       "scope": "track"
     },
     {
+      "song": "Boyfriend",
+      "artist": "Karan Aujla, Ikky",
+      "album": "P-POP CULTURE",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/12b061440782441cb42606bd1bf8e5a3.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Ishq de Fanniyar - Female Version",
+      "artist": "Jyotica Tangri, Shaarib Toshi, Kumaar",
+      "album": "Bollywood Love Lounge Vol 1",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/45d1b3f3521b4e8f844d8f04bb9e19cc.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Aarzu",
+      "artist": "Noor, Khan, Madhurxo",
+      "album": "Aarzu",
+      "url": "https://canvaz.scdn.co/upload/artist/7F5LO6TFFBGkRhsQdCcLVm/video/95532214682f4482ab0c566ccc7680b1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Tu Thodi Der Aur Thehar Ja - From \"Half Girlfriend\"",
+      "artist": "Shreya Ghoshal, Farhan Saeed, Kumaar",
+      "album": "Tu Thodi Der Aur Thehar Ja (From \"Half Girlfriend\")",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/074b3423f74f47b8b29e987572599de1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Ishq",
       "artist": "Faheem Abdullah, Rauhan Malik, Amir Ameer",
       "album": "Lost;Found",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/7f1e60dd71674906bdba421bc4432fb5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Zaalima",
+      "artist": "Arijit Singh, Harshdeep Kaur",
+      "album": "The Arijit Singh Collection",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2cbf5a25307b4728bc994bc9ad2cd8c7.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3580,24 +3650,10 @@
       "scope": "track"
     },
     {
-      "song": "Zaalima",
-      "artist": "Arijit Singh, Harshdeep Kaur",
-      "album": "The Arijit Singh Collection",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2cbf5a25307b4728bc994bc9ad2cd8c7.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Aarzu",
-      "artist": "Noor, Khan, Madhurxo",
-      "album": "Aarzu",
-      "url": "https://canvaz.scdn.co/upload/artist/7F5LO6TFFBGkRhsQdCcLVm/video/95532214682f4482ab0c566ccc7680b1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "O Sanam",
-      "artist": "Akhil Sachdeva",
-      "album": "O Sanam",
-      "url": "https://canvaz.scdn.co/upload/artist/3TOhzLRYnkkul71yRBxIoM/video/f6a8d8e1f9d34b8faf126ec5d1aa86e5.cnvs.mp4",
+      "song": "Apna Bana Le",
+      "artist": "Sachin-Jigar, Arijit Singh, Amitabh Bhattacharya",
+      "album": "Bhediya (Original Motion Picture Soundtrack)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/210a7a762205432fad188e7466193fa2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3608,10 +3664,17 @@
       "scope": "track"
     },
     {
-      "song": "Ehsaas",
-      "artist": "Faheem Abdullah, Duha Shah, Vaibhav Pani, Hyder Dar",
-      "album": "Ehsaas",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b870119e823845a1a7f39d68299af532.cnvs.mp4",
+      "song": "O Sanam",
+      "artist": "Akhil Sachdeva",
+      "album": "O Sanam",
+      "url": "https://canvaz.scdn.co/upload/artist/3TOhzLRYnkkul71yRBxIoM/video/f6a8d8e1f9d34b8faf126ec5d1aa86e5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Jaiye Sajana",
+      "artist": "Shashwat Sachdev, Jasmine Sandlas, Satinder Sartaaj",
+      "album": "Dhurandhar The Revenge",
+      "url": "https://canvaz.scdn.co/upload/licensor/7qqEhYZpNiUZ6Jkm5Ek20z/video/169929372ca849669ec7a076f4c359ee.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3622,10 +3685,10 @@
       "scope": "track"
     },
     {
-      "song": "Apna Bana Le",
-      "artist": "Sachin-Jigar, Arijit Singh, Amitabh Bhattacharya",
-      "album": "Bhediya (Original Motion Picture Soundtrack)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/210a7a762205432fad188e7466193fa2.cnvs.mp4",
+      "song": "Ehsaas",
+      "artist": "Faheem Abdullah, Duha Shah, Vaibhav Pani, Hyder Dar",
+      "album": "Ehsaas",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b870119e823845a1a7f39d68299af532.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3643,13 +3706,6 @@
       "scope": "track"
     },
     {
-      "song": "Hangova",
-      "artist": "Anirudh Ravichander, Heisenberg",
-      "album": "DC (Original Motion Picture Soundtrack)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/07bb3fa7a43b44d18357c8a55d41e025.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Jo Tere Sang",
       "artist": "Jeet Gannguli, Mustafa Zahid, Sayeed Quadri",
       "album": "Blood Money (Original Motion Picture Soundtrack)",
@@ -3657,10 +3713,10 @@
       "scope": "track"
     },
     {
-      "song": "Jaiye Sajana",
-      "artist": "Shashwat Sachdev, Jasmine Sandlas, Satinder Sartaaj",
-      "album": "Dhurandhar The Revenge",
-      "url": "https://canvaz.scdn.co/upload/licensor/7qqEhYZpNiUZ6Jkm5Ek20z/video/169929372ca849669ec7a076f4c359ee.cnvs.mp4",
+      "song": "Hangova",
+      "artist": "Anirudh Ravichander, Heisenberg",
+      "album": "DC (Original Motion Picture Soundtrack)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/07bb3fa7a43b44d18357c8a55d41e025.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3692,31 +3748,10 @@
       "scope": "track"
     },
     {
-      "song": "Jatuh Suka",
-      "artist": "Tulus",
-      "album": "Manusia",
-      "url": "https://canvaz.scdn.co/upload/artist/2iDVt6mFbtbDEZG5ax0dTi/video/2df404f254a249968dea6507238c619e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Bersenja Gurau",
-      "artist": "Raim Laode",
-      "album": "iqro'",
-      "url": "https://canvaz.scdn.co/upload/artist/5LcNPa8f8bRmZqELgoRFkN/video/f2291c26802640808a0327ddba9c7f0d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Ini Abadi",
       "artist": "Perunggu",
       "album": "Memorandum",
       "url": "https://canvaz.scdn.co/upload/artist/0NbKRRBuiIUwS9irPvi7wD/video/1a57b4092a2e4c259b2e6cb4db3ff220.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Jangan Paksa Rindu - Beda",
-      "artist": "Ifan Seventeen",
-      "album": "Resonance",
-      "url": "https://canvaz.scdn.co/upload/artist/2vbWy0ntJGJ2H1erLJFMZZ/video/342642b9682844bd873655300602597b.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3727,24 +3762,31 @@
       "scope": "track"
     },
     {
+      "song": "Bersenja Gurau",
+      "artist": "Raim Laode",
+      "album": "iqro'",
+      "url": "https://canvaz.scdn.co/upload/artist/5LcNPa8f8bRmZqELgoRFkN/video/f2291c26802640808a0327ddba9c7f0d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Jangan Paksa Rindu - Beda",
+      "artist": "Ifan Seventeen",
+      "album": "Resonance",
+      "url": "https://canvaz.scdn.co/upload/artist/2vbWy0ntJGJ2H1erLJFMZZ/video/342642b9682844bd873655300602597b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Jatuh Suka",
+      "artist": "Tulus",
+      "album": "Manusia",
+      "url": "https://canvaz.scdn.co/upload/artist/2iDVt6mFbtbDEZG5ax0dTi/video/2df404f254a249968dea6507238c619e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "kota ini tak sama tanpamu",
       "artist": "Nadhif Basalamah",
       "album": "Nadhif (laman berikutnya)",
       "url": "https://canvaz.scdn.co/upload/artist/6UgERnTHmjk3qXM9x5vzyO/video/87c1db20607d4b91bf8d18d8a6e5a127.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Bahagia Lagi",
-      "artist": "Piche Kota",
-      "album": "Bahagia Lagi",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/c12e58aa633f4c5cb1fea110ff09049e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "everything u are",
-      "artist": "Hindia",
-      "album": "Doves, '25 on Blank Canvas",
-      "url": "https://canvaz.scdn.co/upload/artist/51kyrUsAVqUBcoDEMFkX12/video/4f230ec080cc495d88f27474815cae2f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3755,10 +3797,24 @@
       "scope": "track"
     },
     {
+      "song": "Bahagia Lagi",
+      "artist": "Piche Kota",
+      "album": "Bahagia Lagi",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/c12e58aa633f4c5cb1fea110ff09049e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "bergema sampai selamanya",
       "artist": "Nadhif Basalamah",
       "album": "Nadhif (laman berikutnya)",
       "url": "https://canvaz.scdn.co/upload/artist/6UgERnTHmjk3qXM9x5vzyO/video/12564d3ccb1348a28bb814f39b607c79.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "everything u are",
+      "artist": "Hindia",
+      "album": "Doves, '25 on Blank Canvas",
+      "url": "https://canvaz.scdn.co/upload/artist/51kyrUsAVqUBcoDEMFkX12/video/4f230ec080cc495d88f27474815cae2f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3783,24 +3839,10 @@
       "scope": "track"
     },
     {
-      "song": "Nina",
-      "artist": ".Feast",
-      "album": "Membangun & Menghancurkan",
-      "url": "https://canvaz.scdn.co/upload/artist/7Gy1PxqrgsiqWF6JNYPHeB/video/39dcba1c990e403ba34068e60d77551b.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Kita Lewati Berdua",
       "artist": "Overnight",
       "album": "Kita Lewati Berdua",
       "url": "https://canvaz.scdn.co/upload/artist/0ZkNSRvBK767bNOCdXKeYK/video/07a10d92d6104198970ce9cd1ebc8ffd.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Astaga Bercanda",
-      "artist": "Akbar Chalay, Mingse",
-      "album": "Astaga Bercanda",
-      "url": "https://canvaz.scdn.co/upload/artist/7n6UYi8ahl0SOStLqjWf6I/video/5c0de01e732040a19cfe8c0bdcc4b809.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3811,10 +3853,17 @@
       "scope": "track"
     },
     {
-      "song": "Foto kita blur",
-      "artist": "Sal Priadi",
-      "album": "MARKERS AND SUCH PENS FLASHDISKS",
-      "url": "https://canvaz.scdn.co/upload/artist/1NjxFrpEGZTV2Ny0OJxeWu/video/aa0963cbade043738030390ed19fb199.cnvs.mp4",
+      "song": "Astaga Bercanda",
+      "artist": "Akbar Chalay, Mingse",
+      "album": "Astaga Bercanda",
+      "url": "https://canvaz.scdn.co/upload/artist/7n6UYi8ahl0SOStLqjWf6I/video/5c0de01e732040a19cfe8c0bdcc4b809.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Nina",
+      "artist": ".Feast",
+      "album": "Membangun & Menghancurkan",
+      "url": "https://canvaz.scdn.co/upload/artist/7Gy1PxqrgsiqWF6JNYPHeB/video/39dcba1c990e403ba34068e60d77551b.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3825,17 +3874,10 @@
       "scope": "track"
     },
     {
-      "song": "Hati-Hati di Jalan",
-      "artist": "Tulus",
-      "album": "Manusia",
-      "url": "https://canvaz.scdn.co/upload/artist/2iDVt6mFbtbDEZG5ax0dTi/video/89ac44f351bd4202b868c1b11d6d4c63.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Bertaut",
-      "artist": "Nadin Amizah",
-      "album": "Selamat Ulang Tahun",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/71aa67429eeb4461a7eaa451b63fbf9f.cnvs.mp4",
+      "song": "Terpukau",
+      "artist": "Astrid",
+      "album": "Terpukau",
+      "url": "https://canvaz.scdn.co/upload/artist/6GxmlugWFw4hmhUQ5uP93l/video/72af4721700a4067998144f1b00c6417.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3846,17 +3888,17 @@
       "scope": "track"
     },
     {
-      "song": "Terpukau",
-      "artist": "Astrid",
-      "album": "Terpukau",
-      "url": "https://canvaz.scdn.co/upload/artist/6GxmlugWFw4hmhUQ5uP93l/video/72af4721700a4067998144f1b00c6417.cnvs.mp4",
+      "song": "Bertaut",
+      "artist": "Nadin Amizah",
+      "album": "Selamat Ulang Tahun",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/71aa67429eeb4461a7eaa451b63fbf9f.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Kita usahakan rumah itu",
-      "artist": "Sal Priadi",
-      "album": "MARKERS AND SUCH PENS FLASHDISKS",
-      "url": "https://canvaz.scdn.co/upload/artist/1NjxFrpEGZTV2Ny0OJxeWu/video/a79a5465c92943358ff4e1e53d0034f9.cnvs.mp4",
+      "song": "Hati-Hati di Jalan",
+      "artist": "Tulus",
+      "album": "Manusia",
+      "url": "https://canvaz.scdn.co/upload/artist/2iDVt6mFbtbDEZG5ax0dTi/video/89ac44f351bd4202b868c1b11d6d4c63.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3867,10 +3909,10 @@
       "scope": "track"
     },
     {
-      "song": "Masa ini, Nanti, dan Masa Indah Lainnya",
-      "artist": "Nuca",
-      "album": "EUNOIA",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/be5db5eef53c4edbb08391b968461fde.cnvs.mp4",
+      "song": "Kita usahakan rumah itu",
+      "artist": "Sal Priadi",
+      "album": "MARKERS AND SUCH PENS FLASHDISKS",
+      "url": "https://canvaz.scdn.co/upload/artist/1NjxFrpEGZTV2Ny0OJxeWu/video/a79a5465c92943358ff4e1e53d0034f9.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3881,31 +3923,17 @@
       "scope": "track"
     },
     {
-      "song": "Cincin",
-      "artist": "Hindia",
-      "album": "Lagipula Hidup Akan Berakhir",
-      "url": "https://canvaz.scdn.co/upload/artist/51kyrUsAVqUBcoDEMFkX12/video/ac672e90dd00452d89e2608f5575b251.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Menari-nari",
-      "artist": "Raim Laode",
-      "album": "iqro'",
-      "url": "https://canvaz.scdn.co/upload/artist/5LcNPa8f8bRmZqELgoRFkN/video/7125499827fb44bea042c0f3735337ed.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Komang",
-      "artist": "Raim Laode",
-      "album": "iqro'",
-      "url": "https://canvaz.scdn.co/upload/artist/5LcNPa8f8bRmZqELgoRFkN/video/99072aac64d143eda5efb4435f006454.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Selamat (Selamat Tinggal)",
       "artist": "Virgoun, Audy",
       "album": "Selamat (Selamat Tinggal)",
       "url": "https://canvaz.scdn.co/upload/artist/4bAgr9zaF0bpzVGHdHuf0f/video/c7c457c214514de0a16f59a1a0522dd2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Cincin",
+      "artist": "Hindia",
+      "album": "Lagipula Hidup Akan Berakhir",
+      "url": "https://canvaz.scdn.co/upload/artist/51kyrUsAVqUBcoDEMFkX12/video/ac672e90dd00452d89e2608f5575b251.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3916,6 +3944,13 @@
       "scope": "track"
     },
     {
+      "song": "Menari-nari",
+      "artist": "Raim Laode",
+      "album": "iqro'",
+      "url": "https://canvaz.scdn.co/upload/artist/5LcNPa8f8bRmZqELgoRFkN/video/7125499827fb44bea042c0f3735337ed.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "About You",
       "artist": "The 1975",
       "album": "Being Funny In A Foreign Language",
@@ -3923,10 +3958,31 @@
       "scope": "track"
     },
     {
-      "song": "Dirimu Yang Dulu",
-      "artist": "Anggis Devaki",
-      "album": "Devaki",
-      "url": "https://canvaz.scdn.co/upload/licensor/0k3yVqUcuRIWMIiRZcK4V7/video/70e8920c9ed946329d8b1af47d3f3cf8.cnvs.mp4",
+      "song": "Sedia Aku Sebelum Hujan",
+      "artist": "Idgitaf",
+      "album": "Berusaha di Bawah Hujan",
+      "url": "https://canvaz.scdn.co/upload/artist/7pFWMC2E7h8eL3SZyHRsRq/video/09b1e8b01d6b4849a2ea8db5e2cf90da.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Masa ini, Nanti, dan Masa Indah Lainnya",
+      "artist": "Nuca",
+      "album": "EUNOIA",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/be5db5eef53c4edbb08391b968461fde.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Komang",
+      "artist": "Raim Laode",
+      "album": "iqro'",
+      "url": "https://canvaz.scdn.co/upload/artist/5LcNPa8f8bRmZqELgoRFkN/video/99072aac64d143eda5efb4435f006454.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Foto kita blur",
+      "artist": "Sal Priadi",
+      "album": "MARKERS AND SUCH PENS FLASHDISKS",
+      "url": "https://canvaz.scdn.co/upload/artist/1NjxFrpEGZTV2Ny0OJxeWu/video/aa0963cbade043738030390ed19fb199.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3937,10 +3993,10 @@
       "scope": "track"
     },
     {
-      "song": "Sedia Aku Sebelum Hujan",
-      "artist": "Idgitaf",
-      "album": "Berusaha di Bawah Hujan",
-      "url": "https://canvaz.scdn.co/upload/artist/7pFWMC2E7h8eL3SZyHRsRq/video/09b1e8b01d6b4849a2ea8db5e2cf90da.cnvs.mp4",
+      "song": "Dirimu Yang Dulu",
+      "artist": "Anggis Devaki",
+      "album": "Devaki",
+      "url": "https://canvaz.scdn.co/upload/licensor/0k3yVqUcuRIWMIiRZcK4V7/video/70e8920c9ed946329d8b1af47d3f3cf8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3958,13 +4014,6 @@
       "scope": "track"
     },
     {
-      "song": "Không Buông",
-      "artist": "Hngle, Ari",
-      "album": "Không Buông",
-      "url": "https://canvaz.scdn.co/upload/artist/7kBsX15IDun9YxuVmKCMYJ/video/676aca14ccfd4d6aa12f73109b3ba10b.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "dự báo thời tiết hôm nay mưa",
       "artist": "GREY D",
       "album": "dự báo thời tiết hôm nay mưa – Maxi Single",
@@ -3972,17 +4021,17 @@
       "scope": "track"
     },
     {
+      "song": "Không Buông",
+      "artist": "Hngle, Ari",
+      "album": "Không Buông",
+      "url": "https://canvaz.scdn.co/upload/artist/7kBsX15IDun9YxuVmKCMYJ/video/676aca14ccfd4d6aa12f73109b3ba10b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "vết thương",
       "artist": "Fishy",
       "album": "vết thương",
       "url": "https://canvaz.scdn.co/upload/artist/7kSmS2G15QIw8rllwGex9r/video/76e5770e767c4514a045a53b47987f02.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Ngày Rời Chuyến Bay",
-      "artist": "Minh Huy, Pinny",
-      "album": "Ngày Rời Chuyến Bay",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d1a0575b4df9460495256c51e1783ebf.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4000,6 +4049,13 @@
       "scope": "track"
     },
     {
+      "song": "Ngày Rời Chuyến Bay",
+      "artist": "Minh Huy, Pinny",
+      "album": "Ngày Rời Chuyến Bay",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d1a0575b4df9460495256c51e1783ebf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Bạn Đời",
       "artist": "Karik, GDucky",
       "album": "421",
@@ -4014,17 +4070,10 @@
       "scope": "track"
     },
     {
-      "song": "Sài Gòn Hôm Nay Mưa",
-      "artist": "JSOL, Hoàng Duyên",
-      "album": "Sài Gòn Hôm Nay Mưa",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/a839da3f53d446cf89e540a9219fdd6f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Nếu Như Ta Chẳng Còn (feat. A$AP Ướt Mi)",
-      "artist": "RPT MCK, A$AP Ướt Mi",
-      "album": "HVL",
-      "url": "https://canvaz.scdn.co/upload/artist/1zSv9qZANOWB4HRE8sxeTL/video/71ec1c9c962143b4bf0008d4a4ba695d.cnvs.mp4",
+      "song": "Có Em",
+      "artist": "Madihu, Low G",
+      "album": "Có em",
+      "url": "https://canvaz.scdn.co/upload/artist/1OIYKbmhG0RxPXvVPNj3NN/video/bfa0bf071ac34624b4694cd57ea9a929.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4035,6 +4084,20 @@
       "scope": "track"
     },
     {
+      "song": "Nếu Như Ta Chẳng Còn (feat. A$AP Ướt Mi)",
+      "artist": "RPT MCK, A$AP Ướt Mi",
+      "album": "HVL",
+      "url": "https://canvaz.scdn.co/upload/artist/1zSv9qZANOWB4HRE8sxeTL/video/71ec1c9c962143b4bf0008d4a4ba695d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sài Gòn Hôm Nay Mưa",
+      "artist": "JSOL, Hoàng Duyên",
+      "album": "Sài Gòn Hôm Nay Mưa",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/a839da3f53d446cf89e540a9219fdd6f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "toidaidot",
       "artist": "GREY D",
       "album": "ÁNH SÁNG • MÀN ĐÊM",
@@ -4042,24 +4105,24 @@
       "scope": "track"
     },
     {
-      "song": "Thằng Điên",
-      "artist": "JustaTee, Phương Ly",
-      "album": "Thằng Điên",
-      "url": "https://canvaz.scdn.co/upload/artist/3rjcQ5VIWCN4q7UFetzdeO/video/6c4f5a37c8e94e9fb3186f8d4a7154c6.cnvs.mp4",
+      "song": "Chịu Cách Mình Nói Thua",
+      "artist": "RHYDER, CoolKid, BAN",
+      "album": "Chịu Cách Mình Nói Thua",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/afa8c0f7fbc64b9db065ecf91cb116b0.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "Có Em",
-      "artist": "Madihu, Low G",
-      "album": "Có em",
-      "url": "https://canvaz.scdn.co/upload/artist/1OIYKbmhG0RxPXvVPNj3NN/video/bfa0bf071ac34624b4694cd57ea9a929.cnvs.mp4",
+      "song": "Vì Anh Đâu Có Biết",
+      "artist": "Madihu, Vũ.",
+      "album": "Vì Anh Đâu Có Biết",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/542b7d5c1291491e9e8d788fa746ac8b.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "ไม่รักดีกว่า",
-      "artist": "Z9",
-      "album": "ไม่รักดีกว่า",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/fe046ccee682443aad406baabed7365f.cnvs.mp4",
+      "song": "id 072019",
+      "artist": "W/N",
+      "album": "id 072019",
+      "url": "https://canvaz.scdn.co/upload/artist/6NF9Oa4ThQWCj6mogFSrVD/video/ec4b79ff294c4e62aba7b32a57058849.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4070,17 +4133,17 @@
       "scope": "track"
     },
     {
+      "song": "ไม่รักดีกว่า",
+      "artist": "Z9",
+      "album": "ไม่รักดีกว่า",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/fe046ccee682443aad406baabed7365f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "เมื่อไหร่จะมี (มีใจให้กัน)",
       "artist": "BLVCKHEART",
       "album": "เมื่อไหร่จะมี (มีใจให้กัน)",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/754efee1d82647d1a2cb0efc1e15b6b5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Blingy",
-      "artist": "NCT 127",
-      "album": "BLINGY - The 7th Album",
-      "url": "https://canvaz.scdn.co/upload/artist/7f4ignuCJhLXfZ9giKT7rH/video/9dad22f026424f859f0491b120626875.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4098,17 +4161,17 @@
       "scope": "track"
     },
     {
-      "song": "Living Death",
-      "artist": "PUN",
-      "album": "Living Death",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/946e8f97f7fc4c439f76014cf1c312fe.cnvs.mp4",
+      "song": "Blingy",
+      "artist": "NCT 127",
+      "album": "BLINGY - The 7th Album",
+      "url": "https://canvaz.scdn.co/upload/artist/7f4ignuCJhLXfZ9giKT7rH/video/9dad22f026424f859f0491b120626875.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "สายไป",
-      "artist": "9tokyo, BLVCKHEART",
-      "album": "สายไป",
-      "url": "https://canvaz.scdn.co/upload/artist/3FxGLtMGpuO4myzWo0gktr/video/e023a76f0de945e7856e3dcc1897b730.cnvs.mp4",
+      "song": "รักให้เธอได้รู้ (Proof.)",
+      "artist": "PUN",
+      "album": "รักให้เธอได้รู้ (Proof.)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/3ac5def729784a78a96b0ee41268eac2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4119,17 +4182,24 @@
       "scope": "track"
     },
     {
+      "song": "สายไป",
+      "artist": "9tokyo, BLVCKHEART",
+      "album": "สายไป",
+      "url": "https://canvaz.scdn.co/upload/artist/3FxGLtMGpuO4myzWo0gktr/video/e023a76f0de945e7856e3dcc1897b730.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Living Death",
+      "artist": "PUN",
+      "album": "Living Death",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/946e8f97f7fc4c439f76014cf1c312fe.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "ดาวตก (Wish) [feat. Z9]",
       "artist": "WANYAi, Z9",
       "album": "ดาวตก (Wish) [feat. Z9]",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2abaad59c1ef46aa81c9cc11be3abcf0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "รักให้เธอได้รู้ (Proof.)",
-      "artist": "PUN",
-      "album": "รักให้เธอได้รู้ (Proof.)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/3ac5def729784a78a96b0ee41268eac2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4154,17 +4224,17 @@
       "scope": "track"
     },
     {
+      "song": "รักมักยาก (Lover Loser)",
+      "artist": "BUS",
+      "album": "รักมักยาก (Lover Loser)",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/71df3d6610c24b808a4ff01252803ec1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "เจิดจรัส",
       "artist": "YOUNGOHM",
       "album": "ไฟกลางคืน",
       "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/4d745da364c84f2e8f57ade9bbd39a49.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "รักใครไม่ไหว",
-      "artist": "Three Man Down",
-      "album": "III",
-      "url": "https://canvaz.scdn.co/upload/artist/1qAOsY7jv9GFTv4HoVof5P/video/a37f823d9d4341dcbe1194fbadd58887.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4175,10 +4245,10 @@
       "scope": "track"
     },
     {
-      "song": "บทสรุปสุดท้าย",
-      "artist": "Z9",
-      "album": "บทสรุปสุดท้าย",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/18c70f14b45747918ca7fc7eadc81596.cnvs.mp4",
+      "song": "รักใครไม่ไหว",
+      "artist": "Three Man Down",
+      "album": "III",
+      "url": "https://canvaz.scdn.co/upload/artist/1qAOsY7jv9GFTv4HoVof5P/video/a37f823d9d4341dcbe1194fbadd58887.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4189,17 +4259,24 @@
       "scope": "track"
     },
     {
-      "song": "รักมักยาก (Lover Loser)",
-      "artist": "BUS",
-      "album": "รักมักยาก (Lover Loser)",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/71df3d6610c24b808a4ff01252803ec1.cnvs.mp4",
+      "song": "บทสรุปสุดท้าย",
+      "artist": "Z9",
+      "album": "บทสรุปสุดท้าย",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/18c70f14b45747918ca7fc7eadc81596.cnvs.mp4",
       "scope": "track"
     },
     {
-      "song": "ไม่มีวันไหนที่ไม่คิดถึง (starlost.)",
-      "artist": "PURPEECH",
-      "album": "ไม่มีวันไหนที่ไม่คิดถึง (starlost.)",
-      "url": "https://canvaz.scdn.co/upload/artist/3xlC7Dw0uiwprXDHCU9SAu/video/7a2c0bd47ed1448eae52fff85faa021a.cnvs.mp4",
+      "song": "Kryptonite",
+      "artist": "PUN",
+      "album": "Kryptonite",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/e01bf8b247284e7fa938bb2c286a022a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "TOO YOUNG 2 LOVE",
+      "artist": "YOUNGOHM",
+      "album": "ธาตุทองซาวด์",
+      "url": "https://canvaz.scdn.co/upload/artist/0AvGycOEDZTaBFLCaiGd9S/video/3030e48f38574b2180f973d27876c635.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4210,17 +4287,10 @@
       "scope": "track"
     },
     {
-      "song": "ฝากให้เขารัก",
-      "artist": "Yes'sir Days",
-      "album": "ฝากให้เขารัก",
-      "url": "https://canvaz.scdn.co/upload/artist/5fWMZzHHJQmCVt3W2ejVbV/video/c9f4c9c8ccf84ff4888d2b0931513edb.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "One Of My Life",
-      "artist": "BLVCKHEART, K6Y",
-      "album": "One Of My Life",
-      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/c964d3a7630a407083af98370a5c0e0a.cnvs.mp4",
+      "song": "ไม่มีวันไหนที่ไม่คิดถึง (starlost.)",
+      "artist": "PURPEECH",
+      "album": "ไม่มีวันไหนที่ไม่คิดถึง (starlost.)",
+      "url": "https://canvaz.scdn.co/upload/artist/3xlC7Dw0uiwprXDHCU9SAu/video/7a2c0bd47ed1448eae52fff85faa021a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4245,6 +4315,13 @@
       "scope": "track"
     },
     {
+      "song": "Multo",
+      "artist": "Cup of Joe",
+      "album": "Silakbo",
+      "url": "https://canvaz.scdn.co/upload/artist/61nn6nOoLWjVC1ER2qFAvN/video/3329d6c208284b7c8781e6f4dba66d5c.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Pag-Ibig ay Kanibalismo II",
       "artist": "fitterkarma",
       "album": "Pag-Ibig ay Kanibalismo II",
@@ -4252,10 +4329,10 @@
       "scope": "track"
     },
     {
-      "song": "Multo",
-      "artist": "Cup of Joe",
-      "album": "Silakbo",
-      "url": "https://canvaz.scdn.co/upload/artist/61nn6nOoLWjVC1ER2qFAvN/video/3329d6c208284b7c8781e6f4dba66d5c.cnvs.mp4",
+      "song": "Janice",
+      "artist": "Dilaw",
+      "album": "Janice",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/336b426749fd409580d1e890bf0e57a3.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4266,10 +4343,10 @@
       "scope": "track"
     },
     {
-      "song": "Totoong tayo",
-      "artist": "Jin DC",
-      "album": "Totoong tayo",
-      "url": "https://canvaz.scdn.co/upload/artist/4aYM8Vij7I9a2VLcAPJ6Y2/video/f12e48e4fde042899a6bfa3a7f9fb00a.cnvs.mp4",
+      "song": "Risk It All",
+      "artist": "Bruno Mars",
+      "album": "The Romantic",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/022e00ddc06f4e89b4a99c08a8e07982.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4280,20 +4357,6 @@
       "scope": "track"
     },
     {
-      "song": "Kabisado",
-      "artist": "IV OF SPADES",
-      "album": "Andalucia",
-      "url": "https://canvaz.scdn.co/upload/artist/4k9wp4ipHdA1bu1T4x1ZTG/video/1815a5bd7ea14536a6fc57d9915e2e31.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Risk It All",
-      "artist": "Bruno Mars",
-      "album": "The Romantic",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/022e00ddc06f4e89b4a99c08a8e07982.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Lifetime (Reimagined)",
       "artist": "Ben&Ben",
       "album": "Lifetime (Reimagined)",
@@ -4301,10 +4364,17 @@
       "scope": "track"
     },
     {
-      "song": "Janice",
-      "artist": "Dilaw",
-      "album": "Janice",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/336b426749fd409580d1e890bf0e57a3.cnvs.mp4",
+      "song": "Totoong tayo",
+      "artist": "Jin DC",
+      "album": "Totoong tayo",
+      "url": "https://canvaz.scdn.co/upload/artist/4aYM8Vij7I9a2VLcAPJ6Y2/video/f12e48e4fde042899a6bfa3a7f9fb00a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Kabisado",
+      "artist": "IV OF SPADES",
+      "album": "Andalucia",
+      "url": "https://canvaz.scdn.co/upload/artist/4k9wp4ipHdA1bu1T4x1ZTG/video/1815a5bd7ea14536a6fc57d9915e2e31.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4322,10 +4392,10 @@
       "scope": "track"
     },
     {
-      "song": "Thinking Of You",
-      "artist": "Katy Perry",
-      "album": "One Of The Boys",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e5aff60aa4064410b4790e674d600254.cnvs.mp4",
+      "song": "Pahina",
+      "artist": "Cup of Joe",
+      "album": "Silakbo",
+      "url": "https://canvaz.scdn.co/upload/artist/61nn6nOoLWjVC1ER2qFAvN/video/2c4bf63f489e438289ddb789c18b926e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4336,10 +4406,10 @@
       "scope": "track"
     },
     {
-      "song": "Pahina",
-      "artist": "Cup of Joe",
-      "album": "Silakbo",
-      "url": "https://canvaz.scdn.co/upload/artist/61nn6nOoLWjVC1ER2qFAvN/video/2c4bf63f489e438289ddb789c18b926e.cnvs.mp4",
+      "song": "Thinking Of You",
+      "artist": "Katy Perry",
+      "album": "One Of The Boys",
+      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e5aff60aa4064410b4790e674d600254.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4350,13 +4420,6 @@
       "scope": "track"
     },
     {
-      "song": "City Girl",
-      "artist": "Shanti Dope",
-      "album": "City Girl",
-      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/c3e1b946ef6a4661b4982ea5258b96d0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Pag-ibig ng Ikaw at Ako",
       "artist": "Earl Agustin",
       "album": "Himig at Pag-ibig",
@@ -4364,10 +4427,38 @@
       "scope": "track"
     },
     {
+      "song": "Ipagdadamot Kita",
+      "artist": "OLG Zak, Realest Cram, Nateman, CK YG",
+      "album": "Ipagdadamot Kita",
+      "url": "https://canvaz.scdn.co/upload/artist/3cAaV8C5Lgdvtib9ub4EGs/video/6e5cb53087c8457e898016eb0142ab01.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "City Girl",
+      "artist": "Shanti Dope",
+      "album": "City Girl",
+      "url": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/c3e1b946ef6a4661b4982ea5258b96d0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "TAKE ALL THE LOVE",
       "artist": "Arthur Nery",
       "album": "TAKE ALL THE LOVE",
       "url": "https://canvaz.scdn.co/upload/artist/7uDdl5V5AETSFY7K3muu22/video/2693c92b150f43d5807a1864611a2af7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Sa Bawat Sandali",
+      "artist": "Amiel Sol",
+      "album": "Sa Bawat Sandali",
+      "url": "https://canvaz.scdn.co/upload/artist/4iXntje546XRJmmMTjTO7g/video/d54cc328718a4bb7a223cb9f57b33e6b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Tibok",
+      "artist": "Earl Agustin",
+      "album": "Himig at Pag-ibig",
+      "url": "https://canvaz.scdn.co/upload/artist/48veLPCIJh5NVQxhyNRKCm/video/b89967923ee44bb3b4d8e879798d0296.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4385,10 +4476,10 @@
       "scope": "track"
     },
     {
-      "song": "אין מילים איתך",
-      "artist": "Full Trunk",
-      "album": "אין מילים איתך",
-      "url": "https://canvaz.scdn.co/upload/artist/1CD5WWtF6AFUq6BTY20I4k/video/1e7cdff6e5e04c0e929e4987486ba51e.cnvs.mp4",
+      "song": "עד המדבר",
+      "artist": "דיג'יי אונלי, טליסמאן, Omri Sabach",
+      "album": "עד המדבר",
+      "url": "https://canvaz.scdn.co/upload/artist/3Mfj0eEUcnEo0fGZ2MTkA1/video/85b31074fcff4561a614a9507767b7a1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4399,10 +4490,10 @@
       "scope": "track"
     },
     {
-      "song": "עד המדבר",
-      "artist": "דיג'יי אונלי, טליסמאן, Omri Sabach",
-      "album": "עד המדבר",
-      "url": "https://canvaz.scdn.co/upload/artist/3Mfj0eEUcnEo0fGZ2MTkA1/video/85b31074fcff4561a614a9507767b7a1.cnvs.mp4",
+      "song": "אין מילים איתך",
+      "artist": "Full Trunk",
+      "album": "אין מילים איתך",
+      "url": "https://canvaz.scdn.co/upload/artist/1CD5WWtF6AFUq6BTY20I4k/video/1e7cdff6e5e04c0e929e4987486ba51e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4420,10 +4511,24 @@
       "scope": "track"
     },
     {
+      "song": "SLEEP",
+      "artist": "The Kid LAROI",
+      "album": "SLEEP",
+      "url": "https://canvaz.scdn.co/upload/artist/2tIP7SsRs7vjIcLrU85W8J/video/e1d0b8e755a04c0d83a683a0b2e8f377.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Mainstay (feat. Luv Von)",
       "artist": "Rod Wave, Luv Von",
       "album": "Don't Look Down",
       "url": "https://canvaz.scdn.co/upload/artist/45TgXXqMDdF8BkjA83OM7z/video/d27d8ff3be124c56be22e7a664a66288.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Mar Azul",
+      "artist": "Natanael Cano",
+      "album": "Mar Azul",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/508c2e9dd59f4aba9a6079d3f776ec34.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4504,6 +4609,13 @@
       "scope": "track"
     },
     {
+      "song": "Reverse Psychology",
+      "artist": "Temper City",
+      "album": "Reverse Psychology",
+      "url": "https://canvaz.scdn.co/upload/artist/5mHUmlJWkcoOk1NbjfrXWz/video/e40a96620cf74fbb9ca8142013b530c1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Mentira",
       "artist": "YEИDRY",
       "album": "Mentira",
@@ -4529,6 +4641,13 @@
       "artist": "SKT",
       "album": "SANTA MARIA",
       "url": "https://canvaz.scdn.co/upload/artist/6WRnYIPYh4mJIj6qHRmoZr/video/91aac00351bc4fc7a78ab43e3a5e930d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Une seule vie",
+      "artist": "Angèle",
+      "album": "Une seule vie",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/b5ec5c8736ea439693ea0e825fbfee99.cnvs.mp4",
       "scope": "track"
     },
     {
