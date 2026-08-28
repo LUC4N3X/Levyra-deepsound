@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.luc4n3x.levyra.data.local.FollowedArtistEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.FollowedArtist
+import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import timber.log.Timber
 
@@ -14,12 +15,15 @@ class FollowedArtistsStore(context: Context) {
     private val database = LevyraDatabase.get(appContext)
     private val dao = database.followedArtistsDao()
 
-    suspend fun load(): List<FollowedArtist> = runCatching {
+    suspend fun load(): List<FollowedArtist> = try {
         migrateLegacyRowsIfNeeded()
         dao.all().map { it.toDomain() }
-    }.onFailure {
-        Timber.e(it, "Followed artists load failed; continuing without release radar state")
-    }.getOrDefault(emptyList())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Timber.e(error, "Followed artists load failed; continuing without release radar state")
+        emptyList()
+    }
 
     private suspend fun migrateLegacyRowsIfNeeded() {
         if (dao.all().isNotEmpty()) return
@@ -44,12 +48,18 @@ class FollowedArtistsStore(context: Context) {
             Timber.w(error, "Followed artists migration failed; preserving legacy data")
             return
         }
-        val migrated = runCatching {
+        val migrated = try {
             database.withTransaction {
                 if (legacy.isNotEmpty()) dao.upsertAll(legacy.map(FollowedArtist::toEntity))
             }
-        }.onFailure { Timber.w(it, "Followed artists Room migration failed; preserving legacy data") }
-        if (migrated.isFailure) return
+            true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Followed artists Room migration failed; preserving legacy data")
+            false
+        }
+        if (!migrated) return
         if (!prefs.edit().remove(KEY_ARTISTS).commit()) {
             Timber.w("Followed artists legacy cleanup was not persisted")
         }
