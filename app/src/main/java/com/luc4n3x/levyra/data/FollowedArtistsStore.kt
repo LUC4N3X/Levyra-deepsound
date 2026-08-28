@@ -25,8 +25,8 @@ class FollowedArtistsStore(context: Context) {
         emptyList()
     }
 
-    suspend fun contains(artistKey: String): Boolean = try {
-        dao.contains(artistKey)
+    suspend fun contains(artist: FollowedArtist): Boolean = try {
+        dao.contains(artist.storageKey())
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
@@ -111,8 +111,11 @@ class FollowedArtistsStore(context: Context) {
     }
 }
 
+private fun FollowedArtist.storageKey(): String =
+    browseId.ifBlank { "legacy:${name.trim().lowercase()}" }
+
 private fun FollowedArtist.toEntity() = FollowedArtistEntity(
-    artistKey = browseId.ifBlank { "legacy:${name.trim().lowercase()}" },
+    artistKey = storageKey(),
     browseId = browseId,
     name = name,
     thumbnailUrl = thumbnailUrl,
