@@ -1,11 +1,13 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.luc4n3x.levyra.feature.cast
 
 import android.content.Context
+import androidx.media3.cast.Cast
 import androidx.media3.cast.CastPlayer
 import androidx.media3.common.DeviceInfo
 import androidx.media3.common.Player
 import androidx.media3.common.PlayerTransferState
-import com.google.android.gms.cast.framework.CastContext
 import com.luc4n3x.levyra.domain.RepeatMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -16,9 +18,14 @@ import kotlinx.coroutines.withContext
 
 class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
     private val appContext = context.applicationContext
+    private val cast = runCatching {
+        Cast.getSingletonInstance(appContext).apply {
+            if (needsInitialization()) initialize()
+        }
+    }.getOrNull()
 
     override val id: String = "google-cast"
-    override val available: Boolean = runCatching { CastContext.getSharedInstance(appContext) }.isSuccess
+    override val available: Boolean = cast != null
 
     private val mutableState = MutableStateFlow(
         RemotePlaybackState(
@@ -71,11 +78,9 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
     override suspend fun connect(device: RemoteDevice) = Unit
 
     override suspend fun disconnect() {
-        val sessionManager = runCatching {
-            CastContext.getSharedInstance(appContext).sessionManager
-        }.getOrNull() ?: return
+        val castRuntime = cast ?: return
         withContext(Dispatchers.Main) {
-            sessionManager.endCurrentSession(true)
+            runCatching { castRuntime.endCurrentSession(true) }
         }
     }
 
@@ -149,11 +154,7 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
     private fun publish(active: Player) {
         val connected = active.deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE
         val deviceName = runCatching {
-            CastContext.getSharedInstance(appContext)
-                .sessionManager
-                .currentCastSession
-                ?.castDevice
-                ?.friendlyName
+            cast?.getCurrentCastSession()?.castDevice?.friendlyName
         }.getOrNull()
         mutableState.value = RemotePlaybackState(
             availability = when {
