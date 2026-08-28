@@ -50,7 +50,7 @@ class ReleaseRadarWorker(
             }
             val known = store.knownReleases(artist.key)
             val fresh = releases.distinctBy(::releaseKey).filter { releaseKey(it) !in known }
-            if (store.load().none { it.key == artist.key }) return@forEach
+            if (!store.contains(artist.key)) return@forEach
             val notifiedKeys = mutableSetOf<String>()
             fresh.take(MAX_NOTIFICATIONS_PER_ARTIST).forEach { release ->
                 if (notified < MAX_NOTIFICATIONS_PER_RUN && notifyRelease(artist, release)) {
