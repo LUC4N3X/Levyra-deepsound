@@ -11,7 +11,7 @@ data class LocalPlaybackSnapshot(
     val repeatMode: RepeatMode
 )
 
-data class CastHandoffState(
+data class CastHandoff(
     val queueWindowIds: List<String>,
     val windowStartIndex: Int,
     val currentIndex: Int,
@@ -58,27 +58,30 @@ object CastHandoffConverter {
     fun toHandoff(
         snapshot: LocalPlaybackSnapshot,
         windowRadius: Int = DEFAULT_QUEUE_WINDOW_RADIUS
-    ): CastHandoffState {
-        if (snapshot.queueIds.isEmpty()) {
-            return CastHandoffState(
+    ): CastHandoff {
+        require(windowRadius >= 0) { "windowRadius must be >= 0" }
+        val queue = snapshot.queueIds
+        val safePosition = snapshot.positionMs.coerceAtLeast(0L)
+        if (queue.isEmpty()) {
+            return CastHandoff(
                 queueWindowIds = emptyList(),
                 windowStartIndex = 0,
                 currentIndex = -1,
-                positionMs = snapshot.positionMs.coerceAtLeast(0L),
+                positionMs = safePosition,
                 playing = snapshot.playing,
                 shuffle = snapshot.shuffle,
                 repeatMode = snapshot.repeatMode
             )
         }
-        val safeCurrent = snapshot.currentIndex.coerceIn(0, snapshot.queueIds.lastIndex)
-        val radius = windowRadius.coerceAtLeast(0)
-        val start = (safeCurrent - radius).coerceAtLeast(0)
-        val endExclusive = (safeCurrent + radius + 1).coerceAtMost(snapshot.queueIds.size)
-        return CastHandoffState(
-            queueWindowIds = snapshot.queueIds.subList(start, endExclusive),
-            windowStartIndex = start,
-            currentIndex = safeCurrent - start,
-            positionMs = snapshot.positionMs.coerceAtLeast(0L),
+        val safeCurrentIndex = snapshot.currentIndex.coerceIn(0, queue.lastIndex)
+        val windowStart = (safeCurrentIndex - windowRadius).coerceAtLeast(0)
+        val windowEnd = (safeCurrentIndex + windowRadius).coerceAtMost(queue.lastIndex)
+        val windowIds = queue.subList(windowStart, windowEnd + 1).toList()
+        return CastHandoff(
+            queueWindowIds = windowIds,
+            windowStartIndex = windowStart,
+            currentIndex = safeCurrentIndex - windowStart,
+            positionMs = safePosition,
             playing = snapshot.playing,
             shuffle = snapshot.shuffle,
             repeatMode = snapshot.repeatMode
@@ -86,16 +89,32 @@ object CastHandoffConverter {
     }
 
     fun toLocalResumeState(
-        handoff: CastHandoffState,
-        originalQueueIds: List<String>
+        handoff: CastHandoff,
+        localQueueIds: List<String> = handoff.queueWindowIds
     ): LocalResumeState {
-        val selectedId = handoff.queueWindowIds.getOrNull(handoff.currentIndex)
-        val restoredIndex = selectedId?.let(originalQueueIds::indexOf)?.takeIf { it >= 0 }
-            ?: handoff.windowStartIndex.plus(handoff.currentIndex.coerceAtLeast(0))
-                .coerceIn(0, originalQueueIds.lastIndex.coerceAtLeast(0))
+        val queue = localQueueIds.ifEmpty { handoff.queueWindowIds }
+        if (queue.isEmpty()) {
+            return LocalResumeState(
+                queueIds = emptyList(),
+                currentIndex = -1,
+                positionMs = handoff.positionMs.coerceAtLeast(0L),
+                playing = handoff.playing,
+                shuffle = handoff.shuffle,
+                repeatMode = handoff.repeatMode
+            )
+        }
+        val windowIndex = handoff.currentIndex.coerceAtLeast(0)
+        val currentId = handoff.queueWindowIds.getOrNull(windowIndex)
+        val absoluteIndex = when {
+            currentId == null -> (handoff.windowStartIndex + windowIndex).coerceIn(0, queue.lastIndex)
+            queue.getOrNull(handoff.windowStartIndex + windowIndex) == currentId ->
+                handoff.windowStartIndex + windowIndex
+            else -> queue.indexOf(currentId).takeIf { it >= 0 }
+                ?: (handoff.windowStartIndex + windowIndex).coerceIn(0, queue.lastIndex)
+        }
         return LocalResumeState(
-            queueIds = originalQueueIds,
-            currentIndex = if (originalQueueIds.isEmpty()) -1 else restoredIndex,
+            queueIds = queue,
+            currentIndex = absoluteIndex.coerceIn(0, queue.lastIndex),
             positionMs = handoff.positionMs.coerceAtLeast(0L),
             playing = handoff.playing,
             shuffle = handoff.shuffle,
