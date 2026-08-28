@@ -1,25 +1,26 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.luc4n3x.levyra.feature.cast
 
-import android.view.ContextThemeWrapper
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.mediarouter.app.MediaRouteButton
-import com.google.android.gms.cast.framework.CastButtonFactory
-import androidx.mediarouter.R as MediaRouterR
+import androidx.media3.cast.Cast
+import androidx.media3.cast.MediaRouteButton as Media3RouteButton
 
 @Composable
 fun CastRouteButton(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    AndroidView(
-        modifier = modifier,
-        factory = {
-            val themed = ContextThemeWrapper(context, MediaRouterR.style.Theme_MediaRouter)
-            MediaRouteButton(themed).apply {
-                CastButtonFactory.setUpMediaRouteButton(context.applicationContext, this)
-                setPadding(0, 0, 0, 0)
+    val appContext = LocalContext.current.applicationContext
+    val castReady = remember(appContext) {
+        runCatching {
+            Cast.getSingletonInstance(appContext).apply {
+                if (needsInitialization()) initialize()
             }
-        }
-    )
+            true
+        }.getOrElse { false }
+    }
+    if (castReady) {
+        Media3RouteButton(modifier = modifier)
+    }
 }
