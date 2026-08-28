@@ -1441,7 +1441,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         LevyraTab.Explore -> {
                             val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
                             val screenState by exploreViewModel.state.collectAsStateWithLifecycle()
-                            ExploreScreen(exploreViewModel, screenState)
+                            ExploreScreen(exploreViewModel, screenState, onOpenJam = viewModel::openJam)
                         }
                         LevyraTab.Library -> {
                             val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
@@ -19171,7 +19171,11 @@ private fun CircleIconButton(
 }
 
 @Composable
-private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
+private fun ExploreScreen(
+    viewModel: ExploreViewModel,
+    state: LevyraUiState,
+    onOpenJam: () -> Unit
+) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
@@ -19250,9 +19254,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         ExploreShortcutRow(
-                            availableAnchors = availableAnchors,
-                            onSelect = onShortcut
-                        )
+    availableAnchors = availableAnchors,
+    onSelect = onShortcut,
+    onOpenJam = onOpenJam
+)
                         LevyraMixLauncherPanel(
                             familiarity = state.mixFamiliarity,
                             loading = state.mixLoading,
@@ -19456,30 +19461,50 @@ private fun ExploreSectionHeader(
 @Composable
 private fun ExploreShortcutRow(
     availableAnchors: Set<ExploreAnchor>,
-    onSelect: (ExploreShortcut) -> Unit
+    onSelect: (ExploreShortcut) -> Unit,
+    onOpenJam: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        if (ExploreAnchor.Fresh in availableAnchors) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (ExploreAnchor.Fresh in availableAnchors) {
+                ExploreShortcutCard(
+                    icon = Icons.Rounded.AutoAwesome,
+                    label = strings.exploreNewReleases,
+                    onClick = { onSelect(ExploreShortcut.NewReleases) }
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
             ExploreShortcutCard(
-                icon = Icons.Rounded.AutoAwesome,
-                label = strings.exploreNewReleases,
-                onClick = { onSelect(ExploreShortcut.NewReleases) }
+                icon = Icons.Rounded.PlayArrow,
+                label = strings.exploreSamples,
+                onClick = { onSelect(ExploreShortcut.Samples) }
             )
         }
-        ExploreShortcutCard(
-            icon = Icons.Rounded.SlowMotionVideo,
-            label = strings.exploreSamples,
-            onClick = { onSelect(ExploreShortcut.Samples) }
-        )
-        if (ExploreAnchor.Moods in availableAnchors) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (ExploreAnchor.Moods in availableAnchors) {
+                ExploreShortcutCard(
+                    icon = Icons.Rounded.Mood,
+                    label = strings.exploreMoods,
+                    onClick = { onSelect(ExploreShortcut.Moods) }
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
             ExploreShortcutCard(
-                icon = Icons.Rounded.Mood,
-                label = strings.exploreMoods,
-                onClick = { onSelect(ExploreShortcut.Moods) }
+                icon = Icons.Rounded.PersonAdd,
+                label = strings.jamTitle,
+                onClick = onOpenJam
             )
         }
     }
