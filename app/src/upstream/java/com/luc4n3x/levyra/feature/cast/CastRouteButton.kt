@@ -9,47 +9,35 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.media3.cast.Cast
 import androidx.media3.cast.MediaRouteButton as Media3RouteButton
 import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 @Composable
 fun CastRouteButton(modifier: Modifier = Modifier) {
-    val appContext = LocalContext.current.applicationContext
-    val castReady = remember(appContext) {
-        runCatching {
-            Cast.getSingletonInstance(appContext).apply {
-                if (needsInitialization()) initialize()
-            }
-            true
-        }.getOrElse { false }
-    }
-    if (castReady) {
-        Box(
-            modifier = modifier.playerGlass(
-                shape = CircleShape,
-                fill = LevyraPlayerDesign.GlassFill,
-                borderTop = LevyraPlayerDesign.GlassBorderTop,
-                borderBottom = LevyraPlayerDesign.GlassBorderBottom
-            ),
-            contentAlignment = Alignment.Center
+    if (!CastRuntimeInitializer.available) return
+
+    Box(
+        modifier = modifier.playerGlass(
+            shape = CircleShape,
+            fill = LevyraPlayerDesign.GlassFill,
+            borderTop = LevyraPlayerDesign.GlassBorderTop,
+            borderBottom = LevyraPlayerDesign.GlassBorderBottom
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        CompositionLocalProvider(
+            LocalContentColor provides Color.White.copy(alpha = 0.86f)
         ) {
-            CompositionLocalProvider(
-                LocalContentColor provides Color.White.copy(alpha = 0.86f)
-            ) {
-                Media3RouteButton(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp)
-                )
-            }
+            Media3RouteButton(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp)
+            )
         }
     }
 }
