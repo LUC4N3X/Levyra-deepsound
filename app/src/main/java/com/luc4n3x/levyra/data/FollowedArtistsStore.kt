@@ -14,10 +14,12 @@ class FollowedArtistsStore(context: Context) {
     private val database = LevyraDatabase.get(appContext)
     private val dao = database.followedArtistsDao()
 
-    suspend fun load(): List<FollowedArtist> {
+    suspend fun load(): List<FollowedArtist> = runCatching {
         migrateLegacyRowsIfNeeded()
-        return dao.all().map { it.toDomain() }
-    }
+        dao.all().map { it.toDomain() }
+    }.onFailure {
+        Timber.e(it, "Followed artists load failed; continuing without release radar state")
+    }.getOrDefault(emptyList())
 
     private suspend fun migrateLegacyRowsIfNeeded() {
         if (dao.all().isNotEmpty()) return
