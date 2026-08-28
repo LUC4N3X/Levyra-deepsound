@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.LevyraLaunchActions
@@ -46,6 +47,8 @@ class LevyraWidgetProvider : AppWidgetProvider() {
         }
         withSessionPlayer(context) { controller ->
             if (controller.mediaItemCount <= 0) return@withSessionPlayer false
+            val command = if (forward) Player.COMMAND_SEEK_TO_NEXT else Player.COMMAND_SEEK_TO_PREVIOUS
+            if (!controller.isCommandAvailable(command)) return@withSessionPlayer false
             if (forward) controller.seekToNext() else controller.seekToPrevious()
             true
         }
