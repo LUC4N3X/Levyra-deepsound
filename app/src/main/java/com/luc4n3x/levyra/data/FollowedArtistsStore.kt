@@ -25,6 +25,15 @@ class FollowedArtistsStore(context: Context) {
         emptyList()
     }
 
+    suspend fun contains(artistKey: String): Boolean = try {
+        dao.contains(artistKey)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Timber.w(error, "Followed artist membership check failed")
+        false
+    }
+
     private suspend fun migrateLegacyRowsIfNeeded() {
         if (dao.all().isNotEmpty()) return
         val raw = prefs.getString(KEY_ARTISTS, null).orEmpty()
