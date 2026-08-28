@@ -37,8 +37,17 @@ class ShazamRecognitionProvider(
         if (body.size > MAX_REQUEST_BYTES) return RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
 
         val request = Request.Builder()
-            .url(endpointFactory(UUID.randomUUID().toString().uppercase(Locale.ROOT), UUID.randomUUID().toString()))
+            .url(
+                endpointFactory(
+                    UUID.randomUUID().toString().uppercase(Locale.ROOT),
+                    UUID.randomUUID().toString().uppercase(Locale.ROOT)
+                )
+            )
             .header("User-Agent", USER_AGENT)
+            .header("X-Shazam-Platform", SHAZAM_PLATFORM)
+            .header("X-Shazam-AppVersion", SHAZAM_APP_VERSION)
+            .header("Accept", "*/*")
+            .header("Accept-Language", ACCEPT_LANGUAGE)
             .header("Content-Language", CONTENT_LANGUAGE)
             .post(body.toRequestBody(JSON))
             .build()
@@ -47,38 +56,31 @@ class ShazamRecognitionProvider(
     }
 
     internal fun requestBody(signature: ShazamSignature): JSONObject {
-        val timestampSeconds = System.currentTimeMillis() / 1000L
+        val timestampMillis = System.currentTimeMillis()
         val uri = ShazamSignatureGenerator.SIGNATURE_URI_PREFIX +
             Base64.encodeToString(signature.payload, Base64.NO_WRAP)
         return JSONObject().apply {
-            put(
-                "geolocation",
-                JSONObject().apply {
-                    put("altitude", NEUTRAL_ALTITUDE)
-                    put("latitude", NEUTRAL_LATITUDE)
-                    put("longitude", NEUTRAL_LONGITUDE)
-                }
-            )
+            put("timezone", TIMEZONE)
             put(
                 "signature",
                 JSONObject().apply {
-                    put("samplems", signature.sampleDurationMs)
-                    put("timestamp", timestampSeconds)
                     put("uri", uri)
+                    put("samplems", signature.sampleDurationMs)
                 }
             )
-            put("timestamp", timestampSeconds)
-            put("timezone", NEUTRAL_TIMEZONE)
+            put("timestamp", timestampMillis)
+            put("context", JSONObject())
+            put("geolocation", JSONObject())
         }
     }
 
     private companion object {
-        const val USER_AGENT = "Dalvik/2.1.0 (Linux; U; Android 12; Pixel 5 Build/SQ3A.220705.003)"
+        const val USER_AGENT = "Dalvik/2.1.0 (Linux; U; Android 6.0.1; SM-G920F Build/MMB29K)"
+        const val SHAZAM_PLATFORM = "IPHONE"
+        const val SHAZAM_APP_VERSION = "14.1.0"
+        const val ACCEPT_LANGUAGE = "en-US"
         const val CONTENT_LANGUAGE = "en_US"
-        const val NEUTRAL_ALTITUDE = 300.0
-        const val NEUTRAL_LATITUDE = 45.0
-        const val NEUTRAL_LONGITUDE = 2.0
-        const val NEUTRAL_TIMEZONE = "Europe/London"
+        const val TIMEZONE = "Europe/Moscow"
         const val MAX_REQUEST_BYTES = 512 * 1024
         val JSON = "application/json; charset=utf-8".toMediaType()
     }
@@ -119,8 +121,9 @@ private const val HTTP_NOT_FOUND = 404
 private const val HTTP_TOO_MANY_REQUESTS = 429
 
 internal fun defaultShazamEndpoint(requestId: String, deviceId: String): String =
-    "https://amp.shazam.com/discovery/v5/en/US/android/-/tag/$requestId/$deviceId" +
-        "?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true&video=v3"
+    "https://amp.shazam.com/discovery/v5/en-US/US/android/-/tag/$requestId/$deviceId" +
+        "?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true" +
+        "&hubv5minorversion=v5.1&hidelb=true&video=v3"
 
 internal fun classifyShazamHttpFailure(code: Int): RecognitionOutcome = when (code) {
     HTTP_NOT_FOUND -> RecognitionOutcome.NoMatch
