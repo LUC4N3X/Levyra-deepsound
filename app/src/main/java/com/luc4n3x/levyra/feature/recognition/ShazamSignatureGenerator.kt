@@ -6,11 +6,11 @@ import com.luc4n3x.levyra.recognition.RecognitionSignature
 
 typealias ShazamSignature = RecognitionSignature
 
-class ShazamSignatureGenerator(
-    maxDurationSeconds: Double = DEFAULT_MAX_DURATION_SECONDS,
-    maxPeaks: Int = DEFAULT_MAX_PEAKS
-) {
-    private val engine = AcousticFingerprintEngine(
+class ShazamSignatureGenerator(profile: FingerprintProfile) {
+    constructor(
+        maxDurationSeconds: Double = DEFAULT_MAX_DURATION_SECONDS,
+        maxPeaks: Int = DEFAULT_MAX_PEAKS
+    ) : this(
         FingerprintProfile(
             durationTargetSeconds = maxDurationSeconds,
             peakTarget = maxPeaks,
@@ -18,6 +18,8 @@ class ShazamSignatureGenerator(
             hardPeakLimit = maxOf(HARD_MAX_PEAKS, maxPeaks)
         )
     )
+
+    private val engine = AcousticFingerprintEngine(profile)
 
     fun generate(samples: ShortArray): ShazamSignature? = engine.fingerprint(samples)
 

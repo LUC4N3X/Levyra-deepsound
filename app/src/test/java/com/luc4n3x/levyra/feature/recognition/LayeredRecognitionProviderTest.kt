@@ -75,6 +75,45 @@ class LayeredRecognitionProviderTest {
         }
     }
 
+    @Test
+    fun preferredOutcomeFollowsPrecedenceOrder() {
+        val match = RecognitionOutcome.Match(RecognitionResult("Fallback song", "Fallback artist"))
+        val primaryMatch = RecognitionOutcome.Match(RecognitionResult("Primary song", "Primary artist"))
+        val primaryNetworkError = RecognitionOutcome.Error(RecognitionErrorKind.Network)
+        val primaryFingerprintError = RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
+
+        // 1. fallback is Match -> fallback, even over a primary match.
+        assertEquals(
+            match,
+            RecognitionFallbackPolicy.preferredOutcome(primaryMatch, match)
+        )
+
+        // 2. primary is NoMatch -> primary, even over a fallback error.
+        assertEquals(
+            RecognitionOutcome.NoMatch,
+            RecognitionFallbackPolicy.preferredOutcome(RecognitionOutcome.NoMatch, primaryNetworkError)
+        )
+
+        // 3. fallback is NoMatch AND primary is Error -> primary (preserve the real failure).
+        assertEquals(
+            primaryNetworkError,
+            RecognitionFallbackPolicy.preferredOutcome(primaryNetworkError, RecognitionOutcome.NoMatch)
+        )
+        assertEquals(
+            primaryFingerprintError,
+            RecognitionFallbackPolicy.preferredOutcome(primaryFingerprintError, RecognitionOutcome.NoMatch)
+        )
+
+        // 4. otherwise -> fallback (primary Error + fallback Error, neither branch 1-3 applies).
+        assertEquals(
+            RecognitionOutcome.Error(RecognitionErrorKind.Timeout),
+            RecognitionFallbackPolicy.preferredOutcome(
+                primaryNetworkError,
+                RecognitionOutcome.Error(RecognitionErrorKind.Timeout)
+            )
+        )
+    }
+
     private fun provider(outcome: RecognitionOutcome): RecognitionProvider = provider { outcome }
 
     private fun provider(block: suspend () -> RecognitionOutcome): RecognitionProvider =

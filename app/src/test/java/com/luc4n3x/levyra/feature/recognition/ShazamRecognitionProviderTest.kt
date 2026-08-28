@@ -1,10 +1,14 @@
 package com.luc4n3x.levyra.feature.recognition
 
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.CRC32
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -118,5 +122,111 @@ class ShazamRecognitionProviderTest {
             update(first.payload, 8, first.payload.size - 8)
         }.value.toInt()
         assertEquals(computedChecksum, storedChecksum)
+    }
+
+    @Test
+    fun ungenerableSignatureYieldsFingerprintErrorNotNoMatch() = runBlocking {
+        // Loud but shorter than the fingerprint engine's minimum hop size (128 samples), so
+        // AudioSignalQuality reports it as non-silent but the engine cannot derive peaks from it.
+        val tooShortButLoud = ShortArray(64) { 20_000 }
+        val fingerprint = AudioFingerprint(tooShortButLoud, ShazamSignatureGenerator.SAMPLE_RATE_HZ, 4L)
+        val provider = ShazamRecognitionProvider(
+            endpointFactory = { _, _ -> throw AssertionError("must not build a request for an ungenerable signature") }
+        )
+
+        assertEquals(RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint), provider.identify(fingerprint))
+    }
+
+    @Test
+    fun classify404AsNetworkErrorAnd429StaysUnavailable() {
+        assertEquals(RecognitionOutcome.Error(RecognitionErrorKind.Network), classifyShazamHttpFailure(404))
+        assertEquals(RecognitionOutcome.Error(RecognitionErrorKind.Unavailable), classifyShazamHttpFailure(429))
+    }
+
+    @Test
+    fun silentAudioYieldsFingerprintErrorWithZeroHttpCalls() = runBlocking {
+        val fakeServer = FakeShazamServer(listOf(MATCH_BODY))
+        try {
+            val silentSamples = ShortArray(ShazamSignatureGenerator.SAMPLE_RATE_HZ * 4) { 0 }
+            val fingerprint = AudioFingerprint(silentSamples, ShazamSignatureGenerator.SAMPLE_RATE_HZ, 4_000L)
+            val provider = ShazamRecognitionProvider(endpointFactory = fakeServer.endpointFactory)
+
+            val outcome = provider.identify(fingerprint)
+
+            assertEquals(RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint), outcome)
+            assertEquals(0, fakeServer.requestCount.get())
+        } finally {
+            fakeServer.stop()
+        }
+    }
+
+    @Test
+    fun ladderEscalatesToRungTwoAfterANoMatchAndIssuesTwoRequests() = runBlocking {
+        val fakeServer = FakeShazamServer(listOf(NO_MATCH_BODY, MATCH_BODY))
+        try {
+            val samples = compositeTone(seconds = 12)
+            val fingerprint = AudioFingerprint(samples, ShazamSignatureGenerator.SAMPLE_RATE_HZ, 12_000L)
+            val provider = ShazamRecognitionProvider(endpointFactory = fakeServer.endpointFactory)
+
+            val outcome = provider.identify(fingerprint)
+
+            assertTrue(outcome is RecognitionOutcome.Match)
+            assertEquals(2, fakeServer.requestCount.get())
+        } finally {
+            fakeServer.stop()
+        }
+    }
+
+    @Test
+    fun ladderShortCircuitsOnFirstRungMatch() = runBlocking {
+        val fakeServer = FakeShazamServer(listOf(MATCH_BODY, MATCH_BODY))
+        try {
+            val samples = compositeTone(seconds = 12)
+            val fingerprint = AudioFingerprint(samples, ShazamSignatureGenerator.SAMPLE_RATE_HZ, 12_000L)
+            val provider = ShazamRecognitionProvider(endpointFactory = fakeServer.endpointFactory)
+
+            val outcome = provider.identify(fingerprint)
+
+            assertTrue(outcome is RecognitionOutcome.Match)
+            assertEquals(1, fakeServer.requestCount.get())
+        } finally {
+            fakeServer.stop()
+        }
+    }
+
+    private fun compositeTone(seconds: Int): ShortArray =
+        ShortArray(ShazamSignatureGenerator.SAMPLE_RATE_HZ * seconds) { index ->
+            val time = index.toDouble() / ShazamSignatureGenerator.SAMPLE_RATE_HZ
+            (
+                (
+                    sin(2.0 * PI * 440.0 * time) +
+                        sin(2.0 * PI * 880.0 * time) +
+                        0.5 * sin(2.0 * PI * 1_760.0 * time)
+                    ) * 12_000.0
+                ).toInt().toShort()
+        }
+
+    private companion object {
+        const val NO_MATCH_BODY = "{}"
+        const val MATCH_BODY = """{"track":{"key":"1","title":"Song","subtitle":"Artist"}}"""
+    }
+
+    /** Minimal loopback HTTP fake standing in for Shazam's endpoint, serving [bodies] in order. */
+    private class FakeShazamServer(private val bodies: List<String>) {
+        val requestCount = AtomicInteger(0)
+        private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+            createContext("/") { exchange ->
+                exchange.requestBody.use { it.readBytes() }
+                val index = requestCount.getAndIncrement()
+                val payload = bodies.getOrElse(index) { bodies.last() }.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, payload.size.toLong())
+                exchange.responseBody.use { it.write(payload) }
+            }
+            start()
+        }
+
+        val endpointFactory: (String, String) -> String = { _, _ -> "http://127.0.0.1:${server.address.port}/tag" }
+
+        fun stop() = server.stop(0)
     }
 }

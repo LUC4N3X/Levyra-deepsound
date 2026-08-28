@@ -42,3 +42,15 @@ data class FingerprintProfile(
         require(hardPeakLimit >= peakTarget)
     }
 }
+
+object FingerprintEscalation {
+    val LADDER: List<FingerprintProfile> = listOf(
+        FingerprintProfile(),
+        FingerprintProfile(
+            durationTargetSeconds = 9.0,
+            peakTarget = 2_048,
+            hardMaxDurationSeconds = 12.0,
+            hardPeakLimit = 2_048
+        )
+    )
+}

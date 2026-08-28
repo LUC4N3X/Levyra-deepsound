@@ -42,6 +42,8 @@ Upstream license: GNU General Public License v3.0
 
 Levyra's `:levyra-recognition` module is an independent pure-Kotlin implementation owned and maintained inside this repository. It contains Levyra's acoustic fingerprint analysis, bounded signature generation and wire-format encoding without vendoring or adapting ArchiveTune's `shazamkit` source. ArchiveTune was consulted only as an external behavioral reference while validating recognition interoperability and Android product behavior.
 
+Independence is verified behaviourally rather than asserted: the module is exercised against an independent reference implementation of the published signature algorithm on identical PCM input, and is required to agree peak for peak on frame index, magnitude and corrected frequency bin. Agreement is a property of the algorithm being public, not of shared source; no third-party recognition code is vendored, adapted or linked.
+
 Reference project: https://github.com/rukamori/ArchiveTune
 
 Reference license: GNU General Public License v3.0

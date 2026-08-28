@@ -1,8 +1,9 @@
 package com.luc4n3x.levyra.feature.recognition
 
-import android.util.Base64
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
+import com.luc4n3x.levyra.recognition.AudioSignalQuality
+import com.luc4n3x.levyra.recognition.FingerprintEscalation
 import java.io.IOException
 import java.net.URI
 import java.util.Locale
@@ -29,36 +30,43 @@ class ShazamRecognitionProvider(
         if (fingerprint.sampleRateHz != ShazamSignatureGenerator.SAMPLE_RATE_HZ) {
             return RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
         }
-        val signature = withContext(Dispatchers.Default) {
-            ShazamSignatureGenerator().generate(fingerprint.samples)
-        } ?: return RecognitionOutcome.NoMatch
+        if (AudioSignalQuality.analyze(fingerprint.samples).isSilent) {
+            return RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
+        }
 
-        val body = requestBody(signature).toString().toByteArray(Charsets.UTF_8)
-        if (body.size > MAX_REQUEST_BYTES) return RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
+        for (profile in FingerprintEscalation.LADDER) {
+            val signature = withContext(Dispatchers.Default) {
+                ShazamSignatureGenerator(profile).generate(fingerprint.samples)
+            } ?: return RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
 
-        val request = Request.Builder()
-            .url(
-                endpointFactory(
-                    UUID.randomUUID().toString().uppercase(Locale.ROOT),
-                    UUID.randomUUID().toString().uppercase(Locale.ROOT)
+            val body = requestBody(signature).toString().toByteArray(Charsets.UTF_8)
+            if (body.size > MAX_REQUEST_BYTES) return RecognitionOutcome.Error(RecognitionErrorKind.Fingerprint)
+
+            val request = Request.Builder()
+                .url(
+                    endpointFactory(
+                        UUID.randomUUID().toString().uppercase(Locale.ROOT),
+                        UUID.randomUUID().toString().uppercase(Locale.ROOT)
+                    )
                 )
-            )
-            .header("User-Agent", USER_AGENT)
-            .header("X-Shazam-Platform", SHAZAM_PLATFORM)
-            .header("X-Shazam-AppVersion", SHAZAM_APP_VERSION)
-            .header("Accept", "*/*")
-            .header("Accept-Language", ACCEPT_LANGUAGE)
-            .header("Content-Language", CONTENT_LANGUAGE)
-            .post(body.toRequestBody(JSON))
-            .build()
+                .header("User-Agent", USER_AGENT)
+                .header("X-Shazam-Platform", SHAZAM_PLATFORM)
+                .header("X-Shazam-AppVersion", SHAZAM_APP_VERSION)
+                .header("Accept", "*/*")
+                .header("Accept-Language", ACCEPT_LANGUAGE)
+                .header("Content-Language", CONTENT_LANGUAGE)
+                .post(body.toRequestBody(JSON))
+                .build()
 
-        return executeShazamRequest(request)
+            val outcome = executeShazamRequest(request)
+            if (outcome != RecognitionOutcome.NoMatch) return outcome
+        }
+        return RecognitionOutcome.NoMatch
     }
 
     internal fun requestBody(signature: ShazamSignature): JSONObject {
         val timestampMillis = System.currentTimeMillis()
-        val uri = ShazamSignatureGenerator.SIGNATURE_URI_PREFIX +
-            Base64.encodeToString(signature.payload, Base64.NO_WRAP)
+        val uri = signature.toDataUri()
         return JSONObject().apply {
             put("timezone", TIMEZONE)
             put(
@@ -126,7 +134,7 @@ internal fun defaultShazamEndpoint(requestId: String, deviceId: String): String 
         "&hubv5minorversion=v5.1&hidelb=true&video=v3"
 
 internal fun classifyShazamHttpFailure(code: Int): RecognitionOutcome = when (code) {
-    HTTP_NOT_FOUND -> RecognitionOutcome.NoMatch
+    HTTP_NOT_FOUND -> RecognitionOutcome.Error(RecognitionErrorKind.Network)
     HTTP_TOO_MANY_REQUESTS -> RecognitionOutcome.Error(RecognitionErrorKind.Unavailable)
     else -> RecognitionOutcome.Error(RecognitionErrorKind.Network)
 }

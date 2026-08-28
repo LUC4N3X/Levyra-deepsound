@@ -20,6 +20,7 @@ object RecognitionFallbackPolicy {
     ): RecognitionOutcome = when {
         fallback is RecognitionOutcome.Match -> fallback
         primary is RecognitionOutcome.NoMatch -> primary
+        fallback is RecognitionOutcome.NoMatch && primary is RecognitionOutcome.Error -> primary
         else -> fallback
     }
 }
