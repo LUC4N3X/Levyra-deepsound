@@ -164,11 +164,39 @@ class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
 
         return object : ForwardingPlayer(castPlayer) {
             override fun setMediaItems(mediaItems: List<MediaItem>, startIndex: Int, startPositionMs: Long) {
-                if (mediaItems.any { !isReceiverSafe(it) }) {
-                    Timber.w("Cast playlist rejected because it contains a non receiver-safe media URL")
+                if (castPlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE) {
+                    super.setMediaItems(mediaItems, startIndex, startPositionMs)
                     return
                 }
-                super.setMediaItems(mediaItems, startIndex, startPositionMs)
+                if (mediaItems.isEmpty()) {
+                    super.setMediaItems(mediaItems, startIndex, startPositionMs)
+                    return
+                }
+
+                val selectedIndex = startIndex.coerceIn(0, mediaItems.lastIndex)
+                val requestedCurrent = mediaItems[selectedIndex]
+                if (!isReceiverSafe(requestedCurrent)) {
+                    Timber.w("Cast media item rejected because its URL is not receiver-safe")
+                    return
+                }
+
+                val liveItem = castPlayer.currentMediaItem
+                val sameMediaItem = liveItem?.mediaId == requestedCurrent.mediaId
+                val position = castHandoffStartPositionMs(
+                    sameMediaItem = sameMediaItem,
+                    requestedPositionMs = startPositionMs,
+                    livePositionMs = castPlayer.currentPosition,
+                    remotePlayback = true
+                )
+
+                if (sameMediaItem) {
+                    if (position > castPlayer.currentPosition) castPlayer.seekTo(position)
+                    maintainManagedQueue(castPlayer)
+                    return
+                }
+
+                super.setMediaItems(listOf(requestedCurrent), 0, position)
+                maintainManagedQueue(castPlayer)
             }
 
             override fun setShuffleModeEnabled(shuffleModeEnabled: Boolean) {
