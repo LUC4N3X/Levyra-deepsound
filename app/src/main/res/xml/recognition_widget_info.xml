@@ -7,4 +7,4 @@
     android:initialLayout="@layout/recognition_widget"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
-    android:description="@string/recognition_widget_description" />
+    android:description="@string/tile_recognize_music" />
