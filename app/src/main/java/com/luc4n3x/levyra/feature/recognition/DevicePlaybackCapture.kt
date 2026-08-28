@@ -11,7 +11,6 @@ import androidx.annotation.RequiresApi
 import kotlin.math.max
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
@@ -77,14 +76,11 @@ class DevicePlaybackCapture(private val projection: MediaProjection) : AudioCapt
             while (captured < targetSampleCount) {
                 currentCoroutineContext().ensureActive()
                 val toRead = minOf(chunk.size, targetSampleCount - captured)
-                val read = record.read(chunk, 0, toRead, AudioRecord.READ_NON_BLOCKING)
+                val read = record.read(chunk, 0, toRead, AudioRecord.READ_BLOCKING)
                 if (read < 0) {
                     throw MicrophoneCaptureException("Device playback capture read failed with code $read")
                 }
-                if (read == 0) {
-                    delay(READ_RETRY_DELAY_MS)
-                    continue
-                }
+                if (read == 0) continue
                 System.arraycopy(chunk, 0, output, captured, read)
                 captured += read
             }
@@ -101,11 +97,10 @@ class DevicePlaybackCapture(private val projection: MediaProjection) : AudioCapt
     }
 
     private companion object {
-        const val SAMPLE_RATE_HZ = 44_100
+        const val SAMPLE_RATE_HZ = ShazamSignatureGenerator.SAMPLE_RATE_HZ
         const val CHANNEL_COUNT = 1
         const val READ_CHUNK_SAMPLE_COUNT = 4_096
         const val BYTES_PER_SAMPLE = 2
-        const val RECORDING_BUFFER_MULTIPLIER = 4
-        const val READ_RETRY_DELAY_MS = 5L
+        const val RECORDING_BUFFER_MULTIPLIER = 2
     }
 }
