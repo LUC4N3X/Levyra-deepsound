@@ -12,7 +12,6 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.atomic.AtomicLong
@@ -33,10 +32,10 @@ object RecognitionWidgetCenter {
         if (resultArtworkUrl != desiredArtworkUrl) {
             desiredArtworkUrl = resultArtworkUrl
             artworkGeneration.incrementAndGet()
-            if (resultArtworkUrl.isBlank()) {
-                artwork = null
-                artworkUrl = ""
-            }
+            // The old tiny bitmap is no longer useful once the requested result changes. Drop the
+            // strong reference immediately instead of retaining two artworks during the next fetch.
+            artwork = null
+            artworkUrl = ""
         }
 
         val manager = AppWidgetManager.getInstance(appContext)
@@ -96,28 +95,40 @@ object RecognitionWidgetCenter {
                 if (connection.responseCode != HttpURLConnection.HTTP_OK ||
                     !SafeImageUrlPolicy.isAllowedImageMimeType(connection.contentType)
                 ) return@Thread
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8_192)
+
+                val declaredLength = connection.contentLengthLong
+                if (declaredLength > MAX_WIDGET_ARTWORK_BYTES) return@Thread
+
+                // A home-screen widget only needs a 128px result. Keep one fixed bounded input
+                // buffer and decode directly from it, avoiding ByteArrayOutputStream + toByteArray()
+                // which previously could retain two multi-megabyte copies of the same response.
+                val bytes = ByteArray(MAX_WIDGET_ARTWORK_BYTES + 1)
                 var total = 0
                 connection.inputStream.use { input ->
-                    while (true) {
-                        val read = input.read(buffer)
+                    while (total < bytes.size) {
+                        val read = input.read(bytes, total, bytes.size - total)
                         if (read < 0) break
                         total += read
-                        if (total > SafeImageUrlPolicy.MAX_IMAGE_PAYLOAD_BYTES) return@Thread
-                        output.write(buffer, 0, read)
                     }
                 }
-                val bytes = output.toByteArray()
+                if (total <= 0 || total > MAX_WIDGET_ARTWORK_BYTES) return@Thread
+
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                BitmapFactory.decodeByteArray(bytes, 0, total, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@Thread
+
                 var sample = 1
-                while (bounds.outWidth / sample > 128 || bounds.outHeight / sample > 128) sample *= 2
+                while (bounds.outWidth / sample > ARTWORK_TARGET_PX || bounds.outHeight / sample > ARTWORK_TARGET_PX) {
+                    sample *= 2
+                }
                 val decoded = BitmapFactory.decodeByteArray(
                     bytes,
                     0,
-                    bytes.size,
-                    BitmapFactory.Options().apply { inSampleSize = sample }
+                    total,
+                    BitmapFactory.Options().apply {
+                        inSampleSize = sample
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
+                    }
                 )
                 if (decoded != null && generation == artworkGeneration.get() && desiredArtworkUrl == rawUrl) {
                     artwork = decoded
@@ -134,6 +145,12 @@ object RecognitionWidgetCenter {
                 }
                 if (published || superseded) render(context, latestState)
             }
+        }.apply {
+            name = "Levyra-recognition-widget-art"
+            isDaemon = true
         }.start()
     }
+
+    private const val ARTWORK_TARGET_PX = 128
+    private const val MAX_WIDGET_ARTWORK_BYTES = 1024 * 1024
 }
