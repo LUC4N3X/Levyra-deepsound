@@ -292,8 +292,8 @@ class ShazamSignatureGenerator(
         private const val PASS_ESCAPE = 255
         private const val BAND_MARKER = 0x60030040
         private const val BODY_MARKER = 0x40000000
-        private const val MAGIC_1 = 0xCAFE2580.toInt()
-        private const val MAGIC_2 = 0x94119C00.toInt()
+        private const val MAGIC_1 = -889313920
+        private const val MAGIC_2 = -1810785280
         private const val HEADER_BYTES = 48
         private const val SAMPLE_RATE_ID = 3
         private const val SAMPLE_PADDING_SECONDS = 0.24
