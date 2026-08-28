@@ -174,18 +174,17 @@ class MusicRecognitionController(
         } else {
             captured.samples
         }
-        val resampled = AudioPreprocessor.resampleMono(mono, captured.sampleRateHz, targetSampleRateHz)
-        val normalized = AudioPreprocessor.normalizeAmplitude(resampled)
+        val shazamPcm = AudioPreprocessor.resampleMono(mono, captured.sampleRateHz, targetSampleRateHz)
         val durationMs = if (targetSampleRateHz > 0) {
-            (normalized.size.toLong() * 1000L) / targetSampleRateHz
+            (shazamPcm.size.toLong() * 1000L) / targetSampleRateHz
         } else {
             0L
         }
-        return AudioFingerprint(normalized, targetSampleRateHz, durationMs)
+        return AudioFingerprint(shazamPcm, targetSampleRateHz, durationMs)
     }
 
     companion object {
-        const val DEFAULT_TARGET_SAMPLE_RATE_HZ = 16_000
+        const val DEFAULT_TARGET_SAMPLE_RATE_HZ = ShazamSignatureGenerator.SAMPLE_RATE_HZ
         const val DEFAULT_IDENTIFY_TIMEOUT_MS = 12_000L
         const val DEFAULT_CAPTURE_TIMEOUT_GRACE_MS = 5_000L
     }
