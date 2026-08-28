@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
+import com.luc4n3x.levyra.feature.cast.CastRuntimeInitializer
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,7 @@ class LevyraApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CastRuntimeInitializer.initialize(this)
         RuntimeHooks.start(this)
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
         LevyraArtworkStartupMetrics.beginSession()
