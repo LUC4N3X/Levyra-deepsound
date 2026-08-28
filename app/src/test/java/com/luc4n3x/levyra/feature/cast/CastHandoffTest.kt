@@ -139,4 +139,35 @@ class CastHandoffTest {
         assertTrue(castWindowNeedsRefresh(expected, listOf("b", "x", "d")))
         assertFalse(castWindowNeedsRefresh(emptyList(), emptyList()))
     }
+
+    @Test
+    fun fiveItemWindowRefreshesBeforeForwardBufferRunsDry() {
+        val expected = listOf("track-6", "track-7", "track-8")
+
+        assertFalse(
+            castWindowNeedsRefresh(
+                expectedUpcomingIds = expected,
+                remoteForwardIds = listOf("track-6", "track-7"),
+                minimumBufferedItems = CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS
+            )
+        )
+        assertTrue(
+            castWindowNeedsRefresh(
+                expectedUpcomingIds = expected,
+                remoteForwardIds = listOf("track-6"),
+                minimumBufferedItems = CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS
+            )
+        )
+    }
+
+    @Test
+    fun receiverMediaPolicyAcceptsOnlyGoogleVideoHttps() {
+        assertTrue(isCastReceiverSafeMediaUrl("https://rr1---sn.example.googlevideo.com/videoplayback?id=abc"))
+        assertTrue(isCastReceiverSafeMediaUrl("https://googlevideo.com/videoplayback?id=abc"))
+        assertFalse(isCastReceiverSafeMediaUrl("http://rr1---sn.example.googlevideo.com/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://googlevideo.com.evil.example/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://user:pass@googlevideo.com/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://googlevideo.com:8443/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://127.0.0.1/videoplayback"))
+    }
 }
