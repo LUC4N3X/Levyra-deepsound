@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import java.net.HttpURLConnection
+import java.net.InetAddress
 import java.net.URL
 import java.util.concurrent.atomic.AtomicLong
 
@@ -32,8 +33,6 @@ object RecognitionWidgetCenter {
         if (resultArtworkUrl != desiredArtworkUrl) {
             desiredArtworkUrl = resultArtworkUrl
             artworkGeneration.incrementAndGet()
-            // The old tiny bitmap is no longer useful once the requested result changes. Drop the
-            // strong reference immediately instead of retaining two artworks during the next fetch.
             artwork = null
             artworkUrl = ""
         }
@@ -88,7 +87,11 @@ object RecognitionWidgetCenter {
             var connection: HttpURLConnection? = null
             var published = false
             try {
-                connection = URL(safeUrl).openConnection() as HttpURLConnection
+                val targetUrl = URL(safeUrl)
+                val addresses = InetAddress.getAllByName(targetUrl.host)
+                if (addresses.isEmpty() || addresses.any { !SafeImageUrlPolicy.isPublicAddress(it) }) return@Thread
+
+                connection = targetUrl.openConnection() as HttpURLConnection
                 connection.instanceFollowRedirects = false
                 connection.connectTimeout = 5_000
                 connection.readTimeout = 5_000
@@ -99,9 +102,6 @@ object RecognitionWidgetCenter {
                 val declaredLength = connection.contentLengthLong
                 if (declaredLength > MAX_WIDGET_ARTWORK_BYTES) return@Thread
 
-                // A home-screen widget only needs a 128px result. Keep one fixed bounded input
-                // buffer and decode directly from it, avoiding ByteArrayOutputStream + toByteArray()
-                // which previously could retain two multi-megabyte copies of the same response.
                 val bytes = ByteArray(MAX_WIDGET_ARTWORK_BYTES + 1)
                 var total = 0
                 connection.inputStream.use { input ->
@@ -136,7 +136,6 @@ object RecognitionWidgetCenter {
                     published = true
                 }
             } catch (_: Exception) {
-                // Artwork is optional; keep the recognition state usable without it.
             } finally {
                 connection?.disconnect()
                 val superseded = generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl
