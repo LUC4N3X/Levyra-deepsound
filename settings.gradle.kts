@@ -37,3 +37,4 @@ includeBuild("third_party/LevyraNexus") {
 rootProject.name = "Levyra"
 include(":app")
 include(":baselineprofile")
+include(":levyra-recognition")

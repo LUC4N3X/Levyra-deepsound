@@ -42,6 +42,10 @@ import java.io.IOException
 
 private const val PREFERENCES_NAME = "levyra_prefs"
 internal const val DEFAULT_SPONSORBLOCK_ENABLED = true
+internal const val JAM_DISPLAY_NAME_MAX_LENGTH = 32
+
+internal fun normalizeJamDisplayName(value: String): String =
+    value.trim().take(JAM_DISPLAY_NAME_MAX_LENGTH)
 
 private val Context.levyraDataStore by preferencesDataStore(
     name = PREFERENCES_NAME,
@@ -70,7 +74,8 @@ data class LevyraPreferencesSnapshot(
     val audioSettings: LevyraAudioSettings,
     val interfaceSettings: LevyraInterfaceSettings,
     val downloadSettings: LevyraDownloadSettings,
-    val backupSettings: LevyraBackupSettings
+    val backupSettings: LevyraBackupSettings,
+    val jamDisplayName: String = ""
 )
 
 class LevyraPreferences(context: Context) {
@@ -102,6 +107,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
+            mutable[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(snapshot.jamDisplayName)
             mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
             mutable[KEY_AUDIO_EQ_PRESET] = normalizedAudio.presetId
             mutable[KEY_AUDIO_EQ_BANDS] = normalizedAudio.bandLevels.joinToString(",")
@@ -295,6 +301,12 @@ class LevyraPreferences(context: Context) {
             it[KEY_BACKUP_RETENTION] = normalized.retentionCount
             it[KEY_BACKUP_CHARGING_ONLY] = normalized.chargingOnly
         }
+    }
+
+    fun jamDisplayName(): String = read("") { it[KEY_JAM_DISPLAY_NAME].orEmpty() }
+
+    fun setJamDisplayName(value: String) {
+        write { it[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(value) }
     }
 
     fun audioSettings(): LevyraAudioSettings = read(LevyraAudioSettings()) { audioSettingsFrom(it) }
@@ -502,7 +514,8 @@ class LevyraPreferences(context: Context) {
             audioSettings = audioSettingsFrom(preferences),
             interfaceSettings = interfaceSettingsFrom(preferences),
             downloadSettings = downloadSettingsFrom(preferences),
-            backupSettings = backupSettingsFrom(preferences)
+            backupSettings = backupSettingsFrom(preferences),
+            jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty()
         )
     }
 
@@ -528,7 +541,8 @@ class LevyraPreferences(context: Context) {
         audioSettings = LevyraAudioSettings(),
         interfaceSettings = LevyraInterfaceSettings(),
         downloadSettings = LevyraDownloadSettings(),
-        backupSettings = LevyraBackupSettings()
+        backupSettings = LevyraBackupSettings(),
+        jamDisplayName = ""
     )
 
 
@@ -698,6 +712,8 @@ class LevyraPreferences(context: Context) {
     }
 
     private companion object {
+        const val JAM_DISPLAY_NAME_MAX_LENGTH = 32
+        val KEY_JAM_DISPLAY_NAME = stringPreferencesKey("jam_display_name")
         val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         val KEY_TASTES = stringSetPreferencesKey("tastes")
         val KEY_LAST_TRACK = stringPreferencesKey("last_track")

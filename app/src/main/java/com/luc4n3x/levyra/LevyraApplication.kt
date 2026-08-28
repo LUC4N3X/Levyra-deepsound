@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.network.LevyraNetworkController
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,8 @@ class LevyraApplication : Application() {
         RuntimeHooks.start(this)
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
         LevyraArtworkStartupMetrics.beginSession()
+        runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
+            .onFailure { Timber.w(it, "Network configuration bootstrap failed") }
         LevyraArtworkCache.configure(this)
         YoutubeLocalDecoder.install(this)
         PlaybackNetworkStack.initialize(this)

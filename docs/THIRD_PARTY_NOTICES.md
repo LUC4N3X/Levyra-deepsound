@@ -16,6 +16,7 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 |:---|:---|:---|:---|
 | LevyraExtractor | https://github.com/LUC4N3X/LevyraExtractor | Primary extractor playback core used by Levyra resolver logic | GPL-3.0 derivative source and upstream notices must be preserved |
 | Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
+| ArchiveTune | https://github.com/rukamori/ArchiveTune | Behavioral reference for music-recognition UX and interoperability research | No ArchiveTune recognition source is vendored or adapted in Levyra |
 | zemer-cipher | https://github.com/ZemerTeam/zemer-cipher | Reference design and validated player configuration data for the local YouTube signature and n-parameter decoder | GPL-3.0; adapted decoder logic and configuration validation retain upstream attribution |
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
 | Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
@@ -36,6 +37,16 @@ Two Levyra behaviors are adapted from the Metrolist project. The consecutive-fai
 Upstream project: https://github.com/MetrolistGroup/Metrolist
 
 Upstream license: GNU General Public License v3.0
+
+## Recognition Interoperability Reference
+
+Levyra's `:levyra-recognition` module is an independent pure-Kotlin implementation owned and maintained inside this repository. It contains Levyra's acoustic fingerprint analysis, bounded signature generation and wire-format encoding without vendoring or adapting ArchiveTune's `shazamkit` source. ArchiveTune was consulted only as an external behavioral reference while validating recognition interoperability and Android product behavior.
+
+Independence is verified behaviourally rather than asserted: the module is exercised against an independent reference implementation of the published signature algorithm on identical PCM input, and is required to agree peak for peak on frame index, magnitude and corrected frequency bin. Agreement is a property of the algorithm being public, not of shared source; no third-party recognition code is vendored, adapted or linked.
+
+Reference project: https://github.com/rukamori/ArchiveTune
+
+Reference license: GNU General Public License v3.0
 
 ## Runtime and Build Dependencies
 
@@ -92,7 +103,7 @@ The complete corresponding source code is available in this repository under the
 
 ## Trademark and Affiliation Notice
 
-Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected to Google, YouTube, YouTube Music, Apple, Apple Music, Spotify, LRCLIB, SponsorBlock, Metrolist, NewPipe, PipePipe, or any other third-party service or project mentioned in the repository.
+Levyra is independent and is not affiliated with, endorsed by, sponsored by, or officially connected to Google, YouTube, YouTube Music, Apple, Apple Music, Spotify, LRCLIB, SponsorBlock, Metrolist, NewPipe, PipePipe, ArchiveTune, Shazam, or any other third-party service or project mentioned in the repository.
 
 All trademarks and service marks belong to their respective owners.
 

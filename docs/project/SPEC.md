@@ -80,6 +80,38 @@ with its own playback, packaging, versioning, and release lifecycle.
   downloads, and prefetch are bounded.
 - Provider-controlled URLs and redirects are treated as untrusted input.
 - Cancellation is not reported, cached, or counted as an ordinary failure.
+- Users may select system DNS, one of the shipped DNS-over-HTTPS presets, or a
+  validated custom HTTPS DNS endpoint. HTTP and SOCKS proxies are explicit,
+  credential storage is keystore-backed, and stream bypass remains a visible
+  user choice. Levyra must never rotate through public or random proxies.
+
+### Music recognition
+
+- Android music recognition uses bounded microphone or consent-based device
+  playback capture, a credential-free Shazam-compatible primary provider, and
+  an optional AudD fallback configured by the user.
+- Raw audio remains on the device. Providers receive only the derived
+  fingerprint or the explicit AudD fallback payload when its fallback policy
+  permits it.
+- Recognition must remain cancellable through UI, notification, service, and
+  quick-settings entry points; every capture, provider call, response, and
+  history collection is bounded.
+- Successful results are matched back to the existing Levyra catalog and saved
+  in a non-destructive, bounded local history.
+
+### Levyra Jam
+
+- Android users may create or join one local-network listening session through
+  a private IPv4 session code or `levyra://jam/` deep link.
+- The host is authoritative for queue, playback position, participant list,
+  permission mode, and monotonic revision. Guests never publish canonical
+  state and remote updates must not echo back into the session.
+- Guest permissions are exactly host-only, add-songs, or collaborative. Every
+  incoming message, identity, queue, participant list, URL, and frame size is
+  bounded and validated before use.
+- Jam uses the existing player and queue as its only playback source of truth,
+  performs bounded reconnect attempts, and releases sockets and jobs when the
+  session or owning ViewModel ends.
 
 ## Architecture boundaries
 

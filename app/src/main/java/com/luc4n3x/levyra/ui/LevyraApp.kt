@@ -402,7 +402,13 @@ import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.LevyraLaunchActions
+import com.luc4n3x.levyra.domain.LevyraNetworkSettings
+import com.luc4n3x.levyra.domain.LevyraNetworkSettingsError
+import com.luc4n3x.levyra.domain.LevyraNetworkTestOutcome
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
+import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
+import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatarSize
@@ -1197,6 +1203,14 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         }
         if (pendingShortcut != null) LevyraLaunchActions.pendingShortcut.value = null
     }
+    val pendingJamCode by LevyraLaunchActions.pendingJamCode
+    LaunchedEffect(pendingJamCode) {
+        pendingJamCode?.let { code ->
+            viewModel.openJam()
+            viewModel.joinJam(code)
+            LevyraLaunchActions.pendingJamCode.value = null
+        }
+    }
     val pendingArtist by LevyraLaunchActions.pendingArtist
     LaunchedEffect(pendingArtist) {
         pendingArtist?.let { artistName ->
@@ -1229,9 +1243,13 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.showYourSound || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.showRecognition || state.showJam || state.showYourSound || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
+        } else if (state.showRecognition) {
+            viewModel.closeRecognition()
+        } else if (state.showJam) {
+            viewModel.closeJam()
         } else if (state.showYourSound) {
             viewModel.closeYourSound()
         } else if (state.sharedMediaPreview != null) {
@@ -1350,6 +1368,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 !state.showAudioQualityPanel &&
                 !state.youtubeEngagement.comments.visible &&
                 !state.showYourSound &&
+                !state.showJam &&
+                !state.showRecognition &&
                 state.openPlaylist == null &&
                 state.sharedMediaPreview == null &&
                 !showDownloadsFolder &&
@@ -1421,7 +1441,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         LevyraTab.Explore -> {
                             val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
                             val screenState by exploreViewModel.state.collectAsStateWithLifecycle()
-                            ExploreScreen(exploreViewModel, screenState)
+                            ExploreScreen(exploreViewModel, screenState, onOpenJam = viewModel::openJam)
                         }
                         LevyraTab.Library -> {
                             val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
@@ -1593,6 +1613,17 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     lastFmAuthorizationPending = state.lastFmAuthorizationPending,
                     listenBrainzConfigured = state.listenBrainzConfigured,
                     audDConfigured = state.audDConfigured,
+                    networkSettings = state.networkSettings,
+                    networkProxyPasswordSet = state.networkProxyPasswordSet,
+                    networkTesting = state.networkTesting,
+                    networkTestOutcome = state.networkTestOutcome,
+                    networkErrors = state.networkErrors,
+                    onNetworkSettings = viewModel::updateNetworkSettings,
+                    onTestNetwork = viewModel::testNetworkConfiguration,
+                    onOpenJam = {
+                        viewModel.closeSettings()
+                        viewModel.openJam()
+                    },
                     onThemePreset = viewModel::setThemePreset,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onDownloadSettings = viewModel::setDownloadSettings,
@@ -1751,6 +1782,43 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
             AnimatedVisibility(visible = showDownloadsFolder, enter = overlayEnter, exit = overlayExit) {
                 DownloadsFolderOverlay(state = state, viewModel = viewModel, onClose = { showDownloadsFolder = false })
+            }
+
+            AnimatedVisibility(visible = state.showRecognition, enter = overlayEnter, exit = overlayExit) {
+                LevyraRecognitionOverlay(
+                    state = state.recognitionState,
+                    history = state.recognitionHistory,
+                    match = state.recognitionMatch,
+                    matching = state.recognitionMatching,
+                    deviceCaptureSupported = state.recognitionDeviceCaptureSupported,
+                    onListenMicrophone = viewModel::startMusicRecognition,
+                    onListenDevice = viewModel::startDeviceRecognition,
+                    onCancel = viewModel::cancelMusicRecognition,
+                    onPlayMatch = viewModel::playRecognitionMatch,
+                    onSearchResult = viewModel::searchRecognitionResult,
+                    onTrackActions = { track -> trackActionTarget = track },
+                    onOpenHistoryEntry = viewModel::openRecognitionResult,
+                    onDeleteHistoryEntry = viewModel::deleteRecognitionEntry,
+                    onClearHistory = viewModel::clearRecognitionHistory,
+                    onClose = viewModel::closeRecognition
+                )
+            }
+
+            AnimatedVisibility(visible = state.showJam, enter = overlayEnter, exit = overlayExit) {
+                LevyraJamOverlay(
+                    jam = state.jam,
+                    displayName = state.jamDisplayName,
+                    onDisplayNameChange = viewModel::setJamDisplayName,
+                    onCreate = viewModel::createJam,
+                    onJoin = viewModel::joinJam,
+                    onLeave = viewModel::leaveJam,
+                    onEnd = viewModel::endJam,
+                    onPermissionChange = viewModel::setJamPermission,
+                    onRemoveParticipant = viewModel::removeJamParticipant,
+                    onShare = { payload -> shareJamInvite(toastContext, payload, currentStrings) },
+                    onDismissFailure = viewModel::clearJamFailure,
+                    onClose = viewModel::closeJam
+                )
             }
 
             AnimatedVisibility(visible = state.showYourSound, enter = overlayEnter, exit = overlayExit) {
@@ -4080,6 +4148,26 @@ private fun compactReleaseNotes(notes: String): String {
 
 internal fun isLaunchableUpdateTarget(url: String): Boolean =
     AppUpdateContract.matches(Intent.ACTION_VIEW, url) || url.startsWith("https://", ignoreCase = true)
+
+private fun shareJamInvite(
+    context: android.content.Context,
+    payload: String,
+    strings: LevyraStrings
+) {
+    if (payload.isBlank()) return
+    runCatching {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, strings.jamTitle)
+            putExtra(Intent.EXTRA_TEXT, payload)
+        }
+        context.startActivity(
+            Intent.createChooser(intent, strings.share).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }.onFailure {
+        Toast.makeText(context, strings.cannotOpenExternalLink, Toast.LENGTH_LONG).show()
+    }
+}
 
 private fun openExternalUrl(
     context: android.content.Context,
@@ -9558,20 +9646,6 @@ private fun SearchHeader(
                 )
             }
         }
-
-        IconButton(
-            onClick = { Toast.makeText(context, strings.musicFiltersComingSoon, Toast.LENGTH_SHORT).show() },
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Equalizer,
-                contentDescription = strings.audioEngine,
-                tint = LevyraText,
-                modifier = Modifier.size(20.dp)
-            )
-        }
     }
 }
 
@@ -15026,6 +15100,14 @@ private fun SettingsOverlay(
     lastFmAuthorizationPending: Boolean,
     listenBrainzConfigured: Boolean,
     audDConfigured: Boolean,
+    networkSettings: LevyraNetworkSettings,
+    networkProxyPasswordSet: Boolean,
+    networkTesting: Boolean,
+    networkTestOutcome: LevyraNetworkTestOutcome?,
+    networkErrors: List<LevyraNetworkSettingsError>,
+    onNetworkSettings: (LevyraNetworkSettings, String?) -> Unit,
+    onTestNetwork: (LevyraNetworkSettings, String?) -> Unit,
+    onOpenJam: () -> Unit,
     onThemePreset: (String) -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
@@ -15088,6 +15170,8 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
             SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
             , SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Settings, LevyraCyan)
+            , SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Settings, LevyraBlue)
+            , SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.PlayArrow, LevyraViolet)
         )
     }
     val settingsSearchIndex = remember(strings.code) {
@@ -15111,6 +15195,8 @@ private fun SettingsOverlay(
                 SettingsSearchEntry(strings.language, strings.languageSubtitle, "locale", "system", categoryTitle(strings.preferences)),
                 SettingsSearchEntry(strings.updates, strings.checkNewVersions, "version", "app", categoryTitle(strings.app))
                 , SettingsSearchEntry(strings.integrations, "Last.fm ListenBrainz AudD", "scrobbling recognition", "integrations", categoryTitle(strings.integrations))
+                , SettingsSearchEntry(strings.networkTitle, strings.networkSubtitle, "dns proxy doh", "network", categoryTitle(strings.networkTitle))
+                , SettingsSearchEntry(strings.jamTitle, strings.jamSubtitle, "jam session listen together", "jam", categoryTitle(strings.jamTitle))
             ),
             locale = categoryLocale
         )
@@ -15222,6 +15308,41 @@ private fun SettingsOverlay(
                         )
                     }
                     when (current) {
+                        "network" -> item {
+                            NetworkSettingsPanel(
+                                settings = networkSettings,
+                                proxyPasswordSet = networkProxyPasswordSet,
+                                testing = networkTesting,
+                                testOutcome = networkTestOutcome,
+                                errors = networkErrors,
+                                onApply = onNetworkSettings,
+                                onTest = onTestNetwork
+                            )
+                        }
+                        "jam" -> item {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    strings.jamSubtitle,
+                                    color = LevyraMuted,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    strings.jamLocalNetworkOnly,
+                                    color = LevyraMuted,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                TextButton(onClick = onOpenJam, modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        strings.jamTitle,
+                                        color = LevyraCyan,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                         "integrations" -> item {
                             IntegrationSettingsPanel(
                                 lastFmConfigured,
@@ -19050,7 +19171,11 @@ private fun CircleIconButton(
 }
 
 @Composable
-private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
+private fun ExploreScreen(
+    viewModel: ExploreViewModel,
+    state: LevyraUiState,
+    onOpenJam: () -> Unit
+) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
@@ -19129,9 +19254,10 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         ExploreShortcutRow(
-                            availableAnchors = availableAnchors,
-                            onSelect = onShortcut
-                        )
+    availableAnchors = availableAnchors,
+    onSelect = onShortcut,
+    onOpenJam = onOpenJam
+)
                         LevyraMixLauncherPanel(
                             familiarity = state.mixFamiliarity,
                             loading = state.mixLoading,
@@ -19335,30 +19461,50 @@ private fun ExploreSectionHeader(
 @Composable
 private fun ExploreShortcutRow(
     availableAnchors: Set<ExploreAnchor>,
-    onSelect: (ExploreShortcut) -> Unit
+    onSelect: (ExploreShortcut) -> Unit,
+    onOpenJam: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        if (ExploreAnchor.Fresh in availableAnchors) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (ExploreAnchor.Fresh in availableAnchors) {
+                ExploreShortcutCard(
+                    icon = Icons.Rounded.AutoAwesome,
+                    label = strings.exploreNewReleases,
+                    onClick = { onSelect(ExploreShortcut.NewReleases) }
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
             ExploreShortcutCard(
-                icon = Icons.Rounded.AutoAwesome,
-                label = strings.exploreNewReleases,
-                onClick = { onSelect(ExploreShortcut.NewReleases) }
+                icon = Icons.Rounded.PlayArrow,
+                label = strings.exploreSamples,
+                onClick = { onSelect(ExploreShortcut.Samples) }
             )
         }
-        ExploreShortcutCard(
-            icon = Icons.Rounded.SlowMotionVideo,
-            label = strings.exploreSamples,
-            onClick = { onSelect(ExploreShortcut.Samples) }
-        )
-        if (ExploreAnchor.Moods in availableAnchors) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (ExploreAnchor.Moods in availableAnchors) {
+                ExploreShortcutCard(
+                    icon = Icons.Rounded.Mood,
+                    label = strings.exploreMoods,
+                    onClick = { onSelect(ExploreShortcut.Moods) }
+                )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
+            }
             ExploreShortcutCard(
-                icon = Icons.Rounded.Mood,
-                label = strings.exploreMoods,
-                onClick = { onSelect(ExploreShortcut.Moods) }
+                icon = Icons.Rounded.PersonAdd,
+                label = strings.jamTitle,
+                onClick = onOpenJam
             )
         }
     }
