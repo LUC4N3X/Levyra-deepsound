@@ -157,7 +157,7 @@
         <receiver
             android:name=".widget.RecognitionWidgetProvider"
             android:exported="false"
-            android:label="@string/recognition_widget_description">
+            android:label="@string/tile_recognize_music">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
