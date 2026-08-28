@@ -15,14 +15,16 @@ class FollowedArtistsStore(context: Context) {
     private val database = LevyraDatabase.get(appContext)
     private val dao = database.followedArtistsDao()
 
-    suspend fun load(): List<FollowedArtist> = try {
+    suspend fun load(): List<FollowedArtist> = loadOrNull().orEmpty()
+
+    suspend fun loadOrNull(): List<FollowedArtist>? = try {
         migrateLegacyRowsIfNeeded()
         dao.all().map { it.toDomain() }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
-        Timber.e(error, "Followed artists load failed; continuing without release radar state")
-        emptyList()
+        Timber.e(error, "Followed artists load failed")
+        null
     }
 
     suspend fun contains(artist: FollowedArtist): Boolean = try {
@@ -69,9 +71,7 @@ class FollowedArtistsStore(context: Context) {
             false
         }
         if (!migrated) return
-        if (!prefs.edit().remove(KEY_ARTISTS).commit()) {
-            Timber.w("Followed artists legacy cleanup was not persisted")
-        }
+        clearLegacyPayload()
     }
 
     suspend fun save(artists: List<FollowedArtist>) {
@@ -80,6 +80,7 @@ class FollowedArtistsStore(context: Context) {
             dao.clear()
             dao.upsertAll(rows)
         }
+        clearLegacyPayload()
     }
 
     suspend fun saveDurable(artists: List<FollowedArtist>) = save(artists)
@@ -101,6 +102,12 @@ class FollowedArtistsStore(context: Context) {
 
     fun saveRadarOffset(offset: Int) {
         prefs.edit().putInt(KEY_RADAR_OFFSET, offset.coerceAtLeast(0)).apply()
+    }
+
+    private fun clearLegacyPayload() {
+        if (prefs.contains(KEY_ARTISTS) && !prefs.edit().remove(KEY_ARTISTS).commit()) {
+            Timber.w("Followed artists legacy cleanup was not persisted")
+        }
     }
 
     private companion object {
