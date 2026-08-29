@@ -5,7 +5,8 @@
     <application>
         <receiver
             android:name="androidx.mediarouter.media.MediaTransferReceiver"
-            tools:node="remove" />
+            tools:node="remove"
+            tools:ignore="MissingClass" />
     </application>
 
     <uses-permission

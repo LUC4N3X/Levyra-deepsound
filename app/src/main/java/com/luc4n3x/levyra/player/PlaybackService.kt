@@ -76,6 +76,8 @@ import com.luc4n3x.levyra.feature.cast.LocalPlaybackSnapshot
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import com.luc4n3x.levyra.player.sabr.SabrDataSource
+import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.runtime.RuntimeSignal
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
@@ -370,7 +372,8 @@ class PlaybackService : MediaLibraryService() {
         val mergingFactory = LevyraMediaSourceFactory(
             defaultFactory,
             cacheDataSourceFactory,
-            localDataSourceFactory
+            localDataSourceFactory,
+            SabrDataSource.Factory(baseHttpFactory)
         ).apply {
             setLoadErrorHandlingPolicy(LevyraPlaybackLoadErrorHandlingPolicy)
         }
@@ -1818,7 +1821,6 @@ class PlaybackService : MediaLibraryService() {
             .apply()
     }
 
-
     private data class ServiceRecoveryPlan(
         val localPlayback: Boolean,
         val delaysMs: LongArray,
@@ -2295,7 +2297,8 @@ private object LevyraPlaybackLoadErrorHandlingPolicy : LoadErrorHandlingPolicy {
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
     private val dataSourceFactory: DataSource.Factory,
-    private val localDataSourceFactory: DataSource.Factory
+    private val localDataSourceFactory: DataSource.Factory,
+    private val sabrDataSourceFactory: DataSource.Factory
 ) : MediaSource.Factory {
     private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy = LevyraPlaybackLoadErrorHandlingPolicy
 
@@ -2360,6 +2363,12 @@ private class LevyraMediaSourceFactory(
     private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {
         val localUri = mediaItem.localConfiguration?.uri
         val scheme = localUri?.scheme.orEmpty().lowercase()
+        if (SabrStreamSpec.isSabrUri(localUri?.toString().orEmpty())) {
+            val sabrItem = mediaItem.buildUpon().setCustomCacheKey(null).build()
+            return ProgressiveMediaSource.Factory(sabrDataSourceFactory)
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+                .createMediaSource(sabrItem)
+        }
         if (scheme == "content" || scheme == "file") {
             val localItem = mediaItem.buildUpon().setCustomCacheKey(null).build()
             return ProgressiveMediaSource.Factory(localDataSourceFactory)
