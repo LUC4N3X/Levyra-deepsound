@@ -43,18 +43,18 @@ class ReleaseRadarWorker(
                 .getOrNull() ?: return@forEach
             val releases = profile.albums + profile.singles
             if (releases.isEmpty()) return@forEach
-            if (!store.contains(artist)) return@forEach
+            if (store.containsOrNull(artist) != true) return@forEach
 
             val keys = releases.map { releaseKey(it) }.toSet()
             if (!store.hasReleaseBaseline(artist.key)) {
                 store.saveKnownReleases(artist.key, keys)
-                if (!store.contains(artist)) store.clearKnownReleases(artist.key)
+                if (store.containsOrNull(artist) == false) store.clearKnownReleases(artist.key)
                 return@forEach
             }
 
             val known = store.knownReleases(artist.key)
             val fresh = releases.distinctBy(::releaseKey).filter { releaseKey(it) !in known }
-            if (!store.contains(artist)) return@forEach
+            if (store.containsOrNull(artist) != true) return@forEach
             val notifiedKeys = mutableSetOf<String>()
             fresh.take(MAX_NOTIFICATIONS_PER_ARTIST).forEach { release ->
                 if (notified < MAX_NOTIFICATIONS_PER_RUN && notifyRelease(artist, release)) {
@@ -63,7 +63,7 @@ class ReleaseRadarWorker(
                 }
             }
             store.saveKnownReleases(artist.key, known + notifiedKeys)
-            if (!store.contains(artist)) store.clearKnownReleases(artist.key)
+            if (store.containsOrNull(artist) == false) store.clearKnownReleases(artist.key)
         }
         return Result.success()
     }
