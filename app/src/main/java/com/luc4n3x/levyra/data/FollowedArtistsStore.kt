@@ -6,6 +6,10 @@ import com.luc4n3x.levyra.data.local.FollowedArtistEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.FollowedArtist
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import timber.log.Timber
 
@@ -17,26 +21,33 @@ class FollowedArtistsStore(context: Context) {
 
     suspend fun load(): List<FollowedArtist> = loadOrNull().orEmpty()
 
-    suspend fun loadOrNull(): List<FollowedArtist>? = try {
-        if (!migrateLegacyRowsIfNeeded()) null else dao.all().map { it.toDomain() }
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: Exception) {
-        Timber.e(error, "Followed artists load failed")
-        null
+    suspend fun loadOrNull(): List<FollowedArtist>? = mutationMutex.withLock {
+        try {
+            if (!migrateLegacyRowsIfNeeded()) null else dao.all().map { it.toDomain() }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.e(error, "Followed artists load failed")
+            null
+        }
     }
 
-    suspend fun contains(artist: FollowedArtist): Boolean = try {
+    suspend fun contains(artist: FollowedArtist): Boolean = containsOrNull(artist) == true
+
+    suspend fun containsOrNull(artist: FollowedArtist): Boolean? = try {
         dao.contains(artist.storageKey())
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
         Timber.w(error, "Followed artist membership check failed")
-        false
+        null
     }
 
     private suspend fun migrateLegacyRowsIfNeeded(): Boolean {
-        if (dao.all().isNotEmpty()) return true
+        if (dao.all().isNotEmpty()) {
+            clearLegacyPayload()
+            return true
+        }
         val raw = prefs.getString(KEY_ARTISTS, null).orEmpty()
         if (raw.isBlank()) return true
         val legacy = try {
@@ -60,7 +71,9 @@ class FollowedArtistsStore(context: Context) {
         }
         val migrated = try {
             database.withTransaction {
-                if (legacy.isNotEmpty()) dao.upsertAll(legacy.map(FollowedArtist::toEntity))
+                if (dao.all().isEmpty() && legacy.isNotEmpty()) {
+                    dao.upsertAll(legacy.map(FollowedArtist::toEntity))
+                }
             }
             true
         } catch (cancelled: CancellationException) {
@@ -74,7 +87,7 @@ class FollowedArtistsStore(context: Context) {
         return true
     }
 
-    suspend fun save(artists: List<FollowedArtist>) {
+    suspend fun save(artists: List<FollowedArtist>) = mutationMutex.withLock {
         val rows = artists.map(FollowedArtist::toEntity)
         database.withTransaction {
             dao.clear()
@@ -104,7 +117,7 @@ class FollowedArtistsStore(context: Context) {
         prefs.edit().putInt(KEY_RADAR_OFFSET, offset.coerceAtLeast(0)).apply()
     }
 
-    private fun clearLegacyPayload() {
+    private suspend fun clearLegacyPayload() = withContext(Dispatchers.IO) {
         if (prefs.contains(KEY_ARTISTS) && !prefs.edit().remove(KEY_ARTISTS).commit()) {
             Timber.w("Followed artists legacy cleanup was not persisted")
         }
@@ -115,6 +128,7 @@ class FollowedArtistsStore(context: Context) {
         const val KEY_ARTISTS = "artists"
         const val KEY_KNOWN_PREFIX = "known_releases_"
         const val KEY_RADAR_OFFSET = "radar_offset"
+        val mutationMutex = Mutex()
     }
 }
 
