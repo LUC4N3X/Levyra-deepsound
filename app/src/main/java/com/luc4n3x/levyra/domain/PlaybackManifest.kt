@@ -11,6 +11,7 @@ enum class PlaybackDeliveryMethod {
     PROGRESSIVE,
     HLS,
     DASH,
+    SABR,
     UNKNOWN
 }
 
@@ -40,7 +41,11 @@ data class PlaybackStreamDescriptor(
     }
 
     fun isMp4Audio(): Boolean {
-        if (kind != PlaybackStreamKind.AUDIO || deliveryMethod == PlaybackDeliveryMethod.HLS) return false
+        if (kind != PlaybackStreamKind.AUDIO) return false
+        // SABR is a session transport, not a downloadable file, whatever its media type says.
+        if (deliveryMethod == PlaybackDeliveryMethod.HLS || deliveryMethod == PlaybackDeliveryMethod.SABR) {
+            return false
+        }
         val normalizedContainer = container.trim().lowercase()
         val normalizedMimeType = mimeType.substringBefore(';').trim().lowercase()
         val normalizedUrl = url.lowercase()

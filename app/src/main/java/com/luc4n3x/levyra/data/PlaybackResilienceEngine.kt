@@ -244,7 +244,7 @@ internal class PlaybackResilienceEngine(context: Context) {
 
     private fun sanitize(value: String): String {
         return value
-            .replace(Regex("""https?://[^\s]+"""), "<redacted-url>")
+            .replace(Regex("""[a-zA-Z][a-zA-Z0-9+.-]*://[^\s]+"""), "<redacted-url>")
             .replace(Regex("""(?i)(authorization|cookie|visitor|token|signature)=[^&\s]+""")) { match ->
                 "${match.groupValues[1]}=<redacted>"
             }

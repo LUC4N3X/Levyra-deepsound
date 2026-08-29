@@ -291,6 +291,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val MAX_STREAM_CACHE_ENTRIES = 128
         private const val MAX_FAILED_PLAYBACK_URLS = 256
         private const val MAX_STRATEGY_ORIGINS = 256
+        private const val MAX_SABR_CANDIDATES = 2
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]($YOUTUBE_VIDEO_ID_PATTERN)\\?["]""")
@@ -556,25 +557,22 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
         invalidate(track, isVideoMode, isOfflineExport)
         resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
+        val failureKind = classifyPlaybackFailureReason(reason)
         if (!isOfflineExport) {
             strategyOriginFor(track, isVideoMode)?.let { origin ->
                 strategyHealth.recordRuntimeFailure(
                     mode = origin.mode,
                     strategy = origin.strategy,
-                    kind = classifyPlaybackFailureReason(reason)
+                    kind = failureKind
                 )
             }
         }
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
-        val failureKind = classifyPlaybackFailureReason(reason)
-        val recovery = playbackRecoveryPlanFor(failureKind)
+        val recovery = resilienceEngine.recoveryPlan(reason)
         listOf(track.streamUrl, track.videoStreamUrl)
             .filter { it.isNotBlank() }
             .forEach { quarantinePlaybackUrl(it, now + recovery.quarantineMs, now) }
-        if (!isOfflineExport && isCandidateLevelPlaybackFailure(failureKind)) {
-            promoteAlternateCandidate(track, isVideoMode, audioQuality)
-        }
         if (recovery.rotateClient) {
             profileFromSource(track.source)?.let { profile ->
                 recordClientFailure(profile, null, PlaybackBlockedException(reason))
@@ -598,6 +596,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         if (recovery.rotateCodec && !isOfflineExport) {
             videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
+        }
+        if (!isOfflineExport && isCandidateLevelPlaybackFailure(failureKind)) {
+            promoteAlternateCandidate(track, isVideoMode, audioQuality)
         }
         val sourceMatchQuarantineMs = when {
             lower.contains("403") || lower.contains("410") || lower.contains("expired") || lower.contains("scadut") || lower.contains("signature") -> 0L
@@ -2519,6 +2520,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             val audioConfig = root.optJSONObject("playerConfig")?.optJSONObject("audioConfig")
             val loudnessDb = audioConfig?.finiteFloat("loudnessDb")
             val perceptualLoudnessDb = audioConfig?.finiteFloat("perceptualLoudnessDb")
+            val sabrDelivery = if (preferMp4Audio) {
+                null
+            } else {
+                sabrDeliveryContext(root, streamingData, profile)
+            }
+            val sabrCandidates = if (sabrDelivery == null) emptyList() else sabrFormatCandidates(adaptiveFormats)
 
             val audioCandidates = buildList {
                 for (i in 0 until adaptiveFormats.length()) {
@@ -2622,6 +2629,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
                 val videoSubtitleTracks = videoSubtitleTracks(root)
+                val sabrVideoStreams = sabrVideoDescriptors(sabrDelivery, sabrCandidates, duration, audioQuality)
+                val sabrAudioStreams = sabrAudioDescriptors(sabrDelivery, sabrCandidates, duration, audioQuality)
                 return@responseUse when {
                     selection?.candidate?.muxed == true -> {
                         val manifest = buildManifest(
@@ -2655,7 +2664,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                             streams = listOf(
                                 innerTubeAudioDescriptor(bestAudioFormat, bestAudioUrl, true),
                                 videoDescriptor(selection.candidate, true)
-                            ),
+                            ) + sabrAudioStreams + sabrVideoStreams,
                             loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
                         )
                         DirectStream(
@@ -2692,34 +2701,182 @@ class PlaybackResolver private constructor(private val context: Context) {
                             videoSubtitleTracks = videoSubtitleTracks
                         )
                     }
+                    sabrVideoStreams.isNotEmpty() && sabrAudioStreams.isNotEmpty() -> {
+                        val sabrAudio = sabrAudioStreams.first()
+                        val sabrVideo = sabrVideoStreams.first()
+                        val manifest = buildManifest(
+                            sourceVideoId = sourceVideoId,
+                            provider = "YouTube SABR ${profile.label}",
+                            durationMs = duration,
+                            selectedAudioUrl = sabrAudio.url,
+                            selectedVideoUrl = sabrVideo.url,
+                            streams = sabrAudioStreams + sabrVideoStreams,
+                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
+                        )
+                        DirectStream(
+                            url = sabrAudio.url,
+                            videoUrl = sabrVideo.url,
+                            durationMs = duration,
+                            thumbnailUrl = thumbnail,
+                            source = "YouTube SABR ${profile.label}",
+                            manifest = manifest,
+                            loudnessDb = loudnessDb,
+                            perceptualLoudnessDb = perceptualLoudnessDb,
+                            videoSubtitleTracks = videoSubtitleTracks
+                        )
+                    }
                     else -> throw YoutubePlayerRequestException(null, "Nessuno stream video compatibile disponibile")
                 }
             }
 
-            if (bestAudioUrl.isBlank()) throw YoutubePlayerRequestException(null, "URL streaming assente")
             val details = root.optJSONObject("videoDetails")
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
+            val sabrAudioStreams = sabrAudioDescriptors(sabrDelivery, sabrCandidates, duration, audioQuality)
+            if (bestAudioUrl.isBlank() && sabrAudioStreams.isEmpty()) {
+                throw YoutubePlayerRequestException(null, "URL streaming assente")
+            }
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
+            val directAudioStreams = if (bestAudioUrl.isBlank()) {
+                emptyList()
+            } else {
+                listOf(innerTubeAudioDescriptor(bestAudioFormat, bestAudioUrl, true))
+            }
+            val selectedAudioUrl = bestAudioUrl.ifBlank { sabrAudioStreams.first().url }
+            val sabrSelected = selectedAudioUrl != bestAudioUrl
             val manifest = buildManifest(
                 sourceVideoId = sourceVideoId,
-                provider = "YouTube ${profile.label}",
+                provider = if (sabrSelected) "YouTube SABR ${profile.label}" else "YouTube ${profile.label}",
                 durationMs = duration,
-                selectedAudioUrl = bestAudioUrl,
+                selectedAudioUrl = selectedAudioUrl,
                 selectedVideoUrl = "",
-                streams = listOf(innerTubeAudioDescriptor(bestAudioFormat, bestAudioUrl, true)),
+                streams = directAudioStreams + sabrAudioStreams,
                 loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
             )
             DirectStream(
-                url = bestAudioUrl,
+                url = selectedAudioUrl,
                 videoUrl = "",
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
-                source = "YouTube ${profile.label}${bestAudioLabel.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}",
+                source = if (sabrSelected) {
+                    "YouTube SABR ${profile.label}"
+                } else {
+                    "YouTube ${profile.label}${bestAudioLabel.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+                },
                 manifest = manifest,
                 loudnessDb = loudnessDb,
                 perceptualLoudnessDb = perceptualLoudnessDb
             )
         }
+    }
+
+    private fun prefersHighestAudioBitrate(audioQuality: String): Boolean =
+        !normalizeAudioQuality(audioQuality).equals("Low", ignoreCase = true)
+
+    private fun sabrDeliveryContext(
+        root: JSONObject,
+        streamingData: JSONObject,
+        profile: ClientProfile
+    ): SabrDeliveryContext? {
+        val endpoint = streamingData.optString("serverAbrStreamingUrl").takeIf { it.isNotBlank() } ?: return null
+        val rawConfig = root.optJSONObject("playerConfig")
+            ?.optJSONObject("mediaCommonConfig")
+            ?.optJSONObject("mediaUstreamerRequestConfig")
+            ?.optString("videoPlaybackUstreamerConfig")
+            .orEmpty()
+        val config = decodeSabrUstreamerConfig(rawConfig) ?: return null
+        val clientName = profile.clientHeaderName.toIntOrNull() ?: return null
+        return SabrDeliveryContext(
+            endpointUrl = endpoint,
+            ustreamerConfig = config,
+            clientName = clientName,
+            clientVersion = profile.clientVersion,
+            userAgent = playerUserAgent(profile),
+            expiresAtMs = expiresAtFor(endpoint)
+        )
+    }
+
+    private fun sabrFormatCandidates(adaptiveFormats: JSONArray): List<SabrFormatCandidate> = buildList {
+        for (index in 0 until adaptiveFormats.length()) {
+            val format = adaptiveFormats.optJSONObject(index) ?: continue
+            val mime = format.optString("mimeType")
+            if (mime.isBlank()) continue
+            add(
+                SabrFormatCandidate(
+                    itag = format.optInt("itag", 0),
+                    lastModified = format.optString("lastModified").toLongOrNull() ?: 0L,
+                    mimeType = mime,
+                    contentLength = format.optString("contentLength").toLongOrNull() ?: 0L,
+                    bitrate = format.optInt("bitrate", 0),
+                    averageBitrate = format.optInt("averageBitrate", 0),
+                    sampleRate = format.optString("audioSampleRate").toIntOrNull() ?: 0,
+                    width = format.optInt("width", 0),
+                    height = format.optInt("height", 0),
+                    fps = format.optInt("fps", 0),
+                    qualityLabel = format.optString("qualityLabel")
+                )
+            )
+        }
+    }
+
+    private fun sabrAudioDescriptors(
+        delivery: SabrDeliveryContext?,
+        candidates: List<SabrFormatCandidate>,
+        durationMs: Long,
+        audioQuality: String
+    ): List<PlaybackStreamDescriptor> {
+        if (delivery == null) return emptyList()
+        return orderSabrAudioCandidates(
+            candidates,
+            preferHighestBitrate = prefersHighestAudioBitrate(audioQuality)
+        )
+            .asSequence()
+            .mapNotNull { candidate ->
+                buildSabrStreamDescriptor(
+                    endpointUrl = delivery.endpointUrl,
+                    ustreamerConfig = delivery.ustreamerConfig,
+                    candidate = candidate,
+                    companionAudio = null,
+                    durationMs = durationMs,
+                    clientName = delivery.clientName,
+                    clientVersion = delivery.clientVersion,
+                    userAgent = delivery.userAgent,
+                    expiresAtMs = delivery.expiresAtMs
+                )
+            }
+            .filterNot { isPlaybackUrlBlocked(it.url) }
+            .take(MAX_SABR_CANDIDATES)
+            .toList()
+    }
+
+    private fun sabrVideoDescriptors(
+        delivery: SabrDeliveryContext?,
+        candidates: List<SabrFormatCandidate>,
+        durationMs: Long,
+        audioQuality: String
+    ): List<PlaybackStreamDescriptor> {
+        if (delivery == null) return emptyList()
+        val companionAudio = orderSabrAudioCandidates(
+            candidates,
+            preferHighestBitrate = prefersHighestAudioBitrate(audioQuality)
+        ).firstOrNull() ?: return emptyList()
+        return orderSabrVideoCandidates(candidates, videoSelector.targetHeight())
+            .asSequence()
+            .mapNotNull { candidate ->
+                buildSabrStreamDescriptor(
+                    endpointUrl = delivery.endpointUrl,
+                    ustreamerConfig = delivery.ustreamerConfig,
+                    candidate = candidate,
+                    companionAudio = companionAudio,
+                    durationMs = durationMs,
+                    clientName = delivery.clientName,
+                    clientVersion = delivery.clientVersion,
+                    userAgent = delivery.userAgent,
+                    expiresAtMs = delivery.expiresAtMs
+                )
+            }
+            .filterNot { isPlaybackUrlBlocked(it.url) }
+            .take(MAX_SABR_CANDIDATES)
+            .toList()
     }
 
     private fun selectAudioStream(
@@ -3496,6 +3653,15 @@ private data class DirectStream(
     val loudnessDb: Float? = null,
     val perceptualLoudnessDb: Float? = null,
     val videoSubtitleTracks: List<com.luc4n3x.levyra.domain.VideoSubtitleTrack> = emptyList()
+)
+
+private class SabrDeliveryContext(
+    val endpointUrl: String,
+    val ustreamerConfig: ByteArray,
+    val clientName: Int,
+    val clientVersion: String,
+    val userAgent: String,
+    val expiresAtMs: Long
 )
 
 private data class PlaybackStrategyOrigin(
