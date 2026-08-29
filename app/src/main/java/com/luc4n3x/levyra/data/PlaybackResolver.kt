@@ -497,8 +497,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                 (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
                 (!isVideoMode || track.hasVideoPlaybackPayload()) &&
                 streamStillFresh(track.streamUrl)
-            RuntimeHooks.cache(if (valid) RuntimeSignal.CACHE_HIT else RuntimeSignal.CACHE_MISS)
-            return track.takeIf { valid }
+            if (valid) {
+                RuntimeHooks.cache(RuntimeSignal.CACHE_HIT)
+                return track
+            }
         }
         val key = cacheKey(track, isVideoMode, audioQuality)
         val hit = streamCache[key] ?: run {
@@ -565,10 +567,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
-        val recovery = resilienceEngine.recoveryPlan(reason)
+        val failureKind = classifyPlaybackFailureReason(reason)
+        val recovery = playbackRecoveryPlanFor(failureKind)
         listOf(track.streamUrl, track.videoStreamUrl)
             .filter { it.isNotBlank() }
             .forEach { quarantinePlaybackUrl(it, now + recovery.quarantineMs, now) }
+        if (!isOfflineExport && isCandidateLevelPlaybackFailure(failureKind)) {
+            promoteAlternateCandidate(track, isVideoMode, audioQuality)
+        }
         if (recovery.rotateClient) {
             profileFromSource(track.source)?.let { profile ->
                 recordClientFailure(profile, null, PlaybackBlockedException(reason))
@@ -611,6 +617,31 @@ class PlaybackResolver private constructor(private val context: Context) {
                 Timber.w(error, "persistent source match failure update failed")
             }
         }
+    }
+
+    private fun promoteAlternateCandidate(track: Track, isVideoMode: Boolean, audioQuality: String?) {
+        val manifest = track.playbackManifest ?: return
+        val burned = manifest.streams.count { isPlaybackUrlBlocked(it.url) }
+        if (burned > MAX_PROMOTED_PLAYBACK_CANDIDATES) return
+        val promoted = promoteAlternatePlaybackCandidate(
+            manifest = manifest,
+            isVideoMode = isVideoMode,
+            isBlocked = ::isPlaybackUrlBlocked
+        ) ?: return
+        val promotedTrack = track.applyManifest(promoted, track.videoUrl, track.source)
+        if (isVideoMode && !promotedTrack.hasVideoPlaybackPayload()) return
+        store(
+            requestedTrack = track,
+            resolvedTrack = promotedTrack,
+            isVideoMode = isVideoMode,
+            audioQuality = audioQuality?.let(::normalizeAudioQuality) ?: selectedAudioQuality,
+            expectedGeneration = resolverGeneration.get()
+        )
+        Timber.i(
+            "playback candidate promoted mode=%s burned=%d",
+            if (isVideoMode) "video" else "audio",
+            burned
+        )
     }
 
     private fun rememberStrategyOrigin(

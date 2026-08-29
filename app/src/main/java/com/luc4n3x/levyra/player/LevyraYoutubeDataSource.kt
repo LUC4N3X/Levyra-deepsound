@@ -7,6 +7,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
+import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import timber.log.Timber
 import java.io.IOException
@@ -17,6 +18,7 @@ class LevyraYoutubeDataSource private constructor(
     private val delegate: DataSource
 ) : DataSource {
     private var openedSpec: DataSpec? = null
+    private var activeUri: Uri? = null
     private var bytesReadSinceOpen = 0L
     private var readRetries = 0
 
@@ -38,6 +40,7 @@ class LevyraYoutubeDataSource private constructor(
 
     override fun open(dataSpec: DataSpec): Long {
         openedSpec = dataSpec
+        activeUri = dataSpec.uri
         bytesReadSinceOpen = 0L
         readRetries = 0
         return openDelegate(dataSpec)
@@ -46,8 +49,17 @@ class LevyraYoutubeDataSource private constructor(
     private fun openDelegate(dataSpec: DataSpec): Long {
         val originalUrl = dataSpec.uri.toString()
         if (!isYoutubeMediaUrl(dataSpec.uri)) return delegate.open(dataSpec)
-        val adaptedUri = appendRequestNumber(dataSpec.uri)
         val headers = requestHeaders(originalUrl)
+        try {
+            return openWithHeaders(dataSpec, headers)
+        } catch (error: IOException) {
+            if (!isMediaNetworkFailure(error)) throw error
+            return openOnAlternateMediaNetwork(dataSpec, headers, error)
+        }
+    }
+
+    private fun openWithHeaders(dataSpec: DataSpec, headers: Map<String, String>): Long {
+        val adaptedUri = appendRequestNumber(dataSpec.uri)
         val httpDelegate = delegate as? HttpDataSource
         if (httpDelegate != null) {
             httpDelegate.clearAllRequestProperties()
@@ -57,6 +69,35 @@ class LevyraYoutubeDataSource private constructor(
             .withUri(adaptedUri)
             .withAdditionalHeaders(headers.filterKeys { !it.equals("User-Agent", true) })
         return delegate.open(adaptedSpec)
+    }
+
+    private fun openOnAlternateMediaNetwork(
+        dataSpec: DataSpec,
+        headers: Map<String, String>,
+        failure: IOException
+    ): Long {
+        val alternates = GooglevideoMediaNetwork.alternateUrls(dataSpec.uri.toString())
+        for (candidate in alternates) {
+            runCatching { delegate.close() }
+            val candidateUri = Uri.parse(candidate)
+            try {
+                val opened = openWithHeaders(dataSpec.withUri(candidateUri), headers)
+                activeUri = candidateUri
+                Timber.i("googlevideo media network failover applied")
+                return opened
+            } catch (retryFailure: IOException) {
+                if (!isMediaNetworkFailure(retryFailure)) throw retryFailure
+            }
+        }
+        throw failure
+    }
+
+    private fun isMediaNetworkFailure(error: IOException): Boolean {
+        val responseCode = generateSequence(error as Throwable) { it.cause }
+            .filterIsInstance<InvalidResponseCodeException>()
+            .firstOrNull()
+            ?.responseCode
+        return GooglevideoMediaNetwork.isEndpointFailure(responseCode)
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
@@ -83,6 +124,7 @@ class LevyraYoutubeDataSource private constructor(
         if (remaining == 0L) return false
         readRetries++
         val resumeSpec = original.buildUpon()
+            .setUri(activeUri ?: original.uri)
             .setPosition(original.position + bytesReadSinceOpen)
             .setLength(remaining)
             .build()
@@ -102,6 +144,7 @@ class LevyraYoutubeDataSource private constructor(
 
     override fun close() {
         openedSpec = null
+        activeUri = null
         bytesReadSinceOpen = 0L
         readRetries = 0
         delegate.close()
