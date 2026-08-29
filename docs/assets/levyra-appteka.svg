@@ -16,9 +16,9 @@
       <stop offset="100%" stop-color="#14B8A6"/>
     </linearGradient>
     <linearGradient id="ap-btn-grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2F9B04"/>
-      <stop offset="55%" stop-color="#238A22"/>
-      <stop offset="100%" stop-color="#0F766E"/>
+      <stop offset="0%" stop-color="#43B51C"/>
+      <stop offset="45%" stop-color="#159E7A"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
     </linearGradient>
     <radialGradient id="ap-glow" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#43B51C" stop-opacity="0.32"/>
