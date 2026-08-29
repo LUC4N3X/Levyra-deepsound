@@ -33,7 +33,7 @@ class ReleaseRadarWorker(
 
     override suspend fun doWork(): Result {
         val store = FollowedArtistsStore(applicationContext)
-        val followed = store.load()
+        val followed = store.loadOrNull() ?: return Result.retry()
         if (followed.isEmpty()) return Result.success()
         val artistRepository = ArtistRepository(YoutubeMusicRepository(applicationContext), applicationContext)
         var notified = 0
@@ -43,11 +43,15 @@ class ReleaseRadarWorker(
                 .getOrNull() ?: return@forEach
             val releases = profile.albums + profile.singles
             if (releases.isEmpty()) return@forEach
+            if (!store.contains(artist)) return@forEach
+
             val keys = releases.map { releaseKey(it) }.toSet()
             if (!store.hasReleaseBaseline(artist.key)) {
                 store.saveKnownReleases(artist.key, keys)
+                if (!store.contains(artist)) store.clearKnownReleases(artist.key)
                 return@forEach
             }
+
             val known = store.knownReleases(artist.key)
             val fresh = releases.distinctBy(::releaseKey).filter { releaseKey(it) !in known }
             if (!store.contains(artist)) return@forEach
@@ -59,6 +63,7 @@ class ReleaseRadarWorker(
                 }
             }
             store.saveKnownReleases(artist.key, known + notifiedKeys)
+            if (!store.contains(artist)) store.clearKnownReleases(artist.key)
         }
         return Result.success()
     }
