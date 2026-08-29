@@ -25,6 +25,7 @@ internal class SabrSegmentAssembler(
         if (state.itag != targetItag) return null
         val chunkEnd = chunkStart + payloadLength
         if (chunkEnd <= position) return null
+        if (chunkStart > position) return null
         val skip = (position - chunkStart).coerceAtLeast(0L).toInt()
         val length = payloadLength - skip
         return if (length > 0) SabrMediaWindow(MEDIA_PAYLOAD_OFFSET + skip, length) else null

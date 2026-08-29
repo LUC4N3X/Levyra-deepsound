@@ -6,7 +6,8 @@ internal object SabrPart {
     const val MEDIA_END = 22
     const val SABR_REDIRECT = 43
     const val SABR_ERROR = 44
-    const val RELOAD_PLAYER_RESPONSE = 45
+    const val SABR_SEEK = 45
+    const val RELOAD_PLAYER_RESPONSE = 46
 }
 
 internal data class SabrFormatId(val itag: Int, val lastModified: Long) {

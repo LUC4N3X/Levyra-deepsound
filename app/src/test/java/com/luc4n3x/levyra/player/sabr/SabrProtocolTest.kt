@@ -7,6 +7,20 @@ import org.junit.Test
 
 class SabrProtocolTest {
     @Test
+    fun seekAndReloadPartIdsMatchTheCurrentProtocol() {
+        assertEquals(45, SabrPart.SABR_SEEK)
+        assertEquals(46, SabrPart.RELOAD_PLAYER_RESPONSE)
+    }
+
+    @Test
+    fun requestNumberIsAddedAndReplacesAStaleValue() {
+        val endpoint = "https://rr5---sn-a.googlevideo.com/videoplayback?sabr=1"
+
+        assertEquals("$endpoint&rn=0", sabrRequestEndpoint(endpoint, 0L))
+        assertEquals("$endpoint&rn=1", sabrRequestEndpoint("$endpoint&rn=99", 1L))
+    }
+
+    @Test
     fun mediaHeaderCarriesTheAbsoluteByteOffsetOfTheChunk() {
         val encoded = ProtoWriter()
             .varint(1, 1L)

@@ -34,6 +34,14 @@ class SabrSegmentAssemblerTest {
     }
 
     @Test
+    fun rejectsAChunkThatStartsAfterTheRequestedPosition() {
+        val assembler = SabrSegmentAssembler(targetItag = 140)
+        assembler.onMediaHeader(header(id = 0, itag = 140, start = 1_200L))
+
+        assertNull(assembler.onMedia(0, 100, position = 1_000L))
+    }
+
+    @Test
     fun ignoresChunksBelongingToAnotherFormat() {
         val assembler = SabrSegmentAssembler(targetItag = 133)
         assembler.onMediaHeader(header(id = 0, itag = 140, start = 0L))

@@ -9,6 +9,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
 import com.luc4n3x.levyra.player.GooglevideoMediaNetwork
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
@@ -33,6 +34,7 @@ internal class SabrDataSource(
     private var endpointUrl: String = ""
     private var redirectsUsed = 0
     private var endpointFailoversUsed = 0
+    private var requestNumber = 0L
     private var position = 0L
     private var bytesRemaining = 0L
     private var opened = false
@@ -54,6 +56,7 @@ internal class SabrDataSource(
         endpointUrl = parsed.endpointUrl
         redirectsUsed = 0
         endpointFailoversUsed = 0
+        requestNumber = 0L
         unproductiveRequests = 0
         producedReadableBytes = false
         position = dataSpec.position
@@ -95,6 +98,7 @@ internal class SabrDataSource(
         spec = null
         uri = null
         endpointUrl = ""
+        requestNumber = 0L
         position = 0L
         bytesRemaining = 0L
         if (wasOpen) transferEnded()
@@ -223,7 +227,7 @@ internal class SabrDataSource(
             clientVersion = current.clientVersion
         )
         val request = DataSpec.Builder()
-            .setUri(endpoint)
+            .setUri(sabrRequestEndpoint(endpoint, requestNumber))
             .setHttpMethod(DataSpec.HTTP_METHOD_POST)
             .setHttpBody(body)
             .setHttpRequestHeaders(
@@ -236,8 +240,9 @@ internal class SabrDataSource(
             )
             .build()
         val source = httpDataSourceFactory.createDataSource()
-        source.open(request)
         httpDataSource = source
+        requestNumber++
+        source.open(request)
         umpReader = UmpReader(HttpDataSourceInputStream(source))
         assembler?.reset()
         producedReadableBytes = false
@@ -313,3 +318,9 @@ internal class SabrDataSource(
         const val MAX_SUPPRESSED_SEGMENT_INDEX = 1_000_000L
     }
 }
+
+internal fun sabrRequestEndpoint(endpoint: String, requestNumber: Long): String = endpoint.toHttpUrl()
+    .newBuilder()
+    .setQueryParameter("rn", requestNumber.toString())
+    .build()
+    .toString()
