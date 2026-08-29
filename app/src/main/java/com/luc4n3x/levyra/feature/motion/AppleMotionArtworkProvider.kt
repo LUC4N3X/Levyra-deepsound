@@ -22,9 +22,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
     override val id: String = "apple-motion"
 
     private val client: OkHttpClient = LevyraHttpClientFactory.media(context).newBuilder()
-        .connectTimeout(4, TimeUnit.SECONDS)
-        .readTimeout(7, TimeUnit.SECONDS)
-        .callTimeout(9, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
+        .callTimeout(25, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
     private val tokenMutex = Mutex()
     private var cachedToken: String? = null
@@ -36,18 +37,31 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val requested = splitArtists(clean)
         if (requested.isEmpty()) return null
 
+        Timber.d("Apple artist motion lookup start artist=%s", clean)
         val developerTokenValue = developerToken()
         var lastFailure: Throwable? = null
         for (catalogStorefront in appleArtistMotionStorefronts(storefront())) {
             val selected = try {
+                Timber.d("Apple artist motion storefront=%s artist=%s", catalogStorefront, clean)
                 findArtistMotionInStorefront(clean, requested, catalogStorefront, developerTokenValue)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                Timber.d(error, "Apple artist motion storefront failed storefront=%s artist=%s", catalogStorefront, clean)
                 lastFailure = error
                 continue
-            } ?: continue
+            }
+            if (selected == null) {
+                Timber.d("Apple artist motion storefront miss storefront=%s artist=%s", catalogStorefront, clean)
+                continue
+            }
 
+            Timber.d(
+                "Apple artist motion selected storefront=%s artist=%s appleArtistId=%s",
+                catalogStorefront,
+                selected.name,
+                selected.key
+            )
             return MotionArtworkCandidate(
                 provider = id,
                 scope = MotionArtworkScope.ARTIST,
@@ -73,6 +87,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         if (lastFailure != null) {
             throw MotionProviderException("Apple artist motion lookup failed", lastFailure)
         }
+        Timber.d("Apple artist motion conclusive miss artist=%s", clean)
         return null
     }
 
@@ -91,7 +106,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .optJSONObject("results")
             ?.optJSONObject("artists")
             ?.optJSONArray("data")
-            ?: return null
+            ?: run {
+                Timber.d("Apple artist search returned no data storefront=%s artist=%s", storefront, artistName)
+                return null
+            }
 
         val compatible = ArrayList<AppleArtistSearchMatch>(data.length())
         for (index in 0 until data.length()) {
@@ -103,18 +121,45 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             if (!artistMatches(requested, splitArtists(name))) continue
             compatible += AppleArtistSearchMatch(artistId, name)
         }
+        Timber.d(
+            "Apple artist search storefront=%s artist=%s raw=%d compatible=%d",
+            storefront,
+            artistName,
+            data.length(),
+            compatible.size
+        )
         if (compatible.isEmpty()) return null
 
         val normalizedRequested = normalizeMotionText(artistName)
         val exact = compatible.filter { normalizeMotionText(it.name) == normalizedRequested }
         val candidates = (exact.ifEmpty { compatible }).take(MAX_ARTIST_DETAIL_CANDIDATES)
 
-        val matches = ArrayList<AppleArtistMotionMatch>(candidates.size)
         for (candidate in candidates) {
-            val video = fetchArtistMotionByAppleId(candidate.id, storefront, token) ?: continue
-            matches += AppleArtistMotionMatch(candidate.id, candidate.name, video)
+            Timber.d(
+                "Apple artist detail check storefront=%s appleArtistId=%s name=%s exact=%b",
+                storefront,
+                candidate.id,
+                candidate.name,
+                normalizeMotionText(candidate.name) == normalizedRequested
+            )
+            val video = fetchArtistMotionByAppleId(candidate.id, storefront, token)
+            if (video != null) {
+                Timber.d(
+                    "Apple artist detail motion found storefront=%s appleArtistId=%s name=%s",
+                    storefront,
+                    candidate.id,
+                    candidate.name
+                )
+                return AppleArtistMotionMatch(candidate.id, candidate.name, video)
+            }
+            Timber.d(
+                "Apple artist detail has no motion storefront=%s appleArtistId=%s name=%s",
+                storefront,
+                candidate.id,
+                candidate.name
+            )
         }
-        return selectUnambiguousAppleArtistMotion(matches)
+        return null
     }
 
     private suspend fun fetchArtistMotionByAppleId(
@@ -130,7 +175,16 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             ?.optJSONObject(0)
             ?.optJSONObject("attributes")
             ?: return null
-        return selectAppleArtistEditorialVideo(attributes)
+        val video = selectAppleArtistEditorialVideo(attributes)
+        Timber.d(
+            "Apple artist detail parsed storefront=%s appleArtistId=%s editorialVideo=%b editorialArtwork=%b selected=%b",
+            storefront,
+            artistId,
+            attributes.optJSONObject("editorialVideo") != null,
+            attributes.optJSONObject("editorialArtwork") != null,
+            video != null
+        )
+        return video
     }
 
     private fun storefront(): String =
@@ -138,16 +192,27 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val token = developerToken()
             val storefront = storefront()
-            val songCandidates = search(identity, storefront, token, "songs")
+            Timber.d(
+                "Apple player motion lookup start storefront=%s title=%s artists=%s album=%s",
+                storefront,
+                identity.title,
+                identity.artists.joinToString(),
+                identity.album
+            )
+            val developerTokenValue = developerToken()
+            val songCandidates = search(identity, storefront, developerTokenValue, "songs")
             if (songCandidates.isNotEmpty()) {
+                Timber.d("Apple player motion songs found=%d title=%s", songCandidates.size, identity.title)
                 MotionArtworkProviderResult.Found(songCandidates)
             } else {
-                val albumCandidates = search(identity, storefront, token, "albums")
+                Timber.d("Apple player motion songs miss title=%s; trying albums", identity.title)
+                val albumCandidates = search(identity, storefront, developerTokenValue, "albums")
                 if (albumCandidates.isNotEmpty()) {
+                    Timber.d("Apple player motion albums found=%d title=%s", albumCandidates.size, identity.title)
                     MotionArtworkProviderResult.Found(albumCandidates)
                 } else {
+                    Timber.d("Apple player motion conclusive miss title=%s", identity.title)
                     MotionArtworkProviderResult.NoMatch
                 }
             }
@@ -181,7 +246,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val data = root.optJSONObject("results")
             ?.optJSONObject(type)
             ?.optJSONArray("data")
-            ?: return emptyList()
+            ?: run {
+                Timber.d("Apple player search no data storefront=%s type=%s title=%s", storefront, type, identity.title)
+                return emptyList()
+            }
 
         val ranked = buildList {
             for (index in 0 until data.length()) {
@@ -205,11 +273,26 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             }
         }.sortedByDescending { it.quickScore }.take(3)
 
+        Timber.d(
+            "Apple player search storefront=%s type=%s title=%s raw=%d ranked=%d",
+            storefront,
+            type,
+            identity.title,
+            data.length(),
+            ranked.size
+        )
+
         val output = ArrayList<MotionArtworkCandidate>(ranked.size)
         for (result in ranked) {
             val directVideo = extractEditorialVideoUrl(result.attributes.optJSONObject("editorialVideo"))
             val albumId = resolveAlbumId(result.item, result.attributes, type)
             val resolved = if (directVideo != null) {
+                Timber.d(
+                    "Apple player direct editorial video type=%s appleId=%s title=%s",
+                    type,
+                    result.item.optString("id"),
+                    result.name
+                )
                 AppleMotionResult(
                     video = directVideo,
                     albumName = result.album,
@@ -218,6 +301,11 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                     releaseDate = result.attributes.optString("releaseDate")
                 )
             } else if (!albumId.isNullOrBlank() && !albumId.startsWith("pl.")) {
+                Timber.d(
+                    "Apple player direct video miss; checking album appleAlbumId=%s title=%s",
+                    albumId,
+                    result.name
+                )
                 fetchAlbumMotion(albumId, storefront, token)
             } else {
                 null
@@ -245,6 +333,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
             )
         }
+        Timber.d("Apple player search produced=%d type=%s title=%s", output.size, type, identity.title)
         return output
     }
 
@@ -260,7 +349,15 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val attributes = root.optJSONArray("data")?.optJSONObject(0)?.optJSONObject("attributes") ?: return null
         val albumName = attributes.optString("name").trim()
         if (isUnsafeResult(albumName, albumName)) return null
-        val motionVideo = extractEditorialVideoUrl(attributes.optJSONObject("editorialVideo")) ?: return null
+        val motionVideo = extractEditorialVideoUrl(attributes.optJSONObject("editorialVideo"))
+        Timber.d(
+            "Apple album detail storefront=%s appleAlbumId=%s motion=%b album=%s",
+            storefront,
+            albumId,
+            motionVideo != null,
+            albumName
+        )
+        motionVideo ?: return null
         return AppleMotionResult(
             video = motionVideo,
             albumName = albumName,
@@ -272,34 +369,42 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 
     private suspend fun developerToken(): String = tokenMutex.withLock {
         val now = System.currentTimeMillis()
-        cachedToken?.takeIf { tokenExpiresAt > now + TOKEN_EXPIRY_MARGIN_MS }?.let { return@withLock it }
+        cachedToken?.takeIf { tokenExpiresAt > now + TOKEN_EXPIRY_MARGIN_MS }?.let {
+            Timber.d("Apple motion developer token cache hit expiresInMin=%d", (tokenExpiresAt - now) / 60_000L)
+            return@withLock it
+        }
+
+        Timber.d("Apple motion developer token discovery start")
         val html = requestText(APPLE_BROWSE_URL)
-        val scripts = SCRIPT_REGEX.findAll(html)
-            .map { it.groupValues[1] }
-            .map { path -> if (path.startsWith("http")) path else "https://music.apple.com${if (path.startsWith('/')) path else "/$path"}" }
-            .distinct()
-            .take(5)
-            .toList()
+        val scripts = appleMusicScriptUrls(html).take(MAX_TOKEN_SCRIPT_CANDIDATES)
+        Timber.d("Apple motion developer token scripts=%d", scripts.size)
         var lastFailure: Throwable? = null
-        for (script in scripts) {
+        for ((index, script) in scripts.withIndex()) {
             val source = try {
                 requestText(script)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                Timber.d(error, "Apple motion developer token script failed index=%d", index)
                 lastFailure = error
                 continue
             }
             for (match in JWT_REGEX.findAll(source)) {
-                val token = match.value
-                val expiration = jwtExpiration(token) ?: continue
+                val developerTokenValue = match.value
+                val expiration = jwtExpiration(developerTokenValue) ?: continue
                 if (expiration > now + TOKEN_EXPIRY_MARGIN_MS) {
-                    cachedToken = token
+                    cachedToken = developerTokenValue
                     tokenExpiresAt = expiration
-                    return@withLock token
+                    Timber.d(
+                        "Apple motion developer token discovered scriptIndex=%d expiresInMin=%d",
+                        index,
+                        (expiration - now) / 60_000L
+                    )
+                    return@withLock developerTokenValue
                 }
             }
         }
+        Timber.d(lastFailure, "Apple motion developer token unavailable scripts=%d", scripts.size)
         throw MotionProviderException("Apple Music developer token unavailable", lastFailure)
     }
 
@@ -325,9 +430,16 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
     }
 
     private suspend fun executeText(request: Request): String = withContext(Dispatchers.IO) {
+        val safePath = request.url.encodedPath
         try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
+                    Timber.d(
+                        "Apple motion HTTP failure host=%s path=%s status=%d",
+                        request.url.host,
+                        safePath,
+                        response.code
+                    )
                     throw MotionProviderException("Apple Music HTTP ${response.code}")
                 }
                 response.body.string().takeIf { it.isNotBlank() }
@@ -338,6 +450,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         } catch (error: MotionProviderException) {
             throw error
         } catch (error: Exception) {
+            Timber.d(error, "Apple motion request failed host=%s path=%s", request.url.host, safePath)
             throw MotionProviderException("Apple motion request failed", error)
         }
     }
@@ -412,8 +525,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         const val APPLE_BROWSE_URL = "https://music.apple.com/us/browse"
         const val TOKEN_EXPIRY_MARGIN_MS = 5L * 60L * 1000L
         const val MAX_ARTIST_DETAIL_CANDIDATES = 3
+        const val MAX_TOKEN_SCRIPT_CANDIDATES = 12
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
-        val SCRIPT_REGEX = Regex("[\\\"']([^\\\"']*/assets/index[^\\\"']*\\.js)[\\\"']")
+        val SCRIPT_SRC_REGEX = Regex("""(?i)<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']""")
+        val LEGACY_SCRIPT_REGEX = Regex("[\\\"']([^\\\"']*/assets/index[^\\\"']*\\.js)[\\\"']")
         val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\\.ey[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+")
         val BLACKLIST = setOf("playlist", "set list", "essentials", "dj mix", "apple music", "todays hits", "session")
     }
@@ -435,9 +550,24 @@ internal data class AppleArtistMotionMatch(
     val video: AppleEditorialVideo
 )
 
-internal fun selectUnambiguousAppleArtistMotion(
-    matches: List<AppleArtistMotionMatch>
-): AppleArtistMotionMatch? = matches.distinctBy(AppleArtistMotionMatch::key).singleOrNull()
+internal fun appleMusicScriptUrls(html: String): List<String> {
+    val paths = LinkedHashSet<String>()
+    SCRIPT_SRC_REGEX.findAll(html).forEach { match -> paths += match.groupValues[1] }
+    LEGACY_SCRIPT_REGEX.findAll(html).forEach { match -> paths += match.groupValues[1] }
+    return paths.mapNotNull(::trustedAppleMusicScriptUrl)
+}
+
+private fun trustedAppleMusicScriptUrl(value: String): String? {
+    val clean = value.trim()
+    if (clean.isBlank()) return null
+    return when {
+        clean.startsWith("https://music.apple.com/", ignoreCase = true) -> clean
+        clean.startsWith("//music.apple.com/", ignoreCase = true) -> "https:$clean"
+        clean.startsWith("/") -> "https://music.apple.com$clean"
+        "://" !in clean -> "https://music.apple.com/$clean"
+        else -> null
+    }
+}
 
 internal fun appleArtistMotionStorefronts(localStorefront: String): List<String> =
     listOf("us", localStorefront.trim().lowercase(Locale.ROOT))
