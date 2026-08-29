@@ -9,13 +9,18 @@ import android.view.View
 import android.widget.RemoteViews
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import java.net.HttpURLConnection
 import java.net.InetAddress
-import java.net.URL
+import java.net.Proxy
+import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import okhttp3.Call
+import okhttp3.Dns
+import okhttp3.Request
 
 object RecognitionWidgetCenter {
     @Volatile private var artworkUrl = ""
@@ -23,8 +28,28 @@ object RecognitionWidgetCenter {
     @Volatile private var latestState: RecognitionState = RecognitionState.Idle
     @Volatile private var desiredArtworkUrl = ""
     @Volatile private var fetchingArtworkUrl = ""
+    @Volatile private var activeArtworkCall: Call? = null
     private val artworkGeneration = AtomicLong(0L)
     private val fetchLock = Any()
+    private val publicOnlyDns = Dns { hostname ->
+        val addresses = InetAddress.getAllByName(hostname).toList()
+        if (addresses.isEmpty() || addresses.any { !SafeImageUrlPolicy.isPublicAddress(it) }) {
+            throw UnknownHostException("Blocked non-public artwork host")
+        }
+        addresses
+    }
+    private val artworkClient by lazy {
+        LevyraHttpClientFactory.externalIntegrations().newBuilder()
+            .dns(publicOnlyDns)
+            .proxy(Proxy.NO_PROXY)
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .retryOnConnectionFailure(false)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .callTimeout(8, TimeUnit.SECONDS)
+            .build()
+    }
 
     fun render(context: Context, state: RecognitionState) {
         val appContext = context.applicationContext
@@ -35,6 +60,11 @@ object RecognitionWidgetCenter {
             artworkGeneration.incrementAndGet()
             artwork = null
             artworkUrl = ""
+            synchronized(fetchLock) {
+                activeArtworkCall?.cancel()
+                activeArtworkCall = null
+                fetchingArtworkUrl = ""
+            }
         }
 
         val manager = AppWidgetManager.getInstance(appContext)
@@ -84,62 +114,72 @@ object RecognitionWidgetCenter {
             fetchingArtworkUrl = rawUrl
         }
         Thread {
-            var connection: HttpURLConnection? = null
+            var call: Call? = null
             var published = false
             try {
-                val targetUrl = URL(safeUrl)
-                val addresses = InetAddress.getAllByName(targetUrl.host)
-                if (addresses.isEmpty() || addresses.any { !SafeImageUrlPolicy.isPublicAddress(it) }) return@Thread
-
-                connection = targetUrl.openConnection() as HttpURLConnection
-                connection.instanceFollowRedirects = false
-                connection.connectTimeout = 5_000
-                connection.readTimeout = 5_000
-                if (connection.responseCode != HttpURLConnection.HTTP_OK ||
-                    !SafeImageUrlPolicy.isAllowedImageMimeType(connection.contentType)
-                ) return@Thread
-
-                val declaredLength = connection.contentLengthLong
-                if (declaredLength > MAX_WIDGET_ARTWORK_BYTES) return@Thread
-
-                val bytes = ByteArray(MAX_WIDGET_ARTWORK_BYTES + 1)
-                var total = 0
-                connection.inputStream.use { input ->
-                    while (total < bytes.size) {
-                        val read = input.read(bytes, total, bytes.size - total)
-                        if (read < 0) break
-                        total += read
+                if (generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl) return@Thread
+                val request = Request.Builder().url(safeUrl).get().build()
+                call = artworkClient.newCall(request)
+                synchronized(fetchLock) {
+                    if (generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl) {
+                        call.cancel()
+                        return@synchronized
                     }
+                    activeArtworkCall = call
                 }
-                if (total <= 0 || total > MAX_WIDGET_ARTWORK_BYTES) return@Thread
+                if (call.isCanceled()) return@Thread
 
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, total, bounds)
-                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@Thread
+                call.execute().use { response ->
+                    if (!response.isSuccessful ||
+                        !SafeImageUrlPolicy.isAllowedImageMimeType(response.body.contentType()?.toString())
+                    ) return@use
 
-                var sample = 1
-                while (bounds.outWidth / sample > ARTWORK_TARGET_PX || bounds.outHeight / sample > ARTWORK_TARGET_PX) {
-                    sample *= 2
-                }
-                val decoded = BitmapFactory.decodeByteArray(
-                    bytes,
-                    0,
-                    total,
-                    BitmapFactory.Options().apply {
-                        inSampleSize = sample
-                        inPreferredConfig = Bitmap.Config.ARGB_8888
+                    val declaredLength = response.body.contentLength()
+                    if (declaredLength > MAX_WIDGET_ARTWORK_BYTES) return@use
+
+                    val bytes = ByteArray(MAX_WIDGET_ARTWORK_BYTES + 1)
+                    var total = 0
+                    response.body.byteStream().use { input ->
+                        while (total < bytes.size) {
+                            if (generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl) {
+                                call.cancel()
+                                return@use
+                            }
+                            val read = input.read(bytes, total, bytes.size - total)
+                            if (read < 0) break
+                            total += read
+                        }
                     }
-                )
-                if (decoded != null && generation == artworkGeneration.get() && desiredArtworkUrl == rawUrl) {
-                    artwork = decoded
-                    artworkUrl = rawUrl
-                    published = true
+                    if (total <= 0 || total > MAX_WIDGET_ARTWORK_BYTES) return@use
+
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(bytes, 0, total, bounds)
+                    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@use
+
+                    var sample = 1
+                    while (bounds.outWidth / sample > ARTWORK_TARGET_PX || bounds.outHeight / sample > ARTWORK_TARGET_PX) {
+                        sample *= 2
+                    }
+                    val decoded = BitmapFactory.decodeByteArray(
+                        bytes,
+                        0,
+                        total,
+                        BitmapFactory.Options().apply {
+                            inSampleSize = sample
+                            inPreferredConfig = Bitmap.Config.ARGB_8888
+                        }
+                    )
+                    if (decoded != null && generation == artworkGeneration.get() && desiredArtworkUrl == rawUrl) {
+                        artwork = decoded
+                        artworkUrl = rawUrl
+                        published = true
+                    }
                 }
             } catch (_: Exception) {
             } finally {
-                connection?.disconnect()
                 val superseded = generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl
                 synchronized(fetchLock) {
+                    if (activeArtworkCall === call) activeArtworkCall = null
                     if (fetchingArtworkUrl == rawUrl) fetchingArtworkUrl = ""
                 }
                 if (published || superseded) render(context, latestState)
