@@ -19,6 +19,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.widget.RecognitionWidgetCenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -108,6 +109,7 @@ class MusicRecognitionService : Service() {
         observerJob = scope.launch {
             LevyraRecognitionCenter.get(this@MusicRecognitionService).state.collect { state ->
                 requestTileRefresh()
+                RecognitionWidgetCenter.render(this@MusicRecognitionService, state)
                 when (state) {
                     RecognitionState.Listening -> notifications.notify(notifications.listening(strings()))
                     RecognitionState.Identifying -> notifications.notify(notifications.processing(strings()))
@@ -160,6 +162,7 @@ class MusicRecognitionService : Service() {
             else -> notifications.cancel()
         }
         requestTileRefresh()
+        RecognitionWidgetCenter.render(this, state)
         stopSelf()
     }
 

@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.PlayerTransportControls
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
+import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
@@ -1216,6 +1217,22 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         pendingArtist?.let { artistName ->
             viewModel.openArtistByName(artistName)
             LevyraLaunchActions.pendingArtist.value = null
+        }
+    }
+    val pendingRelease by LevyraLaunchActions.pendingRelease
+    LaunchedEffect(pendingRelease) {
+        pendingRelease?.let { release ->
+            viewModel.openAlbum(
+                AlbumHit(
+                    title = release.title,
+                    artist = release.artist,
+                    year = release.year,
+                    thumbnailUrl = release.artworkUrl,
+                    query = "${release.artist} ${release.title}".trim(),
+                    browseId = release.browseId
+                )
+            )
+            LevyraLaunchActions.pendingRelease.value = null
         }
     }
     val pendingSharedMedia by LevyraLaunchActions.pendingSharedMedia
@@ -12879,6 +12896,7 @@ private fun PlayerScreen(
                         }
                     }
                 }
+                if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
                 if (!state.isVideoMode && track != null) {
                     val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
                     PlayerGlassIconButton(

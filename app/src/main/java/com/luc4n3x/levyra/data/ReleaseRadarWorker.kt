@@ -33,7 +33,7 @@ class ReleaseRadarWorker(
 
     override suspend fun doWork(): Result {
         val store = FollowedArtistsStore(applicationContext)
-        val followed = store.load()
+        val followed = store.loadOrNull() ?: return Result.retry()
         if (followed.isEmpty()) return Result.success()
         val artistRepository = ArtistRepository(YoutubeMusicRepository(applicationContext), applicationContext)
         var notified = 0
@@ -43,22 +43,27 @@ class ReleaseRadarWorker(
                 .getOrNull() ?: return@forEach
             val releases = profile.albums + profile.singles
             if (releases.isEmpty()) return@forEach
+            if (store.containsOrNull(artist) != true) return@forEach
+
             val keys = releases.map { releaseKey(it) }.toSet()
             if (!store.hasReleaseBaseline(artist.key)) {
                 store.saveKnownReleases(artist.key, keys)
+                if (store.containsOrNull(artist) == false) store.clearKnownReleases(artist.key)
                 return@forEach
             }
+
             val known = store.knownReleases(artist.key)
-            val fresh = releases.filter { releaseKey(it) !in known }
+            val fresh = releases.distinctBy(::releaseKey).filter { releaseKey(it) !in known }
+            if (store.containsOrNull(artist) != true) return@forEach
             val notifiedKeys = mutableSetOf<String>()
             fresh.take(MAX_NOTIFICATIONS_PER_ARTIST).forEach { release ->
-                if (notified < MAX_NOTIFICATIONS_PER_RUN) {
-                    notifyRelease(artist, release)
+                if (notified < MAX_NOTIFICATIONS_PER_RUN && notifyRelease(artist, release)) {
                     notified++
                     notifiedKeys += releaseKey(release)
                 }
             }
             store.saveKnownReleases(artist.key, known + notifiedKeys)
+            if (store.containsOrNull(artist) == false) store.clearKnownReleases(artist.key)
         }
         return Result.success()
     }
@@ -70,23 +75,28 @@ class ReleaseRadarWorker(
         return (followed + followed).subList(offset, offset + MAX_ARTISTS_PER_RUN)
     }
 
-    private fun notifyRelease(artist: FollowedArtist, release: ArtistRelease) {
+    private fun notifyRelease(artist: FollowedArtist, release: ArtistRelease): Boolean {
         val manager = NotificationManagerCompat.from(applicationContext)
-        if (!manager.areNotificationsEnabled()) return
+        if (!manager.areNotificationsEnabled()) return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 applicationContext,
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            return
+            return false
         }
         ensureChannel()
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra(LevyraLaunchActions.EXTRA_ARTIST, artist.name)
+            putExtra(LevyraLaunchActions.EXTRA_RELEASE_ID, release.browseId)
+            putExtra(LevyraLaunchActions.EXTRA_RELEASE_TITLE, release.title)
+            putExtra(LevyraLaunchActions.EXTRA_RELEASE_ARTIST, artist.name)
+            putExtra(LevyraLaunchActions.EXTRA_RELEASE_ARTWORK, release.thumbnailUrl)
+            putExtra(LevyraLaunchActions.EXTRA_RELEASE_YEAR, release.year)
         }
-        val requestCode = (artist.key + release.title).hashCode()
+        val requestCode = (artist.key + "|" + releaseKey(release)).hashCode()
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,
             requestCode,
@@ -102,8 +112,9 @@ class ReleaseRadarWorker(
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
-        runCatching { manager.notify(requestCode, notification) }
+        return runCatching { manager.notify(requestCode, notification) }
             .onFailure { Timber.w(it, "Release radar notification failed") }
+            .isSuccess
     }
 
     private fun ensureChannel() {
@@ -142,6 +153,10 @@ class ReleaseRadarWorker(
                 ExistingPeriodicWorkPolicy.KEEP,
                 request
             )
+        }
+
+        fun cancel(context: Context) {
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_NAME)
         }
     }
 }

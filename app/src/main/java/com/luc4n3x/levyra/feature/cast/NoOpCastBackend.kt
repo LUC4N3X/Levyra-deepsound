@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.feature.cast
 
 import com.luc4n3x.levyra.domain.RepeatMode
+import androidx.media3.common.Player
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,4 +37,8 @@ class NoOpCastBackend : RemotePlaybackBackend {
     override suspend fun setShuffle(enabled: Boolean) = Unit
 
     override suspend fun setRepeatMode(mode: RepeatMode) = Unit
+
+    override fun attachLocalPlayer(localPlayer: Player): Player = localPlayer
+
+    override fun release() = Unit
 }
