@@ -19,7 +19,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
  * Full-screen artwork-led Home backdrop.
  *
  * The palette follows the current editorial spotlight, while the lower half stays deliberately
- * quiet so shelves remain readable. There are no permanently running animations or bitmap effects.
+ * quiet so shelves remain readable. [accentIntensity] is read in the draw phase so leaving the top
+ * of the page returns Home to its neutral canvas without recomposing content. There are no
+ * permanently running animations or bitmap effects.
  */
 @Composable
 internal fun LevyraHomeAtmosphere(
@@ -27,7 +29,8 @@ internal fun LevyraHomeAtmosphere(
     accentEnd: Color,
     isLight: Boolean,
     animationsEnabled: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    accentIntensity: () -> Float = { 1f }
 ) {
     val primary by animateColorAsState(
         targetValue = accentStart,
@@ -43,14 +46,15 @@ internal fun LevyraHomeAtmosphere(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .homeAtmosphereBackground(primary, secondary, isLight)
+            .homeAtmosphereBackground(primary, secondary, isLight, accentIntensity)
     )
 }
 
 private fun Modifier.homeAtmosphereBackground(
     primary: Color,
     secondary: Color,
-    isLight: Boolean
+    isLight: Boolean,
+    accentIntensity: () -> Float
 ): Modifier = drawWithCache {
     val width = size.width.coerceAtLeast(1f)
     val height = size.height.coerceAtLeast(1f)
@@ -60,7 +64,7 @@ private fun Modifier.homeAtmosphereBackground(
     val primaryRadius = width * 1.18f
     val secondaryRadius = width * 0.86f
     val centreRadius = width * 0.92f
-    val fadeTop = height * 0.25f
+    val fadeTop = height * 0.28f
 
     val base = homeBaseBrush(isLight)
     val primaryHalo = homeHaloBrush(
@@ -87,10 +91,13 @@ private fun Modifier.homeAtmosphereBackground(
     val edgeVignette = homeEdgeVignetteBrush(isLight)
 
     onDrawBehind {
+        val intensity = accentIntensity().coerceIn(0f, 1f)
         drawRect(base)
-        drawCircle(primaryHalo, radius = primaryRadius, center = primaryCenter)
-        drawCircle(secondaryHalo, radius = secondaryRadius, center = secondaryCenter)
-        drawCircle(centreWash, radius = centreRadius, center = centreCenter)
+        if (intensity > 0f) {
+            drawCircle(primaryHalo, radius = primaryRadius, center = primaryCenter, alpha = intensity)
+            drawCircle(secondaryHalo, radius = secondaryRadius, center = secondaryCenter, alpha = intensity)
+            drawCircle(centreWash, radius = centreRadius, center = centreCenter, alpha = intensity)
+        }
         drawRect(edgeVignette)
         drawRect(
             brush = lowerFade,
@@ -151,20 +158,22 @@ private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float):
     val colors = if (isLight) {
         listOf(
             Color.Transparent,
-            Color(0xFFF1F3F8).copy(alpha = 0.78f),
+            Color(0xFFF1F3F8).copy(alpha = 0.42f),
+            Color(0xFFF1F3F8).copy(alpha = 0.86f),
             Color(0xFFF1F3F8)
         )
     } else {
         listOf(
             Color.Transparent,
-            Color.Black.copy(alpha = 0.78f),
+            Color.Black.copy(alpha = 0.42f),
+            Color.Black.copy(alpha = 0.86f),
             Color.Black
         )
     }
     return Brush.verticalGradient(
         colors = colors,
         startY = fadeTop,
-        endY = height * 0.62f
+        endY = height * 0.68f
     )
 }
 

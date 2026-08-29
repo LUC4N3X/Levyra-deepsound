@@ -3,7 +3,9 @@ package com.luc4n3x.levyra.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * Shared visual scale for Levyra's discovery surface.
@@ -34,13 +36,23 @@ object LevyraHomeDesign {
     val HeroHeight: Dp = 244.dp
     val ShelfCorner: Dp = 16.dp
     val ArtworkCorner: Dp = 18.dp
+    val SearchFieldHeight: Dp = 50.dp
+    val SearchFieldCorner: Dp = 16.dp
+    val SectionMarkerWidth: Dp = 3.dp
+    val SectionMarkerHeight: Dp = 20.dp
+    val SectionMarkerTopInset: Dp = 5.dp
+    val RankColumnWidth: Dp = 30.dp
     val ArtworkCardWidth: Dp = 156.dp
     val ArtworkGridCardWidth: Dp = 126.dp
     val ShelfItemGap: Dp = 14.dp
 
+    val FeatureTitleSize: TextUnit = 23.sp
+    val StandardTitleSize: TextUnit = 19.sp
+
     val HeaderShape = RoundedCornerShape(HeaderCorner)
     val SettingsShape = RoundedCornerShape(16.dp)
     val MoodChipShape = RoundedCornerShape(MoodChipCorner)
+    val SearchFieldShape = RoundedCornerShape(SearchFieldCorner)
     val HeroShape = RoundedCornerShape(HeroCorner)
     val ShelfShape = RoundedCornerShape(ShelfCorner)
     val ArtworkShape = RoundedCornerShape(ArtworkCorner)

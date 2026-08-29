@@ -50,7 +50,8 @@ Use the platform typography stack already shipped by Levyra.
 |---|---:|---:|---|
 | Home greeting | 23–26sp | 800–900 | Personal and immediately readable |
 | Brand wordmark | 26–30sp | 800–900 | Tight tracking |
-| Section title | 20–22sp | 700–800 | Clear and compact |
+| Section title (feature) | 23sp | 900 | Personal and editorial shelves |
+| Section title (standard) | 19sp | 900 | Later exploratory shelves |
 | Card title | 14–16sp | 600–700 | Maximum two lines |
 | Metadata | 11–13sp | 400–600 | Muted colour |
 | Utility label | 11–13sp | 700–800 | Short labels only |
@@ -81,6 +82,7 @@ It contains:
 
 - the Levyra logo and wordmark;
 - a large time-based greeting;
+- a full-width search entry showing the search placeholder;
 - a visible settings control with icon and text;
 - restrained cyan/violet atmospheric accents;
 - one unified surface instead of multiple floating pills.
@@ -110,6 +112,13 @@ The greeting should feel personal and premium, not like a status chip. Settings 
 - play, equalizer or overflow action at the end;
 - suitable for quick picks and charts.
 
+### Ranking row
+
+- no card background or border; the list sits directly on the canvas;
+- right-aligned rank column, gradient numerals for the first three positions;
+- 52dp artwork, title and artist in one text column;
+- reserved for Top 50 so ranking never reads like another carousel.
+
 ### Editorial hero
 
 - only one strong hero per viewport;
@@ -131,7 +140,7 @@ The greeting should feel personal and premium, not like a status chip. Settings 
 
 ### Home ordering
 
-1. Levyra greeting and settings header.
+1. Levyra greeting, search entry and settings header.
 2. Mood chips.
 3. Levyra editorial spotlight.
 4. Continue listening when relevant.
@@ -165,7 +174,7 @@ The Home atmosphere consists of:
 
 The background must not contain circuit nodes, dense particles or multiple decorative arcs. It should support artwork rather than compete with it.
 
-Palette transitions may crossfade when animations are enabled. Avoid infinite background animation and expensive blur during scrolling.
+Palette transitions may crossfade when animations are enabled. The artwork halos belong to the top of the page: they fade out as the Home list scrolls away from the first item, so lower shelves sit on the neutral canvas. The fade is driven in the draw phase and is skipped when animations are disabled. Avoid infinite background animation and expensive blur during scrolling.
 
 ## 10. Motion and interaction
 

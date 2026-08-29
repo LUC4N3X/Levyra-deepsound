@@ -529,6 +529,8 @@ private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
 private const val HOME_SECTION_HEADER_CONTENT_TYPE = "home-section-header"
 private const val HOME_DENSE_SHELF_CONTENT_TYPE = "home-dense-shelf"
 private const val HOME_ARTWORK_GRID_CONTENT_TYPE = "home-artwork-grid"
+private val HOME_ATMOSPHERE_FADE_DISTANCE = 120.dp
+private const val HOME_ATMOSPHERE_FADE_STEPS = 10f
 private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 244.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 336.dp
@@ -566,6 +568,23 @@ private fun HomeSectionLead(compact: Boolean, content: @Composable () -> Unit) {
     Box(modifier = Modifier.padding(top = LevyraHomeDesign.sectionLead(compact))) {
         content()
     }
+}
+
+private enum class HomeSectionEmphasis { Accent, Neutral, Quiet }
+
+@Composable
+private fun HomeSectionMarker() {
+    Box(
+        modifier = Modifier
+            .padding(top = LevyraHomeDesign.SectionMarkerTopInset)
+            .size(LevyraHomeDesign.SectionMarkerWidth, LevyraHomeDesign.SectionMarkerHeight)
+            .clip(CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(LevyraCyan, LevyraViolet.copy(alpha = 0.55f))
+                )
+            )
+    )
 }
 
 private fun cinematicGlassBrush(
@@ -854,39 +873,52 @@ private fun HomeSectionHeader(
     title: String,
     subtitle: String? = null,
     onPlayAll: (() -> Unit)? = null,
+    emphasis: HomeSectionEmphasis = HomeSectionEmphasis.Neutral,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val displayTitle = remember(title) { cleanHomeSectionTitle(title) }
     val displaySubtitle = subtitle?.trim().orEmpty()
+    val quiet = emphasis == HomeSectionEmphasis.Quiet
+    val titleSize = if (quiet) {
+        LevyraHomeDesign.StandardTitleSize
+    } else {
+        LevyraHomeDesign.FeatureTitleSize
+    }
 
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = if (displaySubtitle.isBlank()) Alignment.CenterVertically else Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
         ) {
-            Text(
-                text = displayTitle,
-                color = LevyraText,
-                fontSize = 23.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
-                letterSpacing = (-0.65).sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (displaySubtitle.isNotBlank()) {
+            if (emphasis == HomeSectionEmphasis.Accent) {
+                HomeSectionMarker()
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
-                    text = displaySubtitle,
-                    color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                    fontWeight = FontWeight.Medium
+                    text = displayTitle,
+                    color = if (quiet) LevyraText.copy(alpha = 0.94f) else LevyraText,
+                    fontSize = titleSize,
+                    lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
+                    letterSpacing = if (quiet) (-0.45).sp else (-0.65).sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                if (displaySubtitle.isNotBlank()) {
+                    Text(
+                        text = displaySubtitle,
+                        color = LevyraMuted,
+                        fontSize = 12.5.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
         onPlayAll?.let { action ->
@@ -6171,13 +6203,32 @@ private fun HomeScreen(
         animationsEnabled = state.animationsEnabled
     )
     val compactHome = state.interfaceSettings.compactHome
+    val atmosphereFadePx = with(LocalDensity.current) { HOME_ATMOSPHERE_FADE_DISTANCE.toPx() }
+    val atmosphereMotionEnabled = state.animationsEnabled
+    val atmosphereIntensity = remember(homeListState, atmosphereFadePx, atmosphereMotionEnabled) {
+        derivedStateOf {
+            when {
+                !atmosphereMotionEnabled -> 1f
+                homeListState.firstVisibleItemIndex > 0 -> 0f
+                else -> {
+                    val remaining = 1f - homeListState.firstVisibleItemScrollOffset / atmosphereFadePx
+                    val clamped = remaining.coerceIn(0f, 1f)
+                    (clamped * HOME_ATMOSPHERE_FADE_STEPS).roundToInt() / HOME_ATMOSPHERE_FADE_STEPS
+                }
+            }
+        }
+    }
+    val atmosphereIntensityProvider: () -> Float = remember(atmosphereIntensity) {
+        { atmosphereIntensity.value }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         LevyraHomeAtmosphere(
             accentStart = animatedHomeAccentStart,
             accentEnd = animatedHomeAccentEnd,
             isLight = LevyraIsLight,
             animationsEnabled = state.animationsEnabled,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            accentIntensity = atmosphereIntensityProvider
         )
         LazyColumn(
             state = homeListState,
@@ -6249,6 +6300,7 @@ private fun HomeScreen(
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
+                            emphasis = HomeSectionEmphasis.Accent,
                             onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
                             onPlayAll = { viewModel.playAll(quickPicks.tracks) }
                         )
@@ -6280,7 +6332,8 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
                             SectionHeaderAction(
-                                strings.newReleases,
+                                title = strings.newReleases,
+                                emphasis = HomeSectionEmphasis.Accent,
                                 onPlayAll = { viewModel.playAll(newReleases.tracks) }
                             )
                         }
@@ -6304,7 +6357,8 @@ private fun HomeScreen(
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
                             SectionHeaderAction(
-                                strings.albumsForYou,
+                                title = strings.albumsForYou,
+                                emphasis = HomeSectionEmphasis.Accent,
                                 onPlayAll = { viewModel.playAlbumRecommendations(homeAlbums) }
                             )
                         }
@@ -6394,7 +6448,12 @@ private fun HomeScreen(
             ) {
                 item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
-                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
+                        HomeSectionInset {
+                            HomeSectionHeader(
+                                title = strings.releaseRadar,
+                                emphasis = HomeSectionEmphasis.Quiet
+                            )
+                        }
                     }
                 }
                 item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -6412,7 +6471,12 @@ private fun HomeScreen(
             ) {
                 item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
-                        HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
+                        HomeSectionInset {
+                            HomeSectionHeader(
+                                title = strings.similarToFollowed,
+                                emphasis = HomeSectionEmphasis.Quiet
+                            )
+                        }
                     }
                 }
                 item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -6451,6 +6515,7 @@ private fun HomeScreen(
                                         currentId = state.currentTrack?.id,
                                         isPlaying = state.isPlaying,
                                         isResolving = state.isResolving,
+                                        emphasis = HomeSectionEmphasis.Quiet,
                                         onPlay = { track -> viewModel.playFrom(section.tracks, track) },
                                         onPlayAll = { viewModel.playAll(section.tracks) }
                                     )
@@ -6464,7 +6529,8 @@ private fun HomeScreen(
                                 HomeSectionLead(compactHome) {
                                     HomeSectionInset {
                                         SectionHeaderAction(
-                                            section.title,
+                                            title = section.title,
+                                            emphasis = HomeSectionEmphasis.Quiet,
                                             onPlayAll = { viewModel.playAll(section.tracks) }
                                         )
                                     }
@@ -6507,7 +6573,8 @@ private fun HomeScreen(
                         HomeSectionLead(compactHome) {
                             HomeSectionInset {
                                 SectionHeaderAction(
-                                    "Top ${state.charts.size.coerceAtMost(50)} ${region?.label ?: "Global"}",
+                                    title = "Top ${state.charts.size.coerceAtMost(50)} ${region?.label ?: "Global"}",
+                                    emphasis = HomeSectionEmphasis.Accent,
                                     onPlayAll = { viewModel.playAll(state.charts) }
                                 )
                             }
@@ -6561,7 +6628,7 @@ private fun HomeScreen(
                             ) { chunkIndex, chunk ->
                                 Column(
                                     modifier = Modifier.width(320.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     chunk.forEachIndexed { itemIndex, track ->
                                         val rank = chunkIndex * 4 + itemIndex + 1
@@ -6985,6 +7052,7 @@ private fun HomeEditorialCollectionsShelf(
         HomeSectionHeader(
             title = strings.collectionsTitle,
             subtitle = strings.collectionsSubtitle,
+            emphasis = HomeSectionEmphasis.Accent,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
@@ -7210,6 +7278,7 @@ private fun HomeQuickPicksShelf(
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
+    emphasis: HomeSectionEmphasis,
     onPlay: (Track) -> Unit,
     onPlayAll: () -> Unit
 ) {
@@ -7228,7 +7297,7 @@ private fun HomeQuickPicksShelf(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionInset {
-            SectionHeaderAction(title, onPlayAll)
+            SectionHeaderAction(title = title, emphasis = emphasis, onPlayAll = onPlayAll)
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
@@ -7497,6 +7566,7 @@ private fun TrendingArtistsShelf(
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         HomeSectionHeader(
             title = strings.artists,
+            emphasis = HomeSectionEmphasis.Quiet,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
@@ -7593,6 +7663,7 @@ private fun ResonanceShelf(
             title = strings.voicesTitle,
             subtitle = strings.voicesSubtitle,
             onPlayAll = onPlayAll,
+            emphasis = HomeSectionEmphasis.Accent,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
@@ -7802,7 +7873,9 @@ private fun HomeMusicVideoShelf(
             .map(::homeMusicVideoPreviewTrack)
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HomeSectionInset { HomeSectionHeader(title) }
+        HomeSectionInset {
+            HomeSectionHeader(title = title, emphasis = HomeSectionEmphasis.Quiet)
+        }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -7950,6 +8023,7 @@ private fun PersonalListeningShelf(
             title = strings.personalOrbitTitle,
             subtitle = strings.personalOrbitSubtitle,
             onPlayAll = onPlayAll,
+            emphasis = HomeSectionEmphasis.Accent,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
 
@@ -16654,52 +16728,93 @@ private fun GreetingBar(
         strings.formatGreeting(userName, greetingHour)
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LevyraLogoMark(size = 38.dp)
-            Column(
+            Row(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
             ) {
-                Text(
-                    text = "LEVYRA",
-                    color = LevyraText,
-                    fontSize = 20.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.65).sp,
-                    maxLines = 1
-                )
-                Text(
-                    text = greeting,
-                    color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                LevyraLogoMark(size = 38.dp)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = "LEVYRA",
+                        color = LevyraText,
+                        fontSize = 20.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.65).sp,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = greeting,
+                        color = LevyraMuted,
+                        fontSize = 12.5.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
+            OccasionallyRotatingSettingsButton(
+                animationsEnabled = animationsEnabled,
+                busy = isResolving,
+                contentDescription = strings.settings,
+                loading = isResolving,
+                onClick = onSettings
+            )
         }
-        HomeHeaderIconButton(
-            icon = Icons.Rounded.Search,
-            contentDescription = strings.search,
-            onClick = onSearch
+        HomeSearchField(onClick = onSearch)
+    }
+}
+
+@Composable
+private fun HomeSearchField(onClick: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    val isLight = LevyraIsLight
+    val shape = LevyraHomeDesign.SearchFieldShape
+    val background = if (isLight) {
+        Color.White.copy(alpha = 0.76f)
+    } else {
+        Color(0xFF12141A).copy(alpha = 0.78f)
+    }
+    val border = if (isLight) Color(0x1711131F) else Color.White.copy(alpha = 0.07f)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(LevyraHomeDesign.SearchFieldHeight)
+            .clip(shape)
+            .background(background, shape)
+            .border(Dp.Hairline, border, shape)
+            .pressable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Search,
+            contentDescription = null,
+            tint = LevyraMuted,
+            modifier = Modifier.size(19.dp)
         )
-        OccasionallyRotatingSettingsButton(
-            animationsEnabled = animationsEnabled,
-            busy = isResolving,
-            contentDescription = strings.settings,
-            loading = isResolving,
-            onClick = onSettings
+        Text(
+            text = strings.searchPlaceholder,
+            color = LevyraMuted,
+            fontSize = 13.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -17204,23 +17319,28 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
 }
 
 @Composable
-private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
+private fun SectionHeaderAction(
+    title: String,
+    emphasis: HomeSectionEmphasis,
+    onPlayAll: () -> Unit
+) {
     HomeSectionHeader(
         title = title,
-        onPlayAll = onPlayAll
+        onPlayAll = onPlayAll,
+        emphasis = emphasis
     )
 }
 
 @Composable
 private fun HomeAlbumLoadingRow() {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         items(4, key = { "home-album-loading-$it" }) {
             Column(
                 modifier = Modifier
-                    .width(168.dp)
+                    .width(LevyraHomeDesign.ArtworkCardWidth)
                     .levyraShimmer(),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
@@ -17228,7 +17348,7 @@ private fun HomeAlbumLoadingRow() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(LevyraHomeDesign.ArtworkShape)
                         .background(Color.White.copy(alpha = 0.07f))
                 )
                 Box(
@@ -17255,7 +17375,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
     if (albums.isEmpty()) return
     val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
@@ -17277,7 +17397,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         scaleX = scale
                         scaleY = scale
                     }
-                    .width(172.dp)
+                    .width(LevyraHomeDesign.ArtworkCardWidth)
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
@@ -17742,96 +17862,121 @@ private fun ChartRow(
     onAddToPlaylist: () -> Unit,
     onAddToQueue: () -> Unit
 ) {
-    Surface(
-        color = if (isCurrent) LevyraCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.07f)),
-        shape = RoundedCornerShape(16.dp),
+    val shape = LevyraHomeDesign.ShelfShape
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(shape)
+            .background(
+                if (isCurrent) LevyraCyan.copy(alpha = 0.11f) else Color.Transparent,
+                shape
+            )
             .pressable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Box(
+            modifier = Modifier.width(LevyraHomeDesign.RankColumnWidth),
+            contentAlignment = Alignment.CenterEnd
         ) {
-            Box(modifier = Modifier.width(26.dp), contentAlignment = Alignment.Center) {
-                if (rank <= 3) {
-                    Text(
-                        text = rank.toString(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        style = TextStyle(brush = Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-                    )
-                } else {
-                    Text(
-                        text = rank.toString(),
-                        color = LevyraMuted,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
+            if (rank <= 3) {
+                Text(
+                    text = rank.toString(),
+                    fontSize = 22.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.6).sp,
+                    textAlign = TextAlign.End,
+                    style = TextStyle(brush = Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
+                )
+            } else {
+                Text(
+                    text = rank.toString(),
+                    color = LevyraMuted.copy(alpha = 0.78f),
+                    fontSize = 17.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.4).sp,
+                    textAlign = TextAlign.End
+                )
             }
-            Box {
-                CoverImage(track, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)), zoom = 1.35f)
-                if (isPlaying || isResolving) {
-                    Surface(color = Color.Black.copy(alpha = 0.45f), shape = RoundedCornerShape(12.dp), modifier = Modifier.matchParentSize()) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                            else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                        }
+        }
+        Box {
+            CoverImage(track, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)), zoom = 1.35f)
+            if (isPlaying || isResolving) {
+                Surface(color = Color.Black.copy(alpha = 0.45f), shape = RoundedCornerShape(12.dp), modifier = Modifier.matchParentSize()) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                     }
                 }
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                track.title,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 14.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        var expanded by remember { mutableStateOf(false) }
+        Box {
+            IconButton(onClick = { expanded = true }) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = LocalLevyraStrings.current.options,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            var expanded by remember { mutableStateOf(false) }
-            Box {
-                IconButton(onClick = { expanded = true }) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = LocalLevyraStrings.current.options,
-                        tint = LevyraMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(if (isFavorite) LocalLevyraStrings.current.removeFromFavorites else LocalLevyraStrings.current.addToFavorites) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                contentDescription = null,
-                                tint = if (isFavorite) LevyraPink else LocalContentColor.current
-                            )
-                        },
-                        onClick = {
-                            expanded = false
-                            onFavorite()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(LocalLevyraStrings.current.addToQueue) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
-                        onClick = {
-                            expanded = false
-                            onAddToQueue()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(LocalLevyraStrings.current.addToPlaylist) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
-                        onClick = {
-                            expanded = false
-                            onAddToPlaylist()
-                        }
-                    )
-                }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(if (isFavorite) LocalLevyraStrings.current.removeFromFavorites else LocalLevyraStrings.current.addToFavorites) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (isFavorite) LevyraPink else LocalContentColor.current
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onFavorite()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(LocalLevyraStrings.current.addToQueue) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
+                    onClick = {
+                        expanded = false
+                        onAddToQueue()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(LocalLevyraStrings.current.addToPlaylist) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
+                    onClick = {
+                        expanded = false
+                        onAddToPlaylist()
+                    }
+                )
             }
         }
     }

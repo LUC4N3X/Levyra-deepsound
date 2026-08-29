@@ -41,6 +41,26 @@ class HomeDesignTest {
     }
 
     @Test
+    fun `home search entry stays reachable and part of the chip family`() {
+        assertTrue(LevyraHomeDesign.SearchFieldHeight >= LevyraPlayerDesign.MinimumTouchTarget)
+        assertTrue(LevyraHomeDesign.SearchFieldHeight >= LevyraHomeDesign.MoodChipHeight)
+        assertTrue(LevyraHomeDesign.SearchFieldCorner <= LevyraHomeDesign.ArtworkCorner)
+    }
+
+    @Test
+    fun `section titles keep two readable tiers`() {
+        assertTrue(LevyraHomeDesign.StandardTitleSize.value < LevyraHomeDesign.FeatureTitleSize.value)
+        assertTrue(LevyraHomeDesign.StandardTitleSize.value >= 18f)
+        assertTrue(LevyraHomeDesign.SectionMarkerHeight > LevyraHomeDesign.SectionMarkerWidth)
+    }
+
+    @Test
+    fun `ranking column fits two digit positions`() {
+        assertTrue(LevyraHomeDesign.RankColumnWidth.value >= 28f)
+        assertTrue(LevyraHomeDesign.RankColumnWidth < LevyraHomeDesign.ArtworkGridCardWidth)
+    }
+
+    @Test
     fun `artwork cards keep one radius family and two widths`() {
         assertTrue(LevyraHomeDesign.ArtworkCorner > LevyraHomeDesign.ShelfCorner)
         assertTrue(LevyraHomeDesign.ArtworkCorner < LevyraHomeDesign.HeroCorner)
