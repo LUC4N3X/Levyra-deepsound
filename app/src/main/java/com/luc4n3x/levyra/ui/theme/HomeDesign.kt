@@ -27,10 +27,6 @@ object LevyraHomeDesign {
     val SectionGapCompact: Dp = 8.dp
     val SectionStride: Dp = 30.dp
     val SectionStrideCompact: Dp = 22.dp
-    val SectionStrideFeature: Dp = 40.dp
-    val SectionStrideFeatureCompact: Dp = 28.dp
-    val SectionStrideQuiet: Dp = 24.dp
-    val SectionStrideQuietCompact: Dp = 18.dp
     val HeaderCorner: Dp = 20.dp
     val HeaderPadding: Dp = 14.dp
     val SettingsControlHeight: Dp = 48.dp
@@ -47,9 +43,6 @@ object LevyraHomeDesign {
     val SectionMarkerTopInset: Dp = 5.dp
     val RankColumnWidth: Dp = 30.dp
     val ArtworkCardWidth: Dp = 156.dp
-    val ArtworkCardWidthLarge: Dp = 182.dp
-    val CollectionCardWidth: Dp = 268.dp
-    val CollectionCardHeight: Dp = 188.dp
     val ArtworkGridCardWidth: Dp = 126.dp
     val ShelfItemGap: Dp = 14.dp
 
@@ -70,17 +63,5 @@ object LevyraHomeDesign {
         SectionStrideCompact - SectionGapCompact
     } else {
         SectionStride - SectionGap
-    }
-
-    fun featureSectionLead(compact: Boolean): Dp = if (compact) {
-        SectionStrideFeatureCompact - SectionGapCompact
-    } else {
-        SectionStrideFeature - SectionGap
-    }
-
-    fun quietSectionLead(compact: Boolean): Dp = if (compact) {
-        SectionStrideQuietCompact - SectionGapCompact
-    } else {
-        SectionStrideQuiet - SectionGap
     }
 }

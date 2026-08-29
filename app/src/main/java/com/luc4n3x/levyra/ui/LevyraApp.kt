@@ -556,8 +556,6 @@ internal val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.co
 private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
 internal val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
 
-private enum class HomeSectionEmphasis { Accent, Neutral, Quiet }
-
 @Composable
 private fun HomeSectionInset(content: @Composable () -> Unit) {
     Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
@@ -566,20 +564,13 @@ private fun HomeSectionInset(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun HomeSectionLead(
-    compact: Boolean,
-    emphasis: HomeSectionEmphasis = HomeSectionEmphasis.Neutral,
-    content: @Composable () -> Unit
-) {
-    val lead = when (emphasis) {
-        HomeSectionEmphasis.Accent -> LevyraHomeDesign.featureSectionLead(compact)
-        HomeSectionEmphasis.Quiet -> LevyraHomeDesign.quietSectionLead(compact)
-        HomeSectionEmphasis.Neutral -> LevyraHomeDesign.sectionLead(compact)
-    }
-    Box(modifier = Modifier.padding(top = lead)) {
+private fun HomeSectionLead(compact: Boolean, content: @Composable () -> Unit) {
+    Box(modifier = Modifier.padding(top = LevyraHomeDesign.sectionLead(compact))) {
         content()
     }
 }
+
+private enum class HomeSectionEmphasis { Accent, Neutral, Quiet }
 
 @Composable
 private fun HomeSectionMarker() {
@@ -6213,9 +6204,11 @@ private fun HomeScreen(
     )
     val compactHome = state.interfaceSettings.compactHome
     val atmosphereFadePx = with(LocalDensity.current) { HOME_ATMOSPHERE_FADE_DISTANCE.toPx() }
-    val atmosphereIntensity = remember(homeListState, atmosphereFadePx) {
+    val atmosphereMotionEnabled = state.animationsEnabled
+    val atmosphereIntensity = remember(homeListState, atmosphereFadePx, atmosphereMotionEnabled) {
         derivedStateOf {
             when {
+                !atmosphereMotionEnabled -> 1f
                 homeListState.firstVisibleItemIndex > 0 -> 0f
                 else -> {
                     val remaining = 1f - homeListState.firstVisibleItemScrollOffset / atmosphereFadePx
@@ -6300,7 +6293,7 @@ private fun HomeScreen(
 
             if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
                 item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                    HomeSectionLead(compactHome) {
                         HomeQuickPicksShelf(
                             title = quickPicks.title.ifBlank { strings.quickPicks },
                             tracks = quickPicks.tracks,
@@ -6317,7 +6310,7 @@ private fun HomeScreen(
 
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
                 item(key = "home-personal", contentType = "home-shelf") {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                    HomeSectionLead(compactHome) {
                         PersonalListeningShelf(
                             tracks = visiblePersonalTracks,
                             currentId = state.currentTrack?.id,
@@ -6336,7 +6329,7 @@ private fun HomeScreen(
                 newReleases != null && newReleases.tracks.isNotEmpty()
             ) {
                 item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                    HomeSectionLead(compactHome) {
                         HomeSectionInset {
                             SectionHeaderAction(
                                 title = strings.newReleases,
@@ -6351,7 +6344,6 @@ private fun HomeScreen(
                         tracks = newReleases.tracks,
                         currentId = state.currentTrack?.id,
                         animationsEnabled = state.animationsEnabled,
-                        cardWidth = LevyraHomeDesign.ArtworkCardWidthLarge,
                         onPlay = { viewModel.playFrom(newReleases.tracks, it) }
                     )
                 }
@@ -6362,7 +6354,7 @@ private fun HomeScreen(
                 (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)
             ) {
                 item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                    HomeSectionLead(compactHome) {
                         HomeSectionInset {
                             SectionHeaderAction(
                                 title = strings.albumsForYou,
@@ -6387,7 +6379,7 @@ private fun HomeScreen(
 
             if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                    HomeSectionLead(compactHome) {
                         HomeEditorialCollectionsShelf(
                             collections = visibleEditorialCollections,
                             animationsEnabled = state.animationsEnabled,
@@ -6402,7 +6394,7 @@ private fun HomeScreen(
                 (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
             ) {
                 item(key = "home-trending-artists", contentType = "home-shelf") {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Quiet) {
+                    HomeSectionLead(compactHome) {
                         TrendingArtistsShelf(
                             artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
                             loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) {
@@ -6418,7 +6410,7 @@ private fun HomeScreen(
 
             if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
                 item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Quiet) {
+                    HomeSectionLead(compactHome) {
                         HomeMusicVideoShelf(
                             title = strings.video,
                             tracks = homeVideoTracks,
@@ -6437,7 +6429,7 @@ private fun HomeScreen(
                 resonanceTracks.isNotEmpty()
             ) {
                 item(key = "home-resonance", contentType = "home-shelf") {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                    HomeSectionLead(compactHome) {
                         ResonanceShelf(
                             tracks = resonanceTracks,
                             currentId = state.currentTrack?.id,
@@ -6455,7 +6447,7 @@ private fun HomeScreen(
                 state.releaseRadar.isNotEmpty()
             ) {
                 item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Quiet) {
+                    HomeSectionLead(compactHome) {
                         HomeSectionInset {
                             HomeSectionHeader(
                                 title = strings.releaseRadar,
@@ -6478,7 +6470,7 @@ private fun HomeScreen(
                 state.similarArtists.isNotEmpty()
             ) {
                 item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome, HomeSectionEmphasis.Quiet) {
+                    HomeSectionLead(compactHome) {
                         HomeSectionInset {
                             HomeSectionHeader(
                                 title = strings.similarToFollowed,
@@ -6516,7 +6508,7 @@ private fun HomeScreen(
                                 key = "sec-other-$sectionKey-dense",
                                 contentType = HOME_DENSE_SHELF_CONTENT_TYPE
                             ) {
-                                HomeSectionLead(compactHome, HomeSectionEmphasis.Quiet) {
+                                HomeSectionLead(compactHome) {
                                     HomeQuickPicksShelf(
                                         title = section.title,
                                         tracks = section.tracks,
@@ -6534,7 +6526,7 @@ private fun HomeScreen(
                                 key = "sec-other-$sectionKey-header",
                                 contentType = HOME_SECTION_HEADER_CONTENT_TYPE
                             ) {
-                                HomeSectionLead(compactHome, HomeSectionEmphasis.Quiet) {
+                                HomeSectionLead(compactHome) {
                                     HomeSectionInset {
                                         SectionHeaderAction(
                                             title = section.title,
@@ -6578,7 +6570,7 @@ private fun HomeScreen(
                 if (state.charts.isNotEmpty()) {
                     item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-                        HomeSectionLead(compactHome, HomeSectionEmphasis.Accent) {
+                        HomeSectionLead(compactHome) {
                             HomeSectionInset {
                                 SectionHeaderAction(
                                     title = "Top ${state.charts.size.coerceAtMost(50)} ${region?.label ?: "Global"}",
@@ -7115,8 +7107,8 @@ private fun HomeEditorialCollectionCard(
 
     Box(
         modifier = Modifier
-            .width(LevyraHomeDesign.CollectionCardWidth)
-            .height(LevyraHomeDesign.CollectionCardHeight)
+            .width(236.dp)
+            .height(172.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -17506,13 +17498,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
 }
 
 @Composable
-private fun AlbumCardRow(
-    tracks: List<Track>,
-    currentId: String?,
-    animationsEnabled: Boolean,
-    cardWidth: Dp = LevyraHomeDesign.ArtworkCardWidth,
-    onPlay: (Track) -> Unit
-) {
+private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
@@ -17527,7 +17513,7 @@ private fun AlbumCardRow(
                 track = track,
                 isCurrent = track.id == currentId,
                 animationsEnabled = animationsEnabled,
-                width = cardWidth,
+                width = LevyraHomeDesign.ArtworkCardWidth,
                 onPlay = { onPlay(track) }
             )
         }

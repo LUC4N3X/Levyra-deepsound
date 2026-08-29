@@ -41,32 +41,6 @@ class HomeDesignTest {
     }
 
     @Test
-    fun `section tiers separate the page rhythm`() {
-        assertTrue(LevyraHomeDesign.featureSectionLead(compact = false) > LevyraHomeDesign.sectionLead(compact = false))
-        assertTrue(LevyraHomeDesign.sectionLead(compact = false) > LevyraHomeDesign.quietSectionLead(compact = false))
-        assertTrue(LevyraHomeDesign.featureSectionLead(compact = true) > LevyraHomeDesign.sectionLead(compact = true))
-        assertTrue(LevyraHomeDesign.sectionLead(compact = true) > LevyraHomeDesign.quietSectionLead(compact = true))
-        assertEquals(
-            LevyraHomeDesign.SectionStrideFeature.value,
-            (LevyraHomeDesign.featureSectionLead(compact = false) + LevyraHomeDesign.sectionGap(compact = false)).value,
-            0.001f
-        )
-        assertEquals(
-            LevyraHomeDesign.SectionStrideQuiet.value,
-            (LevyraHomeDesign.quietSectionLead(compact = false) + LevyraHomeDesign.sectionGap(compact = false)).value,
-            0.001f
-        )
-        assertTrue(LevyraHomeDesign.quietSectionLead(compact = true) > LevyraHomeDesign.SectionGapCompact)
-    }
-
-    @Test
-    fun `lead album shelf keeps a visible artwork step`() {
-        assertTrue(LevyraHomeDesign.ArtworkCardWidthLarge > LevyraHomeDesign.ArtworkCardWidth)
-        assertTrue(LevyraHomeDesign.CollectionCardWidth > LevyraHomeDesign.ArtworkCardWidthLarge)
-        assertTrue(LevyraHomeDesign.CollectionCardWidth > LevyraHomeDesign.CollectionCardHeight)
-    }
-
-    @Test
     fun `home search entry stays reachable and part of the chip family`() {
         assertTrue(LevyraHomeDesign.SearchFieldHeight >= LevyraPlayerDesign.MinimumTouchTarget)
         assertTrue(LevyraHomeDesign.SearchFieldHeight >= LevyraHomeDesign.MoodChipHeight)
