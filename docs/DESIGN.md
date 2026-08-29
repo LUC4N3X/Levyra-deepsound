@@ -94,6 +94,7 @@ The greeting should feel personal and premium, not like a status chip. Settings 
 ### Artwork card
 
 - square album or playlist artwork;
+- 156dp standard width, 182dp for the lead album shelf;
 - 10–14dp artwork radius;
 - title below artwork;
 - metadata below title;
@@ -111,6 +112,12 @@ The greeting should feel personal and premium, not like a status chip. Settings 
 - title and artist in one text column;
 - play, equalizer or overflow action at the end;
 - suitable for quick picks and charts.
+
+### Editorial collection card
+
+- 268x188 landscape card with an artwork mosaic;
+- the widest item on Home, used as the magazine beat between square shelves;
+- title and artists over a vertical scrim, single play affordance.
 
 ### Ranking row
 
@@ -130,7 +137,7 @@ The greeting should feel personal and premium, not like a status chip. Settings 
 ## 7. Layout principles
 
 - Horizontal screen inset: 18dp.
-- Section gap: 22dp standard, 12dp compact.
+- Section stride: 40dp before a feature section, 30dp standard, 24dp before a quiet section; 28/22/18dp in compact Home.
 - Header internal padding: 16dp.
 - Header-to-moods gap: 12dp.
 - Horizontal shelves may extend to the screen edge after the initial inset.
