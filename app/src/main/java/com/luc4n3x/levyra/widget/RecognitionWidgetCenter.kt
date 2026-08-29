@@ -119,17 +119,18 @@ object RecognitionWidgetCenter {
             try {
                 if (generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl) return@Thread
                 val request = Request.Builder().url(safeUrl).get().build()
-                call = artworkClient.newCall(request)
+                val artworkCall = artworkClient.newCall(request)
+                call = artworkCall
                 synchronized(fetchLock) {
                     if (generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl) {
-                        call.cancel()
-                        return@synchronized
+                        artworkCall.cancel()
+                    } else {
+                        activeArtworkCall = artworkCall
                     }
-                    activeArtworkCall = call
                 }
-                if (call.isCanceled()) return@Thread
+                if (artworkCall.isCanceled()) return@Thread
 
-                call.execute().use { response ->
+                artworkCall.execute().use { response ->
                     if (!response.isSuccessful ||
                         !SafeImageUrlPolicy.isAllowedImageMimeType(response.body.contentType()?.toString())
                     ) return@use
@@ -139,18 +140,20 @@ object RecognitionWidgetCenter {
 
                     val bytes = ByteArray(MAX_WIDGET_ARTWORK_BYTES + 1)
                     var total = 0
+                    var obsolete = false
                     response.body.byteStream().use { input ->
                         while (total < bytes.size) {
                             if (generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl) {
-                                call.cancel()
-                                return@use
+                                obsolete = true
+                                artworkCall.cancel()
+                                break
                             }
                             val read = input.read(bytes, total, bytes.size - total)
                             if (read < 0) break
                             total += read
                         }
                     }
-                    if (total <= 0 || total > MAX_WIDGET_ARTWORK_BYTES) return@use
+                    if (obsolete || total <= 0 || total > MAX_WIDGET_ARTWORK_BYTES) return@use
 
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                     BitmapFactory.decodeByteArray(bytes, 0, total, bounds)
