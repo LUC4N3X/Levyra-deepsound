@@ -24,6 +24,7 @@
   <a href="https://apt.izzysoft.de/fdroid/index/apk/com.luc4n3x.levyra?repo=main"><img src="docs/assets/levyra-izzyondroid.svg" alt="Get Levyra on IzzyOnDroid" width="365" /></a>
 </p>
 <p align="center">
+  <a href="https://appteka.store/apps/b5br313609"><img src="docs/assets/levyra-appteka.svg" alt="Get Levyra on Appteka" width="365" /></a>&nbsp;&nbsp;
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Windows Desktop" width="365" /></a>
 </p>
 
