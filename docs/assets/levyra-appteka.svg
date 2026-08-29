@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-label="Get Levyra on Appteka">
+  <title>Get Levyra on Appteka</title>
+  <defs>
+    <linearGradient id="ap-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0E131F"/>
+      <stop offset="60%" stop-color="#080C14"/>
+      <stop offset="100%" stop-color="#05080E"/>
+    </linearGradient>
+    <linearGradient id="ap-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3B4261" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#1E2235" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="ap-accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#48C919"/>
+      <stop offset="100%" stop-color="#2F9B04"/>
+    </linearGradient>
+    <radialGradient id="ap-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#48C919" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#2F9B04" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="6" y="6" width="748" height="142" rx="22" fill="url(#ap-bg)" stroke="url(#ap-border)" stroke-width="1.5"/>
+  <path d="M28 7h704" stroke="#FFFFFF" stroke-opacity="0.08" stroke-linecap="round"/>
+
+  <rect x="18" y="24" width="4" height="106" rx="2" fill="url(#ap-accent)"/>
+
+  <rect x="36" y="27" width="100" height="100" rx="22" fill="#131927" stroke="#253046" stroke-width="1.5"/>
+  <circle cx="86" cy="77" r="43" fill="url(#ap-glow)"/>
+
+  <!-- Official Appteka launcher artwork from solkin/appteka-android -->
+  <g transform="translate(54 45) scale(0.5925926)">
+    <rect width="108" height="108" rx="24" fill="#2F9B04"/>
+    <g transform="translate(33.48 33.48) scale(0.14657143)">
+      <path fill="#F2FFED" d="M25.768,129.575L129.575,25.768C164.08,-8.589 219.727,-8.589 254.232,25.768C288.589,60.126 288.589,115.92 254.232,150.425L150.425,254.232C115.92,288.589 60.126,288.589 25.768,254.232C-8.589,219.727 -8.589,164.08 25.768,129.575ZM46.618,150.425C31.201,165.695 26.062,187.572 31.348,207.1L119.297,119.297L181.552,181.552L233.382,129.575C256.434,106.67 256.434,69.523 233.382,46.618C210.477,23.566 173.33,23.566 150.425,46.618L46.618,150.425Z"/>
+    </g>
+  </g>
+
+  <g transform="translate(156 30)">
+    <rect width="221" height="22" rx="6" fill="#2F9B04" fill-opacity="0.12" stroke="#48C919" stroke-opacity="0.28"/>
+    <circle cx="10" cy="11" r="3" fill="#62DD34"/>
+    <text x="20" y="15" fill="#8BEA67" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="10.5" font-weight="800" letter-spacing="1.08">APPTEKA · ANDROID APP CATALOG</text>
+  </g>
+
+  <text x="156" y="80" fill="#F8FAFC" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="27" font-weight="800" letter-spacing="-0.3">Get Levyra on Appteka</text>
+
+  <text x="156" y="106" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14" font-weight="600">Open source · Direct APK · Alternative Android catalog</text>
+
+  <g transform="translate(156 118)" fill="#48C919" fill-opacity="0.45">
+    <rect x="0" y="7" width="4" height="9" rx="2"/>
+    <rect x="8" y="2" width="4" height="14" rx="2"/>
+    <rect x="16" y="5" width="4" height="11" rx="2"/>
+    <rect x="24" y="0" width="4" height="16" rx="2"/>
+    <rect x="32" y="6" width="4" height="10" rx="2"/>
+    <rect x="40" y="3" width="4" height="13" rx="2"/>
+    <rect x="48" y="8" width="4" height="8" rx="2"/>
+  </g>
+
+  <g transform="translate(548 50)">
+    <rect width="176" height="54" rx="16" fill="url(#ap-accent)"/>
+    <rect width="176" height="54" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.23"/>
+    <text x="68" y="34" text-anchor="middle" fill="#F4FFF0" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif" font-size="14.5" font-weight="900" letter-spacing="0.15">Open listing</text>
+    <path d="M146 27h-16M140 21l6 6-6 6" fill="none" stroke="#F4FFF0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
