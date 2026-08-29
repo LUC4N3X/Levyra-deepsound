@@ -29,6 +29,7 @@ object RecognitionWidgetCenter {
     @Volatile private var desiredArtworkUrl = ""
     @Volatile private var fetchingArtworkUrl = ""
     @Volatile private var activeArtworkCall: Call? = null
+    private var fetchingArtworkGeneration = -1L
     private val artworkGeneration = AtomicLong(0L)
     private val fetchLock = Any()
     private val publicOnlyDns = Dns { hostname ->
@@ -64,6 +65,7 @@ object RecognitionWidgetCenter {
                 activeArtworkCall?.cancel()
                 activeArtworkCall = null
                 fetchingArtworkUrl = ""
+                fetchingArtworkGeneration = -1L
             }
         }
 
@@ -112,6 +114,7 @@ object RecognitionWidgetCenter {
         synchronized(fetchLock) {
             if (fetchingArtworkUrl.isNotBlank()) return
             fetchingArtworkUrl = rawUrl
+            fetchingArtworkGeneration = generation
         }
         Thread {
             var call: Call? = null
@@ -183,7 +186,10 @@ object RecognitionWidgetCenter {
                 val superseded = generation != artworkGeneration.get() || desiredArtworkUrl != rawUrl
                 synchronized(fetchLock) {
                     if (activeArtworkCall === call) activeArtworkCall = null
-                    if (fetchingArtworkUrl == rawUrl) fetchingArtworkUrl = ""
+                    if (fetchingArtworkUrl == rawUrl && fetchingArtworkGeneration == generation) {
+                        fetchingArtworkUrl = ""
+                        fetchingArtworkGeneration = -1L
+                    }
                 }
                 if (published || superseded) render(context, latestState)
             }
