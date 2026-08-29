@@ -35,50 +35,102 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         if (clean.length < 2) return null
         val requested = splitArtists(clean)
         if (requested.isEmpty()) return null
-        val url = "$AMP_BASE_URL/v1/catalog/${storefront()}/search".toHttpUrl().newBuilder()
-            .addQueryParameter("term", clean)
+
+        val token = developerToken()
+        var lastFailure: Throwable? = null
+        for (catalogStorefront in appleArtistMotionStorefronts(storefront())) {
+            val selected = try {
+                findArtistMotionInStorefront(clean, requested, catalogStorefront, token)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastFailure = error
+                continue
+            } ?: continue
+
+            return MotionArtworkCandidate(
+                provider = id,
+                scope = MotionArtworkScope.ARTIST,
+                identity = MotionTrackIdentity(
+                    title = selected.name,
+                    artists = splitArtists(selected.name),
+                    album = "",
+                    durationMs = 0L,
+                    isrc = "",
+                    upc = "",
+                    year = "",
+                    trackId = "",
+                    albumId = ""
+                ),
+                url = selected.video.url,
+                mimeType = "application/x-mpegURL",
+                width = selected.video.width,
+                height = selected.video.height,
+                expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
+            )
+        }
+
+        if (lastFailure != null) {
+            throw MotionProviderException("Apple artist motion lookup failed", lastFailure)
+        }
+        return null
+    }
+
+    private suspend fun findArtistMotionInStorefront(
+        artistName: String,
+        requested: List<String>,
+        storefront: String,
+        token: String
+    ): AppleArtistMotionMatch? {
+        val url = "$AMP_BASE_URL/v1/catalog/$storefront/search".toHttpUrl().newBuilder()
+            .addQueryParameter("term", artistName)
             .addQueryParameter("types", "artists")
             .addQueryParameter("limit", "5")
-            .addQueryParameter("extend", "editorialVideo")
             .build()
-        val data = requestJson(url.toString(), developerToken())
+        val data = requestJson(url.toString(), token)
             .optJSONObject("results")
             ?.optJSONObject("artists")
             ?.optJSONArray("data")
             ?: return null
 
-        val matches = buildList {
-            for (index in 0 until data.length()) {
-                val item = data.optJSONObject(index) ?: continue
-                val attributes = item.optJSONObject("attributes") ?: continue
-                val name = attributes.optString("name").trim()
-                if (name.isBlank() || isUnsafeResult(name, "")) continue
-                if (!artistMatches(requested, splitArtists(name))) continue
-                val video = extractEditorialVideoUrl(attributes.optJSONObject("editorialVideo")) ?: continue
-                add(AppleArtistMotionMatch(item.optString("id").ifBlank { "$name|${video.url}" }, name, video))
-            }
+        val compatible = ArrayList<AppleArtistSearchMatch>(data.length())
+        for (index in 0 until data.length()) {
+            val item = data.optJSONObject(index) ?: continue
+            val attributes = item.optJSONObject("attributes") ?: continue
+            val name = attributes.optString("name").trim()
+            val artistId = item.optString("id").trim()
+            if (name.isBlank() || artistId.isBlank() || isUnsafeResult(name, "")) continue
+            if (!artistMatches(requested, splitArtists(name))) continue
+            compatible += AppleArtistSearchMatch(artistId, name)
         }
-        val selected = selectUnambiguousAppleArtistMotion(matches) ?: return null
-        return MotionArtworkCandidate(
-            provider = id,
-            scope = MotionArtworkScope.ARTIST,
-            identity = MotionTrackIdentity(
-                title = selected.name,
-                artists = splitArtists(selected.name),
-                album = "",
-                durationMs = 0L,
-                isrc = "",
-                upc = "",
-                year = "",
-                trackId = "",
-                albumId = ""
-            ),
-            url = selected.video.url,
-            mimeType = "application/x-mpegURL",
-            width = selected.video.width,
-            height = selected.video.height,
-            expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
-        )
+        if (compatible.isEmpty()) return null
+
+        val normalizedRequested = normalizeMotionText(artistName)
+        val exact = compatible.filter { normalizeMotionText(it.name) == normalizedRequested }
+        val candidates = (exact.ifEmpty { compatible }).take(MAX_ARTIST_DETAIL_CANDIDATES)
+
+        val matches = ArrayList<AppleArtistMotionMatch>(candidates.size)
+        for (candidate in candidates) {
+            val video = fetchArtistMotionByAppleId(candidate.id, storefront, token) ?: continue
+            matches += AppleArtistMotionMatch(candidate.id, candidate.name, video)
+        }
+        return selectUnambiguousAppleArtistMotion(matches)
+    }
+
+    private suspend fun fetchArtistMotionByAppleId(
+        artistId: String,
+        storefront: String,
+        token: String
+    ): AppleEditorialVideo? {
+        val url = "$AMP_BASE_URL/v1/catalog/$storefront/artists/$artistId".toHttpUrl().newBuilder()
+            .addQueryParameter("extend", "editorialVideo,editorialArtwork")
+            .build()
+        val attributes = requestJson(url.toString(), token)
+            .optJSONArray("data")
+            ?.optJSONObject(0)
+            ?.optJSONObject("attributes")
+            ?: return null
+        return selectAppleArtistEditorialVideo(attributes)
     }
 
     private fun storefront(): String =
@@ -333,6 +385,11 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         return (2.0 * left.intersect(right).size.toDouble()) / (left.size + right.size).toDouble()
     }
 
+    private data class AppleArtistSearchMatch(
+        val id: String,
+        val name: String
+    )
+
     private data class AppleSearchResult(
         val item: JSONObject,
         val attributes: JSONObject,
@@ -354,6 +411,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         const val AMP_BASE_URL = "https://amp-api.music.apple.com"
         const val APPLE_BROWSE_URL = "https://music.apple.com/us/browse"
         const val TOKEN_EXPIRY_MARGIN_MS = 5L * 60L * 1000L
+        const val MAX_ARTIST_DETAIL_CANDIDATES = 3
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
         val SCRIPT_REGEX = Regex("[\\\"']([^\\\"']*/assets/index[^\\\"']*\\.js)[\\\"']")
         val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\\.ey[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+")
@@ -381,7 +439,22 @@ internal fun selectUnambiguousAppleArtistMotion(
     matches: List<AppleArtistMotionMatch>
 ): AppleArtistMotionMatch? = matches.distinctBy(AppleArtistMotionMatch::key).singleOrNull()
 
+internal fun appleArtistMotionStorefronts(localStorefront: String): List<String> =
+    listOf("us", localStorefront.trim().lowercase(Locale.ROOT))
+        .filter { it.length == 2 }
+        .distinct()
+
+internal fun selectAppleArtistEditorialVideo(attributes: JSONObject?): AppleEditorialVideo? {
+    val root = attributes ?: return null
+    return selectAppleEditorialVideo(root.optJSONObject("editorialVideo"))
+        ?: selectAppleEditorialAssetVideo(
+            root = root.optJSONObject("editorialArtwork"),
+            urlFields = APPLE_EDITORIAL_ARTWORK_VIDEO_FIELDS
+        )
+}
+
 private val APPLE_EDITORIAL_URL_FIELDS = listOf("video", "videoUrl", "hlsUrl", "url")
+private val APPLE_EDITORIAL_ARTWORK_VIDEO_FIELDS = listOf("video", "videoUrl", "hlsUrl")
 
 private val APPLE_EDITORIAL_KEY_ORDER = listOf(
     "motionDetailTall",
@@ -392,8 +465,14 @@ private val APPLE_EDITORIAL_KEY_ORDER = listOf(
     "motionDetailStatic"
 )
 
-internal fun selectAppleEditorialVideo(editorialVideo: JSONObject?): AppleEditorialVideo? {
-    val root = editorialVideo ?: return null
+internal fun selectAppleEditorialVideo(editorialVideo: JSONObject?): AppleEditorialVideo? =
+    selectAppleEditorialAssetVideo(editorialVideo, APPLE_EDITORIAL_URL_FIELDS)
+
+private fun selectAppleEditorialAssetVideo(
+    root: JSONObject?,
+    urlFields: List<String>
+): AppleEditorialVideo? {
+    root ?: return null
     val keys = buildList {
         APPLE_EDITORIAL_KEY_ORDER.forEach { if (root.has(it)) add(it) }
         root.keys().forEach { key -> if (key !in APPLE_EDITORIAL_KEY_ORDER) add(key) }
@@ -403,7 +482,7 @@ internal fun selectAppleEditorialVideo(editorialVideo: JSONObject?): AppleEditor
     var bestArea = -1L
     keys.take(APPLE_EDITORIAL_MAX_ASSETS).forEach { key ->
         val asset = root.optJSONObject(key) ?: return@forEach
-        val url = APPLE_EDITORIAL_URL_FIELDS.firstNotNullOfOrNull { field ->
+        val url = urlFields.firstNotNullOfOrNull { field ->
             asset.optString(field).trim().takeIf { it.startsWith("https://") }
         } ?: return@forEach
         val frame = asset.optJSONObject("previewFrame")

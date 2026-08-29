@@ -23,4 +23,10 @@ class AppleArtistMotionSelectionTest {
 
         assertNull(selectUnambiguousAppleArtistMotion(matches))
     }
+
+    @Test
+    fun artistMotionChecksUsBeforeLocaleStorefront() {
+        assertEquals(listOf("us", "it"), appleArtistMotionStorefronts("IT"))
+        assertEquals(listOf("us"), appleArtistMotionStorefronts("us"))
+    }
 }

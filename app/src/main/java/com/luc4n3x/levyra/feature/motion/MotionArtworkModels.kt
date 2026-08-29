@@ -89,7 +89,7 @@ object MotionArtworkIdentityKey {
     fun forArtist(artistName: String, browseId: String): String {
         val identity = browseId.trim().lowercase(Locale.ROOT)
             .ifBlank { normalizeMotionText(artistName) }
-        return sha256("artist:$identity")
+        return sha256("artist-motion-v2:$identity")
     }
 
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
