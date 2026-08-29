@@ -29,6 +29,20 @@ class PlaybackWarmupPolicyTest {
         assertEquals(track.streamUrl, plan.probeUrl)
     }
 
+    @Test
+    fun sabrStreamsAreNeverWarmedThroughThePlainHttpStack() {
+        val sabrUrl = "levyra-sabr://s/ZW5kcG9pbnQ?itag=140&mime=audio%2Fmp4"
+        val audioOnly = track(sabrUrl)
+        val splitVideo = track(sabrUrl).copy(videoStreamUrl = sabrUrl)
+
+        assertEquals("", videoWarmupPlan(audioOnly).probeUrl)
+        assertFalse(videoWarmupPlan(audioOnly).cachePrimaryAsAudio)
+        assertEquals("", videoWarmupPlan(splitVideo).probeUrl)
+        assertFalse(videoWarmupPlan(splitVideo).cachePrimaryAsAudio)
+        assertFalse(isWarmableMediaUrl(sabrUrl))
+        assertTrue(isWarmableMediaUrl("https://media.example/audio?itag=140"))
+    }
+
     private fun track(streamUrl: String): Track = Track(
         id = "video-id",
         title = "Title",

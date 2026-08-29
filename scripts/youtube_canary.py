@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 WATCH_MAX_BYTES = 5 * 1024 * 1024
 PLAYER_JS_MAX_BYTES = 10 * 1024 * 1024
 PLAYER_JSON_MAX_BYTES = 8 * 1024 * 1024
@@ -32,6 +32,71 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
 )
 VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+# Mirrors the clients Levyra's playback compatibility policy actually uses. ANDROID_VR stays out
+# because the shipped policy disables it; the canary must not imply support Levyra does not ship.
+LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
+    {
+        "name": "VISIONOS",
+        "client": {
+            "clientName": "VISIONOS",
+            "clientVersion": "1.04",
+            "deviceMake": "Apple",
+            "deviceModel": "RealityDevice14,1",
+            "osName": "visionOS",
+            "osVersion": "1.0.3.21O566",
+        },
+        "user_agent": "com.google.ios.youtube/1.04 (RealityDevice14,1; U; CPU visionOS 1_0_3 like Mac OS X)",
+    },
+    {
+        "name": "ANDROID_MUSIC",
+        "client": {
+            "clientName": "ANDROID_MUSIC",
+            "clientVersion": "8.10.52",
+            "androidSdkVersion": 34,
+            "osName": "Android",
+            "osVersion": "15",
+        },
+        "user_agent": "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15) gzip",
+    },
+    {
+        "name": "ANDROID",
+        "client": {
+            "clientName": "ANDROID",
+            "clientVersion": "19.44.38",
+            "androidSdkVersion": 34,
+            "osName": "Android",
+            "osVersion": "15",
+        },
+        "user_agent": "com.google.android.youtube/19.44.38 (Linux; U; Android 15) gzip",
+    },
+    {
+        "name": "IOS",
+        "client": {
+            "clientName": "IOS",
+            "clientVersion": "20.10.4",
+            "deviceMake": "Apple",
+            "deviceModel": "iPhone16,2",
+            "osName": "iPhone",
+            "osVersion": "18.3.0.22D63",
+        },
+        "user_agent": "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)",
+    },
+    {"name": "WEB_REMIX", "client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260804.16.00"}},
+    {"name": "WEB", "client": {"clientName": "WEB", "clientVersion": ""}},
+    {
+        "name": "WEB_EMBEDDED_PLAYER",
+        "client": {"clientName": "WEB_EMBEDDED_PLAYER", "clientVersion": "1.20260423.01.00"},
+    },
+)
+
+DELIVERY_DIRECT_HEALTHY = "direct_healthy"
+DELIVERY_DIRECT_DEGRADED = "direct_degraded"
+DELIVERY_DIRECT_UNAVAILABLE = "direct_unavailable"
+DELIVERY_SABR_ONLY = "sabr_only"
+DELIVERY_SECURITY_FAILURE = "security_failure"
+DELIVERY_CLIENT_FAILURE = "client_failure"
+DELIVERY_TRANSPORT_FAILURE = "transport_failure"
 KEYWORDS = ("youtube", "player", "cipher", "sabr", "innertube", "stream", "signature", "visionos", "reel")
 
 EXACT_HTTPS_HOSTS = {
@@ -46,7 +111,9 @@ EXACT_HTTPS_HOSTS = {
 
 
 class CanaryError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -265,19 +332,22 @@ def _player_api_request(
     visitor_data: str,
     hl: str,
     gl: str,
+    client: dict[str, Any] | None = None,
+    user_agent: str = USER_AGENT,
 ) -> dict[str, Any]:
     if not innertube_query_value or not client_version:
         raise CanaryError("watch page did not expose InnerTube API key/client version")
+    context_client: dict[str, Any] = dict(client or {"clientName": "WEB"})
+    context_client.update(
+        {
+            "clientVersion": client_version,
+            "hl": hl,
+            "gl": gl,
+            "utcOffsetMinutes": 0,
+        }
+    )
     body: dict[str, Any] = {
-        "context": {
-            "client": {
-                "clientName": "WEB",
-                "clientVersion": client_version,
-                "hl": hl,
-                "gl": gl,
-                "utcOffsetMinutes": 0,
-            }
-        },
+        "context": {"client": context_client},
         "videoId": video_id,
         "contentCheckOk": True,
         "racyCheckOk": True,
@@ -297,14 +367,14 @@ def _player_api_request(
             "Content-Type": "application/json",
             "Origin": "https://www.youtube.com",
             "Referer": f"https://www.youtube.com/watch?v={video_id}",
-            "User-Agent": USER_AGENT,
+            "User-Agent": user_agent,
             "X-YouTube-Client-Name": "1",
             "X-YouTube-Client-Version": client_version,
         },
         max_bytes=PLAYER_JSON_MAX_BYTES,
     )
     if result.status < 200 or result.status >= 300:
-        raise CanaryError(f"player endpoint HTTP {result.status}")
+        raise CanaryError(f"player endpoint HTTP {result.status}", status=result.status)
     try:
         parsed = json.loads(result.body.decode("utf-8", errors="strict"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -382,11 +452,31 @@ def _summarize_player_response(player: dict[str, Any]) -> dict[str, Any]:
         elif mime_type.startswith("audio/"):
             adaptive_audio_count += 1
 
+    player_config = player.get("playerConfig")
+    media_common = player_config.get("mediaCommonConfig") if isinstance(player_config, dict) else None
+    ustreamer = media_common.get("mediaUstreamerRequestConfig") if isinstance(media_common, dict) else None
+    ustreamer_config = ""
+    use_ump = False
+    if isinstance(ustreamer, dict):
+        ustreamer_config = str(ustreamer.get("videoPlaybackUstreamerConfig") or "")
+        use_ump = bool(ustreamer.get("videoPlaybackUseUmp"))
+
+    sabr_url = str(streaming.get("serverAbrStreamingUrl") or "")
+    sabr_networks = _media_network_count(sabr_url)
+    direct_networks = _media_network_count(direct_probe_url)
+
     return {
         "playability_status": str(playability.get("status") or ""),
         "playability_reason": str(playability.get("reason") or "")[:240],
         "has_streaming_data": bool(streaming),
         "streaming_keys": sorted(str(key) for key in streaming.keys()),
+        "has_server_abr_streaming_url": bool(sabr_url),
+        "server_abr_host_is_googlevideo": _is_googlevideo(sabr_url),
+        "server_abr_media_networks": sabr_networks,
+        "has_ustreamer_config": bool(ustreamer_config),
+        "ustreamer_config_bytes": len(ustreamer_config),
+        "video_playback_use_ump": use_ump,
+        "direct_media_networks": direct_networks,
         "formats": len(formats),
         "adaptive_formats": len(adaptive),
         "total_formats": len(all_formats),
@@ -403,6 +493,131 @@ def _summarize_player_response(player: dict[str, Any]) -> dict[str, Any]:
         "top_level_keys": sorted(str(key) for key in player.keys()),
         "_probe_url": direct_probe_url,
     }
+
+
+def _is_googlevideo(url: str) -> bool:
+    if not url:
+        return False
+    try:
+        host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return host == "googlevideo.com" or host.endswith(".googlevideo.com")
+
+
+def _media_network_count(url: str) -> int:
+    """Number of equivalent Googlevideo media networks the signed URL advertises. Host names and
+    signed parameters are never recorded, only how many alternatives exist."""
+    if not url:
+        return 0
+    try:
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query, keep_blank_values=False)
+    except ValueError:
+        return 0
+    declared = (query.get("mn") or [""])[0]
+    return len({item for item in declared.split(",") if item.strip()})
+
+
+def _classify_delivery(summary: dict[str, Any]) -> str:
+    """Where playback for one client currently stands. The canary is a sensor: it reports what the
+    protocol offers an unauthenticated prober, never what Levyra can reach with its own tokens."""
+    status = str(summary.get("playability_status") or "")
+    reason = str(summary.get("playability_reason") or "").lower()
+    if status in ("LOGIN_REQUIRED", "AGE_VERIFICATION_REQUIRED") or "bot" in reason or "sign in" in reason:
+        return DELIVERY_SECURITY_FAILURE
+    if status and status != "OK":
+        return DELIVERY_CLIENT_FAILURE
+    if not summary.get("has_streaming_data"):
+        return DELIVERY_CLIENT_FAILURE
+
+    direct = int(summary.get("direct_urls") or 0)
+    cipher = int(summary.get("cipher_urls") or 0)
+    adaptive_audio = int(summary.get("adaptive_audio_formats") or 0)
+    adaptive_video = int(summary.get("adaptive_video_formats") or 0)
+    sabr = bool(summary.get("has_server_abr_streaming_url"))
+
+    if direct == 0 and cipher == 0:
+        return DELIVERY_SABR_ONLY if sabr else DELIVERY_DIRECT_UNAVAILABLE
+    if adaptive_audio == 0 or adaptive_video == 0:
+        return DELIVERY_DIRECT_DEGRADED
+    return DELIVERY_DIRECT_HEALTHY
+
+
+def _probe_client(
+    entry: dict[str, Any],
+    *,
+    video_id: str,
+    innertube_query_value: str,
+    web_client_version: str,
+    visitor_data: str,
+    hl: str,
+    gl: str,
+) -> dict[str, Any]:
+    name = str(entry.get("name") or "")
+    client = dict(entry.get("client") or {})
+    if not client.get("clientVersion"):
+        client["clientVersion"] = web_client_version
+    started = time.monotonic()
+    try:
+        player = _player_api_request(
+            video_id=video_id,
+            innertube_query_value=innertube_query_value,
+            client_version=str(client.get("clientVersion") or ""),
+            visitor_data=visitor_data,
+            hl=hl,
+            gl=gl,
+            client=client,
+            user_agent=str(entry.get("user_agent") or USER_AGENT),
+        )
+    except CanaryError as error:
+        status = getattr(error, "status", None)
+        if status is None:
+            delivery = DELIVERY_TRANSPORT_FAILURE
+        elif status in (401, 403):
+            delivery = DELIVERY_SECURITY_FAILURE
+        else:
+            delivery = DELIVERY_CLIENT_FAILURE
+        return {
+            "client": name,
+            "latency_ms": int((time.monotonic() - started) * 1000),
+            "delivery": delivery,
+            "error": str(error)[:240],
+        }
+    summary = _summarize_player_response(player)
+    summary.pop("_probe_url", "")
+    summary.pop("top_level_keys", None)
+    summary.pop("streaming_keys", None)
+    return {
+        "client": name,
+        "latency_ms": int((time.monotonic() - started) * 1000),
+        "delivery": _classify_delivery(summary),
+        "player": summary,
+    }
+
+
+def _probe_client_matrix(
+    *,
+    video_id: str,
+    innertube_query_value: str,
+    web_client_version: str,
+    visitor_data: str,
+    hl: str,
+    gl: str,
+) -> list[dict[str, Any]]:
+    if not innertube_query_value:
+        return []
+    return [
+        _probe_client(
+            entry,
+            video_id=video_id,
+            innertube_query_value=innertube_query_value,
+            web_client_version=web_client_version,
+            visitor_data=visitor_data,
+            hl=hl,
+            gl=gl,
+        )
+        for entry in LEVYRA_CLIENT_MATRIX
+    ]
 
 
 def _probe_media_url(url: str) -> dict[str, Any]:
@@ -478,6 +693,7 @@ def _probe_sentinel(
         "attempts": [],
     }
 
+    matrix_inputs: dict[str, str] | None = None
     for attempt in range(1, max(1, attempts) + 1):
         attempt_result: dict[str, Any] = {"attempt": attempt}
         try:
@@ -515,11 +731,16 @@ def _probe_sentinel(
                 private_js = private_evidence_dir / f"player-{js_sha256[:16]}.js"
                 if not private_js.exists():
                     private_js.write_bytes(js_result.body)
+            matrix_inputs = {
+                "innertube_query_value": str(ytcfg.get("INNERTUBE_API_KEY") or ""),
+                "web_client_version": str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
+                "visitor_data": str(ytcfg.get("VISITOR_DATA") or ""),
+            }
             player = _player_api_request(
                 video_id=video_id,
-                innertube_query_value=str(ytcfg.get("INNERTUBE_API_KEY") or ""),
-                client_version=str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
-                visitor_data=str(ytcfg.get("VISITOR_DATA") or ""),
+                innertube_query_value=matrix_inputs["innertube_query_value"],
+                client_version=matrix_inputs["web_client_version"],
+                visitor_data=matrix_inputs["visitor_data"],
                 hl=hl,
                 gl=gl,
             )
@@ -565,9 +786,56 @@ def _probe_sentinel(
 
     successful = next((item for item in result["attempts"] if item.get("ok")), None)
     chosen = successful or result["attempts"][-1]
+    clients = (
+        _probe_client_matrix(
+            video_id=video_id,
+            hl=hl,
+            gl=gl,
+            **matrix_inputs,
+        )
+        if matrix_inputs
+        else []
+    )
+    chosen["clients"] = clients
+    chosen["delivery_summary"] = _summarize_delivery(clients)
     result["observation"] = chosen
     result["ok"] = bool(chosen.get("ok"))
     return result
+
+
+def _summarize_delivery(clients: list[dict[str, Any]]) -> dict[str, Any]:
+    deliveries = [str(item.get("delivery") or "") for item in clients]
+    direct_capable = [
+        item
+        for item in clients
+        if item.get("delivery") in (DELIVERY_DIRECT_HEALTHY, DELIVERY_DIRECT_DEGRADED)
+    ]
+    sabr_capable = [
+        item
+        for item in clients
+        if isinstance(item.get("player"), dict)
+        and item["player"].get("has_server_abr_streaming_url")
+    ]
+    playable = [
+        item
+        for item in clients
+        if item.get("delivery")
+        in (DELIVERY_DIRECT_HEALTHY, DELIVERY_DIRECT_DEGRADED, DELIVERY_SABR_ONLY)
+    ]
+    return {
+        "clients_probed": len(clients),
+        "clients_playable": len(playable),
+        "clients_direct_capable": len(direct_capable),
+        "clients_sabr_capable": len(sabr_capable),
+        "clients_sabr_only": deliveries.count(DELIVERY_SABR_ONLY),
+        "clients_security_failure": deliveries.count(DELIVERY_SECURITY_FAILURE),
+        "clients_client_failure": deliveries.count(DELIVERY_CLIENT_FAILURE),
+        "clients_transport_failure": deliveries.count(DELIVERY_TRANSPORT_FAILURE),
+        "sabr_enforced": bool(playable) and not direct_capable and bool(sabr_capable),
+        "by_client": {
+            str(item.get("client") or ""): str(item.get("delivery") or "") for item in clients
+        },
+    }
 
 
 def _fetch_upstream(repo: str, branch: str) -> dict[str, Any]:
@@ -681,6 +949,19 @@ def _sentinel_access_blocked(sentinel: dict[str, Any]) -> bool:
     return any(marker in error for marker in blocked_markers)
 
 
+def _delivery_evidence_is_conclusive(delivery: dict[str, Any]) -> bool:
+    """A client matrix where every probe failed on our side says nothing about YouTube."""
+    if not delivery:
+        return False
+    probed = int(delivery.get("clients_probed") or 0)
+    if probed <= 0:
+        return False
+    failed = int(delivery.get("clients_transport_failure") or 0) + int(
+        delivery.get("clients_client_failure") or 0
+    )
+    return failed < probed
+
+
 def _classify(
     baseline: dict[str, Any],
     observation: dict[str, Any],
@@ -789,6 +1070,34 @@ def _classify(
             )
             material_sentinels.add(name)
 
+        old_delivery = old_obs.get("delivery_summary") if isinstance(old_obs.get("delivery_summary"), dict) else {}
+        new_delivery = new_obs.get("delivery_summary") if isinstance(new_obs.get("delivery_summary"), dict) else {}
+        if not access_blocked and _delivery_evidence_is_conclusive(new_delivery):
+            if int(new_delivery.get("clients_playable") or 0) == 0 and int(
+                old_delivery.get("clients_playable") or 0
+            ) > 0:
+                material.append(f"{name}: no probed client returns a playable delivery method")
+                material_sentinels.add(name)
+            elif not bool(old_delivery.get("sabr_enforced")) and bool(new_delivery.get("sabr_enforced")):
+                material.append(
+                    f"{name}: every playable client now exposes SABR only; direct delivery disappeared"
+                )
+                material_sentinels.add(name)
+            elif int(old_delivery.get("clients_direct_capable") or 0) > int(
+                new_delivery.get("clients_direct_capable") or 0
+            ):
+                info.append(
+                    f"{name}: clients with direct delivery "
+                    f"{old_delivery.get('clients_direct_capable')} -> "
+                    f"{new_delivery.get('clients_direct_capable')}"
+                )
+            old_by_client = old_delivery.get("by_client") or {}
+            new_by_client = new_delivery.get("by_client") or {}
+            for client_name, new_state in sorted(new_by_client.items()):
+                old_state = old_by_client.get(client_name)
+                if old_state and old_state != new_state:
+                    info.append(f"{name}: client {client_name} {old_state} -> {new_state}")
+
         old_media = old_obs.get("media_probe") if isinstance(old_obs.get("media_probe"), dict) else {}
         new_media = new_obs.get("media_probe") if isinstance(new_obs.get("media_probe"), dict) else {}
         if old_media.get("initial_ok") is True and new_media.get("initial_ok") is False:
@@ -889,6 +1198,32 @@ def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str
                 r1="yes" if media.get("continuation_ok") else ("no" if media.get("attempted") else "n/a"),
             )
         )
+    lines += ["", "## Delivery method by client", ""]
+    lines.append("| Sentinel | Playable | Direct | SABR | SABR only | Security | Per client |")
+    lines.append("|---|---:|---:|---:|---:|---:|---|")
+    for sentinel in observation.get("sentinels") or []:
+        if not isinstance(sentinel, dict):
+            continue
+        chosen = sentinel.get("observation") if isinstance(sentinel.get("observation"), dict) else {}
+        delivery = chosen.get("delivery_summary") if isinstance(chosen.get("delivery_summary"), dict) else {}
+        if not delivery:
+            continue
+        per_client = ", ".join(
+            f"{key}={value}" for key, value in sorted((delivery.get("by_client") or {}).items())
+        )
+        lines.append(
+            "| {name} | {playable}/{probed} | {direct} | {sabr} | {only} | {security} | {per} |".format(
+                name=str(sentinel.get("name") or sentinel.get("video_id") or ""),
+                playable=int(delivery.get("clients_playable") or 0),
+                probed=int(delivery.get("clients_probed") or 0),
+                direct=int(delivery.get("clients_direct_capable") or 0),
+                sabr=int(delivery.get("clients_sabr_capable") or 0),
+                only=int(delivery.get("clients_sabr_only") or 0),
+                security=int(delivery.get("clients_security_failure") or 0),
+                per=per_client.replace("|", "/")[:220],
+            )
+        )
+
     lines += [
         "",
         "## Upstream radar",
