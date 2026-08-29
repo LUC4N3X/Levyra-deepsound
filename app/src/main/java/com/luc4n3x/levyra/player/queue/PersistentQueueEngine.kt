@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
+private val YOUTUBE_VIDEO_ID_PATTERN =
+    Regex("(?:v=|youtu\\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,})")
+
 internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
     !transientPlaybackActive
 
@@ -809,7 +812,7 @@ internal fun stableShuffleOrder(tracks: List<Track>, currentIndex: Int, generati
 }
 
 internal fun playbackQueueIdentity(track: Track): String {
-    val videoId = Regex("(?:v=|youtu\\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,})")
+    val videoId = YOUTUBE_VIDEO_ID_PATTERN
         .find(track.videoUrl)
         ?.groupValues
         ?.getOrNull(1)
