@@ -67,10 +67,9 @@ class MotionArtworkEngine(context: Context) {
         if (!networkPolicy.canResolveCurrent()) return null
         val runtime = MotionArtworkRuntime.snapshot()
         val config = runtime.value
-        if (ARTIST_MOTION_PROVIDER !in motionArtworkProviderOrder(config.providerOrder, source)) return null
         val identityKey = motionArtworkCacheKey(
             MotionArtworkIdentityKey.forArtist(clean, artistBrowseId),
-            source
+            LevyraCanvasSource.Apple
         )
         when (val cached = repository.get(identityKey, runtime.epoch)) {
             is MotionArtworkCacheResult.Hit -> return cached.artwork
@@ -94,9 +93,8 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Miss -> Unit
         }
         var lookupFailed = false
-        // A null outcome is inconclusive; ArtistMotionLookup(null) is a conclusive miss.
         val outcome = try {
-            withTimeoutOrNull(config.requestTimeoutMs) {
+            withTimeoutOrNull(ARTIST_MOTION_REQUEST_TIMEOUT_MS) {
                 ArtistMotionLookup(artistMotionProvider.findArtistMotion(artistName))
             }
         } catch (error: CancellationException) {
@@ -105,7 +103,10 @@ class MotionArtworkEngine(context: Context) {
             Timber.d(error, "Artist motion lookup failed for %s", artistName)
             null
         }
-        if (outcome == null) lookupFailed = true
+        if (outcome == null) {
+            lookupFailed = true
+            Timber.d("Artist motion lookup timed out for %s", artistName)
+        }
         val candidate = outcome?.candidate
 
         val verified = candidate?.takeIf { found ->
@@ -326,8 +327,8 @@ class MotionArtworkEngine(context: Context) {
 
 private class ArtistMotionLookup(val candidate: MotionArtworkCandidate?)
 
-private const val ARTIST_MOTION_PROVIDER = "apple-motion"
 private const val ARTIST_MOTION_CONFIDENCE = 100
+private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 30_000L
 
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
     if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"
