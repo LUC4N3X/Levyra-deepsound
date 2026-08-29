@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.feature.cast
 
 import com.luc4n3x.levyra.domain.RepeatMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -90,8 +91,9 @@ class CastHandoffTest {
     }
 
     @Test
-    fun handoffDefaultWindowRadiusIsTen() {
-        assertEquals(10, CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS)
+    fun handoffDefaultWindowContainsAtMostFiveItems() {
+        assertEquals(2, CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS)
+        assertEquals(5, CastHandoffConverter.toHandoff(snapshot(size = 20, currentIndex = 10)).queueWindowIds.size)
     }
 
     @Test
@@ -105,5 +107,67 @@ class CastHandoffTest {
         assertEquals(-1, handoff.currentIndex)
         assertTrue(resumed.queueIds.isEmpty())
         assertEquals(-1, resumed.currentIndex)
+    }
+
+    @Test
+    fun remoteHandoffNeverRewindsSameMediaItem() {
+        assertEquals(
+            48_000L,
+            castHandoffStartPositionMs(
+                sameMediaItem = true,
+                requestedPositionMs = 42_000L,
+                livePositionMs = 48_000L,
+                remotePlayback = true
+            )
+        )
+        assertEquals(
+            42_000L,
+            castHandoffStartPositionMs(
+                sameMediaItem = false,
+                requestedPositionMs = 42_000L,
+                livePositionMs = 48_000L,
+                remotePlayback = true
+            )
+        )
+    }
+
+    @Test
+    fun managedWindowRefreshesNearEdgeOrWhenLogicalOrderChanges() {
+        val expected = listOf("b", "c", "d", "e")
+        assertFalse(castWindowNeedsRefresh(expected, listOf("b", "c", "d")))
+        assertTrue(castWindowNeedsRefresh(expected, listOf("b", "c")))
+        assertTrue(castWindowNeedsRefresh(expected, listOf("b", "x", "d")))
+        assertFalse(castWindowNeedsRefresh(emptyList(), emptyList()))
+    }
+
+    @Test
+    fun fiveItemWindowRefreshesBeforeForwardBufferRunsDry() {
+        val expected = listOf("track-6", "track-7", "track-8")
+
+        assertFalse(
+            castWindowNeedsRefresh(
+                expectedUpcomingIds = expected,
+                remoteForwardIds = listOf("track-6", "track-7"),
+                minimumBufferedItems = CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS
+            )
+        )
+        assertTrue(
+            castWindowNeedsRefresh(
+                expectedUpcomingIds = expected,
+                remoteForwardIds = listOf("track-6"),
+                minimumBufferedItems = CastHandoffConverter.DEFAULT_QUEUE_WINDOW_RADIUS
+            )
+        )
+    }
+
+    @Test
+    fun receiverMediaPolicyAcceptsOnlyGoogleVideoHttps() {
+        assertTrue(isCastReceiverSafeMediaUrl("https://rr1---sn.example.googlevideo.com/videoplayback?id=abc"))
+        assertTrue(isCastReceiverSafeMediaUrl("https://googlevideo.com/videoplayback?id=abc"))
+        assertFalse(isCastReceiverSafeMediaUrl("http://rr1---sn.example.googlevideo.com/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://googlevideo.com.evil.example/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://user:pass@googlevideo.com/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://googlevideo.com:8443/videoplayback"))
+        assertFalse(isCastReceiverSafeMediaUrl("https://127.0.0.1/videoplayback"))
     }
 }

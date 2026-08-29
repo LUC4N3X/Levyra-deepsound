@@ -74,6 +74,8 @@ data class PlayerControlLabels(
     val repeat: String
 )
 
+private val DensePlayerHorizontalTouchTarget = 40.dp
+
 private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
     return when (icon.name.substringAfterLast('.')) {
         "PlayArrow" -> LevyraIonicons.Play
@@ -148,7 +150,9 @@ fun PlayerGlassIconButton(
     SpringIconButton(
         onClick = onClick,
         modifier = modifier.sizeIn(
-            minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+            // Dense player rows keep the full 48dp vertical target without reserving an
+            // invisible 48dp column around every 36–40dp circular control.
+            minWidth = maxOf(size, DensePlayerHorizontalTouchTarget),
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
         enabled = enabled,
