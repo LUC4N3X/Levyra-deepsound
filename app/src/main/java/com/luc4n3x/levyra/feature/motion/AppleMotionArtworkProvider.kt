@@ -36,11 +36,11 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val requested = splitArtists(clean)
         if (requested.isEmpty()) return null
 
-        val token = developerToken()
+        val developerTokenValue = developerToken()
         var lastFailure: Throwable? = null
         for (catalogStorefront in appleArtistMotionStorefronts(storefront())) {
             val selected = try {
-                findArtistMotionInStorefront(clean, requested, catalogStorefront, token)
+                findArtistMotionInStorefront(clean, requested, catalogStorefront, developerTokenValue)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
