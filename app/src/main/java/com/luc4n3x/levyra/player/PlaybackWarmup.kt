@@ -24,17 +24,19 @@ internal data class VideoWarmupPlan(
     val probeUrl: String
 )
 
+internal fun isWarmableMediaUrl(url: String): Boolean = url.startsWith("https://", ignoreCase = true)
+
 internal fun videoWarmupPlan(track: Track): VideoWarmupPlan {
     val splitVideo = track.videoStreamUrl.trim()
     return if (splitVideo.isNotBlank()) {
         VideoWarmupPlan(
-            cachePrimaryAsAudio = track.streamUrl.isNotBlank(),
-            probeUrl = splitVideo
+            cachePrimaryAsAudio = isWarmableMediaUrl(track.streamUrl.trim()),
+            probeUrl = splitVideo.takeIf(::isWarmableMediaUrl).orEmpty()
         )
     } else {
         VideoWarmupPlan(
             cachePrimaryAsAudio = false,
-            probeUrl = track.streamUrl.trim()
+            probeUrl = track.streamUrl.trim().takeIf(::isWarmableMediaUrl).orEmpty()
         )
     }
 }
@@ -45,7 +47,7 @@ class PlaybackWarmup(context: Context) {
     private val primeLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun prime(track: Track, bytes: Long = DEFAULT_PRIME_BYTES): Boolean = primeUrl(
-        url = track.streamUrl,
+        url = track.streamUrl.takeIf(::isWarmableMediaUrl).orEmpty(),
         cacheKey = LevyraPlaybackCacheKey.stream(track),
         bytes = bytes
     )

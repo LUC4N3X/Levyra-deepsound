@@ -34,7 +34,8 @@
 
         <receiver
             android:name="androidx.mediarouter.media.MediaTransferReceiver"
-            android:exported="true" />
+            android:exported="true"
+            tools:ignore="MissingClass" />
 
         <provider
             android:name=".data.SpotifyChartBootstrapProvider"
