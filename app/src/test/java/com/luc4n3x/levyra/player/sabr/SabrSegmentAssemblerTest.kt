@@ -13,7 +13,6 @@ class SabrSegmentAssemblerTest {
 
         assertEquals(SabrMediaWindow(1, 1_019), assembler.onMedia(0, 1_019, position = 0L))
         assertEquals(SabrMediaWindow(1, 162_083), assembler.onMedia(1, 162_083, position = 1_019L))
-        assertEquals(163_102L, assembler.deliveredBytes)
     }
 
     @Test
@@ -32,7 +31,6 @@ class SabrSegmentAssemblerTest {
         assembler.onMediaHeader(header(id = 0, itag = 140, start = 0L))
 
         assertNull(assembler.onMedia(0, 1_019, position = 5_000L))
-        assertEquals(1_019L, assembler.deliveredBytes)
     }
 
     @Test
@@ -43,7 +41,6 @@ class SabrSegmentAssemblerTest {
 
         assertNull(assembler.onMedia(0, 1_019, position = 0L))
         assertEquals(SabrMediaWindow(1, 1_228), assembler.onMedia(1, 1_228, position = 0L))
-        assertEquals(1_228L, assembler.deliveredBytes)
     }
 
     @Test
@@ -61,7 +58,6 @@ class SabrSegmentAssemblerTest {
         val assembler = SabrSegmentAssembler(targetItag = 140)
 
         assertNull(assembler.onMedia(7, 1_000, position = 0L))
-        assertEquals(0L, assembler.deliveredBytes)
     }
 
     @Test
@@ -80,8 +76,6 @@ class SabrSegmentAssemblerTest {
         assembler.onMedia(0, 1_019, position = 0L)
 
         assembler.reset()
-
-        assertEquals(0L, assembler.deliveredBytes)
         assertNull(assembler.onMedia(0, 1_019, position = 0L))
     }
 

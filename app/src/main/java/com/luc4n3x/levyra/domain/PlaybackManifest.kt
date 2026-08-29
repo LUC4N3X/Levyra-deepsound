@@ -42,7 +42,6 @@ data class PlaybackStreamDescriptor(
 
     fun isMp4Audio(): Boolean {
         if (kind != PlaybackStreamKind.AUDIO) return false
-        // SABR is a session transport, not a downloadable file, whatever its media type says.
         if (deliveryMethod == PlaybackDeliveryMethod.HLS || deliveryMethod == PlaybackDeliveryMethod.SABR) {
             return false
         }

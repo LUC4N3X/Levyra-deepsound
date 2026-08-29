@@ -24,10 +24,6 @@ internal data class VideoWarmupPlan(
     val probeUrl: String
 )
 
-/**
- * A SABR stream is served by its own session transport, so warming it through the plain HTTP stack
- * would only issue a request that cannot succeed.
- */
 internal fun isWarmableMediaUrl(url: String): Boolean = url.startsWith("https://", ignoreCase = true)
 
 internal fun videoWarmupPlan(track: Track): VideoWarmupPlan {

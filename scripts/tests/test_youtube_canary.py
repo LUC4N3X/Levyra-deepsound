@@ -216,6 +216,67 @@ class YoutubeCanaryTest(unittest.TestCase):
         self.assertEqual("repair", decision["decision"])
         self.assertTrue(any("SABR only" in item for item in decision["material_changes"]))
 
+    def test_a_matrix_where_every_probe_failed_is_not_evidence(self):
+        all_failed = canary._summarize_delivery(
+            [
+                {"client": "IOS", "delivery": canary.DELIVERY_TRANSPORT_FAILURE, "player": {}},
+                {"client": "WEB", "delivery": canary.DELIVERY_CLIENT_FAILURE, "player": {}},
+            ]
+        )
+        healthy_before = canary._summarize_delivery(
+            [
+                {"client": "IOS", "delivery": canary.DELIVERY_DIRECT_HEALTHY,
+                 "player": {"has_server_abr_streaming_url": True}},
+                {"client": "WEB", "delivery": canary.DELIVERY_CLIENT_FAILURE, "player": {}},
+            ]
+        )
+
+        self.assertFalse(canary._delivery_evidence_is_conclusive(all_failed))
+        self.assertFalse(canary._delivery_evidence_is_conclusive({}))
+        self.assertFalse(canary._delivery_evidence_is_conclusive(canary._summarize_delivery([])))
+        self.assertTrue(canary._delivery_evidence_is_conclusive(healthy_before))
+
+        baseline = {
+            "schema": canary.SCHEMA_VERSION,
+            "observation": {
+                "schema": canary.SCHEMA_VERSION,
+                "sentinels": [
+                    {
+                        "name": "s",
+                        "required": True,
+                        "ok": True,
+                        "observation": {
+                            "player": {"playability_status": "OK"},
+                            "delivery_summary": healthy_before,
+                        },
+                    }
+                ],
+            },
+        }
+        observation = {
+            "schema": canary.SCHEMA_VERSION,
+            "sentinels": [
+                {
+                    "name": "s",
+                    "required": True,
+                    "ok": True,
+                    "observation": {
+                        "player": {"playability_status": "OK"},
+                        "delivery_summary": all_failed,
+                    },
+                }
+            ],
+        }
+
+        decision = canary._classify(
+            baseline, observation, {"thresholds": {"required_sentinel_regressions_for_repair": 1}}
+        )
+        self.assertEqual("none", decision["decision"])
+
+    def test_canary_error_carries_the_http_status_for_classification(self):
+        self.assertIsNone(canary.CanaryError("invalid player JSON: boom").status)
+        self.assertEqual(403, canary.CanaryError("player endpoint HTTP 403", status=403).status)
+
     def test_media_host_policy_rejects_non_googlevideo(self):
         self.assertEqual("x.googlevideo.com", canary._safe_host("https://x.googlevideo.com/a", media=True))
         with self.assertRaises(canary.CanaryError):

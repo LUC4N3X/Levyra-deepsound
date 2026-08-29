@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.runtime.RuntimeSignal
 import kotlinx.coroutines.CancellationException
@@ -623,7 +624,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun promoteAlternateCandidate(track: Track, isVideoMode: Boolean, audioQuality: String?) {
         val manifest = track.playbackManifest ?: return
         val burned = manifest.streams.count { isPlaybackUrlBlocked(it.url) }
-        if (burned > MAX_PROMOTED_PLAYBACK_CANDIDATES) return
+        if (burned >= MAX_PROMOTED_PLAYBACK_CANDIDATES) return
         val promoted = promoteAlternatePlaybackCandidate(
             manifest = manifest,
             isVideoMode = isVideoMode,
@@ -2320,6 +2321,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         trustAttestedGoogleVideo: Boolean = true
     ): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
+        if (SabrStreamSpec.isSabrUri(url)) return SabrStreamSpec.parse(url) != null
         if (trustAttestedGoogleVideo && isTrustedGoogleVideoUrl(url) && url.containsQueryParameter("pot")) return true
         val request = Request.Builder()
             .url(url)

@@ -7,18 +7,9 @@ internal const val PROTO_WIRE_FIXED64 = 1
 internal const val PROTO_WIRE_LENGTH_DELIMITED = 2
 internal const val PROTO_WIRE_FIXED32 = 5
 
-/**
- * Just enough protocol-buffer encoding for the SABR request bodies Levyra sends. A full runtime
- * would add hundreds of generated classes to the APK for the handful of fields this path uses.
- */
 internal class ProtoWriter {
     private val output = ByteArrayOutputStream(256)
 
-    /**
-     * Zero values are written explicitly. The SABR server treats an omitted buffered-range start or
-     * track-type bitfield differently from an explicit zero, and dropping them makes a video session
-     * receive the audio bytes the audio session already owns.
-     */
     fun varint(field: Int, value: Long): ProtoWriter {
         tag(field, PROTO_WIRE_VARINT)
         writeVarint(value)
@@ -56,7 +47,6 @@ internal class ProtoWriter {
     }
 }
 
-/** Forward-only reader over a single protocol-buffer message held in memory. */
 internal class ProtoReader(
     private val data: ByteArray,
     private var position: Int,

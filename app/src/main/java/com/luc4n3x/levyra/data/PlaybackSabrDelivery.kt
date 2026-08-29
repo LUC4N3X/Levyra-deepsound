@@ -8,7 +8,6 @@ import com.luc4n3x.levyra.player.sabr.SabrFormatId
 import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import java.util.Base64
 
-/** One adaptive format as the player response describes it, reduced to what SABR delivery needs. */
 internal data class SabrFormatCandidate(
     val itag: Int,
     val lastModified: Long,
@@ -31,13 +30,6 @@ internal data class SabrFormatCandidate(
         itag > 0 && lastModified > 0L && contentLength > 0L && (isAudio || isVideo)
 }
 
-/**
- * Builds the descriptor for one SABR-delivered format.
- *
- * The descriptive query on the returned URL is not sent anywhere: it mirrors the shape of a direct
- * Googlevideo URL so the resolver's existing freshness, MIME and playability checks read a SABR
- * stream exactly the way they read a progressive one.
- */
 internal fun buildSabrStreamDescriptor(
     endpointUrl: String,
     ustreamerConfig: ByteArray,
@@ -93,10 +85,6 @@ internal fun buildSabrStreamDescriptor(
     )
 }
 
-/**
- * SABR audio candidates ordered the way Levyra would pick a direct audio stream, so the fallback
- * inherits the user's quality preference instead of introducing a second selector.
- */
 internal fun orderSabrAudioCandidates(
     candidates: List<SabrFormatCandidate>,
     preferHighestBitrate: Boolean
@@ -106,10 +94,6 @@ internal fun orderSabrAudioCandidates(
     return usable.sortedWith(if (preferHighestBitrate) byBitrate.reversed() else byBitrate)
 }
 
-/**
- * SABR video candidates capped at [maxHeight] so server-driven delivery can never hand the device a
- * resolution Levyra already decided it should not decode.
- */
 internal fun orderSabrVideoCandidates(
     candidates: List<SabrFormatCandidate>,
     maxHeight: Int
@@ -120,7 +104,6 @@ internal fun orderSabrVideoCandidates(
             .thenByDescending { it.averageBitrate.coerceAtLeast(it.bitrate) }
     )
 
-/** The player response encodes the ustreamer config as URL-safe base64 with optional padding. */
 internal fun decodeSabrUstreamerConfig(value: String): ByteArray? {
     val trimmed = value.trim()
     if (trimmed.isEmpty() || trimmed.length > MAX_USTREAMER_CONFIG_CHARS) return null

@@ -4,16 +4,8 @@ import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 
-/**
- * Number of streams of one manifest that may be burned by candidate promotion before the resolver
- * has to go back to a fresh player response. It bounds the promotion ladder without extra state.
- */
 internal const val MAX_PROMOTED_PLAYBACK_CANDIDATES = 3
 
-/**
- * A failure that describes one media candidate rather than the client, the security state or the
- * resolver. Rotating clients or regenerating tokens for these only multiplies traffic.
- */
 internal fun isCandidateLevelPlaybackFailure(kind: PlaybackFailureKind): Boolean = when (kind) {
     PlaybackFailureKind.NotFound,
     PlaybackFailureKind.ServerError,
@@ -21,11 +13,6 @@ internal fun isCandidateLevelPlaybackFailure(kind: PlaybackFailureKind): Boolean
     else -> false
 }
 
-/**
- * Re-selects the manifest around the streams that are still usable, keeping the same resolved
- * player response. Returns null when no equivalent candidate survives, so the caller falls back to
- * its normal recovery ladder.
- */
 internal fun promoteAlternatePlaybackCandidate(
     manifest: ResolvedPlaybackManifest,
     isVideoMode: Boolean,
@@ -87,7 +74,6 @@ private fun bestAlternative(
         .sortedWith(
             compareBy<PlaybackStreamDescriptor> { candidate ->
                 if (targetHeight > 0) {
-                    // Stay as close as possible to what the user was already watching.
                     kotlin.math.abs(candidate.height - targetHeight)
                 } else {
                     0

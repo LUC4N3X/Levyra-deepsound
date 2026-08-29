@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.player.sabr
 
-/** UMP part types Levyra acts on. Everything else is skipped without inspection. */
 internal object SabrPart {
     const val MEDIA_HEADER = 20
     const val MEDIA = 21
@@ -10,15 +9,10 @@ internal object SabrPart {
     const val RELOAD_PLAYER_RESPONSE = 45
 }
 
-/**
- * Identifies one media format inside a SABR session. lastModified is the discriminator YouTube uses
- * when the same itag is re-encoded, so it must travel with the itag everywhere.
- */
 internal data class SabrFormatId(val itag: Int, val lastModified: Long) {
     fun write(): ProtoWriter = ProtoWriter().varint(1, itag.toLong()).varint(2, lastModified)
 }
 
-/** The header that precedes every media payload, describing where it belongs in the byte stream. */
 internal data class SabrMediaHeader(
     val headerId: Int,
     val itag: Int,
@@ -75,11 +69,6 @@ internal object SabrMessages {
 
     private const val REDIRECT_FIELD_URL = 1
 
-    /**
-     * Builds one VideoPlaybackAbrRequest. [alreadyBuffered] lets a video session declare the paired
-     * audio format as fully buffered, which is how the server is told to stop sending audio bytes the
-     * audio session already owns.
-     */
     fun playbackRequest(
         ustreamerConfig: ByteArray,
         playerTimeMs: Long,
@@ -168,7 +157,6 @@ internal object SabrMessages {
         return null
     }
 
-    /** The first byte of a media part selects the header it continues. */
     fun mediaHeaderId(data: ByteArray, length: Int): Int {
         if (length <= 0) throw SabrProtocolException("empty SABR media part")
         return data[0].toInt() and 0xFF

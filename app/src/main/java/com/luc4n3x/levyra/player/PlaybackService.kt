@@ -1821,7 +1821,6 @@ class PlaybackService : MediaLibraryService() {
             .apply()
     }
 
-
     private data class ServiceRecoveryPlan(
         val localPlayback: Boolean,
         val delaysMs: LongArray,
@@ -2365,7 +2364,6 @@ private class LevyraMediaSourceFactory(
         val localUri = mediaItem.localConfiguration?.uri
         val scheme = localUri?.scheme.orEmpty().lowercase()
         if (SabrStreamSpec.isSabrUri(localUri?.toString().orEmpty())) {
-            // SABR responses are session-scoped, so they never reach the shared media cache.
             val sabrItem = mediaItem.buildUpon().setCustomCacheKey(null).build()
             return ProgressiveMediaSource.Factory(sabrDataSourceFactory)
                 .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)

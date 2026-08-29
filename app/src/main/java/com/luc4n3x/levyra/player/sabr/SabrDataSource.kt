@@ -13,16 +13,6 @@ import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
 
-/**
- * Reads one YouTube SABR format as if it were the progressive resource for the same format.
- *
- * SABR delivers media as UMP parts whose headers carry the absolute byte offset of every chunk, and
- * those offsets describe exactly the byte stream the direct URL would serve. Presenting that as a
- * plain seekable stream keeps Media3's extractor, seek map, end-of-stream handling, renderers and
- * Levyra's own player recovery unchanged: only the transport is different.
- *
- * Responses are parsed incrementally and never accumulated, so memory stays bounded by one UMP part.
- */
 @UnstableApi
 internal class SabrDataSource(
     private val httpDataSourceFactory: HttpDataSource.Factory,
@@ -50,6 +40,7 @@ internal class SabrDataSource(
     private var httpDataSource: HttpDataSource? = null
     private var umpReader: UmpReader? = null
     private var unproductiveRequests = 0
+    private var producedReadableBytes = false
     private var pendingOffset = 0
     private var pendingRemaining = 0
 
@@ -64,6 +55,7 @@ internal class SabrDataSource(
         redirectsUsed = 0
         endpointFailoversUsed = 0
         unproductiveRequests = 0
+        producedReadableBytes = false
         position = dataSpec.position
         val available = (parsed.contentLength - position).coerceAtLeast(0L)
         bytesRemaining = if (dataSpec.length == C.LENGTH_UNSET.toLong()) {
@@ -108,7 +100,6 @@ internal class SabrDataSource(
         if (wasOpen) transferEnded()
     }
 
-    /** Fills the pending media window, returning false once the stream has no more bytes to give. */
     private fun advance(): Boolean {
         val current = spec ?: return false
         while (true) {
@@ -135,7 +126,7 @@ internal class SabrDataSource(
             if (!hasPart) {
                 closeResponse()
                 if (position >= current.contentLength) return false
-                if ((assembler?.deliveredBytes ?: 0L) <= 0L) {
+                if (!producedReadableBytes) {
                     unproductiveRequests++
                     if (unproductiveRequests > MAX_UNPRODUCTIVE_REQUESTS) {
                         throw SabrProtocolException("SABR stopped delivering data before end of stream")
@@ -163,7 +154,6 @@ internal class SabrDataSource(
         assembler?.onMediaHeader(SabrMessages.parseMediaHeader(reader.partPayload, reader.partLength))
     }
 
-    /** Returns true when the part left readable bytes for the caller's current position. */
     private fun onMedia(reader: UmpReader): Boolean {
         val window = assembler?.onMedia(
             headerId = SabrMessages.mediaHeaderId(reader.partPayload, reader.partLength),
@@ -172,6 +162,7 @@ internal class SabrDataSource(
         ) ?: return false
         pendingOffset = window.offset
         pendingRemaining = window.length
+        producedReadableBytes = true
         return true
     }
 
@@ -249,14 +240,11 @@ internal class SabrDataSource(
         httpDataSource = source
         umpReader = UmpReader(HttpDataSourceInputStream(source))
         assembler?.reset()
+        producedReadableBytes = false
         pendingOffset = 0
         pendingRemaining = 0
     }
 
-    /**
-     * Telling the server the paired audio format is already buffered is what keeps a video session
-     * from re-sending the audio bytes the audio session owns.
-     */
     private fun suppressedCompanionRanges(current: SabrStreamSpec): List<SabrBufferedRange> {
         val companionAudio = current.companionAudioFormat?.takeIf { current.videoTrack } ?: return emptyList()
         return listOf(
@@ -272,7 +260,6 @@ internal class SabrDataSource(
 
     private fun initializedFormats(current: SabrStreamSpec): List<SabrFormatId> {
         val companionAudio = current.companionAudioFormat?.takeIf { current.videoTrack }
-        // Asking for the init segment again only wastes bytes the extractor already parsed.
         val skipInitSegment = position > 0L
         return when {
             companionAudio != null && skipInitSegment -> listOf(current.format, companionAudio)

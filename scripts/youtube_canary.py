@@ -111,7 +111,9 @@ EXACT_HTTPS_HOSTS = {
 
 
 class CanaryError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -372,7 +374,7 @@ def _player_api_request(
         max_bytes=PLAYER_JSON_MAX_BYTES,
     )
     if result.status < 200 or result.status >= 300:
-        raise CanaryError(f"player endpoint HTTP {result.status}")
+        raise CanaryError(f"player endpoint HTTP {result.status}", status=result.status)
     try:
         parsed = json.loads(result.body.decode("utf-8", errors="strict"))
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -568,13 +570,18 @@ def _probe_client(
             user_agent=str(entry.get("user_agent") or USER_AGENT),
         )
     except CanaryError as error:
-        message = str(error)[:240]
-        transport = "HTTP" not in message
+        status = getattr(error, "status", None)
+        if status is None:
+            delivery = DELIVERY_TRANSPORT_FAILURE
+        elif status in (401, 403):
+            delivery = DELIVERY_SECURITY_FAILURE
+        else:
+            delivery = DELIVERY_CLIENT_FAILURE
         return {
             "client": name,
             "latency_ms": int((time.monotonic() - started) * 1000),
-            "delivery": DELIVERY_TRANSPORT_FAILURE if transport else DELIVERY_CLIENT_FAILURE,
-            "error": message,
+            "delivery": delivery,
+            "error": str(error)[:240],
         }
     summary = _summarize_player_response(player)
     summary.pop("_probe_url", "")
@@ -942,6 +949,19 @@ def _sentinel_access_blocked(sentinel: dict[str, Any]) -> bool:
     return any(marker in error for marker in blocked_markers)
 
 
+def _delivery_evidence_is_conclusive(delivery: dict[str, Any]) -> bool:
+    """A client matrix where every probe failed on our side says nothing about YouTube."""
+    if not delivery:
+        return False
+    probed = int(delivery.get("clients_probed") or 0)
+    if probed <= 0:
+        return False
+    failed = int(delivery.get("clients_transport_failure") or 0) + int(
+        delivery.get("clients_client_failure") or 0
+    )
+    return failed < probed
+
+
 def _classify(
     baseline: dict[str, Any],
     observation: dict[str, Any],
@@ -1052,7 +1072,7 @@ def _classify(
 
         old_delivery = old_obs.get("delivery_summary") if isinstance(old_obs.get("delivery_summary"), dict) else {}
         new_delivery = new_obs.get("delivery_summary") if isinstance(new_obs.get("delivery_summary"), dict) else {}
-        if new_delivery:
+        if not access_blocked and _delivery_evidence_is_conclusive(new_delivery):
             if int(new_delivery.get("clients_playable") or 0) == 0 and int(
                 old_delivery.get("clients_playable") or 0
             ) > 0:

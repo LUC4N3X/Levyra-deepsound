@@ -2,13 +2,6 @@ package com.luc4n3x.levyra.player.sabr
 
 import java.util.Base64
 
-/**
- * Everything one SABR byte stream needs, carried inside the media URI so the stream travels through
- * the normal MediaItem and MediaSource plumbing without a second configuration channel.
- *
- * A SABR stream is byte-identical to the progressive stream for the same format, so Media3 keeps its
- * usual extractor, seek map and end-of-stream handling; only the transport changes.
- */
 internal data class SabrStreamSpec(
     val endpointUrl: String,
     val ustreamerConfig: ByteArray,
@@ -149,7 +142,6 @@ internal data class SabrStreamSpec(
     }
 }
 
-/** Server-controlled SABR endpoints stay inside the Googlevideo media surface Levyra already trusts. */
 internal object SabrEndpoint {
     private const val HTTPS_PREFIX = "https://"
     private const val GOOGLEVIDEO_SUFFIX = ".googlevideo.com"

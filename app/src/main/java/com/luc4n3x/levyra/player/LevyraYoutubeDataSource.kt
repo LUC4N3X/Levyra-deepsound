@@ -76,9 +76,9 @@ class LevyraYoutubeDataSource private constructor(
         headers: Map<String, String>,
         failure: IOException
     ): Long {
+        runCatching { delegate.close() }
         val alternates = GooglevideoMediaNetwork.alternateUrls(dataSpec.uri.toString())
         for (candidate in alternates) {
-            runCatching { delegate.close() }
             val candidateUri = Uri.parse(candidate)
             try {
                 val opened = openWithHeaders(dataSpec.withUri(candidateUri), headers)
@@ -86,6 +86,7 @@ class LevyraYoutubeDataSource private constructor(
                 Timber.i("googlevideo media network failover applied")
                 return opened
             } catch (retryFailure: IOException) {
+                runCatching { delegate.close() }
                 if (!isMediaNetworkFailure(retryFailure)) throw retryFailure
             }
         }

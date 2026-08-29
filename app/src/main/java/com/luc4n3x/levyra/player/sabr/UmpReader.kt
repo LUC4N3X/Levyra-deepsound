@@ -3,13 +3,6 @@ package com.luc4n3x.levyra.player.sabr
 import java.io.EOFException
 import java.io.InputStream
 
-/**
- * Incremental reader for the UMP framing SABR responses use: a flat sequence of
- * `<part type><part size><payload>` where both headers use YouTube's own variable-length integer.
- *
- * The reader never materializes a whole response. It keeps one reusable payload buffer whose size is
- * capped, so a hostile or corrupt length can neither allocate without bound nor stall playback.
- */
 internal class UmpReader(
     private val input: InputStream,
     private val maxPartSize: Int = MAX_PART_SIZE
@@ -23,14 +16,9 @@ internal class UmpReader(
     var partLength: Int = 0
         private set
 
-    /** Valid only for the part returned by the last successful [next] call. */
     val partPayload: ByteArray
         get() = payload
 
-    /**
-     * Reads the next part into [partPayload]. Returns false once the response ends cleanly on a part
-     * boundary; a response that ends mid-part is a truncated response and fails.
-     */
     fun next(): Boolean {
         val first = input.read()
         if (first < 0) {
@@ -66,10 +54,6 @@ internal class UmpReader(
         }
     }
 
-    /**
-     * YouTube's variable-length integer: the leading byte selects the total size and contributes the
-     * low bits, the remaining bytes are little-endian high bits.
-     */
     private fun readVarint(prefix: Int): Int {
         val size = varintSize(prefix)
         if (size == 1) return prefix

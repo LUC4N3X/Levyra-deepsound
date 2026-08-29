@@ -1,11 +1,5 @@
 package com.luc4n3x.levyra.player
 
-/**
- * Googlevideo media hosts are shaped `rr<n>---<media-network>.googlevideo.com` and the signed
- * `mn` query parameter lists the media networks that serve the same signed resource. Rewriting only
- * the media-network label keeps path, query and signature intact, so an unreachable edge can be
- * retried on an equivalent one without a fresh player response.
- */
 internal object GooglevideoMediaNetwork {
     const val MAX_ALTERNATE_CANDIDATES = 3
 
@@ -16,11 +10,6 @@ internal object GooglevideoMediaNetwork {
     private val mediaNetworkPattern = Regex("^[a-z0-9-]{1,48}$")
     private val endpointFailureStatuses = setOf(404, 500, 502, 503, 504)
 
-    /**
-     * A missing status is a transport failure that never reached the edge. Everything else must be
-     * an endpoint-level answer: security answers such as 403 or 401 describe the URL, not the edge,
-     * and retrying them elsewhere would hide the signal the security recovery path depends on.
-     */
     fun isEndpointFailure(responseCode: Int?): Boolean =
         responseCode == null || responseCode in endpointFailureStatuses
 
@@ -29,10 +18,6 @@ internal object GooglevideoMediaNetwork {
         return normalized.endsWith(GOOGLEVIDEO_SUFFIX) && normalized.length > GOOGLEVIDEO_SUFFIX.length
     }
 
-    /**
-     * Ordered alternate absolute URLs for [url], never including [url] itself. Empty when the URL is
-     * not an eligible Googlevideo media URL or exposes no other usable media network.
-     */
     fun alternateUrls(url: String, limit: Int = MAX_ALTERNATE_CANDIDATES): List<String> {
         if (limit <= 0 || !url.startsWith(HTTPS_PREFIX, ignoreCase = true)) return emptyList()
         val authorityEnd = url.indexOfAnyOrEnd(HTTPS_PREFIX.length, '/', '?', '#')
