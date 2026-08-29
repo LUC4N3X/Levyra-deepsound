@@ -19,6 +19,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.DeviceInfo
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
@@ -69,6 +70,9 @@ import com.luc4n3x.levyra.data.playbackRecoveryPlanFor
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.cast.RemotePlaybackBackendProvider
+import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
+import com.luc4n3x.levyra.feature.cast.LocalPlaybackSnapshot
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
@@ -116,6 +120,7 @@ class PlaybackService : MediaLibraryService() {
     private var queueTransitionJob: Job? = null
     private var queueTransitionMonitorJob: Job? = null
     private var memoryGuardJob: Job? = null
+    private var castHandoffJob: Job? = null
     private var memoryGuardHighSamples = 0
     private var lastMemoryRecycleElapsedMs = 0L
     private var transitionPlayer: ExoPlayer? = null
@@ -704,7 +709,30 @@ class PlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(player) {
+        val sessionPlayer = RemotePlaybackBackendProvider.create(this).attachLocalPlayer(player)
+        sessionPlayer.addListener(object : Player.Listener {
+            override fun onDeviceInfoChanged(deviceInfo: DeviceInfo) {
+                if (deviceInfo.playbackType == DeviceInfo.PLAYBACK_TYPE_REMOTE) {
+                    cancelQueueTransition()
+                    cancelServicePrefetch()
+                    clearPreparedQueueNextInternal()
+                    handoffQueueToCast(sessionPlayer)
+                } else {
+                    castHandoffJob?.cancel()
+                }
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (sessionPlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE) return
+                val mediaId = mediaItem?.mediaId ?: return
+                val snapshot = queueEngine.state.value
+                val index = snapshot.tracks.indexOfFirst { LevyraMediaItemFactory.metadataOnly(it).mediaId == mediaId }
+                if (index >= 0 && index != snapshot.currentIndex) {
+                    queueEngine.select(index, sessionPlayer.currentPosition, rememberCurrent = true)
+                }
+            }
+        })
+        val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(sessionPlayer) {
             override fun getDuration(): Long {
                 val realDuration = super.getDuration()
                 if (realDuration > 0L) return realDuration
@@ -754,14 +782,35 @@ class PlaybackService : MediaLibraryService() {
 
             override fun hasPreviousMediaItem(): Boolean = canSkipToPreviousTrack()
 
-            override fun seekToNext() = skipQueue(forward = true, respectRepeatOne = false)
+            override fun seekToNext() = seekRemoteOrLocal(forward = true)
 
-            override fun seekToNextMediaItem() = skipQueue(forward = true, respectRepeatOne = false)
+            override fun seekToNextMediaItem() = seekRemoteOrLocal(forward = true)
 
-            override fun seekToPrevious() = skipQueue(forward = false, respectRepeatOne = false)
+            override fun seekToPrevious() = seekRemoteOrLocal(forward = false)
 
-            override fun seekToPreviousMediaItem() =
-                skipQueue(forward = false, respectRepeatOne = false, allowRewind = false)
+            override fun seekToPreviousMediaItem() = seekRemoteOrLocal(forward = false, allowRewind = false)
+
+            private fun seekRemoteOrLocal(forward: Boolean, allowRewind: Boolean = true) {
+                if (sessionPlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE) {
+                    skipQueue(forward, respectRepeatOne = false, allowRewind = allowRewind)
+                    return
+                }
+                if (!forward && allowRewind && sessionPlayer.currentPosition > 5_000L) {
+                    sessionPlayer.seekTo(0L)
+                    queueEngine.updatePosition(0L)
+                    return
+                }
+                val canMoveInsideWindow = if (forward) {
+                    sessionPlayer.currentMediaItemIndex < sessionPlayer.mediaItemCount - 1
+                } else {
+                    sessionPlayer.currentMediaItemIndex > 0
+                }
+                if (canMoveInsideWindow) {
+                    if (forward) super.seekToNextMediaItem() else super.seekToPreviousMediaItem()
+                } else {
+                    skipCastQueue(forward, sessionPlayer)
+                }
+            }
         }
 
         mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, callback)
@@ -840,14 +889,23 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun expandRadioForSkip(): com.luc4n3x.levyra.domain.Track? {
-        if (!queueEngine.state.value.radioEnabled) return null
-        val seed = queueEngine.state.value.currentTrack ?: return null
+        val initial = queueEngine.state.value
+        if (!initial.radioEnabled) return null
+        val seed = initial.currentTrack ?: return null
         if (isLocalPlaybackTrack(seed) || !hasInternetCapableNetwork()) return null
-        val additions = runCatching {
-            musicRepository.radio(seed, LevyraPreferences(this).languageCode(), 20)
-        }.onFailure { Timber.w(it, "Background radio expansion failed") }
-            .getOrDefault(emptyList())
+        val additions = try {
+            musicRepository.radio(seed, LevyraPreferences(this).languageCode(), 5)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Background radio expansion failed")
+            emptyList()
+        }
         if (additions.isEmpty()) return null
+        val current = queueEngine.state.value
+        if (!current.radioEnabled || current.generation != initial.generation ||
+            current.currentTrack?.let(::playbackQueueIdentity) != playbackQueueIdentity(seed)
+        ) return null
         queueEngine.appendRadioTracks(additions)
         return queueEngine.next(respectRepeatOne = false)
     }
@@ -1608,6 +1666,7 @@ class PlaybackService : MediaLibraryService() {
         playbackWatchdogJob?.cancel()
         cancelQueueTransition()
         memoryGuardJob?.cancel()
+        castHandoffJob?.cancel()
         queueTransitionMonitorJob?.cancel()
         sleepTimerStateJob?.cancel()
         sleepTimer.cancel()
@@ -1630,6 +1689,54 @@ class PlaybackService : MediaLibraryService() {
             (getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(audioDeviceCallback)
         }
         super.onDestroy()
+    }
+
+    private fun handoffQueueToCast(castPlayer: Player) {
+        val snapshot = queueEngine.state.value
+        val current = snapshot.currentTrack ?: return
+        val handoff = CastHandoffConverter.toHandoff(
+            LocalPlaybackSnapshot(
+                queueIds = snapshot.tracks.map(::playbackQueueIdentity),
+                currentIndex = snapshot.currentIndex,
+                positionMs = castPlayer.currentPosition,
+                playing = castPlayer.playWhenReady,
+                shuffle = snapshot.shuffleEnabled,
+                repeatMode = snapshot.repeatMode
+            )
+        )
+        val generation = snapshot.generation
+        val window = snapshot.tracks.subList(
+            handoff.windowStartIndex,
+            handoff.windowStartIndex + handoff.queueWindowIds.size
+        )
+        castHandoffJob?.cancel()
+        castHandoffJob = serviceScope.launch(Dispatchers.IO) {
+            val resolved = window.map { track -> resolver.resolve(track, isVideoMode = false) }
+            val currentState = queueEngine.state.value
+            if (currentState.generation != generation ||
+                currentState.currentTrack?.let(::playbackQueueIdentity) != playbackQueueIdentity(current)
+            ) return@launch
+            withContext(Dispatchers.Main) {
+                if (castPlayer.deviceInfo.playbackType != DeviceInfo.PLAYBACK_TYPE_REMOTE) return@withContext
+                castPlayer.setMediaItems(resolved.map { LevyraMediaItemFactory.build(it) }, handoff.currentIndex, handoff.positionMs)
+                castPlayer.shuffleModeEnabled = handoff.shuffle
+                castPlayer.repeatMode = when (handoff.repeatMode) {
+                    com.luc4n3x.levyra.domain.RepeatMode.One -> Player.REPEAT_MODE_ONE
+                    com.luc4n3x.levyra.domain.RepeatMode.All -> Player.REPEAT_MODE_ALL
+                    com.luc4n3x.levyra.domain.RepeatMode.Off -> Player.REPEAT_MODE_OFF
+                }
+                castPlayer.prepare()
+                if (handoff.playing) castPlayer.play()
+            }
+        }
+    }
+
+    private fun skipCastQueue(forward: Boolean, castPlayer: Player) {
+        queueSkipJob?.cancel()
+        queueSkipJob = serviceScope.launch(Dispatchers.IO) {
+            val selected = if (forward) queueEngine.next(respectRepeatOne = false) else queueEngine.previous()
+            if (selected != null) withContext(Dispatchers.Main) { handoffQueueToCast(castPlayer) }
+        }
     }
 
     private fun refreshAudioOutputProfile() {

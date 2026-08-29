@@ -2,17 +2,20 @@ package com.luc4n3x.levyra
 
 import android.app.Application
 import android.content.ComponentCallbacks2
+import com.luc4n3x.levyra.data.AutomaticBackupScheduler
+import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
-import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
-import com.luc4n3x.levyra.data.AutomaticBackupScheduler
-import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
+import com.luc4n3x.levyra.feature.cast.CastRuntimeInitializer
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import com.luc4n3x.levyra.runtime.RuntimeHooks
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +28,7 @@ class LevyraApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CastRuntimeInitializer.initialize(this)
         RuntimeHooks.start(this)
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
         LevyraArtworkStartupMetrics.beginSession()
@@ -38,8 +42,18 @@ class LevyraApplication : Application() {
         warmPlaybackPipeline()
         startupScope.launch {
             delay(1800L)
-            runCatching { ReleaseRadarWorker.schedule(this@LevyraApplication) }
-                .onFailure { Timber.w(it, "Release radar scheduling failed") }
+            try {
+                when (val followedArtists = FollowedArtistsStore(this@LevyraApplication).loadOrNull()) {
+                    null -> Timber.w("Release radar state unavailable; preserving existing schedule")
+                    emptyList<com.luc4n3x.levyra.domain.FollowedArtist>() ->
+                        ReleaseRadarWorker.cancel(this@LevyraApplication)
+                    else -> ReleaseRadarWorker.schedule(this@LevyraApplication)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Release radar scheduling failed")
+            }
             runCatching {
                 AutomaticBackupScheduler.schedule(
                     this@LevyraApplication,

@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 
+private val YOUTUBE_VIDEO_ID_PATTERN =
+    Regex("(?:v=|youtu\\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,})")
+
 internal fun queuePersistenceAllowed(transientPlaybackActive: Boolean): Boolean =
     !transientPlaybackActive
 
@@ -49,6 +52,43 @@ internal fun replacementQueuePositionMs(
         0L
     }
 }
+
+internal fun radioHistoryTrimIndices(
+    history: List<Int>,
+    currentIndex: Int,
+    slotsNeeded: Int,
+    historyReserve: Int = 8
+): Set<Int> {
+    if (slotsNeeded <= 0 || history.isEmpty()) return emptySet()
+    val protected = history.takeLast(historyReserve.coerceAtLeast(0)).toSet() + currentIndex
+    return history.asSequence()
+        .filter { it >= 0 && it !in protected }
+        .distinct()
+        .take(slotsNeeded)
+        .toCollection(LinkedHashSet())
+}
+
+internal fun radioCandidateTracks(
+    existingTracks: List<Track>,
+    candidates: List<Track>,
+    limit: Int = 5
+): List<Track> {
+    if (limit <= 0 || candidates.isEmpty()) return emptyList()
+    val existingIds = existingTracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
+    val existingTitles = existingTracks.mapTo(LinkedHashSet(), ::radioTitleKey)
+    return candidates
+        .asSequence()
+        .filter { it.title.isNotBlank() }
+        .distinctBy(::playbackQueueIdentity)
+        .distinctBy(::radioTitleKey)
+        .filter { playbackQueueIdentity(it) !in existingIds }
+        .filter { radioTitleKey(it) !in existingTitles }
+        .take(limit)
+        .toList()
+}
+
+private fun radioTitleKey(track: Track): String =
+    "${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
 
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
@@ -475,14 +515,57 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
-        val existing = current.tracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
-        val additions = tracks
-            .filter { it.title.isNotBlank() }
-            .filter { existing.add(playbackQueueIdentity(it)) }
+        val candidates = radioCandidateTracks(
+            existingTracks = current.tracks,
+            candidates = tracks,
+            limit = RADIO_BATCH_SIZE
+        )
+        if (candidates.isEmpty()) return@mutate current
+
+        val prepared = trimPlayedRadioHistory(current, candidates.size)
+        val available = (MAX_RADIO_QUEUE_SIZE - prepared.tracks.size).coerceAtLeast(0)
+        val additions = candidates
+            .take(minOf(RADIO_BATCH_SIZE, available))
             .map { it.queueStoredCopy() }
-            .take(20)
         if (additions.isEmpty()) return@mutate current
-        rebuildAfterStructureChange(current, current.tracks + additions, current.currentIndex)
+        rebuildAfterStructureChange(prepared, prepared.tracks + additions, prepared.currentIndex)
+    }
+
+    private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
+        if (!current.radioEnabled || desiredSlots <= 0) return current
+        val slotsNeeded = (current.tracks.size + desiredSlots - MAX_RADIO_QUEUE_SIZE).coerceAtLeast(0)
+        if (slotsNeeded == 0) return current
+        val remove = radioHistoryTrimIndices(
+            history = current.history,
+            currentIndex = current.currentIndex,
+            slotsNeeded = slotsNeeded,
+            historyReserve = RADIO_HISTORY_RESERVE
+        ).filterTo(LinkedHashSet()) { it in current.tracks.indices && it != current.currentIndex }
+        if (remove.isEmpty()) return current
+
+        val indexMap = IntArray(current.tracks.size) { -1 }
+        val nextTracks = ArrayList<Track>(current.tracks.size - remove.size)
+        current.tracks.forEachIndexed { oldIndex, track ->
+            if (oldIndex !in remove) {
+                indexMap[oldIndex] = nextTracks.size
+                nextTracks += track
+            }
+        }
+        val nextCurrentIndex = current.currentIndex.takeIf { it in indexMap.indices }
+            ?.let { indexMap[it] }
+            ?.takeIf { it >= 0 }
+            ?: return current
+        val sourceOrder = if (current.shuffleEnabled) normalizedShuffleOrder(current) else emptyList()
+        val nextOrder = sourceOrder.mapNotNull { oldIndex -> indexMap.getOrNull(oldIndex)?.takeIf { it >= 0 } }
+        val nextHistory = current.history.mapNotNull { oldIndex -> indexMap.getOrNull(oldIndex)?.takeIf { it >= 0 } }.takeLast(200)
+        return current.copy(
+            tracks = nextTracks,
+            currentIndex = nextCurrentIndex,
+            shuffleOrder = nextOrder,
+            shuffleCursor = if (current.shuffleEnabled) nextOrder.indexOf(nextCurrentIndex).coerceAtLeast(0) else -1,
+            history = nextHistory,
+            generation = current.generation + 1L
+        )
     }
 
     suspend fun flush() {
@@ -669,6 +752,9 @@ class PersistentQueueEngine private constructor(context: Context) {
     private data class QueueRemoval(val track: Track, val index: Int)
 
     companion object {
+        private const val RADIO_BATCH_SIZE = 5
+        private const val RADIO_HISTORY_RESERVE = 8
+        private const val MAX_RADIO_QUEUE_SIZE = 100
         @Volatile
         private var instance: PersistentQueueEngine? = null
 
@@ -726,7 +812,7 @@ internal fun stableShuffleOrder(tracks: List<Track>, currentIndex: Int, generati
 }
 
 internal fun playbackQueueIdentity(track: Track): String {
-    val videoId = Regex("(?:v=|youtu\\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,})")
+    val videoId = YOUTUBE_VIDEO_ID_PATTERN
         .find(track.videoUrl)
         ?.groupValues
         ?.getOrNull(1)

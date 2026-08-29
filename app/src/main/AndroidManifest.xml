@@ -32,6 +32,10 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Levyra">
 
+        <receiver
+            android:name="androidx.mediarouter.media.MediaTransferReceiver"
+            android:exported="true" />
+
         <provider
             android:name=".data.SpotifyChartBootstrapProvider"
             android:authorities="${applicationId}.spotify-chart-bootstrap"
@@ -144,6 +148,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/levyra_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.RecognitionWidgetProvider"
+            android:exported="false"
+            android:label="@string/tile_recognize_music">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/recognition_widget_info" />
         </receiver>
 
         <service

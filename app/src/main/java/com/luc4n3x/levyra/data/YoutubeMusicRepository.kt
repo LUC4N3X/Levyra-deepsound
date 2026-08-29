@@ -488,6 +488,7 @@ private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
 private const val MAX_ALBUM_RECOVERY_ATTEMPTS = 3
 private const val SUGGESTION_RESPONSE_LIMIT_CHARS = 64 * 1024
+private const val MIN_CONTINUOUS_RADIO_CANDIDATES = 20
 internal const val YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS = "EgWKAQIQAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_SONG_SEARCH_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF"
 internal const val YOUTUBE_MUSIC_ALBUM_SEARCH_PARAMS = "EgWKAQIYAWoMEA4QChADEAQQCRAF"
@@ -2501,12 +2502,17 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         runCatching { watchRepository.getSongRelated(watch.relatedBrowseId, languageCode) }.getOrDefault(emptyList())
     }
 
+    /**
+     * Returns a discovery pool rather than the exact queue append size. Continuous radio appends
+     * at most five tracks after de-duplication, so a wider pool prevents a duplicate-heavy top five
+     * from starving the tail while keeping the network request bounded.
+     */
     suspend fun radio(
         seed: Track,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 20
     ): List<Track> = withContext(Dispatchers.IO) {
-        val boundedLimit = limit.coerceIn(1, 30)
+        val boundedLimit = maxOf(limit.coerceIn(1, 30), MIN_CONTINUOUS_RADIO_CANDIDATES)
         val videoId = resolveVideoId(seed)
         if (videoId.isBlank()) return@withContext emptyList()
         val query = "radio ${seed.artist} ${seed.title}".trim()

@@ -24,9 +24,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ArtistLoreEntity::class,
         ListenLifetimeTrackEntity::class,
         ListenLifetimeArtistEntity::class,
-        RecognitionHistoryEntity::class
+        RecognitionHistoryEntity::class,
+        FollowedArtistEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -43,6 +44,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun artistLoreDao(): ArtistLoreDao
     abstract fun listenLifetimeDao(): ListenLifetimeDao
     abstract fun recognitionHistoryDao(): RecognitionHistoryDao
+    abstract fun followedArtistsDao(): FollowedArtistsDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -530,6 +532,16 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS followed_artists (" +
+                        "artistKey TEXT NOT NULL, browseId TEXT NOT NULL, name TEXT NOT NULL, " +
+                        "thumbnailUrl TEXT NOT NULL, followedAt INTEGER NOT NULL, PRIMARY KEY(artistKey))"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -546,7 +558,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
-            MIGRATION_16_17
+            MIGRATION_16_17,
+            MIGRATION_17_18
         )
 
         fun get(context: Context): LevyraDatabase {

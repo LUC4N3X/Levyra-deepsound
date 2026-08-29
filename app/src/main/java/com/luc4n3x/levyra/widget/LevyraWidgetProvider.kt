@@ -2,8 +2,13 @@ package com.luc4n3x.levyra.widget
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.ContextCompat
+import androidx.media3.common.Player
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.player.PlaybackService
@@ -24,18 +29,14 @@ class LevyraWidgetProvider : AppWidgetProvider() {
     }
 
     private fun handleToggle(context: Context) {
-        val toggle = LevyraWidgetBridge.onToggle
-        if (toggle != null) {
+        LevyraWidgetBridge.onToggle?.let { toggle ->
             toggle()
             return
         }
-        val player = PlaybackService.activePlayer
-        if (player != null && player.mediaItemCount > 0) {
-            val playing = player.isPlaying
-            if (playing) player.pause() else player.play()
-            LevyraWidgetCenter.setPlaying(context, !playing)
-        } else {
-            openApp(context)
+        withSessionPlayer(context) { controller ->
+            if (controller.mediaItemCount <= 0) return@withSessionPlayer false
+            if (controller.isPlaying) controller.pause() else controller.play()
+            true
         }
     }
 
@@ -44,8 +45,29 @@ class LevyraWidgetProvider : AppWidgetProvider() {
             action()
             return
         }
-        val handled = if (forward) PlaybackService.requestQueueNext() else PlaybackService.requestQueuePrevious()
-        if (!handled) openApp(context)
+        withSessionPlayer(context) { controller ->
+            if (controller.mediaItemCount <= 0) return@withSessionPlayer false
+            val command = if (forward) Player.COMMAND_SEEK_TO_NEXT else Player.COMMAND_SEEK_TO_PREVIOUS
+            if (!controller.isCommandAvailable(command)) return@withSessionPlayer false
+            if (forward) controller.seekToNext() else controller.seekToPrevious()
+            true
+        }
+    }
+
+    private fun withSessionPlayer(context: Context, command: (MediaController) -> Boolean) {
+        val appContext = context.applicationContext
+        val pending = goAsync()
+        val future = MediaController.Builder(
+            appContext,
+            SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
+        ).buildAsync()
+        future.addListener({
+            val controller = runCatching { future.get() }.getOrNull()
+            val handled = controller?.let { runCatching { command(it) }.getOrDefault(false) } == true
+            controller?.release()
+            if (!handled) openApp(appContext)
+            pending.finish()
+        }, ContextCompat.getMainExecutor(appContext))
     }
 
     private fun openApp(context: Context, shortcut: String? = null) {

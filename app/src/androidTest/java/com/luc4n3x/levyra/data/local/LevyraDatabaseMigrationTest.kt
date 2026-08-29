@@ -101,6 +101,28 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate17To18KeepsUserDataAndAddsFollowedArtists() {
+        helper.createDatabase(TEST_DB, 17).use { db ->
+            db.execSQL(
+                "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt) " +
+                    "VALUES ('p3', 'Followed releases', '', 300, 300)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 18, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name FROM playlists WHERE id = 'p3'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Followed releases", cursor.getString(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM followed_artists").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

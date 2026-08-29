@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.FollowedArtistsStore
+import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
@@ -746,6 +747,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeArtistsFingerprint: String = ""
     private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
+    private var followedArtistsJob: Job? = null
+    private var followedArtistsGeneration = 0L
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
@@ -1221,7 +1224,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 ?.let { resolver.invalidate(it, _state.value.isVideoMode) }
             _state.update { it.copy(playerError = cleanPlaybackError(errorMsg), isPlaying = false, isResolving = false) }
         }
-        applyFollowedArtists(followedArtistsStore.load())
+        val followedLoadGeneration = followedArtistsGeneration
+        viewModelScope.launch(Dispatchers.IO) {
+            val followed = followedArtistsStore.load()
+            withContext(Dispatchers.Main) {
+                if (followedArtistsGeneration == followedLoadGeneration) applyFollowedArtists(followed)
+            }
+        }
         startTicker()
         observeDownloads()
         observeDownloadTasks()
@@ -1308,22 +1317,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleFollowArtist() {
         val profile = _state.value.artistProfile ?: return
+        val browseId = profile.browseId.trim()
+        if (browseId.isBlank()) return
         val name = profile.name.trim()
         if (name.isBlank()) return
         val current = _state.value.followedArtists
-        val exists = current.any { sameArtist(it, profile.browseId, name) }
+        val exists = current.any { sameArtist(it, browseId, name) }
         val updated = if (exists) {
-            current.filterNot { sameArtist(it, profile.browseId, name) }
+            current.filterNot { sameArtist(it, browseId, name) }
         } else {
-            listOf(FollowedArtist(profile.browseId, name, profile.thumbnailUrl, System.currentTimeMillis())) + current
+            listOf(FollowedArtist(browseId, name, profile.thumbnailUrl, System.currentTimeMillis())) +
+                current.filterNot { it.browseId.isBlank() && it.name.equals(name, ignoreCase = true) }
         }
-        followedArtistsStore.save(updated)
+        followedArtistsGeneration++
+        val mutationGeneration = followedArtistsGeneration
         applyFollowedArtists(updated)
-        loadReleaseRadar()
+        followedArtistsJob?.cancel()
+        followedArtistsJob = viewModelScope.launch(Dispatchers.IO) {
+            followedArtistsStore.save(updated)
+            if (mutationGeneration != followedArtistsGeneration) return@launch
+            if (exists) {
+                current.filter { sameArtist(it, browseId, name) }
+                    .forEach { followedArtistsStore.clearKnownReleases(it.key) }
+            } else {
+                val currentProfile = runCatching { artistRepository.profile(browseId, name) }.getOrNull()
+                if (currentProfile != null && mutationGeneration == followedArtistsGeneration) {
+                    val baseline = (currentProfile.albums + currentProfile.singles)
+                        .map(ReleaseRadarWorker::releaseKey)
+                        .toSet()
+                    followedArtistsStore.saveKnownReleases(browseId, baseline)
+                }
+            }
+            if (mutationGeneration != followedArtistsGeneration) return@launch
+            if (updated.isEmpty()) ReleaseRadarWorker.cancel(levyraContext)
+            else ReleaseRadarWorker.schedule(levyraContext)
+            withContext(Dispatchers.Main) { loadReleaseRadar() }
+        }
     }
 
     private fun sameArtist(artist: FollowedArtist, browseId: String, name: String): Boolean =
-        (browseId.isNotBlank() && artist.browseId == browseId) || artist.name.equals(name, ignoreCase = true)
+        artist.browseId == browseId || (artist.browseId.isBlank() && artist.name.equals(name, ignoreCase = true))
 
     private fun scheduleColdStartRefresh(initialTracks: List<Track>) {
         val appContext = getApplication<Application>().applicationContext
@@ -3837,7 +3870,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleContinuousRadio() {
         val enabled = !queueEngine.state.value.radioEnabled
         queueEngine.setRadioEnabled(enabled)
-        if (enabled) ensureRadioTail(force = true)
+        if (enabled) ensureRadioTail(force = true) else radioJob?.cancel()
     }
 
     fun setLyricsTranslationEnabled(value: Boolean) {
@@ -7549,7 +7582,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun ensureRadioTail(force: Boolean, playWhenReady: Boolean = false) {
         val request = radioTailRequest(force) ?: return
         radioJob = viewModelScope.launch(Dispatchers.IO) {
-            appendRadioTail(request, force, playWhenReady)
+            appendRadioTail(request, playWhenReady)
         }
     }
 
@@ -7565,16 +7598,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun appendRadioTail(
         request: RadioTailRequest,
-        force: Boolean,
         playWhenReady: Boolean
     ) {
-        val radioTracks = runCatching {
-            repository.radio(request.seed, _state.value.languageCode, 20)
-        }.getOrDefault(emptyList())
+        val radioTracks = try {
+            repository.radio(request.seed, _state.value.languageCode, 5)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            emptyList()
+        }
         if (radioTracks.isEmpty()) return
         val current = queueEngine.state.value
+        if (!current.radioEnabled) return
         if (!isSameRadioSeed(current.currentTrack, request.seed)) return
-        if (current.generation != request.generation && !force) return
+        if (current.generation != request.generation) return
         queueEngine.appendRadioTracks(radioTracks)
         if (!playWhenReady) return
         withContext(Dispatchers.Main) {
