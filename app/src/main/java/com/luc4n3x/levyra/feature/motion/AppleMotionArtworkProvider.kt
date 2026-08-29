@@ -40,7 +40,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         Timber.d("Apple artist motion lookup start artist=%s", clean)
         val developerTokenValue = developerToken()
         var lastFailure: Throwable? = null
-        for (catalogStorefront in appleArtistMotionStorefronts(storefront())) {
+        for (catalogStorefront in appleMotionStorefronts(storefront())) {
             val selected = try {
                 Timber.d("Apple artist motion storefront=%s artist=%s", catalogStorefront, clean)
                 findArtistMotionInStorefront(clean, requested, catalogStorefront, developerTokenValue)
@@ -192,29 +192,40 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val storefront = storefront()
-            Timber.d(
-                "Apple player motion lookup start storefront=%s title=%s artists=%s album=%s",
-                storefront,
-                identity.title,
-                identity.artists.joinToString(),
-                identity.album
-            )
             val developerTokenValue = developerToken()
-            val songCandidates = search(identity, storefront, developerTokenValue, "songs")
-            if (songCandidates.isNotEmpty()) {
-                Timber.d("Apple player motion songs found=%d title=%s", songCandidates.size, identity.title)
-                MotionArtworkProviderResult.Found(songCandidates)
-            } else {
-                Timber.d("Apple player motion songs miss title=%s; trying albums", identity.title)
-                val albumCandidates = search(identity, storefront, developerTokenValue, "albums")
-                if (albumCandidates.isNotEmpty()) {
-                    Timber.d("Apple player motion albums found=%d title=%s", albumCandidates.size, identity.title)
-                    MotionArtworkProviderResult.Found(albumCandidates)
-                } else {
-                    Timber.d("Apple player motion conclusive miss title=%s", identity.title)
-                    MotionArtworkProviderResult.NoMatch
+            var lastFailure: Throwable? = null
+            for (catalogStorefront in appleMotionStorefronts(storefront())) {
+                Timber.d(
+                    "Apple player motion lookup storefront=%s title=%s artists=%s album=%s",
+                    catalogStorefront,
+                    identity.title,
+                    identity.artists.joinToString(),
+                    identity.album
+                )
+                val result = try {
+                    findPlayerMotionInStorefront(identity, catalogStorefront, developerTokenValue)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    Timber.d(
+                        error,
+                        "Apple player motion storefront failed storefront=%s title=%s",
+                        catalogStorefront,
+                        identity.title
+                    )
+                    lastFailure = error
+                    null
                 }
+                if (result is MotionArtworkProviderResult.Found) return result
+                if (result == MotionArtworkProviderResult.NoMatch) {
+                    Timber.d("Apple player motion storefront miss storefront=%s title=%s", catalogStorefront, identity.title)
+                }
+            }
+            if (lastFailure != null) {
+                MotionArtworkProviderResult.Failed(lastFailure)
+            } else {
+                Timber.d("Apple player motion conclusive miss title=%s", identity.title)
+                MotionArtworkProviderResult.NoMatch
             }
         } catch (error: CancellationException) {
             throw error
@@ -222,6 +233,25 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             Timber.d(error, "Apple motion provider failed")
             MotionArtworkProviderResult.Failed(error)
         }
+    }
+
+    private suspend fun findPlayerMotionInStorefront(
+        identity: MotionTrackIdentity,
+        storefront: String,
+        token: String
+    ): MotionArtworkProviderResult {
+        val songCandidates = search(identity, storefront, token, "songs")
+        if (songCandidates.isNotEmpty()) {
+            Timber.d("Apple player motion songs found=%d storefront=%s title=%s", songCandidates.size, storefront, identity.title)
+            return MotionArtworkProviderResult.Found(songCandidates)
+        }
+        Timber.d("Apple player motion songs miss storefront=%s title=%s; trying albums", storefront, identity.title)
+        val albumCandidates = search(identity, storefront, token, "albums")
+        if (albumCandidates.isNotEmpty()) {
+            Timber.d("Apple player motion albums found=%d storefront=%s title=%s", albumCandidates.size, storefront, identity.title)
+            return MotionArtworkProviderResult.Found(albumCandidates)
+        }
+        return MotionArtworkProviderResult.NoMatch
     }
 
     private suspend fun search(
@@ -288,7 +318,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             val albumId = resolveAlbumId(result.item, result.attributes, type)
             val resolved = if (directVideo != null) {
                 Timber.d(
-                    "Apple player direct editorial video type=%s appleId=%s title=%s",
+                    "Apple player direct editorial video storefront=%s type=%s appleId=%s title=%s",
+                    storefront,
                     type,
                     result.item.optString("id"),
                     result.name
@@ -302,7 +333,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 )
             } else if (!albumId.isNullOrBlank() && !albumId.startsWith("pl.")) {
                 Timber.d(
-                    "Apple player direct video miss; checking album appleAlbumId=%s title=%s",
+                    "Apple player direct video miss; checking album storefront=%s appleAlbumId=%s title=%s",
+                    storefront,
                     albumId,
                     result.name
                 )
@@ -311,10 +343,9 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 null
             } ?: continue
 
-            val scope = MotionArtworkScope.ALBUM
             output += MotionArtworkCandidate(
                 provider = id,
-                scope = scope,
+                scope = MotionArtworkScope.ALBUM,
                 identity = MotionTrackIdentity(
                     title = identity.title,
                     artists = splitArtists(if (resolved.albumArtist.isNotBlank()) resolved.albumArtist else result.artist),
@@ -333,7 +364,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
             )
         }
-        Timber.d("Apple player search produced=%d type=%s title=%s", output.size, type, identity.title)
+        Timber.d("Apple player search produced=%d storefront=%s type=%s title=%s", output.size, storefront, type, identity.title)
         return output
     }
 
@@ -527,8 +558,6 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         const val MAX_ARTIST_DETAIL_CANDIDATES = 3
         const val MAX_TOKEN_SCRIPT_CANDIDATES = 12
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
-        val SCRIPT_SRC_REGEX = Regex("""(?i)<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']""")
-        val LEGACY_SCRIPT_REGEX = Regex("[\\\"']([^\\\"']*/assets/index[^\\\"']*\\.js)[\\\"']")
         val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\\.ey[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+")
         val BLACKLIST = setOf("playlist", "set list", "essentials", "dj mix", "apple music", "todays hits", "session")
     }
@@ -550,10 +579,17 @@ internal data class AppleArtistMotionMatch(
     val video: AppleEditorialVideo
 )
 
+private val APPLE_SCRIPT_SRC_REGEX = Regex(
+    """(?i)<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']"""
+)
+private val APPLE_LEGACY_SCRIPT_REGEX = Regex(
+    "[\\\"']([^\\\"']*/assets/index[^\\\"']*\\.js)[\\\"']"
+)
+
 internal fun appleMusicScriptUrls(html: String): List<String> {
     val paths = LinkedHashSet<String>()
-    SCRIPT_SRC_REGEX.findAll(html).forEach { match -> paths += match.groupValues[1] }
-    LEGACY_SCRIPT_REGEX.findAll(html).forEach { match -> paths += match.groupValues[1] }
+    APPLE_SCRIPT_SRC_REGEX.findAll(html).forEach { match -> paths += match.groupValues[1] }
+    APPLE_LEGACY_SCRIPT_REGEX.findAll(html).forEach { match -> paths += match.groupValues[1] }
     return paths.mapNotNull(::trustedAppleMusicScriptUrl)
 }
 
@@ -569,10 +605,13 @@ private fun trustedAppleMusicScriptUrl(value: String): String? {
     }
 }
 
-internal fun appleArtistMotionStorefronts(localStorefront: String): List<String> =
+internal fun appleMotionStorefronts(localStorefront: String): List<String> =
     listOf("us", localStorefront.trim().lowercase(Locale.ROOT))
         .filter { it.length == 2 }
         .distinct()
+
+internal fun appleArtistMotionStorefronts(localStorefront: String): List<String> =
+    appleMotionStorefronts(localStorefront)
 
 internal fun selectAppleArtistEditorialVideo(attributes: JSONObject?): AppleEditorialVideo? {
     val root = attributes ?: return null
