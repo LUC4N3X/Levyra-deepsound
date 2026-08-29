@@ -538,7 +538,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         reason: String,
         isOfflineExport: Boolean = false,
-        audioQuality: String? = null
+        audioQuality: String? = null,
+        failedUrl: String? = null
     ) {
         if (isLocalPlaybackTrack(track)) {
             resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
@@ -571,7 +572,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
         val recovery = resilienceEngine.recoveryPlan(reason)
-        listOf(track.streamUrl, track.videoStreamUrl)
+        val attributedUrl = failedUrl?.takeIf { it.isNotBlank() }
+            ?: if (isVideoMode) {
+                track.videoStreamUrl.ifBlank { track.streamUrl }
+            } else {
+                track.streamUrl
+            }.takeIf { it.isNotBlank() }
+        val quarantineTargets = if (isCandidateLevelPlaybackFailure(failureKind)) {
+            listOfNotNull(attributedUrl)
+        } else {
+            listOf(track.streamUrl, track.videoStreamUrl)
+        }
+        quarantineTargets
             .filter { it.isNotBlank() }
             .forEach { quarantinePlaybackUrl(it, now + recovery.quarantineMs, now) }
         if (recovery.rotateClient) {
@@ -598,7 +610,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (recovery.rotateCodec && !isOfflineExport) {
             videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
         }
-        if (!isOfflineExport && isCandidateLevelPlaybackFailure(failureKind)) {
+        if (!isOfflineExport && attributedUrl != null && isCandidateLevelPlaybackFailure(failureKind)) {
             promoteAlternateCandidate(track, isVideoMode, audioQuality)
         }
         val sourceMatchQuarantineMs = when {
