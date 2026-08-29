@@ -18,8 +18,7 @@ class FollowedArtistsStore(context: Context) {
     suspend fun load(): List<FollowedArtist> = loadOrNull().orEmpty()
 
     suspend fun loadOrNull(): List<FollowedArtist>? = try {
-        migrateLegacyRowsIfNeeded()
-        dao.all().map { it.toDomain() }
+        if (!migrateLegacyRowsIfNeeded()) null else dao.all().map { it.toDomain() }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
@@ -36,10 +35,10 @@ class FollowedArtistsStore(context: Context) {
         false
     }
 
-    private suspend fun migrateLegacyRowsIfNeeded() {
-        if (dao.all().isNotEmpty()) return
+    private suspend fun migrateLegacyRowsIfNeeded(): Boolean {
+        if (dao.all().isNotEmpty()) return true
         val raw = prefs.getString(KEY_ARTISTS, null).orEmpty()
-        if (raw.isBlank()) return
+        if (raw.isBlank()) return true
         val legacy = try {
             val array = JSONArray(raw)
             (0 until array.length()).mapNotNull { index ->
@@ -57,7 +56,7 @@ class FollowedArtistsStore(context: Context) {
             }
         } catch (error: Exception) {
             Timber.w(error, "Followed artists migration failed; preserving legacy data")
-            return
+            return false
         }
         val migrated = try {
             database.withTransaction {
@@ -70,8 +69,9 @@ class FollowedArtistsStore(context: Context) {
             Timber.w(error, "Followed artists Room migration failed; preserving legacy data")
             false
         }
-        if (!migrated) return
+        if (!migrated) return false
         clearLegacyPayload()
+        return true
     }
 
     suspend fun save(artists: List<FollowedArtist>) {
