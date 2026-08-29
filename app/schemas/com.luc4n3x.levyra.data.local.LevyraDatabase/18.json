@@ -1,0 +1,1859 @@
+{
+    "formatVersion":  1,
+    "database":  {
+                     "version":  18,
+                     "identityHash":  "f4a721cc994996383389c96492877c6f",
+                     "entities":  [
+                                      {
+                                          "tableName":  "favorite_tracks",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, `streamUrl` TEXT NOT NULL, `videoUrl` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL, `largeThumbnailUrl` TEXT NOT NULL, `source` TEXT NOT NULL, `moodTags` TEXT NOT NULL, `energy` INTEGER NOT NULL, `vocal` INTEGER NOT NULL, `replayScore` INTEGER NOT NULL, `cacheScore` INTEGER NOT NULL, `accentStart` INTEGER NOT NULL, `accentEnd` INTEGER NOT NULL, `youtubeLoudnessDb` REAL, `youtubePerceptualLoudnessDb` REAL, `isrc` TEXT NOT NULL, `upc` TEXT NOT NULL, `releaseDate` TEXT NOT NULL, `year` TEXT NOT NULL, `trackNumber` INTEGER NOT NULL, `discNumber` INTEGER NOT NULL, `explicit` INTEGER NOT NULL, `albumBrowseId` TEXT NOT NULL, `artistBrowseIds` TEXT NOT NULL, `counterpartVideoId` TEXT NOT NULL, `videoType` TEXT NOT NULL, `metadataProvider` TEXT NOT NULL, `metadataConfidence` INTEGER NOT NULL, `canonicalAlbumUrl` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "id",
+                                                             "columnName":  "id",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "album",
+                                                             "columnName":  "album",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "durationMs",
+                                                             "columnName":  "durationMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "streamUrl",
+                                                             "columnName":  "streamUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "videoUrl",
+                                                             "columnName":  "videoUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "thumbnailUrl",
+                                                             "columnName":  "thumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "largeThumbnailUrl",
+                                                             "columnName":  "largeThumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "source",
+                                                             "columnName":  "source",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "moodTags",
+                                                             "columnName":  "moodTags",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "energy",
+                                                             "columnName":  "energy",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "vocal",
+                                                             "columnName":  "vocal",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "replayScore",
+                                                             "columnName":  "replayScore",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "cacheScore",
+                                                             "columnName":  "cacheScore",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "accentStart",
+                                                             "columnName":  "accentStart",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "accentEnd",
+                                                             "columnName":  "accentEnd",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "youtubeLoudnessDb",
+                                                             "columnName":  "youtubeLoudnessDb",
+                                                             "affinity":  "REAL"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "youtubePerceptualLoudnessDb",
+                                                             "columnName":  "youtubePerceptualLoudnessDb",
+                                                             "affinity":  "REAL"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "isrc",
+                                                             "columnName":  "isrc",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "upc",
+                                                             "columnName":  "upc",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "releaseDate",
+                                                             "columnName":  "releaseDate",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "year",
+                                                             "columnName":  "year",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackNumber",
+                                                             "columnName":  "trackNumber",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "discNumber",
+                                                             "columnName":  "discNumber",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "explicit",
+                                                             "columnName":  "explicit",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "albumBrowseId",
+                                                             "columnName":  "albumBrowseId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artistBrowseIds",
+                                                             "columnName":  "artistBrowseIds",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "counterpartVideoId",
+                                                             "columnName":  "counterpartVideoId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "videoType",
+                                                             "columnName":  "videoType",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "metadataProvider",
+                                                             "columnName":  "metadataProvider",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "metadataConfidence",
+                                                             "columnName":  "metadataConfidence",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "canonicalAlbumUrl",
+                                                             "columnName":  "canonicalAlbumUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "createdAt",
+                                                             "columnName":  "createdAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "id"
+                                                                             ]
+                                                         }
+                                      },
+                                      {
+                                          "tableName":  "downloaded_tracks",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `trackId` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, `fileName` TEXT NOT NULL, `uri` TEXT NOT NULL, `mimeType` TEXT NOT NULL, `embeddedMetadata` INTEGER NOT NULL, `downloadPreset` TEXT NOT NULL, `downloadQuality` TEXT NOT NULL, `savedAt` INTEGER NOT NULL)",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "id",
+                                                             "columnName":  "id",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackId",
+                                                             "columnName":  "trackId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "album",
+                                                             "columnName":  "album",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "durationMs",
+                                                             "columnName":  "durationMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "fileName",
+                                                             "columnName":  "fileName",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "uri",
+                                                             "columnName":  "uri",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "mimeType",
+                                                             "columnName":  "mimeType",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "embeddedMetadata",
+                                                             "columnName":  "embeddedMetadata",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "downloadPreset",
+                                                             "columnName":  "downloadPreset",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "downloadQuality",
+                                                             "columnName":  "downloadQuality",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "savedAt",
+                                                             "columnName":  "savedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  true,
+                                                             "columnNames":  [
+                                                                                 "id"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_downloaded_tracks_trackId",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "trackId"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_downloaded_tracks_trackId` ON `${TABLE_NAME}` (`trackId`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_downloaded_tracks_savedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "savedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_downloaded_tracks_savedAt` ON `${TABLE_NAME}` (`savedAt`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_downloaded_tracks_trackId_downloadPreset_downloadQuality",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "trackId",
+                                                                                  "downloadPreset",
+                                                                                  "downloadQuality"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_downloaded_tracks_trackId_downloadPreset_downloadQuality` ON `${TABLE_NAME}` (`trackId`, `downloadPreset`, `downloadQuality`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "playlists",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `coverUrl` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "id",
+                                                             "columnName":  "id",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "name",
+                                                             "columnName":  "name",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "coverUrl",
+                                                             "columnName":  "coverUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "createdAt",
+                                                             "columnName":  "createdAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "id"
+                                                                             ]
+                                                         }
+                                      },
+                                      {
+                                          "tableName":  "playlist_tracks",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlistId` TEXT NOT NULL, `trackId` TEXT NOT NULL, `position` INTEGER NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, `videoUrl` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL, `largeThumbnailUrl` TEXT NOT NULL, `source` TEXT NOT NULL, `accentStart` INTEGER NOT NULL, `accentEnd` INTEGER NOT NULL, `youtubeLoudnessDb` REAL, `youtubePerceptualLoudnessDb` REAL, `isrc` TEXT NOT NULL, `upc` TEXT NOT NULL, `releaseDate` TEXT NOT NULL, `year` TEXT NOT NULL, `trackNumber` INTEGER NOT NULL, `discNumber` INTEGER NOT NULL, `explicit` INTEGER NOT NULL, `albumBrowseId` TEXT NOT NULL, `artistBrowseIds` TEXT NOT NULL, `counterpartVideoId` TEXT NOT NULL, `videoType` TEXT NOT NULL, `metadataProvider` TEXT NOT NULL, `metadataConfidence` INTEGER NOT NULL, `canonicalAlbumUrl` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`playlistId`, `trackId`), FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "playlistId",
+                                                             "columnName":  "playlistId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackId",
+                                                             "columnName":  "trackId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "position",
+                                                             "columnName":  "position",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "album",
+                                                             "columnName":  "album",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "durationMs",
+                                                             "columnName":  "durationMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "videoUrl",
+                                                             "columnName":  "videoUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "thumbnailUrl",
+                                                             "columnName":  "thumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "largeThumbnailUrl",
+                                                             "columnName":  "largeThumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "source",
+                                                             "columnName":  "source",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "accentStart",
+                                                             "columnName":  "accentStart",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "accentEnd",
+                                                             "columnName":  "accentEnd",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "youtubeLoudnessDb",
+                                                             "columnName":  "youtubeLoudnessDb",
+                                                             "affinity":  "REAL"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "youtubePerceptualLoudnessDb",
+                                                             "columnName":  "youtubePerceptualLoudnessDb",
+                                                             "affinity":  "REAL"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "isrc",
+                                                             "columnName":  "isrc",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "upc",
+                                                             "columnName":  "upc",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "releaseDate",
+                                                             "columnName":  "releaseDate",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "year",
+                                                             "columnName":  "year",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackNumber",
+                                                             "columnName":  "trackNumber",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "discNumber",
+                                                             "columnName":  "discNumber",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "explicit",
+                                                             "columnName":  "explicit",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "albumBrowseId",
+                                                             "columnName":  "albumBrowseId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artistBrowseIds",
+                                                             "columnName":  "artistBrowseIds",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "counterpartVideoId",
+                                                             "columnName":  "counterpartVideoId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "videoType",
+                                                             "columnName":  "videoType",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "metadataProvider",
+                                                             "columnName":  "metadataProvider",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "metadataConfidence",
+                                                             "columnName":  "metadataConfidence",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "canonicalAlbumUrl",
+                                                             "columnName":  "canonicalAlbumUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "addedAt",
+                                                             "columnName":  "addedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "playlistId",
+                                                                                 "trackId"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_playlist_tracks_playlistId",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "playlistId"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `${TABLE_NAME}` (`playlistId`)"
+                                                          }
+                                                      ],
+                                          "foreignKeys":  [
+                                                              {
+                                                                  "table":  "playlists",
+                                                                  "onDelete":  "CASCADE",
+                                                                  "onUpdate":  "NO ACTION",
+                                                                  "columns":  [
+                                                                                  "playlistId"
+                                                                              ],
+                                                                  "referencedColumns":  [
+                                                                                            "id"
+                                                                                        ]
+                                                              }
+                                                          ]
+                                      },
+                                      {
+                                          "tableName":  "listen_events",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `trackId` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, `videoUrl` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL, `largeThumbnailUrl` TEXT NOT NULL, `source` TEXT NOT NULL, `listenedMs` INTEGER NOT NULL, `completed` INTEGER NOT NULL, `startedAt` INTEGER NOT NULL, `artistBrowseIds` TEXT NOT NULL DEFAULT \u0027\u0027)",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "id",
+                                                             "columnName":  "id",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackId",
+                                                             "columnName":  "trackId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "album",
+                                                             "columnName":  "album",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "durationMs",
+                                                             "columnName":  "durationMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "videoUrl",
+                                                             "columnName":  "videoUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "thumbnailUrl",
+                                                             "columnName":  "thumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "largeThumbnailUrl",
+                                                             "columnName":  "largeThumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "source",
+                                                             "columnName":  "source",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "listenedMs",
+                                                             "columnName":  "listenedMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "completed",
+                                                             "columnName":  "completed",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "startedAt",
+                                                             "columnName":  "startedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artistBrowseIds",
+                                                             "columnName":  "artistBrowseIds",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true,
+                                                             "defaultValue":  "\u0027\u0027"
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  true,
+                                                             "columnNames":  [
+                                                                                 "id"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_listen_events_startedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "startedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_listen_events_startedAt` ON `${TABLE_NAME}` (`startedAt`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_listen_events_trackId",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "trackId"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_listen_events_trackId` ON `${TABLE_NAME}` (`trackId`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "playback_queue_items",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`position` INTEGER NOT NULL, `payload` TEXT NOT NULL, `identity` TEXT NOT NULL, PRIMARY KEY(`position`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "position",
+                                                             "columnName":  "position",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "payload",
+                                                             "columnName":  "payload",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "identity",
+                                                             "columnName":  "identity",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "position"
+                                                                             ]
+                                                         }
+                                      },
+                                      {
+                                          "tableName":  "playback_queue_state",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`singletonId` INTEGER NOT NULL, `currentIndex` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, `shuffleEnabled` INTEGER NOT NULL, `shuffleOrder` TEXT NOT NULL, `shuffleCursor` INTEGER NOT NULL, `history` TEXT NOT NULL, `repeatMode` TEXT NOT NULL, `radioEnabled` INTEGER NOT NULL, `generation` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`singletonId`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "singletonId",
+                                                             "columnName":  "singletonId",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "currentIndex",
+                                                             "columnName":  "currentIndex",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "positionMs",
+                                                             "columnName":  "positionMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "shuffleEnabled",
+                                                             "columnName":  "shuffleEnabled",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "shuffleOrder",
+                                                             "columnName":  "shuffleOrder",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "shuffleCursor",
+                                                             "columnName":  "shuffleCursor",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "history",
+                                                             "columnName":  "history",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "repeatMode",
+                                                             "columnName":  "repeatMode",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "radioEnabled",
+                                                             "columnName":  "radioEnabled",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "generation",
+                                                             "columnName":  "generation",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "singletonId"
+                                                                             ]
+                                                         }
+                                      },
+                                      {
+                                          "tableName":  "offline_download_tasks",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`taskKey` TEXT NOT NULL, `trackId` TEXT NOT NULL, `payload` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `state` TEXT NOT NULL, `progress` INTEGER NOT NULL, `workId` TEXT NOT NULL, `error` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `batchKey` TEXT NOT NULL, `batchTitle` TEXT NOT NULL, `batchKind` TEXT NOT NULL, `batchArtworkUrl` TEXT NOT NULL, `batchPosition` INTEGER NOT NULL, PRIMARY KEY(`taskKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "taskKey",
+                                                             "columnName":  "taskKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackId",
+                                                             "columnName":  "trackId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "payload",
+                                                             "columnName":  "payload",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "state",
+                                                             "columnName":  "state",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "progress",
+                                                             "columnName":  "progress",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "workId",
+                                                             "columnName":  "workId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "error",
+                                                             "columnName":  "error",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "createdAt",
+                                                             "columnName":  "createdAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "batchKey",
+                                                             "columnName":  "batchKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "batchTitle",
+                                                             "columnName":  "batchTitle",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "batchKind",
+                                                             "columnName":  "batchKind",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "batchArtworkUrl",
+                                                             "columnName":  "batchArtworkUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "batchPosition",
+                                                             "columnName":  "batchPosition",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "taskKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_offline_download_tasks_batchKey",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "batchKey"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_offline_download_tasks_batchKey` ON `${TABLE_NAME}` (`batchKey`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "lyrics_cache",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cacheKey` TEXT NOT NULL, `titleKey` TEXT NOT NULL, `artistKey` TEXT NOT NULL, `durationBucket` INTEGER NOT NULL, `videoId` TEXT NOT NULL, `languageCode` TEXT NOT NULL, `translate` INTEGER NOT NULL, `synced` INTEGER NOT NULL, `provider` TEXT NOT NULL, `confidence` INTEGER NOT NULL, `payload` TEXT NOT NULL, `negative` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `lastAccessedAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL, PRIMARY KEY(`cacheKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "cacheKey",
+                                                             "columnName":  "cacheKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "titleKey",
+                                                             "columnName":  "titleKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artistKey",
+                                                             "columnName":  "artistKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "durationBucket",
+                                                             "columnName":  "durationBucket",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "videoId",
+                                                             "columnName":  "videoId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "languageCode",
+                                                             "columnName":  "languageCode",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "translate",
+                                                             "columnName":  "translate",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "synced",
+                                                             "columnName":  "synced",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "provider",
+                                                             "columnName":  "provider",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "confidence",
+                                                             "columnName":  "confidence",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "payload",
+                                                             "columnName":  "payload",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "negative",
+                                                             "columnName":  "negative",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "createdAt",
+                                                             "columnName":  "createdAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "lastAccessedAt",
+                                                             "columnName":  "lastAccessedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "expiresAt",
+                                                             "columnName":  "expiresAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "cacheKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_lyrics_cache_expiresAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "expiresAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_lyrics_cache_expiresAt` ON `${TABLE_NAME}` (`expiresAt`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_lyrics_cache_lastAccessedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "lastAccessedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_lyrics_cache_lastAccessedAt` ON `${TABLE_NAME}` (`lastAccessedAt`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_lyrics_cache_titleKey_artistKey_durationBucket_languageCode_translate",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "titleKey",
+                                                                                  "artistKey",
+                                                                                  "durationBucket",
+                                                                                  "languageCode",
+                                                                                  "translate"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_lyrics_cache_titleKey_artistKey_durationBucket_languageCode_translate` ON `${TABLE_NAME}` (`titleKey`, `artistKey`, `durationBucket`, `languageCode`, `translate`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "lyrics_selections",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`trackKey` TEXT NOT NULL, `candidateId` TEXT NOT NULL, `provider` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `durationSec` INTEGER NOT NULL, `payload` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`trackKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "trackKey",
+                                                             "columnName":  "trackKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "candidateId",
+                                                             "columnName":  "candidateId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "provider",
+                                                             "columnName":  "provider",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "durationSec",
+                                                             "columnName":  "durationSec",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "payload",
+                                                             "columnName":  "payload",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "trackKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_lyrics_selections_updatedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "updatedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_lyrics_selections_updatedAt` ON `${TABLE_NAME}` (`updatedAt`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "motion_artwork",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`identityKey` TEXT NOT NULL, `provider` TEXT, `url` TEXT, `mimeType` TEXT, `width` INTEGER, `height` INTEGER, `confidence` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL, `lastVerifiedAt` INTEGER NOT NULL, `configEpoch` INTEGER NOT NULL, `negative` INTEGER NOT NULL, PRIMARY KEY(`identityKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "identityKey",
+                                                             "columnName":  "identityKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "provider",
+                                                             "columnName":  "provider",
+                                                             "affinity":  "TEXT"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "url",
+                                                             "columnName":  "url",
+                                                             "affinity":  "TEXT"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "mimeType",
+                                                             "columnName":  "mimeType",
+                                                             "affinity":  "TEXT"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "width",
+                                                             "columnName":  "width",
+                                                             "affinity":  "INTEGER"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "height",
+                                                             "columnName":  "height",
+                                                             "affinity":  "INTEGER"
+                                                         },
+                                                         {
+                                                             "fieldPath":  "confidence",
+                                                             "columnName":  "confidence",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "expiresAt",
+                                                             "columnName":  "expiresAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "lastVerifiedAt",
+                                                             "columnName":  "lastVerifiedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "configEpoch",
+                                                             "columnName":  "configEpoch",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "negative",
+                                                             "columnName":  "negative",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "identityKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_motion_artwork_expiresAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "expiresAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_motion_artwork_expiresAt` ON `${TABLE_NAME}` (`expiresAt`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_motion_artwork_lastVerifiedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "lastVerifiedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_motion_artwork_lastVerifiedAt` ON `${TABLE_NAME}` (`lastVerifiedAt`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "playback_source_matches",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`matchKey` TEXT NOT NULL, `canonicalKey` TEXT NOT NULL, `mode` TEXT NOT NULL, `audioQuality` TEXT NOT NULL, `sourceVideoId` TEXT NOT NULL, `sourceVideoUrl` TEXT NOT NULL, `provider` TEXT NOT NULL, `manifestJson` TEXT NOT NULL, `confidence` INTEGER NOT NULL, `successCount` INTEGER NOT NULL, `failureCount` INTEGER NOT NULL, `blockedUntil` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `lastValidatedAt` INTEGER NOT NULL, PRIMARY KEY(`matchKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "matchKey",
+                                                             "columnName":  "matchKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "canonicalKey",
+                                                             "columnName":  "canonicalKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "mode",
+                                                             "columnName":  "mode",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "audioQuality",
+                                                             "columnName":  "audioQuality",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "sourceVideoId",
+                                                             "columnName":  "sourceVideoId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "sourceVideoUrl",
+                                                             "columnName":  "sourceVideoUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "provider",
+                                                             "columnName":  "provider",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "manifestJson",
+                                                             "columnName":  "manifestJson",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "confidence",
+                                                             "columnName":  "confidence",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "successCount",
+                                                             "columnName":  "successCount",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "failureCount",
+                                                             "columnName":  "failureCount",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "blockedUntil",
+                                                             "columnName":  "blockedUntil",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "createdAt",
+                                                             "columnName":  "createdAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "lastValidatedAt",
+                                                             "columnName":  "lastValidatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "matchKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_playback_source_matches_canonicalKey",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "canonicalKey"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_playback_source_matches_canonicalKey` ON `${TABLE_NAME}` (`canonicalKey`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_playback_source_matches_sourceVideoId",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "sourceVideoId"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_playback_source_matches_sourceVideoId` ON `${TABLE_NAME}` (`sourceVideoId`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_playback_source_matches_updatedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "updatedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_playback_source_matches_updatedAt` ON `${TABLE_NAME}` (`updatedAt`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "artist_lore",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cacheKey` TEXT NOT NULL, `artistKey` TEXT NOT NULL, `browseId` TEXT NOT NULL, `languageCode` TEXT NOT NULL, `text` TEXT NOT NULL, `description` TEXT NOT NULL, `pageTitle` TEXT NOT NULL, `pageId` INTEGER NOT NULL, `entityId` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL, `originalImageUrl` TEXT NOT NULL, `sourceUrl` TEXT NOT NULL, `confidence` INTEGER NOT NULL, `negative` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `lastAccessedAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL, `staleUntil` INTEGER NOT NULL, PRIMARY KEY(`cacheKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "cacheKey",
+                                                             "columnName":  "cacheKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artistKey",
+                                                             "columnName":  "artistKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "browseId",
+                                                             "columnName":  "browseId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "languageCode",
+                                                             "columnName":  "languageCode",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "text",
+                                                             "columnName":  "text",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "description",
+                                                             "columnName":  "description",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "pageTitle",
+                                                             "columnName":  "pageTitle",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "pageId",
+                                                             "columnName":  "pageId",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "entityId",
+                                                             "columnName":  "entityId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "thumbnailUrl",
+                                                             "columnName":  "thumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "originalImageUrl",
+                                                             "columnName":  "originalImageUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "sourceUrl",
+                                                             "columnName":  "sourceUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "confidence",
+                                                             "columnName":  "confidence",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "negative",
+                                                             "columnName":  "negative",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "createdAt",
+                                                             "columnName":  "createdAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "updatedAt",
+                                                             "columnName":  "updatedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "lastAccessedAt",
+                                                             "columnName":  "lastAccessedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "expiresAt",
+                                                             "columnName":  "expiresAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "staleUntil",
+                                                             "columnName":  "staleUntil",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "cacheKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_artist_lore_artistKey_languageCode",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "artistKey",
+                                                                                  "languageCode"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_artist_lore_artistKey_languageCode` ON `${TABLE_NAME}` (`artistKey`, `languageCode`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_artist_lore_browseId_languageCode",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "browseId",
+                                                                                  "languageCode"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_artist_lore_browseId_languageCode` ON `${TABLE_NAME}` (`browseId`, `languageCode`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_artist_lore_expiresAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "expiresAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_artist_lore_expiresAt` ON `${TABLE_NAME}` (`expiresAt`)"
+                                                          },
+                                                          {
+                                                              "name":  "index_artist_lore_lastAccessedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "lastAccessedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_artist_lore_lastAccessedAt` ON `${TABLE_NAME}` (`lastAccessedAt`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "listen_lifetime_tracks",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`trackKey` TEXT NOT NULL, `trackId` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `listenedMs` INTEGER NOT NULL, `countedPlays` INTEGER NOT NULL, `completedCount` INTEGER NOT NULL, `eventCount` INTEGER NOT NULL, `firstPlayedAt` INTEGER NOT NULL, `lastPlayedAt` INTEGER NOT NULL, PRIMARY KEY(`trackKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "trackKey",
+                                                             "columnName":  "trackKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "trackId",
+                                                             "columnName":  "trackId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "listenedMs",
+                                                             "columnName":  "listenedMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "countedPlays",
+                                                             "columnName":  "countedPlays",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "completedCount",
+                                                             "columnName":  "completedCount",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "eventCount",
+                                                             "columnName":  "eventCount",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "firstPlayedAt",
+                                                             "columnName":  "firstPlayedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "lastPlayedAt",
+                                                             "columnName":  "lastPlayedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "trackKey"
+                                                                             ]
+                                                         }
+                                      },
+                                      {
+                                          "tableName":  "listen_lifetime_artists",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`artistKey` TEXT NOT NULL, `name` TEXT NOT NULL, `listenedMs` INTEGER NOT NULL, `countedPlays` INTEGER NOT NULL, `completedCount` INTEGER NOT NULL, `eventCount` INTEGER NOT NULL, `firstPlayedAt` INTEGER NOT NULL, `lastPlayedAt` INTEGER NOT NULL, PRIMARY KEY(`artistKey`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "artistKey",
+                                                             "columnName":  "artistKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "name",
+                                                             "columnName":  "name",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "listenedMs",
+                                                             "columnName":  "listenedMs",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "countedPlays",
+                                                             "columnName":  "countedPlays",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "completedCount",
+                                                             "columnName":  "completedCount",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "eventCount",
+                                                             "columnName":  "eventCount",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "firstPlayedAt",
+                                                             "columnName":  "firstPlayedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "lastPlayedAt",
+                                                             "columnName":  "lastPlayedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "artistKey"
+                                                                             ]
+                                                         }
+                                      },
+                                      {
+                                          "tableName":  "recognition_history",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `recognizedAt` INTEGER NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `artworkUrl` TEXT NOT NULL, `provider` TEXT NOT NULL, `providerTrackId` TEXT NOT NULL, `isrc` TEXT NOT NULL, `youtubeVideoId` TEXT NOT NULL, `year` TEXT NOT NULL, PRIMARY KEY(`id`))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "id",
+                                                             "columnName":  "id",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "recognizedAt",
+                                                             "columnName":  "recognizedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "title",
+                                                             "columnName":  "title",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artist",
+                                                             "columnName":  "artist",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "album",
+                                                             "columnName":  "album",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "artworkUrl",
+                                                             "columnName":  "artworkUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "provider",
+                                                             "columnName":  "provider",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "providerTrackId",
+                                                             "columnName":  "providerTrackId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "isrc",
+                                                             "columnName":  "isrc",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "youtubeVideoId",
+                                                             "columnName":  "youtubeVideoId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "year",
+                                                             "columnName":  "year",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "id"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+                                                          {
+                                                              "name":  "index_recognition_history_recognizedAt",
+                                                              "unique":  false,
+                                                              "columnNames":  [
+                                                                                  "recognizedAt"
+                                                                              ],
+                                                              "orders":  [
+
+                                                                         ],
+                                                              "createSql":  "CREATE INDEX IF NOT EXISTS `index_recognition_history_recognizedAt` ON `${TABLE_NAME}` (`recognizedAt`)"
+                                                          }
+                                                      ]
+                                      },
+                                      {
+                                          "tableName":  "followed_artists",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (\u0007rtistKey TEXT NOT NULL, \browseId TEXT NOT NULL, \name TEXT NOT NULL, \thumbnailUrl TEXT NOT NULL, \followedAt INTEGER NOT NULL, PRIMARY KEY(\u0007rtistKey))",
+                                          "fields":  [
+                                                         {
+                                                             "fieldPath":  "artistKey",
+                                                             "columnName":  "artistKey",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "browseId",
+                                                             "columnName":  "browseId",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "name",
+                                                             "columnName":  "name",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "thumbnailUrl",
+                                                             "columnName":  "thumbnailUrl",
+                                                             "affinity":  "TEXT",
+                                                             "notNull":  true
+                                                         },
+                                                         {
+                                                             "fieldPath":  "followedAt",
+                                                             "columnName":  "followedAt",
+                                                             "affinity":  "INTEGER",
+                                                             "notNull":  true
+                                                         }
+                                                     ],
+                                          "primaryKey":  {
+                                                             "autoGenerate":  false,
+                                                             "columnNames":  [
+                                                                                 "artistKey"
+                                                                             ]
+                                                         },
+                                          "indices":  [
+
+                                                      ]
+                                      }
+                                  ],
+                     "setupQueries":  [
+                                          "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+                                          "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \u0027f4a721cc994996383389c96492877c6f\u0027)"
+                                      ]
+                 }
+}

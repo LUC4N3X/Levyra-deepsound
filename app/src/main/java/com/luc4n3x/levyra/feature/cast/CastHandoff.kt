@@ -30,8 +30,30 @@ data class LocalResumeState(
     val repeatMode: RepeatMode
 )
 
+internal fun castHandoffStartPositionMs(
+    sameMediaItem: Boolean,
+    requestedPositionMs: Long,
+    livePositionMs: Long,
+    remotePlayback: Boolean
+): Long {
+    val requested = requestedPositionMs.coerceAtLeast(0L)
+    if (!remotePlayback || !sameMediaItem) return requested
+    return maxOf(requested, livePositionMs.coerceAtLeast(0L))
+}
+
+internal fun castWindowNeedsRefresh(
+    expectedUpcomingIds: List<String>,
+    remoteForwardIds: List<String>,
+    minimumBufferedItems: Int = 3
+): Boolean {
+    if (expectedUpcomingIds.isEmpty()) return false
+    val comparable = minOf(expectedUpcomingIds.size, remoteForwardIds.size)
+    if (remoteForwardIds.take(comparable) != expectedUpcomingIds.take(comparable)) return true
+    return remoteForwardIds.size < minOf(expectedUpcomingIds.size, minimumBufferedItems.coerceAtLeast(1))
+}
+
 object CastHandoffConverter {
-    const val DEFAULT_QUEUE_WINDOW_RADIUS = 10
+    const val DEFAULT_QUEUE_WINDOW_RADIUS = 2
 
     fun toHandoff(
         snapshot: LocalPlaybackSnapshot,
