@@ -511,6 +511,11 @@ private fun communityCanvasCandidateKey(entry: CommunityCanvasEntry): String = w
         entry.url,
         normalizeMotionText(entry.song)
     ).joinToString("|")
+    MotionArtworkScope.ARTIST -> listOf(
+        MotionArtworkScope.ARTIST.name,
+        normalizeMotionText(entry.artist),
+        entry.url
+    ).joinToString("|")
 }
 
 private fun communityCanvasQuickScore(

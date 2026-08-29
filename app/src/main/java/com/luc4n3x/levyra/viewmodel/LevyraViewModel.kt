@@ -7389,19 +7389,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             tracks = profile.topSongs,
             isLocal = ::isLocalPlaybackTrack
         )
-        if (seed == null) {
+        if (profile.name.isBlank() && seed == null) {
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }
         artistMotionJob = viewModelScope.launch(Dispatchers.IO) {
-            val resolved = runCatching {
-                motionArtworkEngine.resolve(seed, _state.value.interfaceSettings.canvasSource)
-            }
-                .onFailure { error ->
-                    if (error is CancellationException) throw error
-                    Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
+            val canvasSource = _state.value.interfaceSettings.canvasSource
+            val artistVideo = if (profile.name.isBlank()) {
+                null
+            } else {
+                runCatching {
+                    motionArtworkEngine.resolveArtist(profile.name, profile.browseId, canvasSource)
                 }
-                .getOrNull()
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        Timber.d(error, "Artist motion video resolve failed for %s", profile.name)
+                    }
+                    .getOrNull()
+            }
+            if (!isActive) return@launch
+            val resolved = artistVideo ?: seed?.let { track ->
+                runCatching { motionArtworkEngine.resolve(track, canvasSource) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
+                    }
+                    .getOrNull()
+            }
             if (!isActive) return@launch
             val visible = _state.value.artistProfile ?: return@launch
             if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch

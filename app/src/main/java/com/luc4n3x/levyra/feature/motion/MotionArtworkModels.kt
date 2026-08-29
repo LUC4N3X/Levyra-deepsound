@@ -9,7 +9,8 @@ internal const val MOTION_ARTWORK_NEGATIVE_TTL_MS = 10L * 60L * 1000L
 
 enum class MotionArtworkScope {
     TRACK,
-    ALBUM
+    ALBUM,
+    ARTIST
 }
 
 data class MotionTrackIdentity(
@@ -82,10 +83,18 @@ object MotionArtworkIdentityKey {
                 (identity.durationMs / 1000L).toString()
             ).joinToString("|")
         }
-        return MessageDigest.getInstance("SHA-256")
-            .digest(canonical.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        return sha256(canonical)
     }
+
+    fun forArtist(artistName: String, browseId: String): String {
+        val identity = browseId.trim().lowercase(Locale.ROOT)
+            .ifBlank { normalizeMotionText(artistName) }
+        return sha256("artist:$identity")
+    }
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 }
 
 private val MOTION_ARTIST_SEPARATORS = Regex(

@@ -30,10 +30,64 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
     private var cachedToken: String? = null
     private var tokenExpiresAt: Long = 0L
 
+    suspend fun findArtistMotion(artistName: String): MotionArtworkCandidate? {
+        val clean = artistName.trim()
+        if (clean.length < 2) return null
+        val requested = splitArtists(clean)
+        if (requested.isEmpty()) return null
+        val url = "$AMP_BASE_URL/v1/catalog/${storefront()}/search".toHttpUrl().newBuilder()
+            .addQueryParameter("term", clean)
+            .addQueryParameter("types", "artists")
+            .addQueryParameter("limit", "5")
+            .addQueryParameter("extend", "editorialVideo")
+            .build()
+        val data = requestJson(url.toString(), developerToken())
+            .optJSONObject("results")
+            ?.optJSONObject("artists")
+            ?.optJSONArray("data")
+            ?: return null
+
+        val matches = buildList {
+            for (index in 0 until data.length()) {
+                val item = data.optJSONObject(index) ?: continue
+                val attributes = item.optJSONObject("attributes") ?: continue
+                val name = attributes.optString("name").trim()
+                if (name.isBlank() || isUnsafeResult(name, "")) continue
+                if (!artistMatches(requested, splitArtists(name))) continue
+                val video = extractEditorialVideoUrl(attributes.optJSONObject("editorialVideo")) ?: continue
+                add(AppleArtistMotionMatch(item.optString("id").ifBlank { "$name|${video.url}" }, name, video))
+            }
+        }
+        val selected = selectUnambiguousAppleArtistMotion(matches) ?: return null
+        return MotionArtworkCandidate(
+            provider = id,
+            scope = MotionArtworkScope.ARTIST,
+            identity = MotionTrackIdentity(
+                title = selected.name,
+                artists = splitArtists(selected.name),
+                album = "",
+                durationMs = 0L,
+                isrc = "",
+                upc = "",
+                year = "",
+                trackId = "",
+                albumId = ""
+            ),
+            url = selected.video.url,
+            mimeType = "application/x-mpegURL",
+            width = selected.video.width,
+            height = selected.video.height,
+            expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
+        )
+    }
+
+    private fun storefront(): String =
+        Locale.getDefault().country.lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "us"
+
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
             val token = developerToken()
-            val storefront = Locale.getDefault().country.lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "us"
+            val storefront = storefront()
             val songCandidates = search(identity, storefront, token, "songs")
             if (songCandidates.isNotEmpty()) {
                 MotionArtworkProviderResult.Found(songCandidates)
@@ -316,6 +370,16 @@ internal data class AppleEditorialVideo(
     val width: Int?,
     val height: Int?
 )
+
+internal data class AppleArtistMotionMatch(
+    val key: String,
+    val name: String,
+    val video: AppleEditorialVideo
+)
+
+internal fun selectUnambiguousAppleArtistMotion(
+    matches: List<AppleArtistMotionMatch>
+): AppleArtistMotionMatch? = matches.distinctBy(AppleArtistMotionMatch::key).singleOrNull()
 
 private val APPLE_EDITORIAL_URL_FIELDS = listOf("video", "videoUrl", "hlsUrl", "url")
 

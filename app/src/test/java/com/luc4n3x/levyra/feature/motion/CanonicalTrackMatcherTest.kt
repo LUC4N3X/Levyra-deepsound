@@ -9,6 +9,18 @@ import org.junit.Test
 
 class CanonicalTrackMatcherTest {
     @Test
+    fun artistMotionIdentityUsesStableBrowseId() {
+        assertEquals(
+            MotionArtworkIdentityKey.forArtist("Old Name", "UC-artist"),
+            MotionArtworkIdentityKey.forArtist("New Name", "UC-artist")
+        )
+        assertNotEquals(
+            MotionArtworkIdentityKey.forArtist("Same Name", "UC-first"),
+            MotionArtworkIdentityKey.forArtist("Same Name", "UC-second")
+        )
+    }
+
+    @Test
     fun exactAlbumMotionIsAccepted() {
         val reference = identity(
             title = "Cenere",

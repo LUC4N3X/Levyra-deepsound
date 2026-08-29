@@ -250,6 +250,28 @@ class ReliableArtistSearchTest {
         assertEquals("The Weeknd, Kendrick Lamar", result.topTrack?.artist)
     }
 
+    @Test
+    fun exactNameOutranksLouderNearMissHomonym() {
+        val official = artist(
+            "The Weeknd",
+            "UC-official",
+            subscribers = "Artist · 100M monthly audience"
+        )
+        val louderNearMiss = artist(
+            "Weekend",
+            "UC-louder",
+            subscribers = "Artist · 274M monthly audience"
+        )
+
+        val result = mergeReliableArtistSearchResults(
+            query = "The Weeknd",
+            exactArtist = null,
+            verifiedArtists = listOf(louderNearMiss, official)
+        )
+
+        assertEquals(listOf("UC-official"), result.map { it.browseId })
+    }
+
     private fun artist(
         name: String,
         browseId: String,
