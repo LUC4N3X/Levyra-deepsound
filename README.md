@@ -98,7 +98,7 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 #### 🎬 Explore & Video Engine
 | Vertical Samples Clips | Moods & Subgenre Matrix | Video Feed & Energy |
-| :---: | :---: | :---: | 
+| :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/explore_samples.webp" width="260" alt="Samples Clips"> | <img src="docs/assets/screenshots/explore_genres.webp" width="260" alt="Genres Matrix"> | <img src="docs/assets/screenshots/video_energy.webp" width="260" alt="Video Feed"> |
 
 </div>
