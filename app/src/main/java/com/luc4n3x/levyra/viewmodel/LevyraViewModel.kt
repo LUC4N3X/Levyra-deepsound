@@ -3740,10 +3740,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val raw = _state.value.backupLocationUri ?: return@launch
             try {
                 val resolver = getApplication<Application>().contentResolver
-                resolver.releasePersistableUriPermission(
-                    Uri.parse(raw),
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
+                try {
+                    resolver.releasePersistableUriPermission(
+                        Uri.parse(raw),
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                } catch (releaseError: Throwable) {
+                    if (releaseError is CancellationException) throw releaseError
+                    Timber.w(releaseError, "Unable to release backup location permission")
+                }
                 preferences.setBackupTreeUri("")
                 _state.update { it.copy(backupLocationUri = null) }
             } catch (cancelled: CancellationException) {

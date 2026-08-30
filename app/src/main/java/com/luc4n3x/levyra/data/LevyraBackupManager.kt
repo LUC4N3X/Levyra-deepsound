@@ -35,6 +35,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -76,7 +77,12 @@ class LevyraBackupManager(private val context: Context) {
                         .copy(message = "Backup salvato nella memoria interna")
                 }
             } else {
-                exportAutomaticToInternal(retentionCount)
+                val result = exportAutomaticToInternal(retentionCount)
+                if (treeUri != null) {
+                    result.copy(message = "Backup salvato nella memoria interna")
+                } else {
+                    result
+                }
             }
         }
     }
@@ -240,8 +246,13 @@ class LevyraBackupManager(private val context: Context) {
             try {
                 applySnapshot(target)
             } catch (restoreError: Throwable) {
-                runCatching { applySnapshot(rollback) }
-                    .onFailure { rollbackError -> restoreError.addSuppressed(rollbackError) }
+                withContext(NonCancellable) {
+                    try {
+                        applySnapshot(rollback)
+                    } catch (rollbackError: Throwable) {
+                        restoreError.addSuppressed(rollbackError)
+                    }
+                }
                 throw restoreError
             }
             LevyraBackupResult("Ripristino completato", "")
