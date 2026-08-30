@@ -18,6 +18,7 @@ CLAUDE_ROOT = ".agents/claude"
 CODEX_ROOT = ".agents/codex"
 
 REQUIRED_FILES = (
+    "CLAUDE.md",
     ".rtk/filters.toml",
     ".agents/README.md",
     ".agents/rules/levyra-workspace.md",
@@ -48,7 +49,6 @@ REQUIRED_FILES = (
 )
 
 FORBIDDEN_PATHS = (
-    "CLAUDE.md",
     "codex-home/ollama.config.toml",
     "codex-home/llamacpp.config.toml",
     f"{CODEX_ROOT}/ollama.config.toml",
@@ -165,10 +165,14 @@ def main() -> int:
             fail(errors, f"missing required AI-efficiency file: {relative_path}")
     for relative_path in FORBIDDEN_PATHS:
         if (ROOT / relative_path).exists():
-            if relative_path == "CLAUDE.md":
-                fail(errors, "root CLAUDE.md must stay absent; canonical Claude instructions live under .agents/claude")
-            else:
-                fail(errors, f"local-model profile is outside the approved scope: {relative_path}")
+            fail(errors, f"local-model profile is outside the approved scope: {relative_path}")
+
+    require_terms(
+        errors,
+        "CLAUDE.md",
+        "native Claude startup bridge",
+        ("@AGENTS.md", "Claude Code reads this file natively", "Keep this bridge short"),
+    )
 
     skill_path = ROOT / ".agents/skills/levyra-context-efficiency/SKILL.md"
     if skill_path.is_file():
@@ -382,9 +386,9 @@ def main() -> int:
         return 1
 
     print(
-        "AI efficiency validation passed: canonical .agents runtime layout, "
+        "AI efficiency validation passed: native compact Claude bridge, canonical .agents runtime layout, "
         f"{len(EXPECTED_FILTERS)} project filters, {len(EXPECTED_PLUGINS)} verified plugin, "
-        "cross-runtime security routing, dependency-review preflight, and no root Claude bridge or local-model profiles."
+        "cross-runtime security routing, dependency-review preflight, and no local-model profiles."
     )
     return 0
 

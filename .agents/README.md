@@ -1,89 +1,84 @@
 # Levyra Agent Configuration
 
-`.agents/` is Levyra's single tracked control center for coding agents.
+`.agents/` is Levyra's tracked control center for runtime-specific coding-agent
+configuration and the canonical skill tree. Root `AGENTS.md` is the compact
+cross-runtime contract.
 
-The repository keeps one canonical skill tree and one canonical set of
-runtime-specific configuration sources. Native `.claude/` and `.codex/`
-directories are generated locally when a runtime needs them and are ignored by
-Git.
-
-There is intentionally no tracked root `CLAUDE.md`.
+Claude Code is the deliberate exception to the otherwise generated native
+surfaces: tracked root `CLAUDE.md` is a tiny native bootstrap that imports
+`AGENTS.md`. This removes the clean-clone/startup dependency on a pre-existing
+`.claude/` projection. It must stay small and must not duplicate the contract.
 
 ## Configuration hierarchy
 
 ```text
-AGENTS.md                         repository-wide operating contract
-app/AGENTS.md                     Android rules
-desktop/AGENTS.md                 Windows Desktop rules
-.github/AGENTS.md                 CI and workflow rules
-docs/AGENTS.md                    documentation rules
+AGENTS.md                         compact cross-runtime contract
+CLAUDE.md                         tiny Claude-native @AGENTS.md bridge
+app/AGENTS.md                     Android scoped rules
+desktop/AGENTS.md                 Windows Desktop scoped rules
+.github/AGENTS.md                 CI/workflow scoped rules
+docs/AGENTS.md                    documentation scoped rules
 
 .agents/
-├── README.md                     this inventory and maintenance contract
+├── README.md                     this inventory
 ├── config/                       shared agent/plugin manifests
-├── rules/                        cross-runtime workspace rules
+├── rules/                        cross-runtime workspace bridges
 ├── skills/                       one canonical Levyra skill tree
-├── claude/                       canonical Claude Code config sources
-│   ├── CLAUDE.md
+├── claude/                       canonical Claude settings/hooks/agents/rules
+│   ├── CLAUDE.md                 Claude-specific runtime guidance
 │   ├── settings.json
 │   ├── agents/
 │   ├── hooks/
 │   └── rules/
-└── codex/                        canonical Codex project config sources
+└── codex/                        canonical Codex project config/hooks
     ├── config.toml
     └── hooks.json
-
-scripts/sync_agent_runtime.py     native runtime projection manager
 ```
 
-## Native runtime projection
+Generated `.claude/` and `.codex/` directories remain ignored by Git and are
+never sources of truth.
 
-Claude Code and Codex still receive the paths they expect. Levyra does not ask
-those tools to understand a custom unsupported runtime path.
+## Claude Code reliability
 
-`scripts/sync_agent_runtime.py` materializes:
+Claude Code natively reads root `CLAUDE.md`, which imports `AGENTS.md` at session
+startup. That bootstrap works before any repository setup script or generated
+runtime projection exists.
 
-```text
-.agents/claude/...  -> .claude/...
-.agents/skills/...  -> .claude/skills/...
-.agents/codex/...   -> .codex/...
-```
+When `.claude/settings.json` is available, `UserPromptSubmit` adds a second
+layer: it re-anchors a compact hard contract on every prompt and runs the shared
+skill router. Session/mutation/compaction/stop hooks add evidence and safety
+guards, but correctness must not depend on optional tooling being available.
 
-The generated `.claude/` and `.codex/` directories are ignored by Git. The
-synchronizer keeps a manifest of files it owns, removes only stale managed
-entries, and preserves unrelated machine-specific local files.
-
-The normal setup commands refresh both projections:
+The generated `.claude/` projection still supplies project settings, hooks,
+agents, rules, and the native skill view. Refresh it with:
 
 ```powershell
 .\scripts\setup-ai.ps1
 ```
 
+or:
+
 ```bash
 ./scripts/setup-ai.sh
 ```
 
-After the native runtime config is active, Claude Code and Codex refresh their
-projection again on startup/resume. The project jCodeMunch launcher also performs
-a best-effort Claude projection refresh as an additional clean-clone bootstrap.
+The projection manager is `scripts/sync_agent_runtime.py`.
 
 ## Automatic skill discovery
 
 `.agents/skills/` is the only tracked Levyra skill tree.
 
-- **Codex** discovers `.agents/skills/` directly.
-- **Claude Code** discovers the generated `.claude/skills/` projection, which is
-  copied directly from `.agents/skills/`.
+- **Codex** discovers `.agents/skills/` directly and keeps the existing
+  instruction-based Codex setup.
+- **Claude Code** receives the root contract natively and discovers the generated
+  `.claude/skills/` projection when runtime setup is active.
 - **Google Antigravity** uses `.agents/rules/levyra-workspace.md` and the same
   repository-native skills.
-- **ChatGPT Project** instructions route to the same skills through
-  `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md`.
-- OpenClaw and compatible coding agents use the same canonical contracts where
-  supported.
+- **ChatGPT Project** routes through `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md`.
+- OpenClaw and compatible runtimes use the same contracts where supported.
 
-This keeps automatic routing while preventing skill drift: edit a Levyra skill
-once under `.agents/skills/`; Codex uses it directly and Claude sees the synced
-native projection.
+Skill descriptions are routing metadata. Load `SKILL.md` bodies only when the
+active task matches them; never preload the whole tree.
 
 ## Canonical skill inventory
 
@@ -110,77 +105,36 @@ native projection.
 - `levyra-release-check`
 - `levyra-security-review`
 
-Skill descriptions are routing metadata; `SKILL.md` bodies are loaded only when
-the task requires them. Keep descriptions narrow enough to avoid unnecessary
-context expansion.
-
-## Cross-runtime routing
-
-The main automatic routes remain:
-
-- substantial implementation: `levyra-real-engineering`;
-- Compose/UI: `levyra-compose` and, when visual quality is central,
-  `levyra-design-taste`;
-- performance/memory/jank: `levyra-android-performance`;
-- R8/minification: `levyra-r8-proguard`;
-- Intent/component boundaries: `levyra-android-intent-security` plus
-  `levyra-security-review`;
-- CI/workflows: `levyra-ci-workflows`;
-- noisy command-output work: `levyra-context-efficiency`;
-- reviews: `levyra-pr-review`;
-- releases: `levyra-release-check`;
-- security-sensitive changes: `levyra-security-review`.
-
-Security work follows the **Codex Security** closed-loop workflow documented in
-`docs/ai/CODEX_SECURITY.md`: threat model, identification, validation,
-remediation, human review, and revalidation.
-
-## Codex
-
-Codex uses root `AGENTS.md` as its repository operating contract and discovers
-the canonical `.agents/skills/` tree directly. Levyra keeps the existing
-instruction-based Codex setup for optional tooling and plugins.
-
-Canonical project config and lifecycle hooks live under `.agents/codex/` and are
-projected to ignored `.codex/` native paths. Do not maintain a second tracked
-Codex config tree.
-
-## Claude Code
-
-Canonical Claude Code instructions, settings, subagents, hooks, and rules live
-under `.agents/claude/`. Claude's native `.claude/` projection is generated
-locally. `.claude/skills/` comes directly from the shared `.agents/skills/` tree;
-there is no tracked `.agents/claude/skills/` bridge.
-
-See `.agents/claude/README.md` for the detailed projection and bootstrap contract.
-
 ## Context efficiency
 
-Use `levyra-context-efficiency` when large command output would otherwise waste
-context. RTK/jCodeMunch are optimization layers only: correctness, exact failure
-evidence, security output, and validation results must remain complete when
-needed. Re-run raw commands whenever compressed output hides decisive evidence.
+`AGENTS.md` intentionally stays concise. Detailed multi-step procedure belongs in
+path-scoped instructions, `docs/ai/`, or a matching skill. Use
+`levyra-context-efficiency` when command output or repository exploration would
+otherwise flood the active context. RTK/jCodeMunch are optimization layers only;
+rerun raw when compact output hides decisive evidence.
 
 ## Security
 
 Use `levyra-security-review` for secrets, authentication, provider URLs,
 redirects, SSRF, permissions, privacy, workflow trust boundaries, dependency
-risk, update verification, or other security-sensitive changes. Never weaken
-security merely to make a test or provider response pass.
+risk, update verification, or other security-sensitive changes. The shared
+**Codex Security** lifecycle is documented in `docs/ai/CODEX_SECURITY.md`.
+Never weaken security merely to make a test or provider response pass.
 
 ## Maintenance contract
 
 When changing agent infrastructure:
 
-1. keep `.agents/skills/` as the only tracked Levyra skill tree;
-2. keep Claude-specific canonical configuration under `.agents/claude/`;
-3. keep Codex-specific canonical configuration under `.agents/codex/`;
-4. never commit root `CLAUDE.md`, `.claude/`, `.codex/`, or
-   `.agents/claude/skills/`;
-5. keep `scripts/sync_agent_runtime.py` idempotent and non-destructive to
-   unrelated local files;
-6. update runtime setup/hooks and validators together when a native path changes;
-7. run `python3 scripts/ai_quality_gate.py --profile fast` for focused agent
-   changes and the repository-required full gate before publication/merge;
-8. do not claim automatic discovery, a build, test, device check, or security
-   validation unless the current evidence proves it.
+1. keep `AGENTS.md` compact and root `CLAUDE.md` as a tiny import bridge;
+2. keep `.agents/skills/` as the only tracked Levyra skill tree;
+3. keep Claude-specific canonical runtime configuration under `.agents/claude/`;
+4. keep Codex-specific canonical configuration under `.agents/codex/`;
+5. never commit generated `.claude/`, `.codex/`, or
+   `.agents/claude/skills/` trees;
+6. keep runtime projection idempotent and non-destructive to unrelated local
+   files;
+7. update hooks, validators, and docs together when discovery behavior changes;
+8. run `python3 scripts/ai_quality_gate.py --profile fast` for focused agent
+   changes and the required full gate before publication/merge;
+9. never claim automatic discovery, builds, tests, device checks, or security
+   validation without direct evidence.

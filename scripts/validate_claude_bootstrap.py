@@ -51,8 +51,22 @@ def reject_terms(relative_path: str, terms: tuple[str, ...], errors: list[str]) 
 def main() -> int:
     errors: list[str] = []
 
-    if (ROOT / "CLAUDE.md").exists():
-        errors.append("root CLAUDE.md must stay absent; canonical Claude sources live under .agents/claude")
+    root_claude = ROOT / "CLAUDE.md"
+    if not root_claude.is_file():
+        errors.append("root CLAUDE.md is required as Claude Code's native startup bridge")
+    else:
+        text = root_claude.read_text(encoding="utf-8")
+        if "@AGENTS.md" not in text:
+            errors.append("root CLAUDE.md must import @AGENTS.md")
+        if len(root_claude.read_bytes()) > 1200:
+            errors.append("root CLAUDE.md must stay at or below 1200 bytes")
+        if text.count("@AGENTS.md") != 1:
+            errors.append("root CLAUDE.md must contain exactly one @AGENTS.md import")
+
+    agents_path = ROOT / "AGENTS.md"
+    if agents_path.is_file() and len(agents_path.read_text(encoding="utf-8").splitlines()) > 200:
+        errors.append("AGENTS.md must stay at or below 200 lines for reliable Claude startup adherence")
+
     if (ROOT / CLAUDE_ROOT / "skills").exists():
         errors.append(".agents/claude/skills must stay absent; .agents/skills is the only tracked skill tree")
 
@@ -156,7 +170,21 @@ def main() -> int:
     )
     require_terms(
         f"{CLAUDE_ROOT}/hooks/user-prompt-submit.sh",
-        ("command -v python3", "command -v python", "command -v py", "Mandatory skill load", "Root AGENTS.md remains canonical", "EVIDENCE_GATED_COMPLETION.md", "levyra-project-manager", "levyra-desktop", "levyra-engineering", "levyra-openclaw-orchestrator"),
+        (
+            "command -v python3",
+            "command -v python",
+            "command -v py",
+            "Mandatory skill load",
+            "Root AGENTS.md remains canonical",
+            "EVIDENCE_GATED_COMPLETION.md",
+            "levyra-project-manager",
+            "levyra-desktop",
+            "levyra-engineering",
+            "levyra-openclaw-orchestrator",
+            "Levyra hard contract (re-anchored on every prompt)",
+            "root CLAUDE.md natively imports AGENTS.md",
+            "smallest coherent root-cause fix",
+        ),
         errors,
     )
     require_terms(
@@ -198,8 +226,9 @@ def main() -> int:
         return 1
 
     print(
-        "Claude bootstrap validation passed: canonical .agents/claude config, native projection contract, "
-        "shared skill projection contract, direct canonical hooks, evidence gates, jCodeMunch, and permission safety verified."
+        "Claude bootstrap validation passed: native root CLAUDE.md -> AGENTS.md startup chain, "
+        "canonical .agents/claude config, prompt re-anchoring, shared skill projection, evidence gates, "
+        "jCodeMunch, and permission safety verified."
     )
     return 0
 
