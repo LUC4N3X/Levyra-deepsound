@@ -71,10 +71,17 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val entries = when (val indexed = indexedEntries(identity)) {
+            val indexedRows = when (val indexed = indexedEntries(identity)) {
                 is CommunityCanvasIndexLookup.Available -> indexed.entries
-                CommunityCanvasIndexLookup.Unavailable -> catalog()
+                CommunityCanvasIndexLookup.Unavailable -> null
             }
+            val entries = indexedRows?.takeIf { it.isNotEmpty() } ?: catalog()
+            Timber.d(
+                "Community canvas lookup indexed=%d entries=%d title=%s",
+                indexedRows?.size ?: -1,
+                entries.size,
+                identity.title
+            )
             val candidates = communityCanvasCandidates(identity, entries, System.currentTimeMillis())
             if (candidates.isEmpty()) MotionArtworkProviderResult.NoMatch
             else MotionArtworkProviderResult.Found(candidates)
@@ -510,6 +517,11 @@ private fun communityCanvasCandidateKey(entry: CommunityCanvasEntry): String = w
         MotionArtworkScope.TRACK.name,
         entry.url,
         normalizeMotionText(entry.song)
+    ).joinToString("|")
+    MotionArtworkScope.ARTIST -> listOf(
+        MotionArtworkScope.ARTIST.name,
+        normalizeMotionText(entry.artist),
+        entry.url
     ).joinToString("|")
 }
 

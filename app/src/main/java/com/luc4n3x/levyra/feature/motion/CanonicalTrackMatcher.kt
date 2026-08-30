@@ -69,7 +69,15 @@ object CanonicalTrackMatcher {
                 titleSimilarity >= 0.72 -> 14
                 else -> 0
             }
-            if (albumSimilarity >= 1.0) score += 10 else if (albumSimilarity >= 0.75) score += 6
+            // A YouTube playback-count subtitle is not an album: it can neither confirm nor deny the
+            // match, so an exact title keeps the weight the album would otherwise carry.
+            if (!hasUsableAlbum(reference)) {
+                if (titleSimilarity >= 1.0) score += 10 else if (titleSimilarity >= 0.88) score += 6
+            } else if (albumSimilarity >= 1.0) {
+                score += 10
+            } else if (albumSimilarity >= 0.75) {
+                score += 6
+            }
             if (reference.durationMs > 0L && source.durationMs > 0L) {
                 val delta = abs(reference.durationMs - source.durationMs)
                 score += when {
@@ -155,11 +163,8 @@ object CanonicalTrackMatcher {
         return editionTerms.none { term -> motionTextContainsTerm(result, term) != motionTextContainsTerm(target, term) }
     }
 
-    private fun hasUsableAlbum(reference: MotionTrackIdentity): Boolean {
-        val normalized = normalizeMotionText(reference.album)
-        if (normalized.isBlank()) return false
-        return normalized !in genericAlbumNames
-    }
+    private fun hasUsableAlbum(reference: MotionTrackIdentity): Boolean =
+        !isUnusableMotionAlbum(reference.album)
 
     private fun releaseMatchesTrackTitle(trackTitle: String, candidateAlbum: String): Boolean {
         val title = releaseCoreName(trackTitle)
@@ -177,18 +182,6 @@ object CanonicalTrackMatcher {
         }
         return normalized
     }
-
-    private val genericAlbumNames = setOf(
-        "youtube",
-        "youtube music",
-        "youtube music video",
-        "youtube music charts",
-        "youtube shorts",
-        "apple music charts",
-        "unknown album",
-        "single",
-        "ep"
-    )
 
     private val releaseSuffixes = listOf("single", "ep")
 
