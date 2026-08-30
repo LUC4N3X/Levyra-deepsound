@@ -37,6 +37,8 @@ class MotionArtworkEngine(context: Context) {
     private val inFlight = mutableMapOf<String, CompletableDeferred<MotionArtwork?>>()
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
+
     suspend fun resolve(
         track: Track,
         source: LevyraCanvasSource = LevyraCanvasSource.Auto
@@ -50,24 +52,138 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Miss -> Unit
         }
 
-        val requestKey = "${runtime.epoch}:$identityKey"
+        return shared("${runtime.epoch}:$identityKey") {
+            resolveFresh(track, identityKey, runtime.epoch, runtime.value, source)
+        }
+    }
+
+    suspend fun resolveArtist(
+        artistName: String,
+        artistBrowseId: String,
+        source: LevyraCanvasSource = LevyraCanvasSource.Auto
+    ): MotionArtwork? {
+        val clean = artistName.trim()
+        if (clean.length < 2) return null
+        if (!networkPolicy.canResolveCurrent()) return null
+        val runtime = MotionArtworkRuntime.snapshot()
+        val config = runtime.value
+        val identityKey = motionArtworkCacheKey(
+            MotionArtworkIdentityKey.forArtist(clean, artistBrowseId),
+            LevyraCanvasSource.Apple
+        )
+        when (val cached = repository.get(identityKey, runtime.epoch)) {
+            is MotionArtworkCacheResult.Hit -> return cached.artwork
+            MotionArtworkCacheResult.Negative -> return null
+            MotionArtworkCacheResult.Miss -> Unit
+        }
+        Timber.d("Artist motion engine resolve start artist=%s source=%s", clean, source)
+        return shared("${runtime.epoch}:$identityKey") {
+            resolveArtistFresh(clean, identityKey, runtime.epoch, config)
+        }
+    }
+
+    private suspend fun resolveArtistFresh(
+        artistName: String,
+        identityKey: String,
+        configEpoch: Long,
+        config: MotionArtworkConfig
+    ): MotionArtwork? {
+        when (val cached = repository.get(identityKey, configEpoch)) {
+            is MotionArtworkCacheResult.Hit -> return cached.artwork
+            MotionArtworkCacheResult.Negative -> return null
+            MotionArtworkCacheResult.Miss -> Unit
+        }
+        var lookupFailed = false
+        val outcome = try {
+            withTimeoutOrNull(ARTIST_MOTION_REQUEST_TIMEOUT_MS) {
+                ArtistMotionLookup(artistMotionProvider.findArtistMotion(artistName))
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.d(error, "Artist motion lookup failed for %s", artistName)
+            null
+        }
+        if (outcome == null) {
+            lookupFailed = true
+            Timber.d("Artist motion lookup timed out after %dms for %s", ARTIST_MOTION_REQUEST_TIMEOUT_MS, artistName)
+        }
+        val candidate = outcome?.candidate
+        if (candidate == null && outcome != null) {
+            Timber.d("Artist motion provider returned conclusive miss for %s", artistName)
+        }
+
+        val verified = candidate?.takeIf { found ->
+            when (val result = urlVerifier.verify(found)) {
+                MotionArtworkVerificationResult.Verified -> {
+                    Timber.d("Artist motion verifier VERIFIED provider=%s artist=%s", found.provider, artistName)
+                    true
+                }
+                MotionArtworkVerificationResult.Invalid -> {
+                    Timber.d("Artist motion verifier INVALID provider=%s artist=%s", found.provider, artistName)
+                    false
+                }
+                is MotionArtworkVerificationResult.Failed -> {
+                    lookupFailed = true
+                    Timber.d(result.cause, "Artist motion verifier FAILED provider=%s artist=%s", found.provider, artistName)
+                    false
+                }
+            }
+        }
+
+        if (verified == null) {
+            if (!lookupFailed) {
+                Timber.d("Artist motion saving negative cache artist=%s", artistName)
+                repository.saveNegative(
+                    identityKey = identityKey,
+                    configEpoch = configEpoch,
+                    expiresAt = System.currentTimeMillis() + config.negativeTtlMs
+                )
+            } else {
+                Timber.d("Artist motion transient failure; negative cache skipped artist=%s", artistName)
+            }
+            repository.cleanup(configEpoch)
+            return null
+        }
+
+        val now = System.currentTimeMillis()
+        val artwork = MotionArtwork(
+            identityKey = identityKey,
+            provider = verified.provider,
+            url = verified.url,
+            mimeType = verified.mimeType,
+            width = verified.width,
+            height = verified.height,
+            confidence = ARTIST_MOTION_CONFIDENCE,
+            expiresAtMs = minOf(verified.expiresAtMs, now + config.positiveTtlMs),
+            lastVerifiedAtMs = now,
+            configEpoch = configEpoch
+        )
+        repository.save(artwork)
+        repository.cleanup(configEpoch)
+        Timber.d("Artist motion resolved provider=%s artist=%s", artwork.provider, artistName)
+        return artwork
+    }
+
+    private suspend fun shared(
+        requestKey: String,
+        block: suspend () -> MotionArtwork?
+    ): MotionArtwork? {
         val deferred = inFlightMutex.withLock {
-            inFlight[requestKey] ?: CompletableDeferred<MotionArtwork?>().also { shared ->
-                inFlight[requestKey] = shared
+            inFlight[requestKey] ?: CompletableDeferred<MotionArtwork?>().also { pending ->
+                inFlight[requestKey] = pending
                 lookupScope.launch {
                     try {
-                        shared.complete(
-                            resolveFresh(track, identityKey, runtime.epoch, runtime.value, source)
-                        )
+                        pending.complete(block())
                     } catch (error: CancellationException) {
-                        shared.completeExceptionally(error)
+                        pending.completeExceptionally(error)
                     } catch (error: Throwable) {
                         Timber.d(error, "Motion artwork resolution failed")
-                        shared.complete(null)
+                        pending.complete(null)
                     } finally {
                         withContext(NonCancellable) {
                             inFlightMutex.withLock {
-                                inFlight.remove(requestKey, shared)
+                                inFlight.remove(requestKey, pending)
                             }
                         }
                     }
@@ -104,10 +220,23 @@ class MotionArtworkEngine(context: Context) {
         val outcomes = supervisorScope {
             providers.map { provider ->
                 async {
+                    val timeoutMs = motionArtworkProviderTimeoutMs(provider.id, config.requestTimeoutMs)
                     try {
-                        withTimeoutOrNull(config.requestTimeoutMs) {
+                        val outcome = withTimeoutOrNull(timeoutMs) {
                             provider.find(identity)
-                        } ?: MotionArtworkProviderResult.Failed()
+                        }
+                        if (outcome == null) {
+                            Timber.d(
+                                "Motion provider %s TIMEOUT after %dms for %s / %s",
+                                provider.id,
+                                timeoutMs,
+                                identity.title,
+                                identity.artists.joinToString()
+                            )
+                            MotionArtworkProviderResult.Failed()
+                        } else {
+                            outcome
+                        }
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Throwable) {
@@ -165,30 +294,63 @@ class MotionArtworkEngine(context: Context) {
                 )
             }
             .sortedWith(
-            compareBy<MotionArtworkRankedCandidate> { it.providerRank }
-                .thenByDescending { it.confidence }
-        )
+                compareBy<MotionArtworkRankedCandidate> { it.providerRank }
+                    .thenByDescending { it.confidence }
+            )
 
         var verified: MotionArtworkRankedCandidate? = null
         var verifierFailed = false
         val verificationPlan = buildMotionArtworkVerificationPlan(ranked)
         for (rankedCandidate in verificationPlan.candidates) {
-            when (urlVerifier.verify(rankedCandidate.candidate)) {
+            val candidate = rankedCandidate.candidate
+            when (val result = urlVerifier.verify(candidate)) {
                 MotionArtworkVerificationResult.Verified -> {
+                    Timber.d(
+                        "motion verifier VERIFIED provider=%s scope=%s title=%s",
+                        candidate.provider,
+                        candidate.scope,
+                        identity.title
+                    )
                     verified = rankedCandidate
                     break
                 }
-                MotionArtworkVerificationResult.Invalid -> Unit
-                is MotionArtworkVerificationResult.Failed -> verifierFailed = true
+                MotionArtworkVerificationResult.Invalid -> {
+                    Timber.d(
+                        "motion verifier INVALID provider=%s scope=%s title=%s",
+                        candidate.provider,
+                        candidate.scope,
+                        identity.title
+                    )
+                }
+                is MotionArtworkVerificationResult.Failed -> {
+                    verifierFailed = true
+                    Timber.d(
+                        result.cause,
+                        "motion verifier FAILED provider=%s scope=%s title=%s",
+                        candidate.provider,
+                        candidate.scope,
+                        identity.title
+                    )
+                }
             }
         }
         if (verified == null) {
             val conclusive = !providerFailed && !verifierFailed && verificationPlan.exhaustive
             if (conclusive) {
+                Timber.d("motion resolve conclusive miss; saving negative cache title=%s source=%s", identity.title, source)
                 repository.saveNegative(
                     identityKey = identityKey,
                     configEpoch = configEpoch,
                     expiresAt = System.currentTimeMillis() + config.negativeTtlMs
+                )
+            } else {
+                Timber.d(
+                    "motion resolve transient/non-exhaustive miss title=%s source=%s providerFailed=%b verifierFailed=%b exhaustive=%b",
+                    identity.title,
+                    source,
+                    providerFailed,
+                    verifierFailed,
+                    verificationPlan.exhaustive
                 )
             }
             repository.cleanup(configEpoch)
@@ -211,6 +373,7 @@ class MotionArtworkEngine(context: Context) {
         )
         repository.save(artwork)
         repository.cleanup(configEpoch)
+        Timber.d("motion resolved provider=%s scope=%s title=%s", artwork.provider, candidate.scope, identity.title)
         return artwork
     }
 
@@ -221,8 +384,20 @@ class MotionArtworkEngine(context: Context) {
         }
         activeProviders
     }
-
 }
+
+private class ArtistMotionLookup(val candidate: MotionArtworkCandidate?)
+
+private const val ARTIST_MOTION_CONFIDENCE = 100
+private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 45_000L
+private const val APPLE_MOTION_PLAYER_REQUEST_TIMEOUT_MS = 25_000L
+
+internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeoutMs: Long): Long =
+    if (providerId == "apple-motion") {
+        maxOf(configuredTimeoutMs, APPLE_MOTION_PLAYER_REQUEST_TIMEOUT_MS)
+    } else {
+        configuredTimeoutMs
+    }
 
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
     if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"

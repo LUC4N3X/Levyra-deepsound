@@ -9,6 +9,37 @@ import org.junit.Test
 
 class CanonicalTrackMatcherTest {
     @Test
+    fun artistMotionIdentityUsesStableBrowseId() {
+        assertEquals(
+            MotionArtworkIdentityKey.forArtist("Old Name", "UC-artist"),
+            MotionArtworkIdentityKey.forArtist("New Name", "UC-artist")
+        )
+        assertNotEquals(
+            MotionArtworkIdentityKey.forArtist("Same Name", "UC-first"),
+            MotionArtworkIdentityKey.forArtist("Same Name", "UC-second")
+        )
+    }
+
+    @Test
+    fun playbackCountSubtitlesAreNotTreatedAsAlbums() {
+        assertTrue(isUnusableMotionAlbum("21 Mln riproduzioni"))
+        assertTrue(isUnusableMotionAlbum("887K riproduzioni"))
+        assertTrue(isUnusableMotionAlbum("YouTube Music"))
+        assertTrue(isUnusableMotionAlbum(""))
+        assertFalse(isUnusableMotionAlbum("2 GIORNI DI FILA"))
+        assertFalse(isUnusableMotionAlbum("1989"))
+        assertFalse(isUnusableMotionAlbum("TUTTO E POSSIBILE"))
+    }
+
+    @Test
+    fun featuringMarkersDoNotSplitTitles() {
+        assertEquals(
+            motionComparisonTokens("Beatrice (con Annalisa)"),
+            motionComparisonTokens("Beatrice (feat. Annalisa)")
+        )
+    }
+
+    @Test
     fun exactAlbumMotionIsAccepted() {
         val reference = identity(
             title = "Cenere",

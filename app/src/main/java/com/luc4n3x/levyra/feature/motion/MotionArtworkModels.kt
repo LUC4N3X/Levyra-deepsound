@@ -9,7 +9,8 @@ internal const val MOTION_ARTWORK_NEGATIVE_TTL_MS = 10L * 60L * 1000L
 
 enum class MotionArtworkScope {
     TRACK,
-    ALBUM
+    ALBUM,
+    ARTIST
 }
 
 data class MotionTrackIdentity(
@@ -82,10 +83,18 @@ object MotionArtworkIdentityKey {
                 (identity.durationMs / 1000L).toString()
             ).joinToString("|")
         }
-        return MessageDigest.getInstance("SHA-256")
-            .digest(canonical.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        return sha256(canonical)
     }
+
+    fun forArtist(artistName: String, browseId: String): String {
+        val identity = browseId.trim().lowercase(Locale.ROOT)
+            .ifBlank { normalizeMotionText(artistName) }
+        return sha256("artist-motion-v2:$identity")
+    }
+
+    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 }
 
 private val MOTION_ARTIST_SEPARATORS = Regex(
@@ -132,6 +141,34 @@ internal fun normalizeMotionText(value: String): String = value
     .replace(MOTION_NON_ALPHANUMERIC, " ")
     .replace(MOTION_WHITESPACE, " ")
     .trim()
+
+private val MOTION_FEATURE_TOKENS = setOf("feat", "featuring", "ft", "con", "with", "w", "and", "e")
+
+internal fun motionComparisonTokens(value: String): Set<String> =
+    normalizeMotionText(value)
+        .split(' ')
+        .filterTo(LinkedHashSet()) { it.isNotBlank() && it !in MOTION_FEATURE_TOKENS }
+
+private val MOTION_COUNT_LABEL = Regex("""^\d[\d.,]*\s*(k|m|b|mila|mln|mrd|bn)\s+\p{L}.*$""")
+
+internal val MOTION_GENERIC_ALBUM_NAMES = setOf(
+    "youtube",
+    "youtube music",
+    "youtube music video",
+    "youtube music charts",
+    "youtube shorts",
+    "apple music charts",
+    "unknown album",
+    "single",
+    "ep"
+)
+
+internal fun isUnusableMotionAlbum(album: String): Boolean {
+    val normalized = normalizeMotionText(album)
+    if (normalized.isBlank()) return true
+    if (normalized in MOTION_GENERIC_ALBUM_NAMES) return true
+    return MOTION_COUNT_LABEL.matches(normalized)
+}
 
 internal fun motionTextContainsTerm(value: String, term: String): Boolean {
     val normalizedValue = normalizeMotionText(value)
