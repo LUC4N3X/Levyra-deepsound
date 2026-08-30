@@ -39,43 +39,46 @@
 ## ✦ The Pure Listening Philosophy
 
 <div align="center">
-  <h2><b>Own the music. Keep the data. Lose the noise.</b></h2>
-  <p><sub>Levyra is built around a simple idea: listening should feel immediate, portable, and personal — not rented, profiled, or trapped inside an app.</sub></p>
+
+### 🎧 Music should feel like yours.
+
+**Not rented. Not profiled. Not trapped.**
+
+Levyra is built around a simple promise: the music you save, the way you listen, and the history you create should remain useful beyond a session — and beyond Levyra itself.
+
 </div>
 
 <br>
 
-<table align="center" width="100%">
-  <tr valign="top">
-    <td width="50%">
-      <h3><b>Music you can actually keep</b></h3>
-      <p>Downloads are standard, high-bitrate M4A files saved to <code>Music/Levyra</code>, with artwork, artist, album, and lyrics embedded. They remain playable in the car, on a DAP, through a hi-fi system, or in any compatible media player.</p>
-    </td>
-    <td width="50%">
-      <h3><b>Native playback, not a web wrapper</b></h3>
-      <p>Media3 / ExoPlayer on Android and libvlc on Windows keep playback close to each platform, with gapless playback, volume normalization, and low-overhead background audio.</p>
-    </td>
-  </tr>
-  <tr valign="top">
-    <td width="50%">
-      <h3><b>Stay with the song</b></h3>
-      <p>Synced LRCLIB lyrics and SponsorBlock remove friction around the music: tap-to-seek karaoke when you want the words, automatic skipping of supported non-musical segments when you do not.</p>
-    </td>
-    <td width="50%">
-      <h3><b>Your listening stays yours too</b></h3>
-      <p>Play counts, listening time, streaks, and playlists are computed locally in SQLite. No analytics profile, no cookies, and no mandatory Levyra account.</p>
-    </td>
-  </tr>
-</table>
+### 💿 01 · Keep the music
+
+Downloads are standard, high-bitrate M4A files saved directly to <code>Music/Levyra</code>, with artwork, artist, album, and lyrics embedded inside the file.
+
+**No proprietary vault required.** Your music remains usable in the car, on a DAP, through a hi-fi system, or in any compatible media player.
+
+### 🎚️ 02 · Stay close to the sound
+
+Android uses Media3 / ExoPlayer; Windows uses its own libvlc core. Playback stays native to the platform instead of living inside a web wrapper.
+
+<code>GAPLESS PLAYBACK</code> &nbsp;·&nbsp; <code>VOLUME NORMALIZATION</code> &nbsp;·&nbsp; <code>LOW-OVERHEAD AUDIO</code>
+
+### 🎙️ 03 · Remove everything between you and the song
+
+Synced LRCLIB lyrics keep the words tied to the music with tap-to-seek karaoke, while SponsorBlock can skip supported intros, silence, dialogue, and other non-musical segments automatically.
+
+The goal is simple: **less interface friction, more music.**
+
+### 🛡️ 04 · Keep your listening private
+
+Play counts, listening time, streaks, playlists, and listening insights are computed locally in SQLite.
+
+**No analytics profile. No cookies. No mandatory Levyra account.**
+
+<br>
 
 <div align="center">
-  <p>
-    <code>STANDARD FILES</code> &nbsp;·&nbsp;
-    <code>NATIVE AUDIO</code> &nbsp;·&nbsp;
-    <code>LOCAL DATA</code> &nbsp;·&nbsp;
-    <code>ZERO TRACKING</code>
-  </p>
-  <sub>Levyra does not treat offline playback as a fallback. It treats it as ownership.</sub>
+  <p><b>Keep the file. Keep the history. Keep control.</b></p>
+  <sub>Offline playback is not a fallback in Levyra. It is ownership.</sub>
 </div>
 
 ---
