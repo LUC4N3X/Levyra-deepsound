@@ -236,54 +236,79 @@ Modern music streaming applications often treat music as temporary, disposable b
 ## ✦ Architecture & Engineering Blueprint
 
 <div align="center">
-  <h3>🏗️ <b>Native architecture. Modular by design.</b></h3>
+  <h3>🏗️ <b>Two native runtimes. One Levyra architecture.</b></h3>
+  <p><sub>Platform-specific playback cores share the same engineering principles: predictable state, resilient stream resolution, portable local data, and no mandatory cloud.</sub></p>
   <p>
-    <code>ANDROID</code> &nbsp;·&nbsp;
-    <code>WINDOWS</code> &nbsp;·&nbsp;
-    <code>LOW-LATENCY PLAYBACK</code> &nbsp;·&nbsp;
-    <code>LOCAL-FIRST STORAGE</code>
+    <code>COMPOSE-FIRST</code> &nbsp;·&nbsp;
+    <code>NATIVE PLAYBACK CORES</code> &nbsp;·&nbsp;
+    <code>UNIDIRECTIONAL STATE</code> &nbsp;·&nbsp;
+    <code>PORTABLE LOCAL DATA</code>
   </p>
 </div>
-Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
+
+<br>
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
-      <h3>📱 <b>Android Native Suite</b> (<code>app/</code>)</h3>
-      <p><b>Modern Android stack.</b><br><sub>Compose-first UI, Media3 playback, offline export, and local data orchestration.</sub></p>
+      <h3>📱 <b>Android Runtime</b> <code>app/</code></h3>
+      <p><b>Compose at the surface. Media3 at the core.</b><br><sub>Android keeps UI, state, playback, offline export, and data ownership in clearly separated layers.</sub></p>
       <ul>
-        <li>🎨 <b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a>:</b> Compose & Material 3 screens, gestures, Canvas, and OLED palettes.</li>
-        <li>🧠 <b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a>:</b> Immutable UI state and unidirectional coordination.</li>
-        <li>🎧 <b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a>:</b> Media3 / ExoPlayer foreground audio service.</li>
-        <li>💾 <b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>offline/</code></a>:</b> WorkManager exports, M4A tagging, and artwork.</li>
-        <li>⚡ <b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a>:</b> Stream resolving, synced lyrics, prefetch, and Room data.</li>
+        <li>🎨 <b>Presentation · <a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a></b><br><sub>Compose & Material 3 screens, gestures, Canvas, and OLED palettes.</sub></li>
+        <li>🧠 <b>State · <a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a></b><br><sub>Immutable UI state and unidirectional coordination.</sub></li>
+        <li>🎧 <b>Playback · <a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b><br><sub>Media3 / ExoPlayer foreground audio service and session ownership.</sub></li>
+        <li>💾 <b>Offline · <a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>player/offline/</code></a></b><br><sub>WorkManager exports, M4A tagging, artwork, and portable files.</sub></li>
+        <li>⚡ <b>Data · <a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a></b><br><sub>Stream resolution, synced lyrics, prefetch, and Room-backed local data.</sub></li>
       </ul>
     </td>
     <td width="50%">
-      <h3>💻 <b>Windows Desktop Suite</b> (<code>desktop/</code>)</h3>
-      <p><b>Standalone desktop core.</b><br><sub>Compose Multiplatform interface, libvlc playback, packaging, and desktop-native controls.</sub></p>
+      <h3>💻 <b>Windows Runtime</b> <code>desktop/</code></h3>
+      <p><b>Standalone desktop stack. No Android runtime dependency.</b><br><sub>Compose Multiplatform drives the interface while libvlc owns playback and desktop-native controls.</sub></p>
       <ul>
-        <li>🖥️ <b><a href="desktop/app"><code>app/</code></a>:</b> Compose Multiplatform UI, windows, and updater.</li>
-        <li>🔊 <b><a href="desktop/player"><code>player/</code></a>:</b> libvlc playback, hardware acceleration, tray, and global hotkeys.</li>
-        <li>🌐 <b><a href="desktop/core"><code>core/</code></a>:</b> Stream resolver, downloads, and local app storage.</li>
-        <li>📦 <b><a href="desktop/packaging"><code>packaging/</code></a>:</b> WiX MSI installer and portable distributions.</li>
+        <li>🖥️ <b>Application · <a href="desktop/app"><code>app/</code></a></b><br><sub>Compose Multiplatform UI, windows, lifecycle, and updater.</sub></li>
+        <li>🔊 <b>Playback · <a href="desktop/player"><code>player/</code></a></b><br><sub>libvlc engine, hardware acceleration, tray controls, and global hotkeys.</sub></li>
+        <li>🌐 <b>Core · <a href="desktop/core"><code>core/</code></a></b><br><sub>Stream resolution, downloads, and local application storage.</sub></li>
+        <li>📦 <b>Distribution · <a href="desktop/packaging"><code>packaging/</code></a></b><br><sub>WiX MSI packaging and portable desktop distributions.</sub></li>
       </ul>
     </td>
   </tr>
 </table>
 
-### ✦ Under the Hood
+### ✦ Signal Flow
 
-<sub>Three core systems keep Levyra predictable, resilient, and portable.</sub>
+<div align="center">
+  <p>
+    <code>DISCOVER</code> &nbsp;→&nbsp;
+    <code>RESOLVE</code> &nbsp;→&nbsp;
+    <code>PLAY</code> &nbsp;→&nbsp;
+    <code>SYNC STATE</code> &nbsp;→&nbsp;
+    <code>PERSIST LOCALLY</code>
+  </p>
+  <sub>Each stage has a narrow job: discovery finds content, resolvers choose a playable source, native engines own playback, state stays synchronized, and durable data remains local.</sub>
+</div>
 
-**01 · Unidirectional State Flow**<br>
-Immutable ViewModel state keeps the Compose UI, MediaSession, and Android Auto synchronized.
+<br>
 
-**02 · Dual Stream Resolver**<br>
-InnerTube and LevyraExtractor coordinate automatic fallback, fidelity selection, and queue prefetch.
+<table align="center" width="100%">
+  <tr valign="top">
+    <td width="33%">
+      <h4>01 · 🧠 <b>Predictable State</b></h4>
+      <p><sub>Immutable ViewModel state keeps Compose UI, MediaSession, and Android Auto coordinated instead of letting playback state leak across the interface.</sub></p>
+    </td>
+    <td width="34%">
+      <h4>02 · ⚡ <b>Resilient Resolution</b></h4>
+      <p><sub>InnerTube and LevyraExtractor coordinate fidelity selection, automatic fallback, and queue prefetch before playback needs the next source.</sub></p>
+    </td>
+    <td width="33%">
+      <h4>03 · 💿 <b>Portable Ownership</b></h4>
+      <p><sub>Standard tagged M4A files stay reusable anywhere, while versioned <code>.levyra</code> archives protect application state without requiring a Levyra account or cloud.</sub></p>
+    </td>
+  </tr>
+</table>
 
-**03 · Portable Local Vault**<br>
-Tagged M4A files stay standard and reusable, while Levyra Vault protects local app state in validated, versioned <code>.levyra</code> archives with no account or Levyra cloud required.
+<div align="center">
+  <sub>Different platforms where it matters. Shared architectural discipline everywhere else.</sub>
+</div>
 
 ---
 
