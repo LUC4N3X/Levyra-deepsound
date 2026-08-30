@@ -263,7 +263,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val query = if (type == "albums") {
             listOf(identity.album, identity.artists.firstOrNull().orEmpty())
         } else {
-            listOf(identity.title, identity.artists.joinToString(" "), identity.album)
+            listOf(identity.title, identity.artists.joinToString(" "))
         }.filter { it.isNotBlank() }.joinToString(" ")
         val url = "$AMP_BASE_URL/v1/catalog/$storefront/search".toHttpUrl().newBuilder()
             .addQueryParameter("term", query)
@@ -294,7 +294,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 if (isUnsafeResult(name, album)) continue
                 if (!artistMatches(identity.artists, splitArtists(artist))) continue
                 val quickScore = if (type == "songs") {
-                    similarity(identity.title, name) * 70.0 + similarity(identity.album, album) * 30.0
+                    val titleScore = similarity(identity.title, name)
+                    maxOf(titleScore * 100.0, titleScore * 70.0 + similarity(identity.album, album) * 30.0)
                 } else {
                     similarity(identity.album, album) * 100.0
                 }
@@ -522,8 +523,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         primaryMotionArtistMatches(requested, returned)
 
     private fun similarity(first: String, second: String): Double {
-        val left = normalizeMotionText(first).split(' ').filter { it.isNotBlank() }.toSet()
-        val right = normalizeMotionText(second).split(' ').filter { it.isNotBlank() }.toSet()
+        val left = motionComparisonTokens(first)
+        val right = motionComparisonTokens(second)
         if (left.isEmpty() || right.isEmpty()) return 0.0
         if (left == right) return 1.0
         return (2.0 * left.intersect(right).size.toDouble()) / (left.size + right.size).toDouble()

@@ -98,6 +98,7 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.SponsorSegment
+import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -570,13 +571,26 @@ internal fun selectArtistMotionSeed(
     profileName: String,
     tracks: List<Track>,
     isLocal: (Track) -> Boolean
-): Track? = tracks.firstOrNull { candidate ->
+): Track? = selectArtistMotionSeeds(profileName, tracks, isLocal).firstOrNull()
+
+/**
+ * The hero needs a real canvas, and only some of an artist's top tracks have one. Returning a short
+ * ordered list lets the caller keep asking until a provider actually answers.
+ */
+internal fun selectArtistMotionSeeds(
+    profileName: String,
+    tracks: List<Track>,
+    isLocal: (Track) -> Boolean,
+    limit: Int = MAX_ARTIST_MOTION_SEEDS
+): List<Track> = tracks.filter { candidate ->
     !isLocal(candidate) &&
         primaryMotionArtistMatches(
             MotionTrackIdentity.from(candidate).artists,
             listOf(profileName)
         )
-}
+}.take(limit)
+
+private const val MAX_ARTIST_MOTION_SEEDS = 4
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
@@ -7384,12 +7398,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }
-        val seed = selectArtistMotionSeed(
+        val seeds = selectArtistMotionSeeds(
             profileName = profile.name,
             tracks = profile.topSongs,
             isLocal = ::isLocalPlaybackTrack
         )
-        if (profile.name.isBlank() && seed == null) {
+        if (profile.name.isBlank() && seeds.isEmpty()) {
             _state.update { it.copy(artistMotionArtwork = null) }
             return
         }
@@ -7408,14 +7422,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     .getOrNull()
             }
             if (!isActive) return@launch
-            val resolved = artistVideo ?: seed?.let { track ->
-                runCatching { motionArtworkEngine.resolve(track, canvasSource) }
+            if (artistVideo == null) {
+                Timber.d("Artist hero Apple motion unavailable; trying track canvas fallback artist=%s", profile.name)
+            }
+            // The hero needs a real video. When Apple exposes no artist motion the seed track is
+            // resolved across every provider, so a Community canvas can still drive the hero even
+            // when the player is pinned to a single source.
+            val resolved = artistVideo ?: seeds.firstNotNullOfOrNull { track ->
+                if (!isActive) return@launch
+                runCatching { motionArtworkEngine.resolve(track, LevyraCanvasSource.Auto) }
                     .onFailure { error ->
                         if (error is CancellationException) throw error
                         Timber.d(error, "Artist motion artwork resolve failed for %s", profile.name)
                     }
                     .getOrNull()
             }
+            Timber.d(
+                "Artist hero motion %s artist=%s provider=%s",
+                if (resolved == null) "NONE" else "ASSIGNED",
+                profile.name,
+                resolved?.provider.orEmpty()
+            )
             if (!isActive) return@launch
             val visible = _state.value.artistProfile ?: return@launch
             if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch

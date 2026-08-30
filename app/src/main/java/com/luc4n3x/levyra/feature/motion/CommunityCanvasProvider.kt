@@ -71,10 +71,19 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            val entries = when (val indexed = indexedEntries(identity)) {
+            // Index keys embed the album, so a track whose album metadata is a YouTube playback
+            // count can never hit a shard. Falling back to the flat catalog keeps those reachable.
+            val indexedRows = when (val indexed = indexedEntries(identity)) {
                 is CommunityCanvasIndexLookup.Available -> indexed.entries
-                CommunityCanvasIndexLookup.Unavailable -> catalog()
+                CommunityCanvasIndexLookup.Unavailable -> null
             }
+            val entries = indexedRows?.takeIf { it.isNotEmpty() } ?: catalog()
+            Timber.d(
+                "Community canvas lookup indexed=%d entries=%d title=%s",
+                indexedRows?.size ?: -1,
+                entries.size,
+                identity.title
+            )
             val candidates = communityCanvasCandidates(identity, entries, System.currentTimeMillis())
             if (candidates.isEmpty()) MotionArtworkProviderResult.NoMatch
             else MotionArtworkProviderResult.Found(candidates)

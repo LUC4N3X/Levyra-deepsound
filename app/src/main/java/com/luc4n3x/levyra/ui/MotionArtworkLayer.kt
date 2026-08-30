@@ -62,6 +62,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 internal enum class MotionArtworkPresentation {
     Card,
@@ -112,6 +113,20 @@ internal fun MotionArtworkLayer(
     }
     LaunchedEffect(videoArtwork) {
         if (videoArtwork == null) videoReady = false
+    }
+    LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
+        if (artwork == null) return@LaunchedEffect
+        Timber.d(
+            "Canvas layer artwork=%s provider=%s video=%b enabled=%b lifecycle=%b remoteAllowed=%b unavailable=%b presentation=%s",
+            artwork.identityKey,
+            artwork.provider,
+            videoArtwork != null,
+            enabled,
+            lifecycleActive,
+            environment.remoteAllowed,
+            videoUnavailable,
+            presentation
+        )
     }
     LaunchedEffect(
         videoUnavailable,
@@ -461,6 +476,7 @@ private fun MotionArtworkVideo(
     DisposableEffect(player, textureView, artwork.url, artwork.mimeType) {
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
+                Timber.d("Canvas player FIRST_FRAME provider=%s", artwork.provider)
                 firstFrameRendered = true
                 RuntimeHooks.canvas(RuntimeSignal.CANVAS_FIRST_FRAME)
                 currentOnFirstFrame()
@@ -471,12 +487,25 @@ private fun MotionArtworkVideo(
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                Timber.d(
+                    error,
+                    "Canvas player ERROR provider=%s code=%s host=%s",
+                    artwork.provider,
+                    error.errorCodeName,
+                    motionArtworkHost(artwork.url)
+                )
                 failed = true
                 RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
                 currentOnUnavailable()
             }
         }
         RuntimeHooks.canvas(RuntimeSignal.CANVAS_STARTED)
+        Timber.d(
+            "Canvas player PREPARE provider=%s mime=%s host=%s",
+            artwork.provider,
+            artwork.mimeType,
+            motionArtworkHost(artwork.url)
+        )
         player.addListener(listener)
         player.setVideoTextureView(textureView)
         player.setMediaItem(
@@ -508,6 +537,7 @@ private fun MotionArtworkVideo(
         if (!isPlaying || firstFrameRendered || failed) return@LaunchedEffect
         delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
         if (!firstFrameRendered && !failed) {
+            Timber.d("Canvas player FALLBACK reason=first-frame-timeout provider=%s", artwork.provider)
             RuntimeHooks.canvas(RuntimeSignal.CANVAS_FALLBACK)
             currentOnUnavailable()
         }
@@ -533,6 +563,9 @@ private fun MotionArtworkVideo(
             }
     )
 }
+
+private fun motionArtworkHost(url: String): String =
+    url.substringAfter("://", "").substringBefore('/').substringBefore('?')
 
 private data class MotionArtworkEnvironment(
     val remoteAllowed: Boolean,
