@@ -67,4 +67,13 @@ abstract class PlaylistDao {
         if (tracks.isNotEmpty()) insertTracks(tracks)
         touch(playlistId, System.currentTimeMillis())
     }
+
+    @Transaction
+    open suspend fun removeTracksAndCompact(playlistId: String, trackIds: Set<String>) {
+        if (trackIds.isEmpty()) return
+        val remaining = tracksOf(playlistId).filterNot { it.trackId in trackIds }
+        clearTracks(playlistId)
+        if (remaining.isNotEmpty()) insertTracks(remaining.mapIndexed { index, entity -> entity.copy(position = index) })
+        touch(playlistId, System.currentTimeMillis())
+    }
 }

@@ -162,6 +162,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "favorite" to "Paborito",
     "downloaded" to "Na-download",
     "remove" to "Alisin",
+    "removeFromPlaylist" to "Alisin sa playlist",
     "youMightAlsoLike" to "Baka magustuhan mo rin",
     "topResult" to "Nangungunang resulta",
     "currentlyPlaying" to "Kasalukuyang tumutugtog",

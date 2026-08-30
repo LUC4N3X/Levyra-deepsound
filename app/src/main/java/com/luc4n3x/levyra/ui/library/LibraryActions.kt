@@ -301,9 +301,11 @@ internal fun LibrarySelectionBar(
     onDownload: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onDelete: () -> Unit,
+    deleteLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
+    val resolvedDeleteLabel = deleteLabel ?: strings.delete
     Surface(
         color = LevyraPanel.copy(alpha = 0.98f),
         shape = RoundedCornerShape(24.dp),
@@ -329,11 +331,11 @@ internal fun LibrarySelectionBar(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LibrarySelectionAction(Icons.Rounded.PlayArrow, strings.play, canOperateTracks, onPlay, LevyraCyan)
-                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canOperateTracks, onQueue, LevyraText)
-                LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.addToPlaylist, canOperateTracks, onAddToPlaylist, LevyraText)
-                LibrarySelectionAction(Icons.Rounded.Download, strings.offline, canOperateTracks, onDownload, LevyraText)
-                LibrarySelectionAction(Icons.Rounded.Delete, strings.delete, canDelete, onDelete, LevyraPink)
+                LibrarySelectionAction(Icons.Rounded.PlayArrow, strings.play, canOperateTracks, onPlay, LevyraCyan, Modifier.weight(1f))
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canOperateTracks, onQueue, LevyraText, Modifier.weight(1f))
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.addToPlaylist, canOperateTracks, onAddToPlaylist, LevyraText, Modifier.weight(1f))
+                LibrarySelectionAction(Icons.Rounded.Download, strings.offline, canOperateTracks, onDownload, LevyraText, Modifier.weight(1f))
+                LibrarySelectionAction(Icons.Rounded.Delete, resolvedDeleteLabel, canDelete, onDelete, LevyraPink, Modifier.weight(1f))
             }
         }
     }
@@ -345,12 +347,14 @@ private fun LibrarySelectionAction(
     label: String,
     enabled: Boolean,
     onClick: () -> Unit,
-    tint: Color
+    tint: Color,
+    modifier: Modifier = Modifier
 ) {
     TextButton(
         onClick = onClick,
         enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
+        modifier = modifier
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Icon(
@@ -363,7 +367,8 @@ private fun LibrarySelectionAction(
                 label,
                 color = if (enabled) LevyraMuted else LevyraMuted.copy(alpha = 0.35f),
                 fontSize = 9.sp,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
