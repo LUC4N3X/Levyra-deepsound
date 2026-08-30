@@ -72,7 +72,14 @@ object HomeEditorialEngine {
 
         val today = localDate(nowMillis)
         val newReleaseKeys = if (showNewReleases) {
-            newReleaseTracks.asSequence().map(::identityKey).toHashSet()
+            newReleaseTracks
+                .asSequence()
+                .filter { track ->
+                    parseReleaseDate(track.releaseDate)
+                        ?.let { releaseMillis -> calendarDayAge(localDate(releaseMillis), today) in 0..7 } == true
+                }
+                .map(::identityKey)
+                .toHashSet()
         } else {
             emptySet()
         }
