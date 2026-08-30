@@ -153,6 +153,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_BACKUP_FREQUENCY] = normalizedBackup.frequency.name
             mutable[KEY_BACKUP_RETENTION] = normalizedBackup.retentionCount
             mutable[KEY_BACKUP_CHARGING_ONLY] = normalizedBackup.chargingOnly
+            mutable[KEY_BACKUP_PRE_UPDATE] = normalizedBackup.preUpdate
             mutable[KEY_RECENT_SEARCHES] = recentSearchesJson
             mutable[personalOrbitTracksKey(normalizedLanguage)] = personalOrbitJson
             if (snapshot.lastTrack == null) {
@@ -300,7 +301,28 @@ class LevyraPreferences(context: Context) {
             it[KEY_BACKUP_FREQUENCY] = normalized.frequency.name
             it[KEY_BACKUP_RETENTION] = normalized.retentionCount
             it[KEY_BACKUP_CHARGING_ONLY] = normalized.chargingOnly
+            it[KEY_BACKUP_PRE_UPDATE] = normalized.preUpdate
         }
+    }
+
+    fun lastBackupAt(): Long = read(0L) { it[KEY_VAULT_LAST_BACKUP] ?: 0L }
+
+    fun setLastBackupAt(value: Long) {
+        write { it[KEY_VAULT_LAST_BACKUP] = value.coerceAtLeast(0L) }
+    }
+
+    fun backupTreeUri(): String = read("") { it[KEY_VAULT_BACKUP_TREE_URI].orEmpty() }
+
+    fun setBackupTreeUri(value: String) {
+        write { it[KEY_VAULT_BACKUP_TREE_URI] = value }
+    }
+
+    suspend fun persistBackupTreeUri(value: String) {
+        dataStore.edit { it[KEY_VAULT_BACKUP_TREE_URI] = value }
+    }
+
+    fun vaultRuntimeState(): Pair<Long, String> = read(0L to "") {
+        (it[KEY_VAULT_LAST_BACKUP] ?: 0L) to it[KEY_VAULT_BACKUP_TREE_URI].orEmpty()
     }
 
     fun jamDisplayName(): String = read("") { it[KEY_JAM_DISPLAY_NAME].orEmpty() }
@@ -583,7 +605,8 @@ class LevyraPreferences(context: Context) {
         enabled = preferences[KEY_BACKUP_ENABLED] ?: false,
         frequency = LevyraBackupFrequency.from(preferences[KEY_BACKUP_FREQUENCY].orEmpty()),
         retentionCount = preferences[KEY_BACKUP_RETENTION] ?: 5,
-        chargingOnly = preferences[KEY_BACKUP_CHARGING_ONLY] ?: true
+        chargingOnly = preferences[KEY_BACKUP_CHARGING_ONLY] ?: true,
+        preUpdate = preferences[KEY_BACKUP_PRE_UPDATE] ?: true
     ).normalized()
 
     private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_v2_${LevyraLanguageCatalog.normalize(languageCode)}")
@@ -781,6 +804,9 @@ class LevyraPreferences(context: Context) {
         val KEY_BACKUP_FREQUENCY = stringPreferencesKey("automatic_backup_frequency")
         val KEY_BACKUP_RETENTION = intPreferencesKey("automatic_backup_retention")
         val KEY_BACKUP_CHARGING_ONLY = booleanPreferencesKey("automatic_backup_charging_only")
+        val KEY_BACKUP_PRE_UPDATE = booleanPreferencesKey("automatic_backup_pre_update")
+        val KEY_VAULT_LAST_BACKUP = longPreferencesKey("vault_last_backup_at")
+        val KEY_VAULT_BACKUP_TREE_URI = stringPreferencesKey("vault_backup_tree_uri")
     }
 }
 

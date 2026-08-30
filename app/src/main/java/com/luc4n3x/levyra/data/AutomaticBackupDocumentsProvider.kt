@@ -115,11 +115,6 @@ class AutomaticBackupDocumentsProvider : DocumentsProvider() {
         return runCatching { file.canonicalFile.parentFile == directory }.getOrDefault(false)
     }
 
-    private fun isAutomaticBackupName(name: String): Boolean =
-        name.startsWith(AUTOMATIC_BACKUP_PREFIX) &&
-            name.endsWith(".zip") &&
-            name.substring(AUTOMATIC_BACKUP_PREFIX.length, name.length - 4).all(Char::isDigit)
-
     private fun rootColumns(projection: Array<out String>?): Array<String> =
         projection?.map { it }?.toTypedArray() ?: DEFAULT_ROOT_PROJECTION
 
@@ -132,7 +127,6 @@ class AutomaticBackupDocumentsProvider : DocumentsProvider() {
         const val FILE_DOCUMENT_PREFIX = "automatic-backup:"
         const val BACKUP_MIME_TYPE = "application/zip"
         const val AUTOMATIC_BACKUP_DIRECTORY = "backups"
-        const val AUTOMATIC_BACKUP_PREFIX = "levyra-auto-backup-"
 
         val DEFAULT_ROOT_PROJECTION = arrayOf(
             Root.COLUMN_ROOT_ID,
