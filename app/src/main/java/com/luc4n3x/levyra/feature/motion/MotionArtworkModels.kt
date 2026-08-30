@@ -153,7 +153,7 @@ internal fun motionComparisonTokens(value: String): Set<String> =
 
 // YouTube Music frequently reports a playback-count subtitle ("21 Mln riproduzioni") where an
 // album name belongs. Treating those as albums poisons catalog lookups and match scoring.
-private val MOTION_COUNT_LABEL = Regex("""^\d[\d.,]*\s*(k|m|b|mila|mln|mrd|bn)?\s+\p{L}.*$""")
+private val MOTION_COUNT_LABEL = Regex("""^\d[\d.,]*\s*(k|m|b|mila|mln|mrd|bn)\s+\p{L}.*$""")
 
 internal val MOTION_GENERIC_ALBUM_NAMES = setOf(
     "youtube",
