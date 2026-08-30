@@ -95,7 +95,7 @@ if (isReleaseTaskRequested() && !isFdroidBuild && !releaseSigningAvailable) {
 fun normalizedVersionName(value: String): String {
     val clean = value.trim().removePrefix("v").removePrefix("V")
     val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
-    return match ?: clean.ifBlank { "2.5.0" }
+    return match ?: clean.ifBlank { "2.5.1" }
 }
 
 fun generatedVersionCode(versionName: String): Int {
@@ -126,7 +126,7 @@ val levyraVersionName = normalizedVersionName(
     (findProperty("levyraVersionName") as? String)
         ?: System.getenv("LEVYRA_VERSION_NAME")
         ?: githubTagVersionName()
-        ?: "2.5.0"
+        ?: "2.5.1"
 )
 
 val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
