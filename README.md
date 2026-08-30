@@ -98,7 +98,7 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 #### 🎬 Explore & Video Engine
 | Vertical Samples Clips | Moods & Subgenre Matrix | Video Feed & Energy |
-| :---: | :---: | :---: |
+| :---: | :---: | :---: | 
 | <img src="docs/assets/screenshots/explore_samples.webp" width="260" alt="Samples Clips"> | <img src="docs/assets/screenshots/explore_genres.webp" width="260" alt="Genres Matrix"> | <img src="docs/assets/screenshots/video_energy.webp" width="260" alt="Video Feed"> |
 
 </div>
@@ -357,7 +357,6 @@ levyraDesktopVersion=1.2.0
 ---
 
 ## ✦ Contributing
-
 We welcome community contributions, bug fixes, localization, and performance enhancements.
 
 ### Engineering Workflow
@@ -406,7 +405,7 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 <br>
 
-### ✦ Built With & Inspired By
+### Built With & Inspired By
 
 * **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Reference for Levyra's renderer-recovery backoff policy and BetterLyrics TTML parsing behavior, reimplemented for Levyra.
 * **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is maintained as a Levyra-specific fork of this project, with additional stream-resolution, playback-reliability, diagnostics, and fallback work.
