@@ -20,7 +20,10 @@ jobs:
           fetch-depth: 0
 
       - name: Apply focused artist refinement
-        run: python3 .github/artist_page_refine.py
+        shell: bash
+        run: |
+          sed -i "s/loading_end = '                state.artistError != null && profile == null -> {'/loading_end = '                showArtistError -> {'/" .github/artist_page_refine.py
+          python3 .github/artist_page_refine.py
 
       - name: Compile Kotlin
         run: ./gradlew :app:compileDebugKotlin --no-daemon
