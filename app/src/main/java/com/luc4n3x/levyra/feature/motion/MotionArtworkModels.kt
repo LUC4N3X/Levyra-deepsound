@@ -142,8 +142,6 @@ internal fun normalizeMotionText(value: String): String = value
     .replace(MOTION_WHITESPACE, " ")
     .trim()
 
-// Featuring markers differ between YouTube Music and Apple Music titles ("con" vs "feat.").
-// They carry no identity signal, so comparison ignores them.
 private val MOTION_FEATURE_TOKENS = setOf("feat", "featuring", "ft", "con", "with", "w", "and", "e")
 
 internal fun motionComparisonTokens(value: String): Set<String> =
@@ -151,8 +149,6 @@ internal fun motionComparisonTokens(value: String): Set<String> =
         .split(' ')
         .filterTo(LinkedHashSet()) { it.isNotBlank() && it !in MOTION_FEATURE_TOKENS }
 
-// YouTube Music frequently reports a playback-count subtitle ("21 Mln riproduzioni") where an
-// album name belongs. Treating those as albums poisons catalog lookups and match scoring.
 private val MOTION_COUNT_LABEL = Regex("""^\d[\d.,]*\s*(k|m|b|mila|mln|mrd|bn)\s+\p{L}.*$""")
 
 internal val MOTION_GENERIC_ALBUM_NAMES = setOf(

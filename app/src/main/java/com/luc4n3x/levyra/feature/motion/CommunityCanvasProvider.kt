@@ -71,8 +71,6 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
-            // Index keys embed the album, so a track whose album metadata is a YouTube playback
-            // count can never hit a shard. Falling back to the flat catalog keeps those reachable.
             val indexedRows = when (val indexed = indexedEntries(identity)) {
                 is CommunityCanvasIndexLookup.Available -> indexed.entries
                 CommunityCanvasIndexLookup.Unavailable -> null

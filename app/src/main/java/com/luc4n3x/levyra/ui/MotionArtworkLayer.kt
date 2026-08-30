@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -564,8 +565,7 @@ private fun MotionArtworkVideo(
     )
 }
 
-private fun motionArtworkHost(url: String): String =
-    url.substringAfter("://", "").substringBefore('/').substringBefore('?')
+private fun motionArtworkHost(url: String): String = Uri.parse(url).host.orEmpty()
 
 private data class MotionArtworkEnvironment(
     val remoteAllowed: Boolean,

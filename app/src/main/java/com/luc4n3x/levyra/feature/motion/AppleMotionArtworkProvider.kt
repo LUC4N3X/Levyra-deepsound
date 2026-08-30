@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -26,6 +27,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         .readTimeout(25, TimeUnit.SECONDS)
         .callTimeout(25, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .build()
+    private val scriptClient: OkHttpClient = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
         .build()
     private val tokenMutex = Mutex()
     private var cachedToken: String? = null
@@ -294,8 +299,11 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 if (isUnsafeResult(name, album)) continue
                 if (!artistMatches(identity.artists, splitArtists(artist))) continue
                 val quickScore = if (type == "songs") {
-                    val titleScore = similarity(identity.title, name)
-                    maxOf(titleScore * 100.0, titleScore * 70.0 + similarity(identity.album, album) * 30.0)
+                    appleSongSearchScore(
+                        titleScore = similarity(identity.title, name),
+                        albumScore = similarity(identity.album, album),
+                        albumUsable = !isUnusableMotionAlbum(identity.album)
+                    )
                 } else {
                     similarity(identity.album, album) * 100.0
                 }
@@ -413,7 +421,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         var lastFailure: Throwable? = null
         for ((index, script) in scripts.withIndex()) {
             val source = try {
-                requestText(script)
+                requestTrustedScriptText(script)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
@@ -459,6 +467,60 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .header("User-Agent", USER_AGENT)
             .build()
         return executeText(request)
+    }
+
+    private suspend fun requestTrustedScriptText(url: String): String = withContext(Dispatchers.IO) {
+        var currentUrl = trustedAppleMusicScriptUrl(url)?.toHttpUrlOrNull()
+            ?: throw MotionProviderException("Blocked Apple Music script URL")
+        var redirects = 0
+        try {
+            while (true) {
+                val request = Request.Builder()
+                    .url(currentUrl)
+                    .header("User-Agent", USER_AGENT)
+                    .build()
+                val response = scriptClient.newCall(request).execute()
+                try {
+                    if (response.code in SCRIPT_REDIRECT_CODES) {
+                        if (redirects >= MAX_TOKEN_SCRIPT_REDIRECTS) {
+                            throw MotionProviderException("Too many Apple Music script redirects")
+                        }
+                        val location = response.header("Location")
+                            ?: throw MotionProviderException("Apple Music script redirect missing location")
+                        currentUrl = trustedAppleMusicScriptRedirectUrl(currentUrl.toString(), location)
+                            ?.toHttpUrlOrNull()
+                            ?: throw MotionProviderException("Blocked Apple Music script redirect")
+                        redirects += 1
+                        continue
+                    }
+                    if (!response.isSuccessful) {
+                        Timber.d(
+                            "Apple motion script HTTP failure host=%s path=%s status=%d",
+                            currentUrl.host,
+                            currentUrl.encodedPath,
+                            response.code
+                        )
+                        throw MotionProviderException("Apple Music HTTP ${response.code}")
+                    }
+                    return@withContext response.body.string().takeIf { it.isNotBlank() }
+                        ?: throw MotionProviderException("Empty Apple Music response")
+                } finally {
+                    response.close()
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: MotionProviderException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.d(
+                error,
+                "Apple motion script request failed host=%s path=%s",
+                currentUrl.host,
+                currentUrl.encodedPath
+            )
+            throw MotionProviderException("Apple motion script request failed", error)
+        }
     }
 
     private suspend fun executeText(request: Request): String = withContext(Dispatchers.IO) {
@@ -558,7 +620,9 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         const val TOKEN_EXPIRY_MARGIN_MS = 5L * 60L * 1000L
         const val MAX_ARTIST_DETAIL_CANDIDATES = 3
         const val MAX_TOKEN_SCRIPT_CANDIDATES = 12
+        const val MAX_TOKEN_SCRIPT_REDIRECTS = 4
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
+        val SCRIPT_REDIRECT_CODES = setOf(300, 301, 302, 303, 307, 308)
         val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\\.ey[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+")
         val BLACKLIST = setOf("playlist", "set list", "essentials", "dj mix", "apple music", "todays hits", "session")
     }
@@ -597,13 +661,40 @@ internal fun appleMusicScriptUrls(html: String): List<String> {
 private fun trustedAppleMusicScriptUrl(value: String): String? {
     val clean = value.trim()
     if (clean.isBlank()) return null
-    return when {
+    val candidate = when {
         clean.startsWith("https://music.apple.com/", ignoreCase = true) -> clean
         clean.startsWith("//music.apple.com/", ignoreCase = true) -> "https:$clean"
         clean.startsWith("/") -> "https://music.apple.com$clean"
         "://" !in clean -> "https://music.apple.com/$clean"
-        else -> null
+        else -> return null
     }
+    val url = candidate.toHttpUrlOrNull() ?: return null
+    if (
+        url.scheme != "https" ||
+        url.port != 443 ||
+        !url.host.equals("music.apple.com", ignoreCase = true) ||
+        url.username.isNotEmpty() ||
+        url.password.isNotEmpty()
+    ) {
+        return null
+    }
+    return url.toString()
+}
+
+internal fun trustedAppleMusicScriptRedirectUrl(currentUrl: String, location: String): String? {
+    val current = currentUrl.toHttpUrlOrNull() ?: return null
+    val resolved = current.resolve(location) ?: return null
+    return trustedAppleMusicScriptUrl(resolved.toString())
+}
+
+internal fun appleSongSearchScore(
+    titleScore: Double,
+    albumScore: Double,
+    albumUsable: Boolean
+): Double = if (albumUsable) {
+    titleScore * 70.0 + albumScore * 30.0
+} else {
+    titleScore * 100.0
 }
 
 internal fun appleMotionStorefronts(localStorefront: String): List<String> =

@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.feature.motion
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -17,6 +18,7 @@ class AppleArtistMotionSelectionTest {
             <html>
               <script src="/assets/index-main.abc123.js"></script>
               <script src="https://music.apple.com/assets/chunk-player.def456.js"></script>
+              <script src="https://user:pass@music.apple.com/assets/credentialed.js"></script>
               <script src="https://evil.example/assets/index.js"></script>
             </html>
         """.trimIndent()
@@ -27,6 +29,42 @@ class AppleArtistMotionSelectionTest {
                 "https://music.apple.com/assets/chunk-player.def456.js"
             ),
             appleMusicScriptUrls(html)
+        )
+    }
+
+    @Test
+    fun appleMusicScriptRedirectsStayOnTrustedOrigin() {
+        assertEquals(
+            "https://music.apple.com/assets/next.js",
+            trustedAppleMusicScriptRedirectUrl(
+                "https://music.apple.com/assets/index.js",
+                "/assets/next.js"
+            )
+        )
+        assertNull(
+            trustedAppleMusicScriptRedirectUrl(
+                "https://music.apple.com/assets/index.js",
+                "https://evil.example/assets/next.js"
+            )
+        )
+        assertNull(
+            trustedAppleMusicScriptRedirectUrl(
+                "https://music.apple.com/assets/index.js",
+                "https://user:pass@music.apple.com/assets/next.js"
+            )
+        )
+    }
+
+    @Test
+    fun songRankingUsesAlbumAgreementWhenAlbumIsUsable() {
+        assertTrue(
+            appleSongSearchScore(titleScore = 1.0, albumScore = 1.0, albumUsable = true) >
+                appleSongSearchScore(titleScore = 1.0, albumScore = 0.0, albumUsable = true)
+        )
+        assertEquals(
+            100.0,
+            appleSongSearchScore(titleScore = 1.0, albumScore = 0.0, albumUsable = false),
+            0.0
         )
     }
 
