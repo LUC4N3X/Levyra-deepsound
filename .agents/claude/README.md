@@ -1,17 +1,22 @@
 # Levyra Claude Code Configuration
 
-Levyra keeps the tracked Claude Code source under `.agents/claude/` and the shared
-project skills under `.agents/skills/`.
+Levyra keeps Claude-specific tracked runtime sources under `.agents/claude/` and
+shared project skills under `.agents/skills/`.
 
-The native `.claude/` directory is a generated local runtime projection. It is
-ignored by Git and must never become a second source of truth.
+A tiny tracked root `CLAUDE.md` is intentionally present because Claude Code
+natively reads `CLAUDE.md`, not `AGENTS.md`. The root bridge imports `AGENTS.md`
+so the essential Levyra contract is available immediately in a fresh clone,
+before any generated `.claude/` projection exists.
 
 ## Canonical structure
 
 ```text
+CLAUDE.md                      native startup bridge -> @AGENTS.md
+AGENTS.md                      compact cross-runtime contract
+
 .agents/
 ├── claude/
-│   ├── CLAUDE.md
+│   ├── CLAUDE.md              Claude-specific runtime guidance
 │   ├── README.md
 │   ├── settings.json
 │   ├── agents/
@@ -21,12 +26,12 @@ ignored by Git and must never become a second source of truth.
     └── */SKILL.md
 ```
 
-There is intentionally no tracked root `CLAUDE.md`, `.claude/`, or duplicate
-`.agents/claude/skills/` tree.
+The generated `.claude/` directory remains local and ignored. There is still no
+tracked duplicate `.agents/claude/skills/` tree.
 
 ## Native Claude projection
 
-Claude Code still receives the paths it expects locally:
+Runtime setup materializes the optional native surface:
 
 ```text
 .claude/
@@ -37,8 +42,10 @@ Claude Code still receives the paths it expects locally:
 └── skills/          <- .agents/skills/
 ```
 
-Run the normal repository setup once after a fresh clone or after pulling this
-migration:
+The projected `.claude/CLAUDE.md` contains Claude-specific runtime guidance only;
+root `CLAUDE.md` + imported `AGENTS.md` remain the reliable startup contract.
+
+Run setup after a fresh clone or after agent-infrastructure changes:
 
 ```powershell
 .\scripts\setup-ai.ps1
@@ -50,80 +57,62 @@ or:
 ./scripts/setup-ai.sh
 ```
 
-Both setup scripts invoke `scripts/sync_agent_runtime.py`, which materializes the
-ignored native Claude and Codex projections from `.agents/` without deleting
-unrelated local files. The projection is also refreshed on Claude
-`SessionStart`/resume after the native settings are active. The project-scoped
-jCodeMunch launcher performs a best-effort Claude projection refresh as an
-additional clean-clone bootstrap path.
+Both invoke `scripts/sync_agent_runtime.py`. SessionStart/resume refreshes the
+projection again once native project settings are active. The project
+jCodeMunch launcher also performs a best-effort refresh.
 
-To refresh or verify only Claude manually:
+Manual Claude-only refresh/check:
 
 ```bash
 python3 scripts/sync_agent_runtime.py --runtime claude --quiet
 python3 scripts/sync_agent_runtime.py --runtime claude --check
 ```
 
-On Windows, `python` or `py` can be used when `python3` is not available.
+## Automatic instruction and skill loading
 
-## Automatic skill loading
+The reliability chain is deliberately layered:
 
-`.agents/skills/` is the only tracked Levyra skill tree.
+1. root `CLAUDE.md` loads natively at startup and imports `AGENTS.md`;
+2. generated `.claude/CLAUDE.md` adds only Claude-specific runtime guidance;
+3. `UserPromptSubmit` re-anchors a compact hard contract on every prompt;
+4. the shared router selects only matching Levyra skills;
+5. path-scoped rules/instructions load when relevant files are touched.
 
-- Codex discovers `.agents/skills/` directly.
-- Claude Code discovers the generated `.claude/skills/` projection.
-- Every projected Claude skill comes directly from the same canonical
-  `.agents/skills/<skill>/SKILL.md` file.
-- `UserPromptSubmit` continues routing matching requests to the required Levyra
-  skills before editing.
-- `settings.json` keeps the project plugins and lifecycle hooks active.
+This avoids depending on Claude voluntarily searching for repository rules and
+also avoids stuffing every specialized procedure into startup context.
 
-This means adding or changing a Levyra skill requires editing it once under
-`.agents/skills/`. The next runtime sync updates Claude's native view; Codex uses
-the canonical file directly.
+`.agents/skills/` remains the only tracked Levyra skill tree. Claude discovers
+the generated `.claude/skills/` view; Codex reads the canonical tree directly.
 
 ## Settings and hooks
 
-The tracked settings file is `.agents/claude/settings.json`. Its generated
-`.claude/settings.json` counterpart is what Claude Code consumes locally.
+Tracked settings live at `.agents/claude/settings.json`; generated
+`.claude/settings.json` is what Claude Code consumes locally.
 
-The settings preserve the existing permission guardrails, project plugins,
-SessionStart environment/tooling checks, jCodeMunch bootstrap, prompt routing,
-always-on agent harness, checkpointing, comment guard, and completion audit.
+The settings preserve permission guardrails, project plugins, SessionStart
+environment checks, jCodeMunch bootstrap, prompt routing, always-on harness,
+checkpointing, comment guard, compaction re-anchoring, and completion audit.
 
-Canonical hook scripts stay under `.agents/claude/hooks/`. The generated
-settings call those canonical scripts directly, so hook logic is not duplicated
-inside `.claude/`.
+`UserPromptSubmit` must always inject the compact hard contract even if skill
+routing returns no specialized match. If Python is unavailable, the hook emits a
+minimal static fallback rather than silently providing no context.
 
-The hooks are fail-open for optional tooling and must never turn an unavailable
-optimizer or indexer into a blocked coding session. Validation evidence remains
-truthful: a setup probe is a precondition check, not proof that a build or test
-passed.
+Optional tooling is fail-open: unavailable RTK, jCodeMunch, or memory tooling
+must not block normal coding. Validation claims remain evidence-based.
 
 ## Personal local overrides
 
-Generated `.claude/` is ignored by Git. The runtime synchronizer only owns files
-listed in its `.levyra-runtime-manifest.json`; it does not delete unrelated
-machine-specific files. Local-only Claude configuration can therefore coexist
-with the generated project projection.
-
-## Usage
-
-After setup, start Claude Code normally from the repository. No custom skill path
-is required. Claude sees the normal `.claude` runtime surface while the GitHub
-repository remains organized under `.agents/`.
-
-If a new skill is added while Claude Code is already running, start a new session
-when necessary so Claude refreshes its discovered skill inventory.
+Generated `.claude/` is ignored by Git. The synchronizer owns only files listed
+in its runtime manifest and preserves unrelated machine-specific local files.
 
 ## Maintenance
 
-- edit canonical Claude configuration only under `.agents/claude/`;
+- keep root `CLAUDE.md` tiny and importing `@AGENTS.md`;
+- keep `AGENTS.md` concise enough for reliable startup adherence;
+- edit Claude runtime sources under `.agents/claude/`;
 - edit Levyra skills only under `.agents/skills/`;
-- never commit root `CLAUDE.md`, `.claude/`, `.codex/`, or
-  `.agents/claude/skills/`;
-- keep `scripts/sync_agent_runtime.py` idempotent and non-destructive to unknown
-  local files;
-- preserve Claude's native automatic discovery by keeping the generated
-  `.claude` projection compatible with the current runtime;
+- never commit generated `.claude/`, `.codex/`, or
+  `.agents/claude/skills/` trees;
+- keep `scripts/sync_agent_runtime.py` idempotent and non-destructive;
+- keep prompt-hook fallback behavior and validators in sync with discovery;
 - run the AI quality gate after structural agent changes.
