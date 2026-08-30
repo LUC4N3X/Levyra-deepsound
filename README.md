@@ -38,15 +38,48 @@
 
 ## ✦ The Pure Listening Philosophy
 
-Modern music streaming applications often treat music as temporary, disposable bandwidth—trapped behind proprietary walled gardens, mandatory subscriptions, battery-draining telemetry, and transient cache files that evaporate the moment your device goes offline.
+<div align="center">
 
-**Levyra is built differently.** It treats music as art to be experienced with absolute acoustic precision and true digital ownership:
+### 🎧 Music should feel like yours.
 
-* 💿 **True Offline Ownership**: Downloads are standard, high-bitrate M4A audio files saved directly into your device storage (`Music/Levyra`). Album artwork, artists, and lyrics are embedded directly into the file container so your music plays flawlessly in your car, DAP, hi-fi system, or any media player.
-* ⚡ **Tuned Low-Latency Audio Engines**: Android leverages a low-overhead **AndroidX Media3 & ExoPlayer** foreground audio pipeline for instant buffering, seamless gapless playback, and volume normalization. Windows runs a standalone **libvlc** engine with global keyboard shortcuts and system tray controls.
-* 🎙️ **Live Karaoke Synced Lyrics**: Real-time scrolling lyrics powered by LRCLIB, featuring line-by-line vocal highlighting and interactive tap-to-seek scrubbing.
-* ✂️ **Zero-Distraction Flow**: Native **SponsorBlock** automatically detects and skips music video intros, non-musical banter, skit dialogue, and silence—jumping straight into the sound.
-* 🛡️ **100% Private On-Device Intelligence**: Your listening time, daily streaks, play counts, and playlists are calculated locally within a private SQLite database. Zero analytics, zero cookies, zero user profiling.
+**Not rented. Not profiled. Not trapped.**
+
+Levyra is built around a simple promise: the music you save, the way you listen, and the history you create should remain useful beyond a session — and beyond Levyra itself.
+
+</div>
+
+<br>
+
+### 💿 01 · Keep the music
+
+Downloads are standard, high-bitrate M4A files saved directly to <code>Music/Levyra</code>, with artwork, artist, album, and lyrics embedded inside the file.
+
+**No proprietary vault required.** Your music remains usable in the car, on a DAP, through a hi-fi system, or in any compatible media player.
+
+### 🎚️ 02 · Stay close to the sound
+
+Android uses Media3 / ExoPlayer; Windows uses its own libvlc core. Playback stays native to the platform instead of living inside a web wrapper.
+
+<code>GAPLESS PLAYBACK</code> &nbsp;·&nbsp; <code>VOLUME NORMALIZATION</code> &nbsp;·&nbsp; <code>LOW-OVERHEAD AUDIO</code>
+
+### 🎙️ 03 · Remove everything between you and the song
+
+Synced LRCLIB lyrics keep the words tied to the music with tap-to-seek karaoke, while SponsorBlock can skip supported intros, silence, dialogue, and other non-musical segments automatically.
+
+The goal is simple: **less interface friction, more music.**
+
+### 🛡️ 04 · Keep your listening private
+
+Play counts, listening time, streaks, playlists, and listening insights are computed locally in SQLite.
+
+**No analytics profile. No cookies. No mandatory Levyra account.**
+
+<br>
+
+<div align="center">
+  <p><b>Keep the file. Keep the history. Keep control.</b></p>
+  <sub>Offline playback is not a fallback in Levyra. It is ownership.</sub>
+</div>
 
 ---
 
@@ -106,21 +139,39 @@ Modern music streaming applications often treat music as temporary, disposable b
 </details>
 
 ---
-
 ## ✦ Acoustic Architecture & Features
+
+<div align="center">
+  <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
+  <p><sub>Playback, discovery, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
+  <p>
+    <code>10 CORE SYSTEMS</code> &nbsp;·&nbsp;
+    <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
+    <code>LOCAL-FIRST</code> &nbsp;·&nbsp;
+    <code>ZERO TRACKING</code>
+  </p>
+</div>
+
+<br>
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
-      <h3>🎚️ <b>Pure Audio & Playback Engine</b></h3>
+      <h3>🎚️ <b>Playback Core</b></h3>
+      <p><b>Fast, native, interruption-free.</b><br><sub>The listening path is tuned around low overhead, predictable behavior, and direct playback control on both platforms.</sub></p>
       <ul>
-        <li><b>Dual Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
-        <li><b>Playback Suite:</b> Gapless, shuffle/repeat, speed/pitch, sleep timer, and queue Undo.</li>
-        <li><b>Smart Playback:</b> Android Auto, volume normalization, SponsorBlock skipping, and Audio / Video toggle.</li>
+        <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
+        <li><b>Gapless & Queue:</b> Seamless track transitions, shuffle/repeat, and queue Undo.</li>
+        <li><b>Tempo & Timing:</b> Speed/pitch controls plus a built-in sleep timer.</li>
+        <li><b>Android Auto:</b> Playback integrates with the car-focused Android media experience.</li>
+        <li><b>Volume Normalization:</b> Keeps perceived loudness more consistent between tracks.</li>
+        <li><b>SponsorBlock:</b> Automatically skips supported non-musical segments during playback.</li>
+        <li><b>Audio / Video Mode:</b> Switch between listening and native-video playback when available.</li>
       </ul>
     </td>
     <td width="50%">
-      <h3>💾 <b>Offline Audio & Levyra Vault</b></h3>
+      <h3>💾 <b>Offline Vault</b></h3>
+      <p><b>Your library stays yours.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
         <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code>.</li>
@@ -132,7 +183,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🔍 <b>Stream Extraction & Discovery</b></h3>
+      <h3>🔍 <b>Discovery & Extraction</b></h3>
+      <p><b>Find it, resolve it, start it.</b><br><sub>Discovery and stream resolution are designed as one continuous path into playback.</sub></p>
       <ul>
         <li><b>Dual Resolver:</b> Highest-fidelity Opus or AAC with automatic fallback.</li>
         <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
@@ -140,7 +192,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>📊 <b>Karaoke Lyrics & Visual Immersion</b></h3>
+      <h3>🎙️ <b>Lyrics & Visual Immersion</b></h3>
+      <p><b>Lyrics that move with the music.</b><br><sub>Synced text, shareable moments, artwork motion, and Canvas live inside the player.</sub></p>
       <ul>
         <li><b>Synced Lyrics:</b> Millisecond-aligned LRCLIB lyrics with tap-to-seek highlighting.</li>
         <li><b>Lyric Sharing:</b> Select verses, copy, share, or export a 1080×1080 Levyra card.</li>
@@ -151,7 +204,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>📈 <b>Listening Insights</b></h3>
+      <h3>📈 <b>Listening Intelligence</b></h3>
+      <p><b>Useful insight, computed locally.</b><br><sub>Your listening patterns become readable without turning into telemetry.</sub></p>
       <ul>
         <li><b>Accurate Listening:</b> Playback time and counted plays respect pause, seek, skip, and completion.</li>
         <li><b>Listening Pulse:</b> Weekly activity, 24-hour rhythm, and artist distribution.</li>
@@ -159,7 +213,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>🔤 <b>Readability & Typography</b></h3>
+      <h3>🔤 <b>Typography & Readability</b></h3>
+      <p><b>Dense when useful. Clear everywhere.</b><br><sub>Type rhythm and layout rules keep metadata readable across languages and font scales.</sub></p>
       <ul>
         <li><b>Levyra Type Rhythm:</b> Shared line-height scale for titles, metadata, and multi-line text.</li>
         <li><b>Accessible Layout:</b> Role-aware tracking with safe accents, descenders, and large font scales.</li>
@@ -169,7 +224,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🎙️ <b>Music Recognition 2.0</b></h3>
+      <h3>🎛️ <b>Music Recognition 2.0</b></h3>
+      <p><b>Identify what is playing without an account.</b><br><sub>Recognition works from the microphone or supported internal playback capture.</sub></p>
       <ul>
         <li><b>Shazam-Compatible:</b> Credential-free acoustic fingerprint matching directly on device.</li>
         <li><b>Dual Audio Capture:</b> Listens via microphone or internal device playback (Android 10+ MediaProjection).</li>
@@ -177,7 +233,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>📻 <b>Levyra Jam Local Sync</b></h3>
+      <h3>📻 <b>Levyra Jam</b></h3>
+      <p><b>Shared listening, kept on the local network.</b><br><sub>Sync playback and queues across nearby devices without turning the session into a cloud service.</sub></p>
       <ul>
         <li><b>Local Network Listening:</b> Synchronized playback and shared queues across devices on the same Wi-Fi.</li>
         <li><b>Host Authority & Permissions:</b> Granular controls for host-only, guest queue additions, or collaborative sessions.</li>
@@ -187,7 +244,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🛡️ <b>Network Resilience & Proxies</b></h3>
+      <h3>🛡️ <b>Network Resilience</b></h3>
+      <p><b>Flexible routing without hidden behavior.</b><br><sub>DNS, proxy controls, bypasses, and diagnostics stay visible and user-controlled.</sub></p>
       <ul>
         <li><b>DNS-over-HTTPS:</b> Built-in presets for Cloudflare, Google, AdGuard, and Quad9, plus custom HTTPS resolvers.</li>
         <li><b>HTTP & SOCKS Proxies:</b> Authenticated proxy routing with Keystore-encrypted credentials and anti-loop safety.</li>
@@ -195,7 +253,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>🔗 <b>Integrations & Settings Search</b></h3>
+      <h3>🔗 <b>Integrations & Control</b></h3>
+      <p><b>Useful connections, never mandatory ones.</b><br><sub>External services remain optional while core playback stays independent.</sub></p>
       <ul>
         <li><b>Scrobbling:</b> Last.fm and ListenBrainz integration with bounded deduplication.</li>
         <li><b>Searchable Settings:</b> Instant search across settings, titles, and keywords in 26 languages.</li>
@@ -205,59 +264,49 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
 </table>
 
+<div align="center">
+  <sub>One listening stack — built to stay fast, portable, private, and recoverable online or offline.</sub>
+</div>
+
 ---
 
 ## ✦ Architecture & Engineering Blueprint
 
-<div align="center">
-  <h3>🏗️ <b>Native architecture. Modular by design.</b></h3>
-  <p>
-    <code>ANDROID</code> &nbsp;·&nbsp;
-    <code>WINDOWS</code> &nbsp;·&nbsp;
-    <code>LOW-LATENCY PLAYBACK</code> &nbsp;·&nbsp;
-    <code>LOCAL-FIRST STORAGE</code>
-  </p>
-</div>
-Levyra is built from the ground up as a native, modular audio suite for Android and Windows.
+Levyra keeps Android and Windows native where platform behavior matters, while following the same core architectural principles across both clients: explicit state ownership, resilient stream resolution, and local-first data.
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
-      <h3>📱 <b>Android Native Suite</b> (<code>app/</code>)</h3>
-      <p><b>Modern Android stack.</b><br><sub>Compose-first UI, Media3 playback, offline export, and local data orchestration.</sub></p>
+      <h3><b>Android</b> <code>app/</code></h3>
+      <p><sub>Jetpack Compose interface with Media3 / ExoPlayer playback and Room-backed local state.</sub></p>
       <ul>
-        <li>🎨 <b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a>:</b> Compose & Material 3 screens, gestures, Canvas, and OLED palettes.</li>
-        <li>🧠 <b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a>:</b> Immutable UI state and unidirectional coordination.</li>
-        <li>🎧 <b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a>:</b> Media3 / ExoPlayer foreground audio service.</li>
-        <li>💾 <b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>offline/</code></a>:</b> WorkManager exports, M4A tagging, and artwork.</li>
-        <li>⚡ <b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a>:</b> Stream resolving, synced lyrics, prefetch, and Room data.</li>
+        <li><b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a></b> — Compose screens, gestures, Canvas, and visual presentation.</li>
+        <li><b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a></b> — Immutable UI state and unidirectional coordination.</li>
+        <li><b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b> — Foreground playback service, MediaSession, and ExoPlayer ownership.</li>
+        <li><b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a></b> — Stream resolution, lyrics, prefetch, and persistent local data.</li>
+        <li><b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>player/offline/</code></a></b> — Offline exports, M4A tagging, and artwork.</li>
       </ul>
     </td>
     <td width="50%">
-      <h3>💻 <b>Windows Desktop Suite</b> (<code>desktop/</code>)</h3>
-      <p><b>Standalone desktop core.</b><br><sub>Compose Multiplatform interface, libvlc playback, packaging, and desktop-native controls.</sub></p>
+      <h3><b>Windows</b> <code>desktop/</code></h3>
+      <p><sub>Compose Multiplatform interface with an independent libvlc playback core and desktop-native controls.</sub></p>
       <ul>
-        <li>🖥️ <b><a href="desktop/app"><code>app/</code></a>:</b> Compose Multiplatform UI, windows, and updater.</li>
-        <li>🔊 <b><a href="desktop/player"><code>player/</code></a>:</b> libvlc playback, hardware acceleration, tray, and global hotkeys.</li>
-        <li>🌐 <b><a href="desktop/core"><code>core/</code></a>:</b> Stream resolver, downloads, and local app storage.</li>
-        <li>📦 <b><a href="desktop/packaging"><code>packaging/</code></a>:</b> WiX MSI installer and portable distributions.</li>
+        <li><b><a href="desktop/app"><code>app/</code></a></b> — Desktop UI, windows, application lifecycle, and updater.</li>
+        <li><b><a href="desktop/player"><code>player/</code></a></b> — libvlc playback, hardware acceleration, tray controls, and global hotkeys.</li>
+        <li><b><a href="desktop/core"><code>core/</code></a></b> — Stream resolution, downloads, and local application storage.</li>
+        <li><b><a href="desktop/packaging"><code>packaging/</code></a></b> — WiX MSI packaging and portable distributions.</li>
       </ul>
     </td>
   </tr>
 </table>
 
-### ✦ Under the Hood
+### Core engineering principles
 
-<sub>Three core systems keep Levyra predictable, resilient, and portable.</sub>
+**State ownership.** Immutable state keeps the interface, playback session, and platform controls synchronized without spreading mutable playback state across the UI.
 
-**01 · Unidirectional State Flow**<br>
-Immutable ViewModel state keeps the Compose UI, MediaSession, and Android Auto synchronized.
+**Resolver resilience.** InnerTube and LevyraExtractor coordinate fidelity selection, fallback, and queue prefetch so playback does not depend on a single resolution path.
 
-**02 · Dual Stream Resolver**<br>
-InnerTube and LevyraExtractor coordinate automatic fallback, fidelity selection, and queue prefetch.
-
-**03 · Portable Local Vault**<br>
-Tagged M4A files stay standard and reusable, while Levyra Vault protects local app state in validated, versioned <code>.levyra</code> archives with no account or Levyra cloud required.
+**Portable data.** Standard tagged M4A files remain usable outside Levyra, while versioned <code>.levyra</code> archives protect local application state without requiring a Levyra account or cloud service.
 
 ---
 
