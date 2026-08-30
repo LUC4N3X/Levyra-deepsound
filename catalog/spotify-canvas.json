@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-30T05:28:29Z",
+  "generatedAt": "2026-08-30T11:58:05Z",
   "items": [
     {
       "song": "Bugie",
@@ -1088,6 +1088,13 @@
       "scope": "track"
     },
     {
+      "song": "The One That Got Away",
+      "artist": "Katy Perry",
+      "album": "Teenage Dream",
+      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/e245c3d2a69545c3a94fa986acfb45ea.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "panzerknacker.wav",
       "artist": "LENNSKO",
       "album": "panzerknacker.wav",
@@ -1277,7 +1284,7 @@
       "scope": "track"
     },
     {
-      "song": "Última Saudade (Ao Vivo)",
+      "song": "Última Saudade - Ao Vivo",
       "artist": "Henrique & Juliano",
       "album": "Manifesto Musical 2, Vol. 1 (Ao Vivo)",
       "url": "https://canvaz.scdn.co/upload/artist/3p7PcrEHaaKLJnPUGOtRlT/video/bdb3c03be2e349529018d6a58e614c95.cnvs.mp4",
@@ -1729,6 +1736,13 @@
       "artist": "Samuel Welten",
       "album": "Echte Liefde Is Te Koop",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/33798fd3ba194b588a9a821efd8bd382.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
