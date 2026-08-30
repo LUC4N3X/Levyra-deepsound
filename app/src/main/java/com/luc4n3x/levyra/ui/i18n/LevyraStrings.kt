@@ -332,6 +332,7 @@ class LevyraStrings private constructor(
     val favorite: String get() = value("favorite")
     val downloaded: String get() = value("downloaded")
     val remove: String get() = value("remove")
+    val removeFromPlaylist: String get() = value("removeFromPlaylist")
     val youMightAlsoLike: String get() = value("youMightAlsoLike")
     val topResult: String get() = value("topResult")
     val currentlyPlaying: String get() = value("currentlyPlaying")
@@ -1353,7 +1354,7 @@ class LevyraStrings private constructor(
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
             val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
@@ -1528,6 +1529,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorite",
             "downloaded" to "Downloaded",
             "remove" to "Remove",
+            "removeFromPlaylist" to "Remove from playlist",
             "youMightAlsoLike" to "You might also like",
             "topResult" to "Top result",
             "currentlyPlaying" to "Now playing",
@@ -1923,6 +1925,7 @@ class LevyraStrings private constructor(
             "favorite" to "Preferito",
             "downloaded" to "Scaricato",
             "remove" to "Rimuovi",
+            "removeFromPlaylist" to "Rimuovi dalla playlist",
             "youMightAlsoLike" to "Potrebbe piacerti anche",
             "topResult" to "Risultato principale",
             "currentlyPlaying" to "In riproduzione",
@@ -2318,6 +2321,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorita",
             "downloaded" to "Descargada",
             "remove" to "Quitar",
+            "removeFromPlaylist" to "Quitar de la playlist",
             "youMightAlsoLike" to "También te puede gustar",
             "topResult" to "Resultado principal",
             "currentlyPlaying" to "Reproduciendo ahora",
@@ -2713,6 +2717,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favori",
             "downloaded" to "Téléchargé",
             "remove" to "Retirer",
+            "removeFromPlaylist" to "Retirer de la playlist",
             "youMightAlsoLike" to "Vous aimerez peut-être aussi",
             "topResult" to "Meilleur résultat",
             "currentlyPlaying" to "En cours de lecture",
@@ -3108,6 +3113,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorit",
             "downloaded" to "Heruntergeladen",
             "remove" to "Entfernen",
+            "removeFromPlaylist" to "Aus Playlist entfernen",
             "youMightAlsoLike" to "Das könnte dir auch gefallen",
             "topResult" to "Top-Ergebnis",
             "currentlyPlaying" to "Wird gerade abgespielt",
@@ -3503,6 +3509,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorita",
             "downloaded" to "Transferida",
             "remove" to "Remover",
+            "removeFromPlaylist" to "Remover da playlist",
             "youMightAlsoLike" to "Também poderás gostar",
             "topResult" to "Melhor resultado",
             "currentlyPlaying" to "A reproduzir",
@@ -3898,6 +3905,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favoriet",
             "downloaded" to "Gedownload",
             "remove" to "Verwijderen",
+            "removeFromPlaylist" to "Uit playlist verwijderen",
             "youMightAlsoLike" to "Dit vind je misschien ook leuk",
             "topResult" to "Beste resultaat",
             "currentlyPlaying" to "Wordt nu afgespeeld",
@@ -4293,6 +4301,7 @@ class LevyraStrings private constructor(
             "favorite" to "Ulubiony",
             "downloaded" to "Pobrano",
             "remove" to "Usuń",
+            "removeFromPlaylist" to "Usuń z playlisty",
             "youMightAlsoLike" to "Może Ci się też spodobać",
             "topResult" to "Najlepszy wynik",
             "currentlyPlaying" to "Teraz odtwarzane",
@@ -4688,6 +4697,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorită",
             "downloaded" to "Descărcată",
             "remove" to "Elimină",
+            "removeFromPlaylist" to "Elimină din playlist",
             "youMightAlsoLike" to "S-ar putea să-ți placă și",
             "topResult" to "Rezultat principal",
             "currentlyPlaying" to "Se redă acum",
@@ -5083,6 +5093,7 @@ class LevyraStrings private constructor(
             "favorite" to "Αγαπημένο",
             "downloaded" to "Λήφθηκε",
             "remove" to "Αφαίρεση",
+            "removeFromPlaylist" to "Αφαίρεση από τη λίστα αναπαραγωγής",
             "youMightAlsoLike" to "Μπορεί επίσης να σου αρέσει",
             "topResult" to "Κορυφαίο αποτέλεσμα",
             "currentlyPlaying" to "Αναπαράγεται τώρα",
@@ -5478,6 +5489,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorit",
             "downloaded" to "Nedladdad",
             "remove" to "Ta bort",
+            "removeFromPlaylist" to "Ta bort från spellistan",
             "youMightAlsoLike" to "Du kanske också gillar",
             "topResult" to "Bästa resultat",
             "currentlyPlaying" to "Spelas nu",
@@ -5873,6 +5885,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favorit",
             "downloaded" to "Downloadet",
             "remove" to "Fjern",
+            "removeFromPlaylist" to "Fjern fra playlisten",
             "youMightAlsoLike" to "Du vil måske også synes om",
             "topResult" to "Bedste resultat",
             "currentlyPlaying" to "Afspilles nu",
@@ -6268,6 +6281,7 @@ class LevyraStrings private constructor(
             "favorite" to "Oblíbená",
             "downloaded" to "Staženo",
             "remove" to "Odebrat",
+            "removeFromPlaylist" to "Odebrat z playlistu",
             "youMightAlsoLike" to "Mohlo by se ti také líbit",
             "topResult" to "Nejlepší výsledek",
             "currentlyPlaying" to "Právě hraje",
@@ -6663,6 +6677,7 @@ class LevyraStrings private constructor(
             "favorite" to "Обране",
             "downloaded" to "Завантажено",
             "remove" to "Видалити",
+            "removeFromPlaylist" to "Видалити з плейлиста",
             "youMightAlsoLike" to "Тобі також може сподобатися",
             "topResult" to "Найкращий результат",
             "currentlyPlaying" to "Зараз відтворюється",
@@ -7058,6 +7073,7 @@ class LevyraStrings private constructor(
             "favorite" to "В избранном",
             "downloaded" to "Скачано",
             "remove" to "Удалить",
+            "removeFromPlaylist" to "Удалить из плейлиста",
             "youMightAlsoLike" to "Тебе также может понравиться",
             "topResult" to "Лучший результат",
             "currentlyPlaying" to "Сейчас играет",
@@ -7453,6 +7469,7 @@ class LevyraStrings private constructor(
             "favorite" to "Favori",
             "downloaded" to "İndirildi",
             "remove" to "Kaldır",
+            "removeFromPlaylist" to "Çalma listesinden kaldır",
             "youMightAlsoLike" to "Bunları da beğenebilirsin",
             "topResult" to "En iyi sonuç",
             "currentlyPlaying" to "Şimdi çalıyor",
@@ -7848,6 +7865,7 @@ class LevyraStrings private constructor(
             "favorite" to "مفضلة",
             "downloaded" to "تم التنزيل",
             "remove" to "إزالة",
+            "removeFromPlaylist" to "إزالة من قائمة التشغيل",
             "youMightAlsoLike" to "قد يعجبك أيضًا",
             "topResult" to "أفضل نتيجة",
             "currentlyPlaying" to "قيد التشغيل الآن",
@@ -8243,6 +8261,7 @@ class LevyraStrings private constructor(
             "favorite" to "收藏",
             "downloaded" to "已下载",
             "remove" to "移除",
+            "removeFromPlaylist" to "从播放列表中移除",
             "youMightAlsoLike" to "你可能还喜欢",
             "topResult" to "最佳结果",
             "currentlyPlaying" to "正在播放",

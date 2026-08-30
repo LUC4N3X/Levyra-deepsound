@@ -91,6 +91,7 @@ internal fun LibraryTrackRow(
     onQueue: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
     onDeleteDownload: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -244,6 +245,18 @@ internal fun LibraryTrackRow(
                                 onClick = {
                                     menuExpanded = false
                                     onDownload()
+                                }
+                            )
+                        }
+                        if (onRemoveFromPlaylist != null) {
+                            DropdownMenuItem(
+                                text = { Text(strings.removeFromPlaylist, color = LevyraPink) },
+                                leadingIcon = {
+                                    Icon(Icons.Rounded.Delete, contentDescription = null, tint = LevyraPink)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onRemoveFromPlaylist()
                                 }
                             )
                         }

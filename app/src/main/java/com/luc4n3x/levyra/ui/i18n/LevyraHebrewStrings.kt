@@ -162,6 +162,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "favorite" to "מועדף",
     "downloaded" to "הורד",
     "remove" to "הסרה",
+    "removeFromPlaylist" to "הסרה מהפלייליסט",
     "youMightAlsoLike" to "אולי תאהבו גם",
     "topResult" to "התוצאה המובילה",
     "currentlyPlaying" to "מתנגן כעת",

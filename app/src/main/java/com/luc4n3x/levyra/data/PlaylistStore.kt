@@ -104,16 +104,12 @@ class PlaylistStore(context: Context) {
     }
 
     suspend fun removeTrack(playlistId: String, trackId: String) = withContext(Dispatchers.IO) {
-        dao.removeTrack(playlistId, trackId)
-        // ricompatta le posizioni
-        val remaining = dao.tracksOf(playlistId)
-        dao.replaceTracks(playlistId, remaining.mapIndexed { i, e -> e.copy(position = i) })
+        dao.removeTracksAndCompact(playlistId, setOf(trackId))
     }
 
     suspend fun removeTracks(playlistId: String, trackIds: Set<String>) = withContext(Dispatchers.IO) {
         if (trackIds.isEmpty()) return@withContext
-        val remaining = dao.tracksOf(playlistId).filterNot { it.trackId in trackIds }
-        dao.replaceTracks(playlistId, remaining.mapIndexed { index, entity -> entity.copy(position = index) })
+        dao.removeTracksAndCompact(playlistId, trackIds)
     }
 
     /** Riscrive l'ordine completo senza alterare metadati o data di aggiunta. */
