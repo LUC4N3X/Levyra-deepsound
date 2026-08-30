@@ -3568,15 +3568,19 @@ private fun ArtistPopularTracksShelf(
     if (distinctTracks.isEmpty()) return
 
     val firstTrack = distinctTracks.first()
-    val remainingTracks = distinctTracks.drop(1)
-    val columns = remainingTracks.chunked(3)
+    val columns = remember(distinctTracks) {
+        distinctTracks.drop(1).chunked(3)
+    }
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        item(key = "top_track") {
+        item(
+            key = "artist-top-track-${firstTrack.id.ifBlank { "${firstTrack.artist}|${firstTrack.title}" }}",
+            contentType = "artist-top-track"
+        ) {
             ArtistTopTrackCard(
                 index = 1,
                 track = firstTrack,
@@ -3587,7 +3591,13 @@ private fun ArtistPopularTracksShelf(
             )
         }
 
-        itemsIndexed(columns) { colIndex, columnTracks ->
+        itemsIndexed(
+            items = columns,
+            key = { colIndex, columnTracks ->
+                "artist-popular-col-$colIndex-${columnTracks.firstOrNull()?.let { it.id.ifBlank { "${it.artist}|${it.title}" } }.orEmpty()}"
+            },
+            contentType = { _, _ -> "artist-popular-column" }
+        ) { colIndex, columnTracks ->
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.width(300.dp)
@@ -7103,10 +7113,10 @@ private fun HomeEditorialSpotlight(
     val badge = homeSpotlightBadge(strings, candidate)
     val detail = homeSpotlightDetail(strings, candidate)
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(340.dp)
+            .height(LevyraHomeDesign.HeroHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
