@@ -635,7 +635,7 @@ internal fun PlaylistDetailHeader(
                             .clickable(onClick = { menuExpanded = true })
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = LevyraText, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.MoreVert, contentDescription = strings.more, tint = LevyraText, modifier = Modifier.size(20.dp))
                         }
                     }
                     DropdownMenu(
@@ -711,7 +711,7 @@ internal fun PlaylistDetailHeader(
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .memoryCachePolicy(CachePolicy.ENABLED)
                                 .build(),
-                            contentDescription = playlist.name,
+                            contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
