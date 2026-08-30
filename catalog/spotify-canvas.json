@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-29T20:57:44Z",
+  "generatedAt": "2026-08-30T05:28:29Z",
   "items": [
     {
       "song": "Bugie",
@@ -334,7 +334,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -383,7 +383,7 @@
     {
       "song": "Dreams - 2004 Remaster",
       "artist": "Fleetwood Mac",
-      "album": "Rumours",
+      "album": "Rumours (Super Deluxe)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
@@ -507,13 +507,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Great Expectation",
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
@@ -560,13 +553,6 @@
       "artist": "SIENNA SPIRO",
       "album": "Visitor (Deluxe)",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/7217bb849c04487abf708678fea8b6a8.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Dreams - 2004 Remaster",
-      "artist": "Fleetwood Mac",
-      "album": "Rumours (Super Deluxe)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1746,13 +1732,6 @@
       "scope": "track"
     },
     {
-      "song": "Midnight Sun",
-      "artist": "Zara Larsson",
-      "album": "Midnight Sun",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Crush",
       "artist": "Roxy Dekker",
       "album": "SUPERSTAR",
@@ -2380,6 +2359,13 @@
       "artist": "Bolaget",
       "album": "Kan Inte Gå",
       "url": "https://canvaz.scdn.co/upload/artist/55ZGFvikpNjQHvtTWS5aZF/video/59c5b81bcce44c81bdd0409a16a63099.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
