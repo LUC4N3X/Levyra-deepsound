@@ -55,6 +55,17 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import java.util.Locale
+import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -527,38 +538,69 @@ internal fun PlaylistDetailHeader(
 ) {
     val strings = LocalLevyraStrings.current
     var menuExpanded by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back, tint = LevyraText)
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = Color.White.copy(alpha = 0.06f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                shape = CircleShape,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable(onClick = onBack)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = strings.back,
+                        tint = LevyraText,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    playlist.name,
-                    color = LevyraText,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    "${strings.formatTrackCount(playlist.size)} · ${strings.formatLibraryDuration(durationMs)}",
-                    color = LevyraMuted,
-                    fontSize = 12.sp
-                )
-            }
+            Spacer(modifier = Modifier.weight(1f))
             if (reorderMode) {
-                Button(onClick = onSaveOrder) {
-                    Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(strings.save)
+                Surface(
+                    color = LevyraCyan,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .height(42.dp)
+                        .clickable(onClick = onSaveOrder)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(18.dp))
+                        Text(strings.save, color = LevyraBlack, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             } else {
                 Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = LevyraText)
+                    Surface(
+                        color = Color.White.copy(alpha = 0.06f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clickable(onClick = { menuExpanded = true })
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = LevyraText, modifier = Modifier.size(20.dp))
+                        }
                     }
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        modifier = Modifier.background(LevyraPanel)
+                    ) {
                         DropdownMenuItem(
                             text = { Text(strings.playlistName) },
                             leadingIcon = { Icon(Icons.Rounded.Edit, null) },
@@ -573,23 +615,175 @@ internal fun PlaylistDetailHeader(
                 }
             }
         }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(124.dp)
+                    .shadow(
+                        elevation = 14.dp,
+                        shape = RoundedCornerShape(20.dp),
+                        clip = false,
+                        ambientColor = LevyraCyan.copy(alpha = 0.20f),
+                        spotColor = Color.Black.copy(alpha = 0.60f)
+                    )
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(LevyraPanelSoft)
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
+            ) {
+                val previewTracks = playlist.tracks.take(4)
+                if (previewTracks.size >= 4) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(modifier = Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                            AsyncImage(
+                                model = previewTracks[1].thumbnailUrl.ifBlank { previewTracks[1].largeThumbnailUrl },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                        }
+                        Row(modifier = Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = previewTracks[2].thumbnailUrl.ifBlank { previewTracks[2].largeThumbnailUrl },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                            AsyncImage(
+                                model = previewTracks[3].thumbnailUrl.ifBlank { previewTracks[3].largeThumbnailUrl },
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight()
+                            )
+                        }
+                    }
+                } else if (previewTracks.isNotEmpty()) {
+                    AsyncImage(
+                        model = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
+                        contentDescription = playlist.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(
+                            Brush.linearGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = 0.35f),
+                                    LevyraViolet.copy(alpha = 0.35f),
+                                    LevyraPanelSoft
+                                )
+                            )
+                        ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.PlaylistPlay,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.80f),
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = strings.playlists.uppercase(Locale.ROOT),
+                    color = LevyraCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp,
+                    maxLines = 1
+                )
+                Text(
+                    text = playlist.name,
+                    color = LevyraText,
+                    fontSize = 22.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.6).sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                val durationText = strings.formatLibraryDuration(durationMs)
+                Text(
+                    text = "${strings.formatTrackCount(playlist.size)}  ·  $durationText",
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
         if (!reorderMode && playlist.tracks.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = onPlay, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text(strings.play)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = LevyraCyan,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .shadow(12.dp, RoundedCornerShape(16.dp), spotColor = LevyraCyan.copy(alpha = 0.45f))
+                        .clickable(onClick = onPlay)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(strings.play, color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
-                IconButton(onClick = onShuffle) {
-                    Icon(Icons.Rounded.Shuffle, contentDescription = strings.shuffle, tint = LevyraText)
+                Surface(
+                    color = Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clickable(onClick = onShuffle)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Shuffle, contentDescription = strings.shuffle, tint = LevyraText, modifier = Modifier.size(20.dp))
+                    }
                 }
-                IconButton(onClick = onDownload) {
-                    Icon(Icons.Rounded.Download, contentDescription = strings.download, tint = LevyraText)
+                Surface(
+                    color = Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clickable(onClick = onDownload)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Download, contentDescription = strings.download, tint = LevyraText, modifier = Modifier.size(20.dp))
+                    }
                 }
             }
         }
         if (reorderMode) {
-            Text(strings.dragToReorder, color = LevyraMuted, fontSize = 11.sp)
+            Text(strings.dragToReorder, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
