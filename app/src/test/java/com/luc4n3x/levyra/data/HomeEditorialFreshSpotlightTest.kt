@@ -36,6 +36,33 @@ class HomeEditorialFreshSpotlightTest {
     }
 
     @Test
+    fun justReleasedCandidatesAlsoTakeSpotlightPriority() {
+        val now = Calendar.getInstance().apply {
+            set(2026, Calendar.AUGUST, 30, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val recentRelease = track("recent", releaseDate = "2026-08-27")
+        val chart = track("chart")
+        val quickPick = track("quick")
+
+        val candidates = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = true,
+            newReleaseTracks = listOf(recentRelease),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = listOf(quickPick),
+            fallbackSections = emptyList(),
+            chartTracks = listOf(chart),
+            nowMillis = now
+        )
+
+        assertEquals(listOf("recent"), candidates.map { it.track.id })
+        assertEquals(HomeSpotlightKind.JustReleased, candidates.single().kind)
+    }
+
+    @Test
     fun ordinarySpotlightCandidatesRemainAsFallbackWithoutFreshReleases() {
         val chart = track("chart")
         val quickPick = track("quick")
