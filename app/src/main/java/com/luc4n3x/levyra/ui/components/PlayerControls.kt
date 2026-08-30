@@ -75,6 +75,12 @@ data class PlayerControlLabels(
 )
 
 private val DensePlayerHorizontalTouchTarget = 40.dp
+private val PlayerPrimaryBorderBrush = Brush.verticalGradient(
+    listOf(
+        Color.White.copy(alpha = 0.90f),
+        Color.White.copy(alpha = 0.40f)
+    )
+)
 
 private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
     return when (icon.name.substringAfterLast('.')) {
@@ -121,15 +127,26 @@ fun Modifier.playerGlass(
     shape: Shape,
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
-    borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom
+    borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
+    gradientBorder: Boolean = false
 ): Modifier = this
     .background(fill, shape)
-    .border(
-        BorderStroke(
-            LevyraPlayerDesign.Hairline,
-            Brush.verticalGradient(listOf(borderTop, borderBottom))
-        ),
-        shape
+    .then(
+        if (gradientBorder) {
+            Modifier.border(
+                BorderStroke(
+                    LevyraPlayerDesign.Hairline,
+                    Brush.verticalGradient(listOf(borderTop, borderBottom))
+                ),
+                shape
+            )
+        } else {
+            Modifier.border(
+                LevyraPlayerDesign.Hairline,
+                borderTop.playerMix(borderBottom, 0.5f),
+                shape
+            )
+        }
     )
 
 @Composable
@@ -144,6 +161,7 @@ fun PlayerGlassIconButton(
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
+    gradientBorder: Boolean = true,
     shape: Shape = CircleShape,
     enabled: Boolean = true
 ) {
@@ -160,7 +178,13 @@ fun PlayerGlassIconButton(
         Box(
             modifier = Modifier
                 .size(size)
-                .playerGlass(shape = shape, fill = fill, borderTop = borderTop, borderBottom = borderBottom),
+                .playerGlass(
+                    shape = shape,
+                    fill = fill,
+                    borderTop = borderTop,
+                    borderBottom = borderBottom,
+                    gradientBorder = gradientBorder
+                ),
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
@@ -266,7 +290,8 @@ private fun PlayerSkipButton(
                     shape = shape,
                     fill = Color.White.copy(alpha = 0.055f),
                     borderTop = Color.White.copy(alpha = 0.16f),
-                    borderBottom = Color.White.copy(alpha = 0.05f)
+                    borderBottom = Color.White.copy(alpha = 0.05f),
+                    gradientBorder = true
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -341,7 +366,8 @@ private fun PlayerModeToggleButton(
                     shape = LevyraPlayerDesign.ShapeSm,
                     fill = surfaceColor,
                     borderTop = borderTopColor,
-                    borderBottom = borderBottomColor
+                    borderBottom = borderBottomColor,
+                    gradientBorder = true
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -387,15 +413,7 @@ private fun Modifier.playerPrimarySurface(
         shape
     )
     .border(
-        BorderStroke(
-            1.dp,
-            Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.90f),
-                    Color.White.copy(alpha = 0.40f)
-                )
-            )
-        ),
+        BorderStroke(1.dp, PlayerPrimaryBorderBrush),
         shape
     )
 
