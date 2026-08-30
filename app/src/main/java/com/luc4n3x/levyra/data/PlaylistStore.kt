@@ -60,8 +60,6 @@ class PlaylistStore(context: Context) {
             track.toPlaylistTrackEntity(id, index, now)
         }
 
-        // Room executes both the playlist row and every track row in one transaction.
-        // If insertion fails or the coroutine is cancelled, nothing is partially persisted.
         dao.createPlaylistWithTracks(entity, trackEntities)
         Playlist(id, cleanName, cover, cleanTracks, now, now)
     }
@@ -71,11 +69,9 @@ class PlaylistStore(context: Context) {
     }
 
     suspend fun delete(playlistId: String) = withContext(Dispatchers.IO) {
-        // CASCADE elimina anche le tracce collegate.
         dao.deletePlaylist(playlistId)
     }
 
-    /** Aggiunge una traccia in coda. Ignora i duplicati (la PK è playlistId+trackId). */
     suspend fun addTrack(playlistId: String, track: Track) = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val nextPos = (dao.maxPosition(playlistId) ?: -1) + 1
@@ -112,7 +108,6 @@ class PlaylistStore(context: Context) {
         dao.removeTracksAndCompact(playlistId, trackIds)
     }
 
-    /** Riscrive l'ordine completo senza alterare metadati o data di aggiunta. */
     suspend fun reorder(playlistId: String, orderedTracks: List<Track>) = withContext(Dispatchers.IO) {
         val existing = dao.tracksOf(playlistId)
         val existingById = existing.associateBy { it.trackId }
