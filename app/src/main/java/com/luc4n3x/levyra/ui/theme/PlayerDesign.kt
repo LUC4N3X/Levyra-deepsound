@@ -42,11 +42,11 @@ object LevyraPlayerDesign {
     val HeaderButton: Dp = 40.dp
     val HeaderButtonCompact: Dp = 36.dp
     val ModeSlot: Dp = 42.dp
-    val ModeGlyph: Dp = 22.dp
-    val ModeGlyphCompact: Dp = 20.dp
+    val ModeGlyph: Dp = 20.dp
+    val ModeGlyphCompact: Dp = 18.dp
     val ModeIndicator: Dp = 4.dp
-    val SkipGlyph: Dp = 34.dp
-    val SkipGlyphCompact: Dp = 30.dp
+    val SkipGlyph: Dp = 26.dp
+    val SkipGlyphCompact: Dp = 23.dp
     val PrimarySize: Dp = 66.dp
     val PrimarySizeCompact: Dp = 58.dp
     val PrimaryGlyph: Dp = 30.dp
