@@ -1,0 +1,766 @@
+name: Artist Page Fast Refinement
+
+on:
+  push:
+    paths:
+      - '.github/workflows/artist-page-fast-refinement.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refine-artist-page:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/ui-evolution-living-capsule-home-artist-collections
+          fetch-depth: 0
+
+      - name: Refine artist loading and hierarchy
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          repo = Path('app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt')
+          vm = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
+          ui = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+
+          # ---------- ArtistRepository: fast first profile, progressive enrichment ----------
+          text = repo.read_text(encoding='utf-8')
+
+          text = text.replace(
+              'fetchProfile(resolvedArtist.browseId, resolvedArtist.name.ifBlank { clean })',
+              'fetchProfile(resolvedArtist.browseId, resolvedArtist.name.ifBlank { clean }, expandSections = false)',
+              1
+          )
+          text = text.replace(
+              'fetchProfile(cleanBrowseId, cleanFallbackName)',
+              'fetchProfile(cleanBrowseId, cleanFallbackName, expandSections = false)',
+              1
+          )
+
+          old_signature = 'private suspend fun fetchProfile(browseId: String, fallbackName: String): ArtistProfile? {\n        val root = postBrowse(browseId)'
+          new_signature = '''private suspend fun fetchProfile(
+        browseId: String,
+        fallbackName: String,
+        expandSections: Boolean = true
+    ): ArtistProfile? {
+        val root = runCatching { postBrowseFast(browseId) }
+            .getOrNull()
+            ?.takeIf { it.optJSONObject("header") != null }
+            ?: postBrowse(browseId)'''
+          if old_signature not in text:
+              raise SystemExit('fetchProfile signature/root pattern not found')
+          text = text.replace(old_signature, new_signature, 1)
+
+          old_expanded = '''        val expanded = coroutineScope {
+            val songsJob = async { songsPointer?.let { pointer -> fetchSongs(pointer, name) }.orEmpty() }
+            val albumsJobs = albumPointers.map { pointer -> async { fetchReleases(pointer) } }
+            val singlesJobs = singlePointers.map { pointer -> async { fetchReleases(pointer) } }
+            val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
+            ArtistExpandedSections(
+                songs = songsJob.await(),
+                albums = albumsJobs.awaitAll().flatten(),
+                singles = singlesJobs.awaitAll().flatten(),
+                videos = videosJob.await()
+            )
+        }'''
+          new_expanded = '''        val expanded = if (expandSections) {
+            coroutineScope {
+                val songsJob = async { songsPointer?.let { pointer -> fetchSongs(pointer, name) }.orEmpty() }
+                val albumsJobs = albumPointers.map { pointer -> async { fetchReleases(pointer) } }
+                val singlesJobs = singlePointers.map { pointer -> async { fetchReleases(pointer) } }
+                val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
+                ArtistExpandedSections(
+                    songs = songsJob.await(),
+                    albums = albumsJobs.awaitAll().flatten(),
+                    singles = singlesJobs.awaitAll().flatten(),
+                    videos = videosJob.await()
+                )
+            }
+        } else {
+            ArtistExpandedSections(
+                songs = emptyList(),
+                albums = emptyList(),
+                singles = emptyList(),
+                videos = emptyList()
+            )
+        }'''
+          if old_expanded not in text:
+              raise SystemExit('expanded artist sections block not found')
+          text = text.replace(old_expanded, new_expanded, 1)
+
+          enrich_marker = '    private suspend fun fetchProfile(\n'
+          enrich_method = '''    suspend fun enrichProfile(profile: ArtistProfile): ArtistProfile = withContext(Dispatchers.IO) {
+        val browseId = profile.browseId.trim()
+        if (browseId.isBlank() || profile.name.isBlank()) return@withContext profile
+
+        val enriched = runCatching {
+            fetchProfile(
+                browseId = browseId,
+                fallbackName = profile.name,
+                expandSections = true
+            )
+        }.getOrNull()
+            ?.takeIf { artistProfileMatchesRequest(it, browseId, profile.name) }
+            ?: return@withContext profile
+
+        val merged = enriched.copy(biography = profile.biography ?: enriched.biography)
+        memory[profileBrowseKey(browseId)] = merged
+        memory[artistIdentityKey(profile.name)] = merged
+        memory[artistIdentityKey(merged.name)] = merged
+        merged
+    }
+
+'''
+          if enrich_marker not in text:
+              raise SystemExit('fetchProfile insertion marker not found')
+          text = text.replace(enrich_marker, enrich_method + enrich_marker, 1)
+          repo.write_text(text, encoding='utf-8')
+
+          # ---------- ViewModel: biography and expanded shelves never block first paint ----------
+          text = vm.read_text(encoding='utf-8')
+          text = text.replace('private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L\n', '', 1)
+
+          old_vm = '''                val initialBiography = withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) {
+                    biographyDeferred.await()
+                }
+                val initialProfile = initialBiography?.let { biography ->
+                    artistRepository.mergeBiography(profile, biography)
+                } ?: profile
+                _state.update {
+                    it.copy(
+                        artistLoading = false,
+                        artistError = null,
+                        artistProfile = initialProfile
+                    )
+                }
+                refreshArtistMotionArtwork(initialProfile)
+                initialBiography?.let {
+                    startArtistLore(initialProfile)
+                } ?: run {
+                    artistLoreJob?.cancel()
+                    artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
+                }'''
+          new_vm = '''                _state.update {
+                    it.copy(
+                        artistLoading = false,
+                        artistError = null,
+                        artistProfile = profile
+                    )
+                }
+                refreshArtistMotionArtwork(profile)
+
+                artistLoreJob?.cancel()
+                artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
+
+                val enriched = runCatching { artistRepository.enrichProfile(profile) }.getOrNull()
+                if (enriched != null && isActive) {
+                    _state.update { current ->
+                        val visible = current.artistProfile ?: return@update current
+                        if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
+                        current.copy(
+                            artistProfile = enriched.copy(
+                                biography = visible.biography ?: enriched.biography
+                            )
+                        )
+                    }
+                }'''
+          if old_vm not in text:
+              raise SystemExit('artist initial biography wait block not found')
+          text = text.replace(old_vm, new_vm, 1)
+          vm.write_text(text, encoding='utf-8')
+
+          # ---------- UI: immediate skeleton + calmer YT Music-inspired hierarchy ----------
+          text = ui.read_text(encoding='utf-8')
+
+          loading_start = '                state.artistLoading && profile == null -> {'
+          loading_end = '                state.artistError != null && profile == null -> {'
+          start = text.index(loading_start)
+          end = text.index(loading_end, start)
+          text = text[:start] + '''                state.artistLoading && profile == null -> {
+                    item(key = "artist-loading-skeleton") {
+                        ArtistLoadingSkeleton()
+                    }
+                }
+''' + text[end:]
+
+          sections_start_marker = '                    if (artist.topSongs.isNotEmpty()) {'
+          sections_end_marker = '                    if (artist.relatedArtists.isNotEmpty()) {'
+          start = text.index(sections_start_marker)
+          end = text.index(sections_end_marker, start)
+          new_sections = '''                    if (artist.topSongs.isNotEmpty()) {
+                        item(key = "artist-popular-tracks") {
+                            ArtistPopularTracksSection(
+                                tracks = artist.topSongs,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = onPlay
+                            )
+                        }
+                    }
+                    if (artist.albums.isNotEmpty()) {
+                        item(key = "artist-albums") {
+                            ArtistSectionShelf(title = strings.albumsPlain) {
+                                ArtistReleaseRow(artist.albums, artist.name, onOpenRelease)
+                            }
+                        }
+                    }
+                    if (artist.singles.isNotEmpty()) {
+                        item(key = "artist-singles") {
+                            ArtistSectionShelf(title = strings.singlesAndEps) {
+                                ArtistReleaseRow(artist.singles, artist.name, onOpenRelease)
+                            }
+                        }
+                    }
+                    if (artist.compilations.isNotEmpty()) {
+                        item(key = "artist-compilations") {
+                            ArtistSectionShelf(title = strings.compilations) {
+                                ArtistReleaseRow(artist.compilations, artist.name, onOpenRelease)
+                            }
+                        }
+                    }
+                    if (artist.videos.isNotEmpty()) {
+                        item(key = "artist-videos") {
+                            ArtistSectionShelf(title = strings.video) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
+                                ) {
+                                    items(
+                                        items = artist.videos.take(12),
+                                        key = { "artist-video-${it.id}" },
+                                        contentType = { "artist-video" }
+                                    ) { track ->
+                                        VideoGlassCard(
+                                            track = track,
+                                            isCurrent = track.id == state.currentTrack?.id,
+                                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                            onClick = { onPlay(track) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+'''
+          text = text[:start] + new_sections + text[end:]
+
+          # Add skeleton/section helpers immediately before ArtistSectionTitle.
+          title_marker = '@Composable\nprivate fun ArtistSectionTitle(title: String) {'
+          helpers = '''@Composable
+private fun ArtistLoadingSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(390.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            LevyraPanelSoft,
+                            LevyraInk,
+                            LevyraBlack
+                        )
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    Modifier
+                        .width(220.dp)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = 0.10f))
+                )
+                Box(
+                    Modifier
+                        .width(145.dp)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.07f))
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier
+                            .width(132.dp)
+                            .height(52.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.10f))
+                    )
+                    Box(
+                        Modifier
+                            .width(112.dp)
+                            .height(52.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.07f))
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                Modifier
+                    .width(170.dp)
+                    .height(24.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.09f))
+            )
+            repeat(4) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 66.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        Modifier
+                            .size(54.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.08f))
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(0.62f)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(Color.White.copy(alpha = 0.09f))
+                        )
+                        Box(
+                            Modifier
+                                .fillMaxWidth(0.42f)
+                                .height(11.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.White.copy(alpha = 0.055f))
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistSectionShelf(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+            ArtistSectionTitle(title)
+        }
+        content()
+    }
+}
+
+'''
+          if title_marker not in text:
+              raise SystemExit('ArtistSectionTitle marker not found')
+          text = text.replace(title_marker, helpers + title_marker, 1)
+
+          # Replace the old featured-card/three-row carousel with a compact bounded top list.
+          popular_start_marker = '@Composable\nprivate fun ArtistPopularTracksShelf('
+          popular_end_marker = 'private fun normalizeBiographyPreview('
+          start = text.index(popular_start_marker)
+          end = text.index(popular_end_marker, start)
+          new_popular = '''@Composable
+private fun ArtistPopularTracksSection(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val visibleTracks = remember(tracks) { tracks.distinctBy { it.id }.take(5) }
+    if (visibleTracks.isEmpty()) return
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            ArtistSectionTitle(strings.popularTracks)
+            Surface(
+                color = Color.White.copy(alpha = 0.055f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                shape = CircleShape,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .pressable { onPlay(visibleTracks.first()) }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = LevyraText,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Text(
+                        text = strings.playAll,
+                        color = LevyraText,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            visibleTracks.forEachIndexed { index, track ->
+                ArtistPopularTrackCompactRow(
+                    index = index,
+                    track = track,
+                    isCurrent = track.id == currentId,
+                    isPlaying = isPlaying && track.id == currentId,
+                    isResolving = isResolving && track.id == currentId,
+                    onPlay = { onPlay(track) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistPopularTrackCompactRow(
+    index: Int,
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val playCount = remember(track.youtubeViewCount, strings.code) {
+        if (track.youtubeViewCount > 0L) formatSearchViewCount(track.youtubeViewCount, strings.code) else ""
+    }
+    val secondary = remember(track.artist, playCount) {
+        listOf(track.artist, playCount)
+            .filter { it.isNotBlank() }
+            .joinToString(" • ")
+    }
+    val rowShape = RoundedCornerShape(12.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 68.dp)
+            .clip(rowShape)
+            .background(if (isCurrent) LevyraCyan.copy(alpha = 0.075f) else Color.Transparent)
+            .pressable(onClick = onPlay)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
+    ) {
+        Text(
+            text = (index + 1).toString(),
+            color = if (isCurrent) LevyraCyan else LevyraMuted.copy(alpha = 0.76f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(24.dp)
+        )
+
+        Box {
+            CoverImage(
+                track = track,
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(9.dp))
+            )
+            if (isPlaying || isResolving) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Black.copy(alpha = 0.48f), RoundedCornerShape(9.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isResolving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = LevyraCyan
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Equalizer,
+                            contentDescription = strings.playing,
+                            tint = LevyraCyan,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = track.title,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                if (track.explicit) {
+                    Icon(
+                        imageVector = Icons.Rounded.Explicit,
+                        contentDescription = null,
+                        tint = LevyraMuted.copy(alpha = 0.72f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+                Text(
+                    text = secondary,
+                    color = LevyraMuted.copy(alpha = 0.86f),
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (!isPlaying && !isResolving) {
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = strings.play,
+                tint = if (isCurrent) LevyraCyan else LevyraMuted.copy(alpha = 0.72f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+'''
+          text = text[:start] + new_popular + text[end:]
+
+          # Cleaner discography cards.
+          release_start = '@Composable\nprivate fun ArtistReleaseRow('
+          release_end = '@Composable\nprivate fun ReleaseRadarRow('
+          start = text.index(release_start)
+          end = text.index(release_end, start)
+          new_release = '''@Composable
+private fun ArtistReleaseRow(
+    releases: List<ArtistRelease>,
+    artistName: String,
+    onOpen: (ArtistRelease, String) -> Unit
+) {
+    val visibleReleases = remember(releases) { releases.distinctBy { it.browseId.ifBlank { it.title } }.take(24) }
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
+    ) {
+        items(
+            items = visibleReleases,
+            key = { "rel-${it.browseId.ifBlank { it.title }}" },
+            contentType = { "artist-release" }
+        ) { release ->
+            Column(
+                modifier = Modifier
+                    .width(152.dp)
+                    .pressable { onOpen(release, artistName) },
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(152.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(LevyraPanelSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (release.thumbnailUrl.isNotBlank()) {
+                        StableRemoteArtwork(
+                            url = release.thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.Album,
+                            contentDescription = null,
+                            tint = LevyraMuted,
+                            modifier = Modifier.size(38.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = release.title,
+                    color = LevyraText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = release.year.ifBlank { release.subtitle },
+                    color = LevyraMuted.copy(alpha = 0.82f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+'''
+          text = text[:start] + new_release + text[end:]
+
+          # Videos: remove the heavy glass/shadow treatment and use a clean editorial thumbnail.
+          video_start = '@Composable\nprivate fun VideoGlassCard('
+          video_end = '@Composable\nprivate fun BottomTabsScrim()'
+          start = text.index(video_start)
+          end = text.index(video_end, start)
+          new_video = '''@Composable
+private fun VideoGlassCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(14.dp)
+    Column(
+        modifier = Modifier
+            .width(280.dp)
+            .pressable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(shape)
+                .background(LevyraPanelSoft)
+                .border(
+                    width = 1.dp,
+                    color = if (isCurrent) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.08f),
+                    shape = shape
+                )
+        ) {
+            StableRemoteArtwork(
+                url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.30f)
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(46.dp)
+                    .background(Color.Black.copy(alpha = 0.42f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isCurrent && isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = if (isCurrent && isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Text(
+            text = track.title,
+            color = LevyraText,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            color = LevyraMuted.copy(alpha = 0.82f),
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+'''
+          text = text[:start] + new_video + text[end:]
+          ui.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Compile artist refinement
+        run: ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Run focused unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --tests '*ReliableArtistSearch*' --tests '*ArtistRepository*'
+
+      - name: Commit refinement
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git config user.name 'LUC4N3X'
+          git config user.email 'LUC4N3X@users.noreply.github.com'
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git commit -m 'refactor(ui): streamline artist page loading and hierarchy'
+          git push origin HEAD:feature/ui-evolution-living-capsule-home-artist-collections
