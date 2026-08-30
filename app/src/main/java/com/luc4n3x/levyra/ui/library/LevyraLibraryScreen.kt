@@ -773,7 +773,7 @@ internal fun LevyraPlaylistDetailScreen(
     var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
     var renameDialog by remember { mutableStateOf(false) }
-    var confirmRemove by remember { mutableStateOf(false) }
+    var tracksToRemove by remember(playlist.id) { mutableStateOf<List<Track>>(emptyList()) }
     var addTracksDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(playlist.tracks, reorderMode) {
@@ -896,7 +896,8 @@ internal fun LevyraPlaylistDetailScreen(
                         },
                         onLongClick = { selectedKeys = selectedKeys.toggle(key) },
                         onFavorite = { viewModel.toggleFavorite(track) },
-                        onDownload = { viewModel.exportTrack(track) }
+                        onDownload = { viewModel.exportTrack(track) },
+                        onRemoveFromPlaylist = { tracksToRemove = listOf(track) }
                     )
                 }
             }
@@ -921,7 +922,8 @@ internal fun LevyraPlaylistDetailScreen(
                     selectedKeys = emptySet()
                 },
                 onAddToPlaylist = { addTracksDialog = true },
-                onDelete = { confirmRemove = true },
+                onDelete = { tracksToRemove = selectedTracks },
+                deleteLabel = strings.remove,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -972,20 +974,20 @@ internal fun LevyraPlaylistDetailScreen(
         )
     }
 
-    if (confirmRemove) {
+    if (tracksToRemove.isNotEmpty()) {
         AlertDialog(
-            onDismissRequest = { confirmRemove = false },
-            title = { Text(strings.remove) },
-            text = { Text(strings.formatTrackCount(selectedTracks.size)) },
+            onDismissRequest = { tracksToRemove = emptyList() },
+            title = { Text(strings.removeFromPlaylist) },
+            text = { Text(strings.formatTrackCount(tracksToRemove.size)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.removeTracksFromPlaylist(playlist.id, selectedTracks)
+                    viewModel.removeTracksFromPlaylist(playlist.id, tracksToRemove)
                     selectedKeys = emptySet()
-                    confirmRemove = false
+                    tracksToRemove = emptyList()
                 }) { Text(strings.remove) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmRemove = false }) { Text(strings.cancel) }
+                TextButton(onClick = { tracksToRemove = emptyList() }) { Text(strings.cancel) }
             }
         )
     }
