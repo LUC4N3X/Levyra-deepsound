@@ -11910,17 +11910,22 @@ private fun PlayerModeSwitchIconTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
+        targetValue = if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
-    val borderTint by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.30f) else Color.Transparent,
+    val borderTopTint by animateColorAsState(
+        targetValue = if (selected) Color.White.copy(alpha = 0.38f) else Color.Transparent,
         animationSpec = tabSpec,
-        label = "player-mode-tab-border"
+        label = "player-mode-tab-border-top"
+    )
+    val borderBottomTint by animateColorAsState(
+        targetValue = if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent,
+        animationSpec = tabSpec,
+        label = "player-mode-tab-border-bottom"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.52f),
+        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.54f),
         animationSpec = tabSpec,
         label = "player-mode-tab-icon"
     )
@@ -11952,7 +11957,13 @@ private fun PlayerModeSwitchIconTab(
                             spotColor = Color.Black.copy(alpha = 0.45f)
                         )
                         .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, borderTint), CircleShape)
+                        .border(
+                            BorderStroke(
+                                1.dp,
+                                Brush.verticalGradient(listOf(borderTopTint, borderBottomTint))
+                            ),
+                            CircleShape
+                        )
                 } else {
                     Modifier.background(background, CircleShape)
                 }
@@ -12072,7 +12083,18 @@ private fun PlayerQuickActionsBar(
                 .fillMaxWidth()
                 .height(if (compact) 44.dp else 48.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.09f), CircleShape)
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.14f),
+                                Color.White.copy(alpha = 0.04f)
+                            )
+                        )
+                    ),
+                    CircleShape
+                )
         )
         Row(
             modifier = Modifier
@@ -12194,14 +12216,19 @@ private fun PlayerQuickAction(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val fill by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.16f) else Color.Transparent,
+        targetValue = if (active) tint.copy(alpha = 0.14f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-fill"
     )
-    val border by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.32f) else Color.Transparent,
+    val borderTop by animateColorAsState(
+        targetValue = if (active) tint.copy(alpha = 0.36f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-border"
+        label = "player-quick-border-top"
+    )
+    val borderBottom by animateColorAsState(
+        targetValue = if (active) tint.copy(alpha = 0.12f) else Color.Transparent,
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
+        label = "player-quick-border-bottom"
     )
     val shape = CircleShape
 
@@ -12227,7 +12254,13 @@ private fun PlayerQuickAction(
                     if (active) {
                         Modifier
                             .background(fill, shape)
-                            .border(LevyraPlayerDesign.Hairline, border, shape)
+                            .border(
+                                BorderStroke(
+                                    LevyraPlayerDesign.Hairline,
+                                    Brush.verticalGradient(listOf(borderTop, borderBottom))
+                                ),
+                                shape
+                            )
                     } else {
                         Modifier
                     }
@@ -13382,11 +13415,28 @@ private fun PlayerScreen(
 
         val metaBlock: @Composable (Track) -> Unit = { activeTrack ->
             val isFavorite = activeTrack.id in state.favoriteIds
-            val favoriteFill = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f)
-            val favoriteTint = if (isFavorite) Color(0xFFFF2D55) else Color.White.copy(alpha = 0.70f)
-            val favoriteBorder = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.50f) else Color.White.copy(alpha = 0.12f)
+            val favoriteFill by animateColorAsState(
+                targetValue = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.16f) else Color.White.copy(alpha = 0.05f),
+                animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.standardTween(200) else snap(),
+                label = "player-favorite-fill"
+            )
+            val favoriteTint by animateColorAsState(
+                targetValue = if (isFavorite) Color(0xFFFF2D55) else Color.White.copy(alpha = 0.72f),
+                animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.standardTween(200) else snap(),
+                label = "player-favorite-tint"
+            )
+            val favoriteBorderTop by animateColorAsState(
+                targetValue = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.44f) else Color.White.copy(alpha = 0.14f),
+                animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.standardTween(200) else snap(),
+                label = "player-favorite-border-top"
+            )
+            val favoriteBorderBottom by animateColorAsState(
+                targetValue = if (isFavorite) Color(0xFFFF2D55).copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f),
+                animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.standardTween(200) else snap(),
+                label = "player-favorite-border-bottom"
+            )
             val favoriteScale by animateFloatAsState(
-                targetValue = if (isFavorite) 1.12f else 1f,
+                targetValue = if (isFavorite) 1.08f else 1f,
                 animationSpec = if (state.animationsEnabled) {
                     LevyraPlayerDesign.expressiveSpring()
                 } else {
@@ -13467,8 +13517,8 @@ private fun PlayerScreen(
                         iconSize = if (compactPlayer) 22.dp else 24.dp,
                         tint = favoriteTint,
                         fill = favoriteFill,
-                        borderTop = favoriteBorder,
-                        borderBottom = favoriteBorder,
+                        borderTop = favoriteBorderTop,
+                        borderBottom = favoriteBorderBottom,
                         modifier = Modifier
                             .graphicsLayer {
                                 scaleX = favoriteScale
@@ -13483,10 +13533,10 @@ private fun PlayerScreen(
                         contentDescription = strings.addToPlaylist,
                         size = heartButtonSize,
                         iconSize = if (compactPlayer) 22.dp else 24.dp,
-                        tint = Color.White.copy(alpha = 0.75f),
-                        fill = Color.White.copy(alpha = 0.06f),
-                        borderTop = Color.White.copy(alpha = 0.12f),
-                        borderBottom = Color.White.copy(alpha = 0.06f),
+                        tint = Color.White.copy(alpha = 0.78f),
+                        fill = Color.White.copy(alpha = 0.05f),
+                        borderTop = Color.White.copy(alpha = 0.14f),
+                        borderBottom = Color.White.copy(alpha = 0.05f),
                         onClick = { playlistTarget = activeTrack }
                     )
                 }
