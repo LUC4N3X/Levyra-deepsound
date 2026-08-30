@@ -82,10 +82,17 @@ def main() -> int:
             if required not in canonical:
                 errors.append(f"canonical real-engineering contract is missing: {required}")
 
+    # Root AGENTS.md is intentionally a compact router. Detailed issue/domain and
+    # Matt Pocock procedures live in their canonical docs instead of being
+    # duplicated in always-loaded context.
     require(
         errors,
         "AGENTS.md",
-        ("## Agent skills", "### Issue tracker", "docs/agents/issue-tracker.md", "### Domain docs", "docs/agents/domain.md", "## Matt Pocock skills bootstrap", "levyra-real-engineering"),
+        (
+            "## Automatic skill routing",
+            "levyra-real-engineering",
+            "docs/ai/MATT_POCOCK_SKILLS.md",
+        ),
     )
     require(errors, "docs/agents/issue-tracker.md", ("LUC4N3X/Levyra-deepsound", "owner explicitly authorizes", "PRs as a request surface: no"))
     require(errors, "docs/agents/domain.md", ("CONTEXT.md", "docs/adr/", "created lazily"))
@@ -145,7 +152,7 @@ def main() -> int:
         return 1
 
     print(
-        "Matt skills integration validation passed: upstream setup substrate, one canonical .agents skill tree, "
+        "Matt skills integration validation passed: compact root router, upstream setup substrate, one canonical .agents skill tree, "
         "Claude skill projection, Codex bootstrap, ChatGPT routing, and Antigravity routing verified."
     )
     return 0

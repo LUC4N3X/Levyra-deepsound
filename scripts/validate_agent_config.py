@@ -14,6 +14,7 @@ CODEX_ROOT = ".agents/codex"
 
 REQUIRED_FILES = (
     "AGENTS.md",
+    "CLAUDE.md",
     "app/AGENTS.md",
     "desktop/AGENTS.md",
     ".github/AGENTS.md",
@@ -138,10 +139,10 @@ def reject_terms(
             errors.append(f"{relative_path}: contains {label}: {term}")
 
 
-def tracked_root_runtime_paths(errors: list[str]) -> list[str]:
+def tracked_generated_runtime_paths(errors: list[str]) -> list[str]:
     try:
         result = subprocess.run(
-            ["git", "ls-files", "--", "CLAUDE.md", ".claude", ".codex"],
+            ["git", "ls-files", "--", ".claude", ".codex"],
             cwd=ROOT,
             check=False,
             text=True,
@@ -172,12 +173,20 @@ def main() -> int:
         if (ROOT / relative_path).exists():
             errors.append(f"obsolete root planning file must be removed: {relative_path}")
 
-    tracked_adapters = tracked_root_runtime_paths(errors)
+    tracked_adapters = tracked_generated_runtime_paths(errors)
     if tracked_adapters:
         errors.append(
-            "root CLAUDE.md/.claude/.codex runtime surfaces must not be tracked; canonical sources belong under .agents: "
+            "generated .claude/.codex runtime surfaces must not be tracked; canonical sources belong under .agents: "
             + ", ".join(tracked_adapters)
         )
+
+    root_claude_path = ROOT / "CLAUDE.md"
+    if root_claude_path.is_file():
+        root_claude = root_claude_path.read_text(encoding="utf-8")
+        if "@AGENTS.md" not in root_claude:
+            errors.append("CLAUDE.md: missing native @AGENTS.md import")
+        if len(root_claude_path.read_bytes()) > 1200:
+            errors.append("CLAUDE.md: native startup bridge must stay at or below 1200 bytes")
 
     duplicate_claude_skills = ROOT / CLAUDE_ROOT / "skills"
     if duplicate_claude_skills.exists():
@@ -215,6 +224,8 @@ def main() -> int:
     codex_instructions_path = ROOT / "AGENTS.md"
     if codex_instructions_path.is_file():
         codex_instructions = codex_instructions_path.read_text(encoding="utf-8")
+        if len(codex_instructions.splitlines()) > 200:
+            errors.append("AGENTS.md: compact always-loaded contract must stay at or below 200 lines")
         require_skill_references(
             errors, "AGENTS.md", codex_instructions, AUTOMATIC_ROUTED_SKILLS, "Codex"
         )
@@ -428,9 +439,9 @@ def main() -> int:
         return 1
 
     print(
-        "Agent configuration validation passed: one tracked .agents runtime tree, "
+        "Agent configuration validation passed: compact root contract, native Claude bridge, one tracked .agents runtime tree, "
         f"{len(actual_skills)} canonical skills, {len(referenced_skills)} documented skill references, "
-        f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, and no tracked root Claude/Codex runtime surfaces."
+        f"{len(AUTOMATIC_ROUTED_SKILLS)} automatic cross-runtime routes, and no tracked generated Claude/Codex runtime surfaces."
     )
     return 0
 
