@@ -3195,19 +3195,6 @@ private fun ArtistOverlay(
                             }
                         }
                     }
-                    val featuredVideo = selectArtistFeaturedVideo(artist)
-                    if (featuredVideo != null) {
-                        item {
-                            ArtistFeaturedVideoCard(
-                                track = featuredVideo,
-                                isCurrent = featuredVideo.id == state.currentTrack?.id,
-                                accentStart = accentStart,
-                                accentEnd = accentEnd,
-                                onClick = { onPlay(featuredVideo) },
-                                modifier = Modifier.padding(horizontal = 20.dp)
-                            )
-                        }
-                    }
                     if (artist.topSongs.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
                         item {
@@ -3240,15 +3227,14 @@ private fun ArtistOverlay(
                             }
                         }
                     }
-                    val remainingVideos = artist.videos.filterNot { it.id == featuredVideo?.id }
-                    if (remainingVideos.isNotEmpty()) {
+                    if (artist.videos.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.video) } }
                         item {
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
                             ) {
-                                items(remainingVideos.take(20), key = { "artist-video-${it.id}" }) { track ->
+                                items(artist.videos.take(20), key = { "artist-video-${it.id}" }) { track ->
                                     VideoGlassCard(
                                         track = track,
                                         isCurrent = track.id == state.currentTrack?.id,
@@ -3417,90 +3403,6 @@ private fun ArtistPlayButton(onClick: () -> Unit) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(23.dp))
             Text(strings.play, color = LevyraBlack, fontSize = 14.sp, fontWeight = FontWeight.Black)
         }
-    }
-}
-
-internal fun selectArtistFeaturedVideo(profile: ArtistProfile): Track? =
-    profile.videos.firstOrNull() ?: profile.topSongs.firstOrNull()
-
-@Composable
-private fun ArtistFeaturedVideoCard(
-    track: Track,
-    isCurrent: Boolean,
-    accentStart: Color,
-    accentEnd: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(20.dp)
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
-            .shadow(
-                elevation = if (isCurrent) 22.dp else 14.dp,
-                shape = shape,
-                clip = false,
-                ambientColor = accentStart.copy(alpha = 0.18f),
-                spotColor = accentEnd.copy(alpha = 0.22f)
-            )
-            .clip(shape)
-            .border(
-                width = if (isCurrent) 1.25f.dp else 1.dp,
-                color = if (isCurrent) accentStart.copy(alpha = 0.54f) else Color.White.copy(alpha = 0.12f),
-                shape = shape
-            )
-            .clickable(onClick = onClick)
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(track.largeThumbnailUrl.ifBlank { track.thumbnailUrl })
-                .crossfade(true)
-                .build(),
-            contentDescription = track.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.14f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.68f)
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(58.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.42f))
-                .border(1.dp, Color.White.copy(alpha = 0.24f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(30.dp)
-            )
-        }
-        Text(
-            text = track.title,
-            color = Color.White,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
-        )
     }
 }
 
