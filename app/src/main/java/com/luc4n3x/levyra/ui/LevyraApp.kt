@@ -1,9 +1,11 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraIonicons
 import com.luc4n3x.levyra.ui.components.PlayerAccentColors
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import com.luc4n3x.levyra.ui.components.PlayerIcon
 import com.luc4n3x.levyra.ui.components.PlayerTransportControls
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
@@ -11831,15 +11833,14 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.75f),
-                        0.06f to baseColor.copy(alpha = 0.45f),
-                        0.14f to baseColor.copy(alpha = 0.15f),
-                        0.22f to Color.Transparent,
+                        0.00f to Color.Black.copy(alpha = 0.50f),
+                        0.08f to Color.Black.copy(alpha = 0.25f),
+                        0.16f to Color.Transparent,
                         0.48f to Color.Transparent,
-                        0.58f to controlColor.copy(alpha = 0.25f),
-                        0.68f to controlColor.copy(alpha = 0.68f),
-                        0.78f to controlColor.copy(alpha = 0.92f),
-                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
+                        0.60f to controlColor.copy(alpha = 0.35f),
+                        0.72f to controlColor.copy(alpha = 0.72f),
+                        0.84f to controlColor.copy(alpha = 0.94f),
+                        0.94f to controlColor.playerAmbienceMix(baseColor, 0.45f),
                         1.00f to baseColor
                     )
                 )
@@ -11857,51 +11858,53 @@ private fun PlayerModeSwitch(
     onVideo: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val selectedContent = remember(activeColorTarget) {
-        Color.White.playerContentColor(
-            listOf(activeColorTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
-        )
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val accentTint = remember(activeColorTarget) {
+        activeColorTarget.playerMix(Color.White, 0.45f)
     }
+
     Row(
         modifier = Modifier
             .selectableGroup()
             .playerGlass(
                 shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.35f),
+                fill = Color.Black.copy(alpha = 0.38f),
                 borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.08f)
+                borderBottom = Color.White.copy(alpha = 0.06f)
             )
             .padding(3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        PlayerModeSwitchTab(
-            label = strings.song,
+        PlayerModeSwitchIconTab(
+            icon = LevyraIonicons.AudioMode,
+            contentDescription = strings.song,
             selected = !isVideoMode,
-            activeColor = activeColor,
-            selectedContent = selectedContent,
+            accentColor = accentTint,
+            animationsEnabled = animationsEnabled,
             onClick = onSong
         )
-        PlayerModeSwitchTab(
-            label = strings.video,
+        PlayerModeSwitchIconTab(
+            icon = LevyraIonicons.VideoMode,
+            contentDescription = strings.video,
             selected = isVideoMode,
-            activeColor = activeColor,
-            selectedContent = selectedContent,
+            accentColor = accentTint,
+            animationsEnabled = animationsEnabled,
             onClick = onVideo
         )
     }
 }
 
 @Composable
-private fun PlayerModeSwitchTab(
-    label: String,
+private fun PlayerModeSwitchIconTab(
+    icon: ImageVector,
+    contentDescription: String,
     selected: Boolean,
-    activeColor: Color,
-    selectedContent: Color,
+    accentColor: Color,
+    animationsEnabled: Boolean,
     onClick: () -> Unit
 ) {
-    val isSelected = selected
-    val tabSpec: AnimationSpec<Color> = if (LocalAnimationsEnabled.current) {
+    val tabSpec: AnimationSpec<Color> = if (animationsEnabled) {
         LevyraPlayerDesign.standardTween(180)
     } else {
         snap()
@@ -11911,38 +11914,63 @@ private fun PlayerModeSwitchTab(
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary,
+    val borderTint by animateColorAsState(
+        targetValue = if (selected) Color.White.copy(alpha = 0.30f) else Color.Transparent,
         animationSpec = tabSpec,
-        label = "player-mode-tab-content"
+        label = "player-mode-tab-border"
     )
+    val iconTint by animateColorAsState(
+        targetValue = if (selected) Color.White else Color.White.copy(alpha = 0.52f),
+        animationSpec = tabSpec,
+        label = "player-mode-tab-icon"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.92f,
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-mode-tab-scale"
+    )
+
     Box(
         modifier = Modifier
+            .sizeIn(
+                minWidth = 48.dp,
+                minHeight = 36.dp
+            )
             .semantics {
-                this.selected = isSelected
+                this.selected = selected
                 role = Role.Tab
+                this.contentDescription = contentDescription
             }
             .then(
                 if (selected) {
                     Modifier
-                        .shadow(3.dp, CircleShape, clip = false)
+                        .shadow(
+                            elevation = 3.dp,
+                            shape = CircleShape,
+                            clip = false,
+                            ambientColor = accentColor.copy(alpha = 0.30f),
+                            spotColor = Color.Black.copy(alpha = 0.45f)
+                        )
                         .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
+                        .border(BorderStroke(1.dp, borderTint), CircleShape)
                 } else {
                     Modifier.background(background, CircleShape)
                 }
             )
-            .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .pressable(enabled = !selected, pressedScale = 0.90f, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = contentColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier
+                .size(17.dp)
+                .graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                }
         )
     }
 }
@@ -12033,79 +12061,118 @@ private fun PlayerQuickActionsBar(
     val activePrimary = primary.playerMix(Color.White, 0.48f)
     val activeSecondary = secondary.playerMix(Color.White, 0.44f)
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly
+        contentAlignment = Alignment.Center
     ) {
-        PlayerQuickAction(
-            icon = Icons.AutoMirrored.Rounded.QueueMusic,
-            contentDescription = strings.queue,
-            tint = Color.White.copy(alpha = 0.76f),
-            active = false,
-            compact = compact,
-            modifier = Modifier.weight(1f),
-            onClick = viewModel::openQueue
-        )
-        PlayerQuickAction(
-            icon = Icons.AutoMirrored.Rounded.Subject,
-            contentDescription = strings.lyrics,
-            tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
-            active = state.showLyrics,
-            compact = compact,
-            modifier = Modifier.weight(1f),
-            onClick = viewModel::openLyrics
-        )
-        PlayerQuickAction(
-            icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
-            contentDescription = when {
-                state.isOfflineExporting -> strings.downloadInProgress
-                isDownloaded -> strings.downloaded
-                else -> strings.download
-            },
-            tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
-            active = state.isOfflineExporting || isDownloaded,
-            busy = state.isOfflineExporting,
-            enabled = !state.isOfflineExporting,
-            compact = compact,
-            modifier = Modifier.weight(1f),
-            onClick = viewModel::exportCurrentTrack
-        )
         Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (compact) 44.dp else 48.dp)
+                .background(Color.White.copy(alpha = 0.05f), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.09f), CircleShape)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(LevyraPlayerDesign.MinimumTouchTarget)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             PlayerQuickAction(
-                icon = Icons.Rounded.Equalizer,
-                contentDescription = strings.options,
-                tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
-                active = optionsActive || optionsExpanded,
+                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                contentDescription = strings.queue,
+                tint = Color.White.copy(alpha = 0.76f),
+                active = false,
                 compact = compact,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { optionsExpanded = !optionsExpanded }
-            )
-            DropdownMenu(
-                expanded = optionsExpanded,
-                onDismissRequest = { optionsExpanded = false },
                 modifier = Modifier
-                    .width(if (compact) 276.dp else 296.dp)
-                    .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = viewModel::openQueue
+            )
+            PlayerQuickAction(
+                icon = Icons.AutoMirrored.Rounded.Subject,
+                contentDescription = strings.lyrics,
+                tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
+                active = state.showLyrics,
+                compact = compact,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = viewModel::openLyrics
+            )
+            if (!state.isVideoMode) {
+                val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
+                PlayerQuickAction(
+                    icon = Icons.Rounded.AutoAwesome,
+                    contentDescription = strings.motionArtwork,
+                    tint = if (canvasActive) activePrimary else Color.White.copy(alpha = 0.60f),
+                    active = canvasActive,
+                    toggleableState = ToggleableState(canvasActive),
+                    enabled = state.animationsEnabled,
+                    compact = compact,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                )
+            }
+            PlayerQuickAction(
+                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                contentDescription = when {
+                    state.isOfflineExporting -> strings.downloadInProgress
+                    isDownloaded -> strings.downloaded
+                    else -> strings.download
+                },
+                tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
+                active = state.isOfflineExporting || isDownloaded,
+                busy = state.isOfflineExporting,
+                enabled = !state.isOfflineExporting,
+                compact = compact,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = viewModel::exportCurrentTrack
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
             ) {
-                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                    PlayerOptionsRow(
-                        speed = state.playbackSpeed,
-                        sleepMinutes = state.sleepTimerMinutes,
-                        sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
-                        audioNormalization = state.audioNormalization,
-                        activeColor = primary,
-                        secondaryColor = secondary,
-                        compact = true,
-                        onSpeed = viewModel::cycleSpeed,
-                        onSleep = viewModel::openSleepTimer,
-                        onNormalization = viewModel::toggleAudioNormalization
-                    )
+                PlayerQuickAction(
+                    icon = Icons.Rounded.Equalizer,
+                    contentDescription = strings.options,
+                    tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
+                    active = optionsActive || optionsExpanded,
+                    compact = compact,
+                    modifier = Modifier.fillMaxSize(),
+                    onClick = { optionsExpanded = !optionsExpanded }
+                )
+                DropdownMenu(
+                    expanded = optionsExpanded,
+                    onDismissRequest = { optionsExpanded = false },
+                    modifier = Modifier
+                        .width(if (compact) 276.dp else 296.dp)
+                        .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                ) {
+                    Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                        PlayerOptionsRow(
+                            speed = state.playbackSpeed,
+                            sleepMinutes = state.sleepTimerMinutes,
+                            sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
+                            audioNormalization = state.audioNormalization,
+                            activeColor = primary,
+                            secondaryColor = secondary,
+                            compact = true,
+                            onSpeed = viewModel::cycleSpeed,
+                            onSleep = viewModel::openSleepTimer,
+                            onNormalization = viewModel::toggleAudioNormalization
+                        )
+                    }
                 }
             }
         }
@@ -12120,22 +12187,23 @@ private fun PlayerQuickAction(
     active: Boolean,
     compact: Boolean,
     modifier: Modifier = Modifier,
+    toggleableState: ToggleableState? = null,
     busy: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val fill by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
+        targetValue = if (active) tint.copy(alpha = 0.16f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-fill"
     )
     val border by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.065f),
+        targetValue = if (active) tint.copy(alpha = 0.32f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-border"
     )
-    val shape = LevyraPlayerDesign.ShapeSm
+    val shape = CircleShape
 
     Box(
         modifier = modifier
@@ -12143,29 +12211,40 @@ private fun PlayerQuickAction(
                 minWidth = LevyraPlayerDesign.MinimumTouchTarget,
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
-            .semantics { this.contentDescription = contentDescription }
-            .pressable(enabled = enabled, pressedScale = 0.92f, onClick = onClick),
+            .semantics {
+                this.contentDescription = contentDescription
+                if (toggleableState != null) {
+                    this.toggleableState = toggleableState
+                }
+            }
+            .pressable(enabled = enabled, pressedScale = 0.90f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(if (compact) 38.dp else 40.dp)
-                .background(fill, shape)
-                .border(LevyraPlayerDesign.Hairline, border, shape),
+                .size(if (compact) 34.dp else 36.dp)
+                .then(
+                    if (active) {
+                        Modifier
+                            .background(fill, shape)
+                            .border(LevyraPlayerDesign.Hairline, border, shape)
+                    } else {
+                        Modifier
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (busy) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 17.dp else 18.dp),
+                    modifier = Modifier.size(if (compact) 16.dp else 18.dp),
                     strokeWidth = 2.dp,
                     color = tint
                 )
             } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
+                PlayerIcon(
+                    icon = icon,
                     tint = tint,
-                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                    modifier = Modifier.size(if (compact) 18.dp else 20.dp)
                 )
             }
         }
@@ -12995,21 +13074,27 @@ private fun PlayerScreen(
             } else {
                 LevyraPlayerDesign.HeaderButton
             }
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(LevyraPlayerDesign.MinimumTouchTarget),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                    .height(LevyraPlayerDesign.MinimumTouchTarget)
             ) {
-                PlayerGlassIconButton(
-                    icon = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = strings.collapsePlayer,
-                    size = headerButtonSize,
-                    iconSize = if (compactPlayer) 22.dp else 24.dp,
-                    onClick = collapseActions.collapse
-                )
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = strings.collapsePlayer,
+                        size = headerButtonSize,
+                        iconSize = if (compactPlayer) 22.dp else 24.dp,
+                        onClick = collapseActions.collapse
+                    )
+                }
+                Box(
+                    modifier = Modifier.align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
                         PlayerModeSwitch(
                             isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
@@ -13041,101 +13126,77 @@ private fun PlayerScreen(
                         }
                     }
                 }
-                if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
-                if (!state.isVideoMode && track != null) {
-                    val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
-                    PlayerGlassIconButton(
-                        icon = Icons.Rounded.AutoAwesome,
-                        contentDescription = strings.motionArtwork,
-                        size = headerButtonSize,
-                        iconSize = 19.dp,
-                        tint = if (canvasActive) primary else Color.White.copy(alpha = 0.54f),
-                        fill = if (canvasActive) {
-                            primary.copy(alpha = 0.13f)
-                        } else {
-                            LevyraPlayerDesign.GlassFill
-                        },
-                        borderTop = if (canvasActive) {
-                            primary.copy(alpha = 0.54f)
-                        } else {
-                            LevyraPlayerDesign.GlassBorderTop
-                        },
-                        borderBottom = if (canvasActive) {
-                            primary.copy(alpha = 0.18f)
-                        } else {
-                            LevyraPlayerDesign.GlassBorderBottom
-                        },
-                        enabled = state.animationsEnabled,
-                        modifier = Modifier.semantics {
-                            toggleableState = ToggleableState(canvasActive)
-                        },
-                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
-                    )
-                }
-                if (state.isVideoMode) {
-                    if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
-                        var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
-                        Box {
-                            PlayerGlassIconButton(
-                                icon = Icons.Rounded.Subtitles,
-                                contentDescription = strings.subtitlesLabel,
-                                size = headerButtonSize,
-                                iconSize = 19.dp,
-                                tint = if (state.selectedVideoSubtitleId != null) primary else Color.White.copy(alpha = 0.72f),
-                                borderTop = primary.copy(alpha = 0.48f),
-                                borderBottom = primary.copy(alpha = 0.14f),
-                                onClick = { subtitleMenuExpanded = true }
-                            )
-                            DropdownMenu(
-                                expanded = subtitleMenuExpanded,
-                                onDismissRequest = { subtitleMenuExpanded = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(strings.subtitlesOff) },
-                                    leadingIcon = {
-                                        if (state.selectedVideoSubtitleId == null) {
-                                            Icon(Icons.Rounded.Check, contentDescription = null)
-                                        }
-                                    },
-                                    onClick = {
-                                        subtitleMenuExpanded = false
-                                        viewModel.selectVideoSubtitle(null)
-                                    }
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                ) {
+                    if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
+                    if (state.isVideoMode) {
+                        if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
+                            var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
+                            Box {
+                                PlayerGlassIconButton(
+                                    icon = Icons.Rounded.Subtitles,
+                                    contentDescription = strings.subtitlesLabel,
+                                    size = headerButtonSize,
+                                    iconSize = 19.dp,
+                                    tint = if (state.selectedVideoSubtitleId != null) primary else Color.White.copy(alpha = 0.72f),
+                                    borderTop = primary.copy(alpha = 0.48f),
+                                    borderBottom = primary.copy(alpha = 0.14f),
+                                    onClick = { subtitleMenuExpanded = true }
                                 )
-                                track.videoSubtitleTracks.forEach { subtitle ->
+                                DropdownMenu(
+                                    expanded = subtitleMenuExpanded,
+                                    onDismissRequest = { subtitleMenuExpanded = false }
+                                ) {
                                     DropdownMenuItem(
-                                        text = { Text(subtitle.label.ifBlank { subtitle.languageCode }) },
+                                        text = { Text(strings.subtitlesOff) },
                                         leadingIcon = {
-                                            if (state.selectedVideoSubtitleId == subtitle.id) {
+                                            if (state.selectedVideoSubtitleId == null) {
                                                 Icon(Icons.Rounded.Check, contentDescription = null)
                                             }
                                         },
                                         onClick = {
                                             subtitleMenuExpanded = false
-                                            viewModel.selectVideoSubtitle(subtitle.id)
+                                            viewModel.selectVideoSubtitle(null)
                                         }
                                     )
+                                    track.videoSubtitleTracks.forEach { subtitle ->
+                                        DropdownMenuItem(
+                                            text = { Text(subtitle.label.ifBlank { subtitle.languageCode }) },
+                                            leadingIcon = {
+                                                if (state.selectedVideoSubtitleId == subtitle.id) {
+                                                    Icon(Icons.Rounded.Check, contentDescription = null)
+                                                }
+                                            },
+                                            onClick = {
+                                                subtitleMenuExpanded = false
+                                                viewModel.selectVideoSubtitle(subtitle.id)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.PictureInPictureAlt,
+                            contentDescription = strings.pictureInPicture,
+                            size = headerButtonSize,
+                            iconSize = 19.dp,
+                            borderTop = primary.copy(alpha = 0.48f),
+                            borderBottom = primary.copy(alpha = 0.14f),
+                            onClick = { LevyraPipBridge.enter() }
+                        )
                     }
                     PlayerGlassIconButton(
-                        icon = Icons.Rounded.PictureInPictureAlt,
-                        contentDescription = strings.pictureInPicture,
+                        icon = Icons.Rounded.MoreVert,
+                        contentDescription = strings.options,
                         size = headerButtonSize,
-                        iconSize = 19.dp,
-                        borderTop = primary.copy(alpha = 0.48f),
-                        borderBottom = primary.copy(alpha = 0.14f),
-                        onClick = { LevyraPipBridge.enter() }
+                        iconSize = if (compactPlayer) 20.dp else 21.dp,
+                        onClick = { viewModel.openAudioQualityPanel() }
                     )
                 }
-                PlayerGlassIconButton(
-                    icon = Icons.Rounded.MoreVert,
-                    contentDescription = strings.options,
-                    size = headerButtonSize,
-                    iconSize = if (compactPlayer) 20.dp else 21.dp,
-                    onClick = { viewModel.openAudioQualityPanel() }
-                )
             }
         }
 
@@ -13342,7 +13403,7 @@ private fun PlayerScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         AnimatedContent(
@@ -13576,11 +13637,12 @@ private fun PlayerScreen(
                     ) {
                         mediaBlock(track)
                     }
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(if (compactPlayer) 6.dp else 10.dp)
+                    ) {
                         metaBlock(track)
-                        Spacer(modifier = Modifier.height(playerMetaSpacing))
                         timelineBlock()
-                        Spacer(modifier = Modifier.height(playerControlSpacing))
                         transportBlock()
                         quickActionsBlock(track)
                         PlayerError(state.playerError)
