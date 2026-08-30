@@ -302,8 +302,8 @@ cd desktop
 **Version Wiring Contract:**
 ```properties
 # Android: gradle.properties
-levyraVersionName=2.5.0
-levyraVersionCode=2050000
+levyraVersionName=2.5.1
+levyraVersionCode=2050100
 
 # Windows: desktop/version.properties
 levyraDesktopVersion=1.2.0
