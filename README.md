@@ -98,7 +98,7 @@ Modern music streaming applications often treat music as temporary, disposable b
 
 #### 🎬 Explore & Video Engine
 | Vertical Samples Clips | Moods & Subgenre Matrix | Video Feed & Energy |
-| :---: | :---: | :---: |
+| :---: | :---: | :---: | :---: |
 | <img src="docs/assets/screenshots/explore_samples.webp" width="260" alt="Samples Clips"> | <img src="docs/assets/screenshots/explore_genres.webp" width="260" alt="Genres Matrix"> | <img src="docs/assets/screenshots/video_energy.webp" width="260" alt="Video Feed"> |
 
 </div>
@@ -125,11 +125,15 @@ Modern music streaming applications often treat music as temporary, disposable b
   <tr valign="top">
     <td width="50%">
       <h3>🎚️ <b>Playback Core</b></h3>
-      <p><b>Fast, native, interruption-free.</b><br><sub>The core listening path is tuned around low overhead and predictable playback.</sub></p>
+      <p><b>Fast, native, interruption-free.</b><br><sub>The listening path is tuned around low overhead, predictable behavior, and direct playback control on both platforms.</sub></p>
       <ul>
-        <li><b>Dual Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
-        <li><b>Playback Suite:</b> Gapless, shuffle/repeat, speed/pitch, sleep timer, and queue Undo.</li>
-        <li><b>Smart Playback:</b> Android Auto, volume normalization, SponsorBlock skipping, and Audio / Video toggle.</li>
+        <li><b>Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
+        <li><b>Gapless & Queue:</b> Seamless track transitions, shuffle/repeat, and queue Undo.</li>
+        <li><b>Tempo & Timing:</b> Speed/pitch controls plus a built-in sleep timer.</li>
+        <li><b>Android Auto:</b> Playback integrates with the car-focused Android media experience.</li>
+        <li><b>Volume Normalization:</b> Keeps perceived loudness more consistent between tracks.</li>
+        <li><b>SponsorBlock:</b> Automatically skips supported non-musical segments during playback.</li>
+        <li><b>Audio / Video Mode:</b> Switch between listening and native-video playback when available.</li>
       </ul>
     </td>
     <td width="50%">
