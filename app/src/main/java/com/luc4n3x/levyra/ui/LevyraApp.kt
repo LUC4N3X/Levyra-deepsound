@@ -12064,105 +12064,114 @@ private fun PlayerQuickActionsBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+            .height(LevyraPlayerDesign.MinimumTouchTarget),
         contentAlignment = Alignment.Center
     ) {
-        Surface(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (compact) 44.dp else 48.dp),
-            shape = CircleShape,
-            color = Color.White.copy(alpha = 0.05f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
+                .height(if (compact) 44.dp else 48.dp)
+                .background(Color.White.copy(alpha = 0.05f), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.09f), CircleShape)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(LevyraPlayerDesign.MinimumTouchTarget)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Row(
+            PlayerQuickAction(
+                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                contentDescription = strings.queue,
+                tint = Color.White.copy(alpha = 0.76f),
+                active = false,
+                compact = compact,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = viewModel::openQueue
+            )
+            PlayerQuickAction(
+                icon = Icons.AutoMirrored.Rounded.Subject,
+                contentDescription = strings.lyrics,
+                tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
+                active = state.showLyrics,
+                compact = compact,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = viewModel::openLyrics
+            )
+            if (!state.isVideoMode) {
+                val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
+                PlayerQuickAction(
+                    icon = Icons.Rounded.AutoAwesome,
+                    contentDescription = strings.motionArtwork,
+                    tint = if (canvasActive) activePrimary else Color.White.copy(alpha = 0.60f),
+                    active = canvasActive,
+                    toggleableState = ToggleableState(canvasActive),
+                    enabled = state.animationsEnabled,
+                    compact = compact,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                )
+            }
+            PlayerQuickAction(
+                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                contentDescription = when {
+                    state.isOfflineExporting -> strings.downloadInProgress
+                    isDownloaded -> strings.downloaded
+                    else -> strings.download
+                },
+                tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
+                active = state.isOfflineExporting || isDownloaded,
+                busy = state.isOfflineExporting,
+                enabled = !state.isOfflineExporting,
+                compact = compact,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                onClick = viewModel::exportCurrentTrack
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                contentAlignment = Alignment.Center
             ) {
                 PlayerQuickAction(
-                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                    contentDescription = strings.queue,
-                    tint = Color.White.copy(alpha = 0.76f),
-                    active = false,
+                    icon = Icons.Rounded.Equalizer,
+                    contentDescription = strings.options,
+                    tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
+                    active = optionsActive || optionsExpanded,
                     compact = compact,
-                    modifier = Modifier.weight(1f),
-                    onClick = viewModel::openQueue
+                    modifier = Modifier.fillMaxSize(),
+                    onClick = { optionsExpanded = !optionsExpanded }
                 )
-                PlayerQuickAction(
-                    icon = Icons.AutoMirrored.Rounded.Subject,
-                    contentDescription = strings.lyrics,
-                    tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
-                    active = state.showLyrics,
-                    compact = compact,
-                    modifier = Modifier.weight(1f),
-                    onClick = viewModel::openLyrics
-                )
-                if (!state.isVideoMode) {
-                    val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
-                    PlayerQuickAction(
-                        icon = Icons.Rounded.AutoAwesome,
-                        contentDescription = strings.motionArtwork,
-                        tint = if (canvasActive) activePrimary else Color.White.copy(alpha = 0.60f),
-                        active = canvasActive,
-                        toggleableState = ToggleableState(canvasActive),
-                        enabled = state.animationsEnabled,
-                        compact = compact,
-                        modifier = Modifier.weight(1f),
-                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
-                    )
-                }
-                PlayerQuickAction(
-                    icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
-                    contentDescription = when {
-                        state.isOfflineExporting -> strings.downloadInProgress
-                        isDownloaded -> strings.downloaded
-                        else -> strings.download
-                    },
-                    tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
-                    active = state.isOfflineExporting || isDownloaded,
-                    busy = state.isOfflineExporting,
-                    enabled = !state.isOfflineExporting,
-                    compact = compact,
-                    modifier = Modifier.weight(1f),
-                    onClick = viewModel::exportCurrentTrack
-                )
-                Box(
-                    modifier = Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
+                DropdownMenu(
+                    expanded = optionsExpanded,
+                    onDismissRequest = { optionsExpanded = false },
+                    modifier = Modifier
+                        .width(if (compact) 276.dp else 296.dp)
+                        .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
                 ) {
-                    PlayerQuickAction(
-                        icon = Icons.Rounded.Equalizer,
-                        contentDescription = strings.options,
-                        tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
-                        active = optionsActive || optionsExpanded,
-                        compact = compact,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { optionsExpanded = !optionsExpanded }
-                    )
-                    DropdownMenu(
-                        expanded = optionsExpanded,
-                        onDismissRequest = { optionsExpanded = false },
-                        modifier = Modifier
-                            .width(if (compact) 276.dp else 296.dp)
-                            .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
-                    ) {
-                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                            PlayerOptionsRow(
-                                speed = state.playbackSpeed,
-                                sleepMinutes = state.sleepTimerMinutes,
-                                sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
-                                audioNormalization = state.audioNormalization,
-                                activeColor = primary,
-                                secondaryColor = secondary,
-                                compact = true,
-                                onSpeed = viewModel::cycleSpeed,
-                                onSleep = viewModel::openSleepTimer,
-                                onNormalization = viewModel::toggleAudioNormalization
-                            )
-                        }
+                    Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                        PlayerOptionsRow(
+                            speed = state.playbackSpeed,
+                            sleepMinutes = state.sleepTimerMinutes,
+                            sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
+                            audioNormalization = state.audioNormalization,
+                            activeColor = primary,
+                            secondaryColor = secondary,
+                            compact = true,
+                            onSpeed = viewModel::cycleSpeed,
+                            onSleep = viewModel::openSleepTimer,
+                            onNormalization = viewModel::toggleAudioNormalization
+                        )
                     }
                 }
             }
