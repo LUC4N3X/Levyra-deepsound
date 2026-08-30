@@ -31,7 +31,7 @@ object LevyraHomeDesign {
     val MoodChipHeight: Dp = 48.dp
     val MoodChipCorner: Dp = 14.dp
     val HeroCorner: Dp = 26.dp
-    val HeroHeight: Dp = 340.dp
+    val HeroHeight: Dp = 260.dp
     val ShelfCorner: Dp = 16.dp
     val ArtworkCorner: Dp = 18.dp
     val ArtworkCardWidth: Dp = 156.dp
