@@ -55,6 +55,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.drawWithCache
@@ -1157,15 +1158,17 @@ fun LevyraApp(
         }
     }
     val openManageBackups = {
-        val rootUri = DocumentsContract.buildRootUri(
-            "${toastContext.packageName}.automatic-backups",
-            "levyra-automatic-backups"
-        )
+        val initialUri = state.backupLocationUri
+            ?.let { raw -> try { Uri.parse(raw) } catch (_: Throwable) { null } }
+            ?: DocumentsContract.buildRootUri(
+                "${toastContext.packageName}.automatic-backups",
+                "levyra-automatic-backups"
+            )
         manageBackupsLauncher.launch(
             Intent(Intent.ACTION_OPEN_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("application/zip")
-                .putExtra(DocumentsContract.EXTRA_INITIAL_URI, rootUri)
+                .putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri)
         )
     }
     val backupLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -16010,7 +16013,8 @@ private fun SettingsOverlay(
                                     icon = Icons.Rounded.Download,
                                     title = if (vaultStatus == LevyraVaultStatus.Running) strings.vaultBusy else strings.backupNow,
                                     subtitle = strings.backupNowSubtitle,
-                                    onClick = onBackupNow
+                                    onClick = onBackupNow,
+                                    enabled = vaultStatus != LevyraVaultStatus.Running
                                 )
                             }
                             item {
@@ -16609,17 +16613,19 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
 }
 
 @Composable
-private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, enabled: Boolean = true, onClick: () -> Unit) {
     Surface(
         color = LevyraAdaptiveCard,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .pressable(onClick = onClick)
+            .pressable(enabled = enabled, onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier
+                .padding(14.dp)
+                .alpha(if (enabled) 1f else 0.45f),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {

@@ -678,6 +678,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val listeningPulseEngine = ListeningPulseEngine()
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
+    private val vaultRuntimeState = preferences.vaultRuntimeState()
     private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
     private val _integrationAuthorizationUrls = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val integrationAuthorizationUrls = _integrationAuthorizationUrls.asSharedFlow()
@@ -697,8 +698,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
             backupSettings = startupSettings.backupSettings,
-            lastBackupAtMs = preferences.lastBackupAt(),
-            backupLocationUri = preferences.backupTreeUri().takeIf { it.isNotBlank() },
+            lastBackupAtMs = vaultRuntimeState.first,
+            backupLocationUri = vaultRuntimeState.second.takeIf { it.isNotBlank() },
             playbackDiagnostics = resolver.playbackDiagnostics(),
             recognitionAvailable = LevyraRecognitionCenter.isAvailable
         )
@@ -3601,14 +3602,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
             _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
-            val message = runCatching { backupManager.exportTo(uri).message }
-                .getOrElse { "Backup non riuscito: ${cleanUserError(it)}" }
-            _state.update {
-                it.copy(
-                    backupMessage = message,
-                    vaultStatus = if (message.startsWith("Backup non riuscito")) LevyraVaultStatus.Error else LevyraVaultStatus.Completed,
-                    lastBackupAtMs = if (message.startsWith("Backup non riuscito")) it.lastBackupAtMs else System.currentTimeMillis()
-                )
+            try {
+                val result = backupManager.exportTo(uri)
+                _state.update {
+                    it.copy(
+                        backupMessage = result.message,
+                        vaultStatus = LevyraVaultStatus.Completed,
+                        lastBackupAtMs = System.currentTimeMillis()
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
+                throw cancelled
+            } catch (error: Throwable) {
+                _state.update {
+                    it.copy(
+                        backupMessage = "Backup non riuscito: ${cleanUserError(error)}",
+                        vaultStatus = LevyraVaultStatus.Error
+                    )
+                }
             }
         }
     }
@@ -3617,27 +3629,39 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
             _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
-            val message = runCatching {
-                backupManager.exportAutomatic(_state.value.backupSettings.retentionCount).message
-            }.getOrElse { "Backup non riuscito: ${cleanUserError(it)}" }
-            _state.update {
-                it.copy(
-                    backupMessage = message,
-                    vaultStatus = if (message.startsWith("Backup non riuscito")) LevyraVaultStatus.Error else LevyraVaultStatus.Completed,
-                    lastBackupAtMs = if (message.startsWith("Backup non riuscito")) it.lastBackupAtMs else System.currentTimeMillis()
-                )
+            try {
+                val result = backupManager.exportAutomatic(_state.value.backupSettings.retentionCount)
+                _state.update {
+                    it.copy(
+                        backupMessage = result.message,
+                        vaultStatus = LevyraVaultStatus.Completed,
+                        lastBackupAtMs = System.currentTimeMillis()
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
+                throw cancelled
+            } catch (error: Throwable) {
+                _state.update {
+                    it.copy(
+                        backupMessage = "Backup non riuscito: ${cleanUserError(error)}",
+                        vaultStatus = LevyraVaultStatus.Error
+                    )
+                }
             }
         }
     }
 
     fun previewRestore(uri: Uri) {
         viewModelScope.launch {
-            val preview = runCatching { backupManager.inspect(uri) }
-                .getOrElse { error ->
-                    _state.update { it.copy(backupMessage = "Backup non valido: ${cleanUserError(error)}") }
-                    return@launch
-                }
-            _state.update { it.copy(backupPreview = preview, pendingRestoreUri = uri) }
+            try {
+                val preview = backupManager.inspect(uri)
+                _state.update { it.copy(backupPreview = preview, pendingRestoreUri = uri) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                _state.update { it.copy(backupMessage = "Backup non valido: ${cleanUserError(error)}") }
+            }
         }
     }
 
@@ -3657,16 +3681,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
             _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running, backupPreview = null, pendingRestoreUri = null) }
-            val message = runCatching {
-                backupManager.restoreFrom(uri)
+            try {
+                val result = backupManager.restoreFrom(uri)
                 refreshAfterRestore()
-                "Ripristino completato"
-            }.getOrElse { "Ripristino non riuscito: ${cleanUserError(it)}" }
-            _state.update {
-                it.copy(
-                    backupMessage = message,
-                    vaultStatus = if (message.startsWith("Ripristino non riuscito")) LevyraVaultStatus.Error else LevyraVaultStatus.Completed
-                )
+                _state.update {
+                    it.copy(
+                        backupMessage = result.message,
+                        vaultStatus = LevyraVaultStatus.Completed
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
+                throw cancelled
+            } catch (error: Throwable) {
+                _state.update {
+                    it.copy(
+                        backupMessage = "Ripristino non riuscito: ${cleanUserError(error)}",
+                        vaultStatus = LevyraVaultStatus.Error
+                    )
+                }
             }
         }
     }
@@ -3677,17 +3710,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setBackupLocation(uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
-            val resolver = getApplication<Application>().contentResolver
-            val granted = runCatching {
+            try {
+                val resolver = getApplication<Application>().contentResolver
                 resolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
-            }.isSuccess
-            if (granted) {
+                val previous = preferences.backupTreeUri().takeIf { it.isNotBlank() }
                 preferences.setBackupTreeUri(uri.toString())
                 _state.update { it.copy(backupLocationUri = uri.toString()) }
-            } else {
+                if (previous != null && previous != uri.toString()) {
+                    runCatching {
+                        resolver.releasePersistableUriPermission(
+                            Uri.parse(previous),
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        )
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
                 _state.update { it.copy(backupMessage = "Posizione backup non disponibile") }
             }
         }
@@ -3695,17 +3737,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearBackupLocation() {
         viewModelScope.launch(Dispatchers.IO) {
-            _state.value.backupLocationUri?.let { raw ->
-                runCatching {
-                    val resolver = getApplication<Application>().contentResolver
-                    resolver.releasePersistableUriPermission(
-                        Uri.parse(raw),
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    )
-                }
+            val raw = _state.value.backupLocationUri ?: return@launch
+            try {
+                val resolver = getApplication<Application>().contentResolver
+                resolver.releasePersistableUriPermission(
+                    Uri.parse(raw),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                preferences.setBackupTreeUri("")
+                _state.update { it.copy(backupLocationUri = null) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "Unable to clear backup location")
             }
-            preferences.setBackupTreeUri("")
-            _state.update { it.copy(backupLocationUri = null) }
         }
     }
 

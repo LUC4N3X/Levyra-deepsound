@@ -31,12 +31,28 @@ class AutomaticBackupPolicyTest {
     }
 
     @Test
-    fun automaticBackupNameMatchesLevyraAndLegacyZip() {
+    fun automaticBackupNameMatchesLevyraNormalizedAndLegacyZip() {
         assertTrue(isAutomaticBackupName("levyra-auto-backup-1700000000000.levyra"))
+        assertTrue(isAutomaticBackupName("levyra-auto-backup-1700000000000.levyra.zip"))
         assertTrue(isAutomaticBackupName("levyra-auto-backup-1700000000000.zip"))
+        assertFalse(isAutomaticBackupName("levyra-auto-backup-.levyra"))
+        assertFalse(isAutomaticBackupName("levyra-auto-backup-abc.levyra"))
         assertFalse(isAutomaticBackupName("levyra-auto-backup-1700000000000.txt"))
         assertFalse(isAutomaticBackupName("Levyra_2026-08-30_1255.levyra"))
         assertFalse(isAutomaticBackupName("../levyra-auto-backup-1.levyra"))
+    }
+
+    @Test
+    fun retentionCoversProviderNormalizedNames() {
+        val files = listOf(
+            "levyra-auto-backup-1700000000010.levyra.zip",
+            "levyra-auto-backup-1700000000020.levyra",
+            "levyra-auto-backup-1700000000030.zip",
+            "notes.txt",
+            "Levyra_2026-08-30_1255.levyra"
+        )
+        val deleted = automaticBackupFilesToDelete(files, retentionCount = 2)
+        assertEquals(listOf("levyra-auto-backup-1700000000010.levyra.zip"), deleted)
     }
 
     @Test
@@ -82,5 +98,20 @@ class AutomaticBackupPolicyTest {
             setOf("data/favorites.json", "data/queue.json"),
             missingRequiredVaultSections(complete - "data/favorites.json" - "data/queue.json")
         )
+    }
+
+    @Test
+    fun previewStructuralCompatibilityMatchesRequiredSections() {
+        val complete = setOf(
+            "data/settings.json",
+            "data/favorites.json",
+            "data/followed_artists.json",
+            "data/playlists.json",
+            "data/history.json",
+            "data/queue.json"
+        )
+        assertTrue(vaultStructureCompatible(complete))
+        assertFalse(vaultStructureCompatible(complete - "data/playlists.json"))
+        assertFalse(vaultStructureCompatible(complete - "data/favorites.json" - "data/queue.json"))
     }
 }

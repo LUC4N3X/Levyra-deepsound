@@ -64,14 +64,17 @@ class LevyraBackupManager(private val context: Context) {
         LevyraVaultOperationMutex.withLock {
             val treeUri = preferences.backupTreeUri()
                 .takeIf { it.isNotBlank() }
-                ?.let { runCatching { Uri.parse(it) }.getOrNull() }
+                ?.let { raw -> try { Uri.parse(raw) } catch (_: Throwable) { null } }
             if (treeUri != null && hasPersistedTreeAccess(treeUri)) {
-                runCatching { exportAutomaticToTree(treeUri, retentionCount) }
-                    .getOrElse { error ->
-                        Timber.w(error, "SAF backup location unavailable, falling back to internal storage")
-                        exportAutomaticToInternal(retentionCount)
-                            .copy(message = "Backup salvato nella memoria interna")
-                    }
+                try {
+                    exportAutomaticToTree(treeUri, retentionCount)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
+                    Timber.w(error, "SAF backup location unavailable, falling back to internal storage")
+                    exportAutomaticToInternal(retentionCount)
+                        .copy(message = "Backup salvato nella memoria interna")
+                }
             } else {
                 exportAutomaticToInternal(retentionCount)
             }
@@ -113,7 +116,11 @@ class LevyraBackupManager(private val context: Context) {
     private suspend fun exportAutomaticToTree(treeUri: Uri, retentionCount: Int): LevyraBackupResult {
         val resolver = appContext.contentResolver
         val name = "$AUTOMATIC_BACKUP_PREFIX${System.currentTimeMillis()}$VAULT_EXTENSION"
-        val documentUri = DocumentsContract.createDocument(resolver, treeUri, "application/zip", name)
+        val parentUri = DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri)
+        )
+        val documentUri = DocumentsContract.createDocument(resolver, parentUri, "application/zip", name)
             ?: throw IOException("Impossibile creare il backup nella cartella selezionata")
         val result = try {
             resolver.openOutputStream(documentUri, "w")?.use { writeArchive(it) }
@@ -175,12 +182,14 @@ class LevyraBackupManager(private val context: Context) {
                     var manifestBytes: ByteArray? = null
                     var hasLegacyPayload = false
                     val sectionNames = mutableListOf<String>()
+                    val seenEntries = mutableSetOf<String>()
                     while (true) {
                         val entry = zip.nextEntry ?: break
                         entryCount += 1
                         if (entryCount > MAX_ZIP_ENTRIES) throw IOException("Backup non valido: troppe voci ZIP")
                         if (entry.isDirectory) throw IOException("Backup non valido: voce ZIP directory")
                         if (!vaultEntryAllowed(entry.name)) throw IOException("Backup non valido: voce ZIP inattesa ${entry.name}")
+                        if (!seenEntries.add(entry.name)) throw IOException("Backup non valido: voce duplicata ${entry.name}")
                         when {
                             entry.name == MANIFEST_ENTRY -> manifestBytes = readZipEntry(zip, MAX_ENTRY_BYTES)
                             entry.name == LEGACY_PAYLOAD_ENTRY -> hasLegacyPayload = true
@@ -200,7 +209,8 @@ class LevyraBackupManager(private val context: Context) {
                     val vaultCompatible = manifest != null &&
                         manifest.optInt("formatVersion", 0) == FORMAT_VERSION &&
                         manifest.optString("platform", "").equals(PLATFORM, ignoreCase = true) &&
-                        manifest.optInt("databaseVersion", 0) <= LEVYRA_DATABASE_VERSION
+                        manifest.optInt("databaseVersion", 0) <= LEVYRA_DATABASE_VERSION &&
+                        vaultStructureCompatible(sectionNames)
                     val legacyCompatible = hasLegacyPayload &&
                         manifest?.optInt("schemaVersion", 0) == LEGACY_SCHEMA_VERSION
                     VaultPreview(
@@ -375,14 +385,15 @@ class LevyraBackupManager(private val context: Context) {
         validateSectionChecksums(entries, manifest)
         val settingsBytes = entries[SETTINGS_ENTRY] ?: throw IOException("Dati impostazioni del backup mancanti")
         val settingsJson = JSONObject(settingsBytes.toString(Charsets.UTF_8))
+        val queueJson = entries[QUEUE_ENTRY].toJsonObject()
         return VaultSnapshot(
             settings = parseSettings(settingsJson),
             favorites = entries[FAVORITES_ENTRY].toJsonArray().toTrackList(),
             followedArtists = parseFollowedArtists(entries[FOLLOWED_ARTISTS_ENTRY].toJsonArray()),
             playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray()),
             history = parseHistory(entries[HISTORY_ENTRY].toJsonArray()),
-            queueItems = parseQueueItems(entries[QUEUE_ENTRY].toJsonObject()),
-            queueState = parseQueueState(entries[QUEUE_ENTRY].toJsonObject())
+            queueItems = parseQueueItems(queueJson),
+            queueState = parseQueueState(queueJson)
         )
     }
 
@@ -760,7 +771,7 @@ class LevyraBackupManager(private val context: Context) {
         return try {
             JSONArray(toString(Charsets.UTF_8))
         } catch (error: org.json.JSONException) {
-            throw IOException("Backup non valido: sezione JSON danneggiata")
+            throw IOException("Backup non valido: sezione JSON danneggiata", error)
         }
     }
 
@@ -769,7 +780,7 @@ class LevyraBackupManager(private val context: Context) {
         return try {
             JSONObject(toString(Charsets.UTF_8))
         } catch (error: org.json.JSONException) {
-            throw IOException("Backup non valido: sezione JSON danneggiata")
+            throw IOException("Backup non valido: sezione JSON danneggiata", error)
         }
     }
 
@@ -935,16 +946,16 @@ internal val REQUIRED_VAULT_ENTRIES = setOf(
 internal fun missingRequiredVaultSections(entryNames: Collection<String>): Set<String> =
     REQUIRED_VAULT_ENTRIES - entryNames
 
+internal fun vaultStructureCompatible(entryNames: Collection<String>): Boolean =
+    missingRequiredVaultSections(entryNames).isEmpty()
+
 internal fun isAutomaticBackupName(name: String): Boolean {
     if (!name.startsWith("levyra-auto-backup-")) return false
     val body = name.removePrefix("levyra-auto-backup-")
-    if (body.endsWith(".levyra")) {
-        return body.removeSuffix(".levyra").all(Char::isDigit)
-    }
-    if (body.endsWith(".zip")) {
-        return body.removeSuffix(".zip").all(Char::isDigit)
-    }
-    return false
+    val suffixes = listOf(".levyra.zip", ".levyra", ".zip")
+    val suffix = suffixes.firstOrNull { body.endsWith(it) } ?: return false
+    val timestamp = body.removeSuffix(suffix)
+    return timestamp.isNotEmpty() && timestamp.all(Char::isDigit)
 }
 
 internal fun levyraVaultFileName(timestamp: Long): String {
