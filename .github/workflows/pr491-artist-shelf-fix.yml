@@ -1,0 +1,337 @@
+name: PR491 Artist Shelf Correction
+
+on:
+  push:
+    branches:
+      - feature/ui-evolution-living-capsule-home-artist-collections
+
+permissions:
+  contents: write
+
+jobs:
+  apply-correction:
+    if: ${{ !contains(github.event.head_commit.message, '[artist-shelf-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore horizontal popular-tracks shelf
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          source = path.read_text(encoding='utf-8')
+          start_marker = '@Composable\nprivate fun ArtistPopularTracksShelf('
+          end_marker = '@Composable\nprivate fun ArtistSectionTitle('
+
+          start = source.find(start_marker)
+          end = source.find(end_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('Artist popular-tracks markers not found; refusing an unsafe edit')
+          if source.find(start_marker, start + 1) >= 0:
+              raise SystemExit('Multiple ArtistPopularTracksShelf definitions found; refusing an unsafe edit')
+
+          replacement = r'''@Composable
+          private fun ArtistTopTrackCard(
+              index: Int,
+              track: Track,
+              isCurrent: Boolean,
+              isPlaying: Boolean,
+              isResolving: Boolean,
+              onPlay: () -> Unit
+          ) {
+              Surface(
+                  color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.03f),
+                  border = BorderStroke(
+                      1.dp,
+                      if (isCurrent) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f)
+                  ),
+                  shape = RoundedCornerShape(18.dp),
+                  modifier = Modifier
+                      .width(260.dp)
+                      .height(202.dp)
+                      .pressable(onClick = onPlay)
+              ) {
+                  Column(modifier = Modifier.fillMaxSize()) {
+                      Box(
+                          modifier = Modifier
+                              .fillMaxWidth()
+                              .weight(1f)
+                      ) {
+                          CoverImage(
+                              track = track,
+                              modifier = Modifier.fillMaxSize(),
+                              highRes = true
+                          )
+                          Box(
+                              modifier = Modifier
+                                  .fillMaxSize()
+                                  .background(
+                                      Brush.verticalGradient(
+                                          colors = listOf(
+                                              Color.Transparent,
+                                              Color.Black.copy(alpha = 0.70f)
+                                          )
+                                      )
+                                  )
+                          )
+                          Surface(
+                              color = LevyraCyan,
+                              shape = CircleShape,
+                              modifier = Modifier
+                                  .align(Alignment.BottomStart)
+                                  .padding(12.dp)
+                                  .size(28.dp)
+                          ) {
+                              Box(contentAlignment = Alignment.Center) {
+                                  Text(
+                                      text = "$index",
+                                      color = LevyraBlack,
+                                      fontWeight = FontWeight.Bold,
+                                      fontSize = 14.sp
+                                  )
+                              }
+                          }
+                          Box(
+                              modifier = Modifier.align(Alignment.Center),
+                              contentAlignment = Alignment.Center
+                          ) {
+                              when {
+                                  isResolving -> CircularProgressIndicator(
+                                      modifier = Modifier.size(28.dp),
+                                      color = LevyraCyan,
+                                      strokeWidth = 3.dp
+                                  )
+                                  isCurrent -> LevyraPlayingIndicator(
+                                      playing = isPlaying,
+                                      color = LevyraCyan,
+                                      size = 32.dp
+                                  )
+                                  else -> Surface(
+                                      color = Color.Black.copy(alpha = 0.42f),
+                                      shape = CircleShape,
+                                      modifier = Modifier.size(48.dp)
+                                  ) {
+                                      Icon(
+                                          Icons.Rounded.PlayArrow,
+                                          contentDescription = null,
+                                          tint = Color.White,
+                                          modifier = Modifier.padding(12.dp)
+                                      )
+                                  }
+                              }
+                          }
+                      }
+                      Column(
+                          modifier = Modifier
+                              .fillMaxWidth()
+                              .padding(horizontal = 14.dp, vertical = 12.dp),
+                          verticalArrangement = Arrangement.spacedBy(2.dp)
+                      ) {
+                          Text(
+                              text = track.title,
+                              color = if (isCurrent) LevyraCyan else LevyraText,
+                              fontSize = 16.sp,
+                              lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
+                              fontWeight = FontWeight.Bold,
+                              letterSpacing = (-0.3).sp,
+                              maxLines = 1,
+                              overflow = TextOverflow.Ellipsis
+                          )
+                          Text(
+                              text = track.artist,
+                              color = LevyraMuted,
+                              fontSize = 13.sp,
+                              maxLines = 1,
+                              overflow = TextOverflow.Ellipsis
+                          )
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          private fun ArtistPopularTracksShelf(
+              tracks: List<Track>,
+              currentId: String?,
+              isPlaying: Boolean,
+              isResolving: Boolean,
+              onPlay: (Track) -> Unit
+          ) {
+              val distinctTracks = remember(tracks) {
+                  tracks.distinctBy { track ->
+                      track.id.ifBlank { "${track.artist}|${track.title}" }
+                  }
+              }
+              if (distinctTracks.isEmpty()) return
+
+              val firstTrack = distinctTracks.first()
+              val columns = remember(distinctTracks) {
+                  distinctTracks.drop(1).chunked(3)
+              }
+
+              LazyRow(
+                  contentPadding = PaddingValues(horizontal = 20.dp),
+                  horizontalArrangement = Arrangement.spacedBy(16.dp),
+                  modifier = Modifier.fillMaxWidth()
+              ) {
+                  item(
+                      key = "artist-top-track-${firstTrack.id.ifBlank { "${firstTrack.artist}|${firstTrack.title}" }}",
+                      contentType = "artist-top-track"
+                  ) {
+                      val isCurrent = firstTrack.id == currentId
+                      ArtistTopTrackCard(
+                          index = 1,
+                          track = firstTrack,
+                          isCurrent = isCurrent,
+                          isPlaying = isPlaying && isCurrent,
+                          isResolving = isResolving && isCurrent,
+                          onPlay = { onPlay(firstTrack) }
+                      )
+                  }
+
+                  itemsIndexed(
+                      items = columns,
+                      key = { _, columnTracks ->
+                          columnTracks.joinToString(
+                              prefix = "artist-popular-col-",
+                              separator = "|"
+                          ) { track ->
+                              track.id.ifBlank { "${track.artist}:${track.title}" }
+                          }
+                      },
+                      contentType = { _, _ -> "artist-popular-column" }
+                  ) { columnIndex, columnTracks ->
+                      Column(
+                          verticalArrangement = Arrangement.spacedBy(8.dp),
+                          modifier = Modifier.width(300.dp)
+                      ) {
+                          columnTracks.forEachIndexed { rowIndex, track ->
+                              val rank = columnIndex * 3 + rowIndex + 2
+                              val isCurrent = track.id == currentId
+                              ArtistPopularTrackRow(
+                                  index = rank,
+                                  track = track,
+                                  isCurrent = isCurrent,
+                                  isPlaying = isPlaying && isCurrent,
+                                  isResolving = isResolving && isCurrent,
+                                  onPlay = { onPlay(track) }
+                              )
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          private fun ArtistPopularTrackRow(
+              index: Int,
+              track: Track,
+              isCurrent: Boolean,
+              isPlaying: Boolean,
+              isResolving: Boolean,
+              onPlay: () -> Unit
+          ) {
+              Surface(
+                  color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.03f),
+                  border = BorderStroke(
+                      1.dp,
+                      if (isCurrent) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f)
+                  ),
+                  shape = RoundedCornerShape(14.dp),
+                  modifier = Modifier
+                      .fillMaxWidth()
+                      .pressable(onClick = onPlay)
+              ) {
+                  Row(
+                      modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                      verticalAlignment = Alignment.CenterVertically,
+                      horizontalArrangement = Arrangement.spacedBy(12.dp)
+                  ) {
+                      Box(
+                          modifier = Modifier.width(24.dp),
+                          contentAlignment = Alignment.Center
+                      ) {
+                          when {
+                              isResolving -> CircularProgressIndicator(
+                                  modifier = Modifier.size(14.dp),
+                                  strokeWidth = 2.dp,
+                                  color = LevyraCyan
+                              )
+                              isCurrent -> LevyraPlayingIndicator(
+                                  playing = isPlaying,
+                                  color = LevyraCyan,
+                                  size = 16.dp
+                              )
+                              else -> Text(
+                                  text = "$index",
+                                  color = LevyraMuted,
+                                  fontSize = 14.sp,
+                                  fontWeight = FontWeight.SemiBold
+                              )
+                          }
+                      }
+                      Box(
+                          modifier = Modifier
+                              .size(46.dp)
+                              .clip(RoundedCornerShape(11.dp))
+                              .background(LevyraPanelSoft),
+                          contentAlignment = Alignment.Center
+                      ) {
+                          CoverImage(
+                              track = track,
+                              modifier = Modifier.fillMaxSize()
+                          )
+                      }
+                      Column(
+                          modifier = Modifier.weight(1f),
+                          verticalArrangement = Arrangement.spacedBy(2.dp)
+                      ) {
+                          Text(
+                              text = track.title,
+                              color = if (isCurrent) LevyraCyan else LevyraText,
+                              fontSize = 14.5.sp,
+                              lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
+                              fontWeight = FontWeight.SemiBold,
+                              letterSpacing = (-0.2).sp,
+                              maxLines = 1,
+                              overflow = TextOverflow.Ellipsis
+                          )
+                          val duration = formatDuration(track.durationMs)
+                              .takeIf { it != "--:--" }
+                              .orEmpty()
+                          Text(
+                              text = listOf(track.artist, duration)
+                                  .filter { it.isNotBlank() }
+                                  .joinToString("  ·  "),
+                              color = LevyraMuted,
+                              fontSize = 12.sp,
+                              fontWeight = FontWeight.Normal,
+                              maxLines = 1,
+                              overflow = TextOverflow.Ellipsis
+                          )
+                      }
+                  }
+              }
+          }
+
+          '''
+
+          path.write_text(source[:start] + replacement + source[end:], encoding='utf-8')
+          PY
+
+      - name: Commit correction and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git rm --ignore-unmatch .github/workflows/pr491-artist-shelf-fix.yml
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git diff --cached --check
+          git commit -m "fix(artist): restore horizontal popular tracks shelf [artist-shelf-applied]"
+          git push
