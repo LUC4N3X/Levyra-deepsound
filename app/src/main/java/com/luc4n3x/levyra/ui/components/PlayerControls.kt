@@ -103,7 +103,7 @@ private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
 }
 
 @Composable
-private fun PlayerIcon(
+internal fun PlayerIcon(
     icon: ImageVector,
     tint: Color,
     modifier: Modifier = Modifier
