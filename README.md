@@ -417,17 +417,37 @@ We welcome community contributions, bug fixes, localization, and performance enh
 ## ✦ Legal Notice & License
 
 > [!IMPORTANT]
-> **Independent open-source software.**
+> **Independent open-source software — lawful use only.**
 >
-> Levyra is an independent project and is not affiliated with, endorsed by, or sponsored by Google, YouTube, Alphabet, Apple, Deezer, Spotify, TIDAL, or any other referenced service. All trademarks and third-party content remain the property of their respective owners.
+> Levyra is an independent, community-driven open-source software project developed for legitimate personal use, software engineering, education, research, testing, development, interoperability, and experimentation. Levyra is not designed, intended, promoted, or provided for copyright infringement, unauthorized access, piracy, or the unlawful circumvention of technological protection measures.
 >
-> Levyra does not operate a media-hosting service or distribute third-party copyrighted content. It runs on the user's device and may access third-party services or save media/metadata locally only at the user's request. Access and use remain subject to applicable law, licences, technical restrictions, and third-party terms.
+> **No affiliation.** Levyra is not affiliated with, endorsed by, sponsored by, authorized by, or officially connected with Google, YouTube, Alphabet, Apple, Deezer, Spotify, TIDAL, or any other third-party platform, service, company, or rights holder referenced by the software. All names, trademarks, logos, service marks, media, metadata, and other third-party materials remain the property of their respective owners.
 >
-> Users are solely responsible for ensuring they have the rights or lawful basis required to access, download, reproduce, convert, store, or otherwise use third-party content. Levyra is not intended to facilitate copyright infringement, unauthorized access, or unlawful circumvention of technological protection measures.
+> **Software, not a content provider.** Levyra does not operate a centralized media-hosting or content-distribution service, does not publish a catalogue of copyrighted works on behalf of its maintainers, and claims no ownership of third-party content. Levyra runs as client-side software on the user's device. Any playback, retrieval, processing, conversion, export, or local storage initiated through Levyra is performed at the user's request and under the user's control.
 >
-> Levyra is provided **"AS IS"**, without warranties of any kind, to the maximum extent permitted by law. To the maximum extent permitted by law, the authors, maintainers, contributors, and distributors are not liable for indirect, incidental, consequential, or similar damages arising from use or misuse of the software. Nothing excludes liability that cannot legally be excluded.
+> Distribution or availability of Levyra does **not** constitute authorization, permission, encouragement, or a licence to access, download, reproduce, convert, store, modify, redistribute, publicly perform, communicate, or otherwise use any third-party content.
 >
-> Levyra is licensed under the **[GNU GPL v3.0](LICENSE)**. The GPL applies to Levyra's source code and does not grant rights to third-party services, trademarks, media, metadata, or copyrighted content.
+> **Third-party rights and services.** Access to third-party websites, services, APIs, endpoints, media, metadata, or other resources remains subject to all applicable laws, copyright and related rights, licences, contractual terms, platform policies, access conditions, technical restrictions, and permissions imposed by the relevant rights holders or service providers. Levyra does not grant, extend, replace, bypass, supersede, or override any such rights, restrictions, licences, or permissions.
+>
+> **User responsibility.** Users are solely responsible for determining whether their particular use of Levyra and any third-party material is lawful and authorized. Before accessing, downloading, reproducing, converting, exporting, storing, sharing, or otherwise using third-party material, users must ensure that they possess all rights, permissions, licences, consents, or other lawful bases required for that use.
+>
+> The authors, maintainers, contributors, and distributors of Levyra do not authorize the software to be used for infringement of copyright or related rights, unauthorized access to protected systems or services, violation of contractual restrictions, or unlawful circumvention of technological protection measures.
+>
+> **No representation of legality.** Because laws, licences, contractual terms, and user rights vary by jurisdiction, service, content, and circumstances, Levyra and its maintainers make no representation or guarantee that any particular use of the software or third-party content is lawful, permitted, or compliant with the terms of any third-party service.
+>
+> **No control over third-party services.** Levyra is not responsible for the availability, accuracy, legality, reliability, security, policies, behaviour, content, or continued compatibility of any third-party service. Third-party providers may change, restrict, suspend, block, or discontinue their services or interfaces at any time.
+>
+> **NO WARRANTY.** To the maximum extent permitted by applicable law, Levyra is provided **"AS IS" and "AS AVAILABLE"**, without warranties or conditions of any kind, whether express, implied, statutory, or otherwise, including without limitation warranties of merchantability, fitness for a particular purpose, title, non-infringement, accuracy, availability, reliability, compatibility, security, or uninterrupted operation.
+>
+> **LIMITATION OF LIABILITY.** To the maximum extent permitted by applicable law, the authors, maintainers, contributors, copyright holders, and distributors of Levyra shall not be liable for any direct, indirect, incidental, special, exemplary, consequential, economic, or similar loss or damage arising from or relating to the installation, configuration, operation, modification, use, misuse, inability to use, or distribution of Levyra, or from access to or interaction with third-party services or content.
+>
+> This includes, without limitation, loss of data, loss of profits, service interruption, account restriction or suspension, incompatibility with third-party services, claims by third parties, or consequences resulting from the user's use of third-party content, except where such liability cannot lawfully be excluded or limited.
+>
+> **No transfer of third-party rights.** Nothing in Levyra, its source code, documentation, distribution, or licence grants any ownership interest, copyright licence, trademark licence, media licence, API entitlement, access entitlement, or other right in any third-party service or material.
+>
+> **Open-source licence.** Levyra is distributed under the **[GNU General Public License v3.0](LICENSE)**. The GPL governs the copying, modification, and redistribution of Levyra's source code. It does not grant rights to third-party trademarks, services, APIs, media, metadata, copyrighted works, or other third-party material accessed or processed through the software.
+>
+> **Mandatory law.** Nothing in this notice is intended to exclude, restrict, or waive any liability, obligation, defence, exception, limitation, or right that cannot legally be excluded, restricted, or waived under applicable law. If any provision of this notice is found unenforceable, the remaining provisions are intended to remain effective to the fullest extent permitted by law.
 
 <div align="center">
   <sub>Crafted for sovereign sound. If you enjoy Levyra, consider starring the repository on GitHub. ⭐</sub>
