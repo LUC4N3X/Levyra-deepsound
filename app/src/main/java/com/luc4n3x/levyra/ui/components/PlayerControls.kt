@@ -161,13 +161,16 @@ fun PlayerGlassIconButton(
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
-    gradientBorder: Boolean = true,
+    gradientBorder: Boolean = borderTop != LevyraPlayerDesign.GlassBorderTop ||
+        borderBottom != LevyraPlayerDesign.GlassBorderBottom,
     shape: Shape = CircleShape,
     enabled: Boolean = true
 ) {
     SpringIconButton(
         onClick = onClick,
         modifier = modifier.sizeIn(
+            // Dense player rows keep the full 48dp vertical target without reserving an
+            // invisible 48dp column around every 36–40dp circular control.
             minWidth = maxOf(size, DensePlayerHorizontalTouchTarget),
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
