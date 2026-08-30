@@ -548,9 +548,20 @@ class LevyraStrings private constructor(
     val lastBackupNever: String get() = if (code == "it") "Mai" else "Never"
     val backupLocation: String get() = if (code == "it") "Posizione backup" else "Backup location"
     val backupLocationSubtitle: String get() = if (code == "it") {
-        "I backup automatici restano nella memoria interna dell'app; usa Backup dati per salvare dove preferisci"
+        "Scegli dove salvare i backup automatici"
     } else {
-        "Automatic backups stay in app storage; use Create data backup to save anywhere"
+        "Choose where automatic backups are saved"
+    }
+    val backupLocationSafSelected: String get() = if (code == "it") {
+        "Cartella selezionata con il selettore di sistema"
+    } else {
+        "Folder selected with the system picker"
+    }
+    val backupLocationInternal: String get() = if (code == "it") "Usa memoria interna" else "Use internal storage"
+    val backupLocationInternalSubtitle: String get() = if (code == "it") {
+        "Torna alla cartella interna di Levyra"
+    } else {
+        "Go back to Levyra's internal folder"
     }
     val backupBeforeUpdates: String get() = if (code == "it") {
         "Backup prima degli aggiornamenti"
@@ -586,6 +597,18 @@ class LevyraStrings private constructor(
     } else {
         "Replaces favorites, playlists, history, queue and settings with the backup data."
     }
+    val preUpdateBackupFailedTitle: String get() = if (code == "it") {
+        "Backup prima dell'aggiornamento non riuscito"
+    } else {
+        "Backup before update failed"
+    }
+    val preUpdateBackupFailedBody: String get() = if (code == "it") {
+        "Il backup locale non è riuscito. Puoi riprovare o continuare con l'aggiornamento."
+    } else {
+        "The local backup failed. You can retry or continue with the update."
+    }
+    val preUpdateBackupRetry: String get() = if (code == "it") "Riprova" else "Retry"
+    val preUpdateBackupContinue: String get() = if (code == "it") "Aggiorna comunque" else "Update anyway"
     val restoreBackup: String get() = value("restoreBackup")
     val restoreBackupSubtitle: String get() = value("restoreBackupSubtitle")
     val playbackResilienceSection: String get() = value("playbackResilienceSection")

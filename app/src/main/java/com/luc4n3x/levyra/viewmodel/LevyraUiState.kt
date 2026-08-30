@@ -214,6 +214,8 @@ data class LevyraUiState(
     val backupPreview: VaultPreview? = null,
     val pendingRestoreUri: Uri? = null,
     val lastBackupAtMs: Long = 0L,
+    val backupLocationUri: String? = null,
+    val preUpdateBackupFailed: Boolean = false,
     val sharedMediaPreview: SharedMediaPreview? = null,
     val intelligenceSummary: LevyraIntelligenceSummary = LevyraIntelligenceSummary(),
     val backupMessage: String? = null,

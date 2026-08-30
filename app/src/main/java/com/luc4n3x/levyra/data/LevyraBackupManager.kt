@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.room.withTransaction
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.local.LEVYRA_DATABASE_VERSION
@@ -40,15 +42,16 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
+internal val LevyraVaultOperationMutex: Mutex = Mutex()
+
 class LevyraBackupManager(private val context: Context) {
     private val appContext = context.applicationContext
     private val database = LevyraDatabase.get(appContext)
     private val preferences = LevyraPreferences(appContext)
     private val followedArtistsStore = FollowedArtistsStore(appContext)
-    private val operationMutex = Mutex()
 
     suspend fun exportTo(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
-        operationMutex.withLock {
+        LevyraVaultOperationMutex.withLock {
             val output = appContext.contentResolver.openOutputStream(uri, "w")
                 ?: throw IOException("Impossibile aprire il file di backup")
             val result = output.use { writeArchive(it) }
@@ -58,36 +61,111 @@ class LevyraBackupManager(private val context: Context) {
     }
 
     suspend fun exportAutomatic(retentionCount: Int): LevyraBackupResult = withContext(Dispatchers.IO) {
-        operationMutex.withLock {
-            val directory = File(appContext.filesDir, AUTOMATIC_BACKUP_DIRECTORY)
-            if ((!directory.exists() && !directory.mkdirs()) || !directory.isDirectory) {
-                throw IOException("Impossibile creare la cartella dei backup automatici")
+        LevyraVaultOperationMutex.withLock {
+            val treeUri = preferences.backupTreeUri()
+                .takeIf { it.isNotBlank() }
+                ?.let { runCatching { Uri.parse(it) }.getOrNull() }
+            if (treeUri != null && hasPersistedTreeAccess(treeUri)) {
+                runCatching { exportAutomaticToTree(treeUri, retentionCount) }
+                    .getOrElse { error ->
+                        Timber.w(error, "SAF backup location unavailable, falling back to internal storage")
+                        exportAutomaticToInternal(retentionCount)
+                            .copy(message = "Backup salvato nella memoria interna")
+                    }
+            } else {
+                exportAutomaticToInternal(retentionCount)
             }
-            val canonicalDirectory = directory.canonicalFile
-            val timestamp = System.currentTimeMillis()
-            val target = File(canonicalDirectory, "$AUTOMATIC_BACKUP_PREFIX$timestamp$VAULT_EXTENSION")
-            val temporary = File(canonicalDirectory, ".$AUTOMATIC_BACKUP_PREFIX$timestamp.tmp")
-            checkBackupChild(canonicalDirectory, target)
-            checkBackupChild(canonicalDirectory, temporary)
-            val result = try {
-                val archiveResult = temporary.outputStream().buffered().use { writeArchive(it) }
-                if (!temporary.renameTo(target)) throw IOException("Impossibile finalizzare il backup automatico")
-                archiveResult
-            } finally {
-                if (temporary.exists()) temporary.delete()
-            }
-            runCatching {
-                pruneAutomaticBackups(canonicalDirectory, retentionCount.coerceIn(1, MAX_AUTOMATIC_BACKUPS))
-            }.onFailure { error ->
-                Timber.w(error, "Automatic backup retention cleanup failed")
-            }
-            preferences.setLastBackupAt(System.currentTimeMillis())
-            result
         }
     }
 
+    private suspend fun exportAutomaticToInternal(retentionCount: Int): LevyraBackupResult {
+        val directory = File(appContext.filesDir, AUTOMATIC_BACKUP_DIRECTORY)
+        if ((!directory.exists() && !directory.mkdirs()) || !directory.isDirectory) {
+            throw IOException("Impossibile creare la cartella dei backup automatici")
+        }
+        val canonicalDirectory = directory.canonicalFile
+        val timestamp = System.currentTimeMillis()
+        val target = File(canonicalDirectory, "$AUTOMATIC_BACKUP_PREFIX$timestamp$VAULT_EXTENSION")
+        val temporary = File(canonicalDirectory, ".$AUTOMATIC_BACKUP_PREFIX$timestamp.tmp")
+        checkBackupChild(canonicalDirectory, target)
+        checkBackupChild(canonicalDirectory, temporary)
+        val result = try {
+            val archiveResult = temporary.outputStream().buffered().use { writeArchive(it) }
+            if (!temporary.renameTo(target)) throw IOException("Impossibile finalizzare il backup automatico")
+            archiveResult
+        } finally {
+            if (temporary.exists()) temporary.delete()
+        }
+        runCatching {
+            pruneAutomaticBackups(canonicalDirectory, retentionCount.coerceIn(1, MAX_AUTOMATIC_BACKUPS))
+        }.onFailure { error ->
+            Timber.w(error, "Automatic backup retention cleanup failed")
+        }
+        preferences.setLastBackupAt(System.currentTimeMillis())
+        return result
+    }
+
+    private fun hasPersistedTreeAccess(treeUri: Uri): Boolean =
+        appContext.contentResolver.persistedUriPermissions.any {
+            it.uri == treeUri && it.isReadPermission && it.isWritePermission
+        }
+
+    private suspend fun exportAutomaticToTree(treeUri: Uri, retentionCount: Int): LevyraBackupResult {
+        val resolver = appContext.contentResolver
+        val name = "$AUTOMATIC_BACKUP_PREFIX${System.currentTimeMillis()}$VAULT_EXTENSION"
+        val documentUri = DocumentsContract.createDocument(resolver, treeUri, "application/zip", name)
+            ?: throw IOException("Impossibile creare il backup nella cartella selezionata")
+        val result = try {
+            resolver.openOutputStream(documentUri, "w")?.use { writeArchive(it) }
+                ?: throw IOException("Impossibile scrivere il backup nella cartella selezionata")
+        } catch (error: Throwable) {
+            runCatching { DocumentsContract.deleteDocument(resolver, documentUri) }
+            throw error
+        }
+        runCatching {
+            pruneSafBackups(treeUri, retentionCount.coerceIn(1, MAX_AUTOMATIC_BACKUPS))
+        }.onFailure { error ->
+            Timber.w(error, "SAF backup retention cleanup failed")
+        }
+        preferences.setLastBackupAt(System.currentTimeMillis())
+        return result
+    }
+
+    private fun pruneSafBackups(treeUri: Uri, retentionCount: Int) {
+        val resolver = appContext.contentResolver
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri)
+        )
+        val candidates = mutableListOf<Pair<String, String>>()
+        resolver.query(
+            childrenUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            while (cursor.moveToNext()) {
+                val displayName = cursor.getString(nameColumn)
+                if (isAutomaticBackupName(displayName)) {
+                    candidates.add(cursor.getString(idColumn) to displayName)
+                }
+            }
+        }
+        candidates
+            .sortedByDescending { it.second }
+            .drop(retentionCount)
+            .forEach { (documentId, _) ->
+                val documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+                runCatching { DocumentsContract.deleteDocument(resolver, documentUri) }
+                    .onFailure { error -> Timber.w(error, "Unable to delete SAF backup $documentId") }
+            }
+    }
+
     suspend fun inspect(uri: Uri): VaultPreview = withContext(Dispatchers.IO) {
-        operationMutex.withLock {
+        LevyraVaultOperationMutex.withLock {
             val input = appContext.contentResolver.openInputStream(uri)
                 ?: throw IOException("Impossibile leggere il backup")
             input.use { stream ->
@@ -103,16 +181,17 @@ class LevyraBackupManager(private val context: Context) {
                         if (entryCount > MAX_ZIP_ENTRIES) throw IOException("Backup non valido: troppe voci ZIP")
                         if (entry.isDirectory) throw IOException("Backup non valido: voce ZIP directory")
                         if (!vaultEntryAllowed(entry.name)) throw IOException("Backup non valido: voce ZIP inattesa ${entry.name}")
-                        if (entry.size > MAX_ENTRY_BYTES) throw IOException("Backup troppo grande")
-                        if (entry.size > 0L) {
-                            totalBytes += entry.size
-                            if (totalBytes > MAX_TOTAL_BYTES) throw IOException("Backup troppo grande")
-                        }
                         when {
                             entry.name == MANIFEST_ENTRY -> manifestBytes = readZipEntry(zip, MAX_ENTRY_BYTES)
                             entry.name == LEGACY_PAYLOAD_ENTRY -> hasLegacyPayload = true
                             else -> sectionNames.add(entry.name)
                         }
+                        totalBytes += if (entry.name == MANIFEST_ENTRY) {
+                            (manifestBytes?.size ?: 0).toLong()
+                        } else {
+                            countZipEntry(zip, MAX_ENTRY_BYTES)
+                        }
+                        if (totalBytes > MAX_TOTAL_BYTES) throw IOException("Backup troppo grande")
                         zip.closeEntry()
                     }
                     val manifest = manifestBytes?.let { bytes ->
@@ -140,7 +219,7 @@ class LevyraBackupManager(private val context: Context) {
     }
 
     suspend fun restoreFrom(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
-        operationMutex.withLock {
+        LevyraVaultOperationMutex.withLock {
             val entries = readArchiveEntries(uri)
             val target = if (entries.containsKey(LEGACY_PAYLOAD_ENTRY)) {
                 legacySnapshot(entries)
@@ -288,6 +367,10 @@ class LevyraBackupManager(private val context: Context) {
         val databaseVersion = manifest.optInt("databaseVersion", 0)
         if (databaseVersion > LEVYRA_DATABASE_VERSION) {
             throw IOException("Backup creato da una versione più recente dell'app")
+        }
+        val missing = missingRequiredVaultSections(entries.keys)
+        if (missing.isNotEmpty()) {
+            throw IOException("Backup non valido: sezioni mancanti ${missing.sorted().joinToString(", ")}")
         }
         validateSectionChecksums(entries, manifest)
         val settingsBytes = entries[SETTINGS_ENTRY] ?: throw IOException("Dati impostazioni del backup mancanti")
@@ -709,6 +792,18 @@ class LevyraBackupManager(private val context: Context) {
         return buffer.toByteArray()
     }
 
+    private fun countZipEntry(zip: ZipInputStream, limit: Long): Long {
+        val chunk = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = zip.read(chunk)
+            if (read < 0) break
+            total += read
+            if (total > limit) throw IOException("Backup troppo grande")
+        }
+        return total
+    }
+
     private fun sha256Hex(digest: ByteArray): String = digest.joinToString("") { "%02x".format(it) }
 
     private fun combinedChecksum(sections: Map<String, SectionInfo>): String {
@@ -792,7 +887,7 @@ class LevyraBackupManager(private val context: Context) {
         const val QUEUE_ENTRY = "data/queue.json"
         const val MAX_ZIP_ENTRIES = 16
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
-        const val MAX_TOTAL_BYTES = 192L * 1024L * 1024L
+        const val MAX_TOTAL_BYTES = 96L * 1024L * 1024L
         const val MAX_AUTOMATIC_BACKUPS = 12
         const val AUTOMATIC_BACKUP_DIRECTORY = "backups"
         const val AUTOMATIC_BACKUP_PREFIX = "levyra-auto-backup-"
@@ -827,6 +922,18 @@ internal fun vaultEntryAllowed(name: String): Boolean {
     if (name.isEmpty() || name.startsWith("/") || name.contains("..") || name.contains('\\')) return false
     return name in LevyraBackupManager.ALLOWED_VAULT_ENTRIES
 }
+
+internal val REQUIRED_VAULT_ENTRIES = setOf(
+    LevyraBackupManager.SETTINGS_ENTRY,
+    LevyraBackupManager.FAVORITES_ENTRY,
+    LevyraBackupManager.FOLLOWED_ARTISTS_ENTRY,
+    LevyraBackupManager.PLAYLISTS_ENTRY,
+    LevyraBackupManager.HISTORY_ENTRY,
+    LevyraBackupManager.QUEUE_ENTRY
+)
+
+internal fun missingRequiredVaultSections(entryNames: Collection<String>): Set<String> =
+    REQUIRED_VAULT_ENTRIES - entryNames
 
 internal fun isAutomaticBackupName(name: String): Boolean {
     if (!name.startsWith("levyra-auto-backup-")) return false

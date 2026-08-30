@@ -64,4 +64,23 @@ class AutomaticBackupPolicyTest {
         assertTrue(name.endsWith(".levyra"))
         assertFalse(name.contains(" "))
     }
+
+    @Test
+    fun missingRequiredVaultSectionIsRejected() {
+        val complete = setOf(
+            "manifest.json",
+            "data/settings.json",
+            "data/favorites.json",
+            "data/followed_artists.json",
+            "data/playlists.json",
+            "data/history.json",
+            "data/queue.json"
+        )
+        assertEquals(emptySet<String>(), missingRequiredVaultSections(complete))
+        assertEquals(setOf("data/playlists.json"), missingRequiredVaultSections(complete - "data/playlists.json"))
+        assertEquals(
+            setOf("data/favorites.json", "data/queue.json"),
+            missingRequiredVaultSections(complete - "data/favorites.json" - "data/queue.json")
+        )
+    }
 }

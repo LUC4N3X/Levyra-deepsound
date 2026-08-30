@@ -311,6 +311,12 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_VAULT_LAST_BACKUP] = value.coerceAtLeast(0L) }
     }
 
+    fun backupTreeUri(): String = read("") { it[KEY_VAULT_BACKUP_TREE_URI].orEmpty() }
+
+    fun setBackupTreeUri(value: String) {
+        write { it[KEY_VAULT_BACKUP_TREE_URI] = value }
+    }
+
     fun jamDisplayName(): String = read("") { it[KEY_JAM_DISPLAY_NAME].orEmpty() }
 
     fun setJamDisplayName(value: String) {
@@ -792,6 +798,7 @@ class LevyraPreferences(context: Context) {
         val KEY_BACKUP_CHARGING_ONLY = booleanPreferencesKey("automatic_backup_charging_only")
         val KEY_BACKUP_PRE_UPDATE = booleanPreferencesKey("automatic_backup_pre_update")
         val KEY_VAULT_LAST_BACKUP = longPreferencesKey("vault_last_backup_at")
+        val KEY_VAULT_BACKUP_TREE_URI = stringPreferencesKey("vault_backup_tree_uri")
     }
 }
 

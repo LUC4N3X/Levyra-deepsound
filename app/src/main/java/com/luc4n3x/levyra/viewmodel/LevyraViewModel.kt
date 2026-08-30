@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.viewmodel
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.SystemClock
 import android.app.Application
@@ -697,6 +698,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             downloadSettings = startupSettings.downloadSettings,
             backupSettings = startupSettings.backupSettings,
             lastBackupAtMs = preferences.lastBackupAt(),
+            backupLocationUri = preferences.backupTreeUri().takeIf { it.isNotBlank() },
             playbackDiagnostics = resolver.playbackDiagnostics(),
             recognitionAvailable = LevyraRecognitionCenter.isAvailable
         )
@@ -3671,6 +3673,44 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearBackupMessage() {
         _state.update { it.copy(backupMessage = null) }
+    }
+
+    fun setBackupLocation(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val resolver = getApplication<Application>().contentResolver
+            val granted = runCatching {
+                resolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }.isSuccess
+            if (granted) {
+                preferences.setBackupTreeUri(uri.toString())
+                _state.update { it.copy(backupLocationUri = uri.toString()) }
+            } else {
+                _state.update { it.copy(backupMessage = "Posizione backup non disponibile") }
+            }
+        }
+    }
+
+    fun clearBackupLocation() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value.backupLocationUri?.let { raw ->
+                runCatching {
+                    val resolver = getApplication<Application>().contentResolver
+                    resolver.releasePersistableUriPermission(
+                        Uri.parse(raw),
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                }
+            }
+            preferences.setBackupTreeUri("")
+            _state.update { it.copy(backupLocationUri = null) }
+        }
+    }
+
+    fun setPreUpdateBackupFailed(value: Boolean) {
+        _state.update { it.copy(preUpdateBackupFailed = value) }
     }
 
     fun refreshPlaybackDiagnostics(): String {
