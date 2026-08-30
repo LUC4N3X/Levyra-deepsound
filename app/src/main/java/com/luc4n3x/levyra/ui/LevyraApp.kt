@@ -3480,7 +3480,7 @@ private fun ArtistTopTrackCard(
                         Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = LevyraMuted, modifier = Modifier.size(40.dp))
                     }
                 }
-                
+
                 Box(
                     modifier = Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
@@ -3488,7 +3488,7 @@ private fun ArtistTopTrackCard(
                         )
                     )
                 )
-                
+
                 Box(
                     modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
                 ) {
@@ -3507,7 +3507,7 @@ private fun ArtistTopTrackCard(
                         }
                     }
                 }
-                
+
                 Box(modifier = Modifier.align(Alignment.Center)) {
                    if (isResolving) {
                         CircularProgressIndicator(modifier = Modifier.size(28.dp), color = LevyraCyan, strokeWidth = 3.dp)
@@ -3524,7 +3524,7 @@ private fun ArtistTopTrackCard(
                    }
                 }
             }
-            
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -3564,7 +3564,7 @@ private fun ArtistPopularTracksShelf(
     val distinctTracks = remember(tracks) {
         tracks.distinctBy { it.id.ifBlank { "${it.artist}|${it.title}" } }
     }
-    
+
     if (distinctTracks.isEmpty()) return
 
     val firstTrack = distinctTracks.first()
@@ -7193,7 +7193,7 @@ private fun HomeEditorialSpotlight(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             Text(
                 text = track.title,
                 color = Color.White,
@@ -7204,7 +7204,7 @@ private fun HomeEditorialSpotlight(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
