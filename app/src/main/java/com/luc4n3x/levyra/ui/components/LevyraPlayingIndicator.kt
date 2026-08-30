@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.LocalLevyraStrings
 
 private const val BarCount = 4
 private val BarDurations = intArrayOf(620, 480, 720, 540)
@@ -34,7 +35,7 @@ fun LevyraPlayingIndicator(
     color: Color = Color.White,
     size: Dp = 16.dp,
     barWidth: Dp = 2.5.dp,
-    contentDescription: String? = null
+    contentDescription: String? = LocalLevyraStrings.current.playing
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val bars = rememberPlayingIndicatorBars(playing && animationsEnabled)
