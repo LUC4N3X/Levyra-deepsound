@@ -51,6 +51,12 @@ class MotionArtworkDestinationPolicyTest {
                 "https://video-ssl.itunes.apple.com:8443/video.m3u8".toHttpUrl()
             )
         )
+        assertFalse(
+            MotionArtworkDestinationPolicy.isAllowedUrl(
+                "apple-motion",
+                "https://user:pass@video-ssl.itunes.apple.com/video.m3u8".toHttpUrl()
+            )
+        )
     }
 
     @Test
