@@ -1,80 +1,102 @@
-# Levyra 2.5.0
+# Levyra 2.5.1
 
 ## Highlights
 
-Levyra 2.5.0 is a substantial Android release built on the 126 commits merged after 2.3.33. It expands discovery and personal listening features, strengthens playback recovery and resume behavior, adds new system-level quick controls, upgrades the visual experience around artwork and lyrics, and keeps the privacy-first local data model intact.
+Levyra 2.5.1 is a feature and reliability update focused on the parts of the app you use every day: getting music playing, moving it to another screen, recognizing a song, keeping your library safe, and making network behavior easier to control.
 
-## Discovery, search and personal listening
+Google Cast is now available in the upstream Android build, music recognition has grown into a complete on-device flow, and Levyra Jam can synchronize listening across devices on the same local network. Playback also gains a new SABR delivery path and stronger recovery when a normal stream candidate cannot be used.
 
-- Added Levyra Mix with multiple mix styles, a familiar-to-discovery balance, bounded candidate ranking, deduplication, cancellation-safe generation and playback through the existing queue engine.
-- Added Your Sound, a fully on-device listening view covering 7 days, 30 days, 6 months and All Time, derived from existing listening history rather than a remote profile.
-- Listening Pulse now includes a 24-hour listening rhythm and artist-distribution views, with lifetime aggregates that remain accurate after raw events are pruned.
-- Search suggestions and YouTube Music discovery were hardened so empty structural responses no longer stop fallback handling and provider labels are not exposed as fake artist credits.
-- Artist resolution now prefers authoritative identities when names collide, and the search top result can expose relevant artist tracks and play-count context without duplicating the primary result.
-- Automatic song matching now scores real candidates instead of trusting an unrelated first result, while preserving existing fallbacks when confidence is insufficient.
+The release stays local-first. Listening data, recognition history, followed artists, settings and backups remain owned by the app on your device unless you explicitly use an external integration.
 
-## Playback, queue and system controls
+## ✦ Cast and shared listening
 
-- Added a service-owned sleep timer with 15, 30, 45 and 60 minute presets, end-of-track behavior and explicit cancellation.
-- Added a music-recognition Quick Settings tile and launcher shortcuts for Search, Library and recognition, reusing the existing navigation and recognition owners.
-- Queue rows can now be removed with a swipe and restored through a bounded single-entry Undo path.
-- Playback resume state now keeps the saved position across controller connection, queue reconstruction, UI resubscription and real MediaSession item resolution instead of restarting at zero.
-- Playback recovery now handles eligible remote and timeout failures more consistently while keeping fatal-error handling separate.
-- Crossfade timing follows playback speed and keeps transition-player playback parameters synchronized with the primary player.
-- Download task projections avoid loading full track payloads when only lightweight active-task state is required.
+Levyra can now hand playback to Google Cast devices in the upstream build while keeping the existing player and queue as the source of truth for the handoff. The F-Droid flavor keeps its separate no-op Cast backend rather than pulling Google Play Cast dependencies into that build.
 
-## Artwork, lyrics and interface
+Levyra Jam adds another way to listen together without an account or Levyra cloud service. Devices on the same Wi-Fi can create or join a local session, synchronize playback and share queue changes according to the host permissions.
 
-- Added Living Artwork as the Song Mode fallback when Canvas is enabled but no real Canvas exists, using AGSL on Android 13+ and a Compose fallback below it.
-- Added a direct Canvas/Living Artwork toggle in Now Playing while preserving real Canvas priority and native Video Mode separation.
-- Added a full-screen zoomable artwork preview with save-to-gallery through MediaStore and safer bitmap/file handling across supported Android versions.
-- Lyrics can be selected with long-press and exported as a 1080x1080 Levyra share card; TalkBack actions remain available for the same flow.
-- Fixed karaoke word spacing for providers that return trailing whitespace in word-level timing data.
-- Introduced a shared typography rhythm with role-specific line heights and letter spacing so accented characters, descenders and multi-line metadata render more reliably.
-- Connected list surfaces, playing indicators, press feedback and shimmer behavior were consolidated into reusable Levyra UI primitives instead of parallel one-off implementations.
+Jam sessions use session codes, host authority and an authenticated challenge-response handshake. Guest queue access can remain restricted or be opened for a collaborative session.
 
-## Audio and Android Auto
+## ✦ Music recognition 2.0
 
-- Reworked the Android Audio settings screen into grouped Streaming Quality, Equalizer, Spatial, Dynamics and Playback sections.
-- Added an interactive 10-band equalizer curve with per-band accessibility semantics, reset behavior and existing Levyra audio-state ownership.
-- Android Auto browsing now honors bounded page/page-size requests down to the data layer instead of relying on the previous fixed list cut, including stable paging for downloads.
-- Google-hosted artwork upscaling now uses one validated helper and avoids corrupting signed/query-bearing URLs.
+Music recognition is now a full Levyra feature instead of a single recognition action.
 
-## Local data and compatibility
+- Shazam-compatible acoustic fingerprint matching can run without a user API credential.
+- Recognition can use the microphone or, on supported Android versions, capture device playback through MediaProjection.
+- An optional AudD fallback can be configured, with its credential stored through Android Keystore-backed storage.
+- Recognition history is stored locally and can be surfaced through the recognition screen, notifications, Quick Settings and the home-screen widget.
+- Catalog matching connects recognized tracks back to Levyra when a suitable result is available.
 
-- Counted plays now require meaningful listening time, or a genuine completion for short tracks, instead of treating very short listens as full plays.
-- Lifetime listening aggregates use non-destructive Room migrations and an idempotent backfill so All Time statistics survive raw-event pruning.
-- Existing favorites, playlists, queue, downloads, settings, history and backups remain within the compatibility contract.
-- No account system, advertising identifier, analytics pipeline or user-tracking system is introduced by this release.
+The recognition pipeline is layered so one provider failing does not automatically end the whole attempt.
 
-## YouTube and build maintenance
+## ✦ Playback and YouTube resilience
 
-- Refreshed the bundled YouTube player configuration and player-date metadata used by Levyra's extractor paths.
-- Kept current resolver/privacy boundaries and compatibility fallbacks while improving search and metadata parsing around current YouTube Music responses.
-- Updated the Gradle wrapper and selected Android/networking dependencies already merged on `main`, including the current Android Gradle plugin and OkHttp line.
+This release adds a native SABR delivery path alongside Levyra's existing stream handling. The player can assemble SABR segments, read the UMP transport and recover through alternate playback candidates when the first path is not usable.
+
+Playback resolver and compatibility policy work was also tightened around current YouTube behavior. The goal is practical: fewer dead starts and fewer cases where a temporary stream or delivery failure becomes a permanent playback failure.
+
+Queue persistence and radio continuation received additional guardrails, while direct playback remains higher priority than optional artwork, recognition or enrichment work.
+
+## ✦ Network controls you can actually use
+
+Levyra now exposes a dedicated network configuration layer instead of forcing every request through one fixed setup.
+
+You can choose built-in DNS-over-HTTPS providers such as Cloudflare, Google, AdGuard and Quad9, configure a custom HTTPS resolver, or route compatible traffic through HTTP or SOCKS proxies. Proxy credentials are stored using Android Keystore-backed storage, and the app includes safeguards intended to avoid proxy loops.
+
+A network test path is available from settings, and direct media streams can bypass the configured proxy when that option is enabled. These controls change routing only when you choose them; Levyra does not add an analytics or tracking proxy.
+
+## ✦ Safer local backups
+
+Levyra Vault has been expanded into a more complete local backup and restore system. Versioned `.levyra` archives can carry settings, favorites, playlists, followed artists, history and queue state without requiring an online account.
+
+Restore now includes manifest and required-section validation, SHA-256 integrity checks, compatibility preview and rollback protection before existing local data is replaced. Automatic backup policy also supports manual, scheduled and pre-update snapshots, selectable retention and Android SAF destinations, with internal storage kept as the fallback.
+
+Database migrations for the new local stores are included together with migration coverage. No manual data migration is required for an existing Levyra installation.
+
+## ✦ Artists, artwork and audio setup
+
+Followed-artist storage and Release Radar were strengthened so artist identity and new-release checks are less dependent on mutable display text. Artist and YouTube Music resolution also received additional identity handling for albums and artist pages.
+
+Motion artwork now has broader Apple Music artwork selection and more defensive matching and URL validation. Static artwork remains the fallback, and motion artwork remains decorative in Song mode rather than replacing native Video mode.
+
+Audio settings also gain AutoEQ import support for bringing compatible headphone EQ data into Levyra's existing equalizer setup. Settings search has been expanded so the growing audio, network and integration controls are easier to find.
+
+## ✦ Integrations and privacy
+
+Levyra now includes scrobbling support for Last.fm and ListenBrainz with bounded deduplication. These integrations are optional. Using them is an explicit user choice and does not change Levyra's default local listening model.
+
+The app still does not add a Levyra account, advertising identifier or analytics pipeline. Local listening statistics, recognition history, playlists, queue state and backups remain local unless a feature explicitly requires a third-party request chosen by the user.
 
 ## Validation
 
-- This release metadata is based on the current `main` history from Android 2.3.33 commit `e293fc63` through pre-release head `e8a0acc1`, a range of 126 commits.
-- The merged feature work includes focused regression coverage for playback resume, recovery classification, sleep timer behavior, queue-removal Undo, search identity and suggestions, Android Auto pagination, counted-play policy, lifetime listening projections, Living Artwork support, artwork preview behavior, localization and related UI/domain contracts.
-- The final signed 2.5.0 artifact has not been claimed as validated before publication. The existing release workflow remains responsible for release-note validation, Android lint, signed release assembly, APK metadata verification, signer-certificate verification, checksum generation and published-asset verification.
-- Physical-device behavior, Android Auto host behavior and long-session runtime characteristics remain represented only by the direct evidence already attached to the underlying merged changes; this version bump does not invent a new device test run.
+The 2.5.1 release content was reviewed against the current Android `main` changes after tag `v2.5.0`, including the Cast source-set split, recognition module and providers, Jam transport and protocol, SABR playback path, network configuration, backup changes, Room schemas and migrations, AutoEQ importer, artist/release handling and motion-artwork updates.
+
+The repository contains focused automated coverage for SABR parsing and assembly, playback candidate recovery, network configuration and testing, Jam protocol/security/session codes, recognition providers and fingerprinting, AutoEQ persistence/import, artist identity, backup policy and Room migrations.
+
+The final signed artifact is not claimed as already validated by this document. The existing `Publish Release APK` workflow is responsible for release-note validation, Android lint, signed release assembly, APK version verification, signer-certificate verification, SHA-256 generation, GitHub Release publication and published-asset verification before the release job can complete successfully.
+
+No new physical-device, Android Auto, Cast receiver, long-session memory or OEM-specific validation run is claimed as part of this version metadata update. Those areas remain unverified here unless separate direct evidence is attached elsewhere in the repository history.
 
 ## Notes
 
-This is an Android-only release. Levyra Desktop remains independently versioned and is not changed by 2.5.0.
+This is an Android-only release. Levyra Desktop remains independently versioned and is not changed by 2.5.1.
+
+The GitHub/upstream Android build can include Google Cast support. F-Droid keeps its separate build flavor and does not inherit the Google Play Cast implementation.
 
 ## Versioning
 
-- Version name: `2.5.0`
-- Version code: `2050000`
+- Version name: `2.5.1`
+- Version code: `2050100`
 
-`gradle.properties`, the Android Gradle fallbacks, README version wiring, architecture metadata, Android platform badge and Fastlane changelogs are aligned to 2.5.0. The separate "Latest release" badge intentionally remains on the most recently published GitHub release until 2.5.0 is actually published.
+`gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes and Fastlane changelogs are aligned to 2.5.1. Levyra Desktop continues to use its own version file and release tags.
 
 ## Upgrade notes
 
-No manual migration is required. The Room migrations included in the merged Android changes are non-destructive and are designed to preserve existing libraries, favorites, playlists, listening history, downloads, settings, playback state and backups. GitHub installations continue to use Levyra's signed GitHub release/update path, while F-Droid builds remain on the reproducible F-Droid channel and follow F-Droid's own build and index schedule.
+No manual migration is required. Install the update normally over an existing Levyra installation from the same compatible signing channel. The included Room migrations and backup compatibility work are designed to preserve existing favorites, playlists, followed artists, history, queue, settings and other local app state.
+
+GitHub installations continue to use Levyra's signed GitHub release and update path. F-Droid, IzzyOnDroid and other distribution channels follow their own build or index schedules, so availability can lag behind the GitHub release.
 
 ## Final note
 
-Levyra 2.5.0 moves the Android app forward as one coherent release: richer local discovery, more trustworthy listening insights, stronger playback recovery, direct system controls, a more distinctive artwork and lyric experience, and continued separation between user-facing features and the low-latency playback owners underneath them.
+Levyra 2.5.1 makes the Android app more capable without moving ownership away from the user. You can cast to another screen, identify what is playing, listen together on a local network, recover from more playback failures and keep a stronger local backup of the app state.
+
+The new network and integration options are there when you want them. The default remains the same: direct playback, local data and no Levyra account required.
