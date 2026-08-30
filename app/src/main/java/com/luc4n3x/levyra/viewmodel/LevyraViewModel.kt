@@ -3712,29 +3712,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val resolver = getApplication<Application>().contentResolver
+                val newUri = uri.toString()
+                val previous = preferences.backupTreeUri().takeIf { it.isNotBlank() }
                 resolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
                 try {
-                    preferences.persistBackupTreeUri(uri.toString())
+                    preferences.persistBackupTreeUri(newUri)
                 } catch (persistError: Throwable) {
                     if (persistError is CancellationException) throw persistError
-                    runCatching {
-                        resolver.releasePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                        )
-                    }.onFailure { releaseError ->
-                        if (releaseError is CancellationException) throw releaseError
-                        Timber.w(releaseError, "Unable to release backup location permission after persistence failure")
+                    if (previous != newUri) {
+                        runCatching {
+                            resolver.releasePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                            )
+                        }.onFailure { releaseError ->
+                            if (releaseError is CancellationException) throw releaseError
+                            Timber.w(releaseError, "Unable to release backup location permission after persistence failure")
+                        }
                     }
                     _state.update { it.copy(backupMessage = "Posizione backup non disponibile") }
                     return@launch
                 }
-                val previous = preferences.backupTreeUri().takeIf { it.isNotBlank() }
-                _state.update { it.copy(backupLocationUri = uri.toString()) }
-                if (previous != null && previous != uri.toString()) {
+                _state.update { it.copy(backupLocationUri = newUri) }
+                if (previous != null && previous != newUri) {
                     runCatching {
                         resolver.releasePersistableUriPermission(
                             Uri.parse(previous),
