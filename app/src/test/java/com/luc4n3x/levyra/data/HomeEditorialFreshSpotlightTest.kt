@@ -63,6 +63,43 @@ class HomeEditorialFreshSpotlightTest {
     }
 
     @Test
+    fun invalidOrNonFreshReleaseDatesDoNotSuppressOrdinaryCandidates() {
+        val now = Calendar.getInstance().apply {
+            set(2026, Calendar.AUGUST, 30, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val chart = track("chart")
+        val quickPick = track("quick")
+        val invalidDates = listOf("", "not-a-date", "2026-08-31", "2026-08-01")
+
+        invalidDates.forEachIndexed { index, releaseDate ->
+            val candidate = track("invalid-$index", releaseDate = releaseDate)
+            val candidates = HomeEditorialEngine.buildSpotlightCandidates(
+                showNewReleases = true,
+                newReleaseTracks = listOf(candidate),
+                showPersonalOrbit = false,
+                personalTracks = emptyList(),
+                showResonance = false,
+                resonanceTracks = emptyList(),
+                quickPickTracks = listOf(quickPick),
+                fallbackSections = emptyList(),
+                chartTracks = listOf(chart),
+                nowMillis = now
+            )
+
+            assertTrue(candidates.any { it.track.id == "chart" })
+            assertTrue(candidates.any { it.track.id == "quick" })
+            assertTrue(
+                candidates.none {
+                    it.track.id == candidate.id &&
+                        (it.kind == HomeSpotlightKind.ReleasedToday ||
+                            it.kind == HomeSpotlightKind.JustReleased)
+                }
+            )
+        }
+    }
+
+    @Test
     fun ordinarySpotlightCandidatesRemainAsFallbackWithoutFreshReleases() {
         val chart = track("chart")
         val quickPick = track("quick")
