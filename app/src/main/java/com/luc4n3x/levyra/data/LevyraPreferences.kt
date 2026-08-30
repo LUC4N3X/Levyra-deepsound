@@ -317,6 +317,10 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_VAULT_BACKUP_TREE_URI] = value }
     }
 
+    suspend fun persistBackupTreeUri(value: String) {
+        dataStore.edit { it[KEY_VAULT_BACKUP_TREE_URI] = value }
+    }
+
     fun vaultRuntimeState(): Pair<Long, String> = read(0L to "") {
         (it[KEY_VAULT_LAST_BACKUP] ?: 0L) to it[KEY_VAULT_BACKUP_TREE_URI].orEmpty()
     }

@@ -3716,8 +3716,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 )
+                try {
+                    preferences.persistBackupTreeUri(uri.toString())
+                } catch (persistError: Throwable) {
+                    if (persistError is CancellationException) throw persistError
+                    runCatching {
+                        resolver.releasePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        )
+                    }.onFailure { releaseError ->
+                        if (releaseError is CancellationException) throw releaseError
+                        Timber.w(releaseError, "Unable to release backup location permission after persistence failure")
+                    }
+                    _state.update { it.copy(backupMessage = "Posizione backup non disponibile") }
+                    return@launch
+                }
                 val previous = preferences.backupTreeUri().takeIf { it.isNotBlank() }
-                preferences.setBackupTreeUri(uri.toString())
                 _state.update { it.copy(backupLocationUri = uri.toString()) }
                 if (previous != null && previous != uri.toString()) {
                     runCatching {
@@ -3725,6 +3740,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             Uri.parse(previous),
                             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                         )
+                    }.onFailure { releaseError ->
+                        if (releaseError is CancellationException) throw releaseError
+                        Timber.w(releaseError, "Unable to release previous backup location permission")
                     }
                 }
             } catch (cancelled: CancellationException) {
