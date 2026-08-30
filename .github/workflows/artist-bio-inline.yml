@@ -1,0 +1,239 @@
+name: Artist Biography Inline Refinement
+
+on:
+  push:
+    paths:
+      - '.github/workflows/artist-bio-inline.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refine-artist-biography:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/ui-evolution-living-capsule-home-artist-collections
+          fetch-depth: 0
+
+      - name: Replace biography card with inline editorial section
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+          start_marker = 'private data class ArtistBiographyPresentation('
+          end_marker = '@Composable\nprivate fun ArtistReleaseRow('
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+
+          replacement = '''private data class ArtistBiographyPresentation(
+              val previewText: String,
+              val paragraphs: List<String>,
+              val sourceText: String,
+              val showSource: Boolean
+          )
+
+          private fun buildArtistBiographyPresentation(
+              biography: ArtistBiography,
+              paragraphs: List<String>,
+              summary: String
+          ): ArtistBiographyPresentation {
+              val previewText = normalizeBiographyPreview(
+                  text = biography.text,
+                  paragraphs = paragraphs,
+                  summary = summary
+              )
+              val sourceLabel = biography.sourceLabel.trim()
+              val wikipediaSource = sourceLabel.equals("Wikipedia", ignoreCase = true)
+              return ArtistBiographyPresentation(
+                  previewText = previewText,
+                  paragraphs = paragraphs.ifEmpty { listOf(previewText) },
+                  sourceText = if (wikipediaSource) "Wikipedia" else sourceLabel,
+                  showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
+              )
+          }
+
+          @Composable
+          private fun ArtistBio(
+              biography: ArtistBiography,
+              accentStart: Color,
+              accentEnd: Color,
+              modifier: Modifier = Modifier
+          ) {
+              val strings = LocalLevyraStrings.current
+              val editorial = remember(biography.text, biography.description, biography.languageCode) {
+                  artistBiographyEditorial(
+                      text = biography.text,
+                      description = biography.description,
+                      languageCode = biography.languageCode
+                  )
+              }
+              val presentation = remember(
+                  biography.text,
+                  biography.sourceLabel,
+                  editorial.paragraphs,
+                  editorial.summary
+              ) {
+                  buildArtistBiographyPresentation(
+                      biography = biography,
+                      paragraphs = editorial.paragraphs,
+                      summary = editorial.summary
+                  )
+              }
+              val biographyText = remember(presentation.paragraphs, presentation.previewText) {
+                  presentation.paragraphs
+                      .filter { it.isNotBlank() }
+                      .joinToString("\\n\\n")
+                      .ifBlank { presentation.previewText }
+              }
+              var expanded by rememberSaveable(biography.pageId, biography.languageCode, biography.text) {
+                  mutableStateOf(false)
+              }
+              var hasOverflow by remember(biographyText) { mutableStateOf(false) }
+              val accentBrush = remember(accentStart, accentEnd) {
+                  Brush.horizontalGradient(
+                      listOf(
+                          accentStart.copy(alpha = 0.78f),
+                          accentEnd.copy(alpha = 0.42f)
+                      )
+                  )
+              }
+
+              Column(
+                  modifier = modifier.fillMaxWidth(),
+                  verticalArrangement = Arrangement.spacedBy(10.dp)
+              ) {
+                  Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween,
+                      verticalAlignment = Alignment.CenterVertically
+                  ) {
+                      Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                          Text(
+                              text = strings.biography,
+                              color = LevyraText,
+                              fontSize = 21.sp,
+                              lineHeight = 26.sp,
+                              fontWeight = FontWeight.Black,
+                              letterSpacing = (-0.35).sp
+                          )
+                          Box(
+                              modifier = Modifier
+                                  .width(34.dp)
+                                  .height(3.dp)
+                                  .clip(CircleShape)
+                                  .background(accentBrush)
+                          )
+                      }
+                      if (presentation.showSource) {
+                          BiographyInlineSource(
+                              sourceText = presentation.sourceText,
+                              sourceUrl = biography.sourceUrl
+                          )
+                      }
+                  }
+
+                  Text(
+                      text = biographyText,
+                      color = LevyraText.copy(alpha = 0.84f),
+                      fontSize = 16.sp,
+                      lineHeight = 24.sp,
+                      fontWeight = FontWeight.Normal,
+                      maxLines = if (expanded) Int.MAX_VALUE else 3,
+                      overflow = TextOverflow.Ellipsis,
+                      onTextLayout = { result ->
+                          if (!expanded) hasOverflow = result.hasVisualOverflow
+                      },
+                      modifier = Modifier.fillMaxWidth()
+                  )
+
+                  if (expanded || hasOverflow) {
+                      Row(
+                          modifier = Modifier
+                              .heightIn(min = 48.dp)
+                              .clip(CircleShape)
+                              .clickable { expanded = !expanded }
+                              .padding(horizontal = 2.dp),
+                          horizontalArrangement = Arrangement.spacedBy(7.dp),
+                          verticalAlignment = Alignment.CenterVertically
+                      ) {
+                          Text(
+                              text = if (expanded) strings.close else strings.readAll,
+                              color = accentStart,
+                              fontSize = 13.sp,
+                              fontWeight = FontWeight.Bold
+                          )
+                          Icon(
+                              imageVector = if (expanded) Icons.Rounded.Close else Icons.Rounded.KeyboardArrowDown,
+                              contentDescription = null,
+                              tint = accentStart,
+                              modifier = Modifier.size(18.dp)
+                          )
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          private fun BiographyInlineSource(
+              sourceText: String,
+              sourceUrl: String
+          ) {
+              val context = LocalContext.current
+              Row(
+                  modifier = Modifier
+                      .heightIn(min = 48.dp)
+                      .clip(CircleShape)
+                      .clickable(enabled = sourceUrl.isNotBlank()) {
+                          runCatching {
+                              context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl)))
+                          }
+                      }
+                      .padding(horizontal = 8.dp),
+                  horizontalArrangement = Arrangement.spacedBy(5.dp),
+                  verticalAlignment = Alignment.CenterVertically
+              ) {
+                  Text(
+                      text = sourceText,
+                      color = LevyraMuted.copy(alpha = 0.76f),
+                      fontSize = 11.5.sp,
+                      fontWeight = FontWeight.SemiBold
+                  )
+                  if (sourceUrl.isNotBlank()) {
+                      Icon(
+                          imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                          contentDescription = sourceText,
+                          tint = LevyraMuted.copy(alpha = 0.72f),
+                          modifier = Modifier.size(13.dp)
+                      )
+                  }
+              }
+          }
+
+          '''
+
+          updated = text[:start] + replacement + text[end:]
+          path.write_text(updated, encoding='utf-8')
+          PY
+
+      - name: Compile Kotlin
+        run: ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Commit refinement
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git config user.name 'LUC4N3X'
+          git config user.email 'LUC4N3X@users.noreply.github.com'
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git commit -m 'refactor(ui): simplify artist biography section'
+          git push origin HEAD:feature/ui-evolution-living-capsule-home-artist-collections
