@@ -624,7 +624,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         const val MAX_TOKEN_SCRIPT_REDIRECTS = 4
         const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36"
         val SCRIPT_REDIRECT_CODES = setOf(300, 301, 302, 303, 307, 308)
-        val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\.ey[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+")
+        val JWT_REGEX = Regex("ey[a-zA-Z0-9_-]+\\.ey[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+")
         val BLACKLIST = setOf("playlist", "set list", "essentials", "dj mix", "apple music", "todays hits", "session")
     }
 }
@@ -649,7 +649,7 @@ private val APPLE_SCRIPT_SRC_REGEX = Regex(
     """(?i)<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']"""
 )
 private val APPLE_LEGACY_SCRIPT_REGEX = Regex(
-    "[\\\"']([^\\\"']*/assets/index[^\\\"']*\.js)[\\\"']"
+    "[\\\"']([^\\\"']*/assets/index[^\\\"']*\\.js)[\\\"']"
 )
 
 internal fun appleMusicScriptUrls(html: String): List<String> {
