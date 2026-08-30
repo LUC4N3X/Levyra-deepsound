@@ -406,7 +406,7 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 <br>
 
-### Acknowledgments
+### ✦ Built With & Inspired By
 
 * **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Reference for Levyra's renderer-recovery backoff policy and BetterLyrics TTML parsing behavior, reimplemented for Levyra.
 * **[PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)** — LevyraExtractor is maintained as a Levyra-specific fork of this project, with additional stream-resolution, playback-reliability, diagnostics, and fallback work.
