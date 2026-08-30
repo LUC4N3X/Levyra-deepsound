@@ -106,13 +106,26 @@ Modern music streaming applications often treat music as temporary, disposable b
 </details>
 
 ---
-
 ## ✦ Acoustic Architecture & Features
+
+<div align="center">
+  <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
+  <p><sub>Playback, discovery, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
+  <p>
+    <code>10 CORE SYSTEMS</code> &nbsp;·&nbsp;
+    <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
+    <code>LOCAL-FIRST</code> &nbsp;·&nbsp;
+    <code>ZERO TRACKING</code>
+  </p>
+</div>
+
+<br>
 
 <table align="center" width="100%">
   <tr valign="top">
     <td width="50%">
-      <h3>🎚️ <b>Pure Audio & Playback Engine</b></h3>
+      <h3>🎚️ <b>Playback Core</b></h3>
+      <p><b>Fast, native, interruption-free.</b><br><sub>The core listening path is tuned around low overhead and predictable playback.</sub></p>
       <ul>
         <li><b>Dual Native Engines:</b> Media3 / ExoPlayer on Android and isolated libvlc on Windows.</li>
         <li><b>Playback Suite:</b> Gapless, shuffle/repeat, speed/pitch, sleep timer, and queue Undo.</li>
@@ -120,7 +133,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>💾 <b>Offline Audio & Levyra Vault</b></h3>
+      <h3>💾 <b>Offline Vault</b></h3>
+      <p><b>Your library stays yours.</b><br><sub>Portable audio files and versioned local backups without a Levyra account.</sub></p>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
         <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code>.</li>
@@ -132,7 +146,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🔍 <b>Stream Extraction & Discovery</b></h3>
+      <h3>🔍 <b>Discovery & Extraction</b></h3>
+      <p><b>Find it, resolve it, start it.</b><br><sub>Discovery and stream resolution are designed as one continuous path into playback.</sub></p>
       <ul>
         <li><b>Dual Resolver:</b> Highest-fidelity Opus or AAC with automatic fallback.</li>
         <li><b>Queue Prefetch:</b> Upcoming tracks buffer quietly before the skip.</li>
@@ -140,7 +155,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>📊 <b>Karaoke Lyrics & Visual Immersion</b></h3>
+      <h3>🎙️ <b>Lyrics & Visual Immersion</b></h3>
+      <p><b>Lyrics that move with the music.</b><br><sub>Synced text, shareable moments, artwork motion, and Canvas live inside the player.</sub></p>
       <ul>
         <li><b>Synced Lyrics:</b> Millisecond-aligned LRCLIB lyrics with tap-to-seek highlighting.</li>
         <li><b>Lyric Sharing:</b> Select verses, copy, share, or export a 1080×1080 Levyra card.</li>
@@ -151,7 +167,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>📈 <b>Listening Insights</b></h3>
+      <h3>📈 <b>Listening Intelligence</b></h3>
+      <p><b>Useful insight, computed locally.</b><br><sub>Your listening patterns become readable without turning into telemetry.</sub></p>
       <ul>
         <li><b>Accurate Listening:</b> Playback time and counted plays respect pause, seek, skip, and completion.</li>
         <li><b>Listening Pulse:</b> Weekly activity, 24-hour rhythm, and artist distribution.</li>
@@ -159,7 +176,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>🔤 <b>Readability & Typography</b></h3>
+      <h3>🔤 <b>Typography & Readability</b></h3>
+      <p><b>Dense when useful. Clear everywhere.</b><br><sub>Type rhythm and layout rules keep metadata readable across languages and font scales.</sub></p>
       <ul>
         <li><b>Levyra Type Rhythm:</b> Shared line-height scale for titles, metadata, and multi-line text.</li>
         <li><b>Accessible Layout:</b> Role-aware tracking with safe accents, descenders, and large font scales.</li>
@@ -169,7 +187,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🎙️ <b>Music Recognition 2.0</b></h3>
+      <h3>🎛️ <b>Music Recognition 2.0</b></h3>
+      <p><b>Identify what is playing without an account.</b><br><sub>Recognition works from the microphone or supported internal playback capture.</sub></p>
       <ul>
         <li><b>Shazam-Compatible:</b> Credential-free acoustic fingerprint matching directly on device.</li>
         <li><b>Dual Audio Capture:</b> Listens via microphone or internal device playback (Android 10+ MediaProjection).</li>
@@ -177,7 +196,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>📻 <b>Levyra Jam Local Sync</b></h3>
+      <h3>📻 <b>Levyra Jam</b></h3>
+      <p><b>Shared listening, kept on the local network.</b><br><sub>Sync playback and queues across nearby devices without turning the session into a cloud service.</sub></p>
       <ul>
         <li><b>Local Network Listening:</b> Synchronized playback and shared queues across devices on the same Wi-Fi.</li>
         <li><b>Host Authority & Permissions:</b> Granular controls for host-only, guest queue additions, or collaborative sessions.</li>
@@ -187,7 +207,8 @@ Modern music streaming applications often treat music as temporary, disposable b
   </tr>
   <tr valign="top">
     <td width="50%">
-      <h3>🛡️ <b>Network Resilience & Proxies</b></h3>
+      <h3>🛡️ <b>Network Resilience</b></h3>
+      <p><b>Flexible routing without hidden behavior.</b><br><sub>DNS, proxy controls, bypasses, and diagnostics stay visible and user-controlled.</sub></p>
       <ul>
         <li><b>DNS-over-HTTPS:</b> Built-in presets for Cloudflare, Google, AdGuard, and Quad9, plus custom HTTPS resolvers.</li>
         <li><b>HTTP & SOCKS Proxies:</b> Authenticated proxy routing with Keystore-encrypted credentials and anti-loop safety.</li>
@@ -195,7 +216,8 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>🔗 <b>Integrations & Settings Search</b></h3>
+      <h3>🔗 <b>Integrations & Control</b></h3>
+      <p><b>Useful connections, never mandatory ones.</b><br><sub>External services remain optional while core playback stays independent.</sub></p>
       <ul>
         <li><b>Scrobbling:</b> Last.fm and ListenBrainz integration with bounded deduplication.</li>
         <li><b>Searchable Settings:</b> Instant search across settings, titles, and keywords in 26 languages.</li>
@@ -204,6 +226,10 @@ Modern music streaming applications often treat music as temporary, disposable b
     </td>
   </tr>
 </table>
+
+<div align="center">
+  <sub>One listening stack — built to stay fast, portable, private, and recoverable online or offline.</sub>
+</div>
 
 ---
 
