@@ -12061,100 +12061,108 @@ private fun PlayerQuickActionsBar(
     val activePrimary = primary.playerMix(Color.White, 0.48f)
     val activeSecondary = secondary.playerMix(Color.White, 0.44f)
 
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (compact) 44.dp else 48.dp),
-        shape = CircleShape,
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
+            .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .fillMaxWidth()
+                .height(if (compact) 44.dp else 48.dp),
+            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.05f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
         ) {
-            PlayerQuickAction(
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                contentDescription = strings.queue,
-                tint = Color.White.copy(alpha = 0.76f),
-                active = false,
-                compact = compact,
-                modifier = Modifier.weight(1f),
-                onClick = viewModel::openQueue
-            )
-            PlayerQuickAction(
-                icon = Icons.AutoMirrored.Rounded.Subject,
-                contentDescription = strings.lyrics,
-                tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
-                active = state.showLyrics,
-                compact = compact,
-                modifier = Modifier.weight(1f),
-                onClick = viewModel::openLyrics
-            )
-            if (!state.isVideoMode) {
-                val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
-                PlayerQuickAction(
-                    icon = Icons.Rounded.AutoAwesome,
-                    contentDescription = strings.motionArtwork,
-                    tint = if (canvasActive) activePrimary else Color.White.copy(alpha = 0.60f),
-                    active = canvasActive,
-                    enabled = state.animationsEnabled,
-                    compact = compact,
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
-                )
-            }
-            PlayerQuickAction(
-                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
-                contentDescription = when {
-                    state.isOfflineExporting -> strings.downloadInProgress
-                    isDownloaded -> strings.downloaded
-                    else -> strings.download
-                },
-                tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
-                active = state.isOfflineExporting || isDownloaded,
-                busy = state.isOfflineExporting,
-                enabled = !state.isOfflineExporting,
-                compact = compact,
-                modifier = Modifier.weight(1f),
-                onClick = viewModel::exportCurrentTrack
-            )
-            Box(
-                modifier = Modifier.weight(1f),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 PlayerQuickAction(
-                    icon = Icons.Rounded.Equalizer,
-                    contentDescription = strings.options,
-                    tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
-                    active = optionsActive || optionsExpanded,
+                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                    contentDescription = strings.queue,
+                    tint = Color.White.copy(alpha = 0.76f),
+                    active = false,
                     compact = compact,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { optionsExpanded = !optionsExpanded }
+                    modifier = Modifier.weight(1f),
+                    onClick = viewModel::openQueue
                 )
-                DropdownMenu(
-                    expanded = optionsExpanded,
-                    onDismissRequest = { optionsExpanded = false },
-                    modifier = Modifier
-                        .width(if (compact) 276.dp else 296.dp)
-                        .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                PlayerQuickAction(
+                    icon = Icons.AutoMirrored.Rounded.Subject,
+                    contentDescription = strings.lyrics,
+                    tint = if (state.showLyrics) activePrimary else Color.White.copy(alpha = 0.72f),
+                    active = state.showLyrics,
+                    compact = compact,
+                    modifier = Modifier.weight(1f),
+                    onClick = viewModel::openLyrics
+                )
+                if (!state.isVideoMode) {
+                    val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
+                    PlayerQuickAction(
+                        icon = Icons.Rounded.AutoAwesome,
+                        contentDescription = strings.motionArtwork,
+                        tint = if (canvasActive) activePrimary else Color.White.copy(alpha = 0.60f),
+                        active = canvasActive,
+                        toggleableState = ToggleableState(canvasActive),
+                        enabled = state.animationsEnabled,
+                        compact = compact,
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                    )
+                }
+                PlayerQuickAction(
+                    icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                    contentDescription = when {
+                        state.isOfflineExporting -> strings.downloadInProgress
+                        isDownloaded -> strings.downloaded
+                        else -> strings.download
+                    },
+                    tint = if (state.isOfflineExporting || isDownloaded) activeSecondary else Color.White.copy(alpha = 0.72f),
+                    active = state.isOfflineExporting || isDownloaded,
+                    busy = state.isOfflineExporting,
+                    enabled = !state.isOfflineExporting,
+                    compact = compact,
+                    modifier = Modifier.weight(1f),
+                    onClick = viewModel::exportCurrentTrack
+                )
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                        PlayerOptionsRow(
-                            speed = state.playbackSpeed,
-                            sleepMinutes = state.sleepTimerMinutes,
-                            sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
-                            audioNormalization = state.audioNormalization,
-                            activeColor = primary,
-                            secondaryColor = secondary,
-                            compact = true,
-                            onSpeed = viewModel::cycleSpeed,
-                            onSleep = viewModel::openSleepTimer,
-                            onNormalization = viewModel::toggleAudioNormalization
-                        )
+                    PlayerQuickAction(
+                        icon = Icons.Rounded.Equalizer,
+                        contentDescription = strings.options,
+                        tint = if (optionsActive) activePrimary else Color.White.copy(alpha = 0.72f),
+                        active = optionsActive || optionsExpanded,
+                        compact = compact,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { optionsExpanded = !optionsExpanded }
+                    )
+                    DropdownMenu(
+                        expanded = optionsExpanded,
+                        onDismissRequest = { optionsExpanded = false },
+                        modifier = Modifier
+                            .width(if (compact) 276.dp else 296.dp)
+                            .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                            PlayerOptionsRow(
+                                speed = state.playbackSpeed,
+                                sleepMinutes = state.sleepTimerMinutes,
+                                sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
+                                audioNormalization = state.audioNormalization,
+                                activeColor = primary,
+                                secondaryColor = secondary,
+                                compact = true,
+                                onSpeed = viewModel::cycleSpeed,
+                                onSleep = viewModel::openSleepTimer,
+                                onNormalization = viewModel::toggleAudioNormalization
+                            )
+                        }
                     }
                 }
             }
@@ -12170,6 +12178,7 @@ private fun PlayerQuickAction(
     active: Boolean,
     compact: Boolean,
     modifier: Modifier = Modifier,
+    toggleableState: ToggleableState? = null,
     busy: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
@@ -12189,8 +12198,16 @@ private fun PlayerQuickAction(
 
     Box(
         modifier = modifier
-            .fillMaxHeight()
-            .semantics { this.contentDescription = contentDescription }
+            .sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
+            )
+            .semantics {
+                this.contentDescription = contentDescription
+                if (toggleableState != null) {
+                    this.toggleableState = toggleableState
+                }
+            }
             .pressable(enabled = enabled, pressedScale = 0.90f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -13048,21 +13065,27 @@ private fun PlayerScreen(
             } else {
                 LevyraPlayerDesign.HeaderButton
             }
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(LevyraPlayerDesign.MinimumTouchTarget),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                    .height(LevyraPlayerDesign.MinimumTouchTarget)
             ) {
-                PlayerGlassIconButton(
-                    icon = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = strings.collapsePlayer,
-                    size = headerButtonSize,
-                    iconSize = if (compactPlayer) 22.dp else 24.dp,
-                    onClick = collapseActions.collapse
-                )
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = strings.collapsePlayer,
+                        size = headerButtonSize,
+                        iconSize = if (compactPlayer) 22.dp else 24.dp,
+                        onClick = collapseActions.collapse
+                    )
+                }
+                Box(
+                    modifier = Modifier.align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
                         PlayerModeSwitch(
                             isVideoMode = state.pendingVideoMode ?: state.isVideoMode,
@@ -13094,71 +13117,77 @@ private fun PlayerScreen(
                         }
                     }
                 }
-                if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
-                if (state.isVideoMode) {
-                    if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
-                        var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
-                        Box {
-                            PlayerGlassIconButton(
-                                icon = Icons.Rounded.Subtitles,
-                                contentDescription = strings.subtitlesLabel,
-                                size = headerButtonSize,
-                                iconSize = 19.dp,
-                                tint = if (state.selectedVideoSubtitleId != null) primary else Color.White.copy(alpha = 0.72f),
-                                borderTop = primary.copy(alpha = 0.48f),
-                                borderBottom = primary.copy(alpha = 0.14f),
-                                onClick = { subtitleMenuExpanded = true }
-                            )
-                            DropdownMenu(
-                                expanded = subtitleMenuExpanded,
-                                onDismissRequest = { subtitleMenuExpanded = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(strings.subtitlesOff) },
-                                    leadingIcon = {
-                                        if (state.selectedVideoSubtitleId == null) {
-                                            Icon(Icons.Rounded.Check, contentDescription = null)
-                                        }
-                                    },
-                                    onClick = {
-                                        subtitleMenuExpanded = false
-                                        viewModel.selectVideoSubtitle(null)
-                                    }
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+                ) {
+                    if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
+                    if (state.isVideoMode) {
+                        if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
+                            var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
+                            Box {
+                                PlayerGlassIconButton(
+                                    icon = Icons.Rounded.Subtitles,
+                                    contentDescription = strings.subtitlesLabel,
+                                    size = headerButtonSize,
+                                    iconSize = 19.dp,
+                                    tint = if (state.selectedVideoSubtitleId != null) primary else Color.White.copy(alpha = 0.72f),
+                                    borderTop = primary.copy(alpha = 0.48f),
+                                    borderBottom = primary.copy(alpha = 0.14f),
+                                    onClick = { subtitleMenuExpanded = true }
                                 )
-                                track.videoSubtitleTracks.forEach { subtitle ->
+                                DropdownMenu(
+                                    expanded = subtitleMenuExpanded,
+                                    onDismissRequest = { subtitleMenuExpanded = false }
+                                ) {
                                     DropdownMenuItem(
-                                        text = { Text(subtitle.label.ifBlank { subtitle.languageCode }) },
+                                        text = { Text(strings.subtitlesOff) },
                                         leadingIcon = {
-                                            if (state.selectedVideoSubtitleId == subtitle.id) {
+                                            if (state.selectedVideoSubtitleId == null) {
                                                 Icon(Icons.Rounded.Check, contentDescription = null)
                                             }
                                         },
                                         onClick = {
                                             subtitleMenuExpanded = false
-                                            viewModel.selectVideoSubtitle(subtitle.id)
+                                            viewModel.selectVideoSubtitle(null)
                                         }
                                     )
+                                    track.videoSubtitleTracks.forEach { subtitle ->
+                                        DropdownMenuItem(
+                                            text = { Text(subtitle.label.ifBlank { subtitle.languageCode }) },
+                                            leadingIcon = {
+                                                if (state.selectedVideoSubtitleId == subtitle.id) {
+                                                    Icon(Icons.Rounded.Check, contentDescription = null)
+                                                }
+                                            },
+                                            onClick = {
+                                                subtitleMenuExpanded = false
+                                                viewModel.selectVideoSubtitle(subtitle.id)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.PictureInPictureAlt,
+                            contentDescription = strings.pictureInPicture,
+                            size = headerButtonSize,
+                            iconSize = 19.dp,
+                            borderTop = primary.copy(alpha = 0.48f),
+                            borderBottom = primary.copy(alpha = 0.14f),
+                            onClick = { LevyraPipBridge.enter() }
+                        )
                     }
                     PlayerGlassIconButton(
-                        icon = Icons.Rounded.PictureInPictureAlt,
-                        contentDescription = strings.pictureInPicture,
+                        icon = Icons.Rounded.MoreVert,
+                        contentDescription = strings.options,
                         size = headerButtonSize,
-                        iconSize = 19.dp,
-                        borderTop = primary.copy(alpha = 0.48f),
-                        borderBottom = primary.copy(alpha = 0.14f),
-                        onClick = { LevyraPipBridge.enter() }
+                        iconSize = if (compactPlayer) 20.dp else 21.dp,
+                        onClick = { viewModel.openAudioQualityPanel() }
                     )
                 }
-                PlayerGlassIconButton(
-                    icon = Icons.Rounded.MoreVert,
-                    contentDescription = strings.options,
-                    size = headerButtonSize,
-                    iconSize = if (compactPlayer) 20.dp else 21.dp,
-                    onClick = { viewModel.openAudioQualityPanel() }
-                )
             }
         }
 
