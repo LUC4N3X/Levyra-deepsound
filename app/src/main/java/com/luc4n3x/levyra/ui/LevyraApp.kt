@@ -310,6 +310,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -3268,9 +3269,11 @@ private fun ArtistOverlay(
     ) {
         LazyListState()
     }
-    val isScrolledPastHero by remember {
+    val density = LocalDensity.current
+    val heroThresholdPx = remember(density) { with(density) { 260.dp.toPx() } }
+    val isScrolledPastHero by remember(artistListState, heroThresholdPx) {
         derivedStateOf {
-            artistListState.firstVisibleItemIndex > 0 || artistListState.firstVisibleItemScrollOffset > 280
+            artistListState.firstVisibleItemIndex > 0 || artistListState.firstVisibleItemScrollOffset > heroThresholdPx
         }
     }
     val topBarAlpha by animateFloatAsState(
@@ -3329,10 +3332,10 @@ private fun ArtistOverlay(
                                     biography = requireNotNull(artist.biography),
                                     accentStart = accentStart,
                                     accentEnd = accentEnd,
-                                modifier = Modifier
-                                    .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
-                                    .offset(y = (-10).dp)
-                            )
+                                    modifier = Modifier
+                                        .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
+                                        .offset(y = (-10).dp)
+                                )
                             }
                         }
                     }
@@ -3423,6 +3426,9 @@ private fun ArtistOverlay(
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer { alpha = topBarAlpha }
+                        .then(
+                            if (topBarAlpha <= 0.05f) Modifier.clearAndSetSemantics {} else Modifier
+                        )
                 )
             } else {
                 Spacer(modifier = Modifier.weight(1f))
@@ -3439,12 +3445,12 @@ private fun ArtistPopularTracksShelf(
     isResolving: Boolean,
     onPlay: (Track) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember(tracks) { mutableStateOf(false) }
     val strings = LocalLevyraStrings.current
     val distinctTracks = remember(tracks) {
         tracks.distinctBy { it.id.ifBlank { "${it.artist}|${it.title}" } }
     }
-    val visibleTracks = if (expanded) distinctTracks.take(15) else distinctTracks.take(5)
+    val visibleTracks = if (expanded) distinctTracks else distinctTracks.take(5)
 
     Column(
         modifier = Modifier
@@ -3474,10 +3480,14 @@ private fun ArtistPopularTracksShelf(
                     color = Color.White.copy(alpha = 0.06f),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.pressable(onClick = { expanded = !expanded })
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .pressable(onClick = { expanded = !expanded })
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -6999,7 +7009,7 @@ private fun HomeEditorialSpotlight(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 260.dp)
+            .heightIn(min = LevyraHomeDesign.HeroHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -19296,6 +19306,14 @@ private fun MiniPlayer(
         animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap(),
         label = "mini-swipe-offset"
     )
+    val miniProgressBrush = remember(miniProgressColor) {
+        Brush.horizontalGradient(
+            listOf(
+                miniProgressColor,
+                miniProgressColor.playerAmbienceMix(Color.White, 0.22f)
+            )
+        )
+    }
     val capsuleShape = RoundedCornerShape(22.dp)
     Surface(
         color = Color.Transparent,
@@ -19467,12 +19485,7 @@ private fun MiniPlayer(
                             )
                         )
                         drawRect(
-                            brush = Brush.horizontalGradient(
-                                listOf(
-                                    miniProgressColor,
-                                    miniProgressColor.playerAmbienceMix(Color.White, 0.22f)
-                                )
-                            ),
+                            brush = miniProgressBrush,
                             size = androidx.compose.ui.geometry.Size(
                                 size.width * animatedProgress.value,
                                 size.height

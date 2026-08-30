@@ -66,6 +66,12 @@ import coil3.compose.AsyncImage
 import java.util.Locale
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.ui.platform.LocalContext
+import coil3.request.ImageRequest
+import coil3.request.CachePolicy
+import coil3.request.crossfade
+import com.luc4n3x.levyra.data.LevyraArtworkCache
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -524,6 +530,39 @@ internal fun LibraryNameDialog(
 }
 
 @Composable
+private fun PlaylistMosaicTile(
+    url: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    if (url.isNotBlank()) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(LevyraArtworkCache.small(url))
+                .crossfade(120)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+    } else {
+        Box(
+            modifier = modifier.background(LevyraPanelSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Rounded.PlaylistPlay,
+                contentDescription = null,
+                tint = LevyraMuted,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
 internal fun PlaylistDetailHeader(
     playlist: Playlist,
     durationMs: Long,
@@ -537,6 +576,7 @@ internal fun PlaylistDetailHeader(
     onSaveOrder: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
 
     Column(
@@ -552,7 +592,8 @@ internal fun PlaylistDetailHeader(
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                 shape = CircleShape,
                 modifier = Modifier
-                    .size(44.dp)
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                    .size(48.dp)
                     .clickable(onClick = onBack)
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -570,11 +611,11 @@ internal fun PlaylistDetailHeader(
                     color = LevyraCyan,
                     shape = CircleShape,
                     modifier = Modifier
-                        .height(42.dp)
+                        .heightIn(min = 48.dp)
                         .clickable(onClick = onSaveOrder)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 18.dp),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
@@ -589,7 +630,8 @@ internal fun PlaylistDetailHeader(
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                         shape = CircleShape,
                         modifier = Modifier
-                            .size(44.dp)
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .size(48.dp)
                             .clickable(onClick = { menuExpanded = true })
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -635,45 +677,65 @@ internal fun PlaylistDetailHeader(
                     .background(LevyraPanelSoft)
                     .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
             ) {
-                val previewTracks = playlist.tracks.take(4)
+                val previewTracks = remember(playlist.tracks) { playlist.tracks.take(4) }
                 if (previewTracks.size >= 4) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(modifier = Modifier.weight(1f)) {
-                            AsyncImage(
-                                model = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            PlaylistMosaicTile(
+                                url = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
-                            AsyncImage(
-                                model = previewTracks[1].thumbnailUrl.ifBlank { previewTracks[1].largeThumbnailUrl },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            PlaylistMosaicTile(
+                                url = previewTracks[1].thumbnailUrl.ifBlank { previewTracks[1].largeThumbnailUrl },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
                         }
                         Row(modifier = Modifier.weight(1f)) {
-                            AsyncImage(
-                                model = previewTracks[2].thumbnailUrl.ifBlank { previewTracks[2].largeThumbnailUrl },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            PlaylistMosaicTile(
+                                url = previewTracks[2].thumbnailUrl.ifBlank { previewTracks[2].largeThumbnailUrl },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
-                            AsyncImage(
-                                model = previewTracks[3].thumbnailUrl.ifBlank { previewTracks[3].largeThumbnailUrl },
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            PlaylistMosaicTile(
+                                url = previewTracks[3].thumbnailUrl.ifBlank { previewTracks[3].largeThumbnailUrl },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
                         }
                     }
                 } else if (previewTracks.isNotEmpty()) {
-                    AsyncImage(
-                        model = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl },
-                        contentDescription = playlist.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    val primaryCover = previewTracks[0].thumbnailUrl.ifBlank { previewTracks[0].largeThumbnailUrl }
+                    if (primaryCover.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(LevyraArtworkCache.large(primaryCover))
+                                .crossfade(120)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .build(),
+                            contentDescription = playlist.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        LevyraCyan.copy(alpha = 0.35f),
+                                        LevyraViolet.copy(alpha = 0.35f),
+                                        LevyraPanelSoft
+                                    )
+                                )
+                            ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.PlaylistPlay,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.80f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize().background(
