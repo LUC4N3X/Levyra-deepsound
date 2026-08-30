@@ -1,7 +1,9 @@
-name: Artist Page Fast Refinement
+name: Apply Focused PR Review Fixes
 
 on:
   push:
+    branches:
+      - feature/ui-evolution-living-capsule-home-artist-collections
     paths:
       - '.github/workflows/artist-page-fast-refinement.yml'
 
@@ -9,58 +11,169 @@ permissions:
   contents: write
 
 jobs:
-  refine:
+  fix:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
-          ref: feature/ui-evolution-living-capsule-home-artist-collections
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
-      - name: Apply focused artist refinement
+      - name: Apply verified CodeRabbit fixes
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('.github/artist_page_refine.py')
-          text = path.read_text(encoding='utf-8')
-          text = text.replace(
-              "loading_end = '                state.artistError != null && profile == null -> {'",
-              "loading_end = '                showArtistError -> {'"
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one match, found {count}")
+              return text.replace(old, new, 1)
+
+          engine = Path('app/src/main/java/com/luc4n3x/levyra/data/HomeEditorialEngine.kt')
+          text = engine.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              '''        val newReleaseKeys = if (showNewReleases) {
+              newReleaseTracks.asSequence().map(::identityKey).toHashSet()
+          } else {
+              emptySet()
+          }
+''',
+              '',
+              'remove unvalidated new-release membership set'
           )
-          text = text.replace(
-              "popular_end = text.index('private fun normalizeBiographyPreview(', popular_start)",
-              "popular_end = text.index('@Composable\\nprivate fun ArtistHeader(', popular_start)"
+          text = replace_once(
+              text,
+              '''            val inNewReleases = key in newReleaseKeys
+              val inCharts = key in chartKeys
+              val kind = when {
+                  ageDays == 0 -> HomeSpotlightKind.ReleasedToday
+                  ageDays != null && ageDays <= 7 -> HomeSpotlightKind.JustReleased
+                  inNewReleases -> HomeSpotlightKind.JustReleased
+                  inCharts -> HomeSpotlightKind.ChartTrending
+                  else -> HomeSpotlightKind.LevyraSelect
+              }
+              val freshnessScore = when {
+                  ageDays == 0 -> 12_000
+                  ageDays != null && ageDays <= 7 -> 10_000 - ageDays * 220
+                  inNewReleases -> 8_000
+                  inCharts -> 6_000
+                  else -> 0
+              }
+''',
+              '''            val inCharts = key in chartKeys
+              val kind = when {
+                  ageDays == 0 -> HomeSpotlightKind.ReleasedToday
+                  ageDays != null && ageDays <= 7 -> HomeSpotlightKind.JustReleased
+                  inCharts -> HomeSpotlightKind.ChartTrending
+                  else -> HomeSpotlightKind.LevyraSelect
+              }
+              val freshnessScore = when {
+                  ageDays == 0 -> 12_000
+                  ageDays != null && ageDays <= 7 -> 10_000 - ageDays * 220
+                  inCharts -> 6_000
+                  else -> 0
+              }
+''',
+              'require validated date for fresh spotlight classification'
           )
-          text = text.replace(
-              'url = release.thumbnailUrl,\n                            contentDescription = null,',
-              'url = release.thumbnailUrl,\n                            contentDescription = release.title,'
+          engine.write_text(text, encoding='utf-8')
+
+          ui = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = ui.read_text(encoding='utf-8')
+          text = replace_once(
+              text,
+              '''                        isCurrent -> LevyraPlayingIndicator(
+                              playing = isPlaying,
+                              color = LevyraCyan,
+                              size = 32.dp
+                          )''',
+              '''                        isCurrent -> LevyraPlayingIndicator(
+                              playing = isPlaying,
+                              color = LevyraCyan,
+                              size = 32.dp,
+                              contentDescription = LocalLevyraStrings.current.playing
+                          )''',
+              'artist top-track playing semantics'
           )
-          text = text.replace(
-              'url = artworkUrl,\n                    contentDescription = null,',
-              'url = artworkUrl,\n                    contentDescription = track.title,'
+          text = replace_once(
+              text,
+              '''                    isCurrent -> LevyraPlayingIndicator(
+                          playing = isPlaying,
+                          color = LevyraCyan,
+                          size = 16.dp
+                      )''',
+              '''                    isCurrent -> LevyraPlayingIndicator(
+                          playing = isPlaying,
+                          color = LevyraCyan,
+                          size = 16.dp,
+                          contentDescription = LocalLevyraStrings.current.playing
+                      )''',
+              'artist compact-track playing semantics'
           )
-          path.write_text(text, encoding='utf-8')
+          ui.write_text(text, encoding='utf-8')
+
+          tests = Path('app/src/test/java/com/luc4n3x/levyra/data/HomeEditorialFreshSpotlightTest.kt')
+          text = tests.read_text(encoding='utf-8')
+          marker = '''    @Test
+      fun ordinarySpotlightCandidatesRemainAsFallbackWithoutFreshReleases() {'''
+          new_test = '''    @Test
+      fun invalidOrNonFreshReleaseDatesDoNotSuppressOrdinaryCandidates() {
+          val now = Calendar.getInstance().apply {
+              set(2026, Calendar.AUGUST, 30, 12, 0, 0)
+              set(Calendar.MILLISECOND, 0)
+          }.timeInMillis
+          val chart = track("chart")
+          val quickPick = track("quick")
+          val invalidDates = listOf("", "not-a-date", "2026-08-31", "2026-08-01")
+
+          invalidDates.forEachIndexed { index, releaseDate ->
+              val candidate = track("invalid-$index", releaseDate = releaseDate)
+              val candidates = HomeEditorialEngine.buildSpotlightCandidates(
+                  showNewReleases = true,
+                  newReleaseTracks = listOf(candidate),
+                  showPersonalOrbit = false,
+                  personalTracks = emptyList(),
+                  showResonance = false,
+                  resonanceTracks = emptyList(),
+                  quickPickTracks = listOf(quickPick),
+                  fallbackSections = emptyList(),
+                  chartTracks = listOf(chart),
+                  nowMillis = now
+              )
+
+              assertTrue(candidates.any { it.track.id == "chart" })
+              assertTrue(candidates.any { it.track.id == "quick" })
+              assertTrue(
+                  candidates.none {
+                      it.track.id == candidate.id &&
+                          (it.kind == HomeSpotlightKind.ReleasedToday ||
+                              it.kind == HomeSpotlightKind.JustReleased)
+                  }
+              )
+          }
+      }
+
+'''
+          text = replace_once(text, marker, new_test + marker, 'insert invalid fresh-date coverage')
+          tests.write_text(text, encoding='utf-8')
           PY
-          python3 .github/artist_page_refine.py
 
-      - name: Compile Kotlin
-        run: ./gradlew :app:compileDebugKotlin --no-daemon
+      - name: Run focused tests
+        run: ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.data.HomeEditorialFreshSpotlightTest' --no-daemon
 
-      - name: Commit refinement
+      - name: Commit fixes
         shell: bash
         run: |
-          if git diff --quiet; then
-            echo 'No changes to commit.'
-            exit 0
-          fi
           git config user.name 'LUC4N3X'
           git config user.email 'LUC4N3X@users.noreply.github.com'
           git add \
-            app/src/main/java/com/luc4n3x/levyra/data/ArtistRepository.kt \
-            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
-            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          git commit -m 'refactor(ui): streamline artist page loading and hierarchy'
-          git push origin HEAD:feature/ui-evolution-living-capsule-home-artist-collections
+            app/src/main/java/com/luc4n3x/levyra/data/HomeEditorialEngine.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/HomeEditorialFreshSpotlightTest.kt
+          git commit -m 'fix(ui): validate fresh spotlight dates and playing semantics'
+          git push origin HEAD:${{ github.ref_name }}
