@@ -120,11 +120,13 @@ Modern music streaming applications often treat music as temporary, disposable b
       </ul>
     </td>
     <td width="50%">
-      <h3>💾 <b>Offline Audio Vault & File Exports</b></h3>
+      <h3>💾 <b>Offline Audio & Levyra Vault</b></h3>
       <ul>
         <li><b>Tagged M4A Files:</b> Cover art, artist, album, and lyrics embedded directly in the file.</li>
         <li><b>Local-First Playback:</b> Existing offline files play instantly from <code>Music/Levyra</code>.</li>
-        <li><b>Resilient Storage:</b> HTTP Range resume, atomic verification, and portable JSON backups.</li>
+        <li><b>Levyra Vault:</b> Versioned <code>.levyra</code> backups protect settings, favorites, playlists, followed artists, history, and queue without an online account.</li>
+        <li><b>Verified Restore:</b> Manifest validation, SHA-256 checksums, compatibility preview, required-section checks, and rollback protection before local data is replaced.</li>
+        <li><b>Automatic Protection:</b> Manual, scheduled, and pre-update backups with 3/5/10 retention and optional Android SAF destinations; internal storage remains the safe fallback.</li>
       </ul>
     </td>
   </tr>
@@ -254,8 +256,8 @@ Immutable ViewModel state keeps the Compose UI, MediaSession, and Android Auto s
 **02 · Dual Stream Resolver**<br>
 InnerTube and LevyraExtractor coordinate automatic fallback, fidelity selection, and queue prefetch.
 
-**03 · Standard File Vault**<br>
-Offline tracks are exported as tagged M4A files in `Music/Levyra`, ready for external players and car systems.
+**03 · Portable Local Vault**<br>
+Tagged M4A files stay standard and reusable, while Levyra Vault protects local app state in validated, versioned <code>.levyra</code> archives with no account or Levyra cloud required.
 
 ---
 
@@ -396,7 +398,7 @@ We welcome community contributions, bug fixes, localization, and performance enh
         <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-@LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="GitHub Profile" /></a>&nbsp;
         <img src="https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin Multiplatform" />&nbsp;
         <img src="https://img.shields.io/badge/Android-Media3%20%2F%20Compose-38BDF8?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Android Media3" />&nbsp;
-        <img src="https://img.shields.io/badge/Desktop-libvlc%20Core-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc Desktop" />
+        <img src="https://img.shields.io/badge/Desktop-libvlc%20Core-FF8800?style=flat-square&logo=vlcmediaplayer&logoColor=white&labelColor=0d1117" alt="libvlc Desktop" />&nbsp;
       </div>
     </td>
   </tr>

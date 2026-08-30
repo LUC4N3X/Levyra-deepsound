@@ -7,6 +7,8 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
+const val LEVYRA_DATABASE_VERSION = 18
+
 @Database(
     entities = [
         FavoriteTrackEntity::class,
@@ -27,7 +29,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RecognitionHistoryEntity::class,
         FollowedArtistEntity::class
     ],
-    version = 18,
+    version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {

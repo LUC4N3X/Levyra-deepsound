@@ -49,6 +49,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
@@ -177,7 +178,9 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.weight(1f)) {
                         LevyraApp(
                             viewModel = viewModel,
-                            isInPictureInPicture = pipMode.value
+                            isInPictureInPicture = pipMode.value,
+                            onRetryPreUpdateBackup = ::retryPreUpdateBackup,
+                            onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
                         )
                     }
                     if (activityUiState.showSettings && !pipMode.value) {
@@ -326,7 +329,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun beginInAppUpdate() {
+    private fun beginInAppUpdate(skipBackup: Boolean = false) {
         if (!BuildConfig.UPSTREAM_UPDATES_ENABLED || updateJob?.isActive == true) return
         val fallbackVersion = viewModel.state.value.updateInfo?.latestVersionName.orEmpty()
         updateSpeedTracker.reset()
@@ -336,6 +339,21 @@ class MainActivity : ComponentActivity() {
         lateinit var job: Job
         job = lifecycleScope.launch {
             try {
+                if (!skipBackup) {
+                    val backupSettings = viewModel.state.value.backupSettings
+                    if (backupSettings.preUpdate) {
+                        try {
+                            LevyraBackupManager(applicationContext).exportAutomatic(backupSettings.retentionCount)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Throwable) {
+                            Timber.w(error, "Pre-update backup failed")
+                            updatePhase.value = LevyraUpdatePhase.Idle
+                            viewModel.setPreUpdateBackupFailed(true)
+                            return@launch
+                        }
+                    }
+                }
                 val prepared = updateInstaller.prepareLatestUpdate { versionName, downloaded, total ->
                     val nowMs = SystemClock.elapsedRealtime()
                     val speed = updateSpeedTracker.sample(downloaded, nowMs)
@@ -365,6 +383,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         updateJob = job
+    }
+
+    private fun retryPreUpdateBackup() {
+        viewModel.setPreUpdateBackupFailed(false)
+        beginInAppUpdate()
+    }
+
+    private fun continueUpdateWithoutBackup() {
+        viewModel.setPreUpdateBackupFailed(false)
+        beginInAppUpdate(skipBackup = true)
     }
 
     private fun cancelInAppUpdate() {
