@@ -75,6 +75,12 @@ data class PlayerControlLabels(
 )
 
 private val DensePlayerHorizontalTouchTarget = 40.dp
+private val PlayerPrimaryBorderBrush = Brush.verticalGradient(
+    listOf(
+        Color.White.copy(alpha = 0.90f),
+        Color.White.copy(alpha = 0.40f)
+    )
+)
 
 private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
     return when (icon.name.substringAfterLast('.')) {
@@ -121,15 +127,26 @@ fun Modifier.playerGlass(
     shape: Shape,
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
-    borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom
+    borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
+    gradientBorder: Boolean = false
 ): Modifier = this
     .background(fill, shape)
-    .border(
-        BorderStroke(
-            LevyraPlayerDesign.Hairline,
-            borderTop.playerMix(borderBottom, 0.5f)
-        ),
-        shape
+    .then(
+        if (gradientBorder) {
+            Modifier.border(
+                BorderStroke(
+                    LevyraPlayerDesign.Hairline,
+                    Brush.verticalGradient(listOf(borderTop, borderBottom))
+                ),
+                shape
+            )
+        } else {
+            Modifier.border(
+                LevyraPlayerDesign.Hairline,
+                borderTop.playerMix(borderBottom, 0.5f),
+                shape
+            )
+        }
     )
 
 @Composable
@@ -144,6 +161,7 @@ fun PlayerGlassIconButton(
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
+    gradientBorder: Boolean = false,
     shape: Shape = CircleShape,
     enabled: Boolean = true
 ) {
@@ -162,7 +180,13 @@ fun PlayerGlassIconButton(
         Box(
             modifier = Modifier
                 .size(size)
-                .playerGlass(shape = shape, fill = fill, borderTop = borderTop, borderBottom = borderBottom),
+                .playerGlass(
+                    shape = shape,
+                    fill = fill,
+                    borderTop = borderTop,
+                    borderBottom = borderBottom,
+                    gradientBorder = gradientBorder
+                ),
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
@@ -264,11 +288,12 @@ private fun PlayerSkipButton(
         Box(
             modifier = Modifier
                 .size(42.dp)
-                .background(Color.White.copy(alpha = 0.055f), shape)
-                .border(
-                    LevyraPlayerDesign.Hairline,
-                    Color.White.copy(alpha = 0.09f),
-                    shape
+                .playerGlass(
+                    shape = shape,
+                    fill = Color.White.copy(alpha = 0.055f),
+                    borderTop = Color.White.copy(alpha = 0.16f),
+                    borderBottom = Color.White.copy(alpha = 0.05f),
+                    gradientBorder = true
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -304,15 +329,25 @@ private fun PlayerModeToggleButton(
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-indicator"
     )
+    val indicatorScale by animateFloatAsState(
+        targetValue = if (active) 1f else 0.4f,
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-toggle-indicator-scale"
+    )
     val surfaceColor by animateColorAsState(
-        targetValue = if (active) activeTint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
+        targetValue = if (active) activeTint.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.04f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
         label = "player-toggle-surface"
     )
-    val surfaceBorder by animateColorAsState(
-        targetValue = if (active) activeTint.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.06f),
+    val borderTopColor by animateColorAsState(
+        targetValue = if (active) activeTint.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.14f),
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
-        label = "player-toggle-border"
+        label = "player-toggle-border-top"
+    )
+    val borderBottomColor by animateColorAsState(
+        targetValue = if (active) activeTint.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.04f),
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "player-toggle-border-bottom"
     )
 
     SpringIconButton(
@@ -323,17 +358,18 @@ private fun PlayerModeToggleButton(
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
             .semantics { toggleableState = ToggleableState(active) },
-        pressedScale = 0.86f,
+        pressedScale = 0.88f,
         contentDescription = contentDescription
     ) {
         Box(
             modifier = Modifier
                 .size(LevyraPlayerDesign.ModeSlot)
-                .background(surfaceColor, LevyraPlayerDesign.ShapeSm)
-                .border(
-                    LevyraPlayerDesign.Hairline,
-                    surfaceBorder,
-                    LevyraPlayerDesign.ShapeSm
+                .playerGlass(
+                    shape = LevyraPlayerDesign.ShapeSm,
+                    fill = surfaceColor,
+                    borderTop = borderTopColor,
+                    borderBottom = borderBottomColor,
+                    gradientBorder = true
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -347,7 +383,11 @@ private fun PlayerModeToggleButton(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = LevyraPlayerDesign.SpaceXxs)
                     .size(LevyraPlayerDesign.ModeIndicator)
-                    .graphicsLayer { alpha = indicatorAlpha }
+                    .graphicsLayer {
+                        alpha = indicatorAlpha
+                        scaleX = indicatorScale
+                        scaleY = indicatorScale
+                    }
                     .background(activeTint, CircleShape)
             )
         }
@@ -364,14 +404,18 @@ private fun Modifier.playerPrimarySurface(
     shape: Shape
 ): Modifier = this
     .shadow(
-        elevation = 10.dp,
+        elevation = 8.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.35f),
-        spotColor = Color.Black.copy(alpha = 0.60f)
+        ambientColor = Color.Black.copy(alpha = 0.30f),
+        spotColor = Color.Black.copy(alpha = 0.50f)
     )
     .background(
         Color.White,
+        shape
+    )
+    .border(
+        BorderStroke(1.dp, PlayerPrimaryBorderBrush),
         shape
     )
 
@@ -410,11 +454,16 @@ private fun PlayerPrimaryButton(
     onClick: () -> Unit
 ) {
     val contentColor = LevyraPlayerDesign.PrimaryContent
-    val haloColor = accentColor.playerMix(Color.White, 0.16f)
+    val haloColor = accentColor.playerMix(Color.White, 0.20f)
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.22f else 0.10f,
+        targetValue = if (isPlaying) 0.22f else 0.08f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween(260) else snap(),
         label = "player-primary-halo"
+    )
+    val haloRadiusFactor by animateFloatAsState(
+        targetValue = if (isPlaying) 0.82f else 0.65f,
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
+        label = "player-primary-halo-radius"
     )
     val corner by animateDpAsState(
         targetValue = if (isPlaying) LevyraPlayerDesign.CornerMd else size * 0.5f,
@@ -431,12 +480,12 @@ private fun PlayerPrimaryButton(
             modifier = Modifier
                 .size(size)
                 .drawBehind {
-                    val radius = this.size.minDimension * 0.72f
+                    val radius = this.size.minDimension * haloRadiusFactor
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 haloColor.copy(alpha = haloAlpha),
-                                haloColor.copy(alpha = haloAlpha * 0.30f),
+                                haloColor.copy(alpha = haloAlpha * 0.28f),
                                 Color.Transparent
                             ),
                             center = center,
