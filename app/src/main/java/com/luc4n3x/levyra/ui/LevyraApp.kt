@@ -11686,16 +11686,16 @@ private fun PlayerCanvasFusionScrim(
             drawRect(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.00f to baseColor.copy(alpha = 0.75f),
-                        0.06f to baseColor.copy(alpha = 0.45f),
-                        0.14f to baseColor.copy(alpha = 0.15f),
-                        0.22f to Color.Transparent,
-                        0.48f to Color.Transparent,
-                        0.58f to controlColor.copy(alpha = 0.25f),
-                        0.68f to controlColor.copy(alpha = 0.68f),
-                        0.78f to controlColor.copy(alpha = 0.92f),
-                        0.88f to controlColor.playerAmbienceMix(baseColor, 0.45f),
-                        1.00f to baseColor
+                        0.00f to baseColor.copy(alpha = 0.62f),
+                        0.07f to baseColor.copy(alpha = 0.30f),
+                        0.16f to baseColor.copy(alpha = 0.08f),
+                        0.24f to Color.Transparent,
+                        0.52f to Color.Transparent,
+                        0.61f to controlColor.copy(alpha = 0.20f),
+                        0.70f to controlColor.copy(alpha = 0.56f),
+                        0.79f to controlColor.copy(alpha = 0.84f),
+                        0.89f to controlColor.playerAmbienceMix(baseColor, 0.42f),
+                        1.00f to baseColor.playerAmbienceMix(Color.Black, 0.22f)
                     )
                 )
             )
@@ -11714,7 +11714,7 @@ private fun PlayerModeSwitch(
     val strings = LocalLevyraStrings.current
     val selectedContent = remember(activeColorTarget) {
         Color.White.playerContentColor(
-            listOf(activeColorTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
+            listOf(activeColorTarget.copy(alpha = 0.28f).playerCompositeOver(PlayerDarkSurface))
         )
     }
     Row(
@@ -11722,15 +11722,16 @@ private fun PlayerModeSwitch(
             .selectableGroup()
             .playerGlass(
                 shape = CircleShape,
-                fill = Color.Black.copy(alpha = 0.35f),
-                borderTop = Color.White.copy(alpha = 0.14f),
-                borderBottom = Color.White.copy(alpha = 0.08f)
+                fill = Color.Black.copy(alpha = 0.28f),
+                borderTop = Color.White.copy(alpha = 0.16f),
+                borderBottom = Color.White.copy(alpha = 0.07f)
             )
             .padding(3.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         PlayerModeSwitchTab(
+            icon = Icons.Rounded.MusicNote,
             label = strings.song,
             selected = !isVideoMode,
             activeColor = activeColor,
@@ -11738,6 +11739,7 @@ private fun PlayerModeSwitch(
             onClick = onSong
         )
         PlayerModeSwitchTab(
+            icon = Icons.Rounded.Videocam,
             label = strings.video,
             selected = isVideoMode,
             activeColor = activeColor,
@@ -11749,6 +11751,7 @@ private fun PlayerModeSwitch(
 
 @Composable
 private fun PlayerModeSwitchTab(
+    icon: ImageVector,
     label: String,
     selected: Boolean,
     activeColor: Color,
@@ -11762,40 +11765,45 @@ private fun PlayerModeSwitchTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) Color.White.copy(alpha = 0.22f) else Color.Transparent,
+        targetValue = if (selected) activeColor.copy(alpha = 0.22f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
+    val border by animateColorAsState(
+        targetValue = if (selected) activeColor.copy(alpha = 0.42f) else Color.Transparent,
+        animationSpec = tabSpec,
+        label = "player-mode-tab-border"
+    )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) Color.White else LevyraPlayerDesign.TextSecondary,
+        targetValue = if (selected) selectedContent else LevyraPlayerDesign.TextSecondary,
         animationSpec = tabSpec,
         label = "player-mode-tab-content"
     )
-    Box(
+    Row(
         modifier = Modifier
             .semantics {
                 this.selected = isSelected
                 role = Role.Tab
             }
-            .then(
-                if (selected) {
-                    Modifier
-                        .shadow(3.dp, CircleShape, clip = false)
-                        .background(background, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
-                } else {
-                    Modifier.background(background, CircleShape)
-                }
-            )
+            .background(background, CircleShape)
+            .border(BorderStroke(1.dp, border), CircleShape)
             .pressable(enabled = !selected, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 11.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(14.dp)
+        )
         Text(
             text = label,
             color = contentColor,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp,
+            fontSize = 11.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+            letterSpacing = 0.1.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -11913,6 +11921,21 @@ private fun PlayerQuickActionsBar(
             modifier = Modifier.weight(1f),
             onClick = viewModel::openLyrics
         )
+        if (!state.isVideoMode) {
+            val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
+            PlayerQuickAction(
+                icon = Icons.Rounded.AutoAwesome,
+                contentDescription = strings.motionArtwork,
+                tint = if (canvasActive) activePrimary else Color.White.copy(alpha = 0.72f),
+                active = canvasActive,
+                compact = compact,
+                enabled = state.animationsEnabled,
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { toggleableState = ToggleableState(canvasActive) },
+                onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+            )
+        }
         PlayerQuickAction(
             icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
             contentDescription = when {
@@ -11981,16 +12004,16 @@ private fun PlayerQuickAction(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val fill by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.035f),
+        targetValue = if (active) tint.copy(alpha = 0.14f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-fill"
     )
     val border by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.065f),
+        targetValue = if (active) tint.copy(alpha = 0.24f) else Color.Transparent,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-border"
     )
-    val shape = LevyraPlayerDesign.ShapeSm
+    val shape = CircleShape
 
     Box(
         modifier = modifier
@@ -12787,14 +12810,15 @@ private fun PlayerScreen(
             (maxHeight - 220.dp).coerceAtLeast(180.dp)
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
-        // Mount the immersive layer immediately in song mode. MotionArtworkLayer owns the
-        // animated static bed and crossfades to a real Canvas only after its first frame, so the
-        // player never has to flash a dead static state while remote artwork is resolving.
-        val immersiveArtworkEnabled = state.motionArtworkEnabled &&
-            state.animationsEnabled &&
-            playerPane == LevyraPlayerPane.Stacked &&
+        // Stacked song mode is a real immersive surface, not a card placed over a background.
+        // MotionArtworkLayer always renders the static artwork bed first; real Canvas/living
+        // artwork is only layered when the user's motion preference and animations allow it.
+        val immersiveSongSurface = playerPane == LevyraPlayerPane.Stacked &&
             !state.isVideoMode &&
             track != null
+        val immersiveArtworkEnabled = immersiveSongSurface &&
+            state.motionArtworkEnabled &&
+            state.animationsEnabled
         val immersiveMotionArtwork = state.motionArtwork.takeIf { immersiveArtworkEnabled }
         val artworkPreviewAvailable = !state.isVideoMode &&
             artworkUrl.isNotBlank() &&
@@ -12804,14 +12828,14 @@ private fun PlayerScreen(
         PlayerImmersiveBackdrop(
             // The immersive layer already draws the artwork bed. Avoid decoding/drawing a second
             // fullscreen copy behind it; keep only the palette backdrop as the safety bed.
-            artworkUrl = if (immersiveArtworkEnabled) "" else artworkUrl,
+            artworkUrl = if (immersiveSongSurface) "" else artworkUrl,
             ambience = ambience,
             isPlaying = state.isPlaying,
             animationsEnabled = state.animationsEnabled,
             modifier = Modifier.fillMaxSize()
         )
         AnimatedVisibility(
-            visible = immersiveArtworkEnabled,
+            visible = immersiveSongSurface,
             // The generated artwork bed is the immediate first frame. A real Canvas performs its
             // own first-frame crossfade inside MotionArtworkLayer, so an outer enter fade only
             // reintroduces the static-to-motion flash we are trying to remove.
@@ -12827,7 +12851,7 @@ private fun PlayerScreen(
                     motionArtwork = immersiveMotionArtwork,
                     livingArtwork = livingArtwork.takeIf { immersiveArtworkEnabled },
                     ambience = ambience,
-                    animationsEnabled = state.animationsEnabled,
+                    animationsEnabled = immersiveArtworkEnabled,
                     isPlaying = state.isPlaying,
                     canvasQuality = state.interfaceSettings.canvasQuality,
                     modifier = Modifier
@@ -12896,37 +12920,22 @@ private fun PlayerScreen(
                         }
                     }
                 }
-                if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
-                if (!state.isVideoMode && track != null) {
-                    val canvasActive = state.motionArtworkEnabled && state.animationsEnabled
+                if (immersiveSongSurface && track != null) {
+                    val headerFavorite = track.id in state.favoriteIds
                     PlayerGlassIconButton(
-                        icon = Icons.Rounded.AutoAwesome,
-                        contentDescription = strings.motionArtwork,
+                        icon = if (headerFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = strings.favoritesPlain,
                         size = headerButtonSize,
-                        iconSize = 19.dp,
-                        tint = if (canvasActive) primary else Color.White.copy(alpha = 0.54f),
-                        fill = if (canvasActive) {
-                            primary.copy(alpha = 0.13f)
-                        } else {
-                            LevyraPlayerDesign.GlassFill
-                        },
-                        borderTop = if (canvasActive) {
-                            primary.copy(alpha = 0.54f)
-                        } else {
-                            LevyraPlayerDesign.GlassBorderTop
-                        },
-                        borderBottom = if (canvasActive) {
-                            primary.copy(alpha = 0.18f)
-                        } else {
-                            LevyraPlayerDesign.GlassBorderBottom
-                        },
-                        enabled = state.animationsEnabled,
-                        modifier = Modifier.semantics {
-                            toggleableState = ToggleableState(canvasActive)
-                        },
-                        onClick = { viewModel.setMotionArtworkEnabled(!state.motionArtworkEnabled) }
+                        iconSize = if (compactPlayer) 20.dp else 21.dp,
+                        tint = if (headerFavorite) Color(0xFFFF4D6D) else Color.White.copy(alpha = 0.78f),
+                        fill = if (headerFavorite) Color(0xFFFF4D6D).copy(alpha = 0.15f) else LevyraPlayerDesign.GlassFill,
+                        borderTop = if (headerFavorite) Color(0xFFFF4D6D).copy(alpha = 0.42f) else LevyraPlayerDesign.GlassBorderTop,
+                        borderBottom = if (headerFavorite) Color(0xFFFF4D6D).copy(alpha = 0.16f) else LevyraPlayerDesign.GlassBorderBottom,
+                        modifier = Modifier.semantics { toggleableState = ToggleableState(headerFavorite) },
+                        onClick = { viewModel.toggleFavorite(track) }
                     )
                 }
+                if (!state.isVideoMode) CastRouteButton(modifier = Modifier.size(headerButtonSize))
                 if (state.isVideoMode) {
                     if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
                         var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
@@ -13008,7 +13017,13 @@ private fun PlayerScreen(
                         .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
                 }
             ) {
-                if (state.isVideoMode && activeTrack.videoUrl.isNotBlank()) {
+                if (immersiveSongSurface) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Full)
+                    )
+                } else if (state.isVideoMode && activeTrack.videoUrl.isNotBlank()) {
                     LevyraVideoSurface(
                         state = state,
                         modifier = Modifier
@@ -13216,9 +13231,19 @@ private fun PlayerScreen(
                             Text(
                                 text = titleTrack.title,
                                 color = LevyraPlayerDesign.TextPrimary,
-                                fontSize = if (compactPlayer) 22.sp else 25.sp,
-                                lineHeight = if (compactPlayer) 26.sp else 29.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = when {
+                                    immersiveSongSurface && compactPlayer -> 25.sp
+                                    immersiveSongSurface -> 30.sp
+                                    compactPlayer -> 22.sp
+                                    else -> 25.sp
+                                },
+                                lineHeight = when {
+                                    immersiveSongSurface && compactPlayer -> 29.sp
+                                    immersiveSongSurface -> 35.sp
+                                    compactPlayer -> 26.sp
+                                    else -> 29.sp
+                                },
+                                fontWeight = if (immersiveSongSurface) FontWeight.ExtraBold else FontWeight.Bold,
                                 letterSpacing = (-0.4).sp,
                                 maxLines = if (state.animationsEnabled) 1 else 2,
                                 overflow = TextOverflow.Ellipsis,
@@ -13245,8 +13270,13 @@ private fun PlayerScreen(
                             Text(
                                 text = activeTrack.artist,
                                 color = LevyraPlayerDesign.TextSecondary,
-                                fontSize = if (compactPlayer) 14.sp else 15.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = when {
+                                    immersiveSongSurface && compactPlayer -> 14.5.sp
+                                    immersiveSongSurface -> 16.sp
+                                    compactPlayer -> 14.sp
+                                    else -> 15.sp
+                                },
+                                fontWeight = if (immersiveSongSurface) FontWeight.SemiBold else FontWeight.Medium,
                                 letterSpacing = (-0.1).sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -13254,24 +13284,26 @@ private fun PlayerScreen(
                         }
                     }
                     Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceSm))
-                    PlayerGlassIconButton(
-                        icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = strings.favoritesPlain,
-                        size = heartButtonSize,
-                        iconSize = if (compactPlayer) 22.dp else 24.dp,
-                        tint = favoriteTint,
-                        fill = favoriteFill,
-                        borderTop = favoriteBorder,
-                        borderBottom = favoriteBorder,
-                        modifier = Modifier
-                            .graphicsLayer {
-                                scaleX = favoriteScale
-                                scaleY = favoriteScale
-                            }
-                            .semantics { toggleableState = ToggleableState(isFavorite) },
-                        onClick = { viewModel.toggleFavorite(activeTrack) }
-                    )
-                    Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
+                    if (!immersiveSongSurface) {
+                        PlayerGlassIconButton(
+                            icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            contentDescription = strings.favoritesPlain,
+                            size = heartButtonSize,
+                            iconSize = if (compactPlayer) 22.dp else 24.dp,
+                            tint = favoriteTint,
+                            fill = favoriteFill,
+                            borderTop = favoriteBorder,
+                            borderBottom = favoriteBorder,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = favoriteScale
+                                    scaleY = favoriteScale
+                                }
+                                .semantics { toggleableState = ToggleableState(isFavorite) },
+                            onClick = { viewModel.toggleFavorite(activeTrack) }
+                        )
+                        Spacer(modifier = Modifier.width(LevyraPlayerDesign.SpaceXs))
+                    }
                     PlayerGlassIconButton(
                         icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                         contentDescription = strings.addToPlaylist,
@@ -13431,9 +13463,29 @@ private fun PlayerScreen(
                     ) {
                         mediaBlock(track)
                     }
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (immersiveSongSurface) {
+                                    Modifier
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color.Transparent,
+                                                    Color.Black.copy(alpha = 0.12f),
+                                                    Color.Black.copy(alpha = 0.30f)
+                                                )
+                                            )
+                                        )
+                                        .padding(top = if (compactPlayer) 5.dp else 8.dp)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    ) {
                         metaBlock(track)
-                        Spacer(modifier = Modifier.height(playerMetaSpacing))
+                        Spacer(modifier = Modifier.height(if (immersiveSongSurface) playerMetaSpacing * 0.75f else playerMetaSpacing))
                         timelineBlock()
                         Spacer(modifier = Modifier.height(playerControlSpacing))
                         transportBlock()

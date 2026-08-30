@@ -45,11 +45,11 @@ object LevyraPlayerDesign {
     val ModeGlyph: Dp = 22.dp
     val ModeGlyphCompact: Dp = 20.dp
     val ModeIndicator: Dp = 4.dp
-    val SkipGlyph: Dp = 34.dp
-    val SkipGlyphCompact: Dp = 30.dp
-    val PrimarySize: Dp = 66.dp
-    val PrimarySizeCompact: Dp = 58.dp
-    val PrimaryGlyph: Dp = 30.dp
+    val SkipGlyph: Dp = 32.dp
+    val SkipGlyphCompact: Dp = 28.dp
+    val PrimarySize: Dp = 72.dp
+    val PrimarySizeCompact: Dp = 64.dp
+    val PrimaryGlyph: Dp = 31.dp
     val PrimaryCornerPlaying: Dp = 22.dp
     val MinimumTouchTarget: Dp = 48.dp
 
@@ -89,16 +89,16 @@ object LevyraPlayerDesign {
     fun <T> standardTween(durationMillis: Int = 220): TweenSpec<T> =
         tween(durationMillis = durationMillis, easing = Standard)
 
-    val GlassFill: Color = Color.White.copy(alpha = 0.08f)
-    val GlassFillStrong: Color = Color.White.copy(alpha = 0.14f)
-    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.32f)
-    val GlassBorderTop: Color = Color.White.copy(alpha = 0.14f)
-    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.06f)
+    val GlassFill: Color = Color.White.copy(alpha = 0.09f)
+    val GlassFillStrong: Color = Color.White.copy(alpha = 0.15f)
+    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.30f)
+    val GlassBorderTop: Color = Color.White.copy(alpha = 0.17f)
+    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.07f)
 
     val TextPrimary: Color = Color.White
-    val TextSecondary: Color = Color.White.copy(alpha = 0.70f)
+    val TextSecondary: Color = Color.White.copy(alpha = 0.72f)
     val TextTertiary: Color = Color.White.copy(alpha = 0.48f)
-    val IconIdle: Color = Color.White.copy(alpha = 0.55f)
+    val IconIdle: Color = Color.White.copy(alpha = 0.58f)
     val PrimaryContent: Color = Color(0xFF121214)
     val TrackInactive: Color = Color.White.copy(alpha = 0.18f)
     val TrackBuffered: Color = Color.White.copy(alpha = 0.32f)
