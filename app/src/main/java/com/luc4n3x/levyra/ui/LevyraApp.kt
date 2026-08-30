@@ -40,6 +40,7 @@ import com.luc4n3x.levyra.update.AppUpdateContract
 import android.net.Uri
 import android.os.PowerManager
 import android.os.SystemClock
+import android.provider.DocumentsContract
 import android.widget.Toast
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -376,6 +377,9 @@ import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
+import com.luc4n3x.levyra.domain.LevyraVaultStatus
+import com.luc4n3x.levyra.data.levyraVaultFileName
+import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -1140,7 +1144,24 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         uri?.let(viewModel::createBackup)
     }
     val restoreBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let(viewModel::restoreBackup)
+        uri?.let(viewModel::previewRestore)
+    }
+    val manageBackupsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let(viewModel::previewRestore)
+        }
+    }
+    val openManageBackups = {
+        val rootUri = DocumentsContract.buildRootUri(
+            "${toastContext.packageName}.automatic-backups",
+            "levyra-automatic-backups"
+        )
+        manageBackupsLauncher.launch(
+            Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/zip")
+                .putExtra(DocumentsContract.EXTRA_INITIAL_URI, rootUri)
+        )
     }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
     val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
@@ -1624,6 +1645,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     interfaceSettings = state.interfaceSettings,
                     downloadSettings = state.downloadSettings,
                     backupSettings = state.backupSettings,
+                    vaultStatus = state.vaultStatus,
+                    lastBackupAtMs = state.lastBackupAtMs,
                     downloadQueue = state.downloadQueue,
                     playbackDiagnostics = state.playbackDiagnostics,
                     lastFmConfigured = state.lastFmConfigured,
@@ -1672,8 +1695,10 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                             }
                         }
                     },
-                    onCreateBackup = { createBackupLauncher.launch("levyra-backup-${System.currentTimeMillis()}.zip") },
+                    onCreateBackup = { createBackupLauncher.launch(levyraVaultFileName(System.currentTimeMillis())) },
                     onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                    onBackupNow = viewModel::backupNow,
+                    onManageBackups = { openManageBackups() },
                     onPauseDownload = viewModel::pauseDownload,
                     onResumeDownload = viewModel::resumeDownload,
                     onCancelDownload = viewModel::cancelDownload,
@@ -1695,6 +1720,14 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onClearAudD = viewModel::clearAudDToken,
                     onRedoQuestionnaire = viewModel::restartOnboarding,
                     onClose = viewModel::closeSettings
+                )
+            }
+
+            state.backupPreview?.let { preview ->
+                VaultRestorePreviewDialog(
+                    preview = preview,
+                    onConfirm = viewModel::confirmRestore,
+                    onDismiss = viewModel::dismissRestorePreview
                 )
             }
 
@@ -2271,6 +2304,81 @@ private fun LanguageRestartDialog(onRestart: () -> Unit, onLater: () -> Unit) {
         confirmButton = { TextButton(onClick = onRestart) { Text(strings.restartNow, color = LevyraCyan, fontWeight = FontWeight.Black) } },
         dismissButton = { TextButton(onClick = onLater) { Text(strings.later, color = LevyraMuted, fontWeight = FontWeight.Bold) } }
     )
+}
+
+@Composable
+private fun VaultRestorePreviewDialog(
+    preview: VaultPreview,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF11131C),
+        title = { Text(strings.restorePreviewTitle, color = LevyraText, fontWeight = FontWeight.Black) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (preview.compatible) strings.restorePreviewCompatible else strings.restorePreviewIncompatible,
+                    color = if (preview.compatible) LevyraCyan else Color(0xFFFF6B6B),
+                    fontWeight = FontWeight.Bold
+                )
+                if (preview.createdAt > 0L) {
+                    Text(
+                        text = "${strings.restorePreviewCreated}: ${formatVaultTimestamp(preview.createdAt, strings.code)}",
+                        color = LevyraMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                if (preview.appVersion.isNotBlank()) {
+                    Text(
+                        text = "${strings.restorePreviewVersion}: ${preview.appVersion}",
+                        color = LevyraMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(
+                    text = "${strings.restorePreviewSize}: ${formatVaultBytes(preview.sizeBytes)}",
+                    color = LevyraMuted,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (preview.sections.isNotEmpty()) {
+                    Text(
+                        text = "${strings.restorePreviewContents}: ${preview.sections.joinToString(", ") { it.removePrefix("data/").removeSuffix(".json") }}",
+                        color = LevyraMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(
+                    text = strings.restoreConfirmBody,
+                    color = LevyraMuted,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 20.sp
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = preview.compatible) {
+                Text(strings.restoreConfirm, color = if (preview.compatible) LevyraCyan else LevyraMuted, fontWeight = FontWeight.Black)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel, color = LevyraMuted, fontWeight = FontWeight.Bold) } }
+    )
+}
+
+private fun formatVaultTimestamp(timestampMs: Long, languageCode: String): String {
+    val locale = Locale.forLanguageTag(languageCode.replace('_', '-'))
+    return java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, locale)
+        .format(java.util.Date(timestampMs))
+}
+
+private fun formatVaultBytes(bytes: Long): String {
+    if (bytes < 1024L) return "$bytes B"
+    val kilobytes = bytes / 1024.0
+    if (kilobytes < 1024.0) return "%.1f KB".format(Locale.US, kilobytes)
+    val megabytes = kilobytes / 1024.0
+    return "%.1f MB".format(Locale.US, megabytes)
 }
 
 private fun restartLevyra(activity: Activity?) {
@@ -15112,6 +15220,8 @@ private fun SettingsOverlay(
     interfaceSettings: LevyraInterfaceSettings,
     downloadSettings: LevyraDownloadSettings,
     backupSettings: LevyraBackupSettings,
+    vaultStatus: LevyraVaultStatus,
+    lastBackupAtMs: Long,
     downloadQueue: List<OfflineDownloadTask>,
     playbackDiagnostics: String,
     lastFmConfigured: Boolean,
@@ -15140,6 +15250,8 @@ private fun SettingsOverlay(
     onDownloadUpdate: () -> Unit,
     onCreateBackup: () -> Unit,
     onRestoreBackup: () -> Unit,
+    onBackupNow: () -> Unit,
+    onManageBackups: () -> Unit,
     onPauseDownload: (String) -> Unit,
     onResumeDownload: (String) -> Unit,
     onCancelDownload: (String) -> Unit,
@@ -15184,7 +15296,7 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
             SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
             SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
-            SettingsCategoryMeta("backup", categoryTitle(strings.backupRestoreSection), "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
+            SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
             SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
             SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
             , SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Settings, LevyraCyan)
@@ -15207,8 +15319,8 @@ private fun SettingsOverlay(
                 SettingsSearchEntry(strings.wifiOnly, strings.wifiOnlySubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.simultaneousDownloads, strings.simultaneousDownloadsSubtitle, strings.downloads, "downloads", categoryTitle(strings.downloads)),
                 SettingsSearchEntry(strings.lyricsAnalysisSection, strings.lyricsAnalysisCompactSubtitle, strings.lyrics, "lyrics", categoryTitle(strings.lyricsAnalysisSection)),
-                SettingsSearchEntry(strings.createDataBackup, strings.createDataBackupSubtitle, "backup", "backup", categoryTitle(strings.backupRestoreSection)),
-                SettingsSearchEntry(strings.restoreBackup, strings.restoreBackupSubtitle, "backup", "backup", categoryTitle(strings.backupRestoreSection)),
+                SettingsSearchEntry(strings.createDataBackup, strings.createDataBackupSubtitle, "backup", "backup", strings.vaultTitle),
+                SettingsSearchEntry(strings.restoreBackup, strings.restoreBackupSubtitle, "backup", "backup", strings.vaultTitle),
                 SettingsSearchEntry(strings.batteryUnrestricted, strings.batteryUnrestrictedSubtitle, "battery", "system", categoryTitle(strings.preferences)),
                 SettingsSearchEntry(strings.language, strings.languageSubtitle, "locale", "system", categoryTitle(strings.preferences)),
                 SettingsSearchEntry(strings.updates, strings.checkNewVersions, "version", "app", categoryTitle(strings.app))
@@ -15760,6 +15872,24 @@ private fun SettingsOverlay(
                         }
                         "backup" -> {
                             item {
+                                SettingsInfoCard(
+                                    icon = Icons.Rounded.History,
+                                    title = strings.vaultTitle,
+                                    subtitle = strings.vaultSubtitle
+                                )
+                            }
+                            item {
+                                SettingsInfoCard(
+                                    icon = Icons.Rounded.Schedule,
+                                    title = strings.lastBackup,
+                                    subtitle = if (lastBackupAtMs > 0L) {
+                                        formatVaultTimestamp(lastBackupAtMs, strings.code)
+                                    } else {
+                                        strings.lastBackupNever
+                                    }
+                                )
+                            }
+                            item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.History,
                                     title = strings.automaticBackup,
@@ -15790,7 +15920,7 @@ private fun SettingsOverlay(
                                         icon = Icons.Rounded.History,
                                         title = strings.backupRetention,
                                         subtitle = strings.automaticBackupSubtitle,
-                                        options = listOf(3, 5, 8, 12).map { count ->
+                                        options = listOf(3, 5, 10).map { count ->
                                             count.toString() to strings.backupRetentionLabel(count)
                                         },
                                         selected = backupSettings.retentionCount.toString(),
@@ -15810,6 +15940,30 @@ private fun SettingsOverlay(
                                         onCheckedChange = { onBackupSettings(backupSettings.copy(chargingOnly = it)) }
                                     )
                                 }
+                                item {
+                                    SettingsInfoCard(
+                                        icon = Icons.Rounded.Source,
+                                        title = strings.backupLocation,
+                                        subtitle = strings.backupLocationSubtitle
+                                    )
+                                }
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Refresh,
+                                    title = strings.backupBeforeUpdates,
+                                    subtitle = strings.backupBeforeUpdatesSubtitle,
+                                    checked = backupSettings.preUpdate,
+                                    onCheckedChange = { onBackupSettings(backupSettings.copy(preUpdate = it)) }
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Download,
+                                    title = if (vaultStatus == LevyraVaultStatus.Running) strings.vaultBusy else strings.backupNow,
+                                    subtitle = strings.backupNowSubtitle,
+                                    onClick = onBackupNow
+                                )
                             }
                             item {
                                 SettingsButton(
@@ -15825,6 +15979,14 @@ private fun SettingsOverlay(
                                     title = strings.restoreBackup,
                                     subtitle = strings.restoreBackupSubtitle,
                                     onClick = onRestoreBackup
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Source,
+                                    title = strings.manageBackups,
+                                    subtitle = strings.manageBackupsSubtitle,
+                                    onClick = onManageBackups
                                 )
                             }
                         }

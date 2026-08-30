@@ -532,6 +532,60 @@ class LevyraStrings private constructor(
         else -> if (code == "it") "Ogni settimana" else "Weekly"
     }
     fun backupRetentionLabel(count: Int): String = if (code == "it") "$count copie" else "$count copies"
+    val vaultTitle: String get() = "Levyra Vault"
+    val vaultSubtitle: String get() = if (code == "it") {
+        "Proteggi playlist, preferiti, cronologia e impostazioni"
+    } else {
+        "Protect playlists, favorites, history and settings"
+    }
+    val backupNow: String get() = if (code == "it") "Backup ora" else "Back up now"
+    val backupNowSubtitle: String get() = if (code == "it") {
+        "Crea subito un backup locale"
+    } else {
+        "Create a local backup now"
+    }
+    val lastBackup: String get() = if (code == "it") "Ultimo backup" else "Last backup"
+    val lastBackupNever: String get() = if (code == "it") "Mai" else "Never"
+    val backupLocation: String get() = if (code == "it") "Posizione backup" else "Backup location"
+    val backupLocationSubtitle: String get() = if (code == "it") {
+        "I backup automatici restano nella memoria interna dell'app; usa Backup dati per salvare dove preferisci"
+    } else {
+        "Automatic backups stay in app storage; use Create data backup to save anywhere"
+    }
+    val backupBeforeUpdates: String get() = if (code == "it") {
+        "Backup prima degli aggiornamenti"
+    } else {
+        "Back up before updates"
+    }
+    val backupBeforeUpdatesSubtitle: String get() = if (code == "it") {
+        "Crea un backup locale prima di installare un aggiornamento"
+    } else {
+        "Create a local backup before installing an update"
+    }
+    val manageBackups: String get() = if (code == "it") "Gestisci backup" else "Manage backups"
+    val manageBackupsSubtitle: String get() = if (code == "it") {
+        "Apri la cartella dei backup automatici"
+    } else {
+        "Open the automatic backups folder"
+    }
+    val vaultBusy: String get() = if (code == "it") "Operazione Vault in corso..." else "Vault operation in progress..."
+    val restorePreviewTitle: String get() = if (code == "it") "Ripristina Levyra" else "Restore Levyra"
+    val restorePreviewCompatible: String get() = if (code == "it") "Backup compatibile" else "Compatible backup"
+    val restorePreviewIncompatible: String get() = if (code == "it") {
+        "Backup non compatibile con questa versione"
+    } else {
+        "Backup incompatible with this version"
+    }
+    val restorePreviewCreated: String get() = if (code == "it") "Creato" else "Created"
+    val restorePreviewVersion: String get() = if (code == "it") "Versione Levyra" else "Levyra version"
+    val restorePreviewSize: String get() = if (code == "it") "Dimensione" else "Size"
+    val restorePreviewContents: String get() = if (code == "it") "Contenuti" else "Contents"
+    val restoreConfirm: String get() = if (code == "it") "Ripristina" else "Restore"
+    val restoreConfirmBody: String get() = if (code == "it") {
+        "Sostituisce preferiti, playlist, cronologia, coda e impostazioni con i dati del backup."
+    } else {
+        "Replaces favorites, playlists, history, queue and settings with the backup data."
+    }
     val restoreBackup: String get() = value("restoreBackup")
     val restoreBackupSubtitle: String get() = value("restoreBackupSubtitle")
     val playbackResilienceSection: String get() = value("playbackResilienceSection")

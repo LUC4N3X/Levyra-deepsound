@@ -126,10 +126,13 @@ data class LevyraBackupSettings(
     val enabled: Boolean = false,
     val frequency: LevyraBackupFrequency = LevyraBackupFrequency.Weekly,
     val retentionCount: Int = 5,
-    val chargingOnly: Boolean = true
+    val chargingOnly: Boolean = true,
+    val preUpdate: Boolean = true
 ) {
     fun normalized(): LevyraBackupSettings = copy(retentionCount = retentionCount.coerceIn(1, 12))
 }
+
+enum class LevyraVaultStatus { Idle, Running, Completed, Error }
 
 internal fun LevyraDownloadSettings.shouldSkipExistingDownload(
     trackId: String,

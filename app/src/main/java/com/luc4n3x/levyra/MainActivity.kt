@@ -49,6 +49,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
@@ -336,6 +337,12 @@ class MainActivity : ComponentActivity() {
         lateinit var job: Job
         job = lifecycleScope.launch {
             try {
+                runCatching {
+                    val backupSettings = viewModel.state.value.backupSettings
+                    if (backupSettings.preUpdate) {
+                        LevyraBackupManager(applicationContext).exportAutomatic(backupSettings.retentionCount)
+                    }
+                }.onFailure { error -> Timber.w(error, "Pre-update backup failed") }
                 val prepared = updateInstaller.prepareLatestUpdate { versionName, downloaded, total ->
                     val nowMs = SystemClock.elapsedRealtime()
                     val speed = updateSpeedTracker.sample(downloaded, nowMs)

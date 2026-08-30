@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.viewmodel
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
+import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -16,6 +18,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
+import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
@@ -207,6 +210,10 @@ data class LevyraUiState(
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
     val backupSettings: LevyraBackupSettings = LevyraBackupSettings(),
+    val vaultStatus: LevyraVaultStatus = LevyraVaultStatus.Idle,
+    val backupPreview: VaultPreview? = null,
+    val pendingRestoreUri: Uri? = null,
+    val lastBackupAtMs: Long = 0L,
     val sharedMediaPreview: SharedMediaPreview? = null,
     val intelligenceSummary: LevyraIntelligenceSummary = LevyraIntelligenceSummary(),
     val backupMessage: String? = null,

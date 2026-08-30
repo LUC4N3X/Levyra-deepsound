@@ -21,6 +21,7 @@ import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
+import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
@@ -106,6 +107,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.AutoEqImporter
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
+import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
@@ -694,6 +696,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
             backupSettings = startupSettings.backupSettings,
+            lastBackupAtMs = preferences.lastBackupAt(),
             playbackDiagnostics = resolver.playbackDiagnostics(),
             recognitionAvailable = LevyraRecognitionCenter.isAvailable
         )
@@ -3594,20 +3597,75 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun createBackup(uri: Uri) {
         viewModelScope.launch {
+            if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
+            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
             val message = runCatching { backupManager.exportTo(uri).message }
                 .getOrElse { "Backup non riuscito: ${cleanUserError(it)}" }
-            _state.update { it.copy(backupMessage = message) }
+            _state.update {
+                it.copy(
+                    backupMessage = message,
+                    vaultStatus = if (message.startsWith("Backup non riuscito")) LevyraVaultStatus.Error else LevyraVaultStatus.Completed,
+                    lastBackupAtMs = if (message.startsWith("Backup non riuscito")) it.lastBackupAtMs else System.currentTimeMillis()
+                )
+            }
         }
     }
 
-    fun restoreBackup(uri: Uri) {
+    fun backupNow() {
         viewModelScope.launch {
+            if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
+            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
+            val message = runCatching {
+                backupManager.exportAutomatic(_state.value.backupSettings.retentionCount).message
+            }.getOrElse { "Backup non riuscito: ${cleanUserError(it)}" }
+            _state.update {
+                it.copy(
+                    backupMessage = message,
+                    vaultStatus = if (message.startsWith("Backup non riuscito")) LevyraVaultStatus.Error else LevyraVaultStatus.Completed,
+                    lastBackupAtMs = if (message.startsWith("Backup non riuscito")) it.lastBackupAtMs else System.currentTimeMillis()
+                )
+            }
+        }
+    }
+
+    fun previewRestore(uri: Uri) {
+        viewModelScope.launch {
+            val preview = runCatching { backupManager.inspect(uri) }
+                .getOrElse { error ->
+                    _state.update { it.copy(backupMessage = "Backup non valido: ${cleanUserError(error)}") }
+                    return@launch
+                }
+            _state.update { it.copy(backupPreview = preview, pendingRestoreUri = uri) }
+        }
+    }
+
+    fun dismissRestorePreview() {
+        _state.update { it.copy(backupPreview = null, pendingRestoreUri = null) }
+    }
+
+    fun confirmRestore() {
+        val uri = _state.value.pendingRestoreUri ?: return
+        val preview = _state.value.backupPreview
+        if (preview != null && !preview.compatible) {
+            _state.update {
+                it.copy(backupMessage = "Backup non compatibile con questa versione di Levyra", backupPreview = null, pendingRestoreUri = null)
+            }
+            return
+        }
+        viewModelScope.launch {
+            if (_state.value.vaultStatus == LevyraVaultStatus.Running) return@launch
+            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running, backupPreview = null, pendingRestoreUri = null) }
             val message = runCatching {
                 backupManager.restoreFrom(uri)
                 refreshAfterRestore()
                 "Ripristino completato"
             }.getOrElse { "Ripristino non riuscito: ${cleanUserError(it)}" }
-            _state.update { it.copy(backupMessage = message) }
+            _state.update {
+                it.copy(
+                    backupMessage = message,
+                    vaultStatus = if (message.startsWith("Ripristino non riuscito")) LevyraVaultStatus.Error else LevyraVaultStatus.Completed
+                )
+            }
         }
     }
 
