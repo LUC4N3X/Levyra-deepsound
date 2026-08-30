@@ -26,7 +26,14 @@ sealed interface MotionArtworkVerificationResult {
 
 internal object MotionArtworkDestinationPolicy {
     fun isAllowedUrl(provider: String, url: HttpUrl): Boolean {
-        if (url.scheme != "https" || url.port != 443) return false
+        if (
+            url.scheme != "https" ||
+            url.port != 443 ||
+            url.username.isNotEmpty() ||
+            url.password.isNotEmpty()
+        ) {
+            return false
+        }
         val host = url.host.lowercase(Locale.ROOT)
         return when (provider) {
             "apple-motion" -> APPLE_MEDIA_HOSTS.any { allowed ->

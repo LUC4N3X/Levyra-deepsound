@@ -40,14 +40,14 @@ internal fun mergeReliableArtistSearchResults(
             artistNameEditDistance(query, candidate.name) <= typoDistance
     }
     if (nearExactMatches.isNotEmpty()) {
-        nearExactMatches.maxWithOrNull(artistAuthorityOrder)?.let(::add)
+        nearExactMatches.maxWithOrNull(artistAuthorityOrderFor(query))?.let(::add)
         return merged.values.take(limit.coerceIn(1, 24))
     }
 
     verifiedArtists
         .sortedWith(
             compareByDescending<ArtistHit> { artistIdentityMatches(it.name, query) }
-                .then(artistAuthorityOrder.reversed())
+                .then(artistAuthorityOrderFor(query).reversed())
                 .thenBy { it.name.lowercase() }
         )
         .forEach(::add)
@@ -127,6 +127,10 @@ private val artistAuthorityOrder: Comparator<ArtistHit> =
         .thenBy { artistAudienceWeight(it.subscribers) }
         .thenBy { it.thumbnailUrl.isNotBlank() }
 
+private fun artistAuthorityOrderFor(query: String): Comparator<ArtistHit> =
+    compareBy<ArtistHit> { artistIdentityMatches(it.name, query) }
+        .then(artistAuthorityOrder)
+
 /**
  * Replaces provider placeholders on song results only when the search query exactly matches an
  * independently verified artist. Real song artist metadata always wins.
@@ -138,7 +142,7 @@ internal fun enrichSearchTracksWithExactArtist(
 ): SearchResults {
     val exactArtist = reliableArtists
         .filter { artist -> artistIdentityMatches(artist.name, query) }
-        .maxWithOrNull(artistAuthorityOrder)
+        .maxWithOrNull(artistAuthorityOrderFor(query))
         ?: return results
 
     fun Track.withExactArtistWhenMissing(): Track {
