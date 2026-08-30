@@ -22,7 +22,28 @@ jobs:
       - name: Apply focused artist refinement
         shell: bash
         run: |
-          sed -i "s/loading_end = '                state.artistError != null && profile == null -> {'/loading_end = '                showArtistError -> {'/" .github/artist_page_refine.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.github/artist_page_refine.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              "loading_end = '                state.artistError != null && profile == null -> {'",
+              "loading_end = '                showArtistError -> {'"
+          )
+          text = text.replace(
+              "popular_end = text.index('private fun normalizeBiographyPreview(', popular_start)",
+              "popular_end = text.index('@Composable\\nprivate fun ArtistHeader(', popular_start)"
+          )
+          text = text.replace(
+              'url = release.thumbnailUrl,\n                            contentDescription = null,',
+              'url = release.thumbnailUrl,\n                            contentDescription = release.title,'
+          )
+          text = text.replace(
+              'url = artworkUrl,\n                    contentDescription = null,',
+              'url = artworkUrl,\n                    contentDescription = track.title,'
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
           python3 .github/artist_page_refine.py
 
       - name: Compile Kotlin
