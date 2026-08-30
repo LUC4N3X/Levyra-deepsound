@@ -274,44 +274,59 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
 
 <div align="center">
 
-### ⚙️ Native where it matters. Shared discipline everywhere.
+### ⚙️ Two native runtimes. One engineering language.
 
-<sub>Levyra keeps Android and Windows independent at the runtime level, while both clients follow the same rules for state, playback resilience, and local ownership.</sub>
+<sub>Android and Windows stay independent where platform behavior matters, while sharing the same discipline for state, playback resilience, and local ownership.</sub>
 
 </div>
 
-### 📱 Android · `app/`
+<br>
 
-**Compose at the surface. Media3 at the core.**
-
-- [`ui/`](app/src/main/java/com/luc4n3x/levyra/ui) — Compose screens, gestures, Canvas, and visual presentation.
-- [`viewmodel/`](app/src/main/java/com/luc4n3x/levyra/viewmodel) — Immutable UI state and unidirectional coordination.
-- [`player/`](app/src/main/java/com/luc4n3x/levyra/player) — Foreground playback service, MediaSession, and ExoPlayer ownership.
-- [`data/`](app/src/main/java/com/luc4n3x/levyra/data) — Stream resolution, lyrics, prefetch, and persistent local data.
-- [`player/offline/`](app/src/main/java/com/luc4n3x/levyra/player/offline) — Offline exports, M4A tagging, and artwork.
-
-### 💻 Windows · `desktop/`
-
-**Compose Multiplatform at the surface. libvlc at the core.**
-
-- [`app/`](desktop/app) — Desktop UI, windows, application lifecycle, and updater.
-- [`player/`](desktop/player) — libvlc playback, hardware acceleration, tray controls, and global hotkeys.
-- [`core/`](desktop/core) — Stream resolution, downloads, and local application storage.
-- [`packaging/`](desktop/packaging) — WiX MSI packaging and portable distributions.
-
-### ✦ The engineering spine
-
-🧠 **State ownership**  
-Immutable state keeps the interface, playback session, and platform controls synchronized without spreading mutable playback state across the UI.
-
-⚡ **Resolver resilience**  
-InnerTube and LevyraExtractor coordinate fidelity selection, fallback, and queue prefetch so playback does not depend on a single resolution path.
-
-💿 **Portable data**  
-Standard tagged M4A files remain usable outside Levyra, while versioned <code>.levyra</code> archives protect local application state without requiring a Levyra account or cloud service.
+<table align="center" width="100%">
+  <thead>
+    <tr>
+      <th width="18%" align="left">Layer</th>
+      <th width="41%" align="left">📱 Android</th>
+      <th width="41%" align="left">💻 Windows</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr valign="top">
+      <td><b>Interface</b><br><sub>Surface</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/ui"><code>ui/</code></a></b><br><sub>Jetpack Compose screens, gestures, Canvas, and visual presentation.</sub></td>
+      <td><b><a href="desktop/app"><code>app/</code></a></b><br><sub>Compose Multiplatform UI, windows, application lifecycle, and updater.</sub></td>
+    </tr>
+    <tr valign="top">
+      <td><b>State</b><br><sub>Orchestration</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/viewmodel"><code>viewmodel/</code></a></b><br><sub>Immutable UI state and unidirectional coordination.</sub></td>
+      <td><b><a href="desktop/app"><code>app/</code></a></b><br><sub>Application lifecycle and desktop UI coordination.</sub></td>
+    </tr>
+    <tr valign="top">
+      <td><b>Playback</b><br><sub>Runtime core</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player"><code>player/</code></a></b><br><sub>Media3 / ExoPlayer foreground service, MediaSession, and playback ownership.</sub></td>
+      <td><b><a href="desktop/player"><code>player/</code></a></b><br><sub>libvlc playback, hardware acceleration, tray controls, and global hotkeys.</sub></td>
+    </tr>
+    <tr valign="top">
+      <td><b>Data</b><br><sub>Resolution</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/data"><code>data/</code></a></b><br><sub>Stream resolution, lyrics, prefetch, and persistent local data.</sub></td>
+      <td><b><a href="desktop/core"><code>core/</code></a></b><br><sub>Stream resolution, downloads, and local application storage.</sub></td>
+    </tr>
+    <tr valign="top">
+      <td><b>Output</b><br><sub>Portable layer</sub></td>
+      <td><b><a href="app/src/main/java/com/luc4n3x/levyra/player/offline"><code>player/offline/</code></a></b><br><sub>Offline exports, M4A tagging, artwork, and portable files.</sub></td>
+      <td><b><a href="desktop/packaging"><code>packaging/</code></a></b><br><sub>WiX MSI packaging and portable desktop distributions.</sub></td>
+    </tr>
+    <tr>
+      <td colspan="3" align="center">
+        <b>🧠 State ownership</b> &nbsp;·&nbsp; <b>⚡ Resolver resilience</b> &nbsp;·&nbsp; <b>💿 Portable data</b><br>
+        <sub>Predictable state, resilient playback paths, and data that stays useful beyond the app.</sub>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 <div align="center">
-  <sub>Two native clients. One engineering philosophy: predictable state, resilient playback, portable data.</sub>
+  <sub>Different runtimes where it matters. The same engineering discipline underneath.</sub>
 </div>
 
 ---
