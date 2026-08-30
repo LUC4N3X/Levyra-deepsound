@@ -161,8 +161,7 @@ fun PlayerGlassIconButton(
     fill: Color = LevyraPlayerDesign.GlassFill,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
-    gradientBorder: Boolean = borderTop != LevyraPlayerDesign.GlassBorderTop ||
-        borderBottom != LevyraPlayerDesign.GlassBorderBottom,
+    gradientBorder: Boolean = false,
     shape: Shape = CircleShape,
     enabled: Boolean = true
 ) {
