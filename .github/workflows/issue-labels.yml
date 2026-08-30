@@ -1,0 +1,88 @@
+name: Issue labels
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/ISSUE_TEMPLATE/**
+      - .github/workflows/issue-labels.yml
+  issues:
+    types:
+      - closed
+      - reopened
+
+permissions:
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure labels and update issue status
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const labels = [
+              {
+                name: 'bug',
+                color: 'd73a4a',
+                description: "Something isn't working",
+              },
+              {
+                name: 'feature request',
+                color: '1d76db',
+                description: 'A requested feature or improvement',
+              },
+              {
+                name: 'resolved',
+                color: '0e8a16',
+                description: 'Issue has been resolved',
+              },
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ...label,
+                });
+              }
+            }
+
+            if (context.eventName !== 'issues') return;
+
+            const issueNumber = context.issue.number;
+            const action = context.payload.action;
+            const stateReason = context.payload.issue.state_reason;
+
+            if (action === 'closed' && stateReason === 'completed') {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: ['resolved'],
+              });
+            }
+
+            if (action === 'reopened') {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  name: 'resolved',
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }
