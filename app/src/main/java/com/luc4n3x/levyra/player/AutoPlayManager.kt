@@ -59,8 +59,6 @@ class AutoPlayManager(
                 val query = if (artist.isNotBlank()) "$artist $title" else title
                 if (query.isBlank()) return@launch
 
-                // Keep the existing provider path, but request a wider bounded pool so local
-                // preference and diversity signals have enough candidates to rank meaningfully.
                 val results = repository.search(
                     query = query,
                     limit = 24,
