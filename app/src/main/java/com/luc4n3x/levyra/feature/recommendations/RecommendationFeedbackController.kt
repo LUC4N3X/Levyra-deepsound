@@ -4,7 +4,6 @@ import android.content.Context
 import com.luc4n3x.levyra.data.RecommendationFeedbackStore
 import com.luc4n3x.levyra.domain.Track
 
-/** UI-facing boundary for explicit recommendation preference signals. */
 internal class RecommendationFeedbackController(context: Context) {
     private val store = RecommendationFeedbackStore(context.applicationContext)
 
