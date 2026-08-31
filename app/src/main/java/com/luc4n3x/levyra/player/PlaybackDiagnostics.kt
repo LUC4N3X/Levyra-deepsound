@@ -9,9 +9,19 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.PlaybackStrategyCircuit
+import com.luc4n3x.levyra.data.PlaybackStrategyStats
 import com.luc4n3x.levyra.data.parsePlaybackStrategyHealthSnapshot
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+private const val PLAYBACK_DIAGNOSTIC_RECENT_FAILURE_MS = 30L * 60L * 1_000L
+private const val PLAYBACK_DIAGNOSTIC_FIELD_MAX_CHARS = 240
+private val PLAYBACK_DIAGNOSTIC_SECRET_PATTERN = Regex(
+    """(?i)\b(authorization|cookie|set-cookie|pot|potoken|token|access[_ -]?token|api[_ -]?key|x-goog-api-key)\s*[:=]\s*\S+"""
+)
+private val PLAYBACK_DIAGNOSTIC_BEARER_PATTERN = Regex("""(?i)\bbearer\s+\S+""")
 
 internal enum class PlaybackDiagnosticStatus {
     HEALTHY,
@@ -46,7 +56,8 @@ internal data class PlaybackDiagnosticStrategy(
     val consecutiveFailures: Int,
     val averageLatencyMs: Long?,
     val circuit: PlaybackStrategyCircuit,
-    val lastFailure: String
+    val lastFailure: String,
+    val lastFailureAtMs: Long
 )
 
 internal data class PlaybackDiagnosticSnapshot(
@@ -75,43 +86,43 @@ internal data class PlaybackDiagnosticSnapshot(
 ) {
     fun safeReport(): String = buildString {
         appendLine("LEVYRA PLAYBACK DIAGNOSTICS")
-        appendLine("App: $appVersion")
+        appendLine("App: ${sanitizeDiagnosticField(appVersion)}")
         appendLine("Status: ${status.name}")
         appendLine()
         appendLine("Track")
-        appendLine("  ID: ${trackId.ifBlank { "-" }}")
-        appendLine("  Title: ${title.ifBlank { "-" }}")
-        appendLine("  Artist: ${artist.ifBlank { "-" }}")
-        appendLine("  Source: ${source.ifBlank { "-" }}")
+        appendLine("  ID: ${safeDiagnosticValue(trackId)}")
+        appendLine("  Title: ${safeDiagnosticValue(title)}")
+        appendLine("  Artist: ${safeDiagnosticValue(artist)}")
+        appendLine("  Source: ${safeDiagnosticValue(source)}")
         appendLine("  Mode: ${if (videoMode) "video" else "audio"}")
         appendLine()
         appendLine("Player")
-        appendLine("  State: $playerState")
+        appendLine("  State: ${safeDiagnosticValue(playerState)}")
         appendLine("  Playing: $isPlaying")
         appendLine("  Position: ${positionMs.coerceAtLeast(0L)} ms")
         appendLine("  Buffered: ${bufferedPositionMs.coerceAtLeast(0L)} ms")
         appendLine("  Duration: ${durationMs.coerceAtLeast(0L)} ms")
         appendLine("  Speed: ${String.format(Locale.ROOT, "%.2fx", playbackSpeed)}")
         audioSessionId?.let { appendLine("  Audio session: $it") }
-        if (playerErrorCode.isNotBlank()) appendLine("  Error code: $playerErrorCode")
+        if (playerErrorCode.isNotBlank()) appendLine("  Error code: ${safeDiagnosticValue(playerErrorCode)}")
         appendLine()
         appendLine("Formats")
-        appendLine("  Audio: ${audioFormat?.summary().orEmpty().ifBlank { "-" }}")
-        appendLine("  Video: ${videoFormat?.summary().orEmpty().ifBlank { "-" }}")
+        appendLine("  Audio: ${safeDiagnosticValue(audioFormat?.summary().orEmpty())}")
+        appendLine("  Video: ${safeDiagnosticValue(videoFormat?.summary().orEmpty())}")
         appendLine()
         appendLine("Cache / Network")
-        appendLine("  Cache: $cacheBytes bytes")
-        appendLine("  Transport: $networkTransport")
+        appendLine("  Cache: ${cacheBytes.coerceAtLeast(0L)} bytes")
+        appendLine("  Transport: ${safeDiagnosticValue(networkTransport)}")
         appendLine("  Validated: $networkValidated")
         appendLine("  Metered: $networkMetered")
         if (strategies.isNotEmpty()) {
             appendLine()
             appendLine("Resolver strategy health")
             strategies.forEach { strategy ->
-                append("  ${strategy.name}: ok=${strategy.successes} fail=${strategy.failures}")
+                append("  ${safeDiagnosticValue(strategy.name)}: ok=${strategy.successes} fail=${strategy.failures}")
                 append(" streak=${strategy.consecutiveFailures} circuit=${strategy.circuit.name}")
-                strategy.averageLatencyMs?.let { append(" avg=${it}ms") }
-                if (strategy.lastFailure.isNotBlank()) append(" last=${strategy.lastFailure}")
+                strategy.averageLatencyMs?.let { append(" avg=${it.coerceAtLeast(0L)}ms") }
+                if (strategy.lastFailure.isNotBlank()) append(" last=${safeDiagnosticValue(strategy.lastFailure)}")
                 appendLine()
             }
         }
@@ -120,45 +131,110 @@ internal data class PlaybackDiagnosticSnapshot(
     }
 }
 
+internal fun sanitizeDiagnosticField(value: String): String {
+    val singleLine = value
+        .replace('\r', ' ')
+        .replace('\n', ' ')
+        .trim()
+    if (singleLine.isBlank()) return ""
+    if (singleLine.contains("://", ignoreCase = true)) return "[redacted]"
+    return PLAYBACK_DIAGNOSTIC_BEARER_PATTERN
+        .replace(
+            PLAYBACK_DIAGNOSTIC_SECRET_PATTERN.replace(singleLine) { match ->
+                "${match.groupValues[1]}=[redacted]"
+            },
+            "Bearer [redacted]"
+        )
+        .take(PLAYBACK_DIAGNOSTIC_FIELD_MAX_CHARS)
+}
+
+private fun safeDiagnosticValue(value: String): String = sanitizeDiagnosticField(value).ifBlank { "-" }
+
+internal fun playbackDiagnosticStatus(
+    errorCode: String,
+    playbackState: Int?,
+    strategies: List<PlaybackDiagnosticStrategy>,
+    nowMs: Long
+): PlaybackDiagnosticStatus = when {
+    errorCode.isNotBlank() -> PlaybackDiagnosticStatus.ERROR
+    playbackState == null || playbackState == Player.STATE_IDLE -> PlaybackDiagnosticStatus.IDLE
+    strategies.any { strategy ->
+        strategy.circuit != PlaybackStrategyCircuit.CLOSED ||
+            (strategy.lastFailureAtMs > 0L &&
+                nowMs >= strategy.lastFailureAtMs &&
+                nowMs - strategy.lastFailureAtMs <= PLAYBACK_DIAGNOSTIC_RECENT_FAILURE_MS)
+    } -> PlaybackDiagnosticStatus.FALLBACK_HISTORY
+    else -> PlaybackDiagnosticStatus.HEALTHY
+}
+
 @UnstableApi
 internal class PlaybackDiagnosticsReader(context: Context) {
     private val appContext = context.applicationContext
     private val connectivityManager = appContext.getSystemService(ConnectivityManager::class.java)
+    private val strategyHealthPreferences = appContext.getSharedPreferences(
+        "levyra_playback_strategy_health",
+        Context.MODE_PRIVATE
+    )
 
-    fun capture(fallbackTrack: Track? = null): PlaybackDiagnosticSnapshot {
+    suspend fun capture(fallbackTrack: Track? = null): PlaybackDiagnosticSnapshot {
+        val playerSnapshot = withContext(Dispatchers.Main.immediate) {
+            capturePlayerState(fallbackTrack)
+        }
+        val now = System.currentTimeMillis()
+        val strategyHealth = withContext(Dispatchers.IO) {
+            readPersistedStrategyHealth(playerSnapshot.videoMode, now)
+        }
+        return PlaybackDiagnosticSnapshot(
+            status = playbackDiagnosticStatus(
+                errorCode = playerSnapshot.playerErrorCode,
+                playbackState = playerSnapshot.playbackState,
+                strategies = strategyHealth,
+                nowMs = now
+            ),
+            appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            trackId = playerSnapshot.trackId,
+            title = playerSnapshot.title,
+            artist = playerSnapshot.artist,
+            source = playerSnapshot.source,
+            videoMode = playerSnapshot.videoMode,
+            playerState = playerSnapshot.playbackState?.let(::playerStateName) ?: "UNAVAILABLE",
+            isPlaying = playerSnapshot.isPlaying,
+            positionMs = playerSnapshot.positionMs,
+            bufferedPositionMs = playerSnapshot.bufferedPositionMs,
+            durationMs = playerSnapshot.durationMs,
+            playbackSpeed = playerSnapshot.playbackSpeed,
+            audioSessionId = playerSnapshot.audioSessionId,
+            audioFormat = playerSnapshot.audioFormat,
+            videoFormat = playerSnapshot.videoFormat,
+            cacheBytes = playerSnapshot.cacheBytes,
+            networkTransport = playerSnapshot.network.transport,
+            networkValidated = playerSnapshot.network.validated,
+            networkMetered = playerSnapshot.network.metered,
+            playerErrorCode = playerSnapshot.playerErrorCode,
+            strategies = strategyHealth
+        )
+    }
+
+    private fun capturePlayerState(fallbackTrack: Track?): PlaybackPlayerDiagnosticState {
         val player = PlaybackService.activePlayer
         val item = player?.currentMediaItem
         val extras = item?.mediaMetadata?.extras
         val selectedFormats = player?.let(::selectedFormats).orEmpty()
         val audio = selectedFormats.firstOrNull { it.sampleMimeType?.startsWith("audio/") == true }
         val video = selectedFormats.firstOrNull { it.sampleMimeType?.startsWith("video/") == true }
-        val strategyHealth = readPersistedStrategyHealth()
-        val errorCode = player?.playerError?.errorCodeName.orEmpty()
-        val state = player?.playbackState?.let(::playerStateName) ?: "UNAVAILABLE"
-        val status = when {
-            errorCode.isNotBlank() -> PlaybackDiagnosticStatus.ERROR
-            player == null || player.playbackState == Player.STATE_IDLE -> PlaybackDiagnosticStatus.IDLE
-            strategyHealth.any { it.consecutiveFailures > 0 || it.circuit != PlaybackStrategyCircuit.CLOSED } ->
-                PlaybackDiagnosticStatus.FALLBACK_HISTORY
-            else -> PlaybackDiagnosticStatus.HEALTHY
-        }
-        val network = networkSnapshot()
         val title = item?.mediaMetadata?.title?.toString().orEmpty().ifBlank { fallbackTrack?.title.orEmpty() }
         val artist = item?.mediaMetadata?.artist?.toString().orEmpty().ifBlank { fallbackTrack?.artist.orEmpty() }
         val source = extras?.getString("levyra.source").orEmpty().ifBlank { fallbackTrack?.source.orEmpty() }
         val duration = player?.duration?.takeIf { it != C.TIME_UNSET && it >= 0L }
             ?: fallbackTrack?.durationMs?.coerceAtLeast(0L)
             ?: 0L
-
-        return PlaybackDiagnosticSnapshot(
-            status = status,
-            appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        return PlaybackPlayerDiagnosticState(
             trackId = item?.mediaId.orEmpty().ifBlank { fallbackTrack?.id.orEmpty() },
             title = title,
             artist = artist,
             source = source,
             videoMode = extras?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) ?: false,
-            playerState = state,
+            playbackState = player?.playbackState,
             isPlaying = player?.isPlaying == true,
             positionMs = player?.currentPosition?.coerceAtLeast(0L) ?: 0L,
             bufferedPositionMs = player?.bufferedPosition?.coerceAtLeast(0L) ?: 0L,
@@ -168,38 +244,40 @@ internal class PlaybackDiagnosticsReader(context: Context) {
             audioFormat = audio?.toDiagnosticFormat(),
             videoFormat = video?.toDiagnosticFormat(),
             cacheBytes = LevyraMediaCache.currentCacheSpace(),
-            networkTransport = network.transport,
-            networkValidated = network.validated,
-            networkMetered = network.metered,
-            playerErrorCode = errorCode,
-            strategies = strategyHealth
+            network = networkSnapshot(),
+            playerErrorCode = player?.playerError?.errorCodeName.orEmpty()
         )
     }
 
-    private fun readPersistedStrategyHealth(): List<PlaybackDiagnosticStrategy> {
-        val raw = appContext
-            .getSharedPreferences("levyra_playback_strategy_health", Context.MODE_PRIVATE)
-            .getString("health", null)
-        val now = System.currentTimeMillis()
+    private fun readPersistedStrategyHealth(
+        videoMode: Boolean,
+        nowMs: Long
+    ): List<PlaybackDiagnosticStrategy> {
+        val mode = if (videoMode) "video" else "audio"
+        val prefix = "$mode::"
+        val raw = strategyHealthPreferences.getString("health", null)
         return parsePlaybackStrategyHealthSnapshot(raw)
             .entries
+            .asSequence()
+            .filter { (key, _) -> key.startsWith(prefix) }
             .sortedWith(
-                compareByDescending<Map.Entry<String, com.luc4n3x.levyra.data.PlaybackStrategyStats>> {
-                    it.value.updatedAtMs
-                }.thenBy { it.key }
+                compareByDescending<Map.Entry<String, PlaybackStrategyStats>> { it.value.updatedAtMs }
+                    .thenBy { it.key }
             )
             .take(8)
             .map { (key, stats) ->
                 PlaybackDiagnosticStrategy(
-                    name = key,
+                    name = key.removePrefix(prefix),
                     successes = stats.successes,
                     failures = stats.failures,
                     consecutiveFailures = stats.consecutiveFailures,
                     averageLatencyMs = stats.averageLatencyMs.takeIf { it != Long.MAX_VALUE },
-                    circuit = stats.circuitAt(now),
-                    lastFailure = stats.lastFailureKind?.name.orEmpty()
+                    circuit = stats.circuitAt(nowMs),
+                    lastFailure = stats.lastFailureKind?.name.orEmpty(),
+                    lastFailureAtMs = stats.lastFailureAtMs
                 )
             }
+            .toList()
     }
 
     private fun networkSnapshot(): PlaybackDiagnosticNetwork {
@@ -220,6 +298,26 @@ internal class PlaybackDiagnosticsReader(context: Context) {
         )
     }
 }
+
+private data class PlaybackPlayerDiagnosticState(
+    val trackId: String,
+    val title: String,
+    val artist: String,
+    val source: String,
+    val videoMode: Boolean,
+    val playbackState: Int?,
+    val isPlaying: Boolean,
+    val positionMs: Long,
+    val bufferedPositionMs: Long,
+    val durationMs: Long,
+    val playbackSpeed: Float,
+    val audioSessionId: Int?,
+    val audioFormat: PlaybackDiagnosticFormat?,
+    val videoFormat: PlaybackDiagnosticFormat?,
+    val cacheBytes: Long,
+    val network: PlaybackDiagnosticNetwork,
+    val playerErrorCode: String
+)
 
 private data class PlaybackDiagnosticNetwork(
     val transport: String,
