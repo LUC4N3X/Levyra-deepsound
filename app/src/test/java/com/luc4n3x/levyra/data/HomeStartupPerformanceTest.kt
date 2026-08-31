@@ -23,7 +23,10 @@ class HomeStartupPerformanceTest {
         assertTrue(plan.homeFeedStartDelayMs >= 1_200L)
         assertTrue(plan.secondaryStartDelayMs >= 6_000L)
         assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
-        assertTrue(plan.artistStartDelayMs > plan.albumStartDelayMs)
+        // The artist shelf is visible content, so it starts right after the home
+        // feed and ahead of the album and maintenance waves.
+        assertTrue(plan.artistStartDelayMs > plan.homeFeedStartDelayMs)
+        assertTrue(plan.artistStartDelayMs < plan.albumStartDelayMs)
         assertTrue(plan.chartPrefetchStartDelayMs > plan.chartRefreshStartDelayMs)
         assertTrue(plan.maintenanceStartDelayMs >= 20_000L)
         assertTrue(plan.activePlaybackProtectionMs >= 14_000L)
@@ -47,7 +50,10 @@ class HomeStartupPerformanceTest {
         assertTrue(plan.chartPrefetchStartDelayMs >= 6_000L)
         assertTrue(plan.chartMemoryWarmStartDelayMs > plan.chartPrefetchStartDelayMs)
         assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
-        assertTrue(plan.artistStartDelayMs > plan.albumStartDelayMs)
+        // The artist shelf is visible content, so it starts right after the home
+        // feed and ahead of the album and maintenance waves.
+        assertTrue(plan.artistStartDelayMs > plan.homeFeedStartDelayMs)
+        assertTrue(plan.artistStartDelayMs < plan.albumStartDelayMs)
         assertTrue(plan.maintenanceStartDelayMs >= 15_000L)
         assertTrue(plan.activePlaybackProtectionMs >= 10_000L)
         assertEquals(1, plan.albumConcurrency)
