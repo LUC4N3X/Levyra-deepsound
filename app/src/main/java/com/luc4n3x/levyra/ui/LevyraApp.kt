@@ -7063,7 +7063,7 @@ private fun HomeEditorialCollectionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(122.dp)
+            .heightIn(min = 122.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(8.dp, shape, clip = false)
             .clip(shape)
@@ -19162,6 +19162,7 @@ private fun settleMiniPlayerVerticalDrag(
     if (!event.peeked && result == PlayerVerticalResult.Collapse) playbackActions.close()
 }
 
+private val MiniPlayerBarBase = Color(0xFF08090C)
 private val MiniPlayerTrackColor = Color.White.copy(alpha = 0.09f)
 private val MiniPlayerBufferedColor = Color.White.copy(alpha = 0.16f)
 
@@ -19228,12 +19229,6 @@ private fun MiniPlayer(
     val ambience = remember(accentStart, accentEnd) {
         playerAmbienceOf(accentStart, accentEnd)
     }
-    val miniSurfaceLeading = remember(ambience) {
-        ambience.elevated.playerAmbienceMix(ambience.tint, 0.20f)
-    }
-    val miniSurfaceTrailing = remember(ambience) {
-        ambience.elevated.playerAmbienceMix(ambience.base, 0.35f)
-    }
     val miniProgressColor = remember(ambience) {
         ambience.tint.playerAmbienceMix(Color.White, 0.55f)
     }
@@ -19263,21 +19258,20 @@ private fun MiniPlayer(
             )
         )
     }
-    val capsuleShape = RoundedCornerShape(22.dp)
-    Surface(
-        color = Color.Transparent,
-        shape = capsuleShape,
-        border = BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.13f)),
+    val miniBarBackground = remember(accentStart, accentEnd) {
+        Brush.horizontalGradient(
+            colorStops = arrayOf(
+                0f to MiniPlayerBarBase.playerAmbienceMix(accentStart, 0.38f),
+                0.34f to MiniPlayerBarBase.playerAmbienceMix(accentStart, 0.22f),
+                0.72f to MiniPlayerBarBase.playerAmbienceMix(accentEnd, 0.13f),
+                1f to MiniPlayerBarBase
+            )
+        )
+    }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-            .shadow(
-                elevation = 18.dp,
-                shape = capsuleShape,
-                clip = false,
-                ambientColor = ambience.tint.copy(alpha = 0.38f),
-                spotColor = Color.Black.copy(alpha = 0.85f)
-            )
+            .background(miniBarBackground)
             .playerAxisDragGestures(
                 key = track.id,
                 enabled = gesturesEnabled,
@@ -19293,121 +19287,129 @@ private fun MiniPlayer(
                 )
             }
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .clip(capsuleShape)
+                .fillMaxWidth()
+                .height(LevyraPlayerDesign.Hairline)
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            miniSurfaceLeading.copy(alpha = 0.94f),
-                            miniSurfaceLeading.playerAmbienceMix(miniSurfaceTrailing, 0.45f).copy(alpha = 0.94f),
-                            miniSurfaceTrailing.copy(alpha = 0.94f)
+                            Color.Transparent,
+                            ambience.tint.copy(alpha = 0.30f),
+                            Color.White.copy(alpha = 0.10f),
+                            Color.Transparent
                         )
                     )
                 )
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(70.dp)
+                .padding(start = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(start = 10.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+                    .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini)
+                    .size(48.dp)
+                    .graphicsLayer { translationX = settledSwipeOffset * 0.4f }
+                    .clip(LevyraPlayerDesign.ShapeXs)
+                    .pressable(onClick = playbackActions.open)
             ) {
-                Box(
-                    modifier = Modifier
-                        .playerMorphAnchor(morphAnchors, PlayerMorphSlot.Mini)
-                        .size(46.dp)
-                        .graphicsLayer { translationX = settledSwipeOffset * 0.4f }
-                        .shadow(10.dp, LevyraPlayerDesign.ShapeXs, clip = false)
-                        .clip(LevyraPlayerDesign.ShapeXs)
-                        .pressable(onClick = playbackActions.open)
-                ) {
-                    CoverImage(track, Modifier.fillMaxSize())
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .border(
-                                BorderStroke(LevyraPlayerDesign.Hairline, Color.White.copy(alpha = 0.14f)),
-                                LevyraPlayerDesign.ShapeXs
-                            )
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .graphicsLayer {
-                            translationX = settledSwipeOffset
-                            alpha = playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                CoverImage(track, Modifier.fillMaxSize())
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        translationX = settledSwipeOffset
+                        alpha = playerSwipeContentAlpha(settledSwipeOffset, size.width)
+                    }
+                    .semantics { onClick(label = strings.expandPlayer, action = null) }
+                    .pressable(pressedScale = 0.985f, onClick = playbackActions.open),
+                verticalArrangement = Arrangement.Center
+            ) {
+                AnimatedContent(
+                    targetState = track,
+                    transitionSpec = {
+                        if (animated) {
+                            (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 3 }) togetherWith
+                                (fadeOut(tween(120)) + slideOutVertically(tween(120)) { -it / 3 })
+                        } else {
+                            EnterTransition.None togetherWith ExitTransition.None
                         }
-                        .semantics { onClick(label = strings.expandPlayer, action = null) }
-                        .pressable(pressedScale = 0.985f, onClick = playbackActions.open),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    AnimatedContent(
-                        targetState = track,
-                        transitionSpec = {
-                            if (animated) {
-                                (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 3 }) togetherWith
-                                    (fadeOut(tween(120)) + slideOutVertically(tween(120)) { -it / 3 })
+                    },
+                    contentKey = { it.id },
+                    label = "mini-track"
+                ) { animatedTrack ->
+                    Column {
+                        Text(
+                            text = animatedTrack.title,
+                            color = miniPrimaryContent,
+                            fontSize = 15.sp,
+                            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = (-0.2).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = if (animated) {
+                                Modifier.basicMarquee(
+                                    iterations = Int.MAX_VALUE,
+                                    repeatDelayMillis = 3_200
+                                )
                             } else {
-                                EnterTransition.None togetherWith ExitTransition.None
+                                Modifier
                             }
-                        },
-                        contentKey = { it.id },
-                        label = "mini-track"
-                    ) { animatedTrack ->
-                        Column {
-                            Text(
-                                text = animatedTrack.title,
-                                color = miniPrimaryContent,
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = (-0.2).sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = if (animated) {
-                                    Modifier.basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        repeatDelayMillis = 3_200
-                                    )
-                                } else {
-                                    Modifier
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(1.dp))
-                            Text(
-                                text = animatedTrack.artist,
-                                color = miniSecondaryContent,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                        )
+                        Spacer(modifier = Modifier.height(1.dp))
+                        Text(
+                            text = animatedTrack.artist,
+                            color = miniSecondaryContent,
+                            fontSize = 12.5.sp,
+                            lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    MiniPlayerToggleButton(
-                        isPlaying = isPlaying,
-                        isResolving = isResolving,
-                        buttonColor = miniPrimaryContent,
-                        animated = animated,
-                        onToggle = playbackActions.toggle
-                    )
-                    PlayerRoundIconButton(
-                        icon = Icons.Rounded.SkipNext,
-                        contentDescription = strings.next,
-                        size = 40.dp,
-                        iconSize = 22.dp,
-                        tint = miniPrimaryContent,
-                        background = Color.Transparent,
-                        borderColor = Color.Transparent,
-                        onClick = playbackActions.next
-                    )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                PlayerRoundIconButton(
+                    icon = Icons.Rounded.SkipPrevious,
+                    contentDescription = strings.previous,
+                    size = 44.dp,
+                    iconSize = 24.dp,
+                    tint = miniSecondaryContent,
+                    background = Color.Transparent,
+                    borderColor = Color.Transparent,
+                    onClick = playbackActions.previous
+                )
+                MiniPlayerToggleButton(
+                    isPlaying = isPlaying,
+                    isResolving = isResolving,
+                    buttonColor = miniPrimaryContent,
+                    animated = animated,
+                    onToggle = playbackActions.toggle
+                )
+                PlayerRoundIconButton(
+                    icon = Icons.Rounded.SkipNext,
+                    contentDescription = strings.next,
+                    size = 44.dp,
+                    iconSize = 24.dp,
+                    tint = miniSecondaryContent,
+                    background = Color.Transparent,
+                    borderColor = Color.Transparent,
+                    onClick = playbackActions.next
+                )
+                // Swipe down already dismisses the mini player, so the explicit
+                // close control is only needed when player gestures are off.
+                if (!gesturesEnabled) {
                     PlayerRoundIconButton(
                         icon = Icons.Rounded.Close,
                         contentDescription = strings.closePlayer,
@@ -19420,29 +19422,29 @@ private fun MiniPlayer(
                     )
                 }
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.5.dp)
-                    .drawBehind {
-                        drawRect(MiniPlayerTrackColor)
-                        drawRect(
-                            color = MiniPlayerBufferedColor,
-                            size = androidx.compose.ui.geometry.Size(
-                                size.width * animatedBuffered.value,
-                                size.height
-                            )
-                        )
-                        drawRect(
-                            brush = miniProgressBrush,
-                            size = androidx.compose.ui.geometry.Size(
-                                size.width * animatedProgress.value,
-                                size.height
-                            )
-                        )
-                    }
-            )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .drawBehind {
+                    drawRect(MiniPlayerTrackColor)
+                    drawRect(
+                        color = MiniPlayerBufferedColor,
+                        size = androidx.compose.ui.geometry.Size(
+                            size.width * animatedBuffered.value,
+                            size.height
+                        )
+                    )
+                    drawRect(
+                        brush = miniProgressBrush,
+                        size = androidx.compose.ui.geometry.Size(
+                            size.width * animatedProgress.value,
+                            size.height
+                        )
+                    )
+                }
+        )
     }
 }
 
@@ -19455,13 +19457,6 @@ private fun MiniPlayerToggleButton(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val playBg = buttonColor.copy(alpha = 1f)
-    val playTint = LevyraPlayerDesign.PrimaryContent
-    val corner by animateDpAsState(
-        targetValue = if (isPlaying) 12.dp else 19.dp,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
-        label = "mini-play-corner"
-    )
     Box(
         modifier = modifier
             .sizeIn(
@@ -19471,34 +19466,31 @@ private fun MiniPlayerToggleButton(
             .pressable(onClick = onToggle),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .background(playBg, RoundedCornerShape(corner)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isResolving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                    color = playTint
-                )
-            } else {
-                AnimatedContent(
-                    targetState = isPlaying,
-                    transitionSpec = {
+        if (isResolving) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp,
+                color = buttonColor
+            )
+        } else {
+            AnimatedContent(
+                targetState = isPlaying,
+                transitionSpec = {
+                    if (animated) {
                         (fadeIn(tween(140)) + scaleIn(initialScale = 0.7f, animationSpec = tween(140))) togetherWith
                             (fadeOut(tween(100)) + scaleOut(targetScale = 0.7f, animationSpec = tween(100)))
-                    },
-                    label = "mini-play-icon"
-                ) { playing ->
-                    Icon(
-                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                        tint = playTint,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "mini-play-icon"
+            ) { playing ->
+                Icon(
+                    imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
+                    tint = buttonColor,
+                    modifier = Modifier.size(30.dp)
+                )
             }
         }
     }
