@@ -44,19 +44,15 @@ internal class RecommendationFeedbackStore(context: Context) {
         Context.MODE_PRIVATE
     )
 
-    @Volatile
-    private var cachedRaw: String? = null
+    fun snapshot(): RecommendationFeedbackSnapshot = processSnapshot
 
-    @Volatile
-    private var cachedSnapshot = RecommendationFeedbackSnapshot()
-
-    fun snapshot(): RecommendationFeedbackSnapshot {
-        val raw = preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null)
-        if (raw == cachedRaw) return cachedSnapshot
-        val decoded = snapshotFrom(decodeEntries(raw))
-        cachedRaw = raw
-        cachedSnapshot = decoded
-        return decoded
+    suspend fun preload() {
+        if (processLoaded) return
+        withContext(Dispatchers.Default) {
+            synchronized(writeLock) {
+                ensureLoadedLocked()
+            }
+        }
     }
 
     suspend fun moreLike(track: Track) {
@@ -76,17 +72,20 @@ internal class RecommendationFeedbackStore(context: Context) {
         if (artistKey.isBlank()) return
         withContext(Dispatchers.Default) {
             synchronized(writeLock) {
-                val current = decodeEntries(preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null))
-                persist(current.filterNot { entry ->
-                    entry.artistKey == artistKey && entry.kind == RecommendationFeedbackKind.BLOCK_ARTIST
-                })
+                ensureLoadedLocked()
+                persistLocked(
+                    processEntries.filterNot { entry ->
+                        entry.artistKey == artistKey && entry.kind == RecommendationFeedbackKind.BLOCK_ARTIST
+                    }
+                )
             }
         }
     }
 
-    suspend fun isArtistBlocked(track: Track): Boolean = withContext(Dispatchers.Default) {
+    suspend fun isArtistBlocked(track: Track): Boolean {
+        preload()
         val artistKey = recommendationArtistKey(track)
-        artistKey.isNotBlank() && artistKey in snapshot().blockedArtistKeys
+        return artistKey.isNotBlank() && artistKey in processSnapshot.blockedArtistKeys
     }
 
     private suspend fun record(track: Track, kind: RecommendationFeedbackKind) {
@@ -97,8 +96,8 @@ internal class RecommendationFeedbackStore(context: Context) {
 
         withContext(Dispatchers.Default) {
             synchronized(writeLock) {
-                val current = decodeEntries(preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null))
-                val filtered = current.filterNot { entry ->
+                ensureLoadedLocked()
+                val filtered = processEntries.filterNot { entry ->
                     when (kind) {
                         RecommendationFeedbackKind.BLOCK_ARTIST -> entry.artistKey == artistKey
                         RecommendationFeedbackKind.MORE_LIKE_THIS ->
@@ -123,20 +122,41 @@ internal class RecommendationFeedbackStore(context: Context) {
                 }
                     .sortedByDescending(RecommendationFeedbackEntry::updatedAtMs)
                     .take(RECOMMENDATION_FEEDBACK_MAX_ENTRIES)
-                persist(updated)
+                persistLocked(updated)
             }
         }
     }
 
-    private fun persist(entries: List<RecommendationFeedbackEntry>) {
-        val raw = encodeEntries(entries)
-        preferences.edit().putString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, raw).apply()
-        cachedRaw = raw
-        cachedSnapshot = snapshotFrom(entries)
+    private fun ensureLoadedLocked() {
+        if (processLoaded) return
+        val raw = runCatching {
+            preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null)
+        }.getOrNull()
+        processEntries = decodeEntries(raw)
+        processSnapshot = snapshotFrom(processEntries)
+        processLoaded = true
+    }
+
+    private fun persistLocked(entries: List<RecommendationFeedbackEntry>) {
+        val bounded = entries.take(RECOMMENDATION_FEEDBACK_MAX_ENTRIES)
+        preferences.edit()
+            .putString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, encodeEntries(bounded))
+            .apply()
+        processEntries = bounded
+        processSnapshot = snapshotFrom(bounded)
+        processLoaded = true
     }
 
     private companion object {
         val writeLock = Any()
+
+        @Volatile
+        var processLoaded = false
+
+        @Volatile
+        var processSnapshot = RecommendationFeedbackSnapshot()
+
+        var processEntries: List<RecommendationFeedbackEntry> = emptyList()
     }
 }
 
