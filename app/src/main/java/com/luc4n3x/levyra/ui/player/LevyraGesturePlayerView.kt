@@ -104,7 +104,7 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val zoomedBeforeEvent = isVideoZoomed
-        val scaleHandled = scaleDetector.onTouchEvent(event)
+        scaleDetector.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 lastTouchX = event.x
@@ -131,7 +131,7 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
         }
-        if (scaleDetector.isInProgress || event.pointerCount > 1 || isVideoZoomed || zoomedBeforeEvent || scaleHandled) {
+        if (scaleDetector.isInProgress || event.pointerCount > 1 || isVideoZoomed || zoomedBeforeEvent) {
             return true
         }
         return super.onTouchEvent(event)
