@@ -12,4 +12,8 @@ internal class RecommendationFeedbackController(context: Context) {
     suspend fun lessLike(track: Track) = store.lessLike(track)
 
     suspend fun blockArtist(track: Track) = store.blockArtist(track)
+
+    suspend fun unblockArtist(track: Track) = store.unblockArtist(track)
+
+    suspend fun isArtistBlocked(track: Track): Boolean = store.isArtistBlocked(track)
 }
