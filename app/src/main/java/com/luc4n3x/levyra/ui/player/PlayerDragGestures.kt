@@ -60,7 +60,7 @@ fun Modifier.playerAxisDragGestures(
                         val pan = event.calculatePan()
                         val centroid = event.calculateCentroid(useCurrent = true)
                         val hasTransform = zoomChange != 1f || pan != Offset.Zero
-                        if (hasTransform && centroid.isSpecified) {
+                        if (hasTransform && centroid != Offset.Unspecified) {
                             PlayerVideoTransformController.transform(
                                 centroidX = centroid.x,
                                 centroidY = centroid.y,
@@ -68,7 +68,7 @@ fun Modifier.playerAxisDragGestures(
                                 panY = pan.y,
                                 zoomChange = zoomChange
                             )
-                            event.changes.forEach(PointerInputChange::consume)
+                            event.changes.forEach { it.consume() }
                         }
                     }
                 } while (event.changes.any { it.pressed })
