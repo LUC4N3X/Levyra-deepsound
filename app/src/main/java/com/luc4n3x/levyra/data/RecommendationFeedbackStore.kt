@@ -46,12 +46,6 @@ internal data class RecommendationFeedbackSnapshot(
     val artistAffinity: Map<String, Int> = emptyMap()
 )
 
-/**
- * Durable local feedback used only to re-rank recommendation candidates.
- *
- * It intentionally lives outside Room: these bounded preference signals do not belong to the
- * library schema and therefore do not require a database migration or affect user media data.
- */
 internal class RecommendationFeedbackStore(context: Context) {
     private val dataStore = context.applicationContext.recommendationFeedbackDataStore
 
