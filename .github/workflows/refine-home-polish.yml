@@ -6,6 +6,7 @@ on:
       - feature/home-discovery-remix
     paths:
       - .github/workflows/refine-home-polish.yml
+      - .github/scripts/refine-home-polish.py
 
 permissions:
   contents: write
@@ -46,14 +47,11 @@ jobs:
         run: |
           git config user.name "LUC4N3X"
           git config user.email "241364318+LUC4N3X@users.noreply.github.com"
-          git add \
-            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
-            app/src/main/java/com/luc4n3x/levyra/data/HomeAlbumShelfEngine.kt \
-            app/src/test/java/com/luc4n3x/levyra/data/HomeAlbumShelfEngineTest.kt
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
           git diff --cached --check
           if git diff --cached --quiet; then
             echo "No validated source changes to commit."
             exit 0
           fi
-          git commit -m "refactor(home): polish orbit collections and album shelf"
+          git commit -m "refactor(home): align discovery with spotify rhythm"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
