@@ -1,32 +1,22 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
-import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKeys
 import com.luc4n3x.levyra.domain.primaryArtistSegment
-import java.io.IOException
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import timber.log.Timber
 
 private const val RECOMMENDATION_FEEDBACK_STORE = "levyra_recommendation_feedback"
+private const val RECOMMENDATION_FEEDBACK_KEY_ENTRIES = "entries_v1"
 private const val RECOMMENDATION_FEEDBACK_MAX_ENTRIES = 256
 private const val RECOMMENDATION_ARTIST_AFFINITY_LIMIT = 3
 private const val RECOMMENDATION_ARTIST_SCORE_STEP = 90
 private const val RECOMMENDATION_PREFERRED_TRACK_BONUS = 240
 private const val RECOMMENDATION_AVOIDED_TRACK_PENALTY = 480
 private const val RECOMMENDATION_MAX_TRACKS_PER_ARTIST = 2
-
-private val Context.recommendationFeedbackDataStore by preferencesDataStore(
-    name = RECOMMENDATION_FEEDBACK_STORE
-)
 
 internal enum class RecommendationFeedbackKind {
     MORE_LIKE_THIS,
@@ -49,15 +39,24 @@ internal data class RecommendationFeedbackSnapshot(
 )
 
 internal class RecommendationFeedbackStore(context: Context) {
-    private val dataStore = context.applicationContext.recommendationFeedbackDataStore
+    private val preferences = context.applicationContext.getSharedPreferences(
+        RECOMMENDATION_FEEDBACK_STORE,
+        Context.MODE_PRIVATE
+    )
 
-    suspend fun snapshot(): RecommendationFeedbackSnapshot {
-        val preferences = dataStore.data
-            .catch { error ->
-                if (error is IOException) emit(emptyPreferences()) else throw error
-            }
-            .first()
-        return snapshotFrom(decodeEntries(preferences[KEY_ENTRIES]))
+    @Volatile
+    private var cachedRaw: String? = null
+
+    @Volatile
+    private var cachedSnapshot = RecommendationFeedbackSnapshot()
+
+    fun snapshot(): RecommendationFeedbackSnapshot {
+        val raw = preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null)
+        if (raw == cachedRaw) return cachedSnapshot
+        val decoded = snapshotFrom(decodeEntries(raw))
+        cachedRaw = raw
+        cachedSnapshot = decoded
+        return decoded
     }
 
     suspend fun moreLike(track: Track) {
@@ -72,15 +71,33 @@ internal class RecommendationFeedbackStore(context: Context) {
         record(track, RecommendationFeedbackKind.BLOCK_ARTIST)
     }
 
+    suspend fun unblockArtist(track: Track) {
+        val artistKey = recommendationArtistKey(track)
+        if (artistKey.isBlank()) return
+        withContext(Dispatchers.Default) {
+            synchronized(writeLock) {
+                val current = decodeEntries(preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null))
+                persist(current.filterNot { entry ->
+                    entry.artistKey == artistKey && entry.kind == RecommendationFeedbackKind.BLOCK_ARTIST
+                })
+            }
+        }
+    }
+
+    suspend fun isArtistBlocked(track: Track): Boolean = withContext(Dispatchers.Default) {
+        val artistKey = recommendationArtistKey(track)
+        artistKey.isNotBlank() && artistKey in snapshot().blockedArtistKeys
+    }
+
     private suspend fun record(track: Track, kind: RecommendationFeedbackKind) {
         val trackId = track.id.trim()
         val artistKey = recommendationArtistKey(track)
         if (kind == RecommendationFeedbackKind.BLOCK_ARTIST && artistKey.isBlank()) return
         if (kind != RecommendationFeedbackKind.BLOCK_ARTIST && trackId.isBlank() && artistKey.isBlank()) return
 
-        try {
-            dataStore.edit { mutable ->
-                val current = decodeEntries(mutable[KEY_ENTRIES])
+        withContext(Dispatchers.Default) {
+            synchronized(writeLock) {
+                val current = decodeEntries(preferences.getString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, null))
                 val filtered = current.filterNot { entry ->
                     when (kind) {
                         RecommendationFeedbackKind.BLOCK_ARTIST -> entry.artistKey == artistKey
@@ -106,17 +123,20 @@ internal class RecommendationFeedbackStore(context: Context) {
                 }
                     .sortedByDescending(RecommendationFeedbackEntry::updatedAtMs)
                     .take(RECOMMENDATION_FEEDBACK_MAX_ENTRIES)
-                mutable[KEY_ENTRIES] = encodeEntries(updated)
+                persist(updated)
             }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: IOException) {
-            Timber.w(error, "Recommendation feedback write failed")
         }
     }
 
+    private fun persist(entries: List<RecommendationFeedbackEntry>) {
+        val raw = encodeEntries(entries)
+        preferences.edit().putString(RECOMMENDATION_FEEDBACK_KEY_ENTRIES, raw).apply()
+        cachedRaw = raw
+        cachedSnapshot = snapshotFrom(entries)
+    }
+
     private companion object {
-        val KEY_ENTRIES = stringPreferencesKey("entries_v1")
+        val writeLock = Any()
     }
 }
 
