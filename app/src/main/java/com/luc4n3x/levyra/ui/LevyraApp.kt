@@ -4030,7 +4030,7 @@ private fun ArtistBio(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (expanded) strings.close else strings.readAll,
+                    text = if (expanded) strings.showLess else strings.readAll,
                     color = accentStart,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
