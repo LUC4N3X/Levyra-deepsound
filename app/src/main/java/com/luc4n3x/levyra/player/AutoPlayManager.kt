@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.RecommendationFeedbackStore
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.rankRecommendationCandidates
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,6 +44,13 @@ class AutoPlayManager(
         val remaining = player.mediaItemCount - player.currentMediaItemIndex
         if (remaining > 2 || fetchJob?.isActive == true) return
         val currentItem = player.currentMediaItem ?: return
+        val existingIds = buildSet {
+            for (index in 0 until player.mediaItemCount) {
+                player.getMediaItemAt(index).mediaId.trim()
+                    .takeIf { it.isNotBlank() }
+                    ?.let(::add)
+            }
+        }
 
         fetchJob = scope.launch(Dispatchers.IO) {
             try {
@@ -60,13 +68,6 @@ class AutoPlayManager(
                 )
                 if (results.isEmpty()) return@launch
 
-                val existingIds = buildSet {
-                    for (index in 0 until player.mediaItemCount) {
-                        player.getMediaItemAt(index).mediaId.trim()
-                            .takeIf(String::isNotBlank)
-                            ?.let(::add)
-                    }
-                }
                 val feedback = feedbackStore.snapshot()
                 val newTracks = rankRecommendationCandidates(
                     candidates = results,
@@ -100,6 +101,8 @@ class AutoPlayManager(
                         )
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (error: Exception) {
                 Timber.w(error, "AutoPlayManager failed to fetch related tracks")
             }
