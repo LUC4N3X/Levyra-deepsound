@@ -32,10 +32,10 @@ replace_exact(
     var homeAccentEnd by remember { mutableStateOf(Color(0xFF160E24)) }
 ''',
     '''    var homeAccentStart by remember(spotlightCandidate?.track?.id) {
-        mutableStateOf(Color(spotlightCandidate?.track?.accentStart ?: 0xFF071019))
+        mutableStateOf(Color(spotlightCandidate?.track?.accentStart ?: 0xFF071019.toInt()))
     }
     var homeAccentEnd by remember(spotlightCandidate?.track?.id) {
-        mutableStateOf(Color(spotlightCandidate?.track?.accentEnd ?: 0xFF160E24))
+        mutableStateOf(Color(spotlightCandidate?.track?.accentEnd ?: 0xFF160E24.toInt()))
     }
     LaunchedEffect(
         spotlightCandidate?.track?.id,
