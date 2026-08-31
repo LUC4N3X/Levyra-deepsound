@@ -6062,8 +6062,29 @@ private fun HomeScreen(
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-    var homeAccentStart by remember { mutableStateOf(Color(0xFF071019)) }
-    var homeAccentEnd by remember { mutableStateOf(Color(0xFF160E24)) }
+    var homeAccentStart by remember(spotlightCandidate?.track?.id) {
+        mutableStateOf(Color(spotlightCandidate?.track?.accentStart ?: 0xFF071019.toInt()))
+    }
+    var homeAccentEnd by remember(spotlightCandidate?.track?.id) {
+        mutableStateOf(Color(spotlightCandidate?.track?.accentEnd ?: 0xFF160E24.toInt()))
+    }
+    LaunchedEffect(
+        spotlightCandidate?.track?.id,
+        spotlightCandidate?.track?.thumbnailUrl,
+        spotlightCandidate?.track?.largeThumbnailUrl
+    ) {
+        val track = spotlightCandidate?.track ?: return@LaunchedEffect
+        val paletteKey = ArtworkPaletteCache.key(
+            trackId = track.id,
+            thumbnailUrl = track.thumbnailUrl,
+            largeThumbnailUrl = track.largeThumbnailUrl
+        )
+        val cachedPalette = ArtworkPaletteCache.peek(paletteKey)
+            ?: ArtworkPaletteCache.load(context, paletteKey)
+        val palette = cachedPalette ?: ArtworkPalette(track.accentStart, track.accentEnd)
+        homeAccentStart = Color(palette.start)
+        homeAccentEnd = Color(palette.end)
+    }
     val animatedHomeAccentStart by animateColorAsState(
         targetValue = homeAccentStart,
         animationSpec = if (state.animationsEnabled) {
@@ -6963,7 +6984,9 @@ private fun HomeEditorialCollectionsShelf(
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val columns = remember(collections) { collections.chunked(2) }
+    val indexedColumns = remember(collections) {
+        collections.mapIndexed { index, collection -> index to collection }.chunked(2)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
@@ -6976,17 +6999,18 @@ private fun HomeEditorialCollectionsShelf(
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = 42.dp)
         ) {
             itemsIndexed(
-                items = columns,
-                key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.id } },
+                items = indexedColumns,
+                key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.second.id } },
                 contentType = { _, _ -> "home-collection-column" }
             ) { _, column ->
                 Column(
                     modifier = Modifier.width(286.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    column.forEach { collection ->
+                    column.forEach { (visualIndex, collection) ->
                         HomeEditorialCollectionCard(
                             collection = collection,
+                            visualIndex = visualIndex,
                             animationsEnabled = animationsEnabled,
                             onOpen = { onOpen(collection) }
                         )
@@ -6997,26 +7021,28 @@ private fun HomeEditorialCollectionsShelf(
     }
 }
 
-private fun homeCollectionSpotifyPalette(collection: HomeEditorialCollection): Pair<Color, Color> {
+private fun homeCollectionSpotifyPalette(visualIndex: Int): Pair<Color, Color> {
     val palettes = listOf(
         Color(0xFFE13300) to Color(0xFF8A1D00),
-        Color(0xFF8D67AB) to Color(0xFF50305F),
+        Color(0xFF8D67AB) to Color(0xFF553869),
         Color(0xFF1E3264) to Color(0xFF315C98),
-        Color(0xFF148A08) to Color(0xFF0B4F08),
         Color(0xFFE8115B) to Color(0xFF8D123A),
         Color(0xFF006450) to Color(0xFF0B8D74),
-        Color(0xFFB49BC8) to Color(0xFF6E4C82),
-        Color(0xFFD84000) to Color(0xFF8D2D00),
-        Color(0xFF503750) to Color(0xFF826182),
-        Color(0xFF7358FF) to Color(0xFF3E2CB0)
+        Color(0xFF7358FF) to Color(0xFF3E2CB0),
+        Color(0xFFBA5D07) to Color(0xFF7A3502),
+        Color(0xFFB02897) to Color(0xFF6F175F),
+        Color(0xFF0D73EC) to Color(0xFF12488F),
+        Color(0xFFA56752) to Color(0xFF62392D),
+        Color(0xFF477D95) to Color(0xFF294A59),
+        Color(0xFFC2552D) to Color(0xFF75311A)
     )
-    val key = "${collection.kind}:${collection.id}:${collection.titleOverride}"
-    return palettes[(key.hashCode() and Int.MAX_VALUE) % palettes.size]
+    return palettes[visualIndex.mod(palettes.size)]
 }
 
 @Composable
 private fun HomeEditorialCollectionCard(
     collection: HomeEditorialCollection,
+    visualIndex: Int,
     animationsEnabled: Boolean,
     onOpen: () -> Unit
 ) {
@@ -7029,9 +7055,7 @@ private fun HomeEditorialCollectionCard(
         animationSpec = tween(140, easing = FastOutSlowInEasing),
         label = "homeCollectionScale-${collection.id}"
     )
-    val palette = remember(collection.id, collection.kind, collection.titleOverride) {
-        homeCollectionSpotifyPalette(collection)
-    }
+    val palette = remember(visualIndex) { homeCollectionSpotifyPalette(visualIndex) }
     val shape = RoundedCornerShape(18.dp)
     Box(
         modifier = Modifier
@@ -7040,7 +7064,15 @@ private fun HomeEditorialCollectionCard(
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(8.dp, shape, clip = false)
             .clip(shape)
-            .background(Brush.linearGradient(listOf(palette.first, palette.first.copy(alpha = 0.96f), palette.second)))
+            .background(
+                Brush.linearGradient(
+                    colorStops = arrayOf(
+                        0f to palette.first,
+                        0.68f to palette.first.copy(alpha = 0.96f),
+                        1f to palette.second
+                    )
+                )
+            )
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
     ) {
         Text(
@@ -7509,22 +7541,22 @@ private fun ArtistHitShelfItem(
     onClick: () -> Unit
 ) {
     Column(
-        modifier = Modifier.width(164.dp).pressable(onClick = onClick),
+        modifier = Modifier.width(132.dp).pressable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         StableRemoteArtwork(
             url = artist.thumbnailUrl,
             contentDescription = artist.name,
-            modifier = Modifier.size(154.dp).shadow(7.dp, CircleShape, clip = false).clip(CircleShape),
+            modifier = Modifier.size(124.dp).clip(CircleShape),
             contentScale = ContentScale.Crop,
             highRes = true
         )
         Text(
             text = artist.name,
             color = LevyraText,
-            fontSize = 15.5.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 14.5.sp,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -7536,15 +7568,15 @@ private fun ArtistHitShelfItem(
 @Composable
 private fun TrendingArtistLoadingItem() {
     Column(
-        modifier = Modifier.width(164.dp),
+        modifier = Modifier.width(132.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         Box(
-            modifier = Modifier.size(154.dp).clip(CircleShape).levyraShimmer().background(CinematicGlassDeep)
+            modifier = Modifier.size(124.dp).clip(CircleShape).levyraShimmer().background(CinematicGlassDeep)
         )
         Box(
-            modifier = Modifier.fillMaxWidth(0.74f).height(15.dp).clip(RoundedCornerShape(99.dp)).levyraShimmer().background(CinematicGlassDeep)
+            modifier = Modifier.fillMaxWidth(0.72f).height(14.dp).clip(RoundedCornerShape(99.dp)).levyraShimmer().background(CinematicGlassDeep)
         )
     }
 }
@@ -8001,7 +8033,7 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
             text = strings.personalOrbitSubtitle,
             color = LevyraMuted,
             style = TextStyle(fontSize = 13.5.sp, fontWeight = FontWeight.Medium),
-            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
+            autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
             maxLines = 1,
             softWrap = false,
             overflow = TextOverflow.Clip,
