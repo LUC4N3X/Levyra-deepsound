@@ -5993,7 +5993,7 @@ private fun HomeScreen(
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    var selectedHomeCollection by remember { mutableStateOf<HomeEditorialCollection?>(null) }
+    var selectedHomeCollectionId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
         viewModel.refreshHomeArtists()
     }
@@ -6321,7 +6321,7 @@ private fun HomeScreen(
                         HomeEditorialCollectionsShelf(
                             collections = visibleEditorialCollections,
                             animationsEnabled = state.animationsEnabled,
-                            onOpen = { collection -> selectedHomeCollection = collection }
+                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
                         )
                     }
                 }
@@ -6603,13 +6603,18 @@ private fun HomeScreen(
         )
     }
 
+    val selectedHomeCollection = remember(selectedHomeCollectionId, visibleEditorialCollections) {
+        selectedHomeCollectionId?.let { id ->
+            visibleEditorialCollections.firstOrNull { collection -> collection.id == id }
+        }
+    }
     selectedHomeCollection?.let { collection ->
         HomeEditorialCollectionDialog(
             collection = collection,
             currentId = state.currentTrack?.id,
             isPlaying = state.isPlaying,
             isResolving = state.isResolving,
-            onDismiss = { selectedHomeCollection = null },
+            onDismiss = { selectedHomeCollectionId = null },
             onPlay = { track -> viewModel.playFrom(collection.tracks, track) },
             onPlayAll = { viewModel.playAll(collection.tracks) },
             onTrackActions = onTrackActions
@@ -8811,7 +8816,7 @@ private fun ContinueListeningCard(
         border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
+            .heightIn(min = 68.dp)
             .pressable(onClick = onResume)
     ) {
         Box(
