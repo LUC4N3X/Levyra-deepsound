@@ -33,37 +33,4 @@
     <string name="shortcut_search">Search</string>
     <string name="shortcut_library">Library</string>
     <string name="shortcut_recognition">Recognize music</string>
-
-    <string name="recommend_more_like_this">More like this</string>
-    <string name="recommend_less_like_this">Less like this</string>
-    <string name="recommend_block_artist">Don’t suggest this artist</string>
-    <string name="playback_diagnostics">Playback diagnostics</string>
-    <string name="playback_diagnostics_copy">Copy diagnostic report</string>
-    <string name="playback_diagnostics_copied">Diagnostic report copied</string>
-    <string name="playback_diagnostics_close">Close</string>
-    <string name="playback_diagnostics_security">Signed media URLs, request headers, cookies, tokens and API keys are excluded from this report.</string>
-    <string name="playback_diagnostics_status_healthy">Healthy</string>
-    <string name="playback_diagnostics_status_fallback">Recent fallback history</string>
-    <string name="playback_diagnostics_status_error">Playback error</string>
-    <string name="playback_diagnostics_status_idle">Player idle</string>
-    <string name="playback_diagnostics_track">Track</string>
-    <string name="playback_diagnostics_player">Player</string>
-    <string name="playback_diagnostics_formats">Formats</string>
-    <string name="playback_diagnostics_network">Cache &amp; network</string>
-    <string name="playback_diagnostics_resolver">Resolver strategy health</string>
-    <string name="playback_diagnostics_id">ID</string>
-    <string name="playback_diagnostics_source">Source</string>
-    <string name="playback_diagnostics_mode">Mode</string>
-    <string name="playback_diagnostics_state">State</string>
-    <string name="playback_diagnostics_position">Position</string>
-    <string name="playback_diagnostics_buffered">Buffered</string>
-    <string name="playback_diagnostics_duration">Duration</string>
-    <string name="playback_diagnostics_speed">Speed</string>
-    <string name="playback_diagnostics_audio">Audio</string>
-    <string name="playback_diagnostics_video">Video</string>
-    <string name="playback_diagnostics_cache">Cache</string>
-    <string name="playback_diagnostics_transport">Transport</string>
-    <string name="playback_diagnostics_validated">Validated</string>
-    <string name="playback_diagnostics_metered">Metered</string>
-    <string name="playback_diagnostics_error_code">Error code</string>
 </resources>
