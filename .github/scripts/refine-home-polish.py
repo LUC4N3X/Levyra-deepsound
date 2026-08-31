@@ -21,218 +21,240 @@ def replace_between(start_marker: str, end_marker: str, replacement: str, label:
     text = text[:start] + replacement.rstrip() + "\n\n" + text[end:]
 
 
-replace_exact(
-    "autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),",
-    "autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),",
-    "single-line Orbit subtitle scaling"
-)
-
-replace_exact(
-    '''    var homeAccentStart by remember { mutableStateOf(Color(0xFF071019)) }
-    var homeAccentEnd by remember { mutableStateOf(Color(0xFF160E24)) }
-''',
-    '''    var homeAccentStart by remember(spotlightCandidate?.track?.id) {
-        mutableStateOf(Color(spotlightCandidate?.track?.accentStart ?: 0xFF071019.toInt()))
-    }
-    var homeAccentEnd by remember(spotlightCandidate?.track?.id) {
-        mutableStateOf(Color(spotlightCandidate?.track?.accentEnd ?: 0xFF160E24.toInt()))
-    }
-    LaunchedEffect(
-        spotlightCandidate?.track?.id,
-        spotlightCandidate?.track?.thumbnailUrl,
-        spotlightCandidate?.track?.largeThumbnailUrl
-    ) {
-        val track = spotlightCandidate?.track ?: return@LaunchedEffect
-        val paletteKey = ArtworkPaletteCache.key(
-            trackId = track.id,
-            thumbnailUrl = track.thumbnailUrl,
-            largeThumbnailUrl = track.largeThumbnailUrl
-        )
-        val cachedPalette = ArtworkPaletteCache.peek(paletteKey)
-            ?: ArtworkPaletteCache.load(context, paletteKey)
-        val palette = cachedPalette ?: ArtworkPalette(track.accentStart, track.accentEnd)
-        homeAccentStart = Color(palette.start)
-        homeAccentEnd = Color(palette.end)
-    }
-''',
-    "eager Spotlight atmosphere palette"
-)
-
-collections_shelf = r'''@Composable
-private fun HomeEditorialCollectionsShelf(
-    collections: List<HomeEditorialCollection>,
-    animationsEnabled: Boolean,
-    onOpen: (HomeEditorialCollection) -> Unit
+artist_shelf = r'''@Composable
+private fun TrendingArtistsShelf(
+    artists: List<ArtistHit>,
+    loadingSlots: Int,
+    onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val indexedColumns = remember(collections) {
-        collections.mapIndexed { index, collection -> index to collection }.chunked(2)
-    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
-            title = strings.collectionsTitle,
-            subtitle = strings.collectionsSubtitle,
+            title = strings.artists,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 42.dp)
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 38.dp)
         ) {
             itemsIndexed(
-                items = indexedColumns,
-                key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.second.id } },
-                contentType = { _, _ -> "home-collection-column" }
-            ) { _, column ->
-                Column(
-                    modifier = Modifier.width(286.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    column.forEach { (visualIndex, collection) ->
-                        HomeEditorialCollectionCard(
-                            collection = collection,
-                            visualIndex = visualIndex,
-                            animationsEnabled = animationsEnabled,
-                            onOpen = { onOpen(collection) }
-                        )
-                    }
+                items = artists,
+                key = { index, artist ->
+                    "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}"
+                },
+                contentType = { index, _ ->
+                    if (index == 0) "trending-artist-featured" else "trending-artist-portrait"
                 }
+            ) { index, artist ->
+                ArtistHitShelfItem(
+                    artist = artist,
+                    featured = index == 0,
+                    onClick = { onArtistClick(artist) }
+                )
+            }
+            items(
+                count = loadingSlots,
+                key = { index -> "artist-loading-${artists.size + index}" },
+                contentType = { index ->
+                    if (artists.isEmpty() && index == 0) "trending-artist-loading-featured"
+                    else "trending-artist-loading"
+                }
+            ) { index ->
+                TrendingArtistLoadingItem(featured = artists.isEmpty() && index == 0)
             }
         }
     }
 }'''
 replace_between(
-    "@Composable\nprivate fun HomeEditorialCollectionsShelf(",
-    "private fun homeCollectionSpotifyPalette(",
-    collections_shelf,
-    "spotify collection shelf indexing"
-)
-
-palette_and_card = r'''private fun homeCollectionSpotifyPalette(visualIndex: Int): Pair<Color, Color> {
-    val palettes = listOf(
-        Color(0xFFE13300) to Color(0xFF8A1D00),
-        Color(0xFF8D67AB) to Color(0xFF553869),
-        Color(0xFF1E3264) to Color(0xFF315C98),
-        Color(0xFFE8115B) to Color(0xFF8D123A),
-        Color(0xFF006450) to Color(0xFF0B8D74),
-        Color(0xFF7358FF) to Color(0xFF3E2CB0),
-        Color(0xFFBA5D07) to Color(0xFF7A3502),
-        Color(0xFFB02897) to Color(0xFF6F175F),
-        Color(0xFF0D73EC) to Color(0xFF12488F),
-        Color(0xFFA56752) to Color(0xFF62392D),
-        Color(0xFF477D95) to Color(0xFF294A59),
-        Color(0xFFC2552D) to Color(0xFF75311A)
-    )
-    return palettes[visualIndex.mod(palettes.size)]
-}
-
-@Composable
-private fun HomeEditorialCollectionCard(
-    collection: HomeEditorialCollection,
-    visualIndex: Int,
-    animationsEnabled: Boolean,
-    onOpen: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
-    val interaction = remember { MutableInteractionSource() }
-    val isPressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.982f else 1f,
-        animationSpec = tween(140, easing = FastOutSlowInEasing),
-        label = "homeCollectionScale-${collection.id}"
-    )
-    val palette = remember(visualIndex) { homeCollectionSpotifyPalette(visualIndex) }
-    val shape = RoundedCornerShape(18.dp)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(122.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .shadow(8.dp, shape, clip = false)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    colorStops = arrayOf(
-                        0f to palette.first,
-                        0.68f to palette.first.copy(alpha = 0.96f),
-                        1f to palette.second
-                    )
-                )
-            )
-            .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
-    ) {
-        Text(
-            text = homeCollectionTitle(strings, collection),
-            color = Color.White,
-            fontSize = 18.5.sp,
-            lineHeight = 22.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(164.dp).padding(start = 15.dp, top = 15.dp)
-        )
-        HomeEditorialArtworkStack(
-            tracks = collection.tracks,
-            modifier = Modifier.align(Alignment.BottomEnd).width(112.dp).height(112.dp)
-        )
-    }
-}'''
-replace_between(
-    "private fun homeCollectionSpotifyPalette(",
-    "@Composable\nprivate fun HomeEditorialArtworkStack(",
-    palette_and_card,
-    "spotify collection palette and card"
+    "@Composable\nprivate fun TrendingArtistsShelf(",
+    "@Composable\nprivate fun ArtistHitShelfItem(",
+    artist_shelf,
+    "artist discovery shelf"
 )
 
 artist_item = r'''@Composable
 private fun ArtistHitShelfItem(
     artist: ArtistHit,
+    featured: Boolean,
     onClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.width(132.dp).pressable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(9.dp)
+    val accent = remember(artist.browseId, artist.name, artist.accentStart, artist.accentEnd) {
+        levyraArtistAccent(
+            key = artist.browseId.ifBlank { artist.name },
+            accentStart = artist.accentStart,
+            accentEnd = artist.accentEnd
+        )
+    }
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && animationsEnabled) 0.982f else 1f,
+        animationSpec = tween(130, easing = FastOutSlowInEasing),
+        label = "homeArtistScale-${artist.browseId.ifBlank { artist.name }}"
+    )
+    val width = if (featured) 184.dp else 154.dp
+    val height = if (featured) 210.dp else 186.dp
+    val shape = RoundedCornerShape(if (featured) 28.dp else 22.dp)
+
+    Box(
+        modifier = Modifier
+            .width(width)
+            .height(height)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = if (featured) 12.dp else 8.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = accent.first.copy(alpha = 0.16f),
+                spotColor = accent.second.copy(alpha = 0.18f)
+            )
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        accent.first.copy(alpha = if (LevyraIsLight) 0.22f else 0.34f),
+                        LevyraPanelSoft,
+                        accent.second.copy(alpha = if (LevyraIsLight) 0.12f else 0.20f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(
+                        accent.first.copy(alpha = 0.42f),
+                        Color.White.copy(alpha = 0.10f),
+                        accent.second.copy(alpha = 0.34f)
+                    )
+                ),
+                shape = shape
+            )
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onClick
+            )
     ) {
-        StableRemoteArtwork(
-            url = artist.thumbnailUrl,
-            contentDescription = artist.name,
-            modifier = Modifier.size(124.dp).clip(CircleShape),
-            contentScale = ContentScale.Crop,
-            highRes = true
+        if (artist.thumbnailUrl.isNotBlank()) {
+            StableRemoteArtwork(
+                url = artist.thumbnailUrl,
+                contentDescription = artist.name,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                highRes = featured
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                accent.first.copy(alpha = 0.50f),
+                                LevyraPanelSoft,
+                                accent.second.copy(alpha = 0.42f)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Person,
+                    contentDescription = artist.name,
+                    tint = LevyraText.copy(alpha = 0.84f),
+                    modifier = Modifier.size(if (featured) 72.dp else 58.dp)
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to accent.first.copy(alpha = 0.08f),
+                            0.48f to Color.Transparent,
+                            0.68f to Color.Black.copy(alpha = 0.16f),
+                            1f to Color.Black.copy(alpha = 0.90f)
+                        )
+                    )
+                )
         )
-        Text(
-            text = artist.name,
-            color = LevyraText,
-            fontSize = 14.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            accent.first.copy(alpha = 0.08f),
+                            Color.Transparent,
+                            accent.second.copy(alpha = 0.05f)
+                        )
+                    )
+                )
         )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = if (featured) 15.dp else 12.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = artist.name,
+                color = Color.White,
+                fontSize = if (featured) 18.sp else 15.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(if (featured) 18.sp else 15.sp),
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.25).sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .width(if (featured) 38.dp else 28.dp)
+                    .height(3.dp)
+                    .clip(CircleShape)
+                    .background(Brush.horizontalGradient(listOf(accent.first, accent.second)))
+            )
+        }
     }
 }'''
 replace_between(
     "@Composable\nprivate fun ArtistHitShelfItem(",
     "@Composable\nprivate fun TrendingArtistLoadingItem(",
     artist_item,
-    "spotify artist shelf item"
+    "artist portrait card"
 )
 
 loading_item = r'''@Composable
-private fun TrendingArtistLoadingItem() {
-    Column(
-        modifier = Modifier.width(132.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(9.dp)
+private fun TrendingArtistLoadingItem(featured: Boolean) {
+    val width = if (featured) 184.dp else 154.dp
+    val height = if (featured) 210.dp else 186.dp
+    val shape = RoundedCornerShape(if (featured) 28.dp else 22.dp)
+    Box(
+        modifier = Modifier
+            .width(width)
+            .height(height)
+            .clip(shape)
+            .levyraShimmer()
+            .background(CinematicGlassDeep)
     ) {
         Box(
-            modifier = Modifier.size(124.dp).clip(CircleShape).levyraShimmer().background(CinematicGlassDeep)
-        )
-        Box(
-            modifier = Modifier.fillMaxWidth(0.72f).height(14.dp).clip(RoundedCornerShape(99.dp)).levyraShimmer().background(CinematicGlassDeep)
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 13.dp, vertical = 15.dp)
+                .width(if (featured) 108.dp else 88.dp)
+                .height(16.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.10f))
         )
     }
 }'''
@@ -240,7 +262,24 @@ replace_between(
     "@Composable\nprivate fun TrendingArtistLoadingItem(",
     "@Composable\nprivate fun ResonanceShelf(",
     loading_item,
-    "spotify artist loading item"
+    "artist loading portrait"
+)
+
+replace_exact(
+    '''            TextButton(onClick = onPlayAll) {
+                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(strings.playAll, color = LevyraCyan, fontWeight = FontWeight.Black)
+            }''',
+    '''            TextButton(onClick = {
+                onPlayAll()
+                onDismiss()
+            }) {
+                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(strings.playAll, color = LevyraCyan, fontWeight = FontWeight.Black)
+            }''',
+    "dismiss collection after play all"
 )
 
 path.write_text(text, encoding="utf-8")
