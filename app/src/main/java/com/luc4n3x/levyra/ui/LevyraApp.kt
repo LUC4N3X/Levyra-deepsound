@@ -539,8 +539,11 @@ private const val HOME_SECTION_HEADER_CONTENT_TYPE = "home-section-header"
 private const val HOME_DENSE_SHELF_CONTENT_TYPE = "home-dense-shelf"
 private const val HOME_ARTWORK_GRID_CONTENT_TYPE = "home-artwork-grid"
 private val HOME_DENSE_SHELF_PEEK = 34.dp
-private val HOME_DENSE_SHELF_MIN_WIDTH = 244.dp
-private val HOME_DENSE_SHELF_MAX_WIDTH = 336.dp
+private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
+private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
+private val HOME_DENSE_SHELF_END_PADDING = 38.dp
+private val HOME_COLLECTION_COLUMN_WIDTH = 286.dp
+private val HOME_COLLECTION_SHELF_END_PADDING = 42.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraMiniPlayerHeight = 77.dp
 private val LevyraBottomContentGap = 16.dp
@@ -6996,7 +6999,7 @@ private fun HomeEditorialCollectionsShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 42.dp)
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HOME_COLLECTION_SHELF_END_PADDING)
         ) {
             itemsIndexed(
                 items = indexedColumns,
@@ -7004,7 +7007,7 @@ private fun HomeEditorialCollectionsShelf(
                 contentType = { _, _ -> "home-collection-column" }
             ) { _, column ->
                 Column(
-                    modifier = Modifier.width(286.dp),
+                    modifier = Modifier.width(HOME_COLLECTION_COLUMN_WIDTH),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     column.forEach { (visualIndex, collection) ->
@@ -7021,7 +7024,7 @@ private fun HomeEditorialCollectionsShelf(
     }
 }
 
-private fun homeCollectionSpotifyPalette(visualIndex: Int): Pair<Color, Color> {
+private fun homeCollectionTilePalette(visualIndex: Int): Pair<Color, Color> {
     val palettes = listOf(
         Color(0xFFE13300) to Color(0xFF8A1D00),
         Color(0xFF8D67AB) to Color(0xFF553869),
@@ -7055,7 +7058,7 @@ private fun HomeEditorialCollectionCard(
         animationSpec = tween(140, easing = FastOutSlowInEasing),
         label = "homeCollectionScale-${collection.id}"
     )
-    val palette = remember(visualIndex) { homeCollectionSpotifyPalette(visualIndex) }
+    val palette = remember(visualIndex) { homeCollectionTilePalette(visualIndex) }
     val shape = RoundedCornerShape(18.dp)
     Box(
         modifier = Modifier
@@ -7075,18 +7078,34 @@ private fun HomeEditorialCollectionCard(
             )
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
     ) {
-        Text(
-            text = homeCollectionTitle(strings, collection),
-            color = Color.White,
-            fontSize = 18.5.sp,
-            lineHeight = 22.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(164.dp).padding(start = 15.dp, top = 15.dp)
-        )
+        Column(
+            modifier = Modifier.width(164.dp).padding(start = 15.dp, top = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            if (collection.updatedToday) {
+                Text(
+                    text = strings.collectionUpdatedToday.uppercase(Locale.ROOT),
+                    color = Color.White.copy(alpha = 0.78f),
+                    fontSize = 9.5.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(9.5.sp),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.75.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = homeCollectionTitle(strings, collection),
+                color = Color.White,
+                fontSize = 18.5.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         HomeEditorialArtworkStack(
-            tracks = collection.tracks,
+            track = collection.tracks.firstOrNull(),
             modifier = Modifier.align(Alignment.BottomEnd).width(112.dp).height(112.dp)
         )
     }
@@ -7094,14 +7113,13 @@ private fun HomeEditorialCollectionCard(
 
 @Composable
 private fun HomeEditorialArtworkStack(
-    tracks: List<Track>,
+    track: Track?,
     modifier: Modifier = Modifier
 ) {
-    val artwork = tracks.firstOrNull()
     Box(modifier = modifier, contentAlignment = Alignment.BottomEnd) {
-        if (artwork != null) {
+        if (track != null) {
             CoverImage(
-                track = artwork,
+                track = track,
                 modifier = Modifier
                     .size(92.dp)
                     .offset(x = 14.dp, y = 12.dp)
@@ -7187,68 +7205,6 @@ private fun HomeEditorialCollectionDialog(
 }
 
 @Composable
-private fun CollectionArtworkMosaic(
-    tracks: List<Track>,
-    modifier: Modifier = Modifier
-) {
-    val items = remember(tracks) {
-        when {
-            tracks.size >= 4 -> tracks.take(4)
-            tracks.isNotEmpty() -> List(4) { index -> tracks[index % tracks.size] }
-            else -> emptyList()
-        }
-    }
-    if (items.isEmpty()) {
-        Box(
-            modifier = modifier.background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.34f),
-                        LevyraViolet.copy(alpha = 0.30f),
-                        Color(0xFF0A0B0F)
-                    )
-                )
-            ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.PlaylistPlay,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.82f),
-                modifier = Modifier.size(46.dp)
-            )
-        }
-        return
-    }
-    Column(modifier = modifier) {
-        Row(modifier = Modifier.weight(1f)) {
-            items.take(2).forEach { track ->
-                CoverImage(
-                    track = track,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    highRes = false,
-                    zoom = 1.03f
-                )
-            }
-        }
-        Row(modifier = Modifier.weight(1f)) {
-            items.drop(2).take(2).forEach { track ->
-                CoverImage(
-                    track = track,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    highRes = false,
-                    zoom = 1.03f
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun HomeQuickPicksShelf(
     title: String,
     tracks: List<Track>,
@@ -7268,8 +7224,8 @@ private fun HomeQuickPicksShelf(
     val containerWidthPx = LocalWindowInfo.current.containerSize.width
     val columnWidth = remember(containerWidthPx, density) {
         val availableWidth = with(density) { containerWidthPx.toDp() }
-        (availableWidth - HomeHorizontalInset - 34.dp)
-            .coerceIn(286.dp, 338.dp)
+        (availableWidth - HomeHorizontalInset - HOME_DENSE_SHELF_PEEK)
+            .coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, HOME_DENSE_SHELF_MAX_WIDTH)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -7279,7 +7235,7 @@ private fun HomeQuickPicksShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 38.dp)
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HOME_DENSE_SHELF_END_PADDING)
         ) {
             itemsIndexed(
                 items = columns,
@@ -8033,7 +7989,7 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
             text = strings.personalOrbitSubtitle,
             color = LevyraMuted,
             style = TextStyle(fontSize = 13.5.sp, fontWeight = FontWeight.Medium),
-            autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
+            autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
             maxLines = 1,
             softWrap = false,
             overflow = TextOverflow.Clip,
@@ -8193,35 +8149,23 @@ private fun PersonalListeningCard(
     onLongClickLabel: String? = null
 ) {
     val artworkShape = RoundedCornerShape(20.dp)
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val effectiveAnimationsEnabled = LocalAnimationsEnabled.current
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && effectiveAnimationsEnabled) 0.985f else 1f,
-        animationSpec = tween(130, easing = FastOutSlowInEasing),
-        label = "personalOrbitFeaturedScale-${track.id}"
-    )
     val accentStart = remember(track.id, track.accentStart) { Color(track.accentStart) }
     val accentEnd = remember(track.id, track.accentEnd) { Color(track.accentEnd) }
 
     Box(
         modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Row,
+                onLongClickLabel = onLongClickLabel,
+                onLongClick = onLongClick,
+                longPressHaptic = null
+            )
             .clip(artworkShape)
             .border(
                 width = if (active) 1.5.dp else Dp.Hairline,
                 color = if (active) LevyraCyan.copy(alpha = 0.88f) else LevyraAdaptiveSoftHairline,
                 shape = artworkShape
-            )
-            .combinedClickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick,
-                onLongClickLabel = onLongClickLabel
             )
     ) {
         CoverImage(
@@ -8327,33 +8271,21 @@ private fun PersonalOrbitSatelliteCard(
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(16.dp)
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val effectiveAnimationsEnabled = LocalAnimationsEnabled.current
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && effectiveAnimationsEnabled) 0.975f else 1f,
-        animationSpec = tween(120, easing = FastOutSlowInEasing),
-        label = "personalOrbitSatelliteScale-${track.id}"
-    )
 
     Box(
         modifier = modifier
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .levyraPressable(
+                onClick = onClick,
+                pressedScale = LevyraPressScale.Tile,
+                onLongClickLabel = onLongClickLabel,
+                onLongClick = onLongClick,
+                longPressHaptic = null
+            )
             .clip(shape)
             .border(
                 width = if (active) 1.2.dp else Dp.Hairline,
                 color = if (active) LevyraCyan.copy(alpha = 0.82f) else LevyraAdaptiveSoftHairline,
                 shape = shape
-            )
-            .combinedClickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick,
-                onLongClickLabel = onLongClickLabel
             )
     ) {
         CoverImage(

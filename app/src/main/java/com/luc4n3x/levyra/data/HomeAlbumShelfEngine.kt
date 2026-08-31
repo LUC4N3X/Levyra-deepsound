@@ -5,7 +5,6 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
 
-internal const val HOME_ALBUM_SHELF_MIN_SIZE = 10
 internal const val HOME_ALBUM_SHELF_TARGET_SIZE = 14
 
 internal fun buildPersonalizedHomeAlbumShelf(
@@ -36,16 +35,13 @@ internal fun buildPersonalizedHomeAlbumShelf(
         .filter(::isUsableAlbumTrack)
         .filter(::hasLikelyAlbumArtwork)
         .map(::trackToHomeAlbumHit)
-        .toList()
 
     val relaxedDerived = prioritizedTracks
         .asSequence()
         .filter(::isUsableAlbumTrack)
         .map(::trackToHomeAlbumHit)
-        .toList()
 
-    return (primaryAlbums + strictDerived + relaxedDerived)
-        .asSequence()
+    return (primaryAlbums.asSequence() + strictDerived + relaxedDerived)
         .filter(::isUsableHomeAlbum)
         .distinctBy(::albumRecommendationDeduplicationKey)
         .take(HOME_ALBUM_SHELF_TARGET_SIZE)

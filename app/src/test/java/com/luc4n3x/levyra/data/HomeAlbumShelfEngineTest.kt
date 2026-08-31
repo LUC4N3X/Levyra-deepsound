@@ -8,6 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeAlbumShelfEngineTest {
+    private val expectedMinimumShelfSize = 10
+
     @Test
     fun fillsSparseRepositoryAlbumsFromPersonalAndLocalizedSignals() {
         val primary = listOf(
@@ -29,7 +31,7 @@ class HomeAlbumShelfEngineTest {
             fallbackTracks = emptyList()
         )
 
-        assertTrue(result.size >= HOME_ALBUM_SHELF_MIN_SIZE)
+        assertTrue(result.size >= expectedMinimumShelfSize)
         assertEquals("Primary One", result[0].title)
         assertEquals("Primary Two", result[1].title)
         assertEquals("Personal Album 1", result[2].title)
@@ -54,7 +56,7 @@ class HomeAlbumShelfEngineTest {
         )
 
         assertEquals(1, result.count { it.title == "Shared Album" && it.artist == "Shared Artist" })
-        assertTrue(result.size >= HOME_ALBUM_SHELF_MIN_SIZE)
+        assertTrue(result.size >= expectedMinimumShelfSize)
     }
 
     private fun album(title: String, artist: String): AlbumHit = AlbumHit(
