@@ -24,6 +24,9 @@ object LevyraMediaCache {
         }
     }
 
+    /** Read-only diagnostics accessor that never initializes the disk cache. */
+    fun currentCacheSpace(): Long = cache?.cacheSpace ?: 0L
+
     private fun create(context: Context): SimpleCache {
         val directory = File(context.cacheDir, "levyra_media_cache")
         val maxBytes = maxCacheBytes(context, directory)
