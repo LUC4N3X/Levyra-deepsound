@@ -355,7 +355,7 @@ import com.luc4n3x.levyra.data.HomeSectionPresentation
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
-import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
+import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf
 import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
 import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.player.LevyraPipBridge
@@ -5999,10 +5999,29 @@ private fun HomeScreen(
     val resonanceTracks = homeDerivedState.resonanceTracks
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
-    val homeAlbums = remember(state.homeAlbums) {
-        state.homeAlbums
-            .filter { album -> album.title.isNotBlank() && album.artist.isNotBlank() }
-            .distinctBy(::albumRecommendationDeduplicationKey)
+    val homeAlbums = remember(
+        state.homeAlbums,
+        state.personalOrbitTracks,
+        state.recentListens,
+        state.favorites,
+        quickPicks?.tracks,
+        newReleases?.tracks,
+        state.homeSections,
+        state.charts,
+        state.tracks,
+        state.languageCode
+    ) {
+        buildPersonalizedHomeAlbumShelf(
+            primaryAlbums = state.homeAlbums,
+            personalTracks = state.personalOrbitTracks,
+            recentTracks = state.recentListens,
+            favoriteTracks = state.favorites,
+            quickPickTracks = quickPicks?.tracks.orEmpty(),
+            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
+            localizedSections = state.homeSections,
+            chartTracks = state.charts,
+            fallbackTracks = state.tracks
+        )
     }
     val rawOtherSections = homeDerivedState.otherSections
     val homeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
@@ -6938,8 +6957,8 @@ private fun HomeEditorialCollectionsShelf(
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 34.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 42.dp)
         ) {
             itemsIndexed(
                 items = columns,
@@ -6947,8 +6966,8 @@ private fun HomeEditorialCollectionsShelf(
                 contentType = { _, _ -> "home-collection-column" }
             ) { _, column ->
                 Column(
-                    modifier = Modifier.width(256.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.width(286.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     column.forEach { collection ->
                         HomeEditorialCollectionCard(
@@ -6978,26 +6997,33 @@ private fun HomeEditorialCollectionCard(
         animationSpec = tween(140, easing = FastOutSlowInEasing),
         label = "homeCollectionScale-${collection.id}"
     )
-    val accentStart = remember(collection.accentStart) { Color(collection.accentStart) }
-    val accentEnd = remember(collection.accentEnd) { Color(collection.accentEnd) }
-    val artwork = collection.tracks.firstOrNull()
-    val shape = RoundedCornerShape(15.dp)
+    val primaryTrack = collection.tracks.firstOrNull()
+    val secondaryTrack = collection.tracks.getOrNull(1)
+    val accentStart = remember(primaryTrack?.id, primaryTrack?.accentStart, collection.accentStart) {
+        Color(primaryTrack?.accentStart ?: collection.accentStart)
+    }
+    val accentEnd = remember(secondaryTrack?.id, secondaryTrack?.accentEnd, primaryTrack?.accentEnd, collection.accentEnd) {
+        Color(secondaryTrack?.accentEnd ?: primaryTrack?.accentEnd ?: collection.accentEnd)
+    }
+    val shape = RoundedCornerShape(22.dp)
+    val baseColor = if (LevyraIsLight) Color(0xFFF2F3F6) else Color(0xFF121216)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(106.dp)
+            .height(128.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .clip(shape)
+            .background(baseColor)
             .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        accentStart.copy(alpha = if (LevyraIsLight) 0.24f else 0.38f),
-                        accentEnd.copy(alpha = if (LevyraIsLight) 0.15f else 0.22f),
-                        LevyraPanelSoft
+                Brush.linearGradient(
+                    colorStops = arrayOf(
+                        0f to accentStart.copy(alpha = if (LevyraIsLight) 0.34f else 0.46f),
+                        0.58f to accentEnd.copy(alpha = if (LevyraIsLight) 0.20f else 0.28f),
+                        1f to Color.Transparent
                     )
                 )
             )
@@ -7008,53 +7034,88 @@ private fun HomeEditorialCollectionCard(
                 onClick = onOpen
             )
     ) {
-        if (artwork != null) {
-            CoverImage(
-                track = artwork,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(106.dp),
-                highRes = false,
-                zoom = 1.03f
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(108.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                LevyraPanelSoft,
-                                LevyraPanelSoft.copy(alpha = 0.36f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-        }
         Column(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(164.dp)
-                .padding(horizontal = 14.dp, vertical = 13.dp),
+                .width(178.dp)
+                .padding(start = 16.dp, top = 15.dp, bottom = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
+                text = "LEVYRA",
+                color = LevyraText.copy(alpha = 0.58f),
+                fontSize = 9.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(9.5.sp),
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.4.sp,
+                maxLines = 1
+            )
+            Text(
                 text = homeCollectionTitle(strings, collection),
                 color = LevyraText,
-                fontSize = 16.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
-                fontWeight = FontWeight.ExtraBold,
+                fontSize = 19.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.30).sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = if (collection.updatedToday) strings.collectionUpdatedToday else strings.collectionEditorial,
-                color = LevyraMuted,
+                color = LevyraText.copy(alpha = 0.58f),
                 fontSize = 10.5.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        HomeEditorialArtworkStack(
+            tracks = collection.tracks,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .width(122.dp)
+                .fillMaxHeight()
+        )
+    }
+}
+
+@Composable
+private fun HomeEditorialArtworkStack(
+    tracks: List<Track>,
+    modifier: Modifier = Modifier
+) {
+    val primary = tracks.firstOrNull()
+    val secondary = tracks.getOrNull(1)
+    Box(modifier = modifier, contentAlignment = Alignment.CenterEnd) {
+        if (secondary != null) {
+            CoverImage(
+                track = secondary,
+                modifier = Modifier
+                    .size(82.dp)
+                    .offset(x = 18.dp, y = (-10).dp)
+                    .graphicsLayer {
+                        rotationZ = 9f
+                        alpha = 0.72f
+                    }
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(Dp.Hairline, Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
+                highRes = false,
+                zoom = 1.02f
+            )
+        }
+        if (primary != null) {
+            CoverImage(
+                track = primary,
+                modifier = Modifier
+                    .size(96.dp)
+                    .offset(x = 10.dp, y = 13.dp)
+                    .graphicsLayer { rotationZ = (-6f) }
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(Dp.Hairline, Color.White.copy(alpha = 0.14f), RoundedCornerShape(18.dp)),
+                highRes = false,
+                zoom = 1.02f
             )
         }
     }
@@ -7148,7 +7209,7 @@ private fun HomeQuickPicksShelf(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
-            SectionHeaderAction(title, onPlayAll)
+            HomeCompactPlayAllHeader(title = title, onPlayAll = onPlayAll)
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
@@ -7811,6 +7872,65 @@ private fun isMusicVideoSectionTitle(title: String, strings: LevyraStrings): Boo
 }
 
 @Composable
+private fun HomeCompactPlayAllHeader(
+    title: String,
+    onPlayAll: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 23.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.45).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .height(48.dp)
+                .pressable(onClick = onPlayAll),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
+                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
+                shape = CircleShape,
+                modifier = Modifier.height(38.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = LevyraText.copy(alpha = 0.86f),
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = strings.playAll,
+                        color = LevyraText,
+                        fontSize = 11.5.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PersonalListeningShelf(
     tracks: List<Track>,
     currentId: String?,
@@ -7820,7 +7940,6 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
-    val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
     val shelfTracks = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
@@ -7829,67 +7948,12 @@ private fun PersonalListeningShelf(
     val pages = remember(shelfTracks) { shelfTracks.chunked(4) }
     val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = HomeHorizontalInset),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(
-                    text = strings.personalOrbitTitle,
-                    color = LevyraText,
-                    fontSize = 23.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.45).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = strings.personalOrbitSubtitle,
-                    color = LevyraMuted,
-                    fontSize = 13.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Surface(
-                color = Color.Transparent,
-                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-                shape = CircleShape,
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .pressable(onClick = onPlayAll)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = LevyraText.copy(alpha = 0.88f),
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Text(
-                        text = strings.playAll,
-                        color = LevyraText,
-                        fontSize = 12.5.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        HomeSectionInset {
+            HomeCompactPlayAllHeader(
+                title = LocalLevyraStrings.current.personalOrbitTitle,
+                onPlayAll = onPlayAll
+            )
         }
 
         HorizontalPager(
@@ -7918,8 +7982,8 @@ private fun PersonalListeningShelf(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    accentStart.copy(alpha = if (LevyraIsLight) 0.12f else 0.16f),
-                                    accentEnd.copy(alpha = if (LevyraIsLight) 0.06f else 0.09f),
+                                    accentStart.copy(alpha = if (LevyraIsLight) 0.10f else 0.14f),
+                                    accentEnd.copy(alpha = if (LevyraIsLight) 0.05f else 0.08f),
                                     Color.Transparent
                                 ),
                                 radius = 520f
@@ -7945,7 +8009,7 @@ private fun PersonalListeningShelf(
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
                                 onTrackActions(featured)
                             },
-                            onLongClickLabel = strings.songOptions
+                            onLongClickLabel = LocalLevyraStrings.current.songOptions
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1.76f).fillMaxHeight())
@@ -7970,7 +8034,7 @@ private fun PersonalListeningShelf(
                                         haptics.perform(LevyraHapticAction.TrackSwipe)
                                         onTrackActions(track)
                                     },
-                                    onLongClickLabel = strings.songOptions,
+                                    onLongClickLabel = LocalLevyraStrings.current.songOptions,
                                     modifier = Modifier
                                         .weight(1f)
                                         .fillMaxWidth()
