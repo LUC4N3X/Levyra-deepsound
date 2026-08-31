@@ -72,14 +72,21 @@ object HomeEditorialEngine {
 
         val today = localDate(nowMillis)
         val newReleaseKeys = if (showNewReleases) {
-            newReleaseTracks.asSequence().map(::identityKey).toHashSet()
+            newReleaseTracks
+                .asSequence()
+                .filter { track ->
+                    parseReleaseDate(track.releaseDate)
+                        ?.let { releaseMillis -> calendarDayAge(localDate(releaseMillis), today) in 0..7 } == true
+                }
+                .map(::identityKey)
+                .toHashSet()
         } else {
             emptySet()
         }
         val chartKeys = chartTracks.asSequence().map(::identityKey).toHashSet()
         val daySeed = localDayKey(nowMillis)
 
-        return candidates.map { (key, track) ->
+        val rankedCandidates = candidates.map { (key, track) ->
             val releaseMillis = if (showNewReleases) parseReleaseDate(track.releaseDate) else null
             val ageDays = releaseMillis?.let { calendarDayAge(localDate(it), today) }
                 ?.takeIf { it >= 0 }
@@ -119,6 +126,12 @@ object HomeEditorialEngine {
                 compareByDescending<HomeSpotlightCandidate> { it.score }
                     .thenBy { stableHash("$daySeed|${it.track.id}|${it.track.title}") }
             )
+
+        val freshCandidates = rankedCandidates.filter { candidate ->
+            candidate.kind == HomeSpotlightKind.ReleasedToday ||
+                candidate.kind == HomeSpotlightKind.JustReleased
+        }
+        return freshCandidates.ifEmpty { rankedCandidates }
     }
 
     fun buildCollections(
