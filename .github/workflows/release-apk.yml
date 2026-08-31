@@ -144,7 +144,7 @@ jobs:
 
       - name: Setup Java
         if: steps.version.outputs.publish == 'true'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -430,7 +430,7 @@ jobs:
           echo "publish=${PUBLISH_FDROID}" >> "${GITHUB_OUTPUT}"
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
