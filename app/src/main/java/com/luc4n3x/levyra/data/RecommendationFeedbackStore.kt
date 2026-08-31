@@ -4,7 +4,10 @@ import android.content.Context
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKeys
 import com.luc4n3x.levyra.domain.primaryArtistSegment
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,6 +46,12 @@ internal class RecommendationFeedbackStore(context: Context) {
         RECOMMENDATION_FEEDBACK_STORE,
         Context.MODE_PRIVATE
     )
+
+    init {
+        if (!processLoaded) {
+            processScope.launch { preload() }
+        }
+    }
 
     fun snapshot(): RecommendationFeedbackSnapshot = processSnapshot
 
@@ -149,6 +158,7 @@ internal class RecommendationFeedbackStore(context: Context) {
 
     private companion object {
         val writeLock = Any()
+        val processScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
         @Volatile
         var processLoaded = false
