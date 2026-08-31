@@ -9,10 +9,12 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.artistIdentityKeys
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 
 private const val RECOMMENDATION_FEEDBACK_STORE = "levyra_recommendation_feedback"
 private const val RECOMMENDATION_FEEDBACK_MAX_ENTRIES = 256
@@ -76,34 +78,40 @@ internal class RecommendationFeedbackStore(context: Context) {
         if (kind == RecommendationFeedbackKind.BLOCK_ARTIST && artistKey.isBlank()) return
         if (kind != RecommendationFeedbackKind.BLOCK_ARTIST && trackId.isBlank() && artistKey.isBlank()) return
 
-        dataStore.edit { mutable ->
-            val current = decodeEntries(mutable[KEY_ENTRIES])
-            val filtered = current.filterNot { entry ->
-                when (kind) {
-                    RecommendationFeedbackKind.BLOCK_ARTIST -> entry.artistKey == artistKey
-                    RecommendationFeedbackKind.MORE_LIKE_THIS ->
-                        (trackId.isNotBlank() && entry.trackId == trackId) ||
-                            (artistKey.isNotBlank() &&
-                                entry.artistKey == artistKey &&
-                                entry.kind == RecommendationFeedbackKind.BLOCK_ARTIST)
-                    RecommendationFeedbackKind.LESS_LIKE_THIS ->
-                        trackId.isNotBlank() && entry.trackId == trackId
+        try {
+            dataStore.edit { mutable ->
+                val current = decodeEntries(mutable[KEY_ENTRIES])
+                val filtered = current.filterNot { entry ->
+                    when (kind) {
+                        RecommendationFeedbackKind.BLOCK_ARTIST -> entry.artistKey == artistKey
+                        RecommendationFeedbackKind.MORE_LIKE_THIS ->
+                            (trackId.isNotBlank() && entry.trackId == trackId) ||
+                                (artistKey.isNotBlank() &&
+                                    entry.artistKey == artistKey &&
+                                    entry.kind == RecommendationFeedbackKind.BLOCK_ARTIST)
+                        RecommendationFeedbackKind.LESS_LIKE_THIS ->
+                            trackId.isNotBlank() && entry.trackId == trackId
+                    }
                 }
-            }
-            val updated = buildList {
-                addAll(filtered)
-                add(
-                    RecommendationFeedbackEntry(
-                        trackId = if (kind == RecommendationFeedbackKind.BLOCK_ARTIST) "" else trackId,
-                        artistKey = artistKey,
-                        kind = kind,
-                        updatedAtMs = System.currentTimeMillis()
+                val updated = buildList {
+                    addAll(filtered)
+                    add(
+                        RecommendationFeedbackEntry(
+                            trackId = if (kind == RecommendationFeedbackKind.BLOCK_ARTIST) "" else trackId,
+                            artistKey = artistKey,
+                            kind = kind,
+                            updatedAtMs = System.currentTimeMillis()
+                        )
                     )
-                )
+                }
+                    .sortedByDescending(RecommendationFeedbackEntry::updatedAtMs)
+                    .take(RECOMMENDATION_FEEDBACK_MAX_ENTRIES)
+                mutable[KEY_ENTRIES] = encodeEntries(updated)
             }
-                .sortedByDescending(RecommendationFeedbackEntry::updatedAtMs)
-                .take(RECOMMENDATION_FEEDBACK_MAX_ENTRIES)
-            mutable[KEY_ENTRIES] = encodeEntries(updated)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: IOException) {
+            Timber.w(error, "Recommendation feedback write failed")
         }
     }
 
