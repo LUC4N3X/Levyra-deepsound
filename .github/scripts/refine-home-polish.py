@@ -4,335 +4,187 @@ path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
 text = path.read_text(encoding="utf-8")
 
 
-def function_bounds(source: str, name: str) -> tuple[int, int]:
-    marker = f"private fun {name}("
-    fn_start = source.find(marker)
-    if fn_start < 0:
-        raise RuntimeError(f"Function not found: {name}")
-    annotation = source.rfind("@Composable", 0, fn_start)
-    start = annotation if annotation >= 0 and source[annotation:fn_start].strip() == "@Composable" else fn_start
-    brace = source.find("{", fn_start)
-    if brace < 0:
-        raise RuntimeError(f"Opening brace not found: {name}")
-    depth = 0
-    for index in range(brace, len(source)):
-        if source[index] == "{":
-            depth += 1
-        elif source[index] == "}":
-            depth -= 1
-            if depth == 0:
-                return start, index + 1
-    raise RuntimeError(f"Closing brace not found: {name}")
+def replace_exact(old: str, new: str, label: str) -> None:
+    global text
+    count = text.count(old)
+    if count != 1:
+        raise RuntimeError(f"{label}: expected exactly one match, found {count}")
+    text = text.replace(old, new, 1)
 
 
-def replace_function(source: str, name: str, replacement: str) -> str:
-    start, end = function_bounds(source, name)
-    return source[:start] + replacement.rstrip() + "\n\n" + source[end:].lstrip("\n")
+def replace_between(start_marker: str, end_marker: str, replacement: str, label: str) -> None:
+    global text
+    start = text.find(start_marker)
+    end = text.find(end_marker, start + len(start_marker))
+    if start < 0 or end < 0 or end <= start:
+        raise RuntimeError(f"{label}: markers not found")
+    text = text[:start] + replacement.rstrip() + "\n\n" + text[end:]
 
+replace_exact(
+    "import androidx.compose.foundation.text.BasicTextField\n",
+    "import androidx.compose.foundation.text.BasicTextField\nimport androidx.compose.foundation.text.TextAutoSize\n",
+    "TextAutoSize import"
+)
+replace_exact(
+    "    var addTarget by remember { mutableStateOf<Track?>(null) }\n",
+    "    var addTarget by remember { mutableStateOf<Track?>(null) }\n    var selectedHomeCollection by remember { mutableStateOf<HomeEditorialCollection?>(null) }\n",
+    "selected collection state"
+)
+replace_exact(
+    "                            onOpen = { collection -> viewModel.playAll(collection.tracks) }\n",
+    "                            onOpen = { collection -> selectedHomeCollection = collection }\n",
+    "collection open behavior"
+)
+replace_exact(
+    "            .height(LevyraHomeDesign.HeroHeight)\n",
+    "            .heightIn(min = LevyraHomeDesign.HeroHeight)\n",
+    "hero scalable height"
+)
 
-old_import = "import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey"
-new_import = "import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf"
-if old_import not in text:
-    raise RuntimeError("Album shelf import marker drifted")
-text = text.replace(old_import, new_import, 1)
-
-old_albums = '''    val homeAlbums = remember(state.homeAlbums) {
-        state.homeAlbums
-            .filter { album -> album.title.isNotBlank() && album.artist.isNotBlank() }
-            .distinctBy(::albumRecommendationDeduplicationKey)
-    }
-'''
-new_albums = '''    val homeAlbums = remember(
-        state.homeAlbums,
-        state.personalOrbitTracks,
-        state.recentListens,
-        state.favorites,
-        quickPicks?.tracks,
-        newReleases?.tracks,
-        state.homeSections,
-        state.charts,
-        state.tracks,
-        state.languageCode
-    ) {
-        buildPersonalizedHomeAlbumShelf(
-            primaryAlbums = state.homeAlbums,
-            personalTracks = state.personalOrbitTracks,
-            recentTracks = state.recentListens,
-            favoriteTracks = state.favorites,
-            quickPickTracks = quickPicks?.tracks.orEmpty(),
-            localizedReleaseTracks = newReleases?.tracks.orEmpty(),
-            localizedSections = state.homeSections,
-            chartTracks = state.charts,
-            fallbackTracks = state.tracks
-        )
-    }
-'''
-if old_albums not in text:
-    raise RuntimeError("Home album shelf block drifted")
-text = text.replace(old_albums, new_albums, 1)
-
-compact_header = r'''@Composable
-private fun HomeCompactPlayAllHeader(
-    title: String,
-    onPlayAll: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 23.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.45).sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        Box(
-            modifier = Modifier
-                .height(48.dp)
-                .pressable(onClick = onPlayAll),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
-                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-                shape = CircleShape,
-                modifier = Modifier.height(38.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = LevyraText.copy(alpha = 0.86f),
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = strings.playAll,
-                        color = LevyraText,
-                        fontSize = 11.5.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
+old_home_end = '''    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
             }
-        }
+        )
     }
-}'''
-
-if "private fun HomeCompactPlayAllHeader(" not in text:
-    marker = "@Composable\nprivate fun PersonalListeningShelf("
-    index = text.find(marker)
-    if index < 0:
-        raise RuntimeError("Personal Listening insertion marker not found")
-    text = text[:index] + compact_header + "\n\n" + text[index:]
-
-personal_shelf = r'''@Composable
-private fun PersonalListeningShelf(
-    tracks: List<Track>,
-    currentId: String?,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: (Track) -> Unit,
-    onPlayAll: () -> Unit,
-    onTrackActions: (Track) -> Unit
-) {
-    val haptics = LocalLevyraHaptics.current
-    val shelfTracks = remember(tracks) {
-        LevyraPersonalOrbit.distinctRecordings(tracks)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+}
+'''
+new_home_end = '''    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
+            }
+        )
     }
-    val pages = remember(shelfTracks) { shelfTracks.chunked(4) }
-    val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        HomeSectionInset {
+    selectedHomeCollection?.let { collection ->
+        HomeEditorialCollectionDialog(
+            collection = collection,
+            currentId = state.currentTrack?.id,
+            isPlaying = state.isPlaying,
+            isResolving = state.isResolving,
+            onDismiss = { selectedHomeCollection = null },
+            onPlay = { track -> viewModel.playFrom(collection.tracks, track) },
+            onPlayAll = { viewModel.playAll(collection.tracks) },
+            onTrackActions = onTrackActions
+        )
+    }
+}
+'''
+replace_exact(old_home_end, new_home_end, "home collection dialog attachment")
+
+replace_exact(
+    '''        HomeSectionInset {
             HomeCompactPlayAllHeader(
                 title = LocalLevyraStrings.current.personalOrbitTitle,
                 onPlayAll = onPlayAll
             )
         }
-
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(246.dp),
-            contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
-            pageSpacing = 12.dp
-        ) { pageIndex ->
-            val pageTracks = pages.getOrElse(pageIndex) { emptyList() }
-            val featured = pageTracks.firstOrNull()
-            val satellites = pageTracks.drop(1).take(3)
-            val accentStart = remember(featured?.id, featured?.accentStart) {
-                featured?.let { Color(it.accentStart) } ?: LevyraCyan
-            }
-            val accentEnd = remember(featured?.id, featured?.accentEnd) {
-                featured?.let { Color(it.accentEnd) } ?: LevyraViolet
-            }
-
-            Box(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .padding(horizontal = 8.dp, vertical = 10.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentStart.copy(alpha = if (LevyraIsLight) 0.10f else 0.14f),
-                                    accentEnd.copy(alpha = if (LevyraIsLight) 0.05f else 0.08f),
-                                    Color.Transparent
-                                ),
-                                radius = 520f
-                            )
-                        )
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp)
-                ) {
-                    if (featured != null) {
-                        PersonalListeningCard(
-                            track = featured,
-                            active = featured.id == currentId,
-                            playing = isPlaying && featured.id == currentId,
-                            resolving = isResolving && featured.id == currentId,
-                            onClick = { onPlay(featured) },
-                            modifier = Modifier
-                                .weight(1.76f)
-                                .fillMaxHeight(),
-                            onLongClick = {
-                                haptics.perform(LevyraHapticAction.TrackSwipe)
-                                onTrackActions(featured)
-                            },
-                            onLongClickLabel = LocalLevyraStrings.current.songOptions
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1.76f).fillMaxHeight())
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        repeat(3) { index ->
-                            val track = satellites.getOrNull(index)
-                            if (track != null) {
-                                PersonalOrbitSatelliteCard(
-                                    track = track,
-                                    active = track.id == currentId,
-                                    playing = isPlaying && track.id == currentId,
-                                    resolving = isResolving && track.id == currentId,
-                                    onClick = { onPlay(track) },
-                                    onLongClick = {
-                                        haptics.perform(LevyraHapticAction.TrackSwipe)
-                                        onTrackActions(track)
-                                    },
-                                    onLongClickLabel = LocalLevyraStrings.current.songOptions,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth()
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.weight(1f).fillMaxWidth())
-                            }
-                        }
-                    }
-                }
-            }
+''',
+    '''        HomeSectionInset {
+            HomeOrbitHeader(onPlayAll = onPlayAll)
         }
+''',
+    "orbit header"
+)
 
-        if (pages.size > 1) {
-            Row(
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                pages.indices.forEach { index ->
-                    val selected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .width(if (selected) 18.dp else 6.dp)
-                            .height(6.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (selected) LevyraText.copy(alpha = 0.92f)
-                                else LevyraMuted.copy(alpha = 0.30f)
-                            )
-                    )
-                }
-            }
-        }
-    }
-}'''
-text = replace_function(text, "PersonalListeningShelf", personal_shelf)
-
-old_quick_header = '''        HomeSectionInset {
-            SectionHeaderAction(title, onPlayAll)
-        }
-'''
-new_quick_header = '''        HomeSectionInset {
-            HomeCompactPlayAllHeader(title = title, onPlayAll = onPlayAll)
-        }
-'''
-if old_quick_header not in text:
-    raise RuntimeError("Quick Picks header marker drifted")
-text = text.replace(old_quick_header, new_quick_header, 1)
-
-collections_shelf = r'''@Composable
-private fun HomeEditorialCollectionsShelf(
-    collections: List<HomeEditorialCollection>,
-    animationsEnabled: Boolean,
-    onOpen: (HomeEditorialCollection) -> Unit
-) {
+orbit_header = r'''@Composable
+private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    val columns = remember(collections) { collections.chunked(2) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HomeSectionHeader(
-            title = strings.collectionsTitle,
-            subtitle = strings.collectionsSubtitle,
-            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
-        )
-        LazyRow(
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = 42.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            itemsIndexed(
-                items = columns,
-                key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.id } },
-                contentType = { _, _ -> "home-collection-column" }
-            ) { _, column ->
-                Column(
-                    modifier = Modifier.width(286.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            Text(
+                text = strings.personalOrbitTitle,
+                color = LevyraText,
+                fontSize = 23.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.45).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier.height(48.dp).pressable(onClick = onPlayAll),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
+                    border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
+                    shape = CircleShape,
+                    modifier = Modifier.height(38.dp)
                 ) {
-                    column.forEach { collection ->
-                        HomeEditorialCollectionCard(
-                            collection = collection,
-                            animationsEnabled = animationsEnabled,
-                            onOpen = { onOpen(collection) }
-                        )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, null, tint = LevyraText.copy(alpha = 0.86f), modifier = Modifier.size(15.dp))
+                        Text(strings.playAll, color = LevyraText, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                 }
             }
         }
+        Text(
+            text = strings.personalOrbitSubtitle,
+            color = LevyraMuted,
+            style = TextStyle(fontSize = 13.5.sp, fontWeight = FontWeight.Medium),
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }'''
-text = replace_function(text, "HomeEditorialCollectionsShelf", collections_shelf)
+marker = "@Composable\nprivate fun PersonalListeningShelf("
+index = text.find(marker)
+if index < 0:
+    raise RuntimeError("HomeOrbitHeader insertion marker not found")
+text = text[:index] + orbit_header + "\n\n" + text[index:]
+
+palette_helper = r'''private fun homeCollectionSpotifyPalette(collection: HomeEditorialCollection): Pair<Color, Color> {
+    val palettes = listOf(
+        Color(0xFFE13300) to Color(0xFF8A1D00),
+        Color(0xFF8D67AB) to Color(0xFF50305F),
+        Color(0xFF1E3264) to Color(0xFF315C98),
+        Color(0xFF148A08) to Color(0xFF0B4F08),
+        Color(0xFFE8115B) to Color(0xFF8D123A),
+        Color(0xFF006450) to Color(0xFF0B8D74),
+        Color(0xFFB49BC8) to Color(0xFF6E4C82),
+        Color(0xFFD84000) to Color(0xFF8D2D00),
+        Color(0xFF503750) to Color(0xFF826182),
+        Color(0xFF7358FF) to Color(0xFF3E2CB0)
+    )
+    val key = "${collection.kind}:${collection.id}:${collection.titleOverride}"
+    return palettes[(key.hashCode() and Int.MAX_VALUE) % palettes.size]
+}'''
+marker = "@Composable\nprivate fun HomeEditorialCollectionCard("
+index = text.find(marker)
+if index < 0:
+    raise RuntimeError("collection palette insertion marker not found")
+text = text[:index] + palette_helper + "\n\n" + text[index:]
 
 collection_card = r'''@Composable
 private fun HomeEditorialCollectionCard(
@@ -345,140 +197,208 @@ private fun HomeEditorialCollectionCard(
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.985f else 1f,
+        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.982f else 1f,
         animationSpec = tween(140, easing = FastOutSlowInEasing),
         label = "homeCollectionScale-${collection.id}"
     )
-    val primaryTrack = collection.tracks.firstOrNull()
-    val secondaryTrack = collection.tracks.getOrNull(1)
-    val accentStart = remember(primaryTrack?.id, primaryTrack?.accentStart, collection.accentStart) {
-        Color(primaryTrack?.accentStart ?: collection.accentStart)
+    val palette = remember(collection.id, collection.kind, collection.titleOverride) {
+        homeCollectionSpotifyPalette(collection)
     }
-    val accentEnd = remember(secondaryTrack?.id, secondaryTrack?.accentEnd, primaryTrack?.accentEnd, collection.accentEnd) {
-        Color(secondaryTrack?.accentEnd ?: primaryTrack?.accentEnd ?: collection.accentEnd)
-    }
-    val shape = RoundedCornerShape(22.dp)
-    val baseColor = if (LevyraIsLight) Color(0xFFF2F3F6) else Color(0xFF121216)
-
+    val shape = RoundedCornerShape(18.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(128.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .height(122.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .shadow(8.dp, shape, clip = false)
             .clip(shape)
-            .background(baseColor)
-            .background(
-                Brush.linearGradient(
-                    colorStops = arrayOf(
-                        0f to accentStart.copy(alpha = if (LevyraIsLight) 0.34f else 0.46f),
-                        0.58f to accentEnd.copy(alpha = if (LevyraIsLight) 0.20f else 0.28f),
-                        1f to Color.Transparent
-                    )
-                )
-            )
-            .border(Dp.Hairline, LevyraAdaptiveSoftHairline, shape)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onOpen
-            )
+            .background(Brush.linearGradient(listOf(palette.first, palette.first.copy(alpha = 0.96f), palette.second)))
+            .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(178.dp)
-                .padding(start = 16.dp, top = 15.dp, bottom = 14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "LEVYRA",
-                color = LevyraText.copy(alpha = 0.58f),
-                fontSize = 9.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(9.5.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.4.sp,
-                maxLines = 1
-            )
-            Text(
-                text = homeCollectionTitle(strings, collection),
-                color = LevyraText,
-                fontSize = 19.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(19.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.30).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = if (collection.updatedToday) strings.collectionUpdatedToday else strings.collectionEditorial,
-                color = LevyraText.copy(alpha = 0.58f),
-                fontSize = 10.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
+        Text(
+            text = homeCollectionTitle(strings, collection),
+            color = Color.White,
+            fontSize = 18.5.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(164.dp).padding(start = 15.dp, top = 15.dp)
+        )
         HomeEditorialArtworkStack(
             tracks = collection.tracks,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .width(122.dp)
-                .fillMaxHeight()
+            modifier = Modifier.align(Alignment.BottomEnd).width(112.dp).height(112.dp)
         )
     }
 }'''
-text = replace_function(text, "HomeEditorialCollectionCard", collection_card)
+replace_between(
+    "@Composable\nprivate fun HomeEditorialCollectionCard(",
+    "@Composable\nprivate fun HomeEditorialArtworkStack(",
+    collection_card,
+    "spotify collection card"
+)
 
 artwork_stack = r'''@Composable
 private fun HomeEditorialArtworkStack(
     tracks: List<Track>,
     modifier: Modifier = Modifier
 ) {
-    val primary = tracks.firstOrNull()
-    val secondary = tracks.getOrNull(1)
-    Box(modifier = modifier, contentAlignment = Alignment.CenterEnd) {
-        if (secondary != null) {
+    val artwork = tracks.firstOrNull()
+    Box(modifier = modifier, contentAlignment = Alignment.BottomEnd) {
+        if (artwork != null) {
             CoverImage(
-                track = secondary,
+                track = artwork,
                 modifier = Modifier
-                    .size(82.dp)
-                    .offset(x = 18.dp, y = (-10).dp)
-                    .graphicsLayer {
-                        rotationZ = 9f
-                        alpha = 0.72f
-                    }
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(Dp.Hairline, Color.White.copy(alpha = 0.10f), RoundedCornerShape(16.dp)),
-                highRes = false,
-                zoom = 1.02f
-            )
-        }
-        if (primary != null) {
-            CoverImage(
-                track = primary,
-                modifier = Modifier
-                    .size(96.dp)
-                    .offset(x = 10.dp, y = 13.dp)
-                    .graphicsLayer { rotationZ = (-6f) }
-                    .clip(RoundedCornerShape(18.dp))
-                    .border(Dp.Hairline, Color.White.copy(alpha = 0.14f), RoundedCornerShape(18.dp)),
+                    .size(92.dp)
+                    .offset(x = 14.dp, y = 12.dp)
+                    .graphicsLayer { rotationZ = 12f }
+                    .shadow(10.dp, RoundedCornerShape(8.dp), clip = false)
+                    .clip(RoundedCornerShape(8.dp)),
                 highRes = false,
                 zoom = 1.02f
             )
         }
     }
 }'''
+replace_between(
+    "@Composable\nprivate fun HomeEditorialArtworkStack(",
+    "@Composable\nprivate fun CollectionArtworkMosaic(",
+    artwork_stack,
+    "spotify collection artwork"
+)
 
-if "private fun HomeEditorialArtworkStack(" not in text:
-    marker = "@Composable\nprivate fun CollectionArtworkMosaic("
-    index = text.find(marker)
-    if index < 0:
-        raise RuntimeError("Collection artwork insertion marker not found")
-    text = text[:index] + artwork_stack + "\n\n" + text[index:]
+collection_dialog = r'''@Composable
+private fun HomeEditorialCollectionDialog(
+    collection: HomeEditorialCollection,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onDismiss: () -> Unit,
+    onPlay: (Track) -> Unit,
+    onPlayAll: () -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = if (LevyraIsLight) Color(0xFFF6F6F6) else Color(0xFF121212),
+        title = {
+            Text(
+                text = homeCollectionTitle(strings, collection),
+                color = LevyraText,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        text = {
+            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)) {
+                itemsIndexed(collection.tracks, key = { index, track -> "collection-${collection.id}-$index-${LevyraPersonalOrbit.identityKey(track)}" }) { _, track ->
+                    val active = track.id == currentId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 62.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .then(if (active) Modifier.background(LevyraCyan.copy(alpha = 0.07f)) else Modifier)
+                            .pressable(onClick = { onPlay(track) })
+                            .padding(start = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(11.dp)
+                    ) {
+                        Box(modifier = Modifier.size(50.dp).clip(RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
+                            CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
+                            if (active) {
+                                Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
+                                    if (isResolving) CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                                    else ActiveTrackEqualizer(LevyraCyan, isPlaying, width = 16.dp, height = 11.dp)
+                                }
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(track.title, color = if (active) LevyraCyan else LevyraText, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(track.artist, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        IconButton(onClick = { onTrackActions(track) }, modifier = Modifier.size(48.dp)) {
+                            Icon(Icons.Rounded.MoreVert, contentDescription = strings.songOptions, tint = LevyraMuted)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onPlayAll) {
+                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(5.dp))
+                Text(strings.playAll, color = LevyraCyan, fontWeight = FontWeight.Black)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.close, color = LevyraMuted, fontWeight = FontWeight.Bold) } }
+    )
+}'''
+marker = "@Composable\nprivate fun CollectionArtworkMosaic("
+index = text.find(marker)
+if index < 0:
+    raise RuntimeError("collection dialog insertion marker not found")
+text = text[:index] + collection_dialog + "\n\n" + text[index:]
+
+artist_item = r'''@Composable
+private fun ArtistHitShelfItem(
+    artist: ArtistHit,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.width(164.dp).pressable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        StableRemoteArtwork(
+            url = artist.thumbnailUrl,
+            contentDescription = artist.name,
+            modifier = Modifier.size(154.dp).shadow(7.dp, CircleShape, clip = false).clip(CircleShape),
+            contentScale = ContentScale.Crop,
+            highRes = true
+        )
+        Text(
+            text = artist.name,
+            color = LevyraText,
+            fontSize = 15.5.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}'''
+replace_between(
+    "@Composable\nprivate fun ArtistHitShelfItem(",
+    "@Composable\nprivate fun TrendingArtistLoadingItem(",
+    artist_item,
+    "spotify artist item"
+)
+
+loading_item = r'''@Composable
+private fun TrendingArtistLoadingItem() {
+    Column(
+        modifier = Modifier.width(164.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(154.dp).clip(CircleShape).levyraShimmer().background(CinematicGlassDeep)
+        )
+        Box(
+            modifier = Modifier.fillMaxWidth(0.74f).height(15.dp).clip(RoundedCornerShape(99.dp)).levyraShimmer().background(CinematicGlassDeep)
+        )
+    }
+}'''
+replace_between(
+    "@Composable\nprivate fun TrendingArtistLoadingItem(",
+    "@Composable\nprivate fun ResonanceShelf(",
+    loading_item,
+    "spotify artist loading item"
+)
 
 path.write_text(text, encoding="utf-8")
