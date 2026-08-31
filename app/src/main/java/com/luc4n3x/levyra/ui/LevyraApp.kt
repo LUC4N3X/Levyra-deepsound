@@ -7940,11 +7940,16 @@ private fun HomeCompactPlayAllHeader(
 @Composable
 private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    // Title and subtitle share one column so the subtitle sits right under the
+    // title instead of being pushed down by the 48dp touch target of the pill.
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             Text(
                 text = strings.personalOrbitTitle,
@@ -7954,40 +7959,38 @@ private fun HomeOrbitHeader(onPlayAll: () -> Unit) {
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-0.45).sp,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                overflow = TextOverflow.Ellipsis
             )
-            Box(
-                modifier = Modifier.height(48.dp).pressable(onClick = onPlayAll),
-                contentAlignment = Alignment.Center
+            Text(
+                text = strings.personalOrbitSubtitle,
+                color = LevyraMuted,
+                style = TextStyle(fontSize = 13.5.sp, fontWeight = FontWeight.Medium),
+                autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Box(
+            modifier = Modifier.height(48.dp).pressable(onClick = onPlayAll),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
+                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
+                shape = CircleShape,
+                modifier = Modifier.height(38.dp)
             ) {
-                Surface(
-                    color = LevyraPanelSoft.copy(alpha = if (LevyraIsLight) 0.72f else 0.48f),
-                    border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-                    shape = CircleShape,
-                    modifier = Modifier.height(38.dp)
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, null, tint = LevyraText.copy(alpha = 0.86f), modifier = Modifier.size(15.dp))
-                        Text(strings.playAll, color = LevyraText, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    }
+                    Icon(Icons.Rounded.PlayArrow, null, tint = LevyraText.copy(alpha = 0.86f), modifier = Modifier.size(15.dp))
+                    Text(strings.playAll, color = LevyraText, fontWeight = FontWeight.Bold, fontSize = 11.5.sp, maxLines = 1)
                 }
             }
         }
-        Text(
-            text = strings.personalOrbitSubtitle,
-            color = LevyraMuted,
-            style = TextStyle(fontSize = 13.5.sp, fontWeight = FontWeight.Medium),
-            autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 13.5.sp, stepSize = 0.5.sp),
-            maxLines = 1,
-            softWrap = false,
-            overflow = TextOverflow.Clip,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
