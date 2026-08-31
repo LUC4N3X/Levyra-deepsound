@@ -44,6 +44,11 @@ object LevyraPersonalOrbit {
         """(?:(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und|[,&;+])(?=\s)|(?<=[\p{L}\p{M}\p{N}])[,;&+](?=\s))""",
         RegexOption.IGNORE_CASE
     )
+    // Any parenthesised or bracketed tail on a music title is a version
+    // annotation in practice: (Edit), (Live), (Remix), (Sped Up), (Radio Edit).
+    // bracketAnnotationPattern only removes the video/lyrics/feat variants, so
+    // the shelf-level collapse needs a broader sweep.
+    private val versionAnnotationPattern = Regex("""[(\[][^)\]]*[)\]]""")
     private val nonMusicWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
     private val whitespacePattern = Regex("""\s+""")
     private val officialArtworkHosts = listOf(
@@ -255,6 +260,27 @@ object LevyraPersonalOrbit {
                 fingerprints[existingIndex] = mergedFingerprint
                 if (mergedFingerprint.isrc.isNotBlank()) isrcIndices[mergedFingerprint.isrc] = existingIndex
             }
+        }
+        return result
+    }
+
+    /**
+     * Collapses different recordings of the same song down to one entry.
+     *
+     * [distinctRecordings] is deliberately strict: an edit, the album cut and a
+     * cover are genuinely distinct recordings and it keeps all three. That is
+     * right for a queue, but a personal shelf showing "Happier Than Ever" three
+     * times reads as broken, so the shelf collapses by normalised title and
+     * keeps the first, already best ranked, entry.
+     */
+    fun distinctWorks(tracks: List<Track>): List<Track> {
+        val seen = HashSet<String>(tracks.size)
+        val result = ArrayList<Track>(tracks.size)
+        tracks.forEach { track ->
+            val key = normalizedMusicTitle(
+                track.title.replace(versionAnnotationPattern, " ")
+            ).ifBlank { stableKey(track) }
+            if (seen.add(key)) result += track
         }
         return result
     }

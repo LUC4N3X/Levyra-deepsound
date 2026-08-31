@@ -5998,8 +5998,9 @@ private fun HomeScreen(
         viewModel.refreshHomeArtists()
     }
     val personalTracks = remember(state.personalOrbitTracks) {
-        LevyraPersonalOrbit.distinctRecordings(state.personalOrbitTracks)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        LevyraPersonalOrbit.distinctWorks(
+            LevyraPersonalOrbit.distinctRecordings(state.personalOrbitTracks)
+        ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
     val resonanceTracks = homeDerivedState.resonanceTracks
     val quickPicks = homeDerivedState.quickPicks
@@ -8001,8 +8002,9 @@ private fun PersonalListeningShelf(
 ) {
     val haptics = LocalLevyraHaptics.current
     val shelfTracks = remember(tracks) {
-        LevyraPersonalOrbit.distinctRecordings(tracks)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        LevyraPersonalOrbit.distinctWorks(
+            LevyraPersonalOrbit.distinctRecordings(tracks)
+        ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
     val pages = remember(shelfTracks) { shelfTracks.chunked(4) }
     val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
