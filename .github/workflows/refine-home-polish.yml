@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: refine-home-polish-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   apply-and-validate:
     runs-on: ubuntu-latest
@@ -29,47 +33,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Scope Home-only patch markers
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('.github/scripts/refine-home-polish.py')
-          text = path.read_text(encoding='utf-8')
-
-          old_state = '''replace_exact(
-              "    var addTarget by remember { mutableStateOf<Track?>(null) }\\n",
-              "    var addTarget by remember { mutableStateOf<Track?>(null) }\\n    var selectedHomeCollection by remember { mutableStateOf<HomeEditorialCollection?>(null) }\\n",
-              "selected collection state"
-          )'''
-          new_state = '''replace_exact(
-              "    val context = LocalContext.current\\n    var addTarget by remember { mutableStateOf<Track?>(null) }\\n    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {\\n",
-              "    val context = LocalContext.current\\n    var addTarget by remember { mutableStateOf<Track?>(null) }\\n    var selectedHomeCollection by remember { mutableStateOf<HomeEditorialCollection?>(null) }\\n    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {\\n",
-              "selected collection state"
-          )'''
-          if old_state not in text:
-              raise RuntimeError('Home selected-collection marker drifted')
-          text = text.replace(old_state, new_state, 1)
-
-          old_end_call = 'replace_exact(old_home_end, new_home_end, "home collection dialog attachment")'
-          new_end_call = '''home_screen_start = text.find("private fun HomeScreen(")
-          home_end_index = text.find(old_home_end, home_screen_start)
-          if home_screen_start < 0 or home_end_index < 0:
-              raise RuntimeError("Home collection dialog attachment marker drifted")
-          text = text[:home_end_index] + new_home_end + text[home_end_index + len(old_home_end):]'''
-          if old_end_call not in text:
-              raise RuntimeError('Home dialog attachment call drifted')
-          text = text.replace(old_end_call, new_end_call, 1)
-
-          old_equalizer = 'else ActiveTrackEqualizer(LevyraCyan, isPlaying, width = 16.dp, height = 11.dp)'
-          new_equalizer = 'else ActiveTrackEqualizer(color = LevyraCyan, isPlaying = isPlaying, width = 16.dp, height = 11.dp)'
-          if old_equalizer not in text:
-              raise RuntimeError('Collection equalizer marker drifted')
-          text = text.replace(old_equalizer, new_equalizer, 1)
-
-          path.write_text(text, encoding='utf-8')
-          PY
-
-      - name: Apply focused Home polish
+      - name: Apply final Home visual polish
         run: python3 .github/scripts/refine-home-polish.py
 
       - name: Compile Android debug Kotlin
@@ -93,5 +57,5 @@ jobs:
             echo "No validated source changes to commit."
             exit 0
           fi
-          git commit -m "refactor(home): align discovery with spotify rhythm"
+          git commit -m "refactor(home): finish spotify-inspired discovery polish"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
