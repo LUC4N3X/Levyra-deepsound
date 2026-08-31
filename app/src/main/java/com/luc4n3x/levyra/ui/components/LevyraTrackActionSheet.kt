@@ -159,8 +159,12 @@ internal fun LevyraTrackActionSheet(
     var visible by remember { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
     var showDiagnostics by remember(track.id) { mutableStateOf(false) }
+    var artistBlocked by remember(track.id, track.artist) { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(track.id, track.artist) {
+        artistBlocked = track.artist.isNotBlank() && recommendationController.isArtistBlocked(track)
+    }
     LaunchedEffect(closing) {
         if (closing) {
             if (animationsEnabled) delay(TrackActionSheetExitMs.toLong())
@@ -452,13 +456,23 @@ internal fun LevyraTrackActionSheet(
                             if (track.artist.isNotBlank()) {
                                 TrackActionRow(
                                     icon = Icons.Rounded.Block,
-                                    label = recommendationCopy.blockArtist,
-                                    tint = LevyraPink,
+                                    label = if (artistBlocked) {
+                                        recommendationCopy.allowArtistAgain
+                                    } else {
+                                        recommendationCopy.blockArtist
+                                    },
+                                    tint = if (artistBlocked) LevyraCyan else LevyraPink,
                                     onClick = {
                                         if (!closing) {
                                             scope.launch {
                                                 try {
-                                                    recommendationController.blockArtist(track)
+                                                    if (artistBlocked) {
+                                                        recommendationController.unblockArtist(track)
+                                                        artistBlocked = false
+                                                    } else {
+                                                        recommendationController.blockArtist(track)
+                                                        artistBlocked = true
+                                                    }
                                                 } finally {
                                                     dismiss()
                                                 }
