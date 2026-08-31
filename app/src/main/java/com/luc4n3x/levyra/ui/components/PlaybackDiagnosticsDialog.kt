@@ -66,6 +66,12 @@ internal fun PlaybackDiagnosticsDialog(
     }
     var snapshot by remember(track.id) { mutableStateOf(reader.capture(track)) }
     val copiedMessage = stringResource(R.string.playback_diagnostics_copied)
+    val stateLabel = stringResource(R.string.playback_diagnostics_state)
+    val positionLabel = stringResource(R.string.playback_diagnostics_position)
+    val bufferedLabel = stringResource(R.string.playback_diagnostics_buffered)
+    val durationLabel = stringResource(R.string.playback_diagnostics_duration)
+    val speedLabel = stringResource(R.string.playback_diagnostics_speed)
+    val errorCodeLabel = stringResource(R.string.playback_diagnostics_error_code)
 
     LaunchedEffect(track.id) {
         while (isActive) {
@@ -143,23 +149,19 @@ internal fun PlaybackDiagnosticsDialog(
                 }
 
                 item {
+                    val playerRows = listOfNotNull(
+                        stateLabel to snapshot.playerState,
+                        "Playing" to snapshot.isPlaying.toString(),
+                        positionLabel to formatDuration(snapshot.positionMs),
+                        bufferedLabel to formatDuration(snapshot.bufferedPositionMs),
+                        durationLabel to formatDuration(snapshot.durationMs),
+                        speedLabel to String.format(Locale.ROOT, "%.2fx", snapshot.playbackSpeed),
+                        snapshot.audioSessionId?.let { "Audio session" to it.toString() },
+                        snapshot.playerErrorCode.takeIf { it.isNotBlank() }?.let { errorCodeLabel to it }
+                    )
                     DiagnosticSection(
                         title = stringResource(R.string.playback_diagnostics_player),
-                        rows = buildList {
-                            add(stringResource(R.string.playback_diagnostics_state) to snapshot.playerState)
-                            add("Playing" to snapshot.isPlaying.toString())
-                            add(stringResource(R.string.playback_diagnostics_position) to formatDuration(snapshot.positionMs))
-                            add(stringResource(R.string.playback_diagnostics_buffered) to formatDuration(snapshot.bufferedPositionMs))
-                            add(stringResource(R.string.playback_diagnostics_duration) to formatDuration(snapshot.durationMs))
-                            add(
-                                stringResource(R.string.playback_diagnostics_speed) to
-                                    String.format(Locale.ROOT, "%.2fx", snapshot.playbackSpeed)
-                            )
-                            snapshot.audioSessionId?.let { add("Audio session" to it.toString()) }
-                            if (snapshot.playerErrorCode.isNotBlank()) {
-                                add(stringResource(R.string.playback_diagnostics_error_code) to snapshot.playerErrorCode)
-                            }
-                        }
+                        rows = playerRows
                     )
                 }
 
