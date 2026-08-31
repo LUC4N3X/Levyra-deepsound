@@ -1,17 +1,22 @@
 package com.luc4n3x.levyra.ui.i18n
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecommendationDiagnosticsStringsContractTest {
     @Test
     fun recommendationDiagnosticsCopyIsCompleteForEverySupportedLocale() {
+        val supportedCodes = LevyraStrings.all().map { it.code }.toSet()
+        assertEquals(supportedCodes, recommendationDiagnosticsDedicatedCodes)
+
         LevyraStrings.all().forEach { strings ->
             val copy = strings.recommendationDiagnosticsCopy()
             val values = listOf(
                 copy.moreLikeThis,
                 copy.lessLikeThis,
                 copy.blockArtist,
+                copy.allowArtistAgain,
                 copy.diagnosticsTitle,
                 copy.close,
                 copy.copied,
