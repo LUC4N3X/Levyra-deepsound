@@ -167,7 +167,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
             audioSessionId = player?.audioSessionId?.takeIf { it > 0 },
             audioFormat = audio?.toDiagnosticFormat(),
             videoFormat = video?.toDiagnosticFormat(),
-            cacheBytes = runCatching { LevyraMediaCache.get(appContext).cacheSpace }.getOrDefault(0L),
+            cacheBytes = LevyraMediaCache.currentCacheSpace(),
             networkTransport = network.transport,
             networkValidated = network.validated,
             networkMetered = network.metered,
