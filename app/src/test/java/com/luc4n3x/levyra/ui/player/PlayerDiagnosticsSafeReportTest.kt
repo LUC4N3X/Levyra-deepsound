@@ -2,20 +2,22 @@ package com.luc4n3x.levyra.ui.player
 
 import com.luc4n3x.levyra.player.PlaybackDiagnosticSnapshot
 import com.luc4n3x.levyra.player.PlaybackDiagnosticStatus
+import com.luc4n3x.levyra.player.PlaybackDiagnosticStrategy
+import com.luc4n3x.levyra.data.PlaybackStrategyCircuit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerDiagnosticsSafeReportTest {
     @Test
-    fun safeReportContainsOnlySanitizedPlaybackMetadata() {
+    fun safeReportRedactsUrlsHeadersAndTokensAtOutputBoundary() {
         val report = PlaybackDiagnosticSnapshot(
             status = PlaybackDiagnosticStatus.HEALTHY,
             appVersion = "2.5.1 (2051000)",
-            trackId = "video-id",
-            title = "Track",
+            trackId = "https://youtube.com/watch?v=video-id&pot=SECRET_POT",
+            title = "Track\r\nAuthorization: Bearer SECRET_AUTH",
             artist = "Artist",
-            source = "YouTube Music",
+            source = "Cookie: SID=SECRET_COOKIE",
             videoMode = false,
             playerState = "READY",
             isPlaying = true,
@@ -30,16 +32,31 @@ class PlayerDiagnosticsSafeReportTest {
             networkTransport = "wifi",
             networkValidated = true,
             networkMetered = false,
-            playerErrorCode = "",
-            strategies = emptyList()
+            playerErrorCode = "token=SECRET_ERROR",
+            strategies = listOf(
+                PlaybackDiagnosticStrategy(
+                    name = "https://private.example/strategy",
+                    successes = 1,
+                    failures = 1,
+                    consecutiveFailures = 1,
+                    averageLatencyMs = 120L,
+                    circuit = PlaybackStrategyCircuit.CLOSED,
+                    lastFailure = "api_key=SECRET_KEY",
+                    lastFailureAtMs = 1L
+                )
+            )
         ).safeReport()
 
-        assertTrue(report.contains("video-id"))
+        assertTrue(report.contains("[redacted]"))
         assertTrue(report.contains("Security:"))
         assertFalse(report.contains("http://"))
         assertFalse(report.contains("https://"))
-        assertFalse(report.contains("Authorization:"))
-        assertFalse(report.contains("Cookie:"))
-        assertFalse(report.contains("pot="))
+        assertFalse(report.contains("SECRET_POT"))
+        assertFalse(report.contains("SECRET_AUTH"))
+        assertFalse(report.contains("SECRET_COOKIE"))
+        assertFalse(report.contains("SECRET_ERROR"))
+        assertFalse(report.contains("SECRET_KEY"))
+        assertFalse(report.contains("\r"))
+        assertFalse(report.contains("\nAuthorization:"))
     }
 }
