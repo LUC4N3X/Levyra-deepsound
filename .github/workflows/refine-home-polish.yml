@@ -79,5 +79,5 @@ jobs:
             echo "No validated source changes to commit."
             exit 0
           fi
-          git commit -m "refactor(home): finish artist discovery polish"
+          git commit -m "refactor(home): polish artist discovery shelf"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
