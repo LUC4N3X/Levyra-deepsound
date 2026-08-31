@@ -24,7 +24,6 @@ object LevyraMediaCache {
         }
     }
 
-    /** Read-only diagnostics accessor that never initializes the disk cache. */
     fun currentCacheSpace(): Long = cache?.cacheSpace ?: 0L
 
     private fun create(context: Context): SimpleCache {
