@@ -1,4 +1,4 @@
-name: Fix PR491 Playing Semantics
+name: Fix PR491 Biography Collapse Label
 
 on:
   push:
@@ -14,46 +14,41 @@ jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout branch
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Patch artist playing semantics
+      - name: Patch biography collapse label
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text(encoding='utf-8')
+          old = 'text = if (expanded) strings.close else strings.readAll,'
+          new = 'text = if (expanded) strings.showLess else strings.readAll,'
 
-          replacements = [
-              (
-                  '''                        isCurrent -> LevyraPlayingIndicator(\n                            playing = isPlaying,\n                            color = LevyraCyan,\n                            size = 32.dp\n                        )''',
-                  '''                        isCurrent -> LevyraPlayingIndicator(\n                            playing = isPlaying,\n                            color = LevyraCyan,\n                            size = 32.dp,\n                            contentDescription = LocalLevyraStrings.current.playing\n                        )'''
-              ),
-              (
-                  '''                    isCurrent -> LevyraPlayingIndicator(\n                        playing = isPlaying,\n                        color = LevyraCyan,\n                        size = 16.dp\n                    )''',
-                  '''                    isCurrent -> LevyraPlayingIndicator(\n                        playing = isPlaying,\n                        color = LevyraCyan,\n                        size = 16.dp,\n                        contentDescription = LocalLevyraStrings.current.playing\n                    )'''
-              )
-          ]
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one biography collapse label, found {text.count(old)}')
 
-          for old, new in replacements:
-              if text.count(old) != 1:
-                  raise SystemExit(f'expected one match, found {text.count(old)}')
-              text = text.replace(old, new, 1)
-
-          path.write_text(text, encoding='utf-8')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
 
       - name: Compile
         run: ./gradlew --no-daemon :app:compileDebugKotlin
 
-      - name: Commit
+      - name: Commit and push
+        if: success()
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name 'LUC4N3X'
           git config user.email 'LUC4N3X@users.noreply.github.com'
           git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          git commit -m 'fix(ui): label artist playing indicators'
-          git push origin HEAD:${{ github.ref_name }}
+          git commit -m 'fix(ui): use show less for artist biography'
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF_NAME}
