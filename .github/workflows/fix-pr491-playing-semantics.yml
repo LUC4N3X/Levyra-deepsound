@@ -1,0 +1,59 @@
+name: Fix PR491 Playing Semantics
+
+on:
+  push:
+    branches:
+      - feature/ui-evolution-living-capsule-home-artist-collections
+    paths:
+      - '.github/workflows/fix-pr491-playing-semantics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Patch artist playing semantics
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  '''                        isCurrent -> LevyraPlayingIndicator(\n                            playing = isPlaying,\n                            color = LevyraCyan,\n                            size = 32.dp\n                        )''',
+                  '''                        isCurrent -> LevyraPlayingIndicator(\n                            playing = isPlaying,\n                            color = LevyraCyan,\n                            size = 32.dp,\n                            contentDescription = LocalLevyraStrings.current.playing\n                        )'''
+              ),
+              (
+                  '''                    isCurrent -> LevyraPlayingIndicator(\n                        playing = isPlaying,\n                        color = LevyraCyan,\n                        size = 16.dp\n                    )''',
+                  '''                    isCurrent -> LevyraPlayingIndicator(\n                        playing = isPlaying,\n                        color = LevyraCyan,\n                        size = 16.dp,\n                        contentDescription = LocalLevyraStrings.current.playing\n                    )'''
+              )
+          ]
+
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one match, found {text.count(old)}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Compile
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'LUC4N3X'
+          git config user.email 'LUC4N3X@users.noreply.github.com'
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git commit -m 'fix(ui): label artist playing indicators'
+          git push origin HEAD:${{ github.ref_name }}
