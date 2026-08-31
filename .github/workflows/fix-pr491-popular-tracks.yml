@@ -22,13 +22,15 @@ jobs:
           persist-credentials: false
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Patch popular tracks
-        run: python3 .github/scripts/patch-pr491-popular-tracks.py
+        run: |
+          python3 .github/scripts/patch-pr491-popular-tracks.py
+          sed -i 's/\.padding(vertical = 4.dp, end = 4.dp)/.padding(top = 4.dp, end = 4.dp, bottom = 4.dp)/' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
 
       - name: Compile
         run: ./gradlew :app:compileDebugKotlin --no-daemon
