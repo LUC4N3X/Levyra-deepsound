@@ -19306,7 +19306,7 @@ private fun MiniPlayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(70.dp)
-                .padding(start = 12.dp, end = 4.dp),
+                .padding(start = 12.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
         ) {
@@ -19383,8 +19383,8 @@ private fun MiniPlayer(
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipPrevious,
                     contentDescription = strings.previous,
-                    size = 44.dp,
-                    iconSize = 24.dp,
+                    size = 42.dp,
+                    iconSize = 23.dp,
                     tint = miniSecondaryContent,
                     background = Color.Transparent,
                     borderColor = Color.Transparent,
@@ -19400,27 +19400,26 @@ private fun MiniPlayer(
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipNext,
                     contentDescription = strings.next,
-                    size = 44.dp,
-                    iconSize = 24.dp,
+                    size = 42.dp,
+                    iconSize = 23.dp,
                     tint = miniSecondaryContent,
                     background = Color.Transparent,
                     borderColor = Color.Transparent,
                     onClick = playbackActions.next
                 )
-                // Swipe down already dismisses the mini player, so the explicit
-                // close control is only needed when player gestures are off.
-                if (!gesturesEnabled) {
-                    PlayerRoundIconButton(
-                        icon = Icons.Rounded.Close,
-                        contentDescription = strings.closePlayer,
-                        size = 40.dp,
-                        iconSize = 18.dp,
-                        tint = LevyraPlayerDesign.TextTertiary,
-                        background = Color.Transparent,
-                        borderColor = Color.Transparent,
-                        onClick = playbackActions.close
-                    )
-                }
+                // Sits slightly apart and dimmer than the transport controls so
+                // it reads as dismiss rather than a fourth playback action.
+                Spacer(modifier = Modifier.width(3.dp))
+                PlayerRoundIconButton(
+                    icon = Icons.Rounded.Close,
+                    contentDescription = strings.closePlayer,
+                    size = 40.dp,
+                    iconSize = 17.dp,
+                    tint = LevyraPlayerDesign.TextTertiary,
+                    background = Color.Transparent,
+                    borderColor = Color.Transparent,
+                    onClick = playbackActions.close
+                )
             }
         }
         Box(
