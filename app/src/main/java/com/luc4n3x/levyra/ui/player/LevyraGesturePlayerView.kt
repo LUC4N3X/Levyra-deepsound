@@ -25,10 +25,6 @@ internal fun boundedPlayerVideoTranslation(value: Float, dimensionPx: Float, sca
     return value.coerceIn(-maxTranslation, maxTranslation)
 }
 
-/**
- * PlayerView surface that accepts transforms only from Levyra's Compose gesture coordinator.
- * Single-pointer taps/drags stay owned by the existing player gesture layer.
- */
 @UnstableApi
 class LevyraGesturePlayerView @JvmOverloads constructor(
     context: Context,
@@ -122,7 +118,6 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
     }
 }
 
-/** Keeps multi-touch transforms out of the Media3 player and inside the existing gesture owner. */
 internal object PlayerVideoTransformController {
     private var viewRef = WeakReference<LevyraGesturePlayerView>(null)
     private var boundKey: Any? = null
