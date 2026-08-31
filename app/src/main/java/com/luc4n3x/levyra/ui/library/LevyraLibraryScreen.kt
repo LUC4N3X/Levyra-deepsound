@@ -616,7 +616,7 @@ internal fun LevyraLibraryScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(start = 12.dp, end = 12.dp, bottom = if (state.currentTrack != null) 82.dp else 12.dp)
+                .padding(start = 12.dp, end = 12.dp, bottom = if (state.currentTrack != null) 160.dp else 84.dp)
         ) {
             LibrarySelectionBar(
                 count = selectedKeys.size,
@@ -652,7 +652,7 @@ internal fun LevyraLibraryScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 18.dp, bottom = if (state.currentTrack != null) 94.dp else 24.dp)
+                    .padding(end = 18.dp, bottom = if (state.currentTrack != null) 168.dp else 92.dp)
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = strings.newPlaylist)
             }
