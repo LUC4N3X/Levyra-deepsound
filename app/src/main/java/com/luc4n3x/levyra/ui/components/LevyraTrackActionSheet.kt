@@ -82,7 +82,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -94,11 +93,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.recommendations.RecommendationFeedbackController
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.recommendationDiagnosticsCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -148,6 +147,7 @@ internal fun LevyraTrackActionSheet(
     onRemoveFromHistory: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val recommendationCopy = strings.recommendationDiagnosticsCopy()
     val context = LocalContext.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -421,7 +421,7 @@ internal fun LevyraTrackActionSheet(
                         Column(modifier = Modifier.padding(top = 8.dp, bottom = 14.dp)) {
                             TrackActionRow(
                                 icon = Icons.Rounded.ThumbUp,
-                                label = stringResource(R.string.recommend_more_like_this),
+                                label = recommendationCopy.moreLikeThis,
                                 onClick = {
                                     if (!closing) {
                                         scope.launch {
@@ -436,7 +436,7 @@ internal fun LevyraTrackActionSheet(
                             )
                             TrackActionRow(
                                 icon = Icons.Rounded.ThumbDown,
-                                label = stringResource(R.string.recommend_less_like_this),
+                                label = recommendationCopy.lessLikeThis,
                                 onClick = {
                                     if (!closing) {
                                         scope.launch {
@@ -452,7 +452,7 @@ internal fun LevyraTrackActionSheet(
                             if (track.artist.isNotBlank()) {
                                 TrackActionRow(
                                     icon = Icons.Rounded.Block,
-                                    label = stringResource(R.string.recommend_block_artist),
+                                    label = recommendationCopy.blockArtist,
                                     tint = LevyraPink,
                                     onClick = {
                                         if (!closing) {
@@ -469,7 +469,7 @@ internal fun LevyraTrackActionSheet(
                             }
                             TrackActionRow(
                                 icon = Icons.Rounded.BugReport,
-                                label = stringResource(R.string.playback_diagnostics),
+                                label = recommendationCopy.diagnosticsTitle,
                                 onClick = { showDiagnostics = true }
                             )
                         }
