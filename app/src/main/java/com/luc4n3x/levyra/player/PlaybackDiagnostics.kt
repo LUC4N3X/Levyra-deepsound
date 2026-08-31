@@ -177,7 +177,6 @@ internal class PlaybackDiagnosticsReader(context: Context) {
     }
 
     private fun readPersistedStrategyHealth(): List<PlaybackDiagnosticStrategy> {
-        // Read-only access avoids constructing PlaybackStrategyHealthStore, which owns a persistence executor.
         val raw = appContext
             .getSharedPreferences("levyra_playback_strategy_health", Context.MODE_PRIVATE)
             .getString("health", null)
