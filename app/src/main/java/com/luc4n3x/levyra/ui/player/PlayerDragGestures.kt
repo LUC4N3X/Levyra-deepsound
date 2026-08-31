@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -40,31 +45,85 @@ fun Modifier.playerAxisDragGestures(
     rightToLeft: Boolean,
     edgeZonesEnabled: Boolean,
     onEvent: (PlayerDragEvent) -> Unit
-): Modifier = this.pointerInput(key, enabled, rightToLeft, edgeZonesEnabled) {
-    if (!enabled) return@pointerInput
-    val session = PlayerDragSession(
-        rightToLeft = rightToLeft,
-        edgeZonesEnabled = edgeZonesEnabled,
-        onEvent = onEvent
-    )
-    detectDragGestures(
-        onDragStart = { offset -> session.start(offset, size.width.toFloat()) },
-        onDrag = { change, dragAmount ->
-            session.drag(
-                change = change,
-                dragAmount = dragAmount,
-                widthPx = size.width.toFloat(),
-                heightPx = size.height.toFloat()
+): Modifier {
+    if (!enabled) return this
+
+    val transformModifier = if (edgeZonesEnabled) {
+        Modifier.pointerInput(key, enabled) {
+            PlayerVideoTransformController.bind(key)
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                do {
+                    val event = awaitPointerEvent()
+                    if (event.changes.count { it.pressed } >= 2) {
+                        val zoomChange = event.calculateZoom()
+                        val pan = event.calculatePan()
+                        val centroid = event.calculateCentroid(useCurrent = true)
+                        val hasTransform = zoomChange != 1f || pan != Offset.Zero
+                        if (hasTransform && centroid.isSpecified) {
+                            PlayerVideoTransformController.transform(
+                                centroidX = centroid.x,
+                                centroidY = centroid.y,
+                                panX = pan.x,
+                                panY = pan.y,
+                                zoomChange = zoomChange
+                            )
+                            event.changes.forEach(PointerInputChange::consume)
+                        }
+                    }
+                } while (event.changes.any { it.pressed })
+            }
+        }
+    } else {
+        Modifier
+    }
+
+    return this
+        .then(transformModifier)
+        .pointerInput(key, enabled, rightToLeft, edgeZonesEnabled) {
+            val session = PlayerDragSession(
+                rightToLeft = rightToLeft,
+                edgeZonesEnabled = edgeZonesEnabled,
+                onEvent = onEvent
             )
-        },
-        onDragEnd = {
-            session.end(
-                widthPx = size.width.toFloat(),
-                heightPx = size.height.toFloat()
+            var zoomPanning = false
+            detectDragGestures(
+                onDragStart = { offset ->
+                    zoomPanning = edgeZonesEnabled && PlayerVideoTransformController.isZoomed
+                    if (!zoomPanning) session.start(offset, size.width.toFloat())
+                },
+                onDrag = { change, dragAmount ->
+                    if (edgeZonesEnabled && PlayerVideoTransformController.isZoomed) {
+                        if (!zoomPanning) {
+                            session.cancel()
+                            zoomPanning = true
+                        }
+                        change.consume()
+                        PlayerVideoTransformController.panBy(dragAmount.x, dragAmount.y)
+                    } else {
+                        session.drag(
+                            change = change,
+                            dragAmount = dragAmount,
+                            widthPx = size.width.toFloat(),
+                            heightPx = size.height.toFloat()
+                        )
+                    }
+                },
+                onDragEnd = {
+                    if (!zoomPanning) {
+                        session.end(
+                            widthPx = size.width.toFloat(),
+                            heightPx = size.height.toFloat()
+                        )
+                    }
+                    zoomPanning = false
+                },
+                onDragCancel = {
+                    if (!zoomPanning) session.cancel()
+                    zoomPanning = false
+                }
             )
-        },
-        onDragCancel = session::cancel
-    )
+        }
 }
 
 /** Owns one pointer gesture from press to settle so the Compose modifier stays declarative. */
