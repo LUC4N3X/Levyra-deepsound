@@ -3511,7 +3511,8 @@ private fun ArtistTopTrackCard(
                         isCurrent -> LevyraPlayingIndicator(
                             playing = isPlaying,
                             color = LevyraCyan,
-                            size = 32.dp
+                            size = 32.dp,
+                            contentDescription = LocalLevyraStrings.current.playing
                         )
                         else -> Surface(
                             color = Color.Black.copy(alpha = 0.42f),
@@ -3667,7 +3668,8 @@ private fun ArtistPopularTrackRow(
                     isCurrent -> LevyraPlayingIndicator(
                         playing = isPlaying,
                         color = LevyraCyan,
-                        size = 16.dp
+                        size = 16.dp,
+                        contentDescription = LocalLevyraStrings.current.playing
                     )
                     else -> Text(
                         text = "$index",
