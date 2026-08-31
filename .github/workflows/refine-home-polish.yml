@@ -34,7 +34,29 @@ jobs:
           java-version: '17'
 
       - name: Apply final Home visual polish
-        run: python3 .github/scripts/refine-home-polish.py
+        run: |
+          python3 .github/scripts/refine-home-polish.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace(
+              "private fun TrendingArtistLoadingItem(featured: Boolean) {",
+              "private fun TrendingArtistLoadingItem(featured: Boolean = false) {",
+              1,
+          )
+          text = text.replace(
+              "url = artist.thumbnailUrl,\n                contentDescription = artist.name,",
+              "url = artist.thumbnailUrl,\n                contentDescription = null,",
+              1,
+          )
+          text = text.replace(
+              "imageVector = Icons.Rounded.Person,\n                    contentDescription = artist.name,",
+              "imageVector = Icons.Rounded.Person,\n                    contentDescription = null,",
+              1,
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Compile Android debug Kotlin
         run: ./gradlew :app:compileDebugKotlin --no-daemon
@@ -57,5 +79,5 @@ jobs:
             echo "No validated source changes to commit."
             exit 0
           fi
-          git commit -m "refactor(home): finish spotify-inspired discovery polish"
+          git commit -m "refactor(home): finish artist discovery polish"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
