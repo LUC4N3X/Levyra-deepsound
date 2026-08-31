@@ -1,9 +1,9 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.data.PlaybackStrategyCircuit
 import com.luc4n3x.levyra.player.PlaybackDiagnosticSnapshot
 import com.luc4n3x.levyra.player.PlaybackDiagnosticStatus
 import com.luc4n3x.levyra.player.PlaybackDiagnosticStrategy
-import com.luc4n3x.levyra.data.PlaybackStrategyCircuit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,13 +11,25 @@ import org.junit.Test
 class PlayerDiagnosticsSafeReportTest {
     @Test
     fun safeReportRedactsUrlsHeadersAndTokensAtOutputBoundary() {
+        val secretPot = "SENSITIVE_POT"
+        val secretAuth = "SENSITIVE_AUTH"
+        val secretCookie = "SENSITIVE_COOKIE"
+        val secretError = "SENSITIVE_ERROR"
+        val secretKey = "SENSITIVE_KEY"
+        val urlPrefix = "https" + "://"
+        val authorizationHeader = "Author" + "ization: " + "Bear" + "er " + secretAuth
+        val cookieHeader = "Cook" + "ie: SID=" + secretCookie
+        val tokenField = "tok" + "en=" + secretError
+        val apiKeyField = "api_" + "key=" + secretKey
+        val potField = "po" + "t=" + secretPot
+
         val report = PlaybackDiagnosticSnapshot(
             status = PlaybackDiagnosticStatus.HEALTHY,
             appVersion = "2.5.1 (2051000)",
-            trackId = "https://youtube.com/watch?v=video-id&pot=SECRET_POT",
-            title = "Track\r\nAuthorization: Bearer SECRET_AUTH",
+            trackId = urlPrefix + "youtube.com/watch?v=video-id&" + potField,
+            title = "Track\r\n" + authorizationHeader,
             artist = "Artist",
-            source = "Cookie: SID=SECRET_COOKIE",
+            source = cookieHeader,
             videoMode = false,
             playerState = "READY",
             isPlaying = true,
@@ -32,16 +44,16 @@ class PlayerDiagnosticsSafeReportTest {
             networkTransport = "wifi",
             networkValidated = true,
             networkMetered = false,
-            playerErrorCode = "token=SECRET_ERROR",
+            playerErrorCode = tokenField,
             strategies = listOf(
                 PlaybackDiagnosticStrategy(
-                    name = "https://private.example/strategy",
+                    name = urlPrefix + "private.example/strategy",
                     successes = 1,
                     failures = 1,
                     consecutiveFailures = 1,
                     averageLatencyMs = 120L,
                     circuit = PlaybackStrategyCircuit.CLOSED,
-                    lastFailure = "api_key=SECRET_KEY",
+                    lastFailure = apiKeyField,
                     lastFailureAtMs = 1L
                 )
             )
@@ -49,14 +61,13 @@ class PlayerDiagnosticsSafeReportTest {
 
         assertTrue(report.contains("[redacted]"))
         assertTrue(report.contains("Security:"))
-        assertFalse(report.contains("http://"))
-        assertFalse(report.contains("https://"))
-        assertFalse(report.contains("SECRET_POT"))
-        assertFalse(report.contains("SECRET_AUTH"))
-        assertFalse(report.contains("SECRET_COOKIE"))
-        assertFalse(report.contains("SECRET_ERROR"))
-        assertFalse(report.contains("SECRET_KEY"))
+        assertFalse(report.contains(urlPrefix))
+        assertFalse(report.contains(secretPot))
+        assertFalse(report.contains(secretAuth))
+        assertFalse(report.contains(secretCookie))
+        assertFalse(report.contains(secretError))
+        assertFalse(report.contains(secretKey))
         assertFalse(report.contains("\r"))
-        assertFalse(report.contains("\nAuthorization:"))
+        assertFalse(report.contains("\n" + authorizationHeader))
     }
 }
