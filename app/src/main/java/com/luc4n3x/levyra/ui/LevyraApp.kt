@@ -1843,6 +1843,7 @@ fun LevyraApp(
                 ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
+                    onPlayAll = { tracks -> viewModel.playAll(tracks) },
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onOpenArtist = viewModel::openArtistFromHit,
                     onOpenRelease = viewModel::openArtistRelease,
@@ -3246,6 +3247,7 @@ private fun AlbumTrackItem(
 private fun ArtistOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
+    onPlayAll: (List<Track>) -> Unit,
     onToggleFollow: () -> Unit,
     onOpenArtist: (ArtistHit) -> Unit,
     onOpenRelease: (ArtistRelease, String) -> Unit,
@@ -3340,14 +3342,17 @@ private fun ArtistOverlay(
                         }
                     }
                     if (artist.topSongs.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
-                        item {
+                        item(
+                            key = "artist-popular-tracks",
+                            contentType = "artist-popular-tracks"
+                        ) {
                             ArtistPopularTracksShelf(
                                 tracks = artist.topSongs,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
                                 isResolving = state.isResolving,
-                                onPlay = onPlay
+                                onPlay = onPlay,
+                                onPlayAll = onPlayAll
                             )
                         }
                     }
@@ -3438,133 +3443,15 @@ private fun ArtistOverlay(
 }
 
 @Composable
-private fun ArtistTopTrackCard(
-    index: Int,
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: () -> Unit
-) {
-    Surface(
-        color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.03f),
-        border = BorderStroke(
-            1.dp,
-            if (isCurrent) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f)
-        ),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .width(260.dp)
-            .height(202.dp)
-            .pressable(onClick = onPlay)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                CoverImage(
-                    track = track,
-                    modifier = Modifier.fillMaxSize(),
-                    highRes = true
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.70f)
-                                )
-                            )
-                        )
-                )
-                Surface(
-                    color = LevyraCyan,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(12.dp)
-                        .size(28.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "$index",
-                            color = LevyraBlack,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-                Box(
-                    modifier = Modifier.align(Alignment.Center),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        isResolving -> CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            color = LevyraCyan,
-                            strokeWidth = 3.dp
-                        )
-                        isCurrent -> LevyraPlayingIndicator(
-                            playing = isPlaying,
-                            color = LevyraCyan,
-                            size = 32.dp,
-                            contentDescription = LocalLevyraStrings.current.playing
-                        )
-                        else -> Surface(
-                            color = Color.Black.copy(alpha = 0.42f),
-                            shape = CircleShape,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
-                    }
-                }
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = track.title,
-                    color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 16.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.3).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = track.artist,
-                    color = LevyraMuted,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ArtistPopularTracksShelf(
     tracks: List<Track>,
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
-    onPlay: (Track) -> Unit
+    onPlay: (Track) -> Unit,
+    onPlayAll: (List<Track>) -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val distinctTracks = remember(tracks) {
         tracks.distinctBy { track ->
             track.id.ifBlank { "${track.artist}|${track.title}" }
@@ -3572,58 +3459,81 @@ private fun ArtistPopularTracksShelf(
     }
     if (distinctTracks.isEmpty()) return
 
-    val firstTrack = distinctTracks.first()
-    val columns = remember(distinctTracks) {
-        distinctTracks.drop(1).chunked(3)
-    }
+    val columns = remember(distinctTracks) { distinctTracks.chunked(4) }
 
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        item(
-            key = "artist-top-track-${firstTrack.id.ifBlank { "${firstTrack.artist}|${firstTrack.title}" }}",
-            contentType = "artist-top-track"
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val isCurrent = firstTrack.id == currentId
-            ArtistTopTrackCard(
-                index = 1,
-                track = firstTrack,
-                isCurrent = isCurrent,
-                isPlaying = isPlaying && isCurrent,
-                isResolving = isResolving && isCurrent,
-                onPlay = { onPlay(firstTrack) }
+            Text(
+                text = strings.popularTracks,
+                color = LevyraText,
+                fontSize = 22.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(22.sp),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.45).sp,
+                modifier = Modifier.weight(1f)
             )
+            Surface(
+                color = Color.White.copy(alpha = 0.04f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                shape = CircleShape,
+                modifier = Modifier
+                    .height(48.dp)
+                    .pressable { onPlayAll(distinctTracks) }
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 15.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = strings.playAll,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+            }
         }
 
-        itemsIndexed(
-            items = columns,
-            key = { _, columnTracks ->
-                columnTracks.joinToString(
-                    prefix = "artist-popular-col-",
-                    separator = "|"
-                ) { track ->
-                    track.id.ifBlank { "${track.artist}:${track.title}" }
-                }
-            },
-            contentType = { _, _ -> "artist-popular-column" }
-        ) { columnIndex, columnTracks ->
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.width(300.dp)
-            ) {
-                columnTracks.forEachIndexed { rowIndex, track ->
-                    val rank = columnIndex * 3 + rowIndex + 2
-                    val isCurrent = track.id == currentId
-                    ArtistPopularTrackRow(
-                        index = rank,
-                        track = track,
-                        isCurrent = isCurrent,
-                        isPlaying = isPlaying && isCurrent,
-                        isResolving = isResolving && isCurrent,
-                        onPlay = { onPlay(track) }
-                    )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyRow(
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            itemsIndexed(
+                items = columns,
+                key = { _, columnTracks ->
+                    columnTracks.joinToString(
+                        prefix = "artist-popular-col-",
+                        separator = "|"
+                    ) { track ->
+                        track.id.ifBlank { "${track.artist}:${track.title}" }
+                    }
+                },
+                contentType = { _, _ -> "artist-popular-column" }
+            ) { _, columnTracks ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.width(306.dp)
+                ) {
+                    columnTracks.forEach { track ->
+                        val isCurrent = track.id == currentId
+                        ArtistPopularTrackRow(
+                            track = track,
+                            isCurrent = isCurrent,
+                            isPlaying = isPlaying && isCurrent,
+                            isResolving = isResolving && isCurrent,
+                            onPlay = { onPlay(track) }
+                        )
+                    }
                 }
             }
         }
@@ -3632,91 +3542,90 @@ private fun ArtistPopularTracksShelf(
 
 @Composable
 private fun ArtistPopularTrackRow(
-    index: Int,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: () -> Unit
 ) {
-    Surface(
-        color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.03f),
-        border = BorderStroke(
-            1.dp,
-            if (isCurrent) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f)
-        ),
-        shape = RoundedCornerShape(14.dp),
+    val strings = LocalLevyraStrings.current
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .then(
+                if (isCurrent) Modifier.background(LevyraCyan.copy(alpha = 0.08f))
+                else Modifier
+            )
+            .heightIn(min = 64.dp)
             .pressable(onClick = onPlay)
+            .padding(top = 4.dp, end = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(LevyraPanelSoft),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.width(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    isResolving -> CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp,
-                        color = LevyraCyan
-                    )
-                    isCurrent -> LevyraPlayingIndicator(
-                        playing = isPlaying,
-                        color = LevyraCyan,
-                        size = 16.dp,
-                        contentDescription = LocalLevyraStrings.current.playing
-                    )
-                    else -> Text(
-                        text = "$index",
-                        color = LevyraMuted,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(LevyraPanelSoft),
-                contentAlignment = Alignment.Center
-            ) {
-                CoverImage(
-                    track = track,
-                    modifier = Modifier.fillMaxSize()
+            CoverImage(
+                track = track,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = track.title,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 15.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(15.5.sp),
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = (-0.25).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val duration = formatDuration(track.durationMs)
+                .takeIf { it != "--:--" }
+                .orEmpty()
+            Text(
+                text = listOf(track.artist, duration)
+                    .filter { it.isNotBlank() }
+                    .joinToString("  ·  "),
+                color = LevyraMuted,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Box(
+            modifier = Modifier.size(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = LevyraCyan
                 )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = track.title,
-                    color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 14.5.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.2).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                isCurrent -> LevyraPlayingIndicator(
+                    playing = isPlaying,
+                    color = LevyraCyan,
+                    size = 18.dp,
+                    contentDescription = strings.playing
                 )
-                val duration = formatDuration(track.durationMs)
-                    .takeIf { it != "--:--" }
-                    .orEmpty()
-                Text(
-                    text = listOf(track.artist, duration)
-                        .filter { it.isNotBlank() }
-                        .joinToString("  ·  "),
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                else -> Icon(
+                    Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = LevyraMuted.copy(alpha = 0.85f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
