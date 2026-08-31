@@ -6,6 +6,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,9 +53,9 @@ import com.luc4n3x.levyra.player.PlaybackDiagnosticsReader
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.RecommendationDiagnosticsCopy
 import com.luc4n3x.levyra.ui.i18n.recommendationDiagnosticsCopy
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import java.util.Locale
 
 @UnstableApi
 @Composable
@@ -66,7 +68,7 @@ internal fun PlaybackDiagnosticsDialog(
     val reader = remember(context.applicationContext) {
         PlaybackDiagnosticsReader(context.applicationContext)
     }
-    var snapshot by remember(track.id) { mutableStateOf(reader.capture(track)) }
+    var snapshot by remember(track.id) { mutableStateOf<PlaybackDiagnosticSnapshot?>(null) }
 
     LaunchedEffect(track.id) {
         while (isActive) {
@@ -83,135 +85,188 @@ internal fun PlaybackDiagnosticsDialog(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    DiagnosticsHeader(
-                        title = copy.diagnosticsTitle,
-                        status = snapshot.status.label(copy),
-                        closeLabel = copy.close,
-                        onDismiss = onDismiss
-                    )
-                }
-
-                item {
-                    DiagnosticSection(
-                        title = copy.track,
-                        rows = listOf(
-                            copy.id to snapshot.trackId,
-                            copy.title to snapshot.title,
-                            copy.artist to snapshot.artist,
-                            copy.source to snapshot.source,
-                            copy.mode to if (snapshot.videoMode) copy.video else copy.audio
-                        )
-                    )
-                }
-
-                item {
-                    val playerRows = listOfNotNull(
-                        copy.state to snapshot.playerState,
-                        copy.playing to snapshot.isPlaying.toString(),
-                        copy.position to formatDuration(snapshot.positionMs),
-                        copy.buffered to formatDuration(snapshot.bufferedPositionMs),
-                        copy.duration to formatDuration(snapshot.durationMs),
-                        copy.speed to String.format(Locale.ROOT, "%.2fx", snapshot.playbackSpeed),
-                        snapshot.audioSessionId?.let { copy.audioSession to it.toString() },
-                        snapshot.playerErrorCode.takeIf { it.isNotBlank() }?.let { copy.errorCode to it }
-                    )
-                    DiagnosticSection(title = copy.player, rows = playerRows)
-                }
-
-                item {
-                    DiagnosticSection(
-                        title = copy.formats,
-                        rows = listOf(
-                            copy.audio to snapshot.audioFormat?.summary().orEmpty().ifBlank { "-" },
-                            copy.video to snapshot.videoFormat?.summary().orEmpty().ifBlank { "-" }
-                        )
-                    )
-                }
-
-                item {
-                    DiagnosticSection(
-                        title = copy.network,
-                        rows = listOf(
-                            copy.cache to formatBytes(snapshot.cacheBytes),
-                            copy.transport to snapshot.networkTransport,
-                            copy.validated to snapshot.networkValidated.toString(),
-                            copy.metered to snapshot.networkMetered.toString()
-                        )
-                    )
-                }
-
-                if (snapshot.strategies.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = copy.resolver,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    items(snapshot.strategies, key = { it.name }) { strategy ->
-                        DiagnosticSection(
-                            title = strategy.name,
-                            rows = buildList {
-                                add(copy.successFailure to "${strategy.successes} / ${strategy.failures}")
-                                add(copy.failureStreak to strategy.consecutiveFailures.toString())
-                                add(copy.circuit to strategy.circuit.name)
-                                strategy.averageLatencyMs?.let { add(copy.averageLatency to "${it} ms") }
-                                if (strategy.lastFailure.isNotBlank()) add(copy.lastFailure to strategy.lastFailure)
-                            }
-                        )
-                    }
-                }
-
-                item {
-                    Text(
-                        text = copy.security,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                }
-
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(
-                                    ClipData.newPlainText("Levyra playback diagnostics", snapshot.safeReport())
-                                )
-                                Toast.makeText(context, copy.copied, Toast.LENGTH_SHORT).show()
-                            }
-                        ) {
-                            Icon(Icons.Rounded.ContentCopy, contentDescription = null)
-                            Text(
-                                text = copy.copyReport,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                        OutlinedButton(
-                            modifier = Modifier.weight(0.62f),
-                            onClick = onDismiss
-                        ) {
-                            Text(copy.close)
-                        }
-                    }
-                }
-                item { Spacer(Modifier.height(20.dp)) }
+            val currentSnapshot = snapshot
+            if (currentSnapshot == null) {
+                DiagnosticsLoadingSurface(copy = copy, onDismiss = onDismiss)
+            } else {
+                DiagnosticsContent(
+                    snapshot = currentSnapshot,
+                    copy = copy,
+                    context = context,
+                    onDismiss = onDismiss
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun DiagnosticsLoadingSurface(
+    copy: RecommendationDiagnosticsCopy,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(18.dp)
+    ) {
+        IconButton(
+            modifier = Modifier.align(Alignment.TopEnd),
+            onClick = onDismiss
+        ) {
+            Icon(Icons.Rounded.Close, contentDescription = copy.close)
+        }
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            CircularProgressIndicator()
+            Text(
+                text = copy.diagnosticsTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun DiagnosticsContent(
+    snapshot: PlaybackDiagnosticSnapshot,
+    copy: RecommendationDiagnosticsCopy,
+    context: Context,
+    onDismiss: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            DiagnosticsHeader(
+                title = copy.diagnosticsTitle,
+                status = snapshot.status.label(copy),
+                closeLabel = copy.close,
+                onDismiss = onDismiss
+            )
+        }
+
+        item {
+            DiagnosticSection(
+                title = copy.track,
+                rows = listOf(
+                    copy.id to snapshot.trackId,
+                    copy.title to snapshot.title,
+                    copy.artist to snapshot.artist,
+                    copy.source to snapshot.source,
+                    copy.mode to if (snapshot.videoMode) copy.video else copy.audio
+                )
+            )
+        }
+
+        item {
+            val playerRows = listOfNotNull(
+                copy.state to snapshot.playerState,
+                copy.playing to snapshot.isPlaying.toString(),
+                copy.position to formatDuration(snapshot.positionMs),
+                copy.buffered to formatDuration(snapshot.bufferedPositionMs),
+                copy.duration to formatDuration(snapshot.durationMs),
+                copy.speed to String.format(Locale.ROOT, "%.2fx", snapshot.playbackSpeed),
+                snapshot.audioSessionId?.let { copy.audioSession to it.toString() },
+                snapshot.playerErrorCode.takeIf { it.isNotBlank() }?.let { copy.errorCode to it }
+            )
+            DiagnosticSection(title = copy.player, rows = playerRows)
+        }
+
+        item {
+            DiagnosticSection(
+                title = copy.formats,
+                rows = listOf(
+                    copy.audio to snapshot.audioFormat?.summary().orEmpty().ifBlank { "-" },
+                    copy.video to snapshot.videoFormat?.summary().orEmpty().ifBlank { "-" }
+                )
+            )
+        }
+
+        item {
+            DiagnosticSection(
+                title = copy.network,
+                rows = listOf(
+                    copy.cache to formatBytes(snapshot.cacheBytes),
+                    copy.transport to snapshot.networkTransport,
+                    copy.validated to snapshot.networkValidated.toString(),
+                    copy.metered to snapshot.networkMetered.toString()
+                )
+            )
+        }
+
+        if (snapshot.strategies.isNotEmpty()) {
+            item {
+                Text(
+                    text = copy.resolver,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(snapshot.strategies, key = { it.name }) { strategy ->
+                DiagnosticSection(
+                    title = strategy.name,
+                    rows = buildList {
+                        add(copy.successFailure to "${strategy.successes} / ${strategy.failures}")
+                        add(copy.failureStreak to strategy.consecutiveFailures.toString())
+                        add(copy.circuit to strategy.circuit.name)
+                        strategy.averageLatencyMs?.let { add(copy.averageLatency to "${it} ms") }
+                        if (strategy.lastFailure.isNotBlank()) add(copy.lastFailure to strategy.lastFailure)
+                    }
+                )
+            }
+        }
+
+        item {
+            Text(
+                text = copy.security,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(
+                            ClipData.newPlainText("Levyra playback diagnostics", snapshot.safeReport())
+                        )
+                        Toast.makeText(context, copy.copied, Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = null)
+                    Text(
+                        text = copy.copyReport,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+                OutlinedButton(
+                    modifier = Modifier.weight(0.62f),
+                    onClick = onDismiss
+                ) {
+                    Text(copy.close)
+                }
+            }
+        }
+        item { Spacer(Modifier.height(20.dp)) }
     }
 }
 
