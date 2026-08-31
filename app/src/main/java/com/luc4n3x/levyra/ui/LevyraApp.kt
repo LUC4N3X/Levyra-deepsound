@@ -6759,13 +6759,6 @@ private fun HomeEditorialSpotlight(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(
-                elevation = 20.dp,
-                shape = LevyraHomeDesign.HeroShape,
-                clip = false,
-                ambientColor = accentStart.copy(alpha = 0.22f),
-                spotColor = Color.Black.copy(alpha = 0.65f)
-            )
             .clip(LevyraHomeDesign.HeroShape)
             .background(Color(0xFF07080C))
             .border(
@@ -6894,13 +6887,6 @@ private fun HomeEditorialSpotlight(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .shadow(
-                            elevation = 12.dp,
-                            shape = CircleShape,
-                            clip = false,
-                            ambientColor = accentStart.copy(alpha = 0.40f),
-                            spotColor = Color.Black.copy(alpha = 0.45f)
-                        )
                         .background(Color.White, CircleShape)
                         .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)), CircleShape),
                     contentAlignment = Alignment.Center
@@ -7060,22 +7046,23 @@ private fun HomeEditorialCollectionCard(
     )
     val palette = remember(visualIndex) { homeCollectionTilePalette(visualIndex) }
     val shape = RoundedCornerShape(18.dp)
+    // Hoisted so scrolling the shelf does not rebuild the shader per frame.
+    val cardBrush = remember(palette) {
+        Brush.linearGradient(
+            colorStops = arrayOf(
+                0f to palette.first,
+                0.68f to palette.first.copy(alpha = 0.96f),
+                1f to palette.second
+            )
+        )
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 122.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .shadow(8.dp, shape, clip = false)
             .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    colorStops = arrayOf(
-                        0f to palette.first,
-                        0.68f to palette.first.copy(alpha = 0.96f),
-                        1f to palette.second
-                    )
-                )
-            )
+            .background(cardBrush)
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
     ) {
         Column(
@@ -7124,7 +7111,6 @@ private fun HomeEditorialArtworkStack(
                     .size(92.dp)
                     .offset(x = 14.dp, y = 12.dp)
                     .graphicsLayer { rotationZ = 12f }
-                    .shadow(10.dp, RoundedCornerShape(8.dp), clip = false)
                     .clip(RoundedCornerShape(8.dp)),
                 highRes = false,
                 zoom = 1.02f
@@ -8038,22 +8024,23 @@ private fun PersonalListeningShelf(
             val accentEnd = remember(featured?.id, featured?.accentEnd) {
                 featured?.let { Color(it.accentEnd) } ?: LevyraViolet
             }
+            val pageWash = remember(accentStart, accentEnd, LevyraIsLight) {
+                Brush.radialGradient(
+                    colors = listOf(
+                        accentStart.copy(alpha = if (LevyraIsLight) 0.10f else 0.14f),
+                        accentEnd.copy(alpha = if (LevyraIsLight) 0.05f else 0.08f),
+                        Color.Transparent
+                    ),
+                    radius = 520f
+                )
+            }
 
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .padding(horizontal = 8.dp, vertical = 10.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentStart.copy(alpha = if (LevyraIsLight) 0.10f else 0.14f),
-                                    accentEnd.copy(alpha = if (LevyraIsLight) 0.05f else 0.08f),
-                                    Color.Transparent
-                                ),
-                                radius = 520f
-                            )
-                        )
+                        .background(pageWash)
                 )
 
                 Row(
@@ -8151,6 +8138,25 @@ private fun PersonalListeningCard(
     val artworkShape = RoundedCornerShape(20.dp)
     val accentStart = remember(track.id, track.accentStart) { Color(track.accentStart) }
     val accentEnd = remember(track.id, track.accentEnd) { Color(track.accentEnd) }
+    val verticalScrim = remember(accentStart) {
+        Brush.verticalGradient(
+            colorStops = arrayOf(
+                0f to accentStart.copy(alpha = 0.08f),
+                0.46f to Color.Transparent,
+                0.70f to Color.Black.copy(alpha = 0.18f),
+                1f to Color.Black.copy(alpha = 0.88f)
+            )
+        )
+    }
+    val horizontalScrim = remember(accentStart, accentEnd) {
+        Brush.horizontalGradient(
+            listOf(
+                accentStart.copy(alpha = 0.08f),
+                Color.Transparent,
+                accentEnd.copy(alpha = 0.04f)
+            )
+        )
+    }
 
     Box(
         modifier = modifier
@@ -8177,29 +8183,12 @@ private fun PersonalListeningCard(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0f to accentStart.copy(alpha = 0.08f),
-                            0.46f to Color.Transparent,
-                            0.70f to Color.Black.copy(alpha = 0.18f),
-                            1f to Color.Black.copy(alpha = 0.88f)
-                        )
-                    )
-                )
+                .background(verticalScrim)
         )
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            accentStart.copy(alpha = 0.08f),
-                            Color.Transparent,
-                            accentEnd.copy(alpha = 0.04f)
-                        )
-                    )
-                )
+                .background(horizontalScrim)
         )
 
         Column(
@@ -8271,6 +8260,15 @@ private fun PersonalOrbitSatelliteCard(
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(16.dp)
+    val scrim = remember {
+        Brush.verticalGradient(
+            listOf(
+                Color.Transparent,
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.70f)
+            )
+        )
+    }
 
     Box(
         modifier = modifier
@@ -8297,15 +8295,7 @@ private fun PersonalOrbitSatelliteCard(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.70f)
-                        )
-                    )
-                )
+                .background(scrim)
         )
         Text(
             text = track.title,
