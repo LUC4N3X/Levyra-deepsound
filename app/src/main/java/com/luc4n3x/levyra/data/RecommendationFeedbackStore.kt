@@ -6,7 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.artistIdentityKeys
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import java.io.IOException
 import kotlinx.coroutines.flow.catch
@@ -83,7 +83,7 @@ internal class RecommendationFeedbackStore(context: Context) {
         if (kind != RecommendationFeedbackKind.BLOCK_ARTIST && trackId.isBlank() && artistKey.isBlank()) return
 
         dataStore.edit { mutable ->
-            val current = decodeEntries(mutable[KEY_ENTRIES]).toMutableList()
+            val current = decodeEntries(mutable[KEY_ENTRIES])
             val filtered = current.filterNot { entry ->
                 when (kind) {
                     RecommendationFeedbackKind.BLOCK_ARTIST -> entry.artistKey == artistKey
@@ -124,7 +124,7 @@ internal fun rankRecommendationCandidates(
     excludedTrackIds: Set<String> = emptySet()
 ): List<Track> {
     if (candidates.isEmpty()) return emptyList()
-    val excluded = excludedTrackIds.map(String::trim).filter(String::isNotBlank).toSet()
+    val excluded = excludedTrackIds.map { it.trim() }.filter { it.isNotBlank() }.toSet()
     val seen = HashSet<String>()
     val scored = candidates.mapIndexedNotNull { index, track ->
         val trackId = track.id.trim()
@@ -172,8 +172,10 @@ private data class RankedRecommendationCandidate(
     val originalIndex: Int
 )
 
-private fun recommendationArtistKey(track: Track): String =
-    artistIdentityKey(primaryArtistSegment(track.artist).ifBlank { track.artist })
+private fun recommendationArtistKey(track: Track): String {
+    val primary = primaryArtistSegment(track.artist).ifBlank { track.artist }
+    return artistIdentityKeys(primary).minByOrNull(String::length).orEmpty()
+}
 
 private fun snapshotFrom(entries: List<RecommendationFeedbackEntry>): RecommendationFeedbackSnapshot {
     val preferred = LinkedHashSet<String>()
