@@ -8,17 +8,19 @@ class RecommendationDiagnosticsStringsTest {
     fun italianUsesTheSelectedLevyraLocale() {
         val copy = LevyraStrings.forCode("it").recommendationDiagnosticsCopy()
 
-        assertEquals("Più brani come questo", copy.moreLikeThis)
+        assertEquals("Più brani così nella radio", copy.moreLikeThis)
+        assertEquals("Suggerisci di nuovo questo artista", copy.allowArtistAgain)
         assertEquals("Diagnostica riproduzione", copy.diagnosticsTitle)
         assertEquals("Copia report", copy.copyReport)
     }
 
     @Test
-    fun unsupportedDedicatedCopyFallsBackToEnglish() {
+    fun japaneseUsesDedicatedRecommendationAndDiagnosticCopy() {
         val copy = LevyraStrings.forCode("ja").recommendationDiagnosticsCopy()
 
-        assertEquals("More like this", copy.moreLikeThis)
-        assertEquals("Playback diagnostics", copy.diagnosticsTitle)
-        assertEquals("Copy report", copy.copyReport)
+        assertEquals("ラジオで似た曲を増やす", copy.moreLikeThis)
+        assertEquals("このアーティストを再びおすすめする", copy.allowArtistAgain)
+        assertEquals("再生診断", copy.diagnosticsTitle)
+        assertEquals("レポートをコピー", copy.copyReport)
     }
 }
