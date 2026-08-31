@@ -38,18 +38,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.util.UnstableApi
-import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.PlaybackDiagnosticSnapshot
 import com.luc4n3x.levyra.player.PlaybackDiagnosticStatus
 import com.luc4n3x.levyra.player.PlaybackDiagnosticsReader
+import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.RecommendationDiagnosticsCopy
+import com.luc4n3x.levyra.ui.i18n.recommendationDiagnosticsCopy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.Locale
@@ -61,17 +62,11 @@ internal fun PlaybackDiagnosticsDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val copy = LocalLevyraStrings.current.recommendationDiagnosticsCopy()
     val reader = remember(context.applicationContext) {
         PlaybackDiagnosticsReader(context.applicationContext)
     }
     var snapshot by remember(track.id) { mutableStateOf(reader.capture(track)) }
-    val copiedMessage = stringResource(R.string.playback_diagnostics_copied)
-    val stateLabel = stringResource(R.string.playback_diagnostics_state)
-    val positionLabel = stringResource(R.string.playback_diagnostics_position)
-    val bufferedLabel = stringResource(R.string.playback_diagnostics_buffered)
-    val durationLabel = stringResource(R.string.playback_diagnostics_duration)
-    val speedLabel = stringResource(R.string.playback_diagnostics_speed)
-    val errorCodeLabel = stringResource(R.string.playback_diagnostics_error_code)
 
     LaunchedEffect(track.id) {
         while (isActive) {
@@ -97,94 +92,59 @@ internal fun PlaybackDiagnosticsDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.BugReport,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.playback_diagnostics),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Black
-                                )
-                                Text(
-                                    text = snapshot.status.statusLabel(),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.playback_diagnostics_close)
-                            )
-                        }
-                    }
+                    DiagnosticsHeader(
+                        title = copy.diagnosticsTitle,
+                        status = snapshot.status.label(copy),
+                        closeLabel = copy.close,
+                        onDismiss = onDismiss
+                    )
                 }
 
                 item {
                     DiagnosticSection(
-                        title = stringResource(R.string.playback_diagnostics_track),
+                        title = copy.track,
                         rows = listOf(
-                            stringResource(R.string.playback_diagnostics_id) to snapshot.trackId,
-                            "Title" to snapshot.title,
-                            "Artist" to snapshot.artist,
-                            stringResource(R.string.playback_diagnostics_source) to snapshot.source,
-                            stringResource(R.string.playback_diagnostics_mode) to if (snapshot.videoMode) "video" else "audio"
+                            copy.id to snapshot.trackId,
+                            copy.title to snapshot.title,
+                            copy.artist to snapshot.artist,
+                            copy.source to snapshot.source,
+                            copy.mode to if (snapshot.videoMode) copy.video else copy.audio
                         )
                     )
                 }
 
                 item {
                     val playerRows = listOfNotNull(
-                        stateLabel to snapshot.playerState,
-                        "Playing" to snapshot.isPlaying.toString(),
-                        positionLabel to formatDuration(snapshot.positionMs),
-                        bufferedLabel to formatDuration(snapshot.bufferedPositionMs),
-                        durationLabel to formatDuration(snapshot.durationMs),
-                        speedLabel to String.format(Locale.ROOT, "%.2fx", snapshot.playbackSpeed),
-                        snapshot.audioSessionId?.let { "Audio session" to it.toString() },
-                        snapshot.playerErrorCode.takeIf { it.isNotBlank() }?.let { errorCodeLabel to it }
+                        copy.state to snapshot.playerState,
+                        copy.playing to snapshot.isPlaying.toString(),
+                        copy.position to formatDuration(snapshot.positionMs),
+                        copy.buffered to formatDuration(snapshot.bufferedPositionMs),
+                        copy.duration to formatDuration(snapshot.durationMs),
+                        copy.speed to String.format(Locale.ROOT, "%.2fx", snapshot.playbackSpeed),
+                        snapshot.audioSessionId?.let { copy.audioSession to it.toString() },
+                        snapshot.playerErrorCode.takeIf { it.isNotBlank() }?.let { copy.errorCode to it }
                     )
-                    DiagnosticSection(
-                        title = stringResource(R.string.playback_diagnostics_player),
-                        rows = playerRows
-                    )
+                    DiagnosticSection(title = copy.player, rows = playerRows)
                 }
 
                 item {
                     DiagnosticSection(
-                        title = stringResource(R.string.playback_diagnostics_formats),
+                        title = copy.formats,
                         rows = listOf(
-                            stringResource(R.string.playback_diagnostics_audio) to
-                                snapshot.audioFormat?.summary().orEmpty().ifBlank { "-" },
-                            stringResource(R.string.playback_diagnostics_video) to
-                                snapshot.videoFormat?.summary().orEmpty().ifBlank { "-" }
+                            copy.audio to snapshot.audioFormat?.summary().orEmpty().ifBlank { "-" },
+                            copy.video to snapshot.videoFormat?.summary().orEmpty().ifBlank { "-" }
                         )
                     )
                 }
 
                 item {
                     DiagnosticSection(
-                        title = stringResource(R.string.playback_diagnostics_network),
+                        title = copy.network,
                         rows = listOf(
-                            stringResource(R.string.playback_diagnostics_cache) to formatBytes(snapshot.cacheBytes),
-                            stringResource(R.string.playback_diagnostics_transport) to snapshot.networkTransport,
-                            stringResource(R.string.playback_diagnostics_validated) to snapshot.networkValidated.toString(),
-                            stringResource(R.string.playback_diagnostics_metered) to snapshot.networkMetered.toString()
+                            copy.cache to formatBytes(snapshot.cacheBytes),
+                            copy.transport to snapshot.networkTransport,
+                            copy.validated to snapshot.networkValidated.toString(),
+                            copy.metered to snapshot.networkMetered.toString()
                         )
                     )
                 }
@@ -192,7 +152,7 @@ internal fun PlaybackDiagnosticsDialog(
                 if (snapshot.strategies.isNotEmpty()) {
                     item {
                         Text(
-                            text = stringResource(R.string.playback_diagnostics_resolver),
+                            text = copy.resolver,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -201,11 +161,11 @@ internal fun PlaybackDiagnosticsDialog(
                         DiagnosticSection(
                             title = strategy.name,
                             rows = buildList {
-                                add("Success / failure" to "${strategy.successes} / ${strategy.failures}")
-                                add("Failure streak" to strategy.consecutiveFailures.toString())
-                                add("Circuit" to strategy.circuit.name)
-                                strategy.averageLatencyMs?.let { add("Average latency" to "${it} ms") }
-                                if (strategy.lastFailure.isNotBlank()) add("Last failure" to strategy.lastFailure)
+                                add(copy.successFailure to "${strategy.successes} / ${strategy.failures}")
+                                add(copy.failureStreak to strategy.consecutiveFailures.toString())
+                                add(copy.circuit to strategy.circuit.name)
+                                strategy.averageLatencyMs?.let { add(copy.averageLatency to "${it} ms") }
+                                if (strategy.lastFailure.isNotBlank()) add(copy.lastFailure to strategy.lastFailure)
                             }
                         )
                     }
@@ -213,7 +173,7 @@ internal fun PlaybackDiagnosticsDialog(
 
                 item {
                     Text(
-                        text = stringResource(R.string.playback_diagnostics_security),
+                        text = copy.security,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 4.dp)
@@ -232,12 +192,12 @@ internal fun PlaybackDiagnosticsDialog(
                                 clipboard.setPrimaryClip(
                                     ClipData.newPlainText("Levyra playback diagnostics", snapshot.safeReport())
                                 )
-                                Toast.makeText(context, copiedMessage, Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, copy.copied, Toast.LENGTH_SHORT).show()
                             }
                         ) {
                             Icon(Icons.Rounded.ContentCopy, contentDescription = null)
                             Text(
-                                text = stringResource(R.string.playback_diagnostics_copy),
+                                text = copy.copyReport,
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                         }
@@ -245,7 +205,7 @@ internal fun PlaybackDiagnosticsDialog(
                             modifier = Modifier.weight(0.62f),
                             onClick = onDismiss
                         ) {
-                            Text(stringResource(R.string.playback_diagnostics_close))
+                            Text(copy.close)
                         }
                     }
                 }
@@ -256,14 +216,53 @@ internal fun PlaybackDiagnosticsDialog(
 }
 
 @Composable
-private fun PlaybackDiagnosticStatus.statusLabel(): String = stringResource(
-    when (this) {
-        PlaybackDiagnosticStatus.HEALTHY -> R.string.playback_diagnostics_status_healthy
-        PlaybackDiagnosticStatus.FALLBACK_HISTORY -> R.string.playback_diagnostics_status_fallback
-        PlaybackDiagnosticStatus.ERROR -> R.string.playback_diagnostics_status_error
-        PlaybackDiagnosticStatus.IDLE -> R.string.playback_diagnostics_status_idle
+private fun DiagnosticsHeader(
+    title: String,
+    status: String,
+    closeLabel: String,
+    onDismiss: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.BugReport,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Rounded.Close, contentDescription = closeLabel)
+        }
     }
-)
+}
+
+private fun PlaybackDiagnosticStatus.label(copy: RecommendationDiagnosticsCopy): String = when (this) {
+    PlaybackDiagnosticStatus.HEALTHY -> copy.statusHealthy
+    PlaybackDiagnosticStatus.FALLBACK_HISTORY -> copy.statusFallback
+    PlaybackDiagnosticStatus.ERROR -> copy.statusError
+    PlaybackDiagnosticStatus.IDLE -> copy.statusIdle
+}
 
 @Composable
 private fun DiagnosticSection(
