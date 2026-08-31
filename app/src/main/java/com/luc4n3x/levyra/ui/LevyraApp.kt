@@ -538,6 +538,7 @@ private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
 private const val HOME_SECTION_HEADER_CONTENT_TYPE = "home-section-header"
 private const val HOME_DENSE_SHELF_CONTENT_TYPE = "home-dense-shelf"
 private const val HOME_ARTWORK_GRID_CONTENT_TYPE = "home-artwork-grid"
+private const val ORBIT_TRACKS_PER_PAGE = 4
 private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
@@ -8006,7 +8007,7 @@ private fun PersonalListeningShelf(
             LevyraPersonalOrbit.distinctRecordings(tracks)
         ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
-    val pages = remember(shelfTracks) { shelfTracks.chunked(4) }
+    val pages = remember(shelfTracks) { shelfTracks.chunked(ORBIT_TRACKS_PER_PAGE) }
     val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -8018,18 +8019,17 @@ private fun PersonalListeningShelf(
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(246.dp),
+                .height(370.dp),
             contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
             pageSpacing = 12.dp
         ) { pageIndex ->
             val pageTracks = pages.getOrElse(pageIndex) { emptyList() }
-            val featured = pageTracks.firstOrNull()
-            val satellites = pageTracks.drop(1).take(3)
-            val accentStart = remember(featured?.id, featured?.accentStart) {
-                featured?.let { Color(it.accentStart) } ?: LevyraCyan
+            val leadTrack = pageTracks.firstOrNull()
+            val accentStart = remember(leadTrack?.id, leadTrack?.accentStart) {
+                leadTrack?.let { Color(it.accentStart) } ?: LevyraCyan
             }
-            val accentEnd = remember(featured?.id, featured?.accentEnd) {
-                featured?.let { Color(it.accentEnd) } ?: LevyraViolet
+            val accentEnd = remember(leadTrack?.id, leadTrack?.accentEnd) {
+                leadTrack?.let { Color(it.accentEnd) } ?: LevyraViolet
             }
             val pageWash = remember(accentStart, accentEnd, LevyraIsLight) {
                 Brush.radialGradient(
@@ -8038,7 +8038,7 @@ private fun PersonalListeningShelf(
                         accentEnd.copy(alpha = if (LevyraIsLight) 0.05f else 0.08f),
                         Color.Transparent
                     ),
-                    radius = 520f
+                    radius = 620f
                 )
             }
 
@@ -8046,61 +8046,54 @@ private fun PersonalListeningShelf(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .padding(horizontal = 8.dp, vertical = 10.dp)
+                        .padding(horizontal = 4.dp, vertical = 6.dp)
                         .background(pageWash)
                 )
-
-                Row(
+                Column(
                     modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (featured != null) {
+                    if (leadTrack != null) {
                         PersonalListeningCard(
-                            track = featured,
-                            active = featured.id == currentId,
-                            playing = isPlaying && featured.id == currentId,
-                            resolving = isResolving && featured.id == currentId,
-                            onClick = { onPlay(featured) },
+                            track = leadTrack,
+                            active = leadTrack.id == currentId,
+                            playing = isPlaying && leadTrack.id == currentId,
+                            resolving = isResolving && leadTrack.id == currentId,
+                            onClick = { onPlay(leadTrack) },
                             modifier = Modifier
-                                .weight(1.76f)
-                                .fillMaxHeight(),
+                                .fillMaxWidth()
+                                .height(148.dp),
                             onLongClick = {
                                 haptics.perform(LevyraHapticAction.TrackSwipe)
-                                onTrackActions(featured)
+                                onTrackActions(leadTrack)
                             },
                             onLongClickLabel = LocalLevyraStrings.current.songOptions
                         )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1.76f).fillMaxHeight())
                     }
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        repeat(3) { index ->
-                            val track = satellites.getOrNull(index)
-                            if (track != null) {
-                                PersonalOrbitSatelliteCard(
-                                    track = track,
-                                    active = track.id == currentId,
-                                    playing = isPlaying && track.id == currentId,
-                                    resolving = isResolving && track.id == currentId,
-                                    onClick = { onPlay(track) },
-                                    onLongClick = {
-                                        haptics.perform(LevyraHapticAction.TrackSwipe)
-                                        onTrackActions(track)
-                                    },
-                                    onLongClickLabel = LocalLevyraStrings.current.songOptions,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxWidth()
-                                )
-                            } else {
-                                Spacer(modifier = Modifier.weight(1f).fillMaxWidth())
-                            }
+                    repeat(ORBIT_TRACKS_PER_PAGE - 1) { index ->
+                        val track = pageTracks.getOrNull(index + 1)
+                        if (track != null) {
+                            PersonalOrbitRow(
+                                track = track,
+                                active = track.id == currentId,
+                                playing = isPlaying && track.id == currentId,
+                                resolving = isResolving && track.id == currentId,
+                                onClick = { onPlay(track) },
+                                onLongClick = {
+                                    haptics.perform(LevyraHapticAction.TrackSwipe)
+                                    onTrackActions(track)
+                                },
+                                onLongClickLabel = LocalLevyraStrings.current.songOptions,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            )
+                        } else {
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -8142,7 +8135,7 @@ private fun PersonalListeningCard(
     onLongClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null
 ) {
-    val artworkShape = RoundedCornerShape(20.dp)
+    val artworkShape = RoundedCornerShape(16.dp)
     val accentStart = remember(track.id, track.accentStart) { Color(track.accentStart) }
     val accentEnd = remember(track.id, track.accentEnd) { Color(track.accentEnd) }
     val verticalScrim = remember(accentStart) {
@@ -8256,7 +8249,7 @@ private fun PersonalListeningCard(
 }
 
 @Composable
-private fun PersonalOrbitSatelliteCard(
+private fun PersonalOrbitRow(
     track: Track,
     active: Boolean,
     playing: Boolean,
@@ -8266,18 +8259,9 @@ private fun PersonalOrbitSatelliteCard(
     onLongClickLabel: String?,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(16.dp)
-    val scrim = remember {
-        Brush.verticalGradient(
-            listOf(
-                Color.Transparent,
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.70f)
-            )
-        )
-    }
+    val shape = RoundedCornerShape(12.dp)
 
-    Box(
+    Row(
         modifier = modifier
             .levyraPressable(
                 onClick = onClick,
@@ -8287,63 +8271,74 @@ private fun PersonalOrbitSatelliteCard(
                 longPressHaptic = null
             )
             .clip(shape)
-            .border(
-                width = if (active) 1.2.dp else Dp.Hairline,
-                color = if (active) LevyraCyan.copy(alpha = 0.82f) else LevyraAdaptiveSoftHairline,
-                shape = shape
+            .then(
+                if (active) Modifier.background(LevyraCyan.copy(alpha = 0.08f)) else Modifier
             )
+            .padding(end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        CoverImage(
-            track = track,
-            modifier = Modifier.fillMaxSize(),
-            highRes = false,
-            zoom = 1.04f
-        )
         Box(
             modifier = Modifier
-                .matchParentSize()
-                .background(scrim)
-        )
-        Text(
-            text = track.title,
-            color = Color.White,
-            fontSize = 11.5.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(horizontal = 9.dp, vertical = 7.dp)
-        )
-        if (active) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp)
-                    .size(25.dp)
-                    .background(Color.Black.copy(alpha = 0.68f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (resolving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(11.dp),
-                        strokeWidth = 1.4.dp,
-                        color = LevyraCyan
-                    )
-                } else {
-                    ActiveTrackEqualizer(
-                        color = LevyraCyan,
-                        isPlaying = playing,
-                        width = 11.dp,
-                        height = 8.dp
-                    )
+                .size(56.dp)
+                .clip(RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            CoverImage(
+                track = track,
+                modifier = Modifier.fillMaxSize(),
+                highRes = false
+            )
+            if (active) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Black.copy(alpha = 0.34f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (resolving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 1.6.dp,
+                            color = LevyraCyan
+                        )
+                    } else {
+                        ActiveTrackEqualizer(
+                            color = LevyraCyan,
+                            isPlaying = playing,
+                            width = 14.dp,
+                            height = 10.dp
+                        )
+                    }
                 }
             }
         }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = track.title,
+                color = if (active) LevyraCyan else LevyraText,
+                fontSize = 15.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                color = LevyraMuted,
+                fontSize = 12.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
+
 
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
