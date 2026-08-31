@@ -2,10 +2,13 @@ package com.luc4n3x.levyra.ui.player
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
-import java.lang.ref.WeakReference
 import kotlin.math.abs
 
 private const val PLAYER_VIDEO_MIN_SCALE = 1f
@@ -34,40 +37,113 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
     private var videoScale = PLAYER_VIDEO_MIN_SCALE
     private var videoTranslationX = 0f
     private var videoTranslationY = 0f
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
+    private var lastScaleFocusX = 0f
+    private var lastScaleFocusY = 0f
+    private var observedPlayer: Player? = null
+    private var playerListenerAttached = false
+
+    private val playerListener = object : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            resetVideoTransform()
+        }
+    }
+
+    private val scaleDetector = ScaleGestureDetector(
+        context,
+        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                lastScaleFocusX = detector.focusX
+                lastScaleFocusY = detector.focusY
+                parent?.requestDisallowInterceptTouchEvent(true)
+                return true
+            }
+
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val panX = detector.focusX - lastScaleFocusX
+                val panY = detector.focusY - lastScaleFocusY
+                lastScaleFocusX = detector.focusX
+                lastScaleFocusY = detector.focusY
+                applyVideoTransform(panX, panY, detector.scaleFactor)
+                return true
+            }
+
+            override fun onScaleEnd(detector: ScaleGestureDetector) {
+                if (!isVideoZoomed) parent?.requestDisallowInterceptTouchEvent(false)
+            }
+        }
+    )
 
     internal val isVideoZoomed: Boolean
         get() = videoScale > PLAYER_VIDEO_MIN_SCALE + PLAYER_VIDEO_RESET_EPSILON
 
+    override fun setPlayer(player: Player?) {
+        if (observedPlayer !== player) {
+            detachPlayerListener()
+            observedPlayer = player
+        }
+        super.setPlayer(player)
+        if (isAttachedToWindow) attachPlayerListener()
+        resetVideoTransform()
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        observedPlayer = player
+        attachPlayerListener()
         resetVideoTransform()
-        PlayerVideoTransformController.attach(this)
     }
 
     override fun onDetachedFromWindow() {
-        PlayerVideoTransformController.detach(this)
+        detachPlayerListener()
+        parent?.requestDisallowInterceptTouchEvent(false)
+        resetVideoTransform()
         super.onDetachedFromWindow()
     }
 
-    internal fun applyVideoTransform(
-        centroidX: Float,
-        centroidY: Float,
-        panX: Float,
-        panY: Float,
-        zoomChange: Float
-    ) {
-        val surface = videoSurfaceView ?: return
-        val previousScale = videoScale
-        val nextScale = boundedPlayerVideoScale(previousScale, zoomChange)
-        val ratio = if (previousScale > 0f) nextScale / previousScale else 1f
-        val localFocusX = centroidX - surface.left
-        val localFocusY = centroidY - surface.top
-        val focusFromCenterX = localFocusX - surface.width / 2f
-        val focusFromCenterY = localFocusY - surface.height / 2f
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val zoomedBeforeEvent = isVideoZoomed
+        val scaleHandled = scaleDetector.onTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouchX = event.x
+                lastTouchY = event.y
+                if (isVideoZoomed) parent?.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!scaleDetector.isInProgress && event.pointerCount == 1 && isVideoZoomed) {
+                    val deltaX = event.x - lastTouchX
+                    val deltaY = event.y - lastTouchY
+                    lastTouchX = event.x
+                    lastTouchY = event.y
+                    panVideoBy(deltaX, deltaY)
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
+                }
+                lastTouchX = event.x
+                lastTouchY = event.y
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
+        }
+        if (scaleDetector.isInProgress || event.pointerCount > 1 || isVideoZoomed || zoomedBeforeEvent || scaleHandled) {
+            return true
+        }
+        return super.onTouchEvent(event)
+    }
 
-        videoTranslationX = ratio * videoTranslationX + (1f - ratio) * focusFromCenterX + panX
-        videoTranslationY = ratio * videoTranslationY + (1f - ratio) * focusFromCenterY + panY
-        videoScale = nextScale
+    override fun performClick(): Boolean = super.performClick()
+
+    internal fun applyVideoTransform(panX: Float, panY: Float, zoomChange: Float) {
+        val surface = videoSurfaceView ?: return
+        videoScale = boundedPlayerVideoScale(videoScale, zoomChange)
+        videoTranslationX += panX
+        videoTranslationY += panY
         normalizeAndApply(surface)
     }
 
@@ -84,7 +160,19 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
         videoTranslationX = 0f
         videoTranslationY = 0f
         videoSurfaceView?.let(::applyToSurface)
-        PlayerVideoTransformController.onViewStateChanged(false)
+    }
+
+    private fun attachPlayerListener() {
+        val current = observedPlayer ?: return
+        if (playerListenerAttached) return
+        current.addListener(playerListener)
+        playerListenerAttached = true
+    }
+
+    private fun detachPlayerListener() {
+        if (!playerListenerAttached) return
+        observedPlayer?.removeListener(playerListener)
+        playerListenerAttached = false
     }
 
     private fun normalizeAndApply(surface: View) {
@@ -105,7 +193,6 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
             )
         }
         applyToSurface(surface)
-        PlayerVideoTransformController.onViewStateChanged(isVideoZoomed)
     }
 
     private fun applyToSurface(surface: View) {
@@ -115,59 +202,5 @@ class LevyraGesturePlayerView @JvmOverloads constructor(
         surface.scaleY = videoScale
         surface.translationX = videoTranslationX
         surface.translationY = videoTranslationY
-    }
-}
-
-internal object PlayerVideoTransformController {
-    private var viewRef = WeakReference<LevyraGesturePlayerView>(null)
-    private var boundKey: Any? = null
-
-    @Volatile
-    var isZoomed: Boolean = false
-        private set
-
-    @Synchronized
-    fun attach(view: LevyraGesturePlayerView) {
-        viewRef = WeakReference(view)
-        isZoomed = view.isVideoZoomed
-    }
-
-    @Synchronized
-    fun detach(view: LevyraGesturePlayerView) {
-        if (viewRef.get() === view) {
-            viewRef.clear()
-            isZoomed = false
-        }
-    }
-
-    @Synchronized
-    fun bind(key: Any?) {
-        if (boundKey == key) return
-        boundKey = key
-        viewRef.get()?.resetVideoTransform()
-        isZoomed = false
-    }
-
-    fun transform(
-        centroidX: Float,
-        centroidY: Float,
-        panX: Float,
-        panY: Float,
-        zoomChange: Float
-    ) {
-        viewRef.get()?.applyVideoTransform(centroidX, centroidY, panX, panY, zoomChange)
-    }
-
-    fun panBy(deltaX: Float, deltaY: Float) {
-        viewRef.get()?.panVideoBy(deltaX, deltaY)
-    }
-
-    fun reset() {
-        viewRef.get()?.resetVideoTransform()
-        isZoomed = false
-    }
-
-    fun onViewStateChanged(zoomed: Boolean) {
-        isZoomed = zoomed
     }
 }
