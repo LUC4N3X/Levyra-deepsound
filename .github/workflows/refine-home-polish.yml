@@ -60,6 +60,12 @@ jobs:
               raise RuntimeError('Home dialog attachment call drifted')
           text = text.replace(old_end_call, new_end_call, 1)
 
+          old_equalizer = 'else ActiveTrackEqualizer(LevyraCyan, isPlaying, width = 16.dp, height = 11.dp)'
+          new_equalizer = 'else ActiveTrackEqualizer(color = LevyraCyan, isPlaying = isPlaying, width = 16.dp, height = 11.dp)'
+          if old_equalizer not in text:
+              raise RuntimeError('Collection equalizer marker drifted')
+          text = text.replace(old_equalizer, new_equalizer, 1)
+
           path.write_text(text, encoding='utf-8')
           PY
 
