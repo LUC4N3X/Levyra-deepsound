@@ -19306,9 +19306,9 @@ private fun MiniPlayer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(70.dp)
-                .padding(start = 12.dp, end = 2.dp),
+                .padding(start = 10.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -19407,19 +19407,32 @@ private fun MiniPlayer(
                     borderColor = Color.Transparent,
                     onClick = playbackActions.next
                 )
-                // Sits slightly apart and dimmer than the transport controls so
-                // it reads as dismiss rather than a fourth playback action.
-                Spacer(modifier = Modifier.width(3.dp))
-                PlayerRoundIconButton(
-                    icon = Icons.Rounded.Close,
-                    contentDescription = strings.closePlayer,
-                    size = 40.dp,
-                    iconSize = 17.dp,
-                    tint = LevyraPlayerDesign.TextTertiary,
-                    background = Color.Transparent,
-                    borderColor = Color.Transparent,
-                    onClick = playbackActions.close
-                )
+                // Dismiss gets its own accent-tinted well instead of a fourth
+                // bare glyph, so it reads as a separate action and the transport
+                // group keeps its rhythm. Narrower slot than the play controls
+                // to buy the title back some width.
+                Spacer(modifier = Modifier.width(4.dp))
+                Box(
+                    modifier = Modifier
+                        .sizeIn(minWidth = 44.dp, minHeight = LevyraPlayerDesign.MinimumTouchTarget)
+                        .pressable(onClick = playbackActions.close),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(accentEnd.copy(alpha = 0.20f), CircleShape)
+                            .border(Dp.Hairline, Color.White.copy(alpha = 0.10f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = strings.closePlayer,
+                            tint = LevyraPlayerDesign.TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
         Box(
