@@ -6,6 +6,8 @@ on:
       - feature/home-discovery-remix
     paths:
       - .github/workflows/apply-home-discovery-remix.yml
+      - .github/scripts/patch-home-discovery-remix.py
+      - .github/scripts/patch-home-discovery-height.py
 
 permissions:
   contents: write
@@ -29,7 +31,9 @@ jobs:
           java-version: '17'
 
       - name: Apply focused Home redesign
-        run: python3 .github/scripts/patch-home-discovery-remix.py
+        run: |
+          python3 .github/scripts/patch-home-discovery-remix.py
+          python3 .github/scripts/patch-home-discovery-height.py
 
       - name: Compile Android debug Kotlin
         run: ./gradlew :app:compileDebugKotlin --no-daemon
