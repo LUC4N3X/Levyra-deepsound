@@ -96,8 +96,8 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
         .collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
     val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
-    val fixedStatusBarInset = remember(density) {
-        with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+    val fixedStatusBarInset = with(density) {
+        WindowInsets.statusBars.getTop(density).toDp()
     }
 
     Surface(
