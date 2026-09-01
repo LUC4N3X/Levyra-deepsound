@@ -349,6 +349,7 @@ import coil3.request.crossfade
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ArtworkRequestSource
+import com.luc4n3x.levyra.data.areAllFavoriteTracks
 import com.luc4n3x.levyra.data.HomeLoadingPolicy
 import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.HomeSectionLayoutPolicy
@@ -468,6 +469,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
+import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
@@ -1831,6 +1833,7 @@ fun LevyraApp(
                     onPlay = viewModel::playAlbumSong,
                     onTogglePlayback = viewModel::togglePlay,
                     onFavorite = viewModel::toggleFavorite,
+                    onToggleAlbumFavorite = viewModel::toggleCurrentAlbumFavorite,
                     onDownload = viewModel::exportTrack,
                     onDownloadAlbum = viewModel::exportCurrentAlbum,
                     onRetry = { state.albumDetail?.album?.let(viewModel::openAlbum) },
@@ -2526,6 +2529,7 @@ private fun AlbumOverlay(
     onPlay: (Track) -> Unit,
     onTogglePlayback: () -> Unit,
     onFavorite: (Track) -> Unit,
+    onToggleAlbumFavorite: () -> Unit,
     onDownload: (Track) -> Unit,
     onDownloadAlbum: () -> Unit,
     onRetry: () -> Unit,
@@ -2556,6 +2560,9 @@ private fun AlbumOverlay(
     val albumIsPlaying = albumIsActive && state.isPlaying
     val albumIsResolving = albumIsActive && state.isResolving
     val trackLoadFailed = album != null && tracks.isEmpty() && !state.albumLoading
+    val albumSaved = remember(tracks, state.favorites) {
+        areAllFavoriteTracks(state.favorites, tracks)
+    }
     val albumBottomInset = animatedBottomContentInset(
         collapsed = 112.dp,
         expanded = 232.dp,
@@ -2713,6 +2720,14 @@ private fun AlbumOverlay(
         }
         if (state.albumLoading && album != null && tracks.isNotEmpty()) {
             LinearMiniLoading(modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 58.dp))
+        }
+        if (album != null) {
+            SavedAlbumBookmarkOverlay(
+                saved = albumSaved,
+                enabled = tracks.isNotEmpty(),
+                languageCode = state.languageCode,
+                onToggle = onToggleAlbumFavorite
+            )
         }
         state.currentTrack?.let { current ->
             AlbumNowPlayingDock(
