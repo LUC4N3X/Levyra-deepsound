@@ -33,22 +33,27 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun rememberSavedLibraryAlbums(derivedAlbums: List<LibraryAlbum>): List<LibraryAlbum> {
+internal fun rememberSavedAlbums(): List<SavedAlbum> {
     val context = LocalContext.current
     val store = remember(context) { SavedAlbumsStore(context) }
     val savedAlbums by store.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    return savedAlbums
+}
+
+@Composable
+internal fun rememberSavedLibraryAlbums(derivedAlbums: List<LibraryAlbum>): List<LibraryAlbum> {
+    val savedAlbums = rememberSavedAlbums()
     return remember(derivedAlbums, savedAlbums) {
         mergeSavedLibraryAlbums(derivedAlbums, savedAlbums)
     }
 }
 
-internal fun mergeSavedLibraryAlbums(
+internal fun savedLibraryAlbumRows(
     derivedAlbums: List<LibraryAlbum>,
     savedAlbums: List<SavedAlbum>
 ): List<LibraryAlbum> {
     val derivedByIdentity = derivedAlbums.associateBy { savedAlbumIdentityKey(it.toAlbumHit()) }
-    val savedIdentities = savedAlbums.mapTo(linkedSetOf()) { savedAlbumIdentityKey(it.album) }
-    val savedRows = savedAlbums.map { saved ->
+    return savedAlbums.map { saved ->
         val album = saved.album
         val identity = savedAlbumIdentityKey(album)
         val derived = derivedByIdentity[identity]
@@ -63,7 +68,15 @@ internal fun mergeSavedLibraryAlbums(
             tracks = derived?.tracks.orEmpty()
         )
     }
-    return savedRows + derivedAlbums.filterNot { savedAlbumIdentityKey(it.toAlbumHit()) in savedIdentities }
+}
+
+internal fun mergeSavedLibraryAlbums(
+    derivedAlbums: List<LibraryAlbum>,
+    savedAlbums: List<SavedAlbum>
+): List<LibraryAlbum> {
+    val savedIdentities = savedAlbums.mapTo(linkedSetOf()) { savedAlbumIdentityKey(it.album) }
+    return savedLibraryAlbumRows(derivedAlbums, savedAlbums) +
+        derivedAlbums.filterNot { savedAlbumIdentityKey(it.toAlbumHit()) in savedIdentities }
 }
 
 @Composable
