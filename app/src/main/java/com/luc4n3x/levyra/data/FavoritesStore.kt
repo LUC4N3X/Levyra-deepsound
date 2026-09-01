@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.toFavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.Track
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -35,9 +36,9 @@ class FavoritesStore(context: Context) {
     suspend fun toggleFavorite(track: Track): List<Track> = withContext(Dispatchers.IO) {
         mutationMutex.withLock {
             val current = loadInternal()
-            val targetKey = favoriteKey(track)
+            val targetKey = favoriteTrackKey(track)
             val existingIndex = current.indexOfFirst { favorite ->
-                favoriteKey(favorite).equals(targetKey, ignoreCase = true)
+                favoriteTrackKey(favorite) == targetKey
             }
             val updated = if (existingIndex >= 0) {
                 current.filterIndexed { index, _ -> index != existingIndex }
@@ -45,6 +46,15 @@ class FavoritesStore(context: Context) {
                 listOf(track) + current
             }
             saveAndCompleteMigration(updated)
+            updated
+        }
+    }
+
+    suspend fun toggleFavorites(tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
+        mutationMutex.withLock {
+            val current = loadInternal()
+            val updated = toggleFavoriteTracks(current, tracks)
+            if (updated != current) saveAndCompleteMigration(updated)
             updated
         }
     }
@@ -104,15 +114,49 @@ class FavoritesStore(context: Context) {
         check(committed) { "Unable to complete legacy favorites migration" }
     }
 
-    private fun favoriteKey(track: Track): String {
-        return track.id.ifBlank { "${track.artist.trim()}|${track.title.trim()}" }
-    }
-
     private companion object {
         const val KEY = "liked_tracks"
         const val MIGRATION_COMPLETE_KEY = "liked_tracks_migrated_to_room"
 
-        // Shared by every store instance so UI and service mutations cannot interleave.
         val mutationMutex = Mutex()
+    }
+}
+
+internal fun toggleFavoriteTracks(current: List<Track>, targets: List<Track>): List<Track> {
+    val targetsByKey = LinkedHashMap<FavoriteTrackKey, Track>()
+    targets.forEach { track -> targetsByKey.putIfAbsent(favoriteTrackKey(track), track) }
+    if (targetsByKey.isEmpty()) return current
+
+    val currentKeys = current.mapTo(hashSetOf(), ::favoriteTrackKey)
+    val shouldAdd = targetsByKey.keys.any { it !in currentKeys }
+    return if (shouldAdd) {
+        targetsByKey.values + current.filterNot { favoriteTrackKey(it) in targetsByKey }
+    } else {
+        current.filterNot { favoriteTrackKey(it) in targetsByKey }
+    }
+}
+
+internal fun areAllFavoriteTracks(current: List<Track>, targets: List<Track>): Boolean {
+    if (targets.isEmpty()) return false
+    val currentKeys = current.mapTo(hashSetOf(), ::favoriteTrackKey)
+    return targets.all { favoriteTrackKey(it) in currentKeys }
+}
+
+private data class FavoriteTrackKey(
+    val id: String?,
+    val artist: String,
+    val title: String
+)
+
+private fun favoriteTrackKey(track: Track): FavoriteTrackKey {
+    val id = track.id.trim().lowercase(Locale.ROOT)
+    return if (id.isNotEmpty()) {
+        FavoriteTrackKey(id = id, artist = "", title = "")
+    } else {
+        FavoriteTrackKey(
+            id = null,
+            artist = track.artist.trim().lowercase(Locale.ROOT),
+            title = track.title.trim().lowercase(Locale.ROOT)
+        )
     }
 }

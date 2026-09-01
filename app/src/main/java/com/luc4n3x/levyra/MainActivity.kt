@@ -50,7 +50,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraBackupManager
-import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
@@ -59,7 +58,6 @@ import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
@@ -93,9 +91,7 @@ private data class MainActivityUiSlice(
     val languageCode: String,
     val recentListenCount: Int,
     val updateInfo: AppUpdateInfo?,
-    val showUpdatePrompt: Boolean,
-    val showAlbum: Boolean,
-    val album: AlbumHit?
+    val showUpdatePrompt: Boolean
 )
 
 private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
@@ -106,9 +102,7 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
     languageCode = languageCode,
     recentListenCount = recentListens.size,
     updateInfo = updateInfo,
-    showUpdatePrompt = showUpdatePrompt,
-    showAlbum = showAlbum,
-    album = albumDetail?.album
+    showUpdatePrompt = showUpdatePrompt
 )
 
 class MainActivity : ComponentActivity() {
@@ -187,11 +181,6 @@ class MainActivity : ComponentActivity() {
                             isInPictureInPicture = pipMode.value,
                             onRetryPreUpdateBackup = ::retryPreUpdateBackup,
                             onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
-                        )
-                        SavedAlbumBookmarkOverlay(
-                            album = activityUiState.album,
-                            visible = activityUiState.showAlbum && !pipMode.value,
-                            languageCode = activityUiState.languageCode
                         )
                     }
                     if (activityUiState.showSettings && !pipMode.value) {

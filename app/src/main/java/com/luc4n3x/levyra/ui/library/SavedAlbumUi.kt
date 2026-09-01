@@ -13,96 +13,34 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.luc4n3x.levyra.data.SavedAlbumsStore
-import com.luc4n3x.levyra.data.savedAlbumIdentityKey
-import com.luc4n3x.levyra.domain.AlbumHit
-import com.luc4n3x.levyra.domain.SavedAlbum
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraGlass
 import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
+import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
-import kotlinx.coroutines.launch
-
-@Composable
-internal fun rememberSavedAlbums(): List<SavedAlbum> {
-    val context = LocalContext.current
-    val store = remember(context) { SavedAlbumsStore(context) }
-    val savedAlbums by store.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
-    return savedAlbums
-}
-
-@Composable
-internal fun rememberSavedLibraryAlbums(derivedAlbums: List<LibraryAlbum>): List<LibraryAlbum> {
-    val savedAlbums = rememberSavedAlbums()
-    return remember(derivedAlbums, savedAlbums) {
-        mergeSavedLibraryAlbums(derivedAlbums, savedAlbums)
-    }
-}
-
-internal fun savedLibraryAlbumRows(
-    derivedAlbums: List<LibraryAlbum>,
-    savedAlbums: List<SavedAlbum>
-): List<LibraryAlbum> {
-    val derivedByIdentity = derivedAlbums.associateBy { savedAlbumIdentityKey(it.toAlbumHit()) }
-    return savedAlbums.map { saved ->
-        val album = saved.album
-        val identity = savedAlbumIdentityKey(album)
-        val derived = derivedByIdentity[identity]
-        LibraryAlbum(
-            key = identity,
-            title = album.title,
-            artist = album.artist,
-            year = album.year.ifBlank { album.releaseDate.take(4) },
-            artworkUrl = album.thumbnailUrl.ifBlank { derived?.artworkUrl.orEmpty() },
-            browseId = album.browseId.ifBlank { derived?.browseId.orEmpty() },
-            explicit = album.explicit || derived?.explicit == true,
-            tracks = derived?.tracks.orEmpty(),
-            savedAt = saved.savedAt
-        )
-    }
-}
-
-internal fun mergeSavedLibraryAlbums(
-    derivedAlbums: List<LibraryAlbum>,
-    savedAlbums: List<SavedAlbum>
-): List<LibraryAlbum> {
-    val savedIdentities = savedAlbums.mapTo(linkedSetOf()) { savedAlbumIdentityKey(it.album) }
-    return savedLibraryAlbumRows(derivedAlbums, savedAlbums) +
-        derivedAlbums.filterNot { savedAlbumIdentityKey(it.toAlbumHit()) in savedIdentities }
-}
 
 @Composable
 fun BoxScope.SavedAlbumBookmarkOverlay(
-    album: AlbumHit?,
-    visible: Boolean,
-    languageCode: String
+    saved: Boolean,
+    enabled: Boolean,
+    languageCode: String,
+    onToggle: () -> Unit
 ) {
-    if (!visible || album == null) return
-    val context = LocalContext.current
     val density = LocalDensity.current
-    val store = remember(context) { SavedAlbumsStore(context) }
-    val albumKey = remember(album) { savedAlbumIdentityKey(album) }
-    val saved by remember(store, albumKey) { store.observeContains(album) }
-        .collectAsStateWithLifecycle(initialValue = false)
-    val scope = rememberCoroutineScope()
-    val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
+    val strings = LevyraStrings.forCode(languageCode)
     val fixedStatusBarInset = with(density) {
         WindowInsets.statusBars.getTop(density).toDp()
     }
 
     Surface(
-        onClick = { scope.launch { store.toggle(album) } },
+        onClick = onToggle,
+        enabled = enabled,
         shape = CircleShape,
         color = LevyraGlass,
         border = BorderStroke(1.dp, LevyraGlassBorder),
@@ -115,12 +53,12 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
         androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = if (saved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = if (saved) {
-                    "${strings.remove} ${strings.albumPlain}"
-                } else {
-                    "${strings.save} ${strings.albumPlain}"
+                contentDescription = if (saved) strings.removeFromFavorites else strings.addToFavorites,
+                tint = when {
+                    !enabled -> LevyraMuted
+                    saved -> LevyraPink
+                    else -> LevyraText
                 },
-                tint = if (saved) LevyraPink else LevyraText,
                 modifier = Modifier.size(23.dp)
             )
         }
