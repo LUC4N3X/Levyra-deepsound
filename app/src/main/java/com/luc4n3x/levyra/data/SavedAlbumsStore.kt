@@ -17,6 +17,8 @@ class SavedAlbumsStore(context: Context) {
 
     fun observeAll(): Flow<List<SavedAlbum>> = dao.observeAll().map { rows -> rows.map(SavedAlbumEntity::toDomain) }
 
+    fun observeContains(album: AlbumHit): Flow<Boolean> = dao.observeContains(savedAlbumIdentityKey(album))
+
     suspend fun load(): List<SavedAlbum> = dao.all().map(SavedAlbumEntity::toDomain)
 
     suspend fun contains(album: AlbumHit): Boolean = dao.contains(savedAlbumIdentityKey(album))
