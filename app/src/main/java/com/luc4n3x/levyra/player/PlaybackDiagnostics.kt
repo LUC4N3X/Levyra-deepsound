@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 private const val PLAYBACK_DIAGNOSTIC_RECENT_FAILURE_MS = 30L * 60L * 1_000L
 private const val PLAYBACK_DIAGNOSTIC_FIELD_MAX_CHARS = 240
 private val PLAYBACK_DIAGNOSTIC_SECRET_PATTERN = Regex(
-    """(?i)\b(authorization|cookie|set-cookie|pot|potoken|token|access[_ -]?token|api[_ -]?key|x-goog-api-key)\s*[:=]\s*\S+"""
+    """(?i)\b(authorization|cookie|set-cookie|pot|potoken|token|access[_ -]?token|api[_ -]?key|x-goog-api-key)\s*[:=]\s*(?:bearer\s+)?\S+"""
 )
 private val PLAYBACK_DIAGNOSTIC_BEARER_PATTERN = Regex("""(?i)\bbearer\s+\S+""")
 
