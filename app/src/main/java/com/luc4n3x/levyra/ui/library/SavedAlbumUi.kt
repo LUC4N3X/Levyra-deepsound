@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.data.SavedAlbumsStore
 import com.luc4n3x.levyra.data.savedAlbumIdentityKey
@@ -89,6 +90,7 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
         border = BorderStroke(1.dp, LevyraGlassBorder),
         modifier = Modifier
             .align(Alignment.TopEnd)
+            .zIndex(100f)
             .statusBarsPadding()
             .padding(top = 8.dp, end = 76.dp)
             .size(48.dp)
