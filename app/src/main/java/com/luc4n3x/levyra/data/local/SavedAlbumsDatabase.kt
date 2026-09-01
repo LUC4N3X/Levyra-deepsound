@@ -38,6 +38,9 @@ interface SavedAlbumsDao {
     @Query("SELECT * FROM saved_albums ORDER BY savedAt DESC")
     fun observeAll(): Flow<List<SavedAlbumEntity>>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM saved_albums WHERE albumKey = :albumKey)")
+    fun observeContains(albumKey: String): Flow<Boolean>
+
     @Query("SELECT * FROM saved_albums ORDER BY savedAt DESC")
     suspend fun all(): List<SavedAlbumEntity>
 
