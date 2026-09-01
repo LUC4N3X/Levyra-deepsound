@@ -102,6 +102,7 @@ internal fun LevyraLibraryScreen(
             mostPlayedTracks = state.mostPlayedTracks
         )
     }
+    val libraryAlbums = rememberSavedLibraryAlbums(catalog.albums)
 
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
@@ -137,8 +138,8 @@ internal fun LevyraLibraryScreen(
     val visiblePlaylists = remember(state.playlists, query, sort) {
         filterLibraryPlaylists(state.playlists, query, sort)
     }
-    val visibleAlbums = remember(catalog.albums, query, sort) {
-        filterLibraryAlbums(catalog.albums, query, sort)
+    val visibleAlbums = remember(libraryAlbums, query, sort) {
+        filterLibraryAlbums(libraryAlbums, query, sort)
     }
     val visibleArtists = remember(catalog.artists, query, sort) {
         filterLibraryArtists(catalog.artists, query, sort)
@@ -150,12 +151,12 @@ internal fun LevyraLibraryScreen(
         filterLibraryOfflineItems(catalog.offlineItems, query, sort)
     }
 
-    val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
+    val selectedTracks = remember(category, selectedKeys, catalog, libraryAlbums, state.playlists) {
         when (category) {
             LibraryCategory.Playlists -> state.playlists
                 .filter { "playlist:${it.id}" in selectedKeys }
                 .flatMap { it.tracks }
-            LibraryCategory.Albums -> catalog.albums
+            LibraryCategory.Albums -> libraryAlbums
                 .filter { "album:${it.key}" in selectedKeys }
                 .flatMap { it.tracks }
             LibraryCategory.Artists -> catalog.artists
@@ -204,7 +205,7 @@ internal fun LevyraLibraryScreen(
                         LibraryCategory.Overview, LibraryCategory.Songs ->
                             strings.formatTrackCount(catalog.tracks.size)
                         LibraryCategory.Playlists -> "${state.playlists.size} ${strings.playlistsPlain}"
-                        LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
+                        LibraryCategory.Albums -> "${libraryAlbums.size} ${strings.albumsPlain}"
                         LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
                         LibraryCategory.Offline ->
                             strings.formatDownloadedTrackCount(state.downloads.size)
