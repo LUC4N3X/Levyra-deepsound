@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
+import com.luc4n3x.levyra.data.areAllFavoriteTracks
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
 import com.luc4n3x.levyra.data.LevyraArtworkCache
@@ -230,7 +231,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
 import java.io.File
@@ -662,6 +665,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val queueEngine = PersistentQueueEngine.get(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
+    private val favoriteMutationMutex = Mutex()
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
@@ -753,6 +757,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var artistJob: Job? = null
     private var artistLoreJob: Job? = null
     private var albumJob: Job? = null
+    private var albumFavoriteJob: Job? = null
     private var artistMotionJob: Job? = null
     private var albumMotionJob: Job? = null
     private var homeFeedJob: Job? = null
@@ -4380,26 +4385,45 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleFavorite(track: Track) {
         viewModelScope.launch {
-            val updated = favoritesStore.toggleFavorite(track)
-            val targetKey = track.id.ifBlank { "${track.artist.trim()}|${track.title.trim()}" }
-            val isFavorite = updated.any { favorite ->
-                val favoriteKey = favorite.id.ifBlank {
-                    "${favorite.artist.trim()}|${favorite.title.trim()}"
+            val (updated, isFavorite) = favoriteMutationMutex.withLock {
+                val updated = favoritesStore.toggleFavorite(track)
+                val isFavorite = areAllFavoriteTracks(updated, listOf(track))
+                _state.update { state ->
+                    state.copy(
+                        favorites = updated,
+                        favoriteIds = updated.map { favorite -> favorite.id }.toSet()
+                    )
                 }
-                favoriteKey.equals(targetKey, ignoreCase = true)
+                updated to isFavorite
             }
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
                 updated,
                 6
             )
-            _state.update { state ->
-                state.copy(
-                    favorites = updated,
-                    favoriteIds = updated.map { favorite -> favorite.id }.toSet()
-                )
-            }
             recordSmartFavorite(track, isFavorite)
+        }
+    }
+
+    fun toggleCurrentAlbumFavorite() {
+        val tracks = _state.value.albumDetail?.tracks.orEmpty()
+        if (tracks.isEmpty() || albumFavoriteJob?.isActive == true) return
+        albumFavoriteJob = viewModelScope.launch {
+            val updated = favoriteMutationMutex.withLock {
+                favoritesStore.toggleFavorites(tracks).also { favorites ->
+                    _state.update { state ->
+                        state.copy(
+                            favorites = favorites,
+                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet()
+                        )
+                    }
+                }
+            }
+            LevyraArtworkCache.preloadPriority(
+                getApplication<Application>().applicationContext,
+                updated,
+                6
+            )
         }
     }
 
