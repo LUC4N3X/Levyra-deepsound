@@ -67,7 +67,8 @@ internal fun savedLibraryAlbumRows(
             artworkUrl = album.thumbnailUrl.ifBlank { derived?.artworkUrl.orEmpty() },
             browseId = album.browseId.ifBlank { derived?.browseId.orEmpty() },
             explicit = album.explicit || derived?.explicit == true,
-            tracks = derived?.tracks.orEmpty()
+            tracks = derived?.tracks.orEmpty(),
+            savedAt = saved.savedAt
         )
     }
 }
