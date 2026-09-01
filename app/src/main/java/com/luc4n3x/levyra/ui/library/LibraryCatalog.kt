@@ -37,7 +37,8 @@ internal data class LibraryAlbum(
     val artworkUrl: String,
     val browseId: String,
     val explicit: Boolean,
-    val tracks: List<Track>
+    val tracks: List<Track>,
+    val savedAt: Long = 0L
 ) {
     val durationMs: Long = tracks.sumOf { it.durationMs.coerceAtLeast(0L) }
 }
@@ -255,16 +256,28 @@ internal fun filterLibraryAlbums(
     }
     return when (sort) {
         LibrarySort.Recent -> filtered.sortedWith(
-            compareByDescending<LibraryAlbum> { it.year.toIntOrNull() ?: 0 }
+            compareByDescending<LibraryAlbum> { it.savedAt > 0L }
+                .thenByDescending { it.savedAt }
+                .thenByDescending { it.year.toIntOrNull() ?: 0 }
                 .thenBy { normalizeLibraryText(it.title) }
         )
-        LibrarySort.Title -> filtered.sortedBy { normalizeLibraryText(it.title) }
+        LibrarySort.Title -> filtered.sortedWith(
+            compareByDescending<LibraryAlbum> { it.savedAt > 0L }
+                .thenBy { normalizeLibraryText(it.title) }
+        )
         LibrarySort.Artist -> filtered.sortedWith(
-            compareBy<LibraryAlbum> { normalizeLibraryText(it.artist) }
+            compareByDescending<LibraryAlbum> { it.savedAt > 0L }
+                .thenBy { normalizeLibraryText(it.artist) }
                 .thenBy { normalizeLibraryText(it.title) }
         )
-        LibrarySort.Album -> filtered.sortedBy { normalizeLibraryText(it.title) }
-        LibrarySort.Duration -> filtered.sortedByDescending { it.durationMs }
+        LibrarySort.Album -> filtered.sortedWith(
+            compareByDescending<LibraryAlbum> { it.savedAt > 0L }
+                .thenBy { normalizeLibraryText(it.title) }
+        )
+        LibrarySort.Duration -> filtered.sortedWith(
+            compareByDescending<LibraryAlbum> { it.savedAt > 0L }
+                .thenByDescending { it.durationMs }
+        )
     }
 }
 
