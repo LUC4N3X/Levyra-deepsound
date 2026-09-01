@@ -2,9 +2,10 @@ package com.luc4n3x.levyra.ui.library
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
@@ -18,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,14 +89,16 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
 ) {
     if (!visible || album == null) return
     val context = LocalContext.current
+    val density = LocalDensity.current
     val store = remember(context) { SavedAlbumsStore(context) }
-    val savedAlbums by store.observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
-    val scope = rememberCoroutineScope()
     val albumKey = remember(album) { savedAlbumIdentityKey(album) }
-    val saved = remember(savedAlbums, albumKey) {
-        savedAlbums.any { savedAlbumIdentityKey(it.album) == albumKey }
-    }
+    val saved by remember(store, albumKey) { store.observeContains(album) }
+        .collectAsStateWithLifecycle(initialValue = false)
+    val scope = rememberCoroutineScope()
     val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
+    val fixedStatusBarInset = remember(density) {
+        with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+    }
 
     Surface(
         onClick = { scope.launch { store.toggle(album) } },
@@ -104,8 +108,7 @@ fun BoxScope.SavedAlbumBookmarkOverlay(
         modifier = Modifier
             .align(Alignment.TopEnd)
             .zIndex(100f)
-            .statusBarsPadding()
-            .padding(top = 8.dp, end = 76.dp)
+            .padding(top = fixedStatusBarInset + 8.dp, end = 76.dp)
             .size(48.dp)
     ) {
         androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
