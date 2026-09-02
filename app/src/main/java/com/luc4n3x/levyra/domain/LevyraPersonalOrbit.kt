@@ -203,17 +203,40 @@ object LevyraPersonalOrbit {
 
     fun withoutVideoArtwork(track: Track): Track {
         val thumbnail = track.thumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
-        val large = track.largeThumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
-        if (thumbnail.isBlank() && large.isBlank()) {
-            val fallback = track.largeThumbnailUrl.trim()
-                .ifBlank { track.thumbnailUrl.trim() }
-                .ifBlank { youtubeFallbackArtwork(track).orEmpty() }
-            return if (fallback.isBlank()) track else track.copy(thumbnailUrl = fallback, largeThumbnailUrl = fallback)
+        val cleanLarge = track.largeThumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
+        val large = cleanLarge.takeIf(String::isNotBlank)?.let(::upscaledArtworkUrl).orEmpty()
+        val videoHero = if (
+            isVideoFrameArtworkUrl(track.largeThumbnailUrl) ||
+            (track.largeThumbnailUrl.isBlank() && isVideoFrameArtworkUrl(track.thumbnailUrl))
+        ) {
+            youtubeHeroArtwork(track).orEmpty()
+        } else {
+            ""
         }
-        return if (thumbnail == track.thumbnailUrl && large == track.largeThumbnailUrl) {
+        if (thumbnail.isBlank() && large.isBlank()) {
+            val fallbackThumbnail = track.thumbnailUrl
+                .trim()
+                .ifBlank { track.largeThumbnailUrl.trim() }
+                .ifBlank { youtubeFallbackArtwork(track).orEmpty() }
+            val heroArtwork = videoHero
+                .ifBlank { youtubeHeroArtwork(track).orEmpty() }
+                .ifBlank { upscaledArtworkUrl(fallbackThumbnail) }
+            return if (fallbackThumbnail.isBlank()) {
+                track
+            } else {
+                track.copy(
+                    thumbnailUrl = fallbackThumbnail,
+                    largeThumbnailUrl = heroArtwork.ifBlank { fallbackThumbnail }
+                )
+            }
+        }
+        val resolvedLarge = videoHero
+            .ifBlank { large }
+            .ifBlank { upscaledArtworkUrl(thumbnail) }
+        return if (thumbnail == track.thumbnailUrl && resolvedLarge == track.largeThumbnailUrl) {
             track
         } else {
-            track.copy(thumbnailUrl = thumbnail, largeThumbnailUrl = large)
+            track.copy(thumbnailUrl = thumbnail, largeThumbnailUrl = resolvedLarge)
         }
     }
 
@@ -302,6 +325,9 @@ object LevyraPersonalOrbit {
 
     fun youtubeFallbackArtwork(track: Track): String? =
         youtubeVideoId(track)?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
+
+    fun youtubeHeroArtwork(track: Track): String? =
+        youtubeVideoId(track)?.let { "https://i.ytimg.com/vi/$it/maxresdefault.jpg" }
 
     fun upscaledArtworkUrl(url: String, size: Int = DEFAULT_ARTWORK_SIZE): String {
         val clean = url.trim()
@@ -497,7 +523,6 @@ object LevyraPersonalOrbit {
         }
         return artistMatches || languageMarkers(normalized).any { marker -> lookup.contains(marker) }
     }
-
     fun isClearlyForeignForLanguage(track: Track, languageCode: String): Boolean {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         if (normalized == "en" || isLanguagePreferred(track, normalized)) return false
