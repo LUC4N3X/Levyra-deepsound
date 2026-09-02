@@ -1,6 +1,6 @@
 # Levyra Architecture
  
-**Current application version:** 2.5.1
+**Current application version:** 2.5.2
 **Platform:** Android 8.0 and newer  
 **Primary stack:** Kotlin, Jetpack Compose, AndroidX Media3, Room, WorkManager, OkHttp, Coil
  

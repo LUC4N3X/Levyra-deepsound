@@ -1,4 +1,40 @@
-# Levyra 2.5.1
+# Levyra 2.5.2
+
+## Highlights
+
+Levyra 2.5.2 is a Home and artist experience release. The personal radio now opens the Home screen with a real artist portrait, the artist page adopts a numbered popular list with a dedicated action bar, wide artwork keeps faces visible, and Explore genres return to the screen you came from.
+
+## Home
+
+- The personal radio hero moves to the top of Home, right after the greeting and mood row.
+- The hero resolves a real artist portrait from followed, home and similar artists, with a final fallback so a portrait is used whenever one is available.
+- A glass chip above the title shows the artist thumbnail with the RADIO label and the artist name.
+
+## Artist page
+
+- Monthly audience, Follow, shuffle and the large play action move into a dedicated action bar below the canvas hero.
+- Popular tracks become a numbered list with the first five tracks visible and a Show all / Show less control up to ten.
+- The floating top bar now draws an opaque background as it fades in, so the artist name no longer overlaps the list.
+
+## Artwork and navigation
+
+- Wide artwork slots crop with a top-biased alignment, so faces are no longer cut on the personal listening card.
+- Opening a genre from Explore and pressing back returns to Explore instead of the standalone moods and genres screen. Opening a genre from that screen still returns to it.
+
+## Versioning
+
+- Version name: `2.5.2`
+- Version code: `2050200`
+
+`gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes and Fastlane changelogs are aligned to 2.5.2. Levyra Desktop continues to use its own version file and release tags.
+
+## Upgrade notes
+
+No manual migration is required. Install the update normally over an existing Levyra installation from the same compatible signing channel. Favorites, playlists, followed artists, history, queue and settings are preserved.
+
+---
+
+# Levyra 2.5.1 (previous release)
 
 ## Highlights
 

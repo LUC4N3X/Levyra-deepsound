@@ -272,6 +272,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -947,12 +948,15 @@ private fun HomeSectionHeader(
     }
 }
 
+private val LevyraWideArtworkAlignment = BiasAlignment(0f, -0.35f)
+
 @Composable
 private fun CoverImage(
     track: Track,
     modifier: Modifier,
     highRes: Boolean = false,
     zoom: Float = 1f,
+    alignment: Alignment = Alignment.Center,
     onImageLoaded: ((CoilImage) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -1017,6 +1021,7 @@ private fun CoverImage(
                 model = request,
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
+                alignment = alignment,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
                 onSuccess = { state ->
                     LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey)
@@ -3340,13 +3345,19 @@ private fun ArtistOverlay(
                         Column(modifier = Modifier.fillMaxWidth()) {
                             ArtistHeader(
                                 profile = artist,
-                                isFollowed = isFollowed,
                                 accentStart = accentStart,
                                 accentEnd = accentEnd,
                                 motionArtwork = state.artistMotionArtwork,
                                 animationsEnabled = state.animationsEnabled && state.motionArtworkEnabled,
-                                canvasQuality = state.interfaceSettings.canvasQuality,
+                                canvasQuality = state.interfaceSettings.canvasQuality
+                            )
+                            ArtistActionBar(
+                                profile = artist,
+                                isFollowed = isFollowed,
                                 onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
+                                onShuffle = artist.topSongs
+                                    .takeIf { it.size > 1 }
+                                    ?.let { songs -> { onPlayAll(songs.shuffled()) } },
                                 onToggleFollow = onToggleFollow
                             )
                             if (artist.hasBio) {
@@ -3354,9 +3365,7 @@ private fun ArtistOverlay(
                                     biography = requireNotNull(artist.biography),
                                     accentStart = accentStart,
                                     accentEnd = accentEnd,
-                                    modifier = Modifier
-                                        .padding(start = 14.dp, end = 14.dp, bottom = 6.dp)
-                                        .offset(y = (-10).dp)
+                                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 6.dp)
                                 )
                             }
                         }
@@ -3422,45 +3431,56 @@ private fun ArtistOverlay(
             }
         }
 
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .drawBehind {
+                    drawRect(color = LevyraBlack.copy(alpha = topBarAlpha))
+                }
         ) {
-            PlayerRoundIconButton(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = strings.back,
-                tint = Color.White,
-                background = Color.Black.copy(alpha = 0.45f),
-                borderColor = Color.White.copy(alpha = 0.14f),
-                onClick = onClose
-            )
-            if (profile != null) {
-                Text(
-                    text = profile.name,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f)
-                        .graphicsLayer { alpha = topBarAlpha }
-                        .then(
-                            if (topBarAlpha <= 0.05f) Modifier.clearAndSetSemantics {} else Modifier
-                        )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                PlayerRoundIconButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = strings.back,
+                    tint = Color.White,
+                    background = Color.Black.copy(alpha = 0.45f),
+                    borderColor = Color.White.copy(alpha = 0.14f),
+                    onClick = onClose
                 )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
+                if (profile != null) {
+                    Text(
+                        text = profile.name,
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer { alpha = topBarAlpha }
+                            .then(
+                                if (topBarAlpha <= 0.05f) Modifier.clearAndSetSemantics {} else Modifier
+                            )
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
 }
+
+private const val ARTIST_POPULAR_COLLAPSED_COUNT = 5
+private const val ARTIST_POPULAR_MAX_COUNT = 10
 
 @Composable
 private fun ArtistPopularTracksShelf(
@@ -3473,13 +3493,18 @@ private fun ArtistPopularTracksShelf(
 ) {
     val strings = LocalLevyraStrings.current
     val distinctTracks = remember(tracks) {
-        tracks.distinctBy { track ->
-            track.id.ifBlank { "${track.artist}|${track.title}" }
-        }
+        tracks.distinctBy { track -> track.id.ifBlank { track.artist + "|" + track.title } }
     }
     if (distinctTracks.isEmpty()) return
+    val rankedTracks = remember(distinctTracks) { distinctTracks.take(ARTIST_POPULAR_MAX_COUNT) }
 
-    val columns = remember(distinctTracks) { distinctTracks.chunked(4) }
+    val listKey = remember(rankedTracks) {
+        rankedTracks.firstOrNull()?.id.orEmpty() + "|" + rankedTracks.size
+    }
+    var expanded by rememberSaveable(listKey) { mutableStateOf(false) }
+    val visibleTracks = remember(rankedTracks, expanded) {
+        if (expanded) rankedTracks else rankedTracks.take(ARTIST_POPULAR_COLLAPSED_COUNT)
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -3503,7 +3528,7 @@ private fun ArtistPopularTracksShelf(
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                 shape = CircleShape,
                 modifier = Modifier
-                    .height(48.dp)
+                    .height(44.dp)
                     .pressable { onPlayAll(distinctTracks) }
             ) {
                 Box(
@@ -3521,37 +3546,48 @@ private fun ArtistPopularTracksShelf(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        LazyRow(
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            itemsIndexed(
-                items = columns,
-                key = { _, columnTracks ->
-                    columnTracks.joinToString(
-                        prefix = "artist-popular-col-",
-                        separator = "|"
-                    ) { track ->
-                        track.id.ifBlank { "${track.artist}:${track.title}" }
-                    }
-                },
-                contentType = { _, _ -> "artist-popular-column" }
-            ) { _, columnTracks ->
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier = Modifier.width(306.dp)
+            visibleTracks.forEachIndexed { index, track ->
+                val isCurrent = track.id == currentId
+                ArtistPopularTrackRow(
+                    rank = index + 1,
+                    track = track,
+                    isCurrent = isCurrent,
+                    isPlaying = isPlaying && isCurrent,
+                    isResolving = isResolving && isCurrent,
+                    onPlay = { onPlay(track) }
+                )
+            }
+        }
+
+        if (rankedTracks.size > ARTIST_POPULAR_COLLAPSED_COUNT) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Surface(
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .height(40.dp)
+                        .pressable { expanded = !expanded }
                 ) {
-                    columnTracks.forEach { track ->
-                        val isCurrent = track.id == currentId
-                        ArtistPopularTrackRow(
-                            track = track,
-                            isCurrent = isCurrent,
-                            isPlaying = isPlaying && isCurrent,
-                            isResolving = isResolving && isCurrent,
-                            onPlay = { onPlay(track) }
+                    Box(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (expanded) strings.showLess else strings.showAll,
+                            color = LevyraText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
                     }
                 }
@@ -3562,6 +3598,7 @@ private fun ArtistPopularTracksShelf(
 
 @Composable
 private fun ArtistPopularTrackRow(
+    rank: Int,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
@@ -3569,6 +3606,10 @@ private fun ArtistPopularTrackRow(
     onPlay: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code) {
+        val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
+        plays.ifBlank { formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty() }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -3577,15 +3618,26 @@ private fun ArtistPopularTrackRow(
                 if (isCurrent) Modifier.background(LevyraCyan.copy(alpha = 0.08f))
                 else Modifier
             )
-            .heightIn(min = 64.dp)
+            .heightIn(min = 62.dp)
             .pressable(onClick = onPlay)
-            .padding(top = 4.dp, end = 4.dp, bottom = 4.dp),
+            .padding(start = 6.dp, top = 4.dp, end = 6.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Text(
+            text = rank.toString(),
+            color = if (isCurrent) LevyraCyan else LevyraMuted,
+            fontSize = 14.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier.width(20.dp)
+        )
+
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(52.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(LevyraPanelSoft),
             contentAlignment = Alignment.Center
@@ -3610,19 +3662,16 @@ private fun ArtistPopularTrackRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            val duration = formatDuration(track.durationMs)
-                .takeIf { it != "--:--" }
-                .orEmpty()
-            Text(
-                text = listOf(track.artist, duration)
-                    .filter { it.isNotBlank() }
-                    .joinToString("  ·  "),
-                color = LevyraMuted,
-                fontSize = 12.5.sp,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    color = LevyraMuted,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         Box(
@@ -3696,37 +3745,14 @@ private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ArtistPlayButton(onClick: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    Surface(
-        color = LevyraCyan,
-        shape = CircleShape,
-        modifier = Modifier.height(48.dp).pressable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 22.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
-        ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(23.dp))
-            Text(strings.play, color = LevyraBlack, fontSize = 14.sp, fontWeight = FontWeight.Black)
-        }
-    }
-}
-
-@Composable
 private fun ArtistHeader(
     profile: ArtistProfile,
-    isFollowed: Boolean,
     accentStart: Color,
     accentEnd: Color,
     motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
     animationsEnabled: Boolean,
-    canvasQuality: LevyraCanvasQuality,
-    onPlay: (() -> Unit)?,
-    onToggleFollow: () -> Unit
+    canvasQuality: LevyraCanvasQuality
 ) {
-    val strings = LocalLevyraStrings.current
     val heroContext = LocalContext.current
     Box(modifier = Modifier.fillMaxWidth().height(430.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
         val heroArtwork = profile.thumbnailUrl.ifBlank { profile.bannerUrl }
@@ -3786,31 +3812,82 @@ private fun ArtistHeader(
                 )
                 Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
             }
-            if (profile.monthlyListeners.isNotBlank()) {
-                Text(
-                    text = profile.monthlyListeners,
-                    color = Color.White.copy(alpha = 0.88f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (profile.subscribers.isNotBlank()) {
-                Text(
-                    text = profile.subscribers,
-                    color = Color.White.copy(alpha = 0.66f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (onPlay != null) {
-                    ArtistPlayButton(onClick = onPlay)
+        }
+    }
+}
+
+@Composable
+private fun ArtistActionBar(
+    profile: ArtistProfile,
+    isFollowed: Boolean,
+    onPlay: (() -> Unit)?,
+    onShuffle: (() -> Unit)?,
+    onToggleFollow: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val audience = remember(profile.monthlyListeners, profile.subscribers) {
+        listOf(profile.monthlyListeners, profile.subscribers)
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .joinToString("  ·  ")
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        if (audience.isNotBlank()) {
+            Text(
+                text = audience,
+                color = LevyraMuted,
+                fontSize = 13.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ArtistFollowButton(isFollowed = isFollowed, onClick = onToggleFollow)
+            Spacer(modifier = Modifier.weight(1f))
+            if (onShuffle != null) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .pressable(onClick = onShuffle),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Shuffle,
+                        contentDescription = strings.shuffle,
+                        tint = Color.White.copy(alpha = 0.86f),
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
-                ArtistFollowButton(isFollowed = isFollowed, onClick = onToggleFollow)
+            }
+            if (onPlay != null) {
+                Surface(
+                    color = LevyraCyan,
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .size(58.dp)
+                        .pressable(onClick = onPlay)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = strings.play,
+                            tint = LevyraBlack,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -6247,51 +6324,6 @@ private fun HomeScreen(
                     )
                 }
             }
-
-            if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
-                item(key = "home-continue", contentType = "home-card") {
-                    HomeSectionLead(compactHome) {
-                        HomeContinueListeningCard(
-                            viewModel = viewModel,
-                            track = state.currentTrack
-                        )
-                    }
-                }
-            }
-
-            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
-                item(key = "home-personal", contentType = "home-shelf") {
-                    HomeSectionLead(compactHome) {
-                        PersonalListeningShelf(
-                            tracks = visiblePersonalTracks,
-                            currentId = state.currentTrack?.id,
-                            isPlaying = state.isPlaying,
-                            isResolving = state.isResolving,
-                            onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
-                            onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
-                            onTrackActions = onTrackActions
-                        )
-                    }
-                }
-            }
-
-            if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
-                item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
-                    HomeSectionLead(compactHome) {
-                        HomeQuickPicksShelf(
-                            title = quickPicks.title.ifBlank { strings.quickPicks },
-                            tracks = quickPicks.tracks,
-                            currentId = state.currentTrack?.id,
-                            isPlaying = state.isPlaying,
-                            isResolving = state.isResolving,
-                            onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
-                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },
-                            onTrackActions = onTrackActions
-                        )
-                    }
-                }
-            }
-
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
                 val baseSoundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
@@ -6301,7 +6333,7 @@ private fun HomeScreen(
                     spotlightTracks.any { track ->
                         homeSoundtrackMatchesArtist(track, artist.first, artist.second)
                     }
-                }
+                } ?: soundtrackArtistPool.firstOrNull()
                 val soundtrackArtists = buildList<String> {
                     heroPortraitArtist?.first
                         ?.let(::homeSoundtrackPrimaryArtist)
@@ -6347,6 +6379,50 @@ private fun HomeScreen(
                             }
                         }
                     )
+                }
+            }
+
+            if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
+                item(key = "home-continue", contentType = "home-card") {
+                    HomeSectionLead(compactHome) {
+                        HomeContinueListeningCard(
+                            viewModel = viewModel,
+                            track = state.currentTrack
+                        )
+                    }
+                }
+            }
+
+            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
+                item(key = "home-personal", contentType = "home-shelf") {
+                    HomeSectionLead(compactHome) {
+                        PersonalListeningShelf(
+                            tracks = visiblePersonalTracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
+                            onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
+                            onTrackActions = onTrackActions
+                        )
+                    }
+                }
+            }
+
+            if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+                item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeQuickPicksShelf(
+                            title = quickPicks.title.ifBlank { strings.quickPicks },
+                            tracks = quickPicks.tracks,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },
+                            onTrackActions = onTrackActions
+                        )
+                    }
                 }
             }
 
@@ -6968,15 +7044,53 @@ private fun HomeEditorialSpotlight(
             .padding(start = 22.dp, end = 12.dp, bottom = 38.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = "RADIO",
-            color = Color.White.copy(alpha = 0.94f),
-            fontSize = 12.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
-            fontWeight = FontWeight.Black,
-            letterSpacing = 0.45.sp,
-            maxLines = 1
-        )
+        Surface(
+            color = Color.Black.copy(alpha = 0.34f),
+            shape = CircleShape,
+            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.16f))
+        ) {
+            Row(
+                modifier = Modifier.padding(
+                    start = if (artistArtworkUrl.isNotBlank()) 4.dp else 12.dp,
+                    end = 12.dp,
+                    top = 4.dp,
+                    bottom = 4.dp
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (artistArtworkUrl.isNotBlank()) {
+                    StableRemoteArtwork(
+                        url = artistArtworkUrl,
+                        contentDescription = "",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Text(
+                    text = "RADIO",
+                    color = Color.White.copy(alpha = 0.94f),
+                    fontSize = 11.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.1.sp,
+                    maxLines = 1
+                )
+                soundtrackArtists.firstOrNull()?.takeIf { it.isNotBlank() }?.let { artistName ->
+                    Text(
+                        text = artistName,
+                        color = Color.White.copy(alpha = 0.78f),
+                        fontSize = 11.sp,
+                        lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
         Text(
             text = soundtrackTitle,
             color = Color.White,
@@ -8288,7 +8402,7 @@ private fun PersonalListeningCard(
             track = track,
             modifier = Modifier.fillMaxSize(),
             highRes = false,
-            zoom = 1.02f
+            alignment = LevyraWideArtworkAlignment
         )
         Box(
             modifier = Modifier
@@ -19706,6 +19820,7 @@ private fun ExploreScreen(
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
+    var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
 
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val selectedZone = remember(zones, state.exploreZoneId) {
@@ -19856,6 +19971,7 @@ private fun ExploreScreen(
                             isSelected = row.leading.id == state.exploreZoneId,
                             onClick = {
                                 viewModel.selectExploreZone(row.leading)
+                                exploreMoodReturn = null
                                 exploreDestination = exploreMoodDestination(row.leading.id)
                             },
                             onStartZoneMix = {
@@ -19875,6 +19991,7 @@ private fun ExploreScreen(
                                 isSelected = trailing.id == state.exploreZoneId,
                                 onClick = {
                                     viewModel.selectExploreZone(trailing)
+                                    exploreMoodReturn = null
                                     exploreDestination = exploreMoodDestination(trailing.id)
                                 },
                                 onStartZoneMix = {
@@ -19921,6 +20038,7 @@ private fun ExploreScreen(
                 onBack = { exploreDestination = null },
                 onOpenZone = { zone ->
                     viewModel.selectExploreZone(zone)
+                    exploreMoodReturn = ExploreMoodsDestination
                     exploreDestination = exploreMoodDestination(zone.id)
                 }
             )
@@ -19935,7 +20053,7 @@ private fun ExploreScreen(
                         currentTrackId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         strings = strings,
-                        onBack = { exploreDestination = ExploreMoodsDestination },
+                        onBack = { exploreDestination = exploreMoodReturn },
                         onPlayAll = { freshTracks.firstOrNull()?.let { viewModel.playFrom(freshTracks, it) } },
                         onPlayTrack = { track -> viewModel.playFrom(freshTracks, track) }
                     )
