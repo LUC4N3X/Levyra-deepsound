@@ -20,165 +20,16 @@ jobs:
           ref: feat/amazon-inspired-explore-cards
           fetch-depth: 0
 
-      - name: Refine soundtrack hero
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+      - name: Apply hero patch
+        run: python3 .github/pr504_hero_patch.py
 
-          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
-          text = path.read_text(encoding='utf-8')
-
-          def sub(pattern: str, replacement: str, label: str, flags=0) -> None:
-              global text
-              text, count = re.subn(pattern, replacement, text, count=1, flags=flags)
-              if count != 1:
-                  raise SystemExit(f'patch target count for {label}: {count}')
-
-          sub(
-              r'''    val spotlightCandidate = remember\(spotlightCandidates, stableSpotlightId\) \{\n.*?    val spotlightTracks = remember\(spotlightCandidates\) \{ spotlightCandidates\.map \{ it\.track \} \}\n''',
-              '''    val soundtrackArtistPool = remember(
-              state.followedArtists,
-              state.homeArtists,
-              state.similarArtists
-          ) {
-              (state.followedArtists + state.homeArtists + state.similarArtists)
-                  .filter { it.thumbnailUrl.isNotBlank() }
-                  .distinctBy { artist ->
-                      artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }
-                  }
-          }
-          val spotlightCandidate = remember(
-              spotlightCandidates,
-              stableSpotlightId,
-              soundtrackArtistPool,
-              state.currentTrack?.id
-          ) {
-              fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
-                  return soundtrackArtistPool.any { artist ->
-                      homeSoundtrackMatchesArtist(candidate.track, artist.name, artist.browseId)
-                  }
-              }
-              spotlightCandidates.firstOrNull {
-                  it.track.id == stableSpotlightId && hasArtistPortrait(it)
-              }
-                  ?: spotlightCandidates.firstOrNull {
-                      it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
-                  }
-                  ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
-                  ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
-                  ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
-                  ?: spotlightCandidates.firstOrNull()
-          }
-          LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
-              if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
-                  stableSpotlightId = spotlightCandidate.track.id
-              }
-          }
-          val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
-          ''',
-              'artist-first spotlight selection',
-              re.S
-          )
-
-          sub(
-              r'''                val soundtrackArtists = homeSoundtrackArtists\(spotlightTracks, heroTrack\)\n                val heroArtistArtworkUrl = state\.followedArtists\n.*?                    \}\n                item\(key = "home-editorial-spotlight", contentType = "home-spotlight"\) \{\n                    HomeSectionLead\(compactHome\) \{\n                        HomeSectionInset \{\n                            HomeEditorialSpotlight\(\n(.*?)                            \)\n                        \}\n                    \}\n                \}\n''',
-              '''                val baseSoundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
-              val heroPortraitArtist = soundtrackArtistPool.firstOrNull { artist ->
-                  homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)
-              } ?: soundtrackArtistPool.firstOrNull { artist ->
-                  spotlightTracks.any { track ->
-                      homeSoundtrackMatchesArtist(track, artist.name, artist.browseId)
-                  }
-              }
-              val soundtrackArtists = buildList {
-                  heroPortraitArtist?.name
-                      ?.let(::homeSoundtrackPrimaryArtist)
-                      ?.takeIf { it.isNotBlank() }
-                      ?.let(::add)
-                  baseSoundtrackArtists.forEach { artist ->
-                      if (none { it.equals(artist, ignoreCase = true) }) add(artist)
-                  }
-              }.take(3)
-              val heroArtistArtworkUrl = heroPortraitArtist?.thumbnailUrl.orEmpty()
-                  .ifBlank {
-                      soundtrackArtists.asSequence()
-                          .mapNotNull { artistName ->
-                              soundtrackArtistPool.firstOrNull { artist ->
-                                  homeSoundtrackPrimaryArtist(artist.name)
-                                      .equals(artistName, ignoreCase = true)
-                              }?.thumbnailUrl
-                          }
-                          .firstOrNull()
-                          .orEmpty()
-                  }
-              item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
-                  HomeEditorialSpotlight(
-\1                  )
-              }
-          ''',
-              'full-bleed hero invocation and portrait source',
-              re.S
-          )
-
-          sub(
-              r'''    BoxWithConstraints\(\n    modifier = Modifier\n        \.fillMaxWidth\(\)\n        \.height\(408\.dp\)\n        \.graphicsLayer \{\n            scaleX = scale\n            scaleY = scale\n        \}\n        \.clip\(LevyraHomeDesign\.HeroShape\)\n        \.background\(Color\(0xFF050609\)\)\n        \.border\(\n            Dp\.Hairline,\n            Color\.White\.copy\(alpha = 0\.11f\),\n            LevyraHomeDesign\.HeroShape\n        \)\n        \.clickable\(''',
-              '''    BoxWithConstraints(
-              modifier = Modifier
-                  .fillMaxWidth()
-                  .height(520.dp)
-                  .clickable(''',
-              'remove hero card chrome'
-          )
-
-          sub(
-              r'''                        0f to Color\.Black\.copy\(alpha = 0\.03f\),\n                        0\.42f to Color\.Black\.copy\(alpha = 0\.02f\),\n                        0\.62f to Color\.Black\.copy\(alpha = 0\.24f\),\n                        0\.80f to Color\.Black\.copy\(alpha = 0\.72f\),\n                        1f to Color\.Black\.copy\(alpha = 0\.97f\)''',
-              '''                        0f to Color.Black.copy(alpha = 0.30f),
-                          0.12f to Color.Black.copy(alpha = 0.10f),
-                          0.48f to Color.Transparent,
-                          0.67f to Color.Black.copy(alpha = 0.18f),
-                          0.82f to Color.Black.copy(alpha = 0.72f),
-                          1f to Color.Black''',
-              'seamless vertical scrim'
-          )
-
-          sub(
-              r'''                        0f to Color\.Black\.copy\(alpha = 0\.50f\),\n                        0\.42f to Color\.Black\.copy\(alpha = 0\.16f\),\n                        0\.78f to Color\.Transparent,\n                        1f to Color\.Black\.copy\(alpha = 0\.10f\)''',
-              '''                        0f to Color.Black.copy(alpha = 0.42f),
-                          0.38f to Color.Black.copy(alpha = 0.12f),
-                          0.76f to Color.Transparent,
-                          1f to Color.Black.copy(alpha = 0.06f)''',
-              'soft horizontal scrim'
-          )
-
-          text = text.replace('.fillMaxWidth(0.80f)\n            .padding(start = 22.dp, end = 12.dp, bottom = 30.dp),',
-                              '.fillMaxWidth(0.78f)\n            .padding(start = 22.dp, end = 12.dp, bottom = 38.dp),', 1)
-          text = text.replace('fontSize = 38.sp,\n            lineHeight = 42.sp,',
-                              'fontSize = 40.sp,\n            lineHeight = 44.sp,', 1)
-          text = text.replace('.padding(end = 20.dp, bottom = 30.dp)\n            .size(68.dp)',
-                              '.padding(end = 22.dp, bottom = 42.dp)\n            .size(76.dp)', 1)
-
-          # The old pressed-card scale is no longer rendered once the hero is edge-to-edge.
-          text = re.sub(
-              r'''    val isPressed by interaction\.collectIsPressedAsState\(\)\n    val scale by animateFloatAsState\(\n.*?        label = "homeSpotlightScale"\n    \)\n''',
-              '',
-              text,
-              count=1,
-              flags=re.S
-          )
-
-          path.write_text(text, encoding='utf-8')
-          PY
-
-      - name: Commit refined hero and remove temporary workflow
+      - name: Commit refined hero
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm --ignore-unmatch .github/workflows/pr504-hero-refine.yml
+          git rm --ignore-unmatch .github/workflows/pr504-hero-refine.yml .github/pr504_hero_patch.py
           git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
           git diff --cached --check
           git commit -m "feat(home): make soundtrack an immersive artist hero"
