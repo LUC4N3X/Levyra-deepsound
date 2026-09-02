@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.feature.motion
 
 import android.content.Context
+import com.luc4n3x.levyra.data.ChartOfficialArtworkResolver
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.Track
@@ -19,12 +20,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
+import java.util.Locale
 
 class MotionArtworkEngine(context: Context) {
     private val appContext = context.applicationContext
     private val repository = MotionArtworkRepository(LevyraDatabase.get(appContext).motionArtworkDao())
     private val networkPolicy = MotionArtworkNetworkPolicy(appContext)
     private val urlVerifier = MotionArtworkUrlVerifier(appContext)
+    private val metadataResolver = ChartOfficialArtworkResolver(appContext)
     private val providerFactories: Map<String, () -> MotionArtworkProvider> = mapOf(
         "community-canvas" to { CommunityCanvasProvider(appContext) },
         "apple-motion" to { AppleMotionArtworkProvider(appContext) },
@@ -44,7 +47,8 @@ class MotionArtworkEngine(context: Context) {
         source: LevyraCanvasSource = LevyraCanvasSource.Auto
     ): MotionArtwork? {
         if (!networkPolicy.canResolveCurrent()) return null
-        val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(track), source)
+        val lookupTrack = prepareLookupTrack(track)
+        val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(lookupTrack), source)
         val runtime = MotionArtworkRuntime.snapshot()
         when (val cached = repository.get(identityKey, runtime.epoch)) {
             is MotionArtworkCacheResult.Hit -> return cached.artwork
@@ -53,7 +57,24 @@ class MotionArtworkEngine(context: Context) {
         }
 
         return shared("${runtime.epoch}:$identityKey") {
-            resolveFresh(track, identityKey, runtime.epoch, runtime.value, source)
+            resolveFresh(lookupTrack, identityKey, runtime.epoch, runtime.value, source)
+        }
+    }
+
+    private suspend fun prepareLookupTrack(track: Track): Track {
+        if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) return track
+        val country = Locale.getDefault().country
+            .trim()
+            .uppercase(Locale.ROOT)
+            .takeIf { it.length == 2 }
+            ?: DEFAULT_MOTION_METADATA_COUNTRY
+        return try {
+            metadataResolver.enrich(listOf(track), country).firstOrNull() ?: track
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.d(error, "Motion metadata enrichment failed for %s / %s", track.title, track.artist)
+            track
         }
     }
 
@@ -391,6 +412,7 @@ private class ArtistMotionLookup(val candidate: MotionArtworkCandidate?)
 private const val ARTIST_MOTION_CONFIDENCE = 100
 private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 45_000L
 private const val APPLE_MOTION_PLAYER_REQUEST_TIMEOUT_MS = 25_000L
+private const val DEFAULT_MOTION_METADATA_COUNTRY = "IT"
 
 internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeoutMs: Long): Long =
     if (providerId == "apple-motion") {

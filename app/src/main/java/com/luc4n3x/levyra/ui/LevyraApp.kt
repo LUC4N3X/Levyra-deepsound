@@ -6070,14 +6070,50 @@ private fun HomeScreen(
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
-        spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+    val soundtrackArtistPool = remember(
+        state.followedArtists,
+        state.homeArtists,
+        state.similarArtists
+    ) {
+        buildList<Triple<String, String, String>> {
+            state.followedArtists.forEach { artist ->
+                if (artist.thumbnailUrl.isNotBlank()) {
+                    add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+                }
+            }
+            (state.homeArtists + state.similarArtists).forEach { artist ->
+                if (artist.thumbnailUrl.isNotBlank()) {
+                    add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+                }
+            }
+        }.distinctBy { artist ->
+            artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
+        }
+    }
+    val spotlightCandidate = remember(
+        spotlightCandidates,
+        stableSpotlightId,
+        soundtrackArtistPool,
+        state.currentTrack?.id
+    ) {
+        fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
+            return soundtrackArtistPool.any { artist ->
+                homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second)
+            }
+        }
+        spotlightCandidates.firstOrNull {
+            it.track.id == stableSpotlightId && hasArtistPortrait(it)
+        }
+            ?: spotlightCandidates.firstOrNull {
+                it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
+            }
+            ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+            ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
             ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
             ?: spotlightCandidates.firstOrNull()
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
-        val selectedStillAvailable = stableSpotlightId != null && spotlightCandidates.any { it.track.id == stableSpotlightId }
-        if (!selectedStillAvailable && spotlightCandidate != null) {
+        if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
             stableSpotlightId = spotlightCandidate.track.id
         }
     }
@@ -6258,26 +6294,59 @@ private fun HomeScreen(
 
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
-                item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
-                    HomeSectionLead(compactHome) {
-                        HomeSectionInset {
-                            HomeEditorialSpotlight(
-                                candidate = candidate,
-                                isCurrent = heroTrack.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
-                                isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
-                                animationsEnabled = state.animationsEnabled,
-                                onPaletteChanged = { start, end ->
-                                    homeAccentStart = start
-                                    homeAccentEnd = end
-                                },
-                                onOpen = {
-                                    stableSpotlightId = heroTrack.id
-                                    viewModel.playFrom(spotlightTracks, heroTrack)
-                                }
-                            )
+                val baseSoundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
+                val heroPortraitArtist = soundtrackArtistPool.firstOrNull { artist ->
+                    homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)
+                } ?: soundtrackArtistPool.firstOrNull { artist ->
+                    spotlightTracks.any { track ->
+                        homeSoundtrackMatchesArtist(track, artist.first, artist.second)
+                    }
+                }
+                val soundtrackArtists = buildList<String> {
+                    heroPortraitArtist?.first
+                        ?.let(::homeSoundtrackPrimaryArtist)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { artist -> add(artist) }
+                    baseSoundtrackArtists.forEach { artist ->
+                        if (none { existing -> existing.equals(artist, ignoreCase = true) }) {
+                            add(artist)
                         }
                     }
+                }.take(3)
+                val heroArtistArtworkUrl = heroPortraitArtist?.third.orEmpty()
+                    .ifBlank {
+                        soundtrackArtists.asSequence()
+                            .mapNotNull { artistName ->
+                                soundtrackArtistPool.firstOrNull { artist ->
+                                    homeSoundtrackPrimaryArtist(artist.first)
+                                        .equals(artistName, ignoreCase = true)
+                                }?.third
+                            }
+                            .firstOrNull()
+                            .orEmpty()
+                    }
+                item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
+                    HomeEditorialSpotlight(
+                        candidate = candidate,
+                        artistArtworkUrl = heroArtistArtworkUrl,
+                        soundtrackArtists = soundtrackArtists,
+                        isCurrent = heroTrack.id == state.currentTrack?.id,
+                        isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
+                        isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
+                        onPaletteChanged = { start, end ->
+                            homeAccentStart = start
+                            homeAccentEnd = end
+                        },
+                        onOpen = {
+                            stableSpotlightId = heroTrack.id
+                            when {
+                                heroTrack.id != state.currentTrack?.id ->
+                                    viewModel.playFrom(spotlightTracks, heroTrack)
+                                state.isResolving -> Unit
+                                else -> viewModel.togglePlay()
+                            }
+                        }
+                    )
                 }
             }
 
@@ -6639,53 +6708,94 @@ private fun HomeScreen(
     }
 }
 
-private fun homeSpotlightBadge(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
-    return when (candidate.kind) {
-        HomeSpotlightKind.ReleasedToday -> strings.releasedToday
-        HomeSpotlightKind.JustReleased -> strings.justReleased
-        HomeSpotlightKind.ChartTrending -> strings.chartTrending
-        HomeSpotlightKind.LevyraSelect -> strings.levyraSelection
+private fun homeSoundtrackPrimaryArtist(rawArtist: String): String {
+    var value = rawArtist.trim()
+    if (value.isBlank()) return value
+    val separators = listOf(",", " & ", " feat. ", " feat ", " featuring ", " x ")
+    separators.forEach { separator ->
+        val index = value.indexOf(separator, ignoreCase = true)
+        if (index > 0) value = value.substring(0, index).trim()
     }
+    return value
 }
 
-private fun homeSpotlightDetail(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
-    val track = candidate.track
-    return when (candidate.kind) {
-        HomeSpotlightKind.ReleasedToday -> strings.availableToday
-        HomeSpotlightKind.JustReleased -> if (candidate.releaseAgeDays != null && candidate.releaseAgeDays <= 7) {
-            strings.releasedThisWeek
-        } else {
-            track.album
-                .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
-                ?: strings.newReleases
+private fun homeSoundtrackArtists(tracks: List<Track>, heroTrack: Track): List<String> {
+    return sequenceOf(heroTrack)
+        .plus(tracks.asSequence())
+        .map { homeSoundtrackPrimaryArtist(it.artist) }
+        .filter(String::isNotBlank)
+        .distinctBy { it.lowercase(Locale.ROOT) }
+        .take(3)
+        .toList()
+}
+
+private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browseId: String): Boolean {
+    if (artistName.isBlank()) return false
+    if (browseId.isNotBlank() && track.artistBrowseIds.any { it.equals(browseId, ignoreCase = true) }) return true
+    val primary = homeSoundtrackPrimaryArtist(track.artist)
+    return primary.equals(artistName.trim(), ignoreCase = true)
+}
+
+private fun homeSoundtrackTitle(strings: LevyraStrings): String = when (strings.code.lowercase(Locale.ROOT)) {
+    "it" -> "La mia colonna sonora"
+    "es" -> "Mi banda sonora"
+    "fr" -> "Ma bande-son"
+    "de" -> "Mein Soundtrack"
+    "pt" -> "Minha trilha sonora"
+    else -> "My soundtrack"
+}
+
+private fun homeSoundtrackLead(strings: LevyraStrings, artists: List<String>): String {
+    val cleaned = artists.map(String::trim).filter(String::isNotBlank).take(3)
+    val joined = when (cleaned.size) {
+        0 -> return when (strings.code.lowercase(Locale.ROOT)) {
+            "it" -> "La musica scelta per te"
+            "es" -> "Música elegida para ti"
+            "fr" -> "De la musique choisie pour vous"
+            "de" -> "Musik, die für dich ausgewählt wurde"
+            "pt" -> "Música escolhida para você"
+            else -> "Music picked for you"
         }
-        HomeSpotlightKind.ChartTrending -> strings.popularInCharts
-        HomeSpotlightKind.LevyraSelect -> track.album
-            .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
-            ?: strings.selectedForYou
+        1 -> cleaned[0]
+        2 -> when (strings.code.lowercase(Locale.ROOT)) {
+            "it", "pt" -> "${cleaned[0]} e ${cleaned[1]}"
+            "es" -> "${cleaned[0]} y ${cleaned[1]}"
+            "fr" -> "${cleaned[0]} et ${cleaned[1]}"
+            "de" -> "${cleaned[0]} und ${cleaned[1]}"
+            else -> "${cleaned[0]} and ${cleaned[1]}"
+        }
+        else -> when (strings.code.lowercase(Locale.ROOT)) {
+            "it", "pt" -> "${cleaned[0]}, ${cleaned[1]} e ${cleaned[2]}"
+            "es" -> "${cleaned[0]}, ${cleaned[1]} y ${cleaned[2]}"
+            "fr" -> "${cleaned[0]}, ${cleaned[1]} et ${cleaned[2]}"
+            "de" -> "${cleaned[0]}, ${cleaned[1]} und ${cleaned[2]}"
+            else -> "${cleaned[0]}, ${cleaned[1]} and ${cleaned[2]}"
+        }
+    }
+    return when (strings.code.lowercase(Locale.ROOT)) {
+        "it" -> "Inizia con $joined"
+        "es" -> "Empieza con $joined"
+        "fr" -> "Commence avec $joined"
+        "de" -> "Startet mit $joined"
+        "pt" -> "Começa com $joined"
+        else -> "Starts with $joined"
     }
 }
 
 @Composable
 private fun HomeEditorialSpotlight(
     candidate: HomeSpotlightCandidate,
+    artistArtworkUrl: String,
+    soundtrackArtists: List<String>,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
-    animationsEnabled: Boolean,
     onPaletteChanged: (Color, Color) -> Unit,
     onOpen: () -> Unit
 ) {
     val track = candidate.track
     val strings = LocalLevyraStrings.current
-    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
-    val isPressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.982f else 1f,
-        animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
-        label = "homeSpotlightScale"
-    )
     val context = LocalContext.current
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
@@ -6770,205 +6880,187 @@ private fun HomeEditorialSpotlight(
     LaunchedEffect(accentStart, accentEnd) {
         onPaletteChanged(accentStart, accentEnd)
     }
-    val badge = homeSpotlightBadge(strings, candidate)
-    val detail = homeSpotlightDetail(strings, candidate)
+    val soundtrackTitle = homeSoundtrackTitle(strings)
+    val soundtrackLead = homeSoundtrackLead(strings, soundtrackArtists)
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = LevyraHomeDesign.HeroHeight)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(LevyraHomeDesign.HeroShape)
-            .background(Color(0xFF07080C))
-            .border(
-                Dp.Hairline,
-                Color.White.copy(alpha = 0.10f),
-                LevyraHomeDesign.HeroShape
-            )
+            .height(520.dp)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
                 onClick = onOpen
             )
     ) {
-        val artworkWidth = maxWidth * 0.58f
+    if (artistArtworkUrl.isNotBlank()) {
+        StableRemoteArtwork(
+            url = artistArtworkUrl,
+            contentDescription = soundtrackTitle,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            highRes = true
+        )
+    } else {
         CoverImage(
             track = track,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(artworkWidth),
+            modifier = Modifier.fillMaxSize(),
             highRes = true,
-            zoom = 1.035f,
+            zoom = 1f,
             onImageLoaded = { image ->
                 if (!paletteExtractionStarted && loadedArtworkBitmap == null) {
                     loadedArtworkBitmap = image.toBitmap()
                 }
             }
         )
+    }
 
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0f to Color(0xFF07080C),
-                            0.34f to Color(0xFF07080C).copy(alpha = 0.98f),
-                            0.58f to Color(0xFF07080C).copy(alpha = 0.52f),
-                            1f to Color.Transparent
-                        )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Black.copy(alpha = 0.30f),
+                        0.12f to Color.Black.copy(alpha = 0.10f),
+                        0.48f to Color.Transparent,
+                        0.67f to Color.Black.copy(alpha = 0.18f),
+                        0.82f to Color.Black.copy(alpha = 0.72f),
+                        1f to Color.Black
                     )
                 )
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0f to accentStart.copy(alpha = 0.16f),
-                            0.46f to Color.Transparent,
-                            1f to Color.Black.copy(alpha = 0.72f)
-                        )
+            )
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(
+                Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Black.copy(alpha = 0.42f),
+                        0.38f to Color.Black.copy(alpha = 0.12f),
+                        0.76f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.06f)
                     )
                 )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = (-60).dp, y = (-70).dp)
-                .size(240.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            accentStart.copy(alpha = 0.24f),
-                            accentEnd.copy(alpha = 0.08f),
-                            Color.Transparent
-                        )
+            )
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        accentStart.copy(alpha = 0.18f),
+                        accentEnd.copy(alpha = 0.07f),
+                        Color.Transparent
                     ),
-                    CircleShape
+                    center = Offset(0f, 0f),
+                    radius = 620f
                 )
+            )
+    )
+
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .fillMaxWidth(0.78f)
+            .padding(start = 22.dp, end = 12.dp, bottom = 38.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "RADIO",
+            color = Color.White.copy(alpha = 0.94f),
+            fontSize = 12.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.45.sp,
+            maxLines = 1
         )
+        Text(
+            text = soundtrackTitle,
+            color = Color.White,
+            fontSize = 40.sp,
+            lineHeight = 44.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-1.25).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = soundtrackLead,
+            color = Color.White.copy(alpha = 0.96f),
+            fontSize = 18.5.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .width(maxWidth * 0.70f)
-                .padding(horizontal = 22.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = badge.uppercase(Locale.ROOT),
-                color = accentStart.copy(alpha = 0.95f),
-                fontSize = 10.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.4.sp,
-                maxLines = 1
-            )
-            Text(
-                text = track.title,
-                color = Color.White,
-                fontSize = 24.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(24.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.85).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = Color.White.copy(alpha = 0.88f),
-                fontSize = 14.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = detail,
-                color = Color.White.copy(alpha = 0.58f),
-                fontSize = 12.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.White, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        isResolving -> CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.4.dp,
-                            color = accentStart
-                        )
-                        isCurrent && isPlaying -> Icon(
-                            imageVector = Icons.Rounded.Pause,
-                            contentDescription = null,
-                            tint = Color(0xFF08090D),
-                            modifier = Modifier.size(26.dp)
-                        )
-                        else -> Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            tint = Color(0xFF08090D),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = if (isCurrent && isPlaying) strings.playing else strings.playNow,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    if (isCurrent) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            if (isPlaying) {
-                                ActiveTrackEqualizer(
-                                    color = accentStart,
-                                    isPlaying = true,
-                                    width = 12.dp,
-                                    height = 8.dp
-                                )
-                            }
-                            Text(
-                                text = strings.activeIndicator,
-                                color = Color.White.copy(alpha = 0.56f),
-                                fontSize = 10.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(10.sp),
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
+    Surface(
+        color = LevyraCyan,
+        shape = CircleShape,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(end = 22.dp, bottom = 42.dp)
+            .size(76.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.5.dp,
+                    color = Color(0xFF07080C)
+                )
+                isCurrent && isPlaying -> Icon(
+                    imageVector = Icons.Rounded.Pause,
+                    contentDescription = strings.pause,
+                    tint = Color(0xFF07080C),
+                    modifier = Modifier.size(29.dp)
+                )
+                else -> Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = strings.playNow,
+                    tint = Color(0xFF07080C),
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
     }
+
+    if (isCurrent && isPlaying) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.48f),
+            shape = CircleShape,
+            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.14f)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ActiveTrackEqualizer(
+                    color = accentStart,
+                    isPlaying = true,
+                    width = 13.dp,
+                    height = 9.dp
+                )
+                Text(
+                    text = strings.playing,
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
 }
 
 private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditorialCollection): String {
