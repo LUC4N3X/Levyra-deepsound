@@ -20,7 +20,7 @@ jobs:
           ref: feat/amazon-inspired-explore-cards
           fetch-depth: 0
 
-      - name: Patch soundtrack artist list type inference
+      - name: Normalize soundtrack artist portrait models
         shell: bash
         run: |
           set -euo pipefail
@@ -29,22 +29,83 @@ jobs:
 
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text(encoding='utf-8')
-          home_start = text.index('spotlightCandidate?.let { candidate ->')
-          block_start = text.index('val soundtrackArtists = buildList {', home_start)
-          block_end = text.index('val heroArtistArtworkUrl', block_start)
-          block = text[block_start:block_end]
-          block = block.replace('val soundtrackArtists = buildList {', 'val soundtrackArtists = buildList<String> {', 1)
-          block = block.replace('?.let(::add)', '?.let { artist -> add(artist) }', 1)
-          block = block.replace(
+
+          pool_start = text.index('    val soundtrackArtistPool = remember(')
+          pool_end = text.index('    val spotlightCandidate = remember(', pool_start)
+          new_pool = '''    val soundtrackArtistPool = remember(
+              state.followedArtists,
+              state.homeArtists,
+              state.similarArtists
+          ) {
+              buildList<Triple<String, String, String>> {
+                  state.followedArtists.forEach { artist ->
+                      if (artist.thumbnailUrl.isNotBlank()) {
+                          add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+                      }
+                  }
+                  (state.homeArtists + state.similarArtists).forEach { artist ->
+                      if (artist.thumbnailUrl.isNotBlank()) {
+                          add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+                      }
+                  }
+              }.distinctBy { artist ->
+                  artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
+              }
+          }
+'''
+          text = text[:pool_start] + new_pool + text[pool_end:]
+
+          candidate_start = text.index('    val spotlightCandidate = remember(', pool_start)
+          candidate_end = text.index('    val spotlightTracks = remember(', candidate_start)
+          candidate = text[candidate_start:candidate_end]
+          candidate = candidate.replace(
+              'homeSoundtrackMatchesArtist(candidate.track, artist.name, artist.browseId)',
+              'homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second)'
+          )
+          if 'artist.name' in candidate or 'artist.browseId' in candidate:
+              raise SystemExit('mixed artist model access remains in spotlight candidate block')
+          text = text[:candidate_start] + candidate + text[candidate_end:]
+
+          hero_start = text.index('            spotlightCandidate?.let { candidate ->')
+          hero_end = text.index(
+              '\n            if (\n                showDeferredHomeSections && state.interfaceSettings.showNewReleases',
+              hero_start
+          )
+          hero = text[hero_start:hero_end]
+          hero = hero.replace(
+              'homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)',
+              'homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)'
+          )
+          hero = hero.replace(
+              'homeSoundtrackMatchesArtist(track, artist.name, artist.browseId)',
+              'homeSoundtrackMatchesArtist(track, artist.first, artist.second)'
+          )
+          hero = hero.replace('heroPortraitArtist?.name', 'heroPortraitArtist?.first')
+          hero = hero.replace('heroPortraitArtist?.thumbnailUrl', 'heroPortraitArtist?.third')
+          hero = hero.replace('homeSoundtrackPrimaryArtist(artist.name)', 'homeSoundtrackPrimaryArtist(artist.first)')
+          hero = hero.replace('}?.thumbnailUrl', '}?.third')
+          hero = hero.replace('val soundtrackArtists = buildList {', 'val soundtrackArtists = buildList<String> {', 1)
+          hero = hero.replace('?.let(::add)', '?.let { artist -> add(artist) }', 1)
+          hero = hero.replace(
               'if (none { it.equals(artist, ignoreCase = true) }) add(artist)',
               'if (none { existing -> existing.equals(artist, ignoreCase = true) }) {\n                            add(artist)\n                        }',
               1
           )
-          if 'buildList<String>' not in block or '?.let(::add)' in block:
-              raise SystemExit('soundtrack artist block was not patched as expected')
-          text = text[:block_start] + block + text[block_end:]
+          forbidden = (
+              'artist.name',
+              'artist.browseId',
+              'heroPortraitArtist?.name',
+              'heroPortraitArtist?.thumbnailUrl',
+              '?.let(::add)',
+              'val soundtrackArtists = buildList {'
+          )
+          if any(token in hero for token in forbidden):
+              raise SystemExit('soundtrack hero normalization incomplete')
+          text = text[:hero_start] + hero + text[hero_end:]
+
           path.write_text(text, encoding='utf-8')
           PY
+          git diff --check
 
       - name: Setup Java
         uses: actions/setup-java@v6
@@ -65,5 +126,5 @@ jobs:
           git rm .github/workflows/pr504-kotlin-fix.yml
           git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
           git diff --cached --check
-          git commit -m "fix(home): make soundtrack artist list type-safe"
+          git commit -m "fix(home): normalize soundtrack artist portrait sources"
           git push origin HEAD:feat/amazon-inspired-explore-cards
