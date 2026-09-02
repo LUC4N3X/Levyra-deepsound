@@ -21,6 +21,19 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
+internal fun isAllowedSpotifyArtistArtworkUrl(rawUrl: String): Boolean {
+    val url = rawUrl.toHttpUrlOrNull() ?: return false
+    if (!url.isHttps) return false
+    val host = url.host.lowercase()
+    val spotifyHost = host == "i.scdn.co" ||
+        host.endsWith(".scdn.co") ||
+        host == "image-cdn-ak.spotifycdn.com" ||
+        host.endsWith(".spotifycdn.com")
+    if (!spotifyHost) return false
+    if (host == "i.scdn.co" && !url.encodedPath.contains("ab676161", ignoreCase = true)) return false
+    return true
+}
+
 internal class SpotifyArtistArtworkRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val client = LevyraHttpClientFactory.externalIntegrations()
@@ -43,7 +56,7 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
         memoryCache[identity]
             ?.takeIf { now - it.savedAt in 0 until ARTWORK_TTL_MS }
             ?.url
-            ?.takeIf(::isAllowedArtistArtworkUrl)
+            ?.takeIf(::isAllowedSpotifyArtistArtworkUrl)
             ?.let { return@withContext it }
 
         readPersisted(identity, now)?.let { cached ->
@@ -68,7 +81,7 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
         val url = preferences.getString("$identity.url", null).orEmpty()
         val savedAt = preferences.getLong("$identity.savedAt", 0L)
         if (url.isBlank() || now - savedAt !in 0 until ARTWORK_TTL_MS) return null
-        if (!isAllowedArtistArtworkUrl(url)) return null
+        if (!isAllowedSpotifyArtistArtworkUrl(url)) return null
         return CachedArtwork(url, savedAt)
     }
 
@@ -93,40 +106,50 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
                 ?.let { return@withLock it }
 
             val material = totpMaterial ?: fetchTotpMaterial().also { totpMaterial = it }
-            val serverTime = fetchServerTimeSeconds()
-            val totp = generateTotp(material.secret, serverTime)
-            val url = TOKEN_URL.toHttpUrl().newBuilder()
-                .addQueryParameter("reason", "transport")
-                .addQueryParameter("productType", "web-player")
-                .addQueryParameter("totp", totp)
-                .addQueryParameter("totpServer", totp)
-                .addQueryParameter("totpVer", material.version.toString())
-                .build()
-            val response = executeJson(
-                Request.Builder()
-                    .url(url)
-                    .header("Accept", "application/json")
-                    .header("User-Agent", WEB_USER_AGENT)
+            try {
+                val serverTime = fetchServerTimeSeconds()
+                val totp = generateTotp(material.secret, serverTime)
+                val url = TOKEN_URL.toHttpUrl().newBuilder()
+                    .addQueryParameter("reason", "transport")
+                    .addQueryParameter("productType", "web-player")
+                    .addQueryParameter("totp", totp)
+                    .addQueryParameter("totpServer", totp)
+                    .addQueryParameter("totpVer", material.version.toString())
                     .build()
-            )
-            val issuedAccessToken = response.optString("accessToken").trim()
-            if (issuedAccessToken.isBlank()) error("Spotify returned no anonymous access token")
-            val expiresAt = response.optLong("accessTokenExpirationTimestampMs", 0L)
-                .takeIf { it > currentNow }
-                ?: (currentNow + DEFAULT_TOKEN_TTL_MS)
-            accessToken = AccessToken(issuedAccessToken, expiresAt)
-            issuedAccessToken
+                val response = executeJson(
+                    Request.Builder()
+                        .url(url)
+                        .header("Accept", "application/json")
+                        .header("User-Agent", WEB_USER_AGENT)
+                        .build()
+                )
+                val issuedAccessToken = response.optString("accessToken").trim()
+                if (issuedAccessToken.isBlank()) error("Spotify returned no anonymous access token")
+                val expiresAt = response.optLong("accessTokenExpirationTimestampMs", 0L)
+                    .takeIf { it > currentNow }
+                    ?: (currentNow + DEFAULT_TOKEN_TTL_MS)
+                accessToken = AccessToken(issuedAccessToken, expiresAt)
+                issuedAccessToken
+            } catch (error: Throwable) {
+                totpMaterial = null
+                accessToken = null
+                throw error
+            }
         }
     }
 
     private fun fetchTotpMaterial(): TotpMaterial {
-        val root = executeJson(
-            Request.Builder()
-                .url(SECRET_DICTIONARY_URL)
-                .header("Accept", "application/json")
-                .header("User-Agent", WEB_USER_AGENT)
-                .build()
-        )
+        val root = runCatching {
+            executeJson(
+                Request.Builder()
+                    .url(SECRET_DICTIONARY_URL)
+                    .header("Accept", "application/json")
+                    .header("User-Agent", WEB_USER_AGENT)
+                    .build()
+            )
+        }.getOrElse {
+            JSONObject(BUNDLED_SECRET_DICTIONARY)
+        }
         val version = root.keys().asSequence()
             .mapNotNull(String::toIntOrNull)
             .maxOrNull()
@@ -238,7 +261,7 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
         for (index in 0 until sources.length()) {
             val source = sources.optJSONObject(index) ?: continue
             val url = source.optString("url").trim()
-            if (!isAllowedArtistArtworkUrl(url)) continue
+            if (!isAllowedSpotifyArtistArtworkUrl(url)) continue
             val width = source.optLong("width", 0L).coerceAtLeast(0L)
             val height = source.optLong("height", 0L).coerceAtLeast(0L)
             val area = width * height
@@ -248,19 +271,6 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
             }
         }
         return bestUrl
-    }
-
-    private fun isAllowedArtistArtworkUrl(rawUrl: String): Boolean {
-        val url = rawUrl.toHttpUrlOrNull() ?: return false
-        if (!url.isHttps) return false
-        val host = url.host.lowercase()
-        val spotifyHost = host == "i.scdn.co" ||
-            host.endsWith(".scdn.co") ||
-            host == "image-cdn-ak.spotifycdn.com" ||
-            host.endsWith(".spotifycdn.com")
-        if (!spotifyHost) return false
-        if (host == "i.scdn.co" && !url.encodedPath.contains("ab676161", ignoreCase = true)) return false
-        return true
     }
 
     private fun executeJson(request: Request): JSONObject {
@@ -290,6 +300,8 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
         private const val PREFERENCES_NAME = "spotify_artist_artwork"
         private const val SECRET_DICTIONARY_URL =
             "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/main/secrets/secretDict.json"
+        private const val BUNDLED_SECRET_DICTIONARY =
+            "{\"59\":[123,105,79,70,110,59,52,125,60,49,80,70,89,75,80,86,63,53,123,37,117,49,52,93,77,62,47,86,48,104,68,72],\"60\":[79,109,69,123,90,65,46,74,94,34,58,48,70,71,92,85,122,63,91,64,87,87],\"61\":[44,55,47,42,70,40,34,114,76,74,50,111,120,97,75,76,94,102,43,69,49,120,118,80,64,78]}"
         private const val SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
         private const val TOKEN_URL = "https://open.spotify.com/api/token"
         private const val GRAPHQL_URL = "https://api-partner.spotify.com/pathfinder/v2/query"
