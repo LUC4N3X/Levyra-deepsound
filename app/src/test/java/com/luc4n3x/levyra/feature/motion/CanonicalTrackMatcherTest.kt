@@ -213,15 +213,23 @@ class CanonicalTrackMatcherTest {
     }
 
     @Test
-    fun motionRequestIdentityStaysStableAcrossProviderIdsAndMetadata() {
+    fun motionRequestIdentityStaysStableAcrossProviderIdsButPreservesRecordingIsrc() {
         val first = track(id = "youtube-one", isrc = "ITB002400001")
-        val second = track(id = "youtube-two", isrc = "itb002400001")
-        val enrichedWithDifferentProviderMetadata = track(id = "catalog-entry", isrc = "ITB002400002")
+        val sameRecordingFromAnotherProvider = track(id = "youtube-two", isrc = "itb002400001")
+        val enrichedSameRecording = track(id = "catalog-entry", isrc = "ITB002400001")
+        val differentRecording = track(id = "catalog-entry-2", isrc = "ITB002400002")
 
-        assertEquals(MotionArtworkIdentityKey.create(first), MotionArtworkIdentityKey.create(second))
         assertEquals(
             MotionArtworkIdentityKey.create(first),
-            MotionArtworkIdentityKey.create(enrichedWithDifferentProviderMetadata)
+            MotionArtworkIdentityKey.create(sameRecordingFromAnotherProvider)
+        )
+        assertEquals(
+            MotionArtworkIdentityKey.create(first),
+            MotionArtworkIdentityKey.create(enrichedSameRecording)
+        )
+        assertNotEquals(
+            MotionArtworkIdentityKey.create(first),
+            MotionArtworkIdentityKey.create(differentRecording)
         )
     }
 
