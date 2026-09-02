@@ -106,3 +106,5 @@ jobs:
           git diff --cached --check
           git commit -m "fix(home): normalize soundtrack artist portrait sources"
           git push origin HEAD:feat/amazon-inspired-explore-cards
+
+# trigger after workflow registration
