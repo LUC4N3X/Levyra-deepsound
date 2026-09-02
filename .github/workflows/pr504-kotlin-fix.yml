@@ -1,0 +1,79 @@
+name: PR504 Kotlin Hero Compile Fix
+
+on:
+  push:
+    branches:
+      - feat/amazon-inspired-explore-cards
+
+permissions:
+  contents: write
+
+jobs:
+  fix-kotlin:
+    if: ${{ github.actor == 'LUC4N3X' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feat/amazon-inspired-explore-cards
+          fetch-depth: 0
+
+      - name: Patch soundtrack artist list type inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+          old = '''                val soundtrackArtists = buildList {
+                    heroPortraitArtist?.name
+                        ?.let(::homeSoundtrackPrimaryArtist)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let(::add)
+                    baseSoundtrackArtists.forEach { artist ->
+                        if (none { it.equals(artist, ignoreCase = true) }) add(artist)
+                    }
+                }.take(3)
+          '''
+          new = '''                val soundtrackArtists = buildList<String> {
+                    heroPortraitArtist?.name
+                        ?.let(::homeSoundtrackPrimaryArtist)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { artist -> add(artist) }
+                    baseSoundtrackArtists.forEach { artist ->
+                        if (none { existing -> existing.equals(artist, ignoreCase = true) }) {
+                            add(artist)
+                        }
+                    }
+                }.take(3)
+          '''
+          if old not in text:
+              raise SystemExit('soundtrack artist block not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Compile release Kotlin
+        shell: bash
+        run: ./gradlew --no-daemon :app:compileReleaseKotlin
+
+      - name: Commit fix and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/pr504-kotlin-fix.yml
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git diff --cached --check
+          git commit -m "fix(home): make soundtrack artist list type-safe"
+          git push origin HEAD:feat/amazon-inspired-explore-cards
