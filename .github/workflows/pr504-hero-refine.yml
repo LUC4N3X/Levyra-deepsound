@@ -1,0 +1,303 @@
+name: PR504 Soundtrack Hero Refinement
+
+on:
+  push:
+    branches:
+      - feat/amazon-inspired-explore-cards
+
+permissions:
+  contents: write
+
+jobs:
+  refine-home-hero:
+    if: ${{ github.actor == 'LUC4N3X' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/amazon-inspired-explore-cards
+          fetch-depth: 0
+
+      - name: Refine soundtrack hero
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              if old not in text:
+                  raise SystemExit(f'missing patch target: {label}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          '''    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
+              spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+                  ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
+                  ?: spotlightCandidates.firstOrNull()
+          }
+          LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
+              val selectedStillAvailable = stableSpotlightId != null && spotlightCandidates.any { it.track.id == stableSpotlightId }
+              if (!selectedStillAvailable && spotlightCandidate != null) {
+                  stableSpotlightId = spotlightCandidate.track.id
+              }
+          }
+          ''',
+          '''    val soundtrackArtistPool = remember(
+              state.followedArtists,
+              state.homeArtists,
+              state.similarArtists
+          ) {
+              (state.followedArtists + state.homeArtists + state.similarArtists)
+                  .filter { it.thumbnailUrl.isNotBlank() }
+                  .distinctBy { artist ->
+                      artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }
+                  }
+          }
+          val spotlightCandidate = remember(
+              spotlightCandidates,
+              stableSpotlightId,
+              soundtrackArtistPool,
+              state.currentTrack?.id
+          ) {
+              fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
+                  return soundtrackArtistPool.any { artist ->
+                      homeSoundtrackMatchesArtist(candidate.track, artist.name, artist.browseId)
+                  }
+              }
+              spotlightCandidates.firstOrNull {
+                  it.track.id == stableSpotlightId && hasArtistPortrait(it)
+              }
+                  ?: spotlightCandidates.firstOrNull {
+                      it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
+                  }
+                  ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+                  ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+                  ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
+                  ?: spotlightCandidates.firstOrNull()
+          }
+          LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
+              if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
+                  stableSpotlightId = spotlightCandidate.track.id
+              }
+          }
+          ''',
+          'prefer spotlight candidates with artist portraits'
+          )
+
+          replace_once(
+          '''                val heroArtistArtworkUrl = state.followedArtists
+                      .firstOrNull { followed ->
+                          followed.thumbnailUrl.isNotBlank() &&
+                              homeSoundtrackMatchesArtist(heroTrack, followed.name, followed.browseId)
+                      }
+                      ?.thumbnailUrl
+                      .orEmpty()
+                      .ifBlank {
+                          homeSoundtrackArtistArtwork(
+                              track = heroTrack,
+                              artists = state.homeArtists + state.similarArtists
+                          )
+                      }
+          ''',
+          '''                val heroArtistArtworkUrl = soundtrackArtistPool
+                      .firstOrNull { artist ->
+                          homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)
+                      }
+                      ?.thumbnailUrl
+                      .orEmpty()
+                      .ifBlank {
+                          soundtrackArtists.asSequence()
+                              .mapNotNull { artistName ->
+                                  soundtrackArtistPool.firstOrNull { artist ->
+                                      homeSoundtrackPrimaryArtist(artist.name)
+                                          .equals(artistName, ignoreCase = true)
+                                  }?.thumbnailUrl
+                              }
+                              .firstOrNull()
+                              .orEmpty()
+                      }
+          ''',
+          'resolve hero from real artist imagery'
+          )
+
+          old_wrapper = '''                item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
+                      HomeSectionLead(compactHome) {
+                          HomeSectionInset {
+                              HomeEditorialSpotlight(
+                                  candidate = candidate,
+                                  artistArtworkUrl = heroArtistArtworkUrl,
+                                  soundtrackArtists = soundtrackArtists,
+                                  isCurrent = heroTrack.id == state.currentTrack?.id,
+                                  isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
+                                  isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
+                                  animationsEnabled = state.animationsEnabled,
+                                  onPaletteChanged = { start, end ->
+                                      homeAccentStart = start
+                                      homeAccentEnd = end
+                                  },
+                                  onOpen = {
+                                      stableSpotlightId = heroTrack.id
+                                      viewModel.playFrom(spotlightTracks, heroTrack)
+                                  }
+                              )
+                          }
+                      }
+                  }
+          '''
+          new_wrapper = '''                item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
+                      HomeEditorialSpotlight(
+                          candidate = candidate,
+                          artistArtworkUrl = heroArtistArtworkUrl,
+                          soundtrackArtists = soundtrackArtists,
+                          isCurrent = heroTrack.id == state.currentTrack?.id,
+                          isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
+                          isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
+                          animationsEnabled = state.animationsEnabled,
+                          onPaletteChanged = { start, end ->
+                              homeAccentStart = start
+                              homeAccentEnd = end
+                          },
+                          onOpen = {
+                              stableSpotlightId = heroTrack.id
+                              viewModel.playFrom(spotlightTracks, heroTrack)
+                          }
+                      )
+                  }
+          '''
+          replace_once(old_wrapper, new_wrapper, 'remove card/inset wrappers')
+
+          replace_once(
+          '''    BoxWithConstraints(
+              modifier = Modifier
+                  .fillMaxWidth()
+                  .height(408.dp)
+                  .graphicsLayer {
+                      scaleX = scale
+                      scaleY = scale
+                  }
+                  .clip(LevyraHomeDesign.HeroShape)
+                  .background(Color(0xFF050609))
+                  .border(
+                      Dp.Hairline,
+                      Color.White.copy(alpha = 0.11f),
+                      LevyraHomeDesign.HeroShape
+                  )
+                  .clickable(
+                      interactionSource = interaction,
+                      indication = null,
+                      onClick = onOpen
+                  )
+          ) {
+          ''',
+          '''    BoxWithConstraints(
+              modifier = Modifier
+                  .fillMaxWidth()
+                  .height(520.dp)
+                  .clickable(
+                      interactionSource = interaction,
+                      indication = null,
+                      onClick = onOpen
+                  )
+          ) {
+          ''',
+          'turn spotlight card into full-bleed hero'
+          )
+
+          replace_once(
+          '''                Brush.verticalGradient(
+                      colorStops = arrayOf(
+                          0f to Color.Black.copy(alpha = 0.03f),
+                          0.42f to Color.Black.copy(alpha = 0.02f),
+                          0.62f to Color.Black.copy(alpha = 0.24f),
+                          0.80f to Color.Black.copy(alpha = 0.72f),
+                          1f to Color.Black.copy(alpha = 0.97f)
+                      )
+                  )
+          ''',
+          '''                Brush.verticalGradient(
+                      colorStops = arrayOf(
+                          0f to Color.Black.copy(alpha = 0.30f),
+                          0.12f to Color.Black.copy(alpha = 0.10f),
+                          0.48f to Color.Transparent,
+                          0.67f to Color.Black.copy(alpha = 0.18f),
+                          0.82f to Color.Black.copy(alpha = 0.72f),
+                          1f to Color.Black
+                      )
+                  )
+          ''',
+          'blend hero vertically into the page background'
+          )
+
+          replace_once(
+          '''                    colorStops = arrayOf(
+                          0f to Color.Black.copy(alpha = 0.50f),
+                          0.42f to Color.Black.copy(alpha = 0.16f),
+                          0.78f to Color.Transparent,
+                          1f to Color.Black.copy(alpha = 0.10f)
+                      )
+          ''',
+          '''                    colorStops = arrayOf(
+                          0f to Color.Black.copy(alpha = 0.42f),
+                          0.38f to Color.Black.copy(alpha = 0.12f),
+                          0.76f to Color.Transparent,
+                          1f to Color.Black.copy(alpha = 0.06f)
+                      )
+          ''',
+          'soften horizontal hero scrim'
+          )
+
+          replace_once(
+          '''            .align(Alignment.BottomStart)
+                  .fillMaxWidth(0.80f)
+                  .padding(start = 22.dp, end = 12.dp, bottom = 30.dp),
+          ''',
+          '''            .align(Alignment.BottomStart)
+                  .fillMaxWidth(0.78f)
+                  .padding(start = 22.dp, end = 12.dp, bottom = 38.dp),
+          ''',
+          'move soundtrack copy into editorial hero position'
+          )
+
+          replace_once(
+          '''            fontSize = 38.sp,
+              lineHeight = 42.sp,
+          ''',
+          '''            fontSize = 40.sp,
+              lineHeight = 44.sp,
+          ''',
+          'increase soundtrack title presence'
+          )
+
+          replace_once(
+          '''            .align(Alignment.BottomEnd)
+                  .padding(end = 20.dp, bottom = 30.dp)
+                  .size(68.dp)
+          ''',
+          '''            .align(Alignment.BottomEnd)
+                  .padding(end = 22.dp, bottom = 42.dp)
+                  .size(76.dp)
+          ''',
+          'match prominent soundtrack play control'
+          )
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit refined hero and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm --ignore-unmatch .github/workflows/pr504-hero-refine.yml
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git diff --cached --check
+          git commit -m "feat(home): make soundtrack an immersive artist hero"
+          git push origin HEAD:feat/amazon-inspired-explore-cards
