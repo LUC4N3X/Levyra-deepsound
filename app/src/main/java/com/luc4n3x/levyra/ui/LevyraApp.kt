@@ -6070,14 +6070,41 @@ private fun HomeScreen(
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
-        spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+    val soundtrackArtistPool = remember(
+        state.followedArtists,
+        state.homeArtists,
+        state.similarArtists
+    ) {
+        (state.followedArtists + state.homeArtists + state.similarArtists)
+            .filter { it.thumbnailUrl.isNotBlank() }
+            .distinctBy { artist ->
+                artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }
+            }
+    }
+    val spotlightCandidate = remember(
+        spotlightCandidates,
+        stableSpotlightId,
+        soundtrackArtistPool,
+        state.currentTrack?.id
+    ) {
+        fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
+            return soundtrackArtistPool.any { artist ->
+                homeSoundtrackMatchesArtist(candidate.track, artist.name, artist.browseId)
+            }
+        }
+        spotlightCandidates.firstOrNull {
+            it.track.id == stableSpotlightId && hasArtistPortrait(it)
+        }
+            ?: spotlightCandidates.firstOrNull {
+                it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
+            }
+            ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+            ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
             ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
             ?: spotlightCandidates.firstOrNull()
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
-        val selectedStillAvailable = stableSpotlightId != null && spotlightCandidates.any { it.track.id == stableSpotlightId }
-        if (!selectedStillAvailable && spotlightCandidate != null) {
+        if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
             stableSpotlightId = spotlightCandidate.track.id
         }
     }
@@ -6258,42 +6285,53 @@ private fun HomeScreen(
 
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
-                val soundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
-                val heroArtistArtworkUrl = state.followedArtists
-                    .firstOrNull { followed ->
-                        followed.thumbnailUrl.isNotBlank() &&
-                            homeSoundtrackMatchesArtist(heroTrack, followed.name, followed.browseId)
+                val baseSoundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
+                val heroPortraitArtist = soundtrackArtistPool.firstOrNull { artist ->
+                    homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)
+                } ?: soundtrackArtistPool.firstOrNull { artist ->
+                    spotlightTracks.any { track ->
+                        homeSoundtrackMatchesArtist(track, artist.name, artist.browseId)
                     }
-                    ?.thumbnailUrl
-                    .orEmpty()
+                }
+                val soundtrackArtists = buildList {
+                    heroPortraitArtist?.name
+                        ?.let(::homeSoundtrackPrimaryArtist)
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let(::add)
+                    baseSoundtrackArtists.forEach { artist ->
+                        if (none { it.equals(artist, ignoreCase = true) }) add(artist)
+                    }
+                }.take(3)
+                val heroArtistArtworkUrl = heroPortraitArtist?.thumbnailUrl.orEmpty()
                     .ifBlank {
-                        homeSoundtrackArtistArtwork(
-                            track = heroTrack,
-                            artists = state.homeArtists + state.similarArtists
-                        )
+                        soundtrackArtists.asSequence()
+                            .mapNotNull { artistName ->
+                                soundtrackArtistPool.firstOrNull { artist ->
+                                    homeSoundtrackPrimaryArtist(artist.name)
+                                        .equals(artistName, ignoreCase = true)
+                                }?.thumbnailUrl
+                            }
+                            .firstOrNull()
+                            .orEmpty()
                     }
                 item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
-                    HomeSectionLead(compactHome) {
-                        HomeSectionInset {
-                            HomeEditorialSpotlight(
-                                candidate = candidate,
-                                artistArtworkUrl = heroArtistArtworkUrl,
-                                soundtrackArtists = soundtrackArtists,
-                                isCurrent = heroTrack.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
-                                isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
-                                animationsEnabled = state.animationsEnabled,
-                                onPaletteChanged = { start, end ->
-                                    homeAccentStart = start
-                                    homeAccentEnd = end
-                                },
-                                onOpen = {
-                                    stableSpotlightId = heroTrack.id
-                                    viewModel.playFrom(spotlightTracks, heroTrack)
-                                }
-                            )
+                    HomeEditorialSpotlight(
+                        candidate = candidate,
+                        artistArtworkUrl = heroArtistArtworkUrl,
+                        soundtrackArtists = soundtrackArtists,
+                        isCurrent = heroTrack.id == state.currentTrack?.id,
+                        isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
+                        isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
+                        animationsEnabled = state.animationsEnabled,
+                        onPaletteChanged = { start, end ->
+                            homeAccentStart = start
+                            homeAccentEnd = end
+                        },
+                        onOpen = {
+                            stableSpotlightId = heroTrack.id
+                            viewModel.playFrom(spotlightTracks, heroTrack)
                         }
-                    }
+                    )
                 }
             }
 
@@ -6781,12 +6819,6 @@ private fun HomeEditorialSpotlight(
     val strings = LocalLevyraStrings.current
     val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
-    val isPressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.982f else 1f,
-        animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
-        label = "homeSpotlightScale"
-    )
     val context = LocalContext.current
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
@@ -6875,26 +6907,15 @@ private fun HomeEditorialSpotlight(
     val soundtrackLead = homeSoundtrackLead(strings, soundtrackArtists)
 
     BoxWithConstraints(
-    modifier = Modifier
-        .fillMaxWidth()
-        .height(408.dp)
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .clip(LevyraHomeDesign.HeroShape)
-        .background(Color(0xFF050609))
-        .border(
-            Dp.Hairline,
-            Color.White.copy(alpha = 0.11f),
-            LevyraHomeDesign.HeroShape
-        )
-        .clickable(
-            interactionSource = interaction,
-            indication = null,
-            onClick = onOpen
-        )
-) {
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(520.dp)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onOpen
+            )
+    ) {
     if (artistArtworkUrl.isNotBlank()) {
         StableRemoteArtwork(
             url = artistArtworkUrl,
@@ -6923,11 +6944,12 @@ private fun HomeEditorialSpotlight(
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0f to Color.Black.copy(alpha = 0.03f),
-                        0.42f to Color.Black.copy(alpha = 0.02f),
-                        0.62f to Color.Black.copy(alpha = 0.24f),
-                        0.80f to Color.Black.copy(alpha = 0.72f),
-                        1f to Color.Black.copy(alpha = 0.97f)
+                        0f to Color.Black.copy(alpha = 0.30f),
+                        0.12f to Color.Black.copy(alpha = 0.10f),
+                        0.48f to Color.Transparent,
+                        0.67f to Color.Black.copy(alpha = 0.18f),
+                        0.82f to Color.Black.copy(alpha = 0.72f),
+                        1f to Color.Black
                     )
                 )
             )
@@ -6938,10 +6960,10 @@ private fun HomeEditorialSpotlight(
             .background(
                 Brush.horizontalGradient(
                     colorStops = arrayOf(
-                        0f to Color.Black.copy(alpha = 0.50f),
-                        0.42f to Color.Black.copy(alpha = 0.16f),
-                        0.78f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = 0.10f)
+                        0f to Color.Black.copy(alpha = 0.42f),
+                        0.38f to Color.Black.copy(alpha = 0.12f),
+                        0.76f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.06f)
                     )
                 )
             )
@@ -6965,8 +6987,8 @@ private fun HomeEditorialSpotlight(
     Column(
         modifier = Modifier
             .align(Alignment.BottomStart)
-            .fillMaxWidth(0.80f)
-            .padding(start = 22.dp, end = 12.dp, bottom = 30.dp),
+            .fillMaxWidth(0.78f)
+            .padding(start = 22.dp, end = 12.dp, bottom = 38.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
@@ -6981,8 +7003,8 @@ private fun HomeEditorialSpotlight(
         Text(
             text = soundtrackTitle,
             color = Color.White,
-            fontSize = 38.sp,
-            lineHeight = 42.sp,
+            fontSize = 40.sp,
+            lineHeight = 44.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-1.25).sp,
             maxLines = 2,
@@ -7005,8 +7027,8 @@ private fun HomeEditorialSpotlight(
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(end = 20.dp, bottom = 30.dp)
-            .size(68.dp)
+            .padding(end = 22.dp, bottom = 42.dp)
+            .size(76.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             when {
