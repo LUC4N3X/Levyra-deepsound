@@ -13,6 +13,8 @@ jobs:
     if: ${{ github.actor == 'LUC4N3X' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: compile-only-placeholder
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
