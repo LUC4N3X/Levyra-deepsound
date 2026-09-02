@@ -32,27 +32,29 @@ jobs:
 
           pool_start = text.index('    val soundtrackArtistPool = remember(')
           pool_end = text.index('    val spotlightCandidate = remember(', pool_start)
-          new_pool = '''    val soundtrackArtistPool = remember(
-              state.followedArtists,
-              state.homeArtists,
-              state.similarArtists
-          ) {
-              buildList<Triple<String, String, String>> {
-                  state.followedArtists.forEach { artist ->
-                      if (artist.thumbnailUrl.isNotBlank()) {
-                          add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
-                      }
-                  }
-                  (state.homeArtists + state.similarArtists).forEach { artist ->
-                      if (artist.thumbnailUrl.isNotBlank()) {
-                          add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
-                      }
-                  }
-              }.distinctBy { artist ->
-                  artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
-              }
-          }
-'''
+          new_pool = '\n'.join([
+              '    val soundtrackArtistPool = remember(',
+              '        state.followedArtists,',
+              '        state.homeArtists,',
+              '        state.similarArtists',
+              '    ) {',
+              '        buildList<Triple<String, String, String>> {',
+              '            state.followedArtists.forEach { artist ->',
+              '                if (artist.thumbnailUrl.isNotBlank()) {',
+              '                    add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))',
+              '                }',
+              '            }',
+              '            (state.homeArtists + state.similarArtists).forEach { artist ->',
+              '                if (artist.thumbnailUrl.isNotBlank()) {',
+              '                    add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))',
+              '                }',
+              '            }',
+              '        }.distinctBy { artist ->',
+              '            artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }',
+              '        }',
+              '    }',
+              ''
+          ])
           text = text[:pool_start] + new_pool + text[pool_end:]
 
           candidate_start = text.index('    val spotlightCandidate = remember(', pool_start)
@@ -67,38 +69,18 @@ jobs:
           text = text[:candidate_start] + candidate + text[candidate_end:]
 
           hero_start = text.index('            spotlightCandidate?.let { candidate ->')
-          hero_end = text.index(
-              '\n            if (\n                showDeferredHomeSections && state.interfaceSettings.showNewReleases',
-              hero_start
-          )
+          hero_end = text.index('\n            if (\n                showDeferredHomeSections && state.interfaceSettings.showNewReleases', hero_start)
           hero = text[hero_start:hero_end]
-          hero = hero.replace(
-              'homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)',
-              'homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)'
-          )
-          hero = hero.replace(
-              'homeSoundtrackMatchesArtist(track, artist.name, artist.browseId)',
-              'homeSoundtrackMatchesArtist(track, artist.first, artist.second)'
-          )
+          hero = hero.replace('homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)', 'homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)')
+          hero = hero.replace('homeSoundtrackMatchesArtist(track, artist.name, artist.browseId)', 'homeSoundtrackMatchesArtist(track, artist.first, artist.second)')
           hero = hero.replace('heroPortraitArtist?.name', 'heroPortraitArtist?.first')
           hero = hero.replace('heroPortraitArtist?.thumbnailUrl', 'heroPortraitArtist?.third')
           hero = hero.replace('homeSoundtrackPrimaryArtist(artist.name)', 'homeSoundtrackPrimaryArtist(artist.first)')
           hero = hero.replace('}?.thumbnailUrl', '}?.third')
           hero = hero.replace('val soundtrackArtists = buildList {', 'val soundtrackArtists = buildList<String> {', 1)
           hero = hero.replace('?.let(::add)', '?.let { artist -> add(artist) }', 1)
-          hero = hero.replace(
-              'if (none { it.equals(artist, ignoreCase = true) }) add(artist)',
-              'if (none { existing -> existing.equals(artist, ignoreCase = true) }) {\n                            add(artist)\n                        }',
-              1
-          )
-          forbidden = (
-              'artist.name',
-              'artist.browseId',
-              'heroPortraitArtist?.name',
-              'heroPortraitArtist?.thumbnailUrl',
-              '?.let(::add)',
-              'val soundtrackArtists = buildList {'
-          )
+          hero = hero.replace('if (none { it.equals(artist, ignoreCase = true) }) add(artist)', 'if (none { existing -> existing.equals(artist, ignoreCase = true) }) {\n                            add(artist)\n                        }', 1)
+          forbidden = ('artist.name', 'artist.browseId', 'heroPortraitArtist?.name', 'heroPortraitArtist?.thumbnailUrl', '?.let(::add)', 'val soundtrackArtists = buildList {')
           if any(token in hero for token in forbidden):
               raise SystemExit('soundtrack hero normalization incomplete')
           text = text[:hero_start] + hero + text[hero_end:]
