@@ -6333,14 +6333,18 @@ private fun HomeScreen(
                         isCurrent = heroTrack.id == state.currentTrack?.id,
                         isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
                         isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
-                        animationsEnabled = state.animationsEnabled,
                         onPaletteChanged = { start, end ->
                             homeAccentStart = start
                             homeAccentEnd = end
                         },
                         onOpen = {
                             stableSpotlightId = heroTrack.id
-                            viewModel.playFrom(spotlightTracks, heroTrack)
+                            when {
+                                heroTrack.id != state.currentTrack?.id ->
+                                    viewModel.playFrom(spotlightTracks, heroTrack)
+                                state.isResolving -> Unit
+                                else -> viewModel.togglePlay()
+                            }
                         }
                     )
                 }
@@ -6704,33 +6708,6 @@ private fun HomeScreen(
     }
 }
 
-private fun homeSpotlightBadge(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
-    return when (candidate.kind) {
-        HomeSpotlightKind.ReleasedToday -> strings.releasedToday
-        HomeSpotlightKind.JustReleased -> strings.justReleased
-        HomeSpotlightKind.ChartTrending -> strings.chartTrending
-        HomeSpotlightKind.LevyraSelect -> strings.levyraSelection
-    }
-}
-
-private fun homeSpotlightDetail(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
-    val track = candidate.track
-    return when (candidate.kind) {
-        HomeSpotlightKind.ReleasedToday -> strings.availableToday
-        HomeSpotlightKind.JustReleased -> if (candidate.releaseAgeDays != null && candidate.releaseAgeDays <= 7) {
-            strings.releasedThisWeek
-        } else {
-            track.album
-                .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
-                ?: strings.newReleases
-        }
-        HomeSpotlightKind.ChartTrending -> strings.popularInCharts
-        HomeSpotlightKind.LevyraSelect -> track.album
-            .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
-            ?: strings.selectedForYou
-    }
-}
-
 private fun homeSoundtrackPrimaryArtist(rawArtist: String): String {
     var value = rawArtist.trim()
     if (value.isBlank()) return value
@@ -6757,15 +6734,6 @@ private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browse
     if (browseId.isNotBlank() && track.artistBrowseIds.any { it.equals(browseId, ignoreCase = true) }) return true
     val primary = homeSoundtrackPrimaryArtist(track.artist)
     return primary.equals(artistName.trim(), ignoreCase = true)
-}
-
-private fun homeSoundtrackArtistArtwork(track: Track, artists: List<ArtistHit>): String {
-    return artists
-        .asSequence()
-        .filter { it.thumbnailUrl.isNotBlank() }
-        .firstOrNull { homeSoundtrackMatchesArtist(track, it.name, it.browseId) }
-        ?.thumbnailUrl
-        .orEmpty()
 }
 
 private fun homeSoundtrackTitle(strings: LevyraStrings): String = when (strings.code.lowercase(Locale.ROOT)) {
@@ -6822,13 +6790,11 @@ private fun HomeEditorialSpotlight(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
-    animationsEnabled: Boolean,
     onPaletteChanged: (Color, Color) -> Unit,
     onOpen: () -> Unit
 ) {
     val track = candidate.track
     val strings = LocalLevyraStrings.current
-    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
     val context = LocalContext.current
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
@@ -7050,7 +7016,7 @@ private fun HomeEditorialSpotlight(
                 )
                 isCurrent && isPlaying -> Icon(
                     imageVector = Icons.Rounded.Pause,
-                    contentDescription = strings.playing,
+                    contentDescription = strings.pause,
                     tint = Color(0xFF07080C),
                     modifier = Modifier.size(29.dp)
                 )
