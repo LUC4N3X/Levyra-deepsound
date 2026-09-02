@@ -52,8 +52,8 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
         }
 
         val resolved = runCatching {
-            val token = anonymousAccessToken(now)
-            searchArtistPortrait(cleanName, token)
+            val bearer = anonymousAccessToken(now)
+            searchArtistPortrait(cleanName, bearer)
         }.getOrNull().orEmpty()
 
         if (resolved.isNotBlank()) {
@@ -109,13 +109,13 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
                     .header("User-Agent", WEB_USER_AGENT)
                     .build()
             )
-            val token = response.optString("accessToken").trim()
-            if (token.isBlank()) error("Spotify returned no anonymous access token")
+            val issuedAccessToken = response.optString("accessToken").trim()
+            if (issuedAccessToken.isBlank()) error("Spotify returned no anonymous access token")
             val expiresAt = response.optLong("accessTokenExpirationTimestampMs", 0L)
                 .takeIf { it > currentNow }
                 ?: (currentNow + DEFAULT_TOKEN_TTL_MS)
-            accessToken = AccessToken(token, expiresAt)
-            token
+            accessToken = AccessToken(issuedAccessToken, expiresAt)
+            issuedAccessToken
         }
     }
 
@@ -168,7 +168,7 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
         return (binary % 1_000_000).toString().padStart(6, '0')
     }
 
-    private fun searchArtistPortrait(artistName: String, token: String): String {
+    private fun searchArtistPortrait(artistName: String, bearer: String): String {
         val variables = JSONObject()
             .put("searchTerm", artistName)
             .put("offset", 0)
@@ -195,7 +195,7 @@ internal class SpotifyArtistArtworkRepository private constructor(context: Conte
             Request.Builder()
                 .url(GRAPHQL_URL)
                 .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-                .header("Authorization", "Bearer $token")
+                .header("Authorization", "Bearer $bearer")
                 .header("User-Agent", WEB_USER_AGENT)
                 .header("app-platform", "WebPlayer")
                 .header("Origin", "https://open.spotify.com")
