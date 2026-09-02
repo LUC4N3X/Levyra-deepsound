@@ -1,0 +1,78 @@
+name: PR 506 restore artist hero
+
+on:
+  push:
+    branches:
+      - feat/home-artist-hero-and-artist-page-2-5-2
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/home-artist-hero-and-artist-page-2-5-2
+          fetch-depth: 0
+      - name: Restore hero candidate fallback
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+          old = '''        spotlightCandidates.firstOrNull {
+            it.track.id == stableSpotlightId && hasArtistPortrait(it)
+        }
+            ?: spotlightCandidates.firstOrNull {
+                it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
+            }
+            ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+'''
+          new = '''        spotlightCandidates.firstOrNull {
+            it.track.id == stableSpotlightId && hasArtistPortrait(it)
+        }
+            ?: spotlightCandidates.firstOrNull {
+                it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
+            }
+            ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+            ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+            ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
+            ?: spotlightCandidates.firstOrNull()
+'''
+          if old not in text:
+              raise SystemExit('spotlight candidate block not found')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate focused source contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt').read_text(encoding='utf-8')
+          block = text[text.index('val spotlightCandidate = remember('):text.index('LaunchedEffect(spotlightDayKey', text.index('val spotlightCandidate = remember('))]
+          if '?: spotlightCandidates.firstOrNull()' not in block:
+              raise SystemExit('hero still can disappear when local portrait pool is empty')
+          spotlight = text[text.index('private fun HomeEditorialSpotlight('):text.index('\n@Composable', text.index('private fun HomeEditorialSpotlight(') + 1)]
+          if 'SpotifyArtistArtworkRepository.get(context)' not in spotlight:
+              raise SystemExit('Spotify artist portrait resolver is not wired')
+          if 'CoverImage(' in spotlight:
+              raise SystemExit('track-cover fallback returned to artist hero')
+          print('artist_hero_contract=ok')
+          PY
+      - name: Compile Android debug Kotlin
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
+      - name: Commit clean fix
+        shell: bash
+        run: |
+          rm .github/workflows/pr-506-restore-hero.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/pr-506-restore-hero.yml
+          git commit -m "fix: keep Home artist radio visible while Spotify portrait resolves"
+          git push origin HEAD:feat/home-artist-hero-and-artist-page-2-5-2
