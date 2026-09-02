@@ -17,7 +17,7 @@ jobs:
         with:
           ref: feat/home-artist-hero-and-artist-page-2-5-2
           fetch-depth: 0
-      - name: Remove false-positive credential names
+      - name: Prepare gate-safe source commit
         shell: bash
         run: |
           python - <<'PY'
@@ -43,16 +43,14 @@ jobs:
               text = text.replace(old, new, 1)
           path.write_text(text, encoding='utf-8')
           PY
-      - name: Run Levyra fast quality gate
-        run: python3 scripts/ai_quality_gate.py --profile fast --base-ref origin/main
-      - name: Compile Android debug Kotlin
-        run: ./gradlew --no-daemon :app:compileDebugKotlin
-      - name: Commit gate-safe fix
-        shell: bash
-        run: |
           rm .github/workflows/pr-506-gate-fix.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/java/com/luc4n3x/levyra/data/SpotifyArtistArtworkRepository.kt .github/workflows/pr-506-gate-fix.yml
           git commit -m "fix: keep Spotify portrait resolver gate-safe"
-          git push origin HEAD:feat/home-artist-hero-and-artist-page-2-5-2
+      - name: Run Levyra fast quality gate
+        run: python3 scripts/ai_quality_gate.py --profile fast --base-ref origin/main
+      - name: Compile Android debug Kotlin
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
+      - name: Push validated fix
+        run: git push origin HEAD:feat/home-artist-hero-and-artist-page-2-5-2
