@@ -6917,7 +6917,7 @@ private fun HomeEditorialSpotlight(
     val soundtrackTitle = homeSoundtrackTitle(strings)
     val soundtrackLead = homeSoundtrackLead(strings, soundtrackArtists)
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(520.dp)
