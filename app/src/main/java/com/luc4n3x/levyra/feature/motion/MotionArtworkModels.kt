@@ -74,9 +74,12 @@ object MotionArtworkIdentityKey {
         val normalizedTitle = normalizeMotionText(identity.title)
         val normalizedArtists = identity.artists.map(::normalizeMotionText).sorted().joinToString(",")
         val canonical = when {
-            identity.isrc.isNotBlank() -> "isrc:${identity.isrc}"
+            // Player/catalog provider IDs and enrichment metadata can change while the same recording
+            // is being resolved. Title + artists stay stable across those transitions and therefore
+            // make the UI request key identical for chart and non-chart playback paths.
             normalizedTitle.isNotBlank() && normalizedArtists.isNotBlank() ->
                 "recording:$normalizedTitle|$normalizedArtists"
+            identity.isrc.isNotBlank() -> "isrc:${identity.isrc}"
             identity.trackId.isNotBlank() -> "track:${identity.trackId}"
             identity.albumId.isNotBlank() && track.trackNumber > 0 ->
                 "album:${identity.albumId}:${track.discNumber.coerceAtLeast(1)}:${track.trackNumber}"
