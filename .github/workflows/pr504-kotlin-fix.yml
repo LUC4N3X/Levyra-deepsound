@@ -29,31 +29,21 @@ jobs:
 
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text(encoding='utf-8')
-          old = '''                val soundtrackArtists = buildList {
-                    heroPortraitArtist?.name
-                        ?.let(::homeSoundtrackPrimaryArtist)
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let(::add)
-                    baseSoundtrackArtists.forEach { artist ->
-                        if (none { it.equals(artist, ignoreCase = true) }) add(artist)
-                    }
-                }.take(3)
-          '''
-          new = '''                val soundtrackArtists = buildList<String> {
-                    heroPortraitArtist?.name
-                        ?.let(::homeSoundtrackPrimaryArtist)
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { artist -> add(artist) }
-                    baseSoundtrackArtists.forEach { artist ->
-                        if (none { existing -> existing.equals(artist, ignoreCase = true) }) {
-                            add(artist)
-                        }
-                    }
-                }.take(3)
-          '''
-          if old not in text:
-              raise SystemExit('soundtrack artist block not found')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          home_start = text.index('spotlightCandidate?.let { candidate ->')
+          block_start = text.index('val soundtrackArtists = buildList {', home_start)
+          block_end = text.index('val heroArtistArtworkUrl', block_start)
+          block = text[block_start:block_end]
+          block = block.replace('val soundtrackArtists = buildList {', 'val soundtrackArtists = buildList<String> {', 1)
+          block = block.replace('?.let(::add)', '?.let { artist -> add(artist) }', 1)
+          block = block.replace(
+              'if (none { it.equals(artist, ignoreCase = true) }) add(artist)',
+              'if (none { existing -> existing.equals(artist, ignoreCase = true) }) {\n                            add(artist)\n                        }',
+              1
+          )
+          if 'buildList<String>' not in block or '?.let(::add)' in block:
+              raise SystemExit('soundtrack artist block was not patched as expected')
+          text = text[:block_start] + block + text[block_end:]
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Setup Java
