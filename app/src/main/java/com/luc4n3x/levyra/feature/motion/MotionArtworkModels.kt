@@ -71,14 +71,18 @@ data class MotionArtworkMatch(
 object MotionArtworkIdentityKey {
     fun create(track: Track): String {
         val identity = MotionTrackIdentity.from(track)
+        val normalizedTitle = normalizeMotionText(identity.title)
+        val normalizedArtists = identity.artists.map(::normalizeMotionText).sorted().joinToString(",")
         val canonical = when {
             identity.isrc.isNotBlank() -> "isrc:${identity.isrc}"
+            normalizedTitle.isNotBlank() && normalizedArtists.isNotBlank() ->
+                "recording:$normalizedTitle|$normalizedArtists"
             identity.trackId.isNotBlank() -> "track:${identity.trackId}"
             identity.albumId.isNotBlank() && track.trackNumber > 0 ->
                 "album:${identity.albumId}:${track.discNumber.coerceAtLeast(1)}:${track.trackNumber}"
             else -> listOf(
-                normalizeMotionText(identity.title),
-                identity.artists.map(::normalizeMotionText).sorted().joinToString(","),
+                normalizedTitle,
+                normalizedArtists,
                 normalizeMotionText(identity.album),
                 (identity.durationMs / 1000L).toString()
             ).joinToString("|")
