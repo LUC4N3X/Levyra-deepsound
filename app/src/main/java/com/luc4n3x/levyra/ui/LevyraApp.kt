@@ -6164,7 +6164,8 @@ private fun HomeScreen(
                 }
             }
         }.distinctBy { artist ->
-            artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
+            val identity = artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
+            "$identity:${artist.third.trim()}"
         }
     }
     val spotlightCandidate = remember(
@@ -6326,37 +6327,30 @@ private fun HomeScreen(
             }
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
-                val baseSoundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
-                val heroPortraitArtist = soundtrackArtistPool.firstOrNull { artist ->
+                val matchingPortraits = soundtrackArtistPool.filter { artist ->
                     homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)
-                } ?: soundtrackArtistPool.firstOrNull { artist ->
-                    spotlightTracks.any { track ->
-                        homeSoundtrackMatchesArtist(track, artist.first, artist.second)
-                    }
-                } ?: soundtrackArtistPool.firstOrNull()
-                val soundtrackArtists = buildList<String> {
-                    heroPortraitArtist?.first
-                        ?.let(::homeSoundtrackPrimaryArtist)
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { artist -> add(artist) }
-                    baseSoundtrackArtists.forEach { artist ->
-                        if (none { existing -> existing.equals(artist, ignoreCase = true) }) {
-                            add(artist)
-                        }
-                    }
-                }.take(3)
-                val heroArtistArtworkUrl = heroPortraitArtist?.third.orEmpty()
-                    .ifBlank {
-                        soundtrackArtists.asSequence()
-                            .mapNotNull { artistName ->
-                                soundtrackArtistPool.firstOrNull { artist ->
-                                    homeSoundtrackPrimaryArtist(artist.first)
-                                        .equals(artistName, ignoreCase = true)
-                                }?.third
-                            }
-                            .firstOrNull()
-                            .orEmpty()
-                    }
+                }
+                val portraitRotationSeed = "$spotlightDayKey:${state.languageCode}:${heroTrack.id}"
+                    .hashCode()
+                    .let { hash -> if (hash == Int.MIN_VALUE) 0 else kotlin.math.abs(hash) }
+                val heroPortraitArtist = matchingPortraits
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { portraits -> portraits[portraitRotationSeed % portraits.size] }
+                val heroArtistName = heroPortraitArtist?.first
+                    ?.let(::homeSoundtrackPrimaryArtist)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: homeSoundtrackPrimaryArtist(heroTrack.artist).takeIf { it.isNotBlank() }
+                val soundtrackArtists = listOfNotNull(heroArtistName)
+                val heroSpotifyArtworkUrl = sequenceOf(
+                    heroTrack.largeThumbnailUrl,
+                    heroTrack.thumbnailUrl
+                )
+                    .map(String::trim)
+                    .firstOrNull { url -> url.contains("i.scdn.co/", ignoreCase = true) }
+                    .orEmpty()
+                val heroArtistArtworkUrl = heroSpotifyArtworkUrl
+                    .ifBlank { heroPortraitArtist?.third.orEmpty() }
+                    .let(::highResolutionPlayerArtworkUrl)
                 item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
                     HomeEditorialSpotlight(
                         candidate = candidate,
@@ -6822,39 +6816,22 @@ private fun homeSoundtrackTitle(strings: LevyraStrings): String = when (strings.
 }
 
 private fun homeSoundtrackLead(strings: LevyraStrings, artists: List<String>): String {
-    val cleaned = artists.map(String::trim).filter(String::isNotBlank).take(3)
-    val joined = when (cleaned.size) {
-        0 -> return when (strings.code.lowercase(Locale.ROOT)) {
-            "it" -> "La musica scelta per te"
-            "es" -> "Música elegida para ti"
-            "fr" -> "De la musique choisie pour vous"
-            "de" -> "Musik, die für dich ausgewählt wurde"
-            "pt" -> "Música escolhida para você"
-            else -> "Music picked for you"
-        }
-        1 -> cleaned[0]
-        2 -> when (strings.code.lowercase(Locale.ROOT)) {
-            "it", "pt" -> "${cleaned[0]} e ${cleaned[1]}"
-            "es" -> "${cleaned[0]} y ${cleaned[1]}"
-            "fr" -> "${cleaned[0]} et ${cleaned[1]}"
-            "de" -> "${cleaned[0]} und ${cleaned[1]}"
-            else -> "${cleaned[0]} and ${cleaned[1]}"
-        }
-        else -> when (strings.code.lowercase(Locale.ROOT)) {
-            "it", "pt" -> "${cleaned[0]}, ${cleaned[1]} e ${cleaned[2]}"
-            "es" -> "${cleaned[0]}, ${cleaned[1]} y ${cleaned[2]}"
-            "fr" -> "${cleaned[0]}, ${cleaned[1]} et ${cleaned[2]}"
-            "de" -> "${cleaned[0]}, ${cleaned[1]} und ${cleaned[2]}"
-            else -> "${cleaned[0]}, ${cleaned[1]} and ${cleaned[2]}"
-        }
-    }
+    val artist = artists.asSequence()
+        .map(String::trim)
+        .firstOrNull { it.isNotBlank() }
     return when (strings.code.lowercase(Locale.ROOT)) {
-        "it" -> "Inizia con $joined"
-        "es" -> "Empieza con $joined"
-        "fr" -> "Commence avec $joined"
-        "de" -> "Startet mit $joined"
-        "pt" -> "Começa com $joined"
-        else -> "Starts with $joined"
+        "it" -> artist?.let { "$it al centro. Levyra segue il filo dei tuoi ascolti." }
+            ?: "Levyra segue il filo dei tuoi ascolti e costruisce la radio intorno a te."
+        "es" -> artist?.let { "$it en el centro. Levyra sigue el hilo de lo que escuchas." }
+            ?: "Levyra sigue el hilo de lo que escuchas y construye la radio a tu alrededor."
+        "fr" -> artist?.let { "$it au centre. Levyra suit le fil de tes écoutes." }
+            ?: "Levyra suit le fil de tes écoutes et construit la radio autour de toi."
+        "de" -> artist?.let { "$it im Mittelpunkt. Levyra folgt dem roten Faden deiner Hörgewohnheiten." }
+            ?: "Levyra folgt deinen Hörgewohnheiten und baut die Radioauswahl um dich herum."
+        "pt" -> artist?.let { "$it no centro. Levyra segue o fio do que você ouve." }
+            ?: "Levyra segue o fio do que você ouve e monta a rádio ao seu redor."
+        else -> artist?.let { "$it at the center. Levyra follows the thread of your listening." }
+            ?: "Levyra follows the thread of your listening and builds the radio around you."
     }
 }
 
@@ -8401,7 +8378,7 @@ private fun PersonalListeningCard(
         CoverImage(
             track = track,
             modifier = Modifier.fillMaxSize(),
-            highRes = false,
+            highRes = true,
             alignment = LevyraWideArtworkAlignment
         )
         Box(
