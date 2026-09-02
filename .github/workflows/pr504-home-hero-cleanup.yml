@@ -1,0 +1,42 @@
+name: PR504 Home Hero Cleanup
+
+on:
+  push:
+    branches:
+      - feat/amazon-inspired-explore-cards
+    paths:
+      - .github/workflows/pr504-home-hero-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/amazon-inspired-explore-cards
+          fetch-depth: 0
+      - name: Remove unnecessary color composition dependency
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          old = '''            color = accentStart
+                .copy(alpha = 0.98f)
+                .compositeOver(Color.White.copy(alpha = 0.08f)),'''
+          new = '''            color = accentStart.copy(alpha = 0.98f),'''
+          if old not in text:
+              raise SystemExit("Expected spotlight badge color block not found")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+      - name: Commit cleanup and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/pr504-home-hero-cleanup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/pr504-home-hero-cleanup.yml
+          git commit -m "fix(home): keep spotlight badge color self-contained"
+          git push origin HEAD:feat/amazon-inspired-explore-cards
