@@ -23,6 +23,17 @@ class LevyraVideoArtworkFallbackTest {
     }
 
     @Test
+    fun `video url also provides high resolution hero artwork`() {
+        val track = testTrack(id = "catalog-entry", counterpartVideoId = "").copy(
+            videoUrl = "https://music.youtube.com/watch?v=AbCdEfGhI12"
+        )
+        assertEquals(
+            "https://i.ytimg.com/vi/AbCdEfGhI12/maxresdefault.jpg",
+            LevyraPersonalOrbit.youtubeHeroArtwork(track)
+        )
+    }
+
+    @Test
     fun `orbit upgrades video frame hero while retaining a reliable row thumbnail`() {
         val track = testTrack(id = "catalog-entry", counterpartVideoId = "AbCdEfGhI12").copy(
             thumbnailUrl = "https://i.ytimg.com/vi/AbCdEfGhI12/hqdefault.jpg",
