@@ -1,0 +1,40 @@
+name: PR504 Home Hero Cleanup 2
+
+on:
+  push:
+    branches:
+      - feat/amazon-inspired-explore-cards
+    paths:
+      - .github/workflows/pr504-home-hero-cleanup2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/amazon-inspired-explore-cards
+          fetch-depth: 0
+      - name: Finalize spotlight badge color
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          needle = ".compositeOver(Color.White.copy(alpha = 0.08f))"
+          if needle not in text:
+              raise SystemExit("Expected compositeOver call not found")
+          path.write_text(text.replace(needle, "", 1), encoding="utf-8")
+      - name: Commit cleanup and remove temporary workflows
+        shell: bash
+        run: |
+          rm -f .github/workflows/pr504-home-hero-cleanup.yml
+          rm -f .github/workflows/pr504-home-hero-cleanup2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/pr504-home-hero-cleanup.yml .github/workflows/pr504-home-hero-cleanup2.yml
+          git commit -m "fix(home): finalize immersive spotlight styling"
+          git push origin HEAD:feat/amazon-inspired-explore-cards
