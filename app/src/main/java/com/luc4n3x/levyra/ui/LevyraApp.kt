@@ -6075,11 +6075,20 @@ private fun HomeScreen(
         state.homeArtists,
         state.similarArtists
     ) {
-        (state.followedArtists + state.homeArtists + state.similarArtists)
-            .filter { it.thumbnailUrl.isNotBlank() }
-            .distinctBy { artist ->
-                artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }
+        buildList<Triple<String, String, String>> {
+            state.followedArtists.forEach { artist ->
+                if (artist.thumbnailUrl.isNotBlank()) {
+                    add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+                }
             }
+            (state.homeArtists + state.similarArtists).forEach { artist ->
+                if (artist.thumbnailUrl.isNotBlank()) {
+                    add(Triple(artist.name, artist.browseId, artist.thumbnailUrl))
+                }
+            }
+        }.distinctBy { artist ->
+            artist.second.ifBlank { artist.first.trim().lowercase(Locale.ROOT) }
+        }
     }
     val spotlightCandidate = remember(
         spotlightCandidates,
@@ -6089,7 +6098,7 @@ private fun HomeScreen(
     ) {
         fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
             return soundtrackArtistPool.any { artist ->
-                homeSoundtrackMatchesArtist(candidate.track, artist.name, artist.browseId)
+                homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second)
             }
         }
         spotlightCandidates.firstOrNull {
@@ -6287,29 +6296,31 @@ private fun HomeScreen(
                 val heroTrack = candidate.track
                 val baseSoundtrackArtists = homeSoundtrackArtists(spotlightTracks, heroTrack)
                 val heroPortraitArtist = soundtrackArtistPool.firstOrNull { artist ->
-                    homeSoundtrackMatchesArtist(heroTrack, artist.name, artist.browseId)
+                    homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)
                 } ?: soundtrackArtistPool.firstOrNull { artist ->
                     spotlightTracks.any { track ->
-                        homeSoundtrackMatchesArtist(track, artist.name, artist.browseId)
+                        homeSoundtrackMatchesArtist(track, artist.first, artist.second)
                     }
                 }
-                val soundtrackArtists = buildList {
-                    heroPortraitArtist?.name
+                val soundtrackArtists = buildList<String> {
+                    heroPortraitArtist?.first
                         ?.let(::homeSoundtrackPrimaryArtist)
                         ?.takeIf { it.isNotBlank() }
-                        ?.let(::add)
+                        ?.let { artist -> add(artist) }
                     baseSoundtrackArtists.forEach { artist ->
-                        if (none { it.equals(artist, ignoreCase = true) }) add(artist)
+                        if (none { existing -> existing.equals(artist, ignoreCase = true) }) {
+                            add(artist)
+                        }
                     }
                 }.take(3)
-                val heroArtistArtworkUrl = heroPortraitArtist?.thumbnailUrl.orEmpty()
+                val heroArtistArtworkUrl = heroPortraitArtist?.third.orEmpty()
                     .ifBlank {
                         soundtrackArtists.asSequence()
                             .mapNotNull { artistName ->
                                 soundtrackArtistPool.firstOrNull { artist ->
-                                    homeSoundtrackPrimaryArtist(artist.name)
+                                    homeSoundtrackPrimaryArtist(artist.first)
                                         .equals(artistName, ignoreCase = true)
-                                }?.thumbnailUrl
+                                }?.third
                             }
                             .firstOrNull()
                             .orEmpty()
