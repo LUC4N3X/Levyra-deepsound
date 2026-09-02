@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -142,6 +143,13 @@ internal fun ExploreCollectionDestinationScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                item(key = "explore-collection-hero") {
+                    ExploreCollectionHero(
+                        title = title,
+                        subtitle = subtitle,
+                        leadTrack = tracks.first()
+                    )
+                }
                 items(tracks, key = { track -> "explore-destination-track-${track.id}" }) { track ->
                     ExploreDestinationTrackRow(
                         track = track,
@@ -150,6 +158,90 @@ internal fun ExploreCollectionDestinationScreen(
                         onClick = { onPlayTrack(track) }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreCollectionHero(
+    title: String,
+    subtitle: String?,
+    leadTrack: Track
+) {
+    val accentStart = Color(leadTrack.accentStart)
+    val accentEnd = Color(leadTrack.accentEnd)
+    val artwork = leadTrack.largeThumbnailUrl.ifBlank { leadTrack.thumbnailUrl }
+    val shape = RoundedCornerShape(24.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(188.dp)
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), shape)
+    ) {
+        if (artwork.isNotBlank()) {
+            AsyncImage(
+                model = artwork,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(184.dp)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            accentStart.copy(alpha = 0.98f),
+                            accentStart.copy(alpha = 0.90f),
+                            accentEnd.copy(alpha = 0.28f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, LevyraBlack.copy(alpha = 0.48f))
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(0.72f)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 26.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(26.sp),
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            subtitle?.takeIf(String::isNotBlank)?.let { detail ->
+                Text(
+                    text = detail,
+                    color = Color.White.copy(alpha = 0.78f),
+                    fontSize = 12.5.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -464,31 +556,59 @@ private fun ExploreDestinationMoodCard(
 ) {
     val start = Color(zone.accentStart)
     val end = Color(zone.accentEnd)
-    val shape = RoundedCornerShape(10.dp)
-    Row(
+    val shape = RoundedCornerShape(18.dp)
+    Box(
         modifier = modifier
-            .heightIn(min = 68.dp)
+            .height(108.dp)
             .clip(shape)
-            .background(LevyraPanel.copy(alpha = 0.80f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)), shape)
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        start.copy(alpha = 0.98f),
+                        end.copy(alpha = 0.88f),
+                        LevyraPanel.copy(alpha = 0.94f)
+                    )
+                )
+            )
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), shape)
+            .semantics { role = Role.Button }
+            .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
-                .fillMaxHeight()
-                .width(7.dp)
-                .background(Brush.verticalGradient(listOf(start, end)))
+                .align(Alignment.CenterEnd)
+                .padding(10.dp)
+                .size(70.dp)
+                .background(Color.Black.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = zone.emoji,
+                fontSize = 34.sp,
+                lineHeight = 38.sp
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Black.copy(alpha = 0.18f), Color.Transparent)
+                    )
+                )
         )
         Text(
             text = zone.label,
-            color = LevyraText,
-            fontSize = 14.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
-            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontSize = 16.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
+            fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 12.dp)
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(0.72f)
+                .padding(14.dp)
         )
     }
 }
