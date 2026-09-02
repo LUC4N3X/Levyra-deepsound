@@ -6188,6 +6188,9 @@ private fun HomeScreen(
                 it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
             }
             ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
+            ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+            ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
+            ?: spotlightCandidates.firstOrNull()
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
         if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
