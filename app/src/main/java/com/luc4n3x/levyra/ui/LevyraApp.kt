@@ -6862,7 +6862,7 @@ private fun HomeEditorialSpotlight(
             text = badge.uppercase(Locale.ROOT),
             color = accentStart
                 .copy(alpha = 0.98f)
-                .compositeOver(Color.White.copy(alpha = 0.08f)),
+                ,
             fontSize = 11.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
             fontWeight = FontWeight.Black,
