@@ -76,7 +76,7 @@ object MotionArtworkIdentityKey {
         val canonical = when {
             // Provider IDs can change while the same recording is being resolved. Keep the
             // provider-independent title/artist signature, but preserve ISRC when available so
-            // distinct recordings with identical visible metadata never share positive/negative cache entries.
+            // distinct recordings with identical visible metadata do not share positive/negative cache entries.
             normalizedTitle.isNotBlank() && normalizedArtists.isNotBlank() && identity.isrc.isNotBlank() ->
                 "recording:$normalizedTitle|$normalizedArtists|isrc:${identity.isrc}"
             normalizedTitle.isNotBlank() && normalizedArtists.isNotBlank() ->
