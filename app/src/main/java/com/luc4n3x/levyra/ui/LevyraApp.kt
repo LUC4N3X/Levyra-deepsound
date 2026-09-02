@@ -6176,7 +6176,8 @@ private fun HomeScreen(
     ) {
         fun hasArtistPortrait(candidate: HomeSpotlightCandidate): Boolean {
             return soundtrackArtistPool.any { artist ->
-                homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second)
+                homeSoundtrackMatchesArtist(candidate.track, artist.first, artist.second) &&
+                    homeArtistPortraitUrlEligible(artist.third)
             }
         }
         spotlightCandidates.firstOrNull {
@@ -6186,9 +6187,6 @@ private fun HomeScreen(
                 it.track.id != state.currentTrack?.id && hasArtistPortrait(it)
             }
             ?: spotlightCandidates.firstOrNull(::hasArtistPortrait)
-            ?: spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
-            ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
-            ?: spotlightCandidates.firstOrNull()
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
         if (spotlightCandidate != null && stableSpotlightId != spotlightCandidate.track.id) {
@@ -6328,12 +6326,23 @@ private fun HomeScreen(
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
                 val matchingPortraits = soundtrackArtistPool.filter { artist ->
-                    homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second)
+                    homeSoundtrackMatchesArtist(heroTrack, artist.first, artist.second) &&
+                        homeArtistPortraitUrlEligible(artist.third)
                 }
+                val preferredSourceRank = matchingPortraits.minOfOrNull { artist ->
+                    homeArtistPortraitSourceRank(artist.third)
+                }
+                val preferredPortraits = preferredSourceRank
+                    ?.let { rank ->
+                        matchingPortraits.filter { artist ->
+                            homeArtistPortraitSourceRank(artist.third) == rank
+                        }
+                    }
+                    .orEmpty()
                 val portraitRotationSeed = "$spotlightDayKey:${state.languageCode}:${heroTrack.id}"
                     .hashCode()
                     .let { hash -> if (hash == Int.MIN_VALUE) 0 else kotlin.math.abs(hash) }
-                val heroPortraitArtist = matchingPortraits
+                val heroPortraitArtist = preferredPortraits
                     .takeIf { it.isNotEmpty() }
                     ?.let { portraits -> portraits[portraitRotationSeed % portraits.size] }
                 val heroArtistName = heroPortraitArtist?.first
@@ -6341,16 +6350,10 @@ private fun HomeScreen(
                     ?.takeIf { it.isNotBlank() }
                     ?: homeSoundtrackPrimaryArtist(heroTrack.artist).takeIf { it.isNotBlank() }
                 val soundtrackArtists = listOfNotNull(heroArtistName)
-                val heroSpotifyArtworkUrl = sequenceOf(
-                    heroTrack.largeThumbnailUrl,
-                    heroTrack.thumbnailUrl
-                )
-                    .map(String::trim)
-                    .firstOrNull { url -> url.contains("i.scdn.co/", ignoreCase = true) }
+                val heroArtistArtworkUrl = heroPortraitArtist?.third
                     .orEmpty()
-                val heroArtistArtworkUrl = heroSpotifyArtworkUrl
-                    .ifBlank { heroPortraitArtist?.third.orEmpty() }
-                    .let(::highResolutionPlayerArtworkUrl)
+                    .trim()
+                    .let(::highResolutionHomeArtistArtworkUrl)
                 item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
                     HomeEditorialSpotlight(
                         candidate = candidate,
@@ -6799,6 +6802,35 @@ private fun homeSoundtrackArtists(tracks: List<Track>, heroTrack: Track): List<S
         .toList()
 }
 
+private fun homeArtistPortraitUrlEligible(url: String): Boolean {
+    val clean = url.trim()
+    if (!clean.startsWith("https://", ignoreCase = true)) return false
+    if (LevyraPersonalOrbit.isVideoFrameArtworkUrl(clean)) return false
+    val lower = clean.lowercase(Locale.ROOT)
+    if (lower.contains("i.scdn.co/")) {
+        return lower.contains("ab676161")
+    }
+    return true
+}
+
+private fun homeArtistPortraitSourceRank(url: String): Int {
+    val lower = url.trim().lowercase(Locale.ROOT)
+    return when {
+        lower.contains("i.scdn.co/") && lower.contains("ab676161") -> 0
+        lower.contains("mzstatic.com/") -> 1
+        lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") -> 2
+        else -> 3
+    }
+}
+
+private fun highResolutionHomeArtistArtworkUrl(url: String): String {
+    val upgraded = highResolutionPlayerArtworkUrl(url)
+    if (!upgraded.contains("i.scdn.co/", ignoreCase = true)) return upgraded
+    return upgraded
+        .replace("ab67616100005174", "ab6761610000e5eb", ignoreCase = true)
+        .replace("ab6761610000f178", "ab6761610000e5eb", ignoreCase = true)
+}
+
 private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browseId: String): Boolean {
     if (artistName.isBlank()) return false
     if (browseId.isNotBlank() && track.artistBrowseIds.any { it.equals(browseId, ignoreCase = true) }) return true
@@ -6953,18 +6985,6 @@ private fun HomeEditorialSpotlight(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             highRes = true
-        )
-    } else {
-        CoverImage(
-            track = track,
-            modifier = Modifier.fillMaxSize(),
-            highRes = true,
-            zoom = 1f,
-            onImageLoaded = { image ->
-                if (!paletteExtractionStarted && loadedArtworkBitmap == null) {
-                    loadedArtworkBitmap = image.toBitmap()
-                }
-            }
         )
     }
 
