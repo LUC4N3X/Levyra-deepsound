@@ -315,10 +315,17 @@ object LevyraArtworkCache {
     }
 
     internal fun artworkUrlCandidates(track: Track, highRes: Boolean): List<String> {
-        val ordered = if (highRes) {
-            sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl, LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty())
-        } else {
-            sequenceOf(track.thumbnailUrl, track.largeThumbnailUrl, LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty())
+        val ordered = when {
+            highRes -> sequenceOf(
+                track.largeThumbnailUrl,
+                track.thumbnailUrl,
+                LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty()
+            )
+            else -> sequenceOf(
+                track.thumbnailUrl,
+                track.largeThumbnailUrl,
+                LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty()
+            )
         }
         return ordered
             .map { it.trim() }
