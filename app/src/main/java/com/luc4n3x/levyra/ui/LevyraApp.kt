@@ -6774,201 +6774,194 @@ private fun HomeEditorialSpotlight(
     val detail = homeSpotlightDetail(strings, candidate)
 
     BoxWithConstraints(
+    modifier = Modifier
+        .fillMaxWidth()
+        .height(276.dp)
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clip(LevyraHomeDesign.HeroShape)
+        .background(Color(0xFF050609))
+        .border(
+            Dp.Hairline,
+            Color.White.copy(alpha = 0.11f),
+            LevyraHomeDesign.HeroShape
+        )
+        .clickable(
+            interactionSource = interaction,
+            indication = null,
+            onClick = onOpen
+        )
+) {
+    CoverImage(
+        track = track,
+        modifier = Modifier.fillMaxSize(),
+        highRes = true,
+        zoom = 1f,
+        onImageLoaded = { image ->
+            if (!paletteExtractionStarted && loadedArtworkBitmap == null) {
+                loadedArtworkBitmap = image.toBitmap()
+            }
+        }
+    )
+
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = LevyraHomeDesign.HeroHeight)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(LevyraHomeDesign.HeroShape)
-            .background(Color(0xFF07080C))
-            .border(
-                Dp.Hairline,
-                Color.White.copy(alpha = 0.10f),
-                LevyraHomeDesign.HeroShape
-            )
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onOpen
-            )
-    ) {
-        val artworkWidth = maxWidth * 0.58f
-        CoverImage(
-            track = track,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(artworkWidth),
-            highRes = true,
-            zoom = 1.035f,
-            onImageLoaded = { image ->
-                if (!paletteExtractionStarted && loadedArtworkBitmap == null) {
-                    loadedArtworkBitmap = image.toBitmap()
-                }
-            }
-        )
-
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0f to Color(0xFF07080C),
-                            0.34f to Color(0xFF07080C).copy(alpha = 0.98f),
-                            0.58f to Color(0xFF07080C).copy(alpha = 0.52f),
-                            1f to Color.Transparent
-                        )
+            .matchParentSize()
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Black.copy(alpha = 0.10f),
+                        0.28f to Color.Black.copy(alpha = 0.04f),
+                        0.58f to Color.Black.copy(alpha = 0.28f),
+                        0.78f to Color.Black.copy(alpha = 0.68f),
+                        1f to Color.Black.copy(alpha = 0.94f)
                     )
                 )
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0f to accentStart.copy(alpha = 0.16f),
-                            0.46f to Color.Transparent,
-                            1f to Color.Black.copy(alpha = 0.72f)
-                        )
+            )
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(
+                Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Black.copy(alpha = 0.50f),
+                        0.42f to Color.Black.copy(alpha = 0.16f),
+                        0.78f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.10f)
                     )
                 )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = (-60).dp, y = (-70).dp)
-                .size(240.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            accentStart.copy(alpha = 0.24f),
-                            accentEnd.copy(alpha = 0.08f),
-                            Color.Transparent
-                        )
+            )
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        accentStart.copy(alpha = 0.18f),
+                        accentEnd.copy(alpha = 0.07f),
+                        Color.Transparent
                     ),
-                    CircleShape
+                    center = Offset(0f, 0f),
+                    radius = 620f
                 )
+            )
+    )
+
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .fillMaxWidth(0.78f)
+            .padding(start = 22.dp, end = 10.dp, bottom = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = badge.uppercase(Locale.ROOT),
+            color = accentStart
+                .copy(alpha = 0.98f)
+                .compositeOver(Color.White.copy(alpha = 0.08f)),
+            fontSize = 11.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(11.sp),
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.45.sp,
+            maxLines = 1
         )
+        Text(
+            text = track.title,
+            color = Color.White,
+            fontSize = 31.sp,
+            lineHeight = 34.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-1.05).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            color = Color.White.copy(alpha = 0.92f),
+            fontSize = 16.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(16.5.sp),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = detail,
+            color = Color.White.copy(alpha = 0.68f),
+            fontSize = 13.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .width(maxWidth * 0.70f)
-                .padding(horizontal = 22.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = badge.uppercase(Locale.ROOT),
-                color = accentStart.copy(alpha = 0.95f),
-                fontSize = 10.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(10.5.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.4.sp,
-                maxLines = 1
-            )
-            Text(
-                text = track.title,
-                color = Color.White,
-                fontSize = 24.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(24.sp),
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-0.85).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = Color.White.copy(alpha = 0.88f),
-                fontSize = 14.5.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = detail,
-                color = Color.White.copy(alpha = 0.58f),
-                fontSize = 12.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(Color.White, CircleShape)
-                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        isResolving -> CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.4.dp,
-                            color = accentStart
-                        )
-                        isCurrent && isPlaying -> Icon(
-                            imageVector = Icons.Rounded.Pause,
-                            contentDescription = null,
-                            tint = Color(0xFF08090D),
-                            modifier = Modifier.size(26.dp)
-                        )
-                        else -> Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            tint = Color(0xFF08090D),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = if (isCurrent && isPlaying) strings.playing else strings.playNow,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    if (isCurrent) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            if (isPlaying) {
-                                ActiveTrackEqualizer(
-                                    color = accentStart,
-                                    isPlaying = true,
-                                    width = 12.dp,
-                                    height = 8.dp
-                                )
-                            }
-                            Text(
-                                text = strings.activeIndicator,
-                                color = Color.White.copy(alpha = 0.56f),
-                                fontSize = 10.sp,
-                                lineHeight = LevyraTypeRhythm.lineHeight(10.sp),
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
+    Surface(
+        color = Color.White,
+        shape = CircleShape,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.42f)),
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(end = 18.dp, bottom = 20.dp)
+            .size(60.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.5.dp,
+                    color = accentStart
+                )
+                isCurrent && isPlaying -> Icon(
+                    imageVector = Icons.Rounded.Pause,
+                    contentDescription = strings.playing,
+                    tint = Color(0xFF07080C),
+                    modifier = Modifier.size(29.dp)
+                )
+                else -> Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = strings.playNow,
+                    tint = Color(0xFF07080C),
+                    modifier = Modifier.size(32.dp)
+                )
             }
         }
     }
+
+    if (isCurrent && isPlaying) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.48f),
+            shape = CircleShape,
+            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.14f)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ActiveTrackEqualizer(
+                    color = accentStart,
+                    isPlaying = true,
+                    width = 13.dp,
+                    height = 9.dp
+                )
+                Text(
+                    text = strings.playing,
+                    color = Color.White.copy(alpha = 0.90f),
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
 }
 
 private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditorialCollection): String {
