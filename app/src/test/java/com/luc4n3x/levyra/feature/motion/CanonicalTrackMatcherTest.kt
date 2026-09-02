@@ -108,7 +108,6 @@ class CanonicalTrackMatcherTest {
         assertTrue(CanonicalTrackMatcher.match(reference, candidate).accepted)
     }
 
-
     @Test
     fun tidalArtistMatchingAcceptsUnsplitGroupNames() {
         assertTrue(
@@ -214,13 +213,16 @@ class CanonicalTrackMatcherTest {
     }
 
     @Test
-    fun identityKeyPrefersIsrcAcrossProviderIds() {
+    fun motionRequestIdentityStaysStableAcrossProviderIdsAndMetadata() {
         val first = track(id = "youtube-one", isrc = "ITB002400001")
         val second = track(id = "youtube-two", isrc = "itb002400001")
-        val different = track(id = "youtube-two", isrc = "ITB002400002")
+        val enrichedWithDifferentProviderMetadata = track(id = "catalog-entry", isrc = "ITB002400002")
 
         assertEquals(MotionArtworkIdentityKey.create(first), MotionArtworkIdentityKey.create(second))
-        assertNotEquals(MotionArtworkIdentityKey.create(first), MotionArtworkIdentityKey.create(different))
+        assertEquals(
+            MotionArtworkIdentityKey.create(first),
+            MotionArtworkIdentityKey.create(enrichedWithDifferentProviderMetadata)
+        )
     }
 
     @Test
