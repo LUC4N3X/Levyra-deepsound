@@ -315,11 +315,8 @@ object LevyraArtworkCache {
     }
 
     internal fun artworkUrlCandidates(track: Track, highRes: Boolean): List<String> {
-        val largeIsWidescreenVideoFrame = track.largeThumbnailUrl
-            .trim()
-            .contains("maxresdefault", ignoreCase = true)
         val ordered = when {
-            highRes || largeIsWidescreenVideoFrame -> sequenceOf(
+            highRes -> sequenceOf(
                 track.largeThumbnailUrl,
                 track.thumbnailUrl,
                 LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty()

@@ -6741,13 +6741,15 @@ private fun homeSoundtrackLead(strings: LevyraStrings, artists: List<String>): S
         }
         1 -> cleaned[0]
         2 -> when (strings.code.lowercase(Locale.ROOT)) {
-            "it", "es", "pt" -> "${cleaned[0]} e ${cleaned[1]}"
+            "it", "pt" -> "${cleaned[0]} e ${cleaned[1]}"
+            "es" -> "${cleaned[0]} y ${cleaned[1]}"
             "fr" -> "${cleaned[0]} et ${cleaned[1]}"
             "de" -> "${cleaned[0]} und ${cleaned[1]}"
             else -> "${cleaned[0]} and ${cleaned[1]}"
         }
         else -> when (strings.code.lowercase(Locale.ROOT)) {
-            "it", "es", "pt" -> "${cleaned[0]}, ${cleaned[1]} e ${cleaned[2]}"
+            "it", "pt" -> "${cleaned[0]}, ${cleaned[1]} e ${cleaned[2]}"
+            "es" -> "${cleaned[0]}, ${cleaned[1]} y ${cleaned[2]}"
             "fr" -> "${cleaned[0]}, ${cleaned[1]} et ${cleaned[2]}"
             "de" -> "${cleaned[0]}, ${cleaned[1]} und ${cleaned[2]}"
             else -> "${cleaned[0]}, ${cleaned[1]} and ${cleaned[2]}"
