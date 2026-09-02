@@ -357,6 +357,7 @@ import com.luc4n3x.levyra.data.HomeSectionLayoutPolicy
 import com.luc4n3x.levyra.data.HomeSectionPresentation
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
+import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf
 import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
@@ -6882,6 +6883,22 @@ private fun HomeEditorialSpotlight(
     val strings = LocalLevyraStrings.current
     val interaction = remember { MutableInteractionSource() }
     val context = LocalContext.current
+    val heroArtistName = soundtrackArtists.firstOrNull().orEmpty().trim()
+    val spotifyArtistArtworkRepository = remember(context) {
+        SpotifyArtistArtworkRepository.get(context)
+    }
+    var resolvedArtistArtworkUrl by remember(heroArtistName, artistArtworkUrl) {
+        mutableStateOf(artistArtworkUrl)
+    }
+    LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository) {
+        resolvedArtistArtworkUrl = artistArtworkUrl
+        if (heroArtistName.isNotBlank()) {
+            val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+            if (spotifyPortrait.isNotBlank()) {
+                resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
+            }
+        }
+    }
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
     }
@@ -6978,9 +6995,9 @@ private fun HomeEditorialSpotlight(
                 onClick = onOpen
             )
     ) {
-    if (artistArtworkUrl.isNotBlank()) {
+    if (resolvedArtistArtworkUrl.isNotBlank()) {
         StableRemoteArtwork(
-            url = artistArtworkUrl,
+            url = resolvedArtistArtworkUrl,
             contentDescription = soundtrackTitle,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
@@ -7048,7 +7065,7 @@ private fun HomeEditorialSpotlight(
         ) {
             Row(
                 modifier = Modifier.padding(
-                    start = if (artistArtworkUrl.isNotBlank()) 4.dp else 12.dp,
+                    start = if (resolvedArtistArtworkUrl.isNotBlank()) 4.dp else 12.dp,
                     end = 12.dp,
                     top = 4.dp,
                     bottom = 4.dp
@@ -7056,9 +7073,9 @@ private fun HomeEditorialSpotlight(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (artistArtworkUrl.isNotBlank()) {
+                if (resolvedArtistArtworkUrl.isNotBlank()) {
                     StableRemoteArtwork(
-                        url = artistArtworkUrl,
+                        url = resolvedArtistArtworkUrl,
                         contentDescription = "",
                         modifier = Modifier
                             .size(24.dp)
