@@ -330,6 +330,7 @@
     "6567edc1": { "sig": "oP(47,1312,INPUT)", "nClass": "MK", "sts": 20693, "aliases": ["a79e0401"] },
     "55da8b08": { "sig": "oP(47,1312,INPUT)", "nClass": "MK", "sts": 20693, "aliases": ["5fd9d177"] },
     "9c9b2502": { "sig": "oP(47,1312,INPUT)", "nClass": "MK", "sts": 20693, "aliases": ["53476198"] },
-    "20382113": { "sig": "oP(47,1312,INPUT)", "nClass": "MK", "sts": 20693, "aliases": ["dabf4fd0"] }
+    "20382113": { "sig": "oP(47,1312,INPUT)", "nClass": "MK", "sts": 20693, "aliases": ["dabf4fd0"] },
+    "9470c977": { "sig": "Of(2,137,INPUT)", "nClass": "wO", "sts": 20696, "aliases": ["9f1ba9db"] }
   }
 }
