@@ -66,16 +66,18 @@ internal fun buildExploreRows(
         isFreshLoading -> ExploreRow.FreshLoading
         else -> ExploreRow.FreshEmpty
     }
-    if (hasSamples) {
-        rows += ExploreRow.Header(ExploreAnchor.Samples)
-        rows += ExploreRow.Samples
-    }
+
     val distinctZones = zones.distinctBy { it.id }
     if (distinctZones.isNotEmpty()) {
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         distinctZones.chunked(2).forEach { pair ->
             rows += ExploreRow.MoodPair(pair.first(), pair.getOrNull(1))
         }
+    }
+
+    if (hasSamples) {
+        rows += ExploreRow.Header(ExploreAnchor.Samples)
+        rows += ExploreRow.Samples
     }
     return rows
 }
