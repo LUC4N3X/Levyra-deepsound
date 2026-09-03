@@ -38,19 +38,18 @@ class ExploreMoodArtworkCardTest {
     }
 
     @Test
-    fun italianRapTriesGlobalRapFallbackBeforeExhaustingLocalPool() {
+    fun italianRapTriesEminemAnd50CentBeforeExhaustingLocalPool() {
         val italianRapArtists = setOf("Sfera Ebbasta", "Shiva", "Geolier", "Tony Boy", "Kid Yugi")
-        val globalFallback = setOf("Central Cee", "Travis Scott")
 
         repeat(5) { bucket ->
             val candidates = exploreMoodPortraitCandidates("rap-drill", "it-IT", bucket.toLong())
             val lookupLimit = exploreMoodPortraitLookupLimit("rap-drill", candidates.size)
 
-            assertEquals(9, candidates.size)
+            assertEquals(11, candidates.size)
             assertEquals(candidates.size, candidates.toSet().size)
             assertEquals(5, lookupLimit)
             assertTrue(candidates.take(3).all { artist -> artist in italianRapArtists })
-            assertTrue(candidates.take(lookupLimit).drop(3).all { artist -> artist in globalFallback })
+            assertEquals(listOf("Eminem", "50 Cent"), candidates.take(lookupLimit).drop(3))
         }
     }
 
@@ -60,6 +59,15 @@ class ExploreMoodArtworkCardTest {
         val candidates = exploreMoodPortraitCandidates("rap-drill", "it", 4L)
 
         assertTrue(candidates.containsAll(italianRapArtists))
+    }
+
+    @Test
+    fun rapHasIndependentHardArtworkFallback() {
+        val fallback = exploreMoodHardFallbackPortraitUrl("rap-drill")
+
+        assertTrue(fallback.startsWith("https://"))
+        assertTrue(fallback.contains("Eminem", ignoreCase = true))
+        assertEquals("", exploreMoodHardFallbackPortraitUrl("pop-global"))
     }
 
     @Test
