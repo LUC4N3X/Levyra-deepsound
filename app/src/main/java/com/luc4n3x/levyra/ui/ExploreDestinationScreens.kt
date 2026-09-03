@@ -36,6 +36,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +53,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ExploreCatalog
@@ -64,10 +67,12 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
+import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 
 internal const val ExploreNewReleasesDestination = "explore-destination-new-releases"
 internal const val ExploreMoodsDestination = "explore-destination-moods"
 private const val ExploreMoodDestinationPrefix = "explore-destination-mood:"
+private const val ExploreViewModelKey = "levyra-explore"
 private val ExploreDestinationHeaderHeight = 66.dp
 
 internal fun exploreMoodDestination(zoneId: String): String = "$ExploreMoodDestinationPrefix$zoneId"
@@ -93,15 +98,36 @@ internal fun ExploreCollectionDestinationScreen(
     val zone = remember(title, strings.code) {
         ExploreCatalog.getZones(strings).firstOrNull { candidate -> candidate.label == title }
     }
+    val exploreViewModel: ExploreViewModel = composeViewModel(key = ExploreViewModelKey)
+    val exploreState by exploreViewModel.state.collectAsStateWithLifecycle()
+    val useSelectedZoneTracks = zone != null && exploreState.exploreZoneId == zone.id
+    val destinationTracks = if (useSelectedZoneTracks) exploreState.exploreTracks else tracks
+    val destinationLoading = if (useSelectedZoneTracks) exploreState.isExploreLoading else isLoading
     val rotationBucket = remember(title) {
         exploreGenreRotationBucket(System.currentTimeMillis())
     }
-    val editorial = remember(tracks, zone?.id, rotationBucket) {
+    val editorial = remember(destinationTracks, zone?.id, rotationBucket) {
         buildExploreGenreEditorial(
-            tracks = tracks,
+            tracks = destinationTracks,
             zoneId = zone?.id.orEmpty().ifBlank { title },
             rotationBucket = rotationBucket
         )
+    }
+    val playAll: () -> Unit = {
+        if (useSelectedZoneTracks) {
+            destinationTracks.firstOrNull()?.let { first ->
+                exploreViewModel.playFrom(destinationTracks, first)
+            }
+        } else {
+            onPlayAll()
+        }
+    }
+    val playTrack: (Track) -> Unit = { track ->
+        if (useSelectedZoneTracks) {
+            exploreViewModel.playFrom(destinationTracks, track)
+        } else {
+            onPlayTrack(track)
+        }
     }
 
     ExploreDestinationSurface(
@@ -109,14 +135,14 @@ internal fun ExploreCollectionDestinationScreen(
         subtitle = subtitle,
         strings = strings,
         onBack = onBack,
-        trailing = if (tracks.isNotEmpty()) {
+        trailing = if (destinationTracks.isNotEmpty()) {
             {
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .background(LevyraCyan, CircleShape)
                         .semantics { role = Role.Button }
-                        .clickable(onClick = onPlayAll),
+                        .clickable(onClick = playAll),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -132,14 +158,14 @@ internal fun ExploreCollectionDestinationScreen(
         }
     ) { contentPadding ->
         when {
-            isLoading && tracks.isEmpty() -> Box(
+            destinationLoading && destinationTracks.isEmpty() -> Box(
                 modifier = Modifier.fillMaxSize().padding(contentPadding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
             }
 
-            tracks.isEmpty() -> Box(
+            destinationTracks.isEmpty() -> Box(
                 modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 28.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -166,7 +192,7 @@ internal fun ExploreCollectionDestinationScreen(
                     ExploreCollectionHero(
                         title = title,
                         subtitle = subtitle,
-                        leadTrack = tracks.first(),
+                        leadTrack = destinationTracks.first(),
                         zone = zone
                     )
                 }
@@ -187,7 +213,7 @@ internal fun ExploreCollectionDestinationScreen(
                                 ExploreGenreTrackCard(
                                     track = track,
                                     isCurrent = track.id == currentTrackId,
-                                    onClick = { onPlayTrack(track) }
+                                    onClick = { playTrack(track) }
                                 )
                             }
                         }
@@ -209,7 +235,7 @@ internal fun ExploreCollectionDestinationScreen(
                             ) { artist ->
                                 ExploreGenreArtistCard(
                                     artist = artist,
-                                    onClick = { onPlayTrack(artist.track) }
+                                    onClick = { playTrack(artist.track) }
                                 )
                             }
                         }
@@ -231,7 +257,7 @@ internal fun ExploreCollectionDestinationScreen(
                             ) { album ->
                                 ExploreGenreAlbumCard(
                                     album = album,
-                                    onClick = { onPlayTrack(album.track) }
+                                    onClick = { playTrack(album.track) }
                                 )
                             }
                         }
@@ -249,7 +275,7 @@ internal fun ExploreCollectionDestinationScreen(
                         track = track,
                         isCurrent = track.id == currentTrackId,
                         isPlaying = isPlaying && track.id == currentTrackId,
-                        onClick = { onPlayTrack(track) }
+                        onClick = { playTrack(track) }
                     )
                 }
             }
