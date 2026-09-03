@@ -58,11 +58,11 @@
       "Read(./**/*.keystore)",
       "Read(./**/.env)",
       "Read(./**/.env.*)",
-      "Write(./local.properties)",
-      "Write(./**/*.jks)",
-      "Write(./**/*.keystore)",
-      "Write(./**/.env)",
-      "Write(./**/.env.*)"
+      "Edit(./local.properties)",
+      "Edit(./**/*.jks)",
+      "Edit(./**/*.keystore)",
+      "Edit(./**/.env)",
+      "Edit(./**/.env.*)"
     ]
   },
   "hooks": {
