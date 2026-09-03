@@ -78,6 +78,17 @@ class ArtworkUrlUpgradeTest {
     }
 
     @Test
+    fun fullResolutionPolicyNeverDownscalesBetterSources() {
+        val apple = "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/1400x1400bb.jpg"
+        val googleWide = "https://lh3.googleusercontent.com/aAbBcC=w1600-h900-l90-rj"
+        val googleSquare = "https://yt3.ggpht.com/ytc/aAbBcC=s1600-c-k-c0x00ffffff-no-rj"
+
+        assertEquals(apple, fullResolutionArtworkUrl(apple))
+        assertEquals(googleWide, fullResolutionArtworkUrl(googleWide))
+        assertEquals(googleSquare, fullResolutionArtworkUrl(googleSquare))
+    }
+
+    @Test
     fun playerArtworkUsesTheSharedFullResolutionPolicy() {
         val url = "https://lh3.googleusercontent.com/aAbBcC=w640-h360"
         assertEquals(fullResolutionArtworkUrl(url), highResolutionPlayerArtworkUrl(url))
