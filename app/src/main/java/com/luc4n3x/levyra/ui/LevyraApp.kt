@@ -357,6 +357,7 @@ import com.luc4n3x.levyra.data.HomeSectionLayoutPolicy
 import com.luc4n3x.levyra.data.HomeSectionPresentation
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
+import com.luc4n3x.levyra.data.AppleArtistArtworkRepository
 import com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.buildPersonalizedHomeAlbumShelf
@@ -6843,11 +6844,30 @@ private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browse
 }
 
 private fun homeSoundtrackTitle(strings: LevyraStrings): String = when (strings.code.lowercase(Locale.ROOT)) {
-    "it" -> "La mia colonna sonora"
+    "ar" -> "موسيقاي التصويرية"
+    "cs" -> "Můj soundtrack"
+    "da" -> "Mit soundtrack"
+    "de" -> "Mein Soundtrack"
+    "el" -> "Το σάουντρακ μου"
     "es" -> "Mi banda sonora"
     "fr" -> "Ma bande-son"
-    "de" -> "Mein Soundtrack"
+    "he" -> "הפסקול שלי"
+    "hi" -> "मेरा साउंडट्रैक"
+    "id" -> "Soundtrack saya"
+    "it" -> "La mia colonna sonora"
+    "ja" -> "私のサウンドトラック"
+    "ko" -> "나의 사운드트랙"
+    "nl" -> "Mijn soundtrack"
+    "pl" -> "Moja ścieżka dźwiękowa"
     "pt" -> "Minha trilha sonora"
+    "ro" -> "Coloana mea sonoră"
+    "ru" -> "Мой саундтрек"
+    "sv" -> "Mitt soundtrack"
+    "th" -> "ซาวด์แทร็กของฉัน"
+    "tr" -> "Film müziğim"
+    "uk" -> "Мій саундтрек"
+    "vi" -> "Nhạc phim của tôi"
+    "zh" -> "我的原声带"
     else -> "My soundtrack"
 }
 
@@ -6856,18 +6876,56 @@ private fun homeSoundtrackLead(strings: LevyraStrings, artists: List<String>): S
         .map(String::trim)
         .firstOrNull { it.isNotBlank() }
     return when (strings.code.lowercase(Locale.ROOT)) {
-        "it" -> artist?.let { "$it al centro. Levyra segue il filo dei tuoi ascolti." }
-            ?: "Levyra segue il filo dei tuoi ascolti e costruisce la radio intorno a te."
-        "es" -> artist?.let { "$it en el centro. Levyra sigue el hilo de lo que escuchas." }
-            ?: "Levyra sigue el hilo de lo que escuchas y construye la radio a tu alrededor."
-        "fr" -> artist?.let { "$it au centre. Levyra suit le fil de tes écoutes." }
-            ?: "Levyra suit le fil de tes écoutes et construit la radio autour de toi."
-        "de" -> artist?.let { "$it im Mittelpunkt. Levyra folgt dem roten Faden deiner Hörgewohnheiten." }
-            ?: "Levyra folgt deinen Hörgewohnheiten und baut die Radioauswahl um dich herum."
-        "pt" -> artist?.let { "$it no centro. Levyra segue o fio do que você ouve." }
-            ?: "Levyra segue o fio do que você ouve e monta a rádio ao seu redor."
-        else -> artist?.let { "$it at the center. Levyra follows the thread of your listening." }
-            ?: "Levyra follows the thread of your listening and builds the radio around you."
+        "ar" -> artist?.let { "يبدأ من $it وينمو مع كل استماع." }
+            ?: "راديو ينمو مع كل استماع."
+        "cs" -> artist?.let { "Začíná u $it a roste s každým poslechem." }
+            ?: "Rádio, které roste s každým poslechem."
+        "da" -> artist?.let { "Starter med $it og vokser, mens du lytter." }
+            ?: "En radio, der vokser med hver lytning."
+        "de" -> artist?.let { "Start mit $it, das Radio wächst mit dir." }
+            ?: "Ein Radio, das mit jedem Hören wächst."
+        "el" -> artist?.let { "Ξεκινά από $it και μεγαλώνει με κάθε ακρόαση." }
+            ?: "Ένα ραδιόφωνο που μεγαλώνει με κάθε ακρόαση."
+        "es" -> artist?.let { "Empieza con $it y la radio crece contigo." }
+            ?: "Una radio que crece con cada escucha."
+        "fr" -> artist?.let { "On part de $it et la radio grandit avec toi." }
+            ?: "Une radio qui grandit à chaque écoute."
+        "he" -> artist?.let { "מתחיל עם $it וגדל עם כל האזנה." }
+            ?: "רדיו שגדל עם כל האזנה."
+        "hi" -> artist?.let { "$it से शुरू, हर बार सुनने पर बढ़ता है।" }
+            ?: "हर बार सुनने पर बढ़ने वाला रेडियो।"
+        "id" -> artist?.let { "Mulai dari $it dan tumbuh saat kamu mendengarkan." }
+            ?: "Radio yang tumbuh setiap kali kamu mendengarkan."
+        "it" -> artist?.let { "Si parte da $it e la radio cresce a ogni ascolto." }
+            ?: "Una radio che cresce a ogni tuo ascolto."
+        "ja" -> artist?.let { "$it から始まり、聴くほどに広がります。" }
+            ?: "聴くほどに広がるラジオ。"
+        "ko" -> artist?.let { "$it 에서 시작해 들을수록 넓어져요." }
+            ?: "들을수록 넓어지는 라디오."
+        "nl" -> artist?.let { "Begint bij $it en groeit terwijl je luistert." }
+            ?: "Een radio die groeit bij elke luisterbeurt."
+        "pl" -> artist?.let { "Zaczyna od $it i rośnie z każdym odsłuchem." }
+            ?: "Radio, które rośnie z każdym odsłuchem."
+        "pt" -> artist?.let { "Começa com $it e a rádio cresce com você." }
+            ?: "Uma rádio que cresce a cada música."
+        "ro" -> artist?.let { "Începe cu $it și crește pe măsură ce asculți." }
+            ?: "Un radio care crește cu fiecare ascultare."
+        "ru" -> artist?.let { "Начинается с $it и растёт с каждым прослушиванием." }
+            ?: "Радио, которое растёт с каждым прослушиванием."
+        "sv" -> artist?.let { "Börjar med $it och växer när du lyssnar." }
+            ?: "En radio som växer för varje lyssning."
+        "th" -> artist?.let { "เริ่มจาก $it และเติบโตไปกับการฟังของคุณ" }
+            ?: "วิทยุที่เติบโตไปกับทุกการฟัง"
+        "tr" -> artist?.let { "$it ile başlar, dinledikçe büyür." }
+            ?: "Dinledikçe büyüyen bir radyo."
+        "uk" -> artist?.let { "Починається з $it і росте з кожним прослуховуванням." }
+            ?: "Радіо, що росте з кожним прослуховуванням."
+        "vi" -> artist?.let { "Bắt đầu từ $it và lớn dần theo cách bạn nghe." }
+            ?: "Một đài phát lớn dần theo mỗi lần bạn nghe."
+        "zh" -> artist?.let { "从 $it 开始，越听越懂你。" }
+            ?: "越听越懂你的电台。"
+        else -> artist?.let { "Starts with $it and grows as you listen." }
+            ?: "A radio that grows with every listen."
     }
 }
 
@@ -6890,15 +6948,23 @@ private fun HomeEditorialSpotlight(
     val spotifyArtistArtworkRepository = remember(context) {
         SpotifyArtistArtworkRepository.get(context)
     }
+    val appleArtistArtworkRepository = remember(context) {
+        AppleArtistArtworkRepository.get(context)
+    }
     var resolvedArtistArtworkUrl by remember(heroArtistName, artistArtworkUrl) {
         mutableStateOf(artistArtworkUrl)
     }
-    LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository) {
+    LaunchedEffect(heroArtistName, artistArtworkUrl, spotifyArtistArtworkRepository, appleArtistArtworkRepository) {
         resolvedArtistArtworkUrl = artistArtworkUrl
         if (heroArtistName.isNotBlank()) {
             val spotifyPortrait = spotifyArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
             if (spotifyPortrait.isNotBlank()) {
                 resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(spotifyPortrait)
+            } else {
+                val applePortrait = appleArtistArtworkRepository.resolveArtistPortrait(heroArtistName)
+                if (applePortrait.isNotBlank()) {
+                    resolvedArtistArtworkUrl = highResolutionHomeArtistArtworkUrl(applePortrait)
+                }
             }
         }
     }
@@ -7008,18 +7074,20 @@ private fun HomeEditorialSpotlight(
         )
     }
 
+    val heroCanvas = LevyraHomeDesign.CanvasDark
     Box(
         modifier = Modifier
             .matchParentSize()
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0f to Color.Black.copy(alpha = 0.30f),
-                        0.12f to Color.Black.copy(alpha = 0.10f),
-                        0.48f to Color.Transparent,
-                        0.67f to Color.Black.copy(alpha = 0.18f),
-                        0.82f to Color.Black.copy(alpha = 0.72f),
-                        1f to Color.Black
+                        0f to heroCanvas,
+                        0.07f to heroCanvas.copy(alpha = 0.62f),
+                        0.20f to heroCanvas.copy(alpha = 0.12f),
+                        0.46f to Color.Transparent,
+                        0.66f to heroCanvas.copy(alpha = 0.34f),
+                        0.83f to heroCanvas.copy(alpha = 0.86f),
+                        1f to heroCanvas
                     )
                 )
             )
@@ -7030,10 +7098,12 @@ private fun HomeEditorialSpotlight(
             .background(
                 Brush.horizontalGradient(
                     colorStops = arrayOf(
-                        0f to Color.Black.copy(alpha = 0.42f),
-                        0.38f to Color.Black.copy(alpha = 0.12f),
-                        0.76f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = 0.06f)
+                        0f to heroCanvas,
+                        0.10f to heroCanvas.copy(alpha = 0.46f),
+                        0.34f to heroCanvas.copy(alpha = 0.10f),
+                        0.72f to Color.Transparent,
+                        0.93f to heroCanvas.copy(alpha = 0.42f),
+                        1f to heroCanvas
                     )
                 )
             )
@@ -7121,10 +7191,10 @@ private fun HomeEditorialSpotlight(
         Text(
             text = soundtrackLead,
             color = Color.White.copy(alpha = 0.96f),
-            fontSize = 18.5.sp,
-            lineHeight = 24.sp,
+            fontSize = 17.sp,
+            lineHeight = 23.sp,
             fontWeight = FontWeight.Medium,
-            maxLines = 2,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
     }
