@@ -29,6 +29,23 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun genresStayAheadOfSamplesInTheMainDiscoveryFlow() {
+        val rows = buildExploreRows(
+            zones = zones(4),
+            isFreshLoading = false,
+            hasFreshTracks = true,
+            hasSamples = true
+        )
+
+        val moodsIndex = exploreAnchorIndex(rows, ExploreAnchor.Moods)
+        val samplesIndex = exploreAnchorIndex(rows, ExploreAnchor.Samples)
+
+        assertTrue(moodsIndex >= 0)
+        assertTrue(samplesIndex > moodsIndex)
+        assertTrue(rows.subList(moodsIndex + 1, samplesIndex).any { row -> row is ExploreRow.MoodPair })
+    }
+
+    @Test
     fun newReleasesShortcutTargetsAnExistingCatalogZone() {
         assertEquals(ExploreCatalog.NEW_RELEASES_ZONE_ID, ExploreShortcut.NewReleases.zoneId)
         assertNull(ExploreShortcut.Samples.zoneId)
