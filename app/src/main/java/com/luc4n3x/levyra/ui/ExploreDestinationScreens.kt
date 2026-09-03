@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +36,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,12 +47,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -86,6 +90,20 @@ internal fun ExploreCollectionDestinationScreen(
     onPlayTrack: (Track) -> Unit
 ) {
     BackHandler(onBack = onBack)
+    val zone = remember(title, strings.code) {
+        ExploreCatalog.getZones(strings).firstOrNull { candidate -> candidate.label == title }
+    }
+    val rotationBucket = remember(title) {
+        exploreGenreRotationBucket(System.currentTimeMillis())
+    }
+    val editorial = remember(tracks, zone?.id, rotationBucket) {
+        buildExploreGenreEditorial(
+            tracks = tracks,
+            zoneId = zone?.id.orEmpty().ifBlank { title },
+            rotationBucket = rotationBucket
+        )
+    }
+
     ExploreDestinationSurface(
         title = title,
         subtitle = subtitle,
@@ -97,6 +115,7 @@ internal fun ExploreCollectionDestinationScreen(
                     modifier = Modifier
                         .size(42.dp)
                         .background(LevyraCyan, CircleShape)
+                        .semantics { role = Role.Button }
                         .clickable(onClick = onPlayAll),
                     contentAlignment = Alignment.Center
                 ) {
@@ -141,16 +160,91 @@ internal fun ExploreCollectionDestinationScreen(
                     top = contentPadding.calculateTopPadding() + 10.dp,
                     bottom = 130.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 item(key = "explore-collection-hero") {
                     ExploreCollectionHero(
                         title = title,
                         subtitle = subtitle,
-                        leadTrack = tracks.first()
+                        leadTrack = tracks.first(),
+                        zone = zone
                     )
                 }
-                items(tracks, key = { track -> "explore-destination-track-${track.id}" }) { track ->
+
+                if (editorial.featured.isNotEmpty()) {
+                    item(key = "explore-genre-popular-header") {
+                        ExploreGenreSectionHeader(strings.popularTracks)
+                    }
+                    item(key = "explore-genre-popular") {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(end = 4.dp)
+                        ) {
+                            items(
+                                items = editorial.featured,
+                                key = { track -> "explore-featured-${track.id}" }
+                            ) { track ->
+                                ExploreGenreTrackCard(
+                                    track = track,
+                                    isCurrent = track.id == currentTrackId,
+                                    onClick = { onPlayTrack(track) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (editorial.artists.isNotEmpty()) {
+                    item(key = "explore-genre-artists-header") {
+                        ExploreGenreSectionHeader(strings.artists)
+                    }
+                    item(key = "explore-genre-artists") {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            contentPadding = PaddingValues(end = 4.dp)
+                        ) {
+                            items(
+                                items = editorial.artists,
+                                key = { artist -> "explore-artist-${artist.key}" }
+                            ) { artist ->
+                                ExploreGenreArtistCard(
+                                    artist = artist,
+                                    onClick = { onPlayTrack(artist.track) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (editorial.albums.isNotEmpty()) {
+                    item(key = "explore-genre-albums-header") {
+                        ExploreGenreSectionHeader(strings.albumsPlain)
+                    }
+                    item(key = "explore-genre-albums") {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(end = 4.dp)
+                        ) {
+                            items(
+                                items = editorial.albums,
+                                key = { album -> "explore-album-${album.key}" }
+                            ) { album ->
+                                ExploreGenreAlbumCard(
+                                    album = album,
+                                    onClick = { onPlayTrack(album.track) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item(key = "explore-genre-songs-header") {
+                    ExploreGenreSectionHeader(strings.songsPlain)
+                }
+                items(
+                    items = editorial.essentials,
+                    key = { track -> "explore-destination-track-${track.id}" }
+                ) { track ->
                     ExploreDestinationTrackRow(
                         track = track,
                         isCurrent = track.id == currentTrackId,
@@ -164,20 +258,186 @@ internal fun ExploreCollectionDestinationScreen(
 }
 
 @Composable
+private fun ExploreGenreSectionHeader(title: String) {
+    Text(
+        text = title,
+        color = LevyraText,
+        fontSize = 20.sp,
+        lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
+        fontWeight = FontWeight.Black,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun ExploreGenreTrackCard(
+    track: Track,
+    isCurrent: Boolean,
+    onClick: () -> Unit
+) {
+    val artwork = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+    Column(
+        modifier = Modifier
+            .width(148.dp)
+            .semantics { role = Role.Button }
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(148.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(LevyraPanel)
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        if (isCurrent) LevyraCyan.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.09f)
+                    ),
+                    RoundedCornerShape(16.dp)
+                )
+        ) {
+            AsyncImage(
+                model = artwork,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .size(34.dp)
+                    .background(if (isCurrent) LevyraCyan else LevyraBlack.copy(alpha = 0.78f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = if (isCurrent) LevyraBlack else Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        Text(
+            text = track.title,
+            color = LevyraText,
+            fontSize = 13.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            color = LevyraMuted,
+            fontSize = 11.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ExploreGenreArtistCard(
+    artist: ExploreGenreArtistCard,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(116.dp)
+            .semantics { role = Role.Button }
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        AsyncImage(
+            model = artist.artworkUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(112.dp)
+                .clip(CircleShape)
+                .background(LevyraPanel)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), CircleShape)
+        )
+        Text(
+            text = artist.name,
+            color = LevyraText,
+            fontSize = 12.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun ExploreGenreAlbumCard(
+    album: ExploreGenreAlbumCard,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(140.dp)
+            .semantics { role = Role.Button }
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        AsyncImage(
+            model = album.artworkUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(140.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(LevyraPanel)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)), RoundedCornerShape(14.dp))
+        )
+        Text(
+            text = album.title,
+            color = LevyraText,
+            fontSize = 13.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (album.artist.isNotBlank()) {
+            Text(
+                text = album.artist,
+                color = LevyraMuted,
+                fontSize = 11.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
 private fun ExploreCollectionHero(
     title: String,
     subtitle: String?,
-    leadTrack: Track
+    leadTrack: Track,
+    zone: ExploreZone?
 ) {
-    val accentStart = Color(leadTrack.accentStart)
-    val accentEnd = Color(leadTrack.accentEnd)
+    val accentStart = Color(zone?.accentStart ?: leadTrack.accentStart)
+    val accentEnd = Color(zone?.accentEnd ?: leadTrack.accentEnd)
     val artwork = leadTrack.largeThumbnailUrl.ifBlank { leadTrack.thumbnailUrl }
     val shape = RoundedCornerShape(24.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(188.dp)
+            .height(214.dp)
             .clip(shape)
             .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), shape)
@@ -190,7 +450,7 @@ private fun ExploreCollectionHero(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
-                    .width(184.dp)
+                    .width(204.dp)
             )
         }
         Box(
@@ -199,9 +459,9 @@ private fun ExploreCollectionHero(
                 .background(
                     Brush.horizontalGradient(
                         listOf(
-                            accentStart.copy(alpha = 0.98f),
-                            accentStart.copy(alpha = 0.90f),
-                            accentEnd.copy(alpha = 0.28f),
+                            accentStart.copy(alpha = 0.99f),
+                            accentStart.copy(alpha = 0.92f),
+                            accentEnd.copy(alpha = 0.36f),
                             Color.Transparent
                         )
                     )
@@ -212,22 +472,29 @@ private fun ExploreCollectionHero(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, LevyraBlack.copy(alpha = 0.48f))
+                        listOf(Color.Transparent, LevyraBlack.copy(alpha = 0.58f))
                     )
                 )
         )
+        zone?.emoji?.takeIf(String::isNotBlank)?.let { emoji ->
+            Text(
+                text = emoji,
+                fontSize = 24.sp,
+                modifier = Modifier.align(Alignment.TopStart).padding(18.dp)
+            )
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .fillMaxWidth(0.72f)
+                .fillMaxWidth(0.74f)
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = title,
                 color = Color.White,
-                fontSize = 26.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(26.sp),
+                fontSize = 28.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(28.sp),
                 fontWeight = FontWeight.Black,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -235,7 +502,7 @@ private fun ExploreCollectionHero(
             subtitle?.takeIf(String::isNotBlank)?.let { detail ->
                 Text(
                     text = detail,
-                    color = Color.White.copy(alpha = 0.78f),
+                    color = Color.White.copy(alpha = 0.82f),
                     fontSize = 12.5.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
                     fontWeight = FontWeight.SemiBold,
@@ -379,7 +646,7 @@ internal fun ExploreMoodsDestinationScreen(
             contentPadding = PaddingValues(
                 start = 18.dp,
                 end = 18.dp,
-                top = contentPadding.calculateTopPadding() + 12.dp,
+                top = contentPadding.calculateTopPadding() + 14.dp,
                 bottom = 130.dp
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -559,55 +826,54 @@ private fun ExploreDestinationMoodCard(
     val shape = RoundedCornerShape(18.dp)
     Box(
         modifier = modifier
-            .height(108.dp)
+            .height(116.dp)
             .clip(shape)
             .background(
                 Brush.linearGradient(
                     listOf(
                         start.copy(alpha = 0.98f),
-                        end.copy(alpha = 0.88f),
+                        end.copy(alpha = 0.92f),
                         LevyraPanel.copy(alpha = 0.94f)
                     )
                 )
             )
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), shape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)), shape)
             .semantics { role = Role.Button }
             .clickable(onClick = onClick)
     ) {
-        Box(
+        Text(
+            text = zone.emoji,
+            color = Color.White.copy(alpha = 0.92f),
+            fontSize = 44.sp,
+            lineHeight = 48.sp,
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(10.dp)
-                .size(70.dp)
-                .background(Color.Black.copy(alpha = 0.18f), RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = zone.emoji,
-                fontSize = 34.sp,
-                lineHeight = 38.sp
-            )
-        }
+                .align(Alignment.TopEnd)
+                .padding(top = 12.dp, end = 14.dp)
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(Color.Black.copy(alpha = 0.18f), Color.Transparent)
+                        listOf(
+                            Color.Black.copy(alpha = 0.20f),
+                            Color.Black.copy(alpha = 0.06f),
+                            Color.Transparent
+                        )
                     )
                 )
         )
         Text(
             text = zone.label,
             color = Color.White,
-            fontSize = 16.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
+            fontSize = 16.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(16.5.sp),
             fontWeight = FontWeight.Black,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .fillMaxWidth(0.72f)
+                .fillMaxWidth(0.78f)
                 .padding(14.dp)
         )
     }
