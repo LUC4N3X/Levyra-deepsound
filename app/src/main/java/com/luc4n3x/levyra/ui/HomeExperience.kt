@@ -57,15 +57,15 @@ private fun Modifier.homeAtmosphereBackground(
     val visualPrimary = if (isLight) primary else softenHomeAccent(primary)
     val visualSecondary = if (isLight) secondary else softenHomeAccent(secondary)
     val blendedAccent = blendHomeAccents(visualPrimary, visualSecondary)
-    val primaryCenter = Offset(width * 0.18f, height * 0.02f)
-    val secondaryCenter = Offset(width * 0.92f, height * 0.17f)
-    val centreCenter = Offset(width * 0.50f, height * 0.28f)
+    val primaryCenter = if (isLight) Offset(width * 0.12f, -height * 0.10f) else Offset(width * 0.18f, height * 0.02f)
+    val secondaryCenter = if (isLight) Offset(width * 0.98f, height * 0.26f) else Offset(width * 0.92f, height * 0.17f)
+    val centreCenter = if (isLight) Offset(width * 0.52f, height * 0.44f) else Offset(width * 0.50f, height * 0.28f)
     val heroBridgeCenter = Offset(width * 0.50f, height * 0.24f)
-    val primaryRadius = width * 1.10f
-    val secondaryRadius = width * 0.92f
-    val centreRadius = width * 1.00f
+    val primaryRadius = if (isLight) width * 1.34f else width * 1.10f
+    val secondaryRadius = if (isLight) width * 1.02f else width * 0.92f
+    val centreRadius = if (isLight) width * 1.16f else width * 1.00f
     val heroBridgeRadius = width * 0.86f
-    val fadeTop = height * 0.25f
+    val fadeTop = if (isLight) height * 0.34f else height * 0.25f
 
     val base = homeBaseBrush(isLight)
     val primaryHalo = homeHaloBrush(
@@ -221,9 +221,9 @@ private fun homeEdgeVignetteBrush(isLight: Boolean): Brush {
 private fun softenHomeAccent(color: Color): Color {
     val grey = color.red * 0.299f + color.green * 0.587f + color.blue * 0.114f
     val desaturated = Color(
-        red = grey + (color.red - grey) * 0.42f,
-        green = grey + (color.green - grey) * 0.42f,
-        blue = grey + (color.blue - grey) * 0.42f,
+        red = color.red + (grey - color.red) * 0.42f,
+        green = color.green + (grey - color.green) * 0.42f,
+        blue = color.blue + (grey - color.blue) * 0.42f,
         alpha = 1f
     )
     val neutral = Color(0xFF0A0D14)
