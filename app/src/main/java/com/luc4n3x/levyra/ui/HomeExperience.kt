@@ -57,14 +57,15 @@ private fun Modifier.homeAtmosphereBackground(
     val visualPrimary = if (isLight) primary else softenHomeAccent(primary)
     val visualSecondary = if (isLight) secondary else softenHomeAccent(secondary)
     val blendedAccent = blendHomeAccents(visualPrimary, visualSecondary)
+    val heroEdgeAccent = blendHomeAccents(primary, secondary)
     val primaryCenter = if (isLight) Offset(width * 0.12f, -height * 0.10f) else Offset(width * 0.18f, height * 0.02f)
     val secondaryCenter = if (isLight) Offset(width * 0.98f, height * 0.26f) else Offset(width * 0.92f, height * 0.17f)
     val centreCenter = if (isLight) Offset(width * 0.52f, height * 0.44f) else Offset(width * 0.50f, height * 0.28f)
-    val heroBridgeCenter = Offset(width * 0.50f, height * 0.24f)
+    val heroBridgeCenter = Offset(width * 0.50f, height * 0.18f)
     val primaryRadius = if (isLight) width * 1.34f else width * 1.10f
     val secondaryRadius = if (isLight) width * 1.02f else width * 0.92f
     val centreRadius = if (isLight) width * 1.16f else width * 1.00f
-    val heroBridgeRadius = width * 0.86f
+    val heroBridgeRadius = width * 0.98f
     val fadeTop = if (isLight) height * 0.34f else height * 0.25f
 
     val base = homeBaseBrush(isLight)
@@ -88,11 +89,10 @@ private fun Modifier.homeAtmosphereBackground(
         radius = centreRadius,
         alpha = if (isLight) 0.045f else 0.020f
     )
-    val heroBridge = homeCentreWashBrush(
-        color = blendedAccent,
+    val heroBridge = homeHeroBridgeBrush(
+        color = heroEdgeAccent,
         center = heroBridgeCenter,
-        radius = heroBridgeRadius,
-        alpha = 0.045f
+        radius = heroBridgeRadius
     )
     val lowerFade = homeLowerFadeBrush(isLight, fadeTop, height)
     val persistentTint = homePersistentTintBrush(blendedAccent, height)
@@ -158,6 +158,21 @@ private fun homeCentreWashBrush(
     alpha: Float
 ): Brush = Brush.radialGradient(
     colors = listOf(color.copy(alpha = alpha), Color.Transparent),
+    center = center,
+    radius = radius
+)
+
+private fun homeHeroBridgeBrush(
+    color: Color,
+    center: Offset,
+    radius: Float
+): Brush = Brush.radialGradient(
+    colorStops = arrayOf(
+        0f to color.copy(alpha = 0.085f),
+        0.38f to color.copy(alpha = 0.050f),
+        0.72f to color.copy(alpha = 0.018f),
+        1f to Color.Transparent
+    ),
     center = center,
     radius = radius
 )
