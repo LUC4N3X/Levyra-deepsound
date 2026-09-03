@@ -21,7 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
       LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
       LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
@@ -80,6 +79,24 @@ jobs:
             echo "SOURCE_REF=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           } >> "${GITHUB_ENV}"
 
+      - name: Resolve Public Runtime Config
+        shell: bash
+        run: |
+          set -euo pipefail
+          YOUTUBE_KEY="$(python3 - <<'PY'
+          import pathlib
+          import re
+
+          source = pathlib.Path('app/build.gradle.kts').read_text(encoding='utf-8')
+          match = re.search(r'val\s+publicYoutubeInnertubeApiKey\s*=\s*"([^"]+)"', source)
+          if match is None or not match.group(1).strip():
+              raise SystemExit('Public InnerTube client identifier is missing from app/build.gradle.kts')
+          print(match.group(1).strip())
+          PY
+          )"
+          test -n "${YOUTUBE_KEY}"
+          echo "YOUTUBE_INNERTUBE_API_KEY=${YOUTUBE_KEY}" >> "${GITHUB_ENV}"
+
       - name: Prepare Release Signing
         shell: bash
         env:
@@ -131,6 +148,7 @@ jobs:
             echo "versionCode=${VERSION_CODE}"
             echo "pullRequest=${PR_NUMBER}"
             echo "signingProfile=release-pr-diagnostics"
+            echo "runtimeConfig=public-innertube-client"
             echo "diagnosticsMarker=LEVYRA_PR_DIAGNOSTICS_V1"
             echo "commit=${GITHUB_SHA}"
             echo "branch=${SOURCE_REF}"
