@@ -302,25 +302,32 @@ object ListeningSignalRanker {
     ): List<Track> {
         val runCap = artistRunLimit.coerceAtLeast(1)
         val selected = ArrayList<Track>(min(limit, scored.size))
-        val deferred = ArrayList<ScoredCandidate>()
-        val artistCounts = HashMap<String, Int>()
+        val pending = scored.toMutableList()
+        var previousArtistKey = ""
+        var consecutiveArtistCount = 0
 
-        scored.forEach { candidate ->
-            if (selected.size >= limit) return@forEach
-            val key = primaryArtistKey(candidate.track.artist)
-            val used = artistCounts.getOrDefault(key, 0)
-            val allowed = key.isBlank() || key in contextKeys || used < runCap
-            if (allowed) {
-                selected += candidate.track
-                artistCounts[key] = used + 1
-            } else {
-                deferred += candidate
+        while (selected.size < limit && pending.isNotEmpty()) {
+            val eligibleIndex = pending.indexOfFirst { candidate ->
+                val key = primaryArtistKey(candidate.track.artist)
+                key.isBlank() ||
+                    key in contextKeys ||
+                    key != previousArtistKey ||
+                    consecutiveArtistCount < runCap
             }
-        }
-
-        deferred.forEach { candidate ->
-            if (selected.size >= limit) return@forEach
+            val index = if (eligibleIndex >= 0) eligibleIndex else 0
+            val candidate = pending.removeAt(index)
             selected += candidate.track
+
+            val key = primaryArtistKey(candidate.track.artist)
+            if (key.isBlank()) {
+                previousArtistKey = ""
+                consecutiveArtistCount = 0
+            } else if (key == previousArtistKey) {
+                consecutiveArtistCount += 1
+            } else {
+                previousArtistKey = key
+                consecutiveArtistCount = 1
+            }
         }
         return selected
     }
