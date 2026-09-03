@@ -143,6 +143,8 @@ class YoutubeLocalDecoder private constructor(
     }
 }
 
+private const val MAX_TRACKED_CONFIG_IDENTITIES = 64
+
 private class YoutubeLocalDecoderEngine(
     private val context: Context,
     httpClient: OkHttpClient
@@ -160,6 +162,8 @@ private class YoutubeLocalDecoderEngine(
     private var runtimeConfigOrigin = YoutubePlayerConfigOrigin.VALIDATED
     private val lastSuccessfulDecodeAtMs = AtomicLong(0L)
     private val rendererRecovery = YoutubeRendererRecoveryPolicy()
+    private val verifiedConfigIdentities = ConcurrentHashMap.newKeySet<String>()
+    private val rejectedConfigIdentities = ConcurrentHashMap.newKeySet<String>()
 
     @Volatile
     private var lastSuccessfulDecodePlayerHash = ""
@@ -409,13 +413,77 @@ private class YoutubeLocalDecoderEngine(
         if (!rendererRecovery.shouldAttempt(recoveryIdentity, SystemClock.elapsedRealtime())) {
             throw YoutubeRendererBackoffException()
         }
+        if (config.identity in rejectedConfigIdentities) {
+            throw YoutubeAnalyzedConfigFailureException(
+                "Player config previously rejected by verification for ${player.hash}"
+            )
+        }
         val created = YoutubeCipherWebRuntime.create(context, player, config)
+        val verification = verifyConfig(created, config)
+        if (verification.provesConfigWrong) {
+            created.close()
+            rememberRejectedConfig(config.identity)
+            if (config.origin == YoutubePlayerConfigOrigin.ANALYZED) {
+                playerSource.rejectAnalyzedConfig(player.hash)
+            }
+            throw YoutubeAnalyzedConfigFailureException(
+                "Player config verification rejected for ${player.hash}: ${verification.reason}"
+            )
+        }
+        if (created.isDead) {
+            created.close()
+            throw YoutubeRendererFailureException(
+                "Player config verification left the runtime dead for ${player.hash}"
+            )
+        }
         runtime = created
         runtimeHash = player.hash
         runtimeConfigKey = player.configKey
         runtimeConfigEpoch = configStore.epoch
         runtimeConfigOrigin = config.origin
         return created
+    }
+
+    private fun rememberRejectedConfig(identity: String) {
+        if (rejectedConfigIdentities.size >= MAX_TRACKED_CONFIG_IDENTITIES) rejectedConfigIdentities.clear()
+        rejectedConfigIdentities += identity
+    }
+
+    private suspend fun verifyConfig(
+        runtime: YoutubeCipherWebRuntime,
+        config: YoutubePlayerCipherConfig
+    ): YoutubeConfigVerification {
+        if (verifiedConfigIdentities.size >= MAX_TRACKED_CONFIG_IDENTITIES) verifiedConfigIdentities.clear()
+        if (!verifiedConfigIdentities.add(config.identity)) {
+            return YoutubeConfigVerification(YoutubeConfigVerdict.ACCEPTED, "already verified")
+        }
+        val verification = try {
+            val signatureProbes = YoutubePlayerConfigVerifier.SIGNATURE_PROBES.map { input ->
+                YoutubeCipherProbe(input, runtime.decodeSignature(input))
+            }
+            val throttlingProbes = YoutubePlayerConfigVerifier.THROTTLING_PROBES.map { input ->
+                YoutubeCipherProbe(input, runtime.transformN(input))
+            }
+            YoutubePlayerConfigVerifier.verify(signatureProbes, throttlingProbes)
+        } catch (error: CancellationException) {
+            verifiedConfigIdentities.remove(config.identity)
+            throw error
+        } catch (error: Throwable) {
+            verifiedConfigIdentities.remove(config.identity)
+            Timber.w(error, "Player config verification inconclusive for %s", config.primaryHash)
+            return YoutubeConfigVerification(YoutubeConfigVerdict.INCONCLUSIVE, "probe execution failed")
+        }
+        if (verification.verdict != YoutubeConfigVerdict.ACCEPTED) {
+            verifiedConfigIdentities.remove(config.identity)
+        }
+        Timber.d(
+            "Player config verification %s origin=%s hash=%s reason=%s",
+            verification.verdict,
+            config.origin,
+            config.primaryHash,
+            verification.reason
+        )
+        return verification
     }
 
     private suspend fun invalidateRuntime() {
@@ -1055,17 +1123,55 @@ private class YoutubePlayerJsSource(
     }
 
     private suspend fun fetchPlayerHash(): String {
+        val samples = ArrayList<YoutubePlayerSample>(PLAYER_SAMPLE_SOURCES.size)
+        var primaryFailure: Throwable? = null
+        PLAYER_SAMPLE_SOURCES.forEach { source ->
+            try {
+                sampleHash(source)?.let { samples += YoutubePlayerSample(it, source.name) }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                if (source.required) primaryFailure = error
+                Timber.w(error, "Player hash sample failed source=%s", source.name)
+            }
+        }
+        val observation = YoutubePlayerSampleAggregator.aggregate(samples)
+            ?: throw ParsingException(
+                "Unable to extract YouTube player hash",
+                primaryFailure
+            )
+        if (observation.rotating) {
+            Timber.d(
+                "Rotating YouTube player detected dominant=%s alternates=%s",
+                observation.dominantHash,
+                observation.alternateHashes
+            )
+            observation.alternateHashes.forEach { alternate ->
+                runCatching { configStore.configFor(alternate, refreshUnknown = true) }
+                    .onFailure { Timber.w(it, "Alternate player config lookup failed for %s", alternate) }
+            }
+        }
+        return observation.dominantHash
+    }
+
+    private suspend fun sampleHash(source: PlayerSampleSource): String? {
         val request = Request.Builder()
-            .url(IFRAME_API_URL)
+            .url(source.url)
             .get()
             .header("User-Agent", USER_AGENT)
             .header("Accept", "*/*")
             .build()
-        val response = httpClient.awaitText(request, MAX_IFRAME_BYTES)
-        if (response.code !in 200..299) throw ParsingException("iframe_api HTTP ${response.code}")
+        val response = httpClient.awaitText(request, source.maxBytes)
+        if (response.code !in 200..299) throw ParsingException("${source.name} HTTP ${response.code}")
         return YoutubePlayerJsSupport.extractPlayerHash(response.body)
-            ?: throw ParsingException("Unable to extract YouTube player hash")
     }
+
+    private data class PlayerSampleSource(
+        val name: String,
+        val url: String,
+        val maxBytes: Int,
+        val required: Boolean
+    )
 
     private suspend fun downloadPlayerJs(hash: String): String {
         val failures = ArrayList<String>()
@@ -1093,9 +1199,15 @@ private class YoutubePlayerJsSource(
 
     companion object {
         private const val IFRAME_API_URL = "https://www.youtube.com/iframe_api"
+        private const val EMBED_SAMPLE_URL = "https://www.youtube.com/embed/"
+        private val PLAYER_SAMPLE_SOURCES = listOf(
+            PlayerSampleSource("iframe_api", IFRAME_API_URL, MAX_IFRAME_BYTES, required = true),
+            PlayerSampleSource("embed", EMBED_SAMPLE_URL, MAX_EMBED_BYTES, required = false)
+        )
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150.0.0.0 Mobile Safari/537.36"
         private const val PLAYER_TTL_MS = 6L * 60L * 60L * 1000L
         private const val MAX_IFRAME_BYTES = 1_000_000
+        private const val MAX_EMBED_BYTES = 2_000_000
         private const val MAX_PLAYER_JS_BYTES = 6_000_000
         private const val MAX_CACHED_PLAYERS = 2
         private val PLAYER_LOCALES = listOf("en_GB", "en_US", "it_IT")
