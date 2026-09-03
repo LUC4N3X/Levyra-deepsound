@@ -65,6 +65,23 @@ class SponsorBlockRepositoryTest {
     }
 
     @Test
+    fun malformedMatchingCandidateIsNotNegativeCached() {
+        val fetcher = QueueSponsorBlockFetcher(
+            response(200, """[{"videoID":"video"}]"""),
+            response(200, """[{"videoID":"video","segments":[{"segment":[1.0,2.5],"category":"sponsor"}]}]""")
+        )
+        val repository = SponsorBlockRepository(fetcher) { 1_000L }
+
+        assertTrue(repositorySegments(repository, "video").isEmpty())
+        val refreshed = repositorySegments(repository, "video")
+
+        assertEquals(1, refreshed.size)
+        assertEquals(1_000L, refreshed.single().startMs)
+        assertEquals(2_500L, refreshed.single().endMs)
+        assertEquals(2, fetcher.calls)
+    }
+
+    @Test
     fun rateLimitAndServerFailuresAreNotCached() {
         val fetcher = QueueSponsorBlockFetcher(
             response(429),
