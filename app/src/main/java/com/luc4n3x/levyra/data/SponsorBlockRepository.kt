@@ -9,15 +9,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
-/**
- * SponsorBlock community segments (sponsor.ajay.app) so LEVYRA can auto-skip the
- * non-music parts of YouTube videos — sponsor reads, intros, outros, etc.
- */
 class SponsorBlockRepository internal constructor(
     private val fetcher: SponsorBlockHttpFetcher,
     private val clockMs: () -> Long
@@ -25,7 +22,6 @@ class SponsorBlockRepository internal constructor(
     constructor() : this(UrlConnectionSponsorBlockHttpFetcher(), System::currentTimeMillis)
 
     private val categories = listOf("sponsor", "selfpromo", "intro", "outro", "interaction", "music_offtopic", "preview")
-
     private val cache = object : java.util.LinkedHashMap<String, SponsorBlockCacheEntry>(128, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, SponsorBlockCacheEntry>?): Boolean {
             return size > SPONSORBLOCK_CACHE_LIMIT
@@ -38,7 +34,8 @@ class SponsorBlockRepository internal constructor(
 
         val catsJson = categories.joinToString(",", prefix = "[", postfix = "]") { "\"$it\"" }
         val cats = URLEncoder.encode(catsJson, "UTF-8")
-        val url = "https://sponsor.ajay.app/api/skipSegments?videoID=$videoId&categories=$cats"
+        val hashPrefix = sponsorBlockHashPrefix(videoId)
+        val url = "https://sponsor.ajay.app/api/skipSegments/$hashPrefix?categories=$cats"
 
         val response = try {
             fetcher.fetch(url)
@@ -59,19 +56,8 @@ class SponsorBlockRepository internal constructor(
             val input = response.body ?: return@withContext emptyList()
             val body = readUtf8Bounded(input, SPONSORBLOCK_MAX_RESPONSE_BYTES)
                 ?: return@withContext emptyList()
-            val array = runCatching { JSONArray(body) }.getOrNull() ?: return@withContext emptyList()
-            val parsed = buildList {
-                for (index in 0 until array.length()) {
-                    val item = array.optJSONObject(index) ?: continue
-                    val range = item.optJSONArray("segment") ?: continue
-                    if (range.length() < 2) continue
-                    val startMs = (range.optDouble(0, 0.0) * 1000).toLong()
-                    val endMs = (range.optDouble(1, 0.0) * 1000).toLong()
-                    if (endMs > startMs) {
-                        add(SponsorSegment(startMs, endMs, item.optString("category", "sponsor")))
-                    }
-                }
-            }.sortedBy { it.startMs }
+            val parsed = parseSponsorBlockSegments(body, videoId)
+                ?: return@withContext emptyList()
             publishSponsorBlockCacheResult(cache, videoId, parsed, clockMs())
         }
     }
@@ -86,6 +72,34 @@ internal data class SponsorBlockCacheEntry(
     val segments: List<SponsorSegment>,
     val expiresAtMs: Long
 )
+
+internal fun sponsorBlockHashPrefix(videoId: String): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(videoId.toByteArray(StandardCharsets.UTF_8))
+        .take(2)
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+
+internal fun parseSponsorBlockSegments(body: String, videoId: String): List<SponsorSegment>? {
+    val candidates = runCatching { JSONArray(body) }.getOrNull() ?: return null
+    for (candidateIndex in 0 until candidates.length()) {
+        val candidate = candidates.optJSONObject(candidateIndex) ?: continue
+        if (candidate.optString("videoID") != videoId) continue
+        val segments = candidate.optJSONArray("segments") ?: return null
+        return buildList {
+            for (index in 0 until segments.length()) {
+                val item = segments.optJSONObject(index) ?: continue
+                val range = item.optJSONArray("segment") ?: continue
+                if (range.length() < 2) continue
+                val startMs = (range.optDouble(0, 0.0) * 1000).toLong()
+                val endMs = (range.optDouble(1, 0.0) * 1000).toLong()
+                if (endMs > startMs) {
+                    add(SponsorSegment(startMs, endMs, item.optString("category", "sponsor")))
+                }
+            }
+        }.sortedBy { it.startMs }
+    }
+    return emptyList()
+}
 
 internal fun cachedSponsorBlockResult(
     cache: MutableMap<String, SponsorBlockCacheEntry>,
