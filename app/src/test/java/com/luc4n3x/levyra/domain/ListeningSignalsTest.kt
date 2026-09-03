@@ -162,6 +162,29 @@ class ListeningSignalsTest {
     }
 
     @Test
+    fun `deferred higher ranked artist becomes eligible after another artist`() {
+        val candidates = listOf(
+            track("a1", "Alpha"),
+            track("a2", "Alpha"),
+            track("a3", "Alpha"),
+            track("b1", "Beta"),
+            track("c1", "Charlie")
+        )
+        val profile = ListeningSignalEngine.build(
+            events = listOf(
+                event("a1", "Alpha", 200_000L, completed = true),
+                event("a2", "Alpha", 200_000L, completed = true),
+                event("a3", "Alpha", 200_000L, completed = true)
+            ),
+            nowMs = now
+        )
+
+        val ranked = ListeningSignalRanker.rank(candidates, profile, limit = 4, artistRunLimit = 2)
+
+        assertEquals(listOf("a1", "a2", "b1", "a3"), ranked.map { it.id })
+    }
+
+    @Test
     fun `context artist keeps the hero artist in front and exempt from the run limit`() {
         val candidates = listOf(
             track("b1", "Beta"),
