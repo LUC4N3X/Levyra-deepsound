@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
@@ -90,19 +91,23 @@ internal fun fullResolutionArtworkUrl(url: String): String {
     val clean = url.trim()
     if (!clean.startsWith("https://", ignoreCase = true)) return clean
     if (clean.indexOf('?') >= 0) return clean
-    val lower = clean.lowercase()
+    val parsed = clean.toHttpUrlOrNull() ?: return clean
+    val host = parsed.host.lowercase()
     return when {
-        lower.contains("i.scdn.co/image/ab67616d00001e02") ->
+        host == "i.scdn.co" && parsed.encodedPath.contains("/image/ab67616d00001e02", ignoreCase = true) ->
             clean.replace("ab67616d00001e02", "ab67616d0000b273", ignoreCase = true)
-        lower.contains("mzstatic.com/") -> upgradeAppleArtworkUrl(clean)
-        lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") ->
+        isHostOrSubdomain(host, "mzstatic.com") -> upgradeAppleArtworkUrl(clean)
+        isHostOrSubdomain(host, "googleusercontent.com") || isHostOrSubdomain(host, "ggpht.com") ->
             if (googleArtworkAlreadyLargeEnough(clean)) clean else LevyraPersonalOrbit.upscaledArtworkUrl(clean)
-        lower.contains("e-cdns-images.dzcdn.net/") ->
+        host == "e-cdns-images.dzcdn.net" ->
             clean.replace("/cover_medium/", "/cover_xl/", ignoreCase = true)
                 .replace("/cover_big/", "/cover_xl/", ignoreCase = true)
         else -> clean
     }
 }
+
+private fun isHostOrSubdomain(host: String, domain: String): Boolean =
+    host == domain || host.endsWith(".$domain")
 
 private fun upgradeAppleArtworkUrl(url: String): String {
     val templated = url
