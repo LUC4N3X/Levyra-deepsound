@@ -81,7 +81,10 @@ internal fun isLikelyArtworkBytes(bytes: ByteArray): Boolean {
     return false
 }
 
-private val FullResolutionAppleArtworkSizePattern = Regex("/\\d+x\\d+bb(?=[.-])")
+private const val FULL_RESOLUTION_ARTWORK_SIZE = 1200
+private val FullResolutionAppleArtworkSizePattern = Regex("/(\\d+)x(\\d+)bb(?=[.-])")
+private val FullResolutionGoogleWidthHeightPattern = Regex("=w(\\d+)-h(\\d+)")
+private val FullResolutionGoogleSquarePattern = Regex("=s(\\d+)")
 
 internal fun fullResolutionArtworkUrl(url: String): String {
     val clean = url.trim()
@@ -91,17 +94,40 @@ internal fun fullResolutionArtworkUrl(url: String): String {
     return when {
         lower.contains("i.scdn.co/image/ab67616d00001e02") ->
             clean.replace("ab67616d00001e02", "ab67616d0000b273", ignoreCase = true)
-        lower.contains("mzstatic.com/") ->
-            clean.replace("{w}", "1200", ignoreCase = true)
-                .replace("{h}", "1200", ignoreCase = true)
-                .replace(FullResolutionAppleArtworkSizePattern, "/1200x1200bb")
+        lower.contains("mzstatic.com/") -> upgradeAppleArtworkUrl(clean)
         lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") ->
-            LevyraPersonalOrbit.upscaledArtworkUrl(clean)
+            if (googleArtworkAlreadyLargeEnough(clean)) clean else LevyraPersonalOrbit.upscaledArtworkUrl(clean)
         lower.contains("e-cdns-images.dzcdn.net/") ->
             clean.replace("/cover_medium/", "/cover_xl/", ignoreCase = true)
                 .replace("/cover_big/", "/cover_xl/", ignoreCase = true)
         else -> clean
     }
+}
+
+private fun upgradeAppleArtworkUrl(url: String): String {
+    val templated = url
+        .replace("{w}", FULL_RESOLUTION_ARTWORK_SIZE.toString(), ignoreCase = true)
+        .replace("{h}", FULL_RESOLUTION_ARTWORK_SIZE.toString(), ignoreCase = true)
+    if (templated != url) return templated
+
+    val match = FullResolutionAppleArtworkSizePattern.find(url) ?: return url
+    val width = match.groupValues[1].toIntOrNull() ?: return url
+    val height = match.groupValues[2].toIntOrNull() ?: return url
+    if (width >= FULL_RESOLUTION_ARTWORK_SIZE || height >= FULL_RESOLUTION_ARTWORK_SIZE) return url
+    return url.replaceRange(match.range, "/${FULL_RESOLUTION_ARTWORK_SIZE}x${FULL_RESOLUTION_ARTWORK_SIZE}bb")
+}
+
+private fun googleArtworkAlreadyLargeEnough(url: String): Boolean {
+    FullResolutionGoogleWidthHeightPattern.find(url)?.let { match ->
+        val width = match.groupValues[1].toIntOrNull() ?: return@let
+        val height = match.groupValues[2].toIntOrNull() ?: return@let
+        return width >= FULL_RESOLUTION_ARTWORK_SIZE || height >= FULL_RESOLUTION_ARTWORK_SIZE
+    }
+    FullResolutionGoogleSquarePattern.find(url)?.let { match ->
+        val size = match.groupValues[1].toIntOrNull() ?: return@let
+        return size >= FULL_RESOLUTION_ARTWORK_SIZE
+    }
+    return false
 }
 
 private class FullResolutionArtworkInterceptor : Interceptor {
@@ -281,6 +307,7 @@ object LevyraArtworkCache {
     private fun preloadRequest(context: Context, url: String): ImageRequest {
         return ImageRequest.Builder(context)
             .data(url)
+            .size(SMALL_SIZE)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)
