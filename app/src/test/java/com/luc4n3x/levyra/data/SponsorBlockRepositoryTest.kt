@@ -4,8 +4,9 @@ import com.luc4n3x.levyra.domain.SponsorSegment
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.CancellationException
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SponsorBlockRepositoryTest {
@@ -24,6 +25,43 @@ class SponsorBlockRepositoryTest {
         val bytes = body.toByteArray(Charsets.UTF_8)
 
         assertNull(readUtf8Bounded(ByteArrayInputStream(bytes), (bytes.size - 1).toLong()))
+    }
+
+    @Test
+    fun sponsorBlockHashPrefixMatchesOfficialKAnonymityExample() {
+        assertEquals("5f6b", sponsorBlockHashPrefix("dQw4w9WgXcQ"))
+    }
+
+    @Test
+    fun kAnonymousRequestDoesNotExposeVideoIdAndSelectsLocally() {
+        val videoId = "dQw4w9WgXcQ"
+        val fetcher = QueueSponsorBlockFetcher(
+            response(
+                200,
+                """[{"videoID":"other-video","segments":[{"segment":[9.0,10.0],"category":"intro"}]},{"videoID":"$videoId","segments":[{"segment":[1.0,2.5],"category":"sponsor"}]}]"""
+            )
+        )
+        val repository = SponsorBlockRepository(fetcher) { 1_000L }
+
+        val segments = repositorySegments(repository, videoId)
+
+        assertEquals(1, segments.size)
+        assertEquals(1_000L, segments.single().startMs)
+        assertEquals(2_500L, segments.single().endMs)
+        assertTrue(fetcher.urls.single().contains("/api/skipSegments/5f6b?"))
+        assertFalse(fetcher.urls.single().contains(videoId))
+    }
+
+    @Test
+    fun validPrefixResponseWithoutRequestedVideoIsNegativeCached() {
+        val fetcher = QueueSponsorBlockFetcher(
+            response(200, """[{"videoID":"different","segments":[]}]""")
+        )
+        val repository = SponsorBlockRepository(fetcher) { 1_000L }
+
+        assertTrue(repositorySegments(repository, "video").isEmpty())
+        assertTrue(repositorySegments(repository, "video").isEmpty())
+        assertEquals(1, fetcher.calls)
     }
 
     @Test
@@ -58,7 +96,7 @@ class SponsorBlockRepositoryTest {
         var now = 10_000L
         val fetcher = QueueSponsorBlockFetcher(
             response(404),
-            response(200, """[{"segment":[1.0,2.5],"category":"sponsor"}]""")
+            response(200, """[{"videoID":"video","segments":[{"segment":[1.0,2.5],"category":"sponsor"}]}]""")
         )
         val repository = SponsorBlockRepository(fetcher) { now }
 
@@ -128,11 +166,13 @@ class SponsorBlockRepositoryTest {
 
     private class QueueSponsorBlockFetcher(vararg responses: SponsorBlockHttpResponse) : SponsorBlockHttpFetcher {
         private val queue = responses.toMutableList()
+        val urls = mutableListOf<String>()
         var calls: Int = 0
             private set
 
         override fun fetch(url: String): SponsorBlockHttpResponse {
             calls += 1
+            urls += url
             return queue.removeAt(0)
         }
     }
