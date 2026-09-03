@@ -257,7 +257,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
     private var mixPresentationJob: Job? = null
 
-    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(track = track, playlistId = playlistId)
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
