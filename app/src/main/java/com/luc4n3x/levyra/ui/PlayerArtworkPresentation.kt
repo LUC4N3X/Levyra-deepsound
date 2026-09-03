@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.data.fullResolutionArtworkUrl
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 
@@ -12,24 +13,4 @@ internal fun preferredPlayerArtworkUrl(track: Track): String {
     return highResolutionPlayerArtworkUrl(albumArtwork ?: candidates.firstOrNull().orEmpty())
 }
 
-private val AppleArtworkSizePattern = Regex("/\\d+x\\d+bb(?=[.-])")
-
-internal fun highResolutionPlayerArtworkUrl(url: String): String {
-    val clean = url.trim()
-    if (!clean.startsWith("https://", ignoreCase = true)) return clean
-    val lower = clean.lowercase()
-    return when {
-        lower.contains("i.scdn.co/image/ab67616d00001e02") ->
-            clean.replace("ab67616d00001e02", "ab67616d0000b273", ignoreCase = true)
-        lower.contains("mzstatic.com/") ->
-            clean.replace("{w}", "1200", ignoreCase = true)
-                .replace("{h}", "1200", ignoreCase = true)
-                .replace(AppleArtworkSizePattern, "/1200x1200bb")
-        lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") ->
-            LevyraPersonalOrbit.upscaledArtworkUrl(clean)
-        lower.contains("e-cdns-images.dzcdn.net/") ->
-            clean.replace("/cover_medium/", "/cover_xl/", ignoreCase = true)
-                .replace("/cover_big/", "/cover_xl/", ignoreCase = true)
-        else -> clean
-    }
-}
+internal fun highResolutionPlayerArtworkUrl(url: String): String = fullResolutionArtworkUrl(url)

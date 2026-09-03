@@ -6,9 +6,11 @@ import android.content.pm.ApplicationInfo
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
+import coil3.intercept.Interceptor
 import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.ImageResult
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okio.Path.Companion.toOkioPath
 import timber.log.Timber
@@ -79,6 +82,71 @@ internal fun isLikelyArtworkBytes(bytes: ByteArray): Boolean {
     return false
 }
 
+private const val FULL_RESOLUTION_ARTWORK_SIZE = 1200
+private val FullResolutionAppleArtworkSizePattern = Regex("/(\\d+)x(\\d+)bb(?=[.-])")
+private val FullResolutionGoogleWidthHeightPattern = Regex("=w(\\d+)-h(\\d+)")
+private val FullResolutionGoogleSquarePattern = Regex("=s(\\d+)")
+
+internal fun fullResolutionArtworkUrl(url: String): String {
+    val clean = url.trim()
+    if (!clean.startsWith("https://", ignoreCase = true)) return clean
+    if (clean.indexOf('?') >= 0) return clean
+    val parsed = clean.toHttpUrlOrNull() ?: return clean
+    val host = parsed.host.lowercase()
+    return when {
+        host == "i.scdn.co" && parsed.encodedPath.contains("/image/ab67616d00001e02", ignoreCase = true) ->
+            clean.replace("ab67616d00001e02", "ab67616d0000b273", ignoreCase = true)
+        isHostOrSubdomain(host, "mzstatic.com") -> upgradeAppleArtworkUrl(clean)
+        isHostOrSubdomain(host, "googleusercontent.com") || isHostOrSubdomain(host, "ggpht.com") ->
+            if (googleArtworkAlreadyLargeEnough(clean)) clean else LevyraPersonalOrbit.upscaledArtworkUrl(clean)
+        host == "e-cdns-images.dzcdn.net" ->
+            clean.replace("/cover_medium/", "/cover_xl/", ignoreCase = true)
+                .replace("/cover_big/", "/cover_xl/", ignoreCase = true)
+        else -> clean
+    }
+}
+
+private fun isHostOrSubdomain(host: String, domain: String): Boolean =
+    host == domain || host.endsWith(".$domain")
+
+private fun upgradeAppleArtworkUrl(url: String): String {
+    val templated = url
+        .replace("{w}", FULL_RESOLUTION_ARTWORK_SIZE.toString(), ignoreCase = true)
+        .replace("{h}", FULL_RESOLUTION_ARTWORK_SIZE.toString(), ignoreCase = true)
+    if (templated != url) return templated
+
+    val match = FullResolutionAppleArtworkSizePattern.find(url) ?: return url
+    val width = match.groupValues[1].toIntOrNull() ?: return url
+    val height = match.groupValues[2].toIntOrNull() ?: return url
+    if (width >= FULL_RESOLUTION_ARTWORK_SIZE || height >= FULL_RESOLUTION_ARTWORK_SIZE) return url
+    return url.replaceRange(match.range, "/${FULL_RESOLUTION_ARTWORK_SIZE}x${FULL_RESOLUTION_ARTWORK_SIZE}bb")
+}
+
+private fun googleArtworkAlreadyLargeEnough(url: String): Boolean {
+    FullResolutionGoogleWidthHeightPattern.find(url)?.let { match ->
+        val width = match.groupValues[1].toIntOrNull() ?: return@let
+        val height = match.groupValues[2].toIntOrNull() ?: return@let
+        return width >= FULL_RESOLUTION_ARTWORK_SIZE || height >= FULL_RESOLUTION_ARTWORK_SIZE
+    }
+    FullResolutionGoogleSquarePattern.find(url)?.let { match ->
+        val size = match.groupValues[1].toIntOrNull() ?: return@let
+        return size >= FULL_RESOLUTION_ARTWORK_SIZE
+    }
+    return false
+}
+
+private class FullResolutionArtworkInterceptor : Interceptor {
+    override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        val source = chain.request.data as? String ?: return chain.proceed()
+        val upgraded = fullResolutionArtworkUrl(source)
+        if (upgraded == source) return chain.proceed()
+        val request = chain.request.newBuilder()
+            .data(upgraded)
+            .build()
+        return chain.withRequest(request).proceed()
+    }
+}
+
 object LevyraArtworkCache {
     private const val SMALL_SIZE = 192
     private const val LARGE_SIZE = 512
@@ -111,6 +179,9 @@ object LevyraArtworkCache {
                     memoryProfile.largeHeapEnabled
                 )
                 ImageLoader.Builder(appContext)
+                    .components {
+                        add(FullResolutionArtworkInterceptor())
+                    }
                     .memoryCache {
                         MemoryCache.Builder()
                             .maxSizeBytes(memoryCacheBytes)
@@ -241,6 +312,7 @@ object LevyraArtworkCache {
     private fun preloadRequest(context: Context, url: String): ImageRequest {
         return ImageRequest.Builder(context)
             .data(url)
+            .size(SMALL_SIZE)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)
