@@ -78,6 +78,19 @@ class ArtworkUrlUpgradeTest {
     }
 
     @Test
+    fun fullResolutionPolicyRejectsProviderLookingPathsOnOtherHosts() {
+        val spotify = "https://cdn.example/i.scdn.co/image/ab67616d00001e02abc"
+        val apple = "https://cdn.example/mzstatic.com/image/thumb/Music/abc/300x300bb.jpg"
+        val google = "https://cdn.example/googleusercontent.com/aAbBcC=w640-h360"
+        val deezer = "https://cdn.example/e-cdns-images.dzcdn.net/images/cover/example/cover_medium/image.jpg"
+
+        assertEquals(spotify, fullResolutionArtworkUrl(spotify))
+        assertEquals(apple, fullResolutionArtworkUrl(apple))
+        assertEquals(google, fullResolutionArtworkUrl(google))
+        assertEquals(deezer, fullResolutionArtworkUrl(deezer))
+    }
+
+    @Test
     fun fullResolutionPolicyNeverDownscalesBetterSources() {
         val apple = "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/1400x1400bb.jpg"
         val googleWide = "https://lh3.googleusercontent.com/aAbBcC=w1600-h900-l90-rj"
