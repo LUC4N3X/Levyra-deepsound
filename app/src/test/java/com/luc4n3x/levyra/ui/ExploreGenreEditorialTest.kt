@@ -46,7 +46,7 @@ class ExploreGenreEditorialTest {
 
     @Test
     fun laterRotationWindowsCanSurfaceDifferentArtists() {
-        val tracks = (1..8).map { index ->
+        val tracks = (1..14).map { index ->
             track(
                 id = index.toString(),
                 artist = "Artist $index",
@@ -59,8 +59,9 @@ class ExploreGenreEditorialTest {
         val first = buildExploreGenreEditorial(tracks, "rap-drill", 1L)
         val later = buildExploreGenreEditorial(tracks, "rap-drill", 2L)
 
-        assertNotEquals(first.artists.map { it.key }, later.artists.map { it.key })
-        assertEquals(first.artists.map { it.key }.toSet(), later.artists.map { it.key }.toSet())
+        assertEquals(10, first.artists.size)
+        assertEquals(10, later.artists.size)
+        assertNotEquals(first.artists.map { it.key }.toSet(), later.artists.map { it.key }.toSet())
     }
 
     @Test
