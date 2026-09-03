@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -24,6 +25,7 @@ class ExploreMoodArtworkCardTest {
 
         zoneIds.forEach { zoneId ->
             assertNotNull(exploreMoodPortraitArtist(zoneId, "it", 0L))
+            assertTrue(exploreMoodPortraitCandidates(zoneId, "it", 0L).size >= 4)
         }
     }
 
@@ -36,12 +38,21 @@ class ExploreMoodArtworkCardTest {
     }
 
     @Test
+    fun fallbackCandidatesKeepEveryArtistExactlyOnce() {
+        val candidates = exploreMoodPortraitCandidates("rap-drill", "it", 4L)
+
+        assertEquals(candidates.size, candidates.toSet().size)
+        assertEquals(5, candidates.size)
+    }
+
+    @Test
     fun italianRapUsesItalianArtistPool() {
         val italianRapArtists = setOf("Sfera Ebbasta", "Shiva", "Geolier", "Tony Boy", "Kid Yugi")
 
         repeat(5) { bucket ->
-            val artist = exploreMoodPortraitArtist("rap-drill", "it-IT", bucket.toLong())
-            assertTrue(artist in italianRapArtists)
+            val candidates = exploreMoodPortraitCandidates("rap-drill", "it-IT", bucket.toLong())
+            assertTrue(candidates.isNotEmpty())
+            assertTrue(candidates.all { artist -> artist in italianRapArtists })
         }
     }
 
@@ -50,13 +61,15 @@ class ExploreMoodArtworkCardTest {
         val italianArtists = setOf("Annalisa", "Mahmood", "Elodie", "Lazza", "Geolier")
 
         repeat(5) { bucket ->
-            val artist = exploreMoodPortraitArtist("local-wave", "it", bucket.toLong())
-            assertTrue(artist in italianArtists)
+            val candidates = exploreMoodPortraitCandidates("local-wave", "it", bucket.toLong())
+            assertTrue(candidates.isNotEmpty())
+            assertTrue(candidates.all { artist -> artist in italianArtists })
         }
     }
 
     @Test
     fun unknownGenreDoesNotTriggerPortraitLookup() {
         assertNull(exploreMoodPortraitArtist("unknown-zone", "it", 0L))
+        assertTrue(exploreMoodPortraitCandidates("unknown-zone", "it", 0L).isEmpty())
     }
 }
