@@ -38,22 +38,26 @@ class ExploreMoodArtworkCardTest {
     }
 
     @Test
-    fun fallbackCandidatesKeepEveryArtistExactlyOnce() {
-        val candidates = exploreMoodPortraitCandidates("rap-drill", "it", 4L)
-
-        assertEquals(candidates.size, candidates.toSet().size)
-        assertEquals(5, candidates.size)
-    }
-
-    @Test
-    fun italianRapUsesItalianArtistPool() {
+    fun italianRapTriesGlobalRapFallbackBeforeExhaustingLocalPool() {
         val italianRapArtists = setOf("Sfera Ebbasta", "Shiva", "Geolier", "Tony Boy", "Kid Yugi")
+        val globalFallback = setOf("Central Cee", "Travis Scott")
 
         repeat(5) { bucket ->
             val candidates = exploreMoodPortraitCandidates("rap-drill", "it-IT", bucket.toLong())
-            assertTrue(candidates.isNotEmpty())
-            assertTrue(candidates.all { artist -> artist in italianRapArtists })
+
+            assertEquals(9, candidates.size)
+            assertEquals(candidates.size, candidates.toSet().size)
+            assertTrue(candidates.take(3).all { artist -> artist in italianRapArtists })
+            assertTrue(candidates.drop(3).take(2).all { artist -> artist in globalFallback })
         }
+    }
+
+    @Test
+    fun italianRapKeepsAllItalianArtistsAvailableAfterFallbacks() {
+        val italianRapArtists = setOf("Sfera Ebbasta", "Shiva", "Geolier", "Tony Boy", "Kid Yugi")
+        val candidates = exploreMoodPortraitCandidates("rap-drill", "it", 4L)
+
+        assertTrue(candidates.containsAll(italianRapArtists))
     }
 
     @Test
