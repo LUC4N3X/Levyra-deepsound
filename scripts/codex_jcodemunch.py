@@ -120,6 +120,11 @@ def serve() -> int:
         print(f"Levyra jCodeMunch bootstrap failed: {exc}", file=sys.stderr)
         return 1
 
+    if os.name == "nt":
+        # os.execv does not quote argv on Windows, so a cache path containing a
+        # space is re-split by the child and parsed as a bogus subcommand.
+        return subprocess.run([str(binary)], check=False).returncode
+
     os.execv(str(binary), [str(binary)])
     return 0
 
