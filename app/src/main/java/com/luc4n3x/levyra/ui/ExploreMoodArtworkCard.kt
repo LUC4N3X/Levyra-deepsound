@@ -47,11 +47,12 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 private val ExploreMoodPortraitLookupSemaphore = Semaphore(2)
+private const val ExploreRapFallbackPortraitUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Eminem_in_2021.jpg/500px-Eminem_in_2021.jpg"
 
 private val ExploreMoodGlobalArtistPools = mapOf(
     "nuove-uscite" to listOf("Billie Eilish", "The Weeknd", "Sabrina Carpenter", "Bruno Mars"),
     "local-wave" to listOf("Dua Lipa", "The Weeknd", "Billie Eilish", "Bad Bunny"),
-    "rap-drill" to listOf("Central Cee", "Travis Scott", "21 Savage", "Don Toliver"),
+    "rap-drill" to listOf("Eminem", "50 Cent", "Central Cee", "Travis Scott", "21 Savage", "Don Toliver"),
     "elettronica" to listOf("Fred again..", "Peggy Gou", "Calvin Harris", "David Guetta"),
     "pop-global" to listOf("Dua Lipa", "Billie Eilish", "Sabrina Carpenter", "Ariana Grande"),
     "rnb-soul" to listOf("SZA", "The Weeknd", "Brent Faiyaz", "Tems"),
@@ -145,6 +146,9 @@ internal fun exploreMoodPortraitLookupLimit(zoneId: String, candidateCount: Int)
     return requested.coerceAtMost(candidateCount.coerceAtLeast(0))
 }
 
+internal fun exploreMoodHardFallbackPortraitUrl(zoneId: String): String =
+    if (zoneId == "rap-drill") ExploreRapFallbackPortraitUrl else ""
+
 @Composable
 internal fun RowScope.ExploreMoodCard(
     zone: ExploreZone,
@@ -162,12 +166,13 @@ internal fun RowScope.ExploreMoodCard(
     val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
         exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
     }
+    val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
     var portraitCandidateIndex by remember(portraitCandidates) { mutableStateOf(0) }
     var portraitUrl by remember(portraitCandidates) { mutableStateOf("") }
 
     LaunchedEffect(portraitCandidates, portraitCandidateIndex, portraitLookupLimit, artworkRepository) {
         if (portraitCandidateIndex >= portraitLookupLimit) {
-            portraitUrl = ""
+            portraitUrl = hardFallbackPortraitUrl
             return@LaunchedEffect
         }
         portraitUrl = ""
@@ -256,7 +261,9 @@ internal fun RowScope.ExploreMoodCard(
                 onError = {
                     if (portraitUrl == activePortraitUrl) {
                         portraitUrl = ""
-                        portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
+                        if (activePortraitUrl != hardFallbackPortraitUrl) {
+                            portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
+                        }
                     }
                 },
                 modifier = Modifier
