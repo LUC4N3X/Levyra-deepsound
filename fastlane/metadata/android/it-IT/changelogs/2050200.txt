@@ -1,0 +1,1 @@
+Levyra 2.5.2 porta la radio personale in cima alla Home con il ritratto reale dell'artista, una pagina artista in stile Spotify con lista dei brani popolari numerata e barra azioni dedicata, ritagli delle copertine che non tagliano i volti e navigazione indietro corretta dai generi di Esplora.
