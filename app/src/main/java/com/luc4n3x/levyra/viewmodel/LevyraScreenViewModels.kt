@@ -128,12 +128,20 @@ data class HomePlaybackProgress(
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
     private val freezeHomeContent = MutableStateFlow(false)
+    private val moodSelectionExplicit = MutableStateFlow(false)
     private var homeRenderSettleJob: Job? = null
 
-    internal val renderState: StateFlow<HomeRenderSnapshot> = combine(state, freezeHomeContent) { snapshot, freeze ->
-        HomeRenderInput(snapshot, freeze)
+    internal val renderState: StateFlow<HomeRenderSnapshot> = combine(
+        state,
+        freezeHomeContent,
+        moodSelectionExplicit
+    ) { snapshot, freeze, explicitMoodSelection ->
+        HomeRenderInput(
+            state = if (explicitMoodSelection) snapshot else snapshot.copy(selectedMood = null),
+            freezeContent = freeze
+        )
     }
-        .scan(buildHomeRenderSnapshot(root.state.value)) { previous, input ->
+        .scan(buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))) { previous, input ->
             withContext(Dispatchers.Default) {
                 buildStableHomeRenderSnapshot(
                     state = input.state,
@@ -146,7 +154,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = buildHomeRenderSnapshot(root.state.value)
+            initialValue = buildHomeRenderSnapshot(root.state.value.copy(selectedMood = null))
         )
     val playbackProgress: StateFlow<HomePlaybackProgress> = stablePlaybackState
         .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
@@ -186,7 +194,10 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun searchNow() = root.searchNow()
     fun searchNow(query: String) = root.searchNow(query)
     fun selectChart(regionId: String) = root.selectChart(regionId)
-    fun selectMood(mood: Mood) = root.selectMood(mood)
+    fun selectMood(mood: Mood) {
+        moodSelectionExplicit.value = true
+        root.selectMood(mood)
+    }
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
     fun onHomeEntered(atTop: Boolean) {
