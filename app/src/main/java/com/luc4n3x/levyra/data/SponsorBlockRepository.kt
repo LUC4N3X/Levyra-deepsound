@@ -84,7 +84,7 @@ internal fun parseSponsorBlockSegments(body: String, videoId: String): List<Spon
     for (candidateIndex in 0 until candidates.length()) {
         val candidate = candidates.optJSONObject(candidateIndex) ?: continue
         if (candidate.optString("videoID") != videoId) continue
-        val segments = candidate.optJSONArray("segments") ?: return emptyList()
+        val segments = candidate.optJSONArray("segments") ?: return null
         return buildList {
             for (index in 0 until segments.length()) {
                 val item = segments.optJSONObject(index) ?: continue
