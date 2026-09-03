@@ -6,9 +6,11 @@ import android.content.pm.ApplicationInfo
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
+import coil3.intercept.Interceptor
 import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.ImageResult
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -79,6 +81,41 @@ internal fun isLikelyArtworkBytes(bytes: ByteArray): Boolean {
     return false
 }
 
+private val FullResolutionAppleArtworkSizePattern = Regex("/\\d+x\\d+bb(?=[.-])")
+
+internal fun fullResolutionArtworkUrl(url: String): String {
+    val clean = url.trim()
+    if (!clean.startsWith("https://", ignoreCase = true)) return clean
+    if (clean.indexOf('?') >= 0) return clean
+    val lower = clean.lowercase()
+    return when {
+        lower.contains("i.scdn.co/image/ab67616d00001e02") ->
+            clean.replace("ab67616d00001e02", "ab67616d0000b273", ignoreCase = true)
+        lower.contains("mzstatic.com/") ->
+            clean.replace("{w}", "1200", ignoreCase = true)
+                .replace("{h}", "1200", ignoreCase = true)
+                .replace(FullResolutionAppleArtworkSizePattern, "/1200x1200bb")
+        lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") ->
+            LevyraPersonalOrbit.upscaledArtworkUrl(clean)
+        lower.contains("e-cdns-images.dzcdn.net/") ->
+            clean.replace("/cover_medium/", "/cover_xl/", ignoreCase = true)
+                .replace("/cover_big/", "/cover_xl/", ignoreCase = true)
+        else -> clean
+    }
+}
+
+private class FullResolutionArtworkInterceptor : Interceptor {
+    override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        val source = chain.request.data as? String ?: return chain.proceed()
+        val upgraded = fullResolutionArtworkUrl(source)
+        if (upgraded == source) return chain.proceed()
+        val request = chain.request.newBuilder()
+            .data(upgraded)
+            .build()
+        return chain.withRequest(request).proceed()
+    }
+}
+
 object LevyraArtworkCache {
     private const val SMALL_SIZE = 192
     private const val LARGE_SIZE = 512
@@ -111,6 +148,9 @@ object LevyraArtworkCache {
                     memoryProfile.largeHeapEnabled
                 )
                 ImageLoader.Builder(appContext)
+                    .components {
+                        add(FullResolutionArtworkInterceptor())
+                    }
                     .memoryCache {
                         MemoryCache.Builder()
                             .maxSizeBytes(memoryCacheBytes)
