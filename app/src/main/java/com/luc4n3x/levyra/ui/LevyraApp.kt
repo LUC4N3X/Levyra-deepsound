@@ -7057,7 +7057,7 @@ private fun HomeEditorialSpotlight(
     Column(
         modifier = Modifier
             .align(Alignment.BottomStart)
-            .fillMaxWidth(0.78f)
+            .fillMaxWidth(0.74f)
             .padding(start = 22.dp, end = 12.dp, bottom = 38.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -7135,27 +7135,27 @@ private fun HomeEditorialSpotlight(
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(end = 22.dp, bottom = 42.dp)
-            .size(76.dp)
+            .padding(end = 18.dp, bottom = 46.dp)
+            .size(68.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
             when {
                 isResolving -> CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.5.dp,
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.25.dp,
                     color = Color(0xFF07080C)
                 )
                 isCurrent && isPlaying -> Icon(
                     imageVector = Icons.Rounded.Pause,
                     contentDescription = strings.pause,
                     tint = Color(0xFF07080C),
-                    modifier = Modifier.size(29.dp)
+                    modifier = Modifier.size(27.dp)
                 )
                 else -> Icon(
                     imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = strings.playNow,
                     tint = Color(0xFF07080C),
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(29.dp)
                 )
             }
         }
