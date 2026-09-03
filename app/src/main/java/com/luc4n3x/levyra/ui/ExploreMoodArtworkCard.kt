@@ -96,13 +96,38 @@ internal fun exploreMoodPortraitCandidates(
     rotationBucket: Long
 ): List<String> {
     val language = languageCode.trim().lowercase().substringBefore('-').substringBefore('_')
-    val candidates = when {
+    val primary = when {
         zoneId == "local-wave" -> ExploreMoodLocalWaveArtistPools[language]
             ?: ExploreMoodGlobalArtistPools[zoneId]
         zoneId == "rap-drill" && language == "it" -> ExploreMoodItalianRapArtists
         else -> ExploreMoodGlobalArtistPools[zoneId]
     }.orEmpty()
-    if (candidates.isEmpty()) return emptyList()
+    if (primary.isEmpty()) return emptyList()
+
+    val rotatedPrimary = rotateExploreMoodCandidates(
+        candidates = primary,
+        zoneId = zoneId,
+        language = language,
+        rotationBucket = rotationBucket
+    )
+    if (zoneId != "rap-drill" || language != "it") return rotatedPrimary
+
+    val globalFallback = ExploreMoodGlobalArtistPools[zoneId].orEmpty()
+    return buildList {
+        addAll(rotatedPrimary.take(3))
+        addAll(globalFallback.take(2))
+        addAll(rotatedPrimary.drop(3))
+        addAll(globalFallback.drop(2))
+    }.distinct()
+}
+
+private fun rotateExploreMoodCandidates(
+    candidates: List<String>,
+    zoneId: String,
+    language: String,
+    rotationBucket: Long
+): List<String> {
+    if (candidates.size < 2) return candidates
     val base = Math.floorMod(31 * zoneId.hashCode() + language.hashCode(), candidates.size)
     val rotation = Math.floorMod(rotationBucket, candidates.size.toLong()).toInt()
     val offset = (base + rotation) % candidates.size
@@ -133,7 +158,7 @@ internal fun RowScope.ExploreMoodCard(
 
     LaunchedEffect(portraitCandidates, artworkRepository) {
         portraitUrl = ""
-        val lookupLimit = if (zone.id == "rap-drill") 3 else 2
+        val lookupLimit = if (zone.id == "rap-drill") 5 else 2
         for (artist in portraitCandidates.take(lookupLimit)) {
             val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
                 artworkRepository.resolveArtistPortrait(artist)
