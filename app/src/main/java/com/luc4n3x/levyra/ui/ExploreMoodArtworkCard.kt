@@ -140,6 +140,11 @@ internal fun exploreMoodPortraitArtist(
     rotationBucket: Long
 ): String? = exploreMoodPortraitCandidates(zoneId, languageCode, rotationBucket).firstOrNull()
 
+internal fun exploreMoodPortraitLookupLimit(zoneId: String, candidateCount: Int): Int {
+    val requested = if (zoneId == "rap-drill") 5 else 2
+    return requested.coerceAtMost(candidateCount.coerceAtLeast(0))
+}
+
 @Composable
 internal fun RowScope.ExploreMoodCard(
     zone: ExploreZone,
@@ -154,19 +159,25 @@ internal fun RowScope.ExploreMoodCard(
     val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
         exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
     }
+    val portraitLookupLimit = remember(zone.id, portraitCandidates.size) {
+        exploreMoodPortraitLookupLimit(zone.id, portraitCandidates.size)
+    }
+    var portraitCandidateIndex by remember(portraitCandidates) { mutableStateOf(0) }
     var portraitUrl by remember(portraitCandidates) { mutableStateOf("") }
 
-    LaunchedEffect(portraitCandidates, artworkRepository) {
+    LaunchedEffect(portraitCandidates, portraitCandidateIndex, portraitLookupLimit, artworkRepository) {
+        if (portraitCandidateIndex >= portraitLookupLimit) {
+            portraitUrl = ""
+            return@LaunchedEffect
+        }
         portraitUrl = ""
-        val lookupLimit = if (zone.id == "rap-drill") 5 else 2
-        for (artist in portraitCandidates.take(lookupLimit)) {
-            val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
-                artworkRepository.resolveArtistPortrait(artist)
-            }
-            if (resolved.isNotBlank()) {
-                portraitUrl = resolved
-                break
-            }
+        val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
+            artworkRepository.resolveArtistPortrait(portraitCandidates[portraitCandidateIndex])
+        }
+        if (resolved.isBlank()) {
+            portraitCandidateIndex += 1
+        } else {
+            portraitUrl = resolved
         }
     }
 
@@ -236,11 +247,18 @@ internal fun RowScope.ExploreMoodCard(
             )
     ) {
         if (portraitUrl.isNotBlank()) {
+            val activePortraitUrl = portraitUrl
             AsyncImage(
-                model = portraitUrl,
+                model = activePortraitUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.Center,
+                onError = {
+                    if (portraitUrl == activePortraitUrl) {
+                        portraitUrl = ""
+                        portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
