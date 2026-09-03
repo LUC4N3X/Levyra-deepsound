@@ -77,7 +77,7 @@ internal fun sponsorBlockHashPrefix(videoId: String): String =
     MessageDigest.getInstance("SHA-256")
         .digest(videoId.toByteArray(StandardCharsets.UTF_8))
         .take(2)
-        .joinToString("") { "%02x".format(it) }
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
 internal fun parseSponsorBlockSegments(body: String, videoId: String): List<SponsorSegment>? {
     val candidates = runCatching { JSONArray(body) }.getOrNull() ?: return null
