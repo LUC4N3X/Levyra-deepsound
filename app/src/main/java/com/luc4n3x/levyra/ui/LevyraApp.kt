@@ -7068,42 +7068,70 @@ private fun HomeEditorialSpotlight(
         StableRemoteArtwork(
             url = resolvedArtistArtworkUrl,
             contentDescription = soundtrackTitle,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0f to Color.Transparent,
+                                0.14f to Color.Black.copy(alpha = 0.55f),
+                                0.30f to Color.Black,
+                                0.74f to Color.Black,
+                                0.90f to Color.Black.copy(alpha = 0.45f),
+                                1f to Color.Transparent
+                            )
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colorStops = arrayOf(
+                                0f to Color.Black.copy(alpha = 0.30f),
+                                0.09f to Color.Black.copy(alpha = 0.86f),
+                                0.20f to Color.Black,
+                                0.80f to Color.Black,
+                                0.93f to Color.Black.copy(alpha = 0.84f),
+                                1f to Color.Black.copy(alpha = 0.30f)
+                            )
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                },
             contentScale = ContentScale.Crop,
             highRes = true
         )
     }
 
-    val heroCanvas = LevyraHomeDesign.CanvasDark
     Box(
         modifier = Modifier
             .matchParentSize()
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0f to heroCanvas,
-                        0.07f to heroCanvas.copy(alpha = 0.62f),
-                        0.20f to heroCanvas.copy(alpha = 0.12f),
-                        0.46f to Color.Transparent,
-                        0.66f to heroCanvas.copy(alpha = 0.34f),
-                        0.83f to heroCanvas.copy(alpha = 0.86f),
-                        1f to heroCanvas
+                        0f to Color.Transparent,
+                        0.44f to Color.Transparent,
+                        0.63f to Color.Black.copy(alpha = 0.24f),
+                        0.80f to Color.Black.copy(alpha = 0.58f),
+                        1f to Color.Black.copy(alpha = 0.76f)
                     )
                 )
             )
     )
     Box(
         modifier = Modifier
-            .matchParentSize()
+            .align(Alignment.BottomStart)
+            .fillMaxWidth()
+            .fillMaxHeight(0.52f)
             .background(
                 Brush.horizontalGradient(
                     colorStops = arrayOf(
-                        0f to heroCanvas,
-                        0.10f to heroCanvas.copy(alpha = 0.46f),
-                        0.34f to heroCanvas.copy(alpha = 0.10f),
-                        0.72f to Color.Transparent,
-                        0.93f to heroCanvas.copy(alpha = 0.42f),
-                        1f to heroCanvas
+                        0f to Color.Black.copy(alpha = 0.30f),
+                        0.44f to Color.Black.copy(alpha = 0.07f),
+                        0.78f to Color.Transparent,
+                        1f to Color.Transparent
                     )
                 )
             )
