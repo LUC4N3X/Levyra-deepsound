@@ -92,10 +92,10 @@ private fun Modifier.homeAtmosphereBackground(
         color = blendedAccent,
         center = heroBridgeCenter,
         radius = heroBridgeRadius,
-        alpha = if (isLight) 0f else 0.045f
+        alpha = 0.045f
     )
     val lowerFade = homeLowerFadeBrush(isLight, fadeTop, height)
-    val persistentTint = homePersistentTintBrush(blendedAccent, height, isLight)
+    val persistentTint = homePersistentTintBrush(blendedAccent, height)
     val edgeVignette = homeEdgeVignetteBrush(isLight)
 
     onDrawBehind {
@@ -103,14 +103,14 @@ private fun Modifier.homeAtmosphereBackground(
         drawCircle(primaryHalo, radius = primaryRadius, center = primaryCenter)
         drawCircle(secondaryHalo, radius = secondaryRadius, center = secondaryCenter)
         drawCircle(centreWash, radius = centreRadius, center = centreCenter)
-        drawCircle(heroBridge, radius = heroBridgeRadius, center = heroBridgeCenter)
+        if (!isLight) drawCircle(heroBridge, radius = heroBridgeRadius, center = heroBridgeCenter)
         drawRect(edgeVignette)
         drawRect(
             brush = lowerFade,
             topLeft = Offset(0f, fadeTop),
             size = Size(width, height - fadeTop)
         )
-        drawRect(persistentTint)
+        if (!isLight) drawRect(persistentTint)
     }
 }
 
@@ -184,20 +184,17 @@ private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float):
     )
 }
 
-private fun homePersistentTintBrush(color: Color, height: Float, isLight: Boolean): Brush {
-    if (isLight) return Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-    return Brush.verticalGradient(
-        colorStops = arrayOf(
-            0f to Color.Transparent,
-            0.26f to color.copy(alpha = 0.008f),
-            0.48f to color.copy(alpha = 0.006f),
-            0.72f to color.copy(alpha = 0.004f),
-            1f to color.copy(alpha = 0.003f)
-        ),
-        startY = 0f,
-        endY = height
-    )
-}
+private fun homePersistentTintBrush(color: Color, height: Float): Brush = Brush.verticalGradient(
+    colorStops = arrayOf(
+        0f to Color.Transparent,
+        0.26f to color.copy(alpha = 0.008f),
+        0.48f to color.copy(alpha = 0.006f),
+        0.72f to color.copy(alpha = 0.004f),
+        1f to color.copy(alpha = 0.003f)
+    ),
+    startY = 0f,
+    endY = height
+)
 
 private fun homeEdgeVignetteBrush(isLight: Boolean): Brush {
     val colors = if (isLight) {
