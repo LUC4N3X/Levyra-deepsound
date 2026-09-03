@@ -6,10 +6,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -89,11 +90,11 @@ private val ExploreMoodItalianRapArtists = listOf(
     "Kid Yugi"
 )
 
-internal fun exploreMoodPortraitArtist(
+internal fun exploreMoodPortraitCandidates(
     zoneId: String,
     languageCode: String,
     rotationBucket: Long
-): String? {
+): List<String> {
     val language = languageCode.trim().lowercase().substringBefore('-').substringBefore('_')
     val candidates = when {
         zoneId == "local-wave" -> ExploreMoodLocalWaveArtistPools[language]
@@ -101,11 +102,18 @@ internal fun exploreMoodPortraitArtist(
         zoneId == "rap-drill" && language == "it" -> ExploreMoodItalianRapArtists
         else -> ExploreMoodGlobalArtistPools[zoneId]
     }.orEmpty()
-    if (candidates.isEmpty()) return null
+    if (candidates.isEmpty()) return emptyList()
     val base = Math.floorMod(31 * zoneId.hashCode() + language.hashCode(), candidates.size)
     val rotation = Math.floorMod(rotationBucket, candidates.size.toLong()).toInt()
-    return candidates[(base + rotation) % candidates.size]
+    val offset = (base + rotation) % candidates.size
+    return candidates.drop(offset) + candidates.take(offset)
 }
+
+internal fun exploreMoodPortraitArtist(
+    zoneId: String,
+    languageCode: String,
+    rotationBucket: Long
+): String? = exploreMoodPortraitCandidates(zoneId, languageCode, rotationBucket).firstOrNull()
 
 @Composable
 internal fun RowScope.ExploreMoodCard(
@@ -118,56 +126,63 @@ internal fun RowScope.ExploreMoodCard(
     val context = LocalContext.current
     val artworkRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
-    val portraitArtist = remember(zone.id, strings.code, rotationBucket) {
-        exploreMoodPortraitArtist(zone.id, strings.code, rotationBucket)
+    val portraitCandidates = remember(zone.id, strings.code, rotationBucket) {
+        exploreMoodPortraitCandidates(zone.id, strings.code, rotationBucket)
     }
-    var portraitUrl by remember(portraitArtist) { mutableStateOf("") }
+    var portraitUrl by remember(portraitCandidates) { mutableStateOf("") }
 
-    LaunchedEffect(portraitArtist, artworkRepository) {
+    LaunchedEffect(portraitCandidates, artworkRepository) {
         portraitUrl = ""
-        val artist = portraitArtist ?: return@LaunchedEffect
-        portraitUrl = ExploreMoodPortraitLookupSemaphore.withPermit {
-            artworkRepository.resolveArtistPortrait(artist)
+        val lookupLimit = if (zone.id == "rap-drill") 3 else 2
+        for (artist in portraitCandidates.take(lookupLimit)) {
+            val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
+                artworkRepository.resolveArtistPortrait(artist)
+            }
+            if (resolved.isNotBlank()) {
+                portraitUrl = resolved
+                break
+            }
         }
     }
 
     val accentStart = Color(zone.accentStart)
     val accentEnd = Color(zone.accentEnd)
     val shape = RoundedCornerShape(18.dp)
-    val fallbackBrush = remember(accentStart, accentEnd) {
+    val backgroundBrush = remember(accentStart, accentEnd) {
         Brush.linearGradient(
             listOf(
-                accentStart.copy(alpha = 0.62f),
-                accentEnd.copy(alpha = 0.42f),
-                LevyraPanel
+                LevyraPanel,
+                accentStart.copy(alpha = 0.26f),
+                accentEnd.copy(alpha = 0.18f)
             )
         )
     }
-    val artworkScrim = remember(accentStart, accentEnd) {
+    val imageScrim = remember(accentStart) {
         Brush.horizontalGradient(
             colorStops = arrayOf(
-                0f to accentStart.copy(alpha = 0.96f),
-                0.42f to accentStart.copy(alpha = 0.78f),
-                0.70f to accentEnd.copy(alpha = 0.30f),
-                1f to Color.Black.copy(alpha = 0.12f)
+                0f to LevyraPanel,
+                0.34f to LevyraPanel.copy(alpha = 0.94f),
+                0.58f to accentStart.copy(alpha = 0.38f),
+                0.80f to Color.Transparent,
+                1f to Color.Transparent
             )
         )
     }
-    val lowerScrim = remember {
+    val bottomScrim = remember {
         Brush.verticalGradient(
             listOf(
                 Color.Transparent,
-                Color.Black.copy(alpha = 0.18f),
-                Color.Black.copy(alpha = 0.58f)
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.36f)
             )
         )
     }
     val outlineBrush = remember(accentStart, accentEnd, isSelected) {
         Brush.linearGradient(
             listOf(
-                accentStart.copy(alpha = if (isSelected) 0.98f else 0.72f),
-                accentEnd.copy(alpha = if (isSelected) 0.82f else 0.42f),
-                Color.White.copy(alpha = if (isSelected) 0.22f else 0.10f)
+                accentStart.copy(alpha = if (isSelected) 0.96f else 0.54f),
+                accentEnd.copy(alpha = if (isSelected) 0.72f else 0.30f),
+                Color.White.copy(alpha = if (isSelected) 0.18f else 0.08f)
             )
         )
     }
@@ -175,9 +190,9 @@ internal fun RowScope.ExploreMoodCard(
     Box(
         modifier = Modifier
             .weight(1f)
-            .height(104.dp)
+            .height(108.dp)
             .clip(shape)
-            .background(fallbackBrush)
+            .background(backgroundBrush)
             .border(
                 BorderStroke(if (isSelected) 1.5.dp else 1.dp, outlineBrush),
                 shape
@@ -200,35 +215,39 @@ internal fun RowScope.ExploreMoodCard(
                 model = portraitUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                alignment = Alignment.CenterEnd,
-                modifier = Modifier.fillMaxSize()
+                alignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.72f)
             )
         } else {
             Text(
                 text = zone.emoji,
-                color = Color.White.copy(alpha = 0.38f),
-                fontSize = 44.sp,
+                color = Color.White.copy(alpha = 0.28f),
+                fontSize = 42.sp,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 14.dp)
+                    .padding(end = 16.dp)
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(artworkScrim))
-        Box(modifier = Modifier.fillMaxSize().background(lowerScrim))
+        Box(modifier = Modifier.fillMaxSize().background(imageScrim))
+        Box(modifier = Modifier.fillMaxSize().background(bottomScrim))
 
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 14.dp, end = 10.dp, bottom = 13.dp),
+                .fillMaxWidth(0.78f)
+                .padding(start = 14.dp, end = 8.dp, bottom = 13.dp),
             horizontalAlignment = Alignment.Start
         ) {
             Box(
                 modifier = Modifier
-                    .width(26.dp)
+                    .width(if (isSelected) 30.dp else 22.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(accentEnd.copy(alpha = 0.95f))
+                    .background(if (isSelected) Color.White else accentEnd.copy(alpha = 0.92f))
             )
             Text(
                 text = zone.label,
@@ -239,17 +258,6 @@ internal fun RowScope.ExploreMoodCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 7.dp)
-            )
-        }
-
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(10.dp)
-                    .size(7.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.92f))
             )
         }
     }
