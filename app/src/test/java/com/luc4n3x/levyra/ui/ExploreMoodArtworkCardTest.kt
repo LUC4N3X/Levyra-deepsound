@@ -44,11 +44,13 @@ class ExploreMoodArtworkCardTest {
 
         repeat(5) { bucket ->
             val candidates = exploreMoodPortraitCandidates("rap-drill", "it-IT", bucket.toLong())
+            val lookupLimit = exploreMoodPortraitLookupLimit("rap-drill", candidates.size)
 
             assertEquals(9, candidates.size)
             assertEquals(candidates.size, candidates.toSet().size)
+            assertEquals(5, lookupLimit)
             assertTrue(candidates.take(3).all { artist -> artist in italianRapArtists })
-            assertTrue(candidates.drop(3).take(2).all { artist -> artist in globalFallback })
+            assertTrue(candidates.take(lookupLimit).drop(3).all { artist -> artist in globalFallback })
         }
     }
 
@@ -58,6 +60,13 @@ class ExploreMoodArtworkCardTest {
         val candidates = exploreMoodPortraitCandidates("rap-drill", "it", 4L)
 
         assertTrue(candidates.containsAll(italianRapArtists))
+    }
+
+    @Test
+    fun lookupLimitNeverExceedsAvailableCandidates() {
+        assertEquals(0, exploreMoodPortraitLookupLimit("rap-drill", 0))
+        assertEquals(1, exploreMoodPortraitLookupLimit("rap-drill", 1))
+        assertEquals(2, exploreMoodPortraitLookupLimit("pop-global", 8))
     }
 
     @Test
