@@ -65,8 +65,9 @@ class ExploreMoodArtworkCardTest {
     fun rapHasIndependentHardArtworkFallback() {
         val fallback = exploreMoodHardFallbackPortraitUrl("rap-drill")
 
-        assertTrue(fallback.startsWith("https://"))
+        assertTrue(fallback.startsWith("https://upload.wikimedia.org/wikipedia/commons/"))
         assertTrue(fallback.contains("Eminem", ignoreCase = true))
+        assertTrue(!fallback.contains("/thumb/"))
         assertEquals("", exploreMoodHardFallbackPortraitUrl("pop-global"))
     }
 
