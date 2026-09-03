@@ -430,6 +430,12 @@ private class YoutubeLocalDecoderEngine(
                 "Player config verification rejected for ${player.hash}: ${verification.reason}"
             )
         }
+        if (created.isDead) {
+            created.close()
+            throw YoutubeRendererFailureException(
+                "Player config verification left the runtime dead for ${player.hash}"
+            )
+        }
         runtime = created
         runtimeHash = player.hash
         runtimeConfigKey = player.configKey
