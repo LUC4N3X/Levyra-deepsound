@@ -47,7 +47,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 private val ExploreMoodPortraitLookupSemaphore = Semaphore(2)
-private const val ExploreRapFallbackPortraitUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Eminem_in_2021.jpg/500px-Eminem_in_2021.jpg"
+private const val ExploreRapFallbackPortraitUrl = "https://upload.wikimedia.org/wikipedia/commons/5/54/Eminem_in_2021.jpg"
 
 private val ExploreMoodGlobalArtistPools = mapOf(
     "nuove-uscite" to listOf("Billie Eilish", "The Weeknd", "Sabrina Carpenter", "Bruno Mars"),
@@ -168,14 +168,16 @@ internal fun RowScope.ExploreMoodCard(
     }
     val hardFallbackPortraitUrl = remember(zone.id) { exploreMoodHardFallbackPortraitUrl(zone.id) }
     var portraitCandidateIndex by remember(portraitCandidates) { mutableStateOf(0) }
-    var portraitUrl by remember(portraitCandidates) { mutableStateOf("") }
+    var portraitUrl by remember(portraitCandidates, hardFallbackPortraitUrl) {
+        mutableStateOf(hardFallbackPortraitUrl)
+    }
 
     LaunchedEffect(portraitCandidates, portraitCandidateIndex, portraitLookupLimit, artworkRepository) {
         if (portraitCandidateIndex >= portraitLookupLimit) {
             portraitUrl = hardFallbackPortraitUrl
             return@LaunchedEffect
         }
-        portraitUrl = ""
+        if (hardFallbackPortraitUrl.isBlank()) portraitUrl = ""
         val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
             artworkRepository.resolveArtistPortrait(portraitCandidates[portraitCandidateIndex])
         }
@@ -260,8 +262,10 @@ internal fun RowScope.ExploreMoodCard(
                 alignment = Alignment.Center,
                 onError = {
                     if (portraitUrl == activePortraitUrl) {
-                        portraitUrl = ""
-                        if (activePortraitUrl != hardFallbackPortraitUrl) {
+                        if (activePortraitUrl == hardFallbackPortraitUrl) {
+                            portraitUrl = ""
+                        } else {
+                            portraitUrl = hardFallbackPortraitUrl
                             portraitCandidateIndex = (portraitCandidateIndex + 1).coerceAtMost(portraitLookupLimit)
                         }
                     }
