@@ -850,6 +850,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var loopCurrentQueueOnCompletion: Boolean = false
     private var samplesPlaybackSession: SamplesPlaybackSession? = null
     private var deferredPlaybackStartSideEffectsKey: String? = null
+    @Volatile
+    private var listeningSignals: com.luc4n3x.levyra.domain.ListeningSignalProfile? = null
     private var listenSessionTrack: Track? = null
     private var listenSessionStartedAt = 0L
     private var listenSessionAccumulatedMs = 0L
@@ -7846,7 +7848,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!current.radioEnabled) return
         if (!isSameRadioSeed(current.currentTrack, request.seed)) return
         if (current.generation != request.generation) return
-        queueEngine.appendRadioTracks(radioTracks)
+        val orderedRadioTracks = listeningSignals?.takeIf { it.hasSignal }?.let { signals ->
+            com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
+                candidates = radioTracks,
+                profile = signals,
+                limit = radioTracks.size,
+                contextArtist = request.seed.artist
+            )
+        } ?: radioTracks
+        queueEngine.appendRadioTracks(orderedRadioTracks)
         if (!playWhenReady) return
         withContext(Dispatchers.Main) {
             queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
@@ -8663,11 +8673,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val mostPlayed = listeningPulseStore.mostPlayedTracks()
             val pulse = listeningPulseEngine.build(events)
             lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
+            val signalSnapshot = _state.value
+            val signals = com.luc4n3x.levyra.domain.ListeningSignalEngine.build(
+                events = events,
+                favorites = signalSnapshot.favorites,
+                playlistTracks = signalSnapshot.playlists.flatMap { it.tracks },
+                followedArtists = signalSnapshot.followedArtists.map { it.name }
+            )
+            listeningSignals = signals
             _state.update { current ->
                 val updated = current.copy(
                     listeningPulse = pulse,
                     recentListens = recent,
-                    mostPlayedTracks = mostPlayed
+                    mostPlayedTracks = mostPlayed,
+                    personalOrbitTracks = com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
+                        candidates = current.personalOrbitTracks,
+                        profile = signals,
+                        limit = current.personalOrbitTracks.size,
+                        dropSuppressed = false
+                    )
                 )
                 val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
                 val rankedAlbums = rankAlbumRecommendations(

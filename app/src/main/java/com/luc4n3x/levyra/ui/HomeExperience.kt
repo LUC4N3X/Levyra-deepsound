@@ -54,21 +54,21 @@ private fun Modifier.homeAtmosphereBackground(
 ): Modifier = drawWithCache {
     val width = size.width.coerceAtLeast(1f)
     val height = size.height.coerceAtLeast(1f)
-    val primaryCenter = Offset(width * 0.12f, -height * 0.02f)
-    val secondaryCenter = Offset(width * 0.98f, height * 0.16f)
-    val centreCenter = Offset(width * 0.52f, height * 0.26f)
-    val primaryRadius = width * 1.18f
-    val secondaryRadius = width * 0.86f
-    val centreRadius = width * 0.92f
-    val fadeTop = height * 0.25f
+    val primaryCenter = Offset(width * 0.12f, -height * 0.10f)
+    val secondaryCenter = Offset(width * 0.98f, height * 0.26f)
+    val centreCenter = Offset(width * 0.52f, height * 0.44f)
+    val primaryRadius = width * 1.34f
+    val secondaryRadius = width * 1.02f
+    val centreRadius = width * 1.16f
+    val fadeTop = height * 0.34f
 
     val base = homeBaseBrush(isLight)
     val primaryHalo = homeHaloBrush(
         color = primary,
         center = primaryCenter,
         radius = primaryRadius,
-        leadingAlpha = if (isLight) 0.18f else 0.30f,
-        trailingAlpha = if (isLight) 0.055f else 0.085f
+        leadingAlpha = if (isLight) 0.18f else 0.22f,
+        trailingAlpha = if (isLight) 0.055f else 0.075f
     )
     val secondaryHalo = homeHaloBrush(
         color = secondary,
@@ -113,9 +113,9 @@ private fun homeBaseBrush(isLight: Boolean): Brush = if (isLight) {
     Brush.verticalGradient(
         colorStops = arrayOf(
             0f to LevyraHomeDesign.CanvasMid,
-            0.24f to LevyraHomeDesign.CanvasDark,
-            0.52f to Color(0xFF030407),
-            1f to Color.Black
+            0.32f to LevyraHomeDesign.CanvasDark,
+            0.68f to Color(0xFF060810),
+            1f to Color(0xFF04060B)
         )
     )
 }
@@ -157,14 +157,14 @@ private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float):
     } else {
         listOf(
             Color.Transparent,
-            Color.Black.copy(alpha = 0.78f),
-            Color.Black
+            LevyraHomeDesign.CanvasDark.copy(alpha = 0.58f),
+            LevyraHomeDesign.CanvasDark.copy(alpha = 0.90f)
         )
     }
     return Brush.verticalGradient(
         colors = colors,
         startY = fadeTop,
-        endY = height * 0.62f
+        endY = height * 0.88f
     )
 }
 

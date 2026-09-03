@@ -17,6 +17,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 
 data class ScrobbleListen(val track: Track, val startedAtMs: Long, val listenedMs: Long)
 
@@ -188,17 +189,49 @@ class ScrobblingCoordinator(private val providers: List<ScrobbleProvider>) {
 
     suspend fun nowPlaying(track: Track, startedAtMs: Long) {
         val listen = ScrobbleListen(track, startedAtMs, 0L)
-        providers.filter(ScrobbleProvider::isConfigured).forEach { it.nowPlaying(listen) }
+        configuredProviders().forEach { provider ->
+            isolate(provider) { provider.nowPlaying(listen) }
+        }
     }
 
     suspend fun scrobble(track: Track, startedAtMs: Long, listenedMs: Long) {
         val threshold = scrobbleThresholdMs(track.durationMs) ?: return
-        providers.filter(ScrobbleProvider::isConfigured).forEach { provider ->
+        if (listenedMs < threshold) return
+        configuredProviders().forEach { provider ->
             val key = "${provider.id}:${track.id}:${startedAtMs}"
-            if (listenedMs >= threshold && markSubmitted(key)) {
+            if (!markSubmitted(key)) return@forEach
+            val delivered = isolate(provider) {
                 provider.scrobble(ScrobbleListen(track, startedAtMs, listenedMs))
             }
+            if (!delivered) releaseSubmitted(key)
         }
+    }
+
+    private fun configuredProviders(): List<ScrobbleProvider> = providers.filter { provider ->
+        try {
+            provider.isConfigured()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "Scrobble provider %s configuration check failed", provider.id)
+            false
+        }
+    }
+
+    private suspend fun isolate(provider: ScrobbleProvider, block: suspend () -> Unit): Boolean {
+        return try {
+            block()
+            true
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "Scrobble provider %s failed", provider.id)
+            false
+        }
+    }
+
+    private fun releaseSubmitted(key: String) {
+        synchronized(submitted) { submitted.remove(key) }
     }
 
     private fun markSubmitted(key: String): Boolean = synchronized(submitted) {
