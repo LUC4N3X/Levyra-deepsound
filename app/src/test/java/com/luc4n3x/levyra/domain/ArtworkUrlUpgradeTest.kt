@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.domain
 
+import com.luc4n3x.levyra.data.fullResolutionArtworkUrl
 import com.luc4n3x.levyra.ui.highResolutionPlayerArtworkUrl
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -41,6 +42,7 @@ class ArtworkUrlUpgradeTest {
     fun signedUrlsAreLeftExactlyAsTheyAre() {
         val signed = "https://lh3.googleusercontent.com/aAbBcC=w120-h120?sqp=-oaymwEdCJUDENAFSFXyq4qpAw&rs=AOn4CLA=x1"
         assertEquals(signed, LevyraPersonalOrbit.upscaledArtworkUrl(signed))
+        assertEquals(signed, fullResolutionArtworkUrl(signed))
         assertEquals(signed, highResolutionPlayerArtworkUrl(signed))
     }
 
@@ -48,6 +50,7 @@ class ArtworkUrlUpgradeTest {
     fun youtubeVideoFramesAreNotRewritten() {
         val url = "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg?sqp=-oaymwEcCNA&rs=AOn4CLA"
         assertEquals(url, LevyraPersonalOrbit.upscaledArtworkUrl(url))
+        assertEquals(url, fullResolutionArtworkUrl(url))
         assertEquals(url, highResolutionPlayerArtworkUrl(url))
     }
 
@@ -55,25 +58,32 @@ class ArtworkUrlUpgradeTest {
     fun urlsWithoutSizeTokenAreLeftUntouched() {
         val url = "https://lh3.googleusercontent.com/aAbBcC"
         assertEquals(url, LevyraPersonalOrbit.upscaledArtworkUrl(url))
+        assertEquals(url, fullResolutionArtworkUrl(url))
     }
 
     @Test
-    fun otherProvidersKeepTheirOwnUpgradeRules() {
+    fun fullResolutionPolicyUpgradesKnownArtworkProviders() {
         assertEquals(
             "https://i.scdn.co/image/ab67616d0000b273abc",
-            highResolutionPlayerArtworkUrl("https://i.scdn.co/image/ab67616d00001e02abc")
+            fullResolutionArtworkUrl("https://i.scdn.co/image/ab67616d00001e02abc")
         )
         assertEquals(
             "https://is1-ssl.mzstatic.com/image/thumb/Music/abc/1200x1200bb.jpg",
-            highResolutionPlayerArtworkUrl("https://is1-ssl.mzstatic.com/image/thumb/Music/abc/300x300bb.jpg")
+            fullResolutionArtworkUrl("https://is1-ssl.mzstatic.com/image/thumb/Music/abc/300x300bb.jpg")
+        )
+        assertEquals(
+            "https://e-cdns-images.dzcdn.net/images/cover/example/cover_xl/image.jpg",
+            fullResolutionArtworkUrl("https://e-cdns-images.dzcdn.net/images/cover/example/cover_medium/image.jpg")
         )
     }
 
     @Test
-    fun playerArtworkUsesTheSharedGoogleRule() {
+    fun playerArtworkUsesTheSharedFullResolutionPolicy() {
+        val url = "https://lh3.googleusercontent.com/aAbBcC=w640-h360"
+        assertEquals(fullResolutionArtworkUrl(url), highResolutionPlayerArtworkUrl(url))
         assertEquals(
             "https://lh3.googleusercontent.com/aAbBcC=w1200-h675",
-            highResolutionPlayerArtworkUrl("https://lh3.googleusercontent.com/aAbBcC=w640-h360")
+            highResolutionPlayerArtworkUrl(url)
         )
     }
 }
