@@ -36,12 +36,30 @@ internal enum class PlaybackVideoStrategy {
     REEL
 }
 
+internal enum class PlaybackClientCapability(val jsonKey: String) {
+    PLAYER("player"),
+    STREAMING("streaming"),
+    BROWSE("browse"),
+    METADATA("metadata");
+
+    companion object {
+        fun fromJsonKey(value: String): PlaybackClientCapability? {
+            val normalized = value.trim().lowercase()
+            return entries.firstOrNull { it.jsonKey == normalized }
+        }
+    }
+}
+
 internal data class PlaybackClientOverride(
     val enabled: Boolean? = null,
     val priority: Int? = null,
     val requiresPoToken: Boolean? = null,
-    val clientVersion: String? = null
-)
+    val clientVersion: String? = null,
+    val capabilities: Map<PlaybackClientCapability, Boolean> = emptyMap()
+) {
+    fun isCapabilityEnabled(capability: PlaybackClientCapability): Boolean =
+        capabilities[capability] ?: enabled ?: true
+}
 
 internal data class PlaybackCompatibilityPolicy(
     val schema: Int,
@@ -92,6 +110,13 @@ internal data class PlaybackCompatibilityPolicy(
             override.priority?.let { value.put("priority", it) }
             override.requiresPoToken?.let { value.put("requiresPoToken", it) }
             override.clientVersion?.let { value.put("clientVersion", it) }
+            if (override.capabilities.isNotEmpty()) {
+                val capabilities = JSONObject()
+                PlaybackClientCapability.entries
+                    .mapNotNull { capability -> override.capabilities[capability]?.let { capability to it } }
+                    .forEach { (capability, allowed) -> capabilities.put(capability.jsonKey, allowed) }
+                value.put("capabilities", capabilities)
+            }
             clients.put(name, value)
         }
         return JSONObject()
@@ -161,7 +186,11 @@ internal object PlaybackCompatibilityPolicyParser {
             } else {
                 base.clientOverrides
             }
-            require(knownClients.any { clientOverrides[it]?.enabled != false })
+            require(
+                knownClients.any {
+                    clientOverrides[it]?.isCapabilityEnabled(PlaybackClientCapability.PLAYER) ?: true
+                }
+            )
 
             val expiresAt = if (root.has("expiresAt")) {
                 requiredLong(root, "expiresAt").also {
@@ -228,12 +257,31 @@ internal object PlaybackCompatibilityPolicyParser {
             val clientVersion = optionalString(value, "clientVersion")?.also {
                 require(clientVersionPattern.matches(it))
             }
+            val capabilities = parseCapabilities(value)
             output[name] = PlaybackClientOverride(
                 enabled = enabled,
                 priority = priority,
                 requiresPoToken = requiresPoToken,
-                clientVersion = clientVersion
+                clientVersion = clientVersion,
+                capabilities = capabilities
             )
+        }
+        return output
+    }
+
+    private fun parseCapabilities(client: JSONObject): Map<PlaybackClientCapability, Boolean> {
+        if (!client.has("capabilities") || client.isNull("capabilities")) return emptyMap()
+        val raw = client.get("capabilities")
+        require(raw is JSONObject)
+        require(raw.length() <= PlaybackClientCapability.entries.size)
+        val output = LinkedHashMap<PlaybackClientCapability, Boolean>()
+        val names = raw.keys()
+        while (names.hasNext()) {
+            val key = names.next()
+            val capability = PlaybackClientCapability.fromJsonKey(key) ?: continue
+            val allowed = raw.get(key)
+            require(allowed is Boolean)
+            output[capability] = allowed
         }
         return output
     }
@@ -249,7 +297,8 @@ internal object PlaybackCompatibilityPolicyParser {
                 enabled = override.enabled ?: previous?.enabled,
                 priority = override.priority ?: previous?.priority,
                 requiresPoToken = override.requiresPoToken ?: previous?.requiresPoToken,
-                clientVersion = override.clientVersion ?: previous?.clientVersion
+                clientVersion = override.clientVersion ?: previous?.clientVersion,
+                capabilities = previous?.capabilities.orEmpty() + override.capabilities
             )
         }
         return output
@@ -295,6 +344,22 @@ internal object PlaybackCompatibilityPolicyParser {
         require(raw is String && raw.isNotBlank())
         return raw
     }
+}
+
+internal fun PlaybackCompatibilityPolicy.isClientCapabilityEnabled(
+    clientName: String,
+    capability: PlaybackClientCapability
+): Boolean = clientOverrides[clientName]?.isCapabilityEnabled(capability) ?: true
+
+internal object PlaybackClientCapabilities {
+    private val active = AtomicReference(PlaybackCompatibilityPolicy.bundled())
+
+    fun publish(policy: PlaybackCompatibilityPolicy) {
+        active.set(policy)
+    }
+
+    fun isEnabled(clientName: String, capability: PlaybackClientCapability): Boolean =
+        active.get().isClientCapabilityEnabled(clientName, capability)
 }
 
 internal fun PlaybackCompatibilityPolicy.isExpired(nowMs: Long = System.currentTimeMillis()): Boolean {
@@ -364,8 +429,11 @@ internal class PlaybackCompatibilityPolicyStore(
     }
 
     private fun syncExtractorClientPolicy() {
-        val androidVrEnabled = current().clientOverrides["ANDROID_VR"]?.enabled ?: true
-        YoutubeStreamExtractor.setAndroidVrPlayerClientEnabled(androidVrEnabled)
+        val policy = current()
+        PlaybackClientCapabilities.publish(policy)
+        YoutubeStreamExtractor.setAndroidVrPlayerClientEnabled(
+            policy.isClientCapabilityEnabled("ANDROID_VR", PlaybackClientCapability.PLAYER)
+        )
     }
 
     private suspend fun refreshLocked(reason: String): Boolean {
