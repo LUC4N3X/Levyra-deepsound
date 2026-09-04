@@ -8,6 +8,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
+import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import timber.log.Timber
 import java.io.IOException
@@ -160,6 +161,7 @@ class LevyraYoutubeDataSource private constructor(
     }
 
     private fun requestHeaders(url: String): Map<String, String> {
+        YoutubeStreamClientIdentityRegistry.find(url)?.let { return it.mediaRequestHeaders() }
         val userAgent = when {
             runCatching { YoutubeParsingHelper.isIosStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getIosUserAgent(null)
             runCatching { YoutubeParsingHelper.isAndroidStreamingUrl(url) }.getOrDefault(false) -> YoutubeParsingHelper.getAndroidUserAgent(null)
