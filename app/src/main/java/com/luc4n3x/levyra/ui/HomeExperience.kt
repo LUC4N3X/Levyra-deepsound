@@ -94,6 +94,11 @@ private fun Modifier.homeAtmosphereBackground(
         center = heroBridgeCenter,
         radius = heroBridgeRadius
     )
+    val headerTint = homeHeaderTintBrush(
+        color = heroEdgeAccent,
+        width = width,
+        height = height
+    )
     val lowerFade = homeLowerFadeBrush(isLight, fadeTop, height)
     val persistentTint = homePersistentTintBrush(blendedAccent, height)
     val edgeVignette = homeEdgeVignetteBrush(isLight)
@@ -103,7 +108,10 @@ private fun Modifier.homeAtmosphereBackground(
         drawCircle(primaryHalo, radius = primaryRadius, center = primaryCenter)
         drawCircle(secondaryHalo, radius = secondaryRadius, center = secondaryCenter)
         drawCircle(centreWash, radius = centreRadius, center = centreCenter)
-        if (!isLight) drawCircle(heroBridge, radius = heroBridgeRadius, center = heroBridgeCenter)
+        if (!isLight) {
+            drawCircle(heroBridge, radius = heroBridgeRadius, center = heroBridgeCenter)
+            drawRect(headerTint)
+        }
         drawRect(edgeVignette)
         drawRect(
             brush = lowerFade,
@@ -175,6 +183,22 @@ private fun homeHeroBridgeBrush(
     ),
     center = center,
     radius = radius
+)
+
+private fun homeHeaderTintBrush(
+    color: Color,
+    width: Float,
+    height: Float
+): Brush = Brush.radialGradient(
+    colorStops = arrayOf(
+        0f to color.copy(alpha = 0.048f),
+        0.20f to color.copy(alpha = 0.034f),
+        0.42f to color.copy(alpha = 0.014f),
+        0.62f to color.copy(alpha = 0.004f),
+        1f to Color.Transparent
+    ),
+    center = Offset(width * 0.28f, -height * 0.02f),
+    radius = width * 0.88f
 )
 
 private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float): Brush {
