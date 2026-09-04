@@ -33,6 +33,24 @@ internal object YoutubeClientIdentityInterceptor : Interceptor {
         CLIENT_VISIONOS
     )
 
+    internal data class MediaNavigation(val origin: String, val referer: String)
+
+    internal fun mediaNavigationFor(clientHeaderName: String, videoId: String): MediaNavigation? {
+        return when (clientHeaderName) {
+            CLIENT_WEB -> MediaNavigation("https://www.youtube.com", "https://www.youtube.com/")
+            CLIENT_WEB_REMIX -> MediaNavigation("https://music.youtube.com", "https://music.youtube.com/")
+            CLIENT_WEB_EMBEDDED -> MediaNavigation(
+                "https://www.youtube.com",
+                if (videoId.isBlank()) {
+                    "https://www.youtube.com/embed/"
+                } else {
+                    "https://www.youtube.com/embed/$videoId"
+                }
+            )
+            else -> null
+        }
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         return chain.proceed(normalize(chain.request()))
     }

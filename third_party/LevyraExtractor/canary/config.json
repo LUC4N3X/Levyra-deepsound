@@ -29,6 +29,18 @@
       "required": false
     }
   ],
+  "capability_checks": [
+    {
+      "name": "MADE_FOR_KIDS",
+      "kind": "made_for_kids",
+      "video_id": "XqZsoesa55w"
+    },
+    {
+      "name": "POTOKEN",
+      "kind": "potoken",
+      "video_id": "BaW_jenozKc"
+    }
+  ],
   "upstreams": [
     {
       "repo": "TeamNewPipe/NewPipeExtractor",

@@ -7,6 +7,8 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
+import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
@@ -382,8 +384,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun applyExtractorClientPolicy() {
-        val overrides = playbackPolicyStore.current().clientOverrides
-        val androidVrEnabled = overrides["ANDROID_VR"]?.enabled ?: true
+        val policy = playbackPolicyStore.current()
+        PlaybackClientCapabilities.publish(policy)
+        val androidVrEnabled = policy.isClientCapabilityEnabled("ANDROID_VR", PlaybackClientCapability.PLAYER)
         YoutubeStreamExtractor.setAndroidVrPlayerClientEnabled(androidVrEnabled)
         Timber.i("Playback compatibility clients androidVrEnabled=%s", androidVrEnabled)
     }
@@ -412,6 +415,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 streamCache.clear()
                 prefs.edit().clear().apply()
                 strategyOriginByUrl.clear()
+                YoutubeStreamClientIdentityRegistry.clear()
             }
             sourceMatchStore.clearOnline()
         }
@@ -655,6 +659,54 @@ class PlaybackResolver private constructor(private val context: Context) {
             "playback candidate promoted mode=%s burned=%d",
             if (isVideoMode) "video" else "audio",
             burned
+        )
+    }
+
+    private fun rememberAndroidReelClientIdentity(
+        stream: DirectStream,
+        userAgent: String,
+        clientVersion: String
+    ) {
+        rememberClientIdentity(
+            stream = stream,
+            clientName = ANDROID_REEL_CLIENT_NAME,
+            clientHeaderName = "3",
+            clientVersion = clientVersion,
+            userAgent = userAgent,
+            requiresPoToken = false
+        )
+    }
+
+    private fun streamingCapabilityAllows(clientName: String): Boolean =
+        playbackPolicyStore.current()
+            .isClientCapabilityEnabled(clientName, PlaybackClientCapability.STREAMING)
+
+    private fun rememberClientIdentity(
+        stream: DirectStream,
+        clientName: String,
+        clientHeaderName: String,
+        clientVersion: String,
+        userAgent: String,
+        requiresPoToken: Boolean
+    ) {
+        val urls = buildList {
+            add(stream.url)
+            add(stream.videoUrl)
+            stream.manifest.streams
+                .filter { it.deliveryMethod != PlaybackDeliveryMethod.SABR }
+                .forEach { add(it.url) }
+        }.filter { it.isNotBlank() }
+        if (urls.isEmpty()) return
+        YoutubeStreamClientIdentityRegistry.register(
+            urls,
+            YoutubeStreamClientIdentity(
+                clientName = clientName,
+                clientHeaderName = clientHeaderName,
+                clientVersion = clientVersion,
+                userAgent = userAgent,
+                requiresPoToken = requiresPoToken,
+                videoId = stream.manifest.sourceVideoId
+            )
         )
     }
 
@@ -1229,6 +1281,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         audioQuality: String
     ): Track {
+        if (!streamingCapabilityAllows(ANDROID_REEL_CLIENT_NAME)) {
+            throw YoutubePlayerRequestException(
+                null,
+                "Client $ANDROID_REEL_CLIENT_NAME non abilitato alla capability streaming"
+            )
+        }
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
@@ -1332,22 +1390,28 @@ class PlaybackResolver private constructor(private val context: Context) {
                 selectedVideoUrl = "",
                 streams = listOf(innerTubeAudioDescriptor(format, url, true))
             )
-            return track.withDirectStream(
-                DirectStream(
-                    url = url,
-                    videoUrl = "",
-                    durationMs = duration,
-                    thumbnailUrl = thumbnail,
-                    source = "YouTube Android Reel Audio",
-                    manifest = manifest
-                )
+            val reelStream = DirectStream(
+                url = url,
+                videoUrl = "",
+                durationMs = duration,
+                thumbnailUrl = thumbnail,
+                source = "YouTube Android Reel Audio",
+                manifest = manifest
             )
+            rememberAndroidReelClientIdentity(reelStream, userAgent, reelClientVersion)
+            return track.withDirectStream(reelStream)
         }
 
         throw YoutubePlayerRequestException(null, "Android Reel non ha restituito uno stream solo audio riproducibile")
     }
 
     private suspend fun resolveVideoWithAndroidReel(track: Track): Track {
+        if (!streamingCapabilityAllows(ANDROID_REEL_CLIENT_NAME)) {
+            throw YoutubePlayerRequestException(
+                null,
+                "Client $ANDROID_REEL_CLIENT_NAME non abilitato alla capability streaming"
+            )
+        }
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
@@ -1448,17 +1512,17 @@ class PlaybackResolver private constructor(private val context: Context) {
             selectedVideoUrl = "",
             streams = listOf(videoDescriptor(selection.candidate, true))
         )
-        return track.withDirectStream(
-            DirectStream(
-                url = selection.candidate.url,
-                videoUrl = "",
-                durationMs = duration,
-                thumbnailUrl = thumbnail,
-                source = "YouTube Android Reel · ${selection.reason}",
-                manifest = manifest,
-                videoSubtitleTracks = videoSubtitleTracks(playerResponse)
-            )
+        val reelStream = DirectStream(
+            url = selection.candidate.url,
+            videoUrl = "",
+            durationMs = duration,
+            thumbnailUrl = thumbnail,
+            source = "YouTube Android Reel · ${selection.reason}",
+            manifest = manifest,
+            videoSubtitleTracks = videoSubtitleTracks(playerResponse)
         )
+        rememberAndroidReelClientIdentity(reelStream, userAgent, reelClientVersion)
+        return track.withDirectStream(reelStream)
     }
 
     private fun fetchAndroidReelVisitorData(
@@ -2028,7 +2092,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val overrides = playbackPolicyStore.current().clientOverrides
         val effective = profiles.mapNotNull { base ->
             val override = overrides[base.clientName]
-            if (override?.enabled == false) return@mapNotNull null
+            if (override?.isCapabilityEnabled(PlaybackClientCapability.PLAYER) == false) return@mapNotNull null
             val version = override?.clientVersion ?: base.clientVersion
             base.copy(
                 clientVersion = version,
@@ -2398,6 +2462,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean = false,
         audioQuality: String = selectedAudioQuality
     ): DirectStream {
+        if (!streamingCapabilityAllows(profile.clientName)) {
+            throw YoutubePlayerRequestException(
+                null,
+                "Client ${profile.clientName} non abilitato alla capability streaming"
+            )
+        }
         val startedAt = System.nanoTime()
         val mode = if (isVideoMode) "video" else if (preferMp4Audio) "offline" else "audio"
         val diagnosticMode = if (isVideoMode) RuntimeSignal.MODE_VIDEO else RuntimeSignal.MODE_AUDIO
@@ -2414,6 +2484,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
+            rememberClientIdentity(
+                stream = stream,
+                clientName = profile.clientName,
+                clientHeaderName = profile.clientHeaderName,
+                clientVersion = profile.clientVersion,
+                userAgent = playerUserAgent(profile),
+                requiresPoToken = profile.requiresPoToken
+            )
             playbackSecurity.resetFailureState()
             val latency = elapsedMs(startedAt)
             recordClientSuccess(profile, latency)
@@ -3565,6 +3643,8 @@ private fun Throwable.playbackDiagnostic(): String {
 }
 
 class PlaybackBlockedException(message: String) : IllegalStateException(message)
+
+private const val ANDROID_REEL_CLIENT_NAME = "ANDROID"
 
 private val PROGRESSIVE_STREAM_CLIENTS = setOf("VISIONOS", "ANDROID_VR")
 
