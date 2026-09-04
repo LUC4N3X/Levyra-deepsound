@@ -81,19 +81,13 @@ video_index = text.index(video_anchor)
 text = text[:video_index] + collection_block + "\n\n" + text[video_index:]
 
 text, width_count = re.subn(
-    r"private const val HOME_COLLECTION_COLUMN_WIDTH = \d+",
-    "private const val HOME_COLLECTION_COLUMN_WIDTH = 306",
+    r"private val HOME_COLLECTION_COLUMN_WIDTH = \d+\.dp",
+    "private val HOME_COLLECTION_COLUMN_WIDTH = 306.dp",
     text,
     count=1,
 )
-text, height_count = re.subn(
-    r"private const val HOME_COLLECTION_CARD_HEIGHT = \d+",
-    "private const val HOME_COLLECTION_CARD_HEIGHT = 124",
-    text,
-    count=1,
-)
-if width_count != 1 or height_count != 1:
-    raise RuntimeError(f"collection constants: width={width_count}, height={height_count}")
+if width_count != 1:
+    raise RuntimeError(f"collection width: expected one match, found {width_count}")
 
 replace_composable(
     "@Composable\nprivate fun HomeMusicVideoShelf(",
