@@ -128,16 +128,16 @@ data class HomePlaybackProgress(
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
     private val freezeHomeContent = MutableStateFlow(false)
-    private val moodSelectionExplicit = MutableStateFlow(false)
+    private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
     private var homeRenderSettleJob: Job? = null
 
     internal val renderState: StateFlow<HomeRenderSnapshot> = combine(
         state,
         freezeHomeContent,
-        moodSelectionExplicit
-    ) { snapshot, freeze, explicitMoodSelection ->
+        explicitMoodSelection
+    ) { snapshot, freeze, selectedMood ->
         HomeRenderInput(
-            state = if (explicitMoodSelection) snapshot else snapshot.copy(selectedMood = null),
+            state = snapshot.copy(selectedMood = selectedMood),
             freezeContent = freeze
         )
     }
@@ -195,8 +195,8 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun searchNow(query: String) = root.searchNow(query)
     fun selectChart(regionId: String) = root.selectChart(regionId)
     fun selectMood(mood: Mood) {
+        explicitMoodSelection.value = mood
         root.selectMood(mood)
-        moodSelectionExplicit.value = true
     }
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
