@@ -56,13 +56,15 @@ jobs:
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text()
 
-          def block(source: str, start: str, end: str) -> str:
-              start_index = source.index(start)
-              end_index = source.index(end, start_index)
-              return source[start_index:end_index]
+          def composable_block(source: str, name: str) -> str:
+              pattern = rf'@Composable\nprivate fun {re.escape(name)}\(.*?(?=\n@Composable\n|\Z)'
+              match = re.search(pattern, source, flags=re.S)
+              if match is None:
+                  raise SystemExit(f'Unable to locate protected composable: {name}')
+              return match.group(0)
 
-          orbit_before = block(text, '@Composable\nprivate fun PersonalListeningShelf(', '@Composable\nprivate fun HomeOrbitTrackCard(')
-          quick_before = block(text, '@Composable\nprivate fun HomeQuickPicksShelf(', '@Composable\nprivate fun HomeQuickPickRow(')
+          orbit_before = composable_block(text, 'PersonalListeningShelf')
+          quick_before = composable_block(text, 'HomeQuickPicksShelf')
 
           old_constants = '''private val HOME_COLLECTION_CARD_WIDTH = 236.dp
           private val HOME_COLLECTION_CARD_HEIGHT = 112.dp
@@ -588,8 +590,8 @@ jobs:
               raise SystemExit('Resonance call site no longer matches expected source')
           text = text.replace(old_resonance_call, new_resonance_call, 1)
 
-          orbit_after = block(text, '@Composable\nprivate fun PersonalListeningShelf(', '@Composable\nprivate fun HomeOrbitTrackCard(')
-          quick_after = block(text, '@Composable\nprivate fun HomeQuickPicksShelf(', '@Composable\nprivate fun HomeQuickPickRow(')
+          orbit_after = composable_block(text, 'PersonalListeningShelf')
+          quick_after = composable_block(text, 'HomeQuickPicksShelf')
           if orbit_before != orbit_after:
               raise SystemExit('Personal Orbit changed unexpectedly')
           if quick_before != quick_after:
