@@ -878,6 +878,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val homeAlbumsRequestGeneration = AtomicLong(0L)
     private val chartsRequestGeneration = AtomicLong(0L)
     private val artistListStateGeneration = AtomicLong(0L)
+    private var homeResonanceCommentsJob: Job? = null
+    private var homeResonanceCommentsRequestIds: List<String> = emptyList()
+    private val homeResonanceCommentsGeneration = AtomicLong(0L)
     private val chartsByRegion = java.util.concurrent.ConcurrentHashMap<String, List<Track>>()
     private val chartsFreshAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
@@ -1493,10 +1496,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             resonanceComments = snapshot.homeResonanceComments
         )
     }
-
-    private var homeResonanceCommentsJob: Job? = null
-    private var homeResonanceCommentsRequestIds: List<String> = emptyList()
-    private val homeResonanceCommentsGeneration = AtomicLong(0L)
 
     @Synchronized
     fun refreshHomeResonanceComments(tracks: List<Track> = _state.value.homeResonanceTracks) {
