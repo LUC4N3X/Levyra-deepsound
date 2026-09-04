@@ -1499,8 +1499,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     @Synchronized
     fun refreshHomeResonanceComments(tracks: List<Track> = _state.value.homeResonanceTracks) {
-        val requestIds = homeResonanceCommentVideoIds(tracks)
         val snapshot = _state.value
+        if (!snapshot.interfaceSettings.showResonance) {
+            homeResonanceCommentsJob?.cancel()
+            homeResonanceCommentsJob = null
+            homeResonanceCommentsRequestIds = emptyList()
+            homeResonanceCommentsGeneration.incrementAndGet()
+            return
+        }
+        val requestIds = homeResonanceCommentVideoIds(tracks)
         if (requestIds != homeResonanceCommentVideoIds(snapshot.homeResonanceTracks)) return
 
         val retainedComments = resonanceCommentsForTracks(tracks, snapshot.homeResonanceComments)
@@ -1604,6 +1611,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun isHomeResonanceCommentsRequestCurrent(videoIds: List<String>, generation: Long): Boolean {
         return generation == homeResonanceCommentsGeneration.get() &&
+            _state.value.interfaceSettings.showResonance &&
             videoIds == homeResonanceCommentVideoIds(_state.value.homeResonanceTracks)
     }
 
@@ -3673,6 +3681,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         preferences.setInterfaceSettings(normalized)
         LevyraTypographyController.apply(normalized.fontPreset)
         _state.update { it.copy(interfaceSettings = normalized) }
+        if (previous.showResonance && !normalized.showResonance) {
+            homeResonanceCommentsJob?.cancel()
+            homeResonanceCommentsJob = null
+            homeResonanceCommentsRequestIds = emptyList()
+            homeResonanceCommentsGeneration.incrementAndGet()
+        }
         if (previous.canvasSource != normalized.canvasSource) {
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null

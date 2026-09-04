@@ -93,7 +93,7 @@ class YoutubeEngagementIdentityTest {
         assertEquals(true, loaded.youtubeEngagement.comments.loaded)
         assertEquals("Comment B", loaded.youtubeEngagement.comments.items.single().text)
         assertEquals("next-b", loaded.youtubeEngagement.comments.nextToken)
-        assertEquals(trackA.id, state.currentTrack?.id)
+        assertEquals(trackA.id, loaded.currentTrack?.id)
     }
 
     @Test

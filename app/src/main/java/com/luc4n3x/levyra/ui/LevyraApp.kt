@@ -873,6 +873,7 @@ private fun HomeSectionHeader(
     title: String,
     subtitle: String? = null,
     onPlayAll: (() -> Unit)? = null,
+    titleMaxLines: Int = 1,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -895,7 +896,7 @@ private fun HomeSectionHeader(
                 lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
                 letterSpacing = (-0.65).sp,
                 fontWeight = FontWeight.Black,
-                maxLines = 1,
+                maxLines = titleMaxLines,
                 overflow = TextOverflow.Ellipsis
             )
             if (displaySubtitle.isNotBlank()) {
@@ -1310,7 +1311,7 @@ fun LevyraApp(
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.showRecognition || state.showJam || state.showYourSound || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.youtubeEngagement.comments.visible || state.showRecognition || state.showJam || state.showYourSound || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
         } else if (state.showRecognition) {
@@ -1616,6 +1617,21 @@ fun LevyraApp(
                         )
                     )
                 }
+            }
+
+            if (state.youtubeEngagement.comments.visible) {
+                PlayerYoutubeCommentsSheet(
+                    comments = state.youtubeEngagement.comments,
+                    primary = yourSoundAccent,
+                    secondary = LevyraViolet,
+                    strings = currentStrings,
+                    onDismiss = viewModel::closeYoutubeComments,
+                    onRetry = viewModel::retryYoutubeComments,
+                    onLoadMore = viewModel::loadMoreYoutubeComments,
+                    onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
+                    onToggleReplies = viewModel::toggleYoutubeCommentReplies,
+                    onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
+                )
             }
 
             val morphTrack = state.currentTrack
@@ -6099,8 +6115,8 @@ private fun HomeScreen(
         ).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
     val resonanceTracks = homeDerivedState.resonanceTracks
-    LaunchedEffect(resonanceTracks) {
-        if (resonanceTracks.isNotEmpty()) {
+    LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
+        if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
             viewModel.refreshHomeResonanceComments(resonanceTracks)
         }
     }
@@ -7955,7 +7971,9 @@ private fun ResonanceShelf(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.mostCommentedTracks,
+            subtitle = strings.tapToOpenComments,
             onPlayAll = onPlayAll,
+            titleMaxLines = 2,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
@@ -7993,18 +8011,18 @@ private fun ResonanceCard(
     onOpenComments: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier = Modifier
-            .width(328.dp)
+            .width(336.dp)
             .clip(shape)
             .background(
                 if (active) LevyraCyan.copy(alpha = if (LevyraIsLight) 0.08f else 0.10f)
                 else LevyraAdaptiveCard
             )
             .border(
-                width = if (active) 1.2.dp else Dp.Hairline,
-                color = if (active) LevyraCyan.copy(alpha = 0.75f) else LevyraAdaptiveSoftHairline,
+                width = if (active) 1.dp else Dp.Hairline,
+                color = if (active) LevyraCyan.copy(alpha = 0.58f) else LevyraAdaptiveSoftHairline,
                 shape = shape
             )
             .padding(14.dp),
@@ -8095,10 +8113,10 @@ private fun ResonanceCard(
 
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = if (LevyraIsLight) Color.Black.copy(alpha = 0.055f) else Color.White.copy(alpha = 0.075f),
+            color = if (LevyraIsLight) Color.Black.copy(alpha = 0.06f) else LevyraAdaptiveCardDeep,
             border = BorderStroke(
                 Dp.Hairline,
-                if (active) LevyraCyan.copy(alpha = 0.28f) else LevyraAdaptiveSoftHairline.copy(alpha = 0.50f)
+                if (active) LevyraCyan.copy(alpha = 0.22f) else LevyraAdaptiveSoftHairline.copy(alpha = 0.24f)
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -8119,7 +8137,9 @@ private fun ResonanceCard(
                         tint = LevyraCyan,
                         modifier = Modifier.size(13.dp)
                     )
-                    val count = snippet?.countText?.takeIf { it.isNotBlank() }
+                    val count = snippet?.countText
+                        ?.let(::youtubeCommentCountBadge)
+                        ?.takeIf { it.isNotBlank() }
                     Text(
                         text = strings.commentsLabel,
                         color = LevyraText,
@@ -8166,7 +8186,7 @@ private fun ResonanceCard(
                                 author = snippet.author,
                                 modifier = Modifier
                                     .padding(top = 1.dp)
-                                    .size(20.dp)
+                                    .size(28.dp)
                             )
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -8179,17 +8199,23 @@ private fun ResonanceCard(
                                     Text(
                                         text = snippet.author,
                                         color = LevyraText.copy(alpha = 0.90f),
-                                        fontSize = 11.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f, fill = false)
                                     )
                                     if (snippet.likeCountText.isNotBlank()) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ThumbUp,
+                                            contentDescription = null,
+                                            tint = LevyraMuted,
+                                            modifier = Modifier.size(11.dp)
+                                        )
                                         Text(
-                                            text = "• \uD83D\uDC4D ${snippet.likeCountText}",
+                                            text = snippet.likeCountText,
                                             color = LevyraMuted,
-                                            fontSize = 10.sp,
+                                            fontSize = 10.5.sp,
                                             maxLines = 1
                                         )
                                     }
@@ -8197,8 +8223,8 @@ private fun ResonanceCard(
                                 Text(
                                     text = snippet.text,
                                     color = LevyraMuted.copy(alpha = 0.95f),
-                                    fontSize = 11.5.sp,
-                                    lineHeight = 15.sp,
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -13161,7 +13187,7 @@ private fun PlayerYoutubeEngagementRow(
     }
 }
 
-private fun youtubeCommentCountBadge(value: String): String {
+internal fun youtubeCommentCountBadge(value: String): String {
     val normalized = value.replace('\u00A0', ' ').trim()
     if (normalized.isBlank()) return ""
     return CommentCountBadgePattern
@@ -13577,10 +13603,6 @@ private fun PlayerScreen(
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.smoothSpring() else snap(),
         label = "player-swipe-offset"
     )
-
-    BackHandler(enabled = state.youtubeEngagement.comments.visible) {
-        viewModel.closeYoutubeComments()
-    }
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
         if (mediaSeekFeedbackEvent > 0) {
@@ -14316,20 +14338,6 @@ private fun PlayerScreen(
             )
         }
 
-        if (state.youtubeEngagement.comments.visible) {
-            PlayerYoutubeCommentsSheet(
-                comments = state.youtubeEngagement.comments,
-                primary = primary,
-                secondary = secondary,
-                strings = strings,
-                onDismiss = viewModel::closeYoutubeComments,
-                onRetry = viewModel::retryYoutubeComments,
-                onLoadMore = viewModel::loadMoreYoutubeComments,
-                onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
-                onToggleReplies = viewModel::toggleYoutubeCommentReplies,
-                onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
-            )
-        }
     }
 }
 
@@ -14627,9 +14635,10 @@ private fun PlayerYoutubeCommentsSheet(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black
                         )
-                        if (comments.countText.isNotBlank()) {
+                        val commentCount = youtubeCommentCountBadge(comments.countText)
+                        if (commentCount.isNotBlank()) {
                             Text(
-                                text = comments.countText,
+                                text = commentCount,
                                 color = Color.White.copy(alpha = 0.52f),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,

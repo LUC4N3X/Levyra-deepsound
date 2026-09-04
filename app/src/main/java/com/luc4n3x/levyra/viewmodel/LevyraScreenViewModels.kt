@@ -721,7 +721,7 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
 
 private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
     val directCommentedSectionTracks = input.homeSections
-        .filter { isHomeResonanceSectionTitle(it.title, input.languageCode) || it.title.contains("comment", ignoreCase = true) }
+        .filter { isHomeResonanceSectionTitle(it.title, input.languageCode) }
         .flatMap { it.tracks }
     val directCommentedIds = directCommentedSectionTracks.map { it.id }.toSet()
     return buildList {
