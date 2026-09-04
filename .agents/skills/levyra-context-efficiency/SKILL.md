@@ -71,10 +71,42 @@ rtk grep <pattern> <path>
 rtk find <pattern> <path>
 rtk log <file>
 rtk summary <command>
+rtk adb logcat -d -t 400
+rtk adb -s <serial> logcat -d -t 400
+rtk summary adb shell dumpsys <service>
 ```
 
 Never treat compact or empty output as proof of success. Verify exit status and
 the authoritative success/failure marker.
+
+## Android and ADB output
+
+Treat ADB by output shape instead of trying to maximize RTK adoption percentage.
+A tiny raw device query costs less context than an unnecessary wrapper, while an
+unbounded logcat or dumpsys can flood a session.
+
+For routine textual diagnostics:
+
+- prefer a bounded source command first, especially `adb logcat -d -t 400`;
+- invoke the project filter explicitly as `rtk adb logcat -d -t 400` or
+  `rtk adb -s <serial> logcat -d -t 400`;
+- use `rtk summary adb shell dumpsys <service>` for large textual ADB output that
+  has no dedicated project filter;
+- narrow dumpsys to the relevant service/package before summarizing whenever
+  possible;
+- rerun the exact raw ADB command when the compact form can hide the deciding
+  failure, lifecycle, package, permission, performance, or device evidence.
+
+Keep raw when compression provides no useful win or could corrupt the payload:
+
+- `adb devices` and one-line `getprop`, `pm path`, readiness, input, or control
+  checks;
+- `adb exec-out screencap -p`, redirected screenshots, binary stdout, file
+  transfers, and other payload-producing commands;
+- exact reproduction output that must be preserved byte-for-byte.
+
+Do not chase `rtk discover` adoption by wrapping tiny ADB commands. The goal is
+less model context without weakening Android diagnostics.
 
 ## Repository discovery ladder
 
@@ -223,6 +255,7 @@ Use:
 rtk gain
 rtk gain --daily
 rtk gain --history
+rtk gain --graph
 rtk discover --all --since 7
 rtk session
 ```
