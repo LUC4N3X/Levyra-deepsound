@@ -1,0 +1,234 @@
+name: Refine Home Density Final
+
+on:
+  push:
+    branches:
+      - chatgpt/home-visual-hierarchy
+    paths:
+      - ".github/workflows/_refine-home-density-v4.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refine-home-density-final
+  cancel-in-progress: false
+
+jobs:
+  refine:
+    name: Apply and validate final Home polish
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TARGET_FILE: app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: chatgpt/home-visual-hierarchy
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          cache-disabled: true
+
+      - name: Apply Home density polish
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+
+          orbit_start_marker = '            if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {'
+          orbit_end_marker = '\n\n            if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {'
+          orbit_start = text.index(orbit_start_marker)
+          orbit_end = text.index(orbit_end_marker, orbit_start)
+          orbit_before = text[orbit_start:orbit_end]
+
+          def replace_once(source, old, new, label):
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {count}")
+              return source.replace(old, new, 1)
+
+          def get_block(source, name):
+              signature = f"@Composable\nprivate fun {name}("
+              start = source.index(signature)
+              end = source.index("\n@Composable", start + len(signature))
+              return start, end, source[start:end]
+
+          def put_block(source, start, end, block):
+              return source[:start] + block + source[end:]
+
+          def remove_braced_statement(source, marker):
+              start = source.index(marker)
+              brace = source.index('{', start)
+              depth = 0
+              end = None
+              for index in range(brace, len(source)):
+                  char = source[index]
+                  if char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                      if depth == 0:
+                          end = index + 1
+                          break
+              if end is None:
+                  raise SystemExit(f"unclosed block for {marker}")
+              return source[:start] + source[end:]
+
+          text = replace_once(text, 'private val HOME_COLLECTION_CARD_WIDTH = 272.dp', 'private val HOME_COLLECTION_CARD_WIDTH = 236.dp', 'collection width')
+          text = replace_once(text, 'private val HOME_COLLECTION_CARD_HEIGHT = 124.dp', 'private val HOME_COLLECTION_CARD_HEIGHT = 112.dp\nprivate val HOME_ALBUM_CARD_WIDTH = 150.dp', 'collection height')
+
+          collection_marker = '            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {'
+          collection_start = text.index(collection_marker)
+          collection_end = text.index('            if (', collection_start + len(collection_marker))
+          collection_block = text[collection_start:collection_end]
+          text = text[:collection_start] + text[collection_end:]
+
+          albums_anchor = text.index('item(key = "sec-home-albums-row"')
+          trending_condition = text.index('showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&', albums_anchor)
+          artists_start = text.rfind('            if (', albums_anchor, trending_condition)
+          if artists_start < 0:
+              raise SystemExit('trending artists block not found')
+          text = text[:artists_start] + collection_block + text[artists_start:]
+
+          start, end, block = get_block(text, 'HomeQuickPicksShelf')
+          block = replace_once(block, '.chunked(4)', '.take(8)\n            .chunked(2)', 'quick picks rows')
+          block = replace_once(block, '(availableWidth - HomeHorizontalInset - HOME_DENSE_SHELF_PEEK)', '(availableWidth - HomeHorizontalInset - 64.dp)', 'quick picks width formula')
+          block = replace_once(block, '.coerceIn(HOME_DENSE_SHELF_MIN_WIDTH, HOME_DENSE_SHELF_MAX_WIDTH)', '.coerceIn(252.dp, 292.dp)', 'quick picks width bounds')
+          block = replace_once(block, 'Column(verticalArrangement = Arrangement.spacedBy(10.dp))', 'Column(verticalArrangement = Arrangement.spacedBy(8.dp))', 'quick picks section gap')
+          block = replace_once(block, 'HomeCompactPlayAllHeader(title = title, onPlayAll = onPlayAll)', 'HomeSectionHeader(title = title)', 'quick picks header')
+          block = replace_once(block, 'horizontalArrangement = Arrangement.spacedBy(14.dp)', 'horizontalArrangement = Arrangement.spacedBy(12.dp)', 'quick picks shelf gap')
+          block = replace_once(block, 'verticalArrangement = Arrangement.spacedBy(4.dp)', 'verticalArrangement = Arrangement.spacedBy(2.dp)', 'quick picks row gap')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'HomeQuickPickRow')
+          block = replace_once(block, '.heightIn(min = 64.dp)', '.heightIn(min = 60.dp)', 'quick pick height')
+          block = replace_once(block, '.size(56.dp)', '.size(52.dp)', 'quick pick artwork')
+          block = replace_once(block, 'horizontalArrangement = Arrangement.spacedBy(12.dp)', 'horizontalArrangement = Arrangement.spacedBy(10.dp)', 'quick pick spacing')
+          block = replace_once(block, 'fontSize = 15.sp', 'fontSize = 14.5.sp', 'quick pick title')
+          block = replace_once(block, 'lineHeight = LevyraTypeRhythm.lineHeight(15.sp)', 'lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp)', 'quick pick title line')
+          block = replace_once(block, 'fontSize = 12.5.sp', 'fontSize = 12.sp', 'quick pick artist')
+          block = replace_once(block, 'lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp)', 'lineHeight = LevyraTypeRhythm.lineHeight(12.sp)', 'quick pick artist line')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'HomeEditorialCollectionCard')
+          block = replace_once(block, 'val shape = RoundedCornerShape(20.dp)', 'val shape = RoundedCornerShape(16.dp)', 'collection shape')
+          block = replace_once(block, '    val secondaryTrack = collection.tracks.getOrNull(1)\n', '', 'secondary collection track')
+          secondary_start = block.index('        if (secondaryTrack != null) {')
+          primary_start = block.index('        if (primaryTrack != null) {', secondary_start)
+          block = block[:secondary_start] + block[primary_start:]
+          block = replace_once(block, '.align(Alignment.BottomEnd)', '.align(Alignment.CenterEnd)', 'collection artwork alignment')
+          block = replace_once(block, '.offset(x = 8.dp, y = 10.dp)', '.offset(x = 8.dp)', 'collection artwork offset')
+          block = replace_once(block, '.size(106.dp)', '.size(88.dp)', 'collection artwork size')
+          block = replace_once(block, '                    .graphicsLayer { rotationZ = 4f }\n', '', 'collection artwork rotation')
+          block = replace_once(block, 'Color.White.copy(alpha = 0.20f)', 'Color.White.copy(alpha = 0.16f)', 'collection artwork border')
+          block = replace_once(block, '0f to Color.Black.copy(alpha = 0.18f)', '0f to Color.Black.copy(alpha = 0.26f)', 'collection scrim start')
+          block = replace_once(block, '0.58f to Color.Black.copy(alpha = 0.04f)', '0.58f to Color.Black.copy(alpha = 0.12f)', 'collection scrim middle')
+          block = replace_once(block, '1f to Color.Transparent', '1f to Color.Black.copy(alpha = 0.08f)', 'collection scrim end')
+          block = replace_once(block, '.width(196.dp)', '.width(154.dp)', 'collection text width')
+          block = replace_once(block, '.padding(horizontal = 16.dp, vertical = 14.dp)', '.padding(horizontal = 14.dp, vertical = 12.dp)', 'collection padding')
+          block = replace_once(block, 'fontSize = 19.sp', 'fontSize = 17.sp', 'collection title')
+          block = replace_once(block, 'lineHeight = 21.sp', 'lineHeight = 19.sp', 'collection title line')
+          block = replace_once(block, 'fontSize = 11.sp', 'fontSize = 10.5.sp', 'collection artists')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'TrendingArtistsShelf')
+          block = replace_once(block, 'Column(verticalArrangement = Arrangement.spacedBy(14.dp))', 'Column(verticalArrangement = Arrangement.spacedBy(10.dp))', 'artists header gap')
+          block = replace_once(block, 'horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing)', 'horizontalArrangement = Arrangement.spacedBy(10.dp)', 'artists shelf gap')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'ArtistHitShelfItem')
+          block = replace_once(block, 'Modifier.width(132.dp)', 'Modifier.width(100.dp)', 'artist width')
+          block = replace_once(block, 'Arrangement.spacedBy(9.dp)', 'Arrangement.spacedBy(7.dp)', 'artist gap')
+          block = replace_once(block, 'Modifier.size(124.dp)', 'Modifier.size(92.dp)', 'artist image')
+          block = replace_once(block, 'fontSize = 14.5.sp', 'fontSize = 13.5.sp', 'artist name')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'TrendingArtistLoadingItem')
+          block = replace_once(block, 'Modifier.width(132.dp)', 'Modifier.width(100.dp)', 'artist loading width')
+          block = replace_once(block, 'Arrangement.spacedBy(9.dp)', 'Arrangement.spacedBy(7.dp)', 'artist loading gap')
+          block = replace_once(block, 'Modifier.size(124.dp)', 'Modifier.size(92.dp)', 'artist loading image')
+          block = replace_once(block, '.height(14.dp)', '.height(13.dp)', 'artist loading name')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'HomeMusicVideoShelf')
+          block = replace_once(block, 'Column(verticalArrangement = Arrangement.spacedBy(12.dp))', 'Column(verticalArrangement = Arrangement.spacedBy(10.dp))', 'video header gap')
+          block = replace_once(block, 'horizontalArrangement = Arrangement.spacedBy(12.dp)', 'horizontalArrangement = Arrangement.spacedBy(10.dp)', 'video shelf gap')
+          block = replace_once(block, 'val shape = RoundedCornerShape(17.dp)', 'val shape = RoundedCornerShape(15.dp)', 'video shape')
+          block = replace_once(block, '.width(252.dp)', '.width(218.dp)', 'video width')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'HomeAlbumLoadingRow')
+          block = replace_once(block, '.width(LevyraHomeDesign.ArtworkCardWidth)', '.width(HOME_ALBUM_CARD_WIDTH)', 'album loading width')
+          block = replace_once(block, 'verticalArrangement = Arrangement.spacedBy(9.dp)', 'verticalArrangement = Arrangement.spacedBy(8.dp)', 'album loading gap')
+          text = put_block(text, start, end, block)
+
+          start, end, block = get_block(text, 'HomeAlbumHitRow')
+          block = replace_once(block, '            val meta = album.year\n', '', 'album metadata variable')
+          block = replace_once(block, '.width(LevyraHomeDesign.ArtworkCardWidth)', '.width(HOME_ALBUM_CARD_WIDTH)', 'album width')
+          block = replace_once(block, 'verticalArrangement = Arrangement.spacedBy(10.dp)', 'verticalArrangement = Arrangement.spacedBy(8.dp)', 'album gap')
+          block = replace_once(block, '.shadow(16.dp, artworkShape, clip = false)', '.shadow(10.dp, artworkShape, clip = false)', 'album shadow')
+          block = remove_braced_statement(block, '                    if (meta.isNotBlank()) {')
+          text = put_block(text, start, end, block)
+
+          orbit_start = text.index(orbit_start_marker)
+          orbit_end = text.index(orbit_end_marker, orbit_start)
+          if text[orbit_start:orbit_end] != orbit_before:
+              raise SystemExit('Personal Orbit changed unexpectedly')
+          if 'HomeCompactPlayAllHeader(title = title, onPlayAll = onPlayAll)' in text[text.index('@Composable\nprivate fun HomeQuickPicksShelf('):]:
+              raise SystemExit('Quick Picks still displays play all')
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+          rm -f .github/workflows/_refine-home-density.yml .github/workflows/_refine-home-density-v4.yml
+          git diff --check
+          if git diff -- "$TARGET_FILE" | grep -E '^[-+].*(home-personal|PersonalListeningShelf|visiblePersonalTracks)'; then
+            echo "Personal Orbit appeared in the diff"
+            exit 1
+          fi
+
+      - name: Fast AI quality gate
+        shell: bash
+        run: python3 scripts/ai_quality_gate.py --profile fast --base-ref origin/main
+
+      - name: Full AI quality gate
+        shell: bash
+        run: python3 scripts/ai_quality_gate.py --profile full --base-ref origin/main
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add "$TARGET_FILE" .github/workflows/_refine-home-density.yml .github/workflows/_refine-home-density-v4.yml
+          test "$(git diff --cached --name-only)" = "$TARGET_FILE"
+          git diff --cached --check
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git commit -m "Refine Home density and rhythm"
+          git push origin HEAD:refs/heads/chatgpt/home-visual-hierarchy
