@@ -593,7 +593,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val newReleases = input.homeSections.firstOrNull {
         isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
     }?.let { it.copy(tracks = moodRank(it.tracks)) }
-    val otherSections = input.homeSections.filter {
+    val baseOtherSections = input.homeSections.filter {
         !isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode) &&
             !isHomeQuickPicksSectionTitle(it.title) &&
             !isHomePersonalOrbitSectionTitle(it.title, input.languageCode)
@@ -618,14 +618,14 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         showResonance = input.showResonance,
         resonanceTracks = moodRank(resonanceTracks),
         quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
-        fallbackSections = otherSections.map { moodRank(it.tracks) },
+        fallbackSections = baseOtherSections.map { moodRank(it.tracks) },
         chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
         preferenceScore = ::moodPreferenceScore
     )
     val visibleCollectionSections = input.homeSections.filter { section ->
         isHomeSectionVisible(section.title, input)
     }
-    val editorialCollections = HomeEditorialEngine.buildCollections(
+    val generatedEditorialCollections = HomeEditorialEngine.buildCollections(
         homeSections = visibleCollectionSections,
         newReleaseTracks = if (input.showNewReleases) moodRank(newReleases?.tracks.orEmpty()) else emptyList(),
         personalTracks = if (input.showPersonalOrbit) moodRank(input.personalOrbitTracks) else emptyList(),
@@ -636,6 +636,39 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         libraryTracks = input.tracks,
         includeFresh = input.showNewReleases
     )
+    val priorityTrackKeys = buildSet {
+        sequence {
+            yieldAll(input.personalOrbitTracks)
+            yieldAll(quickPicks?.tracks.orEmpty())
+            yieldAll(newReleases?.tracks.orEmpty())
+            yieldAll(resonanceTracks)
+            yieldAll(input.charts)
+            baseOtherSections.forEach { section -> yieldAll(section.tracks) }
+        }
+            .map(LevyraPersonalOrbit::identityKey)
+            .filter(String::isNotBlank)
+            .forEach(::add)
+    }
+    val editorialDiscoveryTracks = generatedEditorialCollections
+        .asSequence()
+        .flatMap { collection -> collection.tracks.asSequence() }
+        .filter(::isReliableHomeMusicCandidate)
+        .distinctBy(LevyraPersonalOrbit::identityKey)
+        .filterNot { track -> LevyraPersonalOrbit.identityKey(track) in priorityTrackKeys }
+        .take(12)
+        .toList()
+    val editorialDiscoveryShelf = editorialDiscoveryTracks
+        .takeIf { tracks -> tracks.size >= 4 }
+        ?.let { tracks ->
+            HomeSection(
+                title = LevyraStrings.forCode(input.languageCode).collectionsTitle,
+                tracks = tracks
+            )
+        }
+    val otherSections = buildList {
+        editorialDiscoveryShelf?.let(::add)
+        addAll(baseOtherSections)
+    }
     return HomeDerivedState(
         resonanceTracks = resonanceTracks,
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
@@ -643,7 +676,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         newReleases = newReleases,
         otherSections = otherSections,
         spotlightCandidates = spotlightCandidates,
-        editorialCollections = editorialCollections,
+        editorialCollections = emptyList(),
         chartChunks = input.charts.chunked(4),
         contentAvailability = contentAvailability,
         contentFingerprint = buildHomeContentFingerprint(input, contentAvailability)
