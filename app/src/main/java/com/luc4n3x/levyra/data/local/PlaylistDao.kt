@@ -51,6 +51,9 @@ abstract class PlaylistDao {
     @Query("UPDATE playlists SET updatedAt = :updatedAt WHERE id = :playlistId")
     abstract suspend fun touch(playlistId: String, updatedAt: Long)
 
+    @Query("UPDATE playlists SET hidden = :hidden, updatedAt = :updatedAt WHERE id = :playlistId")
+    abstract suspend fun setHidden(playlistId: String, hidden: Boolean, updatedAt: Long)
+
     @Transaction
     open suspend fun createPlaylistWithTracks(
         playlist: PlaylistEntity,

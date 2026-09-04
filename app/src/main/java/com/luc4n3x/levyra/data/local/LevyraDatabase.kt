@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 18
+const val LEVYRA_DATABASE_VERSION = 19
 
 @Database(
     entities = [
@@ -27,7 +27,10 @@ const val LEVYRA_DATABASE_VERSION = 18
         ListenLifetimeTrackEntity::class,
         ListenLifetimeArtistEntity::class,
         RecognitionHistoryEntity::class,
-        FollowedArtistEntity::class
+        FollowedArtistEntity::class,
+        PlaylistTagEntity::class,
+        PlaylistTagLinkEntity::class,
+        ExcludedArtistEntity::class
     ],
     version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
@@ -47,6 +50,8 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun listenLifetimeDao(): ListenLifetimeDao
     abstract fun recognitionHistoryDao(): RecognitionHistoryDao
     abstract fun followedArtistsDao(): FollowedArtistsDao
+    abstract fun playlistTagsDao(): PlaylistTagsDao
+    abstract fun excludedArtistsDao(): ExcludedArtistsDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -544,6 +549,48 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val playlistColumns = mutableSetOf<String>()
+                db.query("PRAGMA table_info(playlists)").use { cursor ->
+                    val nameIndex = cursor.getColumnIndex("name")
+                    while (cursor.moveToNext()) {
+                        if (nameIndex >= 0) playlistColumns += cursor.getString(nameIndex)
+                    }
+                }
+                if ("hidden" !in playlistColumns) {
+                    db.execSQL("ALTER TABLE playlists ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+                }
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS playlist_tags (" +
+                        "id TEXT NOT NULL, name TEXT NOT NULL, normalizedName TEXT NOT NULL, " +
+                        "createdAt INTEGER NOT NULL, PRIMARY KEY(id))"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_playlist_tags_normalizedName " +
+                        "ON playlist_tags(normalizedName)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS playlist_tag_links (" +
+                        "playlistId TEXT NOT NULL, tagId TEXT NOT NULL, assignedAt INTEGER NOT NULL, " +
+                        "PRIMARY KEY(playlistId, tagId), " +
+                        "FOREIGN KEY(playlistId) REFERENCES playlists(id) ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                        "FOREIGN KEY(tagId) REFERENCES playlist_tags(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_playlist_tag_links_playlistId ON playlist_tag_links(playlistId)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_playlist_tag_links_tagId ON playlist_tag_links(tagId)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS excluded_artists (" +
+                        "artistKey TEXT NOT NULL, browseId TEXT NOT NULL, name TEXT NOT NULL, " +
+                        "excludedAt INTEGER NOT NULL, PRIMARY KEY(artistKey))"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -561,7 +608,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_14_15,
             MIGRATION_15_16,
             MIGRATION_16_17,
-            MIGRATION_17_18
+            MIGRATION_17_18,
+            MIGRATION_18_19
         )
 
         fun get(context: Context): LevyraDatabase {

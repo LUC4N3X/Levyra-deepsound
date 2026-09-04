@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -12,7 +13,8 @@ data class PlaylistEntity(
     val name: String,
     val coverUrl: String,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    @ColumnInfo(defaultValue = "0") val hidden: Boolean = false
 )
 
 @Entity(

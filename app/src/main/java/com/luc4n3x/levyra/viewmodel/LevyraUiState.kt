@@ -3,8 +3,12 @@ package com.luc4n3x.levyra.viewmodel
 import android.net.Uri
 import androidx.compose.runtime.Immutable
 import com.luc4n3x.levyra.data.VaultPreview
+import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.LevyraAmbientSettings
+import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.CacheReport
@@ -124,7 +128,9 @@ data class LevyraUiState(
     val detailReturnTarget: DetailReturnTarget = DetailReturnTarget.None,
     val favorites: List<Track> = emptyList(),
     val favoriteIds: Set<String> = emptySet(),
+    val forgottenFavorites: List<Track> = emptyList(),
     val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
+    val playlistTags: List<PlaylistTag> = emptyList(),
     val openPlaylist: com.luc4n3x.levyra.domain.Playlist? = null,
     val currentTrack: Track? = null,
     val motionArtwork: MotionArtwork? = null,
@@ -227,6 +233,10 @@ data class LevyraUiState(
     val mostPlayedTracks: List<Track> = emptyList(),
     val followedArtists: List<FollowedArtist> = emptyList(),
     val followedArtistKeys: Set<String> = emptySet(),
+    val excludedArtists: List<ExcludedArtist> = emptyList(),
+    val artistExclusions: ArtistExclusions = ArtistExclusions.Empty,
+    val showAmbient: Boolean = false,
+    val ambientSettings: LevyraAmbientSettings = LevyraAmbientSettings(),
     val releaseRadar: List<ReleaseRadarEntry> = emptyList(),
     val similarArtists: List<ArtistHit> = emptyList(),
     val mixFamiliarity: Float = LevyraMixDefaults.Familiarity,
