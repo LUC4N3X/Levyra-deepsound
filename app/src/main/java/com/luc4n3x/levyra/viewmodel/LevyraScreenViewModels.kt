@@ -195,8 +195,8 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun searchNow(query: String) = root.searchNow(query)
     fun selectChart(regionId: String) = root.selectChart(regionId)
     fun selectMood(mood: Mood) {
-        moodSelectionExplicit.value = true
         root.selectMood(mood)
+        moodSelectionExplicit.value = true
     }
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
