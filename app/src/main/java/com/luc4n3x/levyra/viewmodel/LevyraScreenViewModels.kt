@@ -30,6 +30,7 @@ import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
+import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
@@ -453,6 +454,7 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         homeAlbums = previous.homeAlbums,
         homeArtists = previous.homeArtists,
         homeResonanceTracks = previous.homeResonanceTracks,
+        homeResonanceComments = previous.homeResonanceComments,
         homeArtistsLoading = previous.homeArtistsLoading,
         homeAlbumsLoading = previous.homeAlbumsLoading,
         isLoadingHome = previous.isLoadingHome,
@@ -462,7 +464,7 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
     )
 }
 
-private fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
+internal fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
     return homeProjection(previous.state) == homeProjection(current.state) && previous.derived == current.derived
 }
 
@@ -897,6 +899,7 @@ private data class HomeProjection(
     val homeAlbums: List<AlbumHit>,
     val homeArtists: List<ArtistHit>,
     val homeResonanceTracks: List<Track>,
+    val homeResonanceComments: Map<String, ResonanceCommentSnippet>,
     val homeArtistsLoading: Boolean,
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
@@ -934,6 +937,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     homeAlbums = state.homeAlbums,
     homeArtists = state.homeArtists,
     homeResonanceTracks = state.homeResonanceTracks,
+    homeResonanceComments = state.homeResonanceComments,
     homeArtistsLoading = state.homeArtistsLoading,
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,

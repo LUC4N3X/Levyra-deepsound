@@ -16,8 +16,24 @@ data class ResonanceCommentSnippet(
     val likeCountText: String = "",
     val isLoading: Boolean = false,
     val hasError: Boolean = false,
-    val disabled: Boolean = false
+    val disabled: Boolean = false,
+    val updatedAtMs: Long = 0L
 ) {
     val hasComment: Boolean
         get() = text.isNotBlank()
+}
+
+internal fun resonanceCommentsForTracks(
+    tracks: List<Track>,
+    comments: Map<String, ResonanceCommentSnippet>
+): Map<String, ResonanceCommentSnippet> = buildMap {
+    tracks.asSequence()
+        .map(Track::id)
+        .filter(String::isNotBlank)
+        .distinct()
+        .forEach { videoId ->
+            comments[videoId]
+                ?.takeIf { it.videoId == videoId }
+                ?.let { put(videoId, it) }
+        }
 }

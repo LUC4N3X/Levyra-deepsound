@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.resonanceCommentsForTracks
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -36,7 +37,10 @@ class LevyraHomeSnapshotCache(context: Context) {
             val parsedPersonalOrbit = parseTracks(rootJson.optJSONArray("personalOrbit") ?: JSONArray())
             val parsedResonance = if (schema >= 12) parseTracks(rootJson.optJSONArray("resonanceTracks") ?: JSONArray()) else emptyList()
             val parsedResonanceComments = if (schema >= 14) {
-                parseResonanceComments(rootJson.optJSONObject("resonanceComments"))
+                resonanceCommentsForTracks(
+                    parsedResonance,
+                    parseResonanceComments(rootJson.optJSONObject("resonanceComments"))
+                )
             } else {
                 emptyMap()
             }
@@ -88,7 +92,10 @@ class LevyraHomeSnapshotCache(context: Context) {
                 .put("homeArtists", artistsToJson(homeArtists.take(HOME_ARTIST_LIMIT)))
                 .put("resonanceTracks", tracksToJson(resonanceTracks.take(RESONANCE_TRACK_LIMIT)))
                 .put("resonanceUpdatedAt", resonanceUpdatedAt)
-                .put("resonanceComments", resonanceCommentsToJson(resonanceComments))
+                .put(
+                    "resonanceComments",
+                    resonanceCommentsToJson(resonanceTracks.take(RESONANCE_TRACK_LIMIT), resonanceComments)
+                )
             val target = fileFor(normalized)
             val tmp = File(target.parentFile, "${target.name}.tmp")
             tmp.writeText(json.toString())
@@ -196,24 +203,6 @@ class LevyraHomeSnapshotCache(context: Context) {
 
     private fun snapshotKey(track: Track): String = track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
-    private fun resonanceCommentsToJson(comments: Map<String, ResonanceCommentSnippet>): JSONObject {
-        val json = JSONObject()
-        comments.entries.take(RESONANCE_TRACK_LIMIT).forEach { (id, snippet) ->
-            if (id.isNotBlank() && (snippet.text.isNotBlank() || snippet.countText.isNotBlank())) {
-                val item = JSONObject()
-                    .put("videoId", snippet.videoId)
-                    .put("countText", snippet.countText)
-                    .put("author", snippet.author)
-                    .put("authorAvatarUrl", snippet.authorAvatarUrl)
-                    .put("text", snippet.text)
-                    .put("likeCountText", snippet.likeCountText)
-                    .put("disabled", snippet.disabled)
-                json.put(id, item)
-            }
-        }
-        return json
-    }
-
     private fun parseResonanceComments(obj: JSONObject?): Map<String, ResonanceCommentSnippet> {
         if (obj == null) return emptyMap()
         val map = mutableMapOf<String, ResonanceCommentSnippet>()
@@ -229,7 +218,8 @@ class LevyraHomeSnapshotCache(context: Context) {
                 authorAvatarUrl = item.optString("authorAvatarUrl"),
                 text = item.optString("text"),
                 likeCountText = item.optString("likeCountText"),
-                disabled = item.optBoolean("disabled", false)
+                disabled = item.optBoolean("disabled", false),
+                updatedAtMs = item.optLong("updatedAtMs", 0L)
             )
         }
         return map
@@ -239,9 +229,34 @@ class LevyraHomeSnapshotCache(context: Context) {
         const val HOME_ARTIST_LIMIT = 13
         const val RESONANCE_TRACK_LIMIT = 8
         const val MIN_SUPPORTED_SCHEMA = 5
-        const val SCHEMA = 14
+        const val SCHEMA = 15
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
+}
+
+internal fun resonanceCommentsToJson(
+    tracks: List<Track>,
+    comments: Map<String, ResonanceCommentSnippet>
+): JSONObject {
+    val json = JSONObject()
+    resonanceCommentsForTracks(tracks, comments).forEach { (id, snippet) ->
+        if (
+            snippet.text.isNotBlank() || snippet.countText.isNotBlank() ||
+            snippet.disabled || snippet.updatedAtMs > 0L
+        ) {
+            val item = JSONObject()
+                .put("videoId", snippet.videoId)
+                .put("countText", snippet.countText)
+                .put("author", snippet.author)
+                .put("authorAvatarUrl", snippet.authorAvatarUrl)
+                .put("text", snippet.text)
+                .put("likeCountText", snippet.likeCountText)
+                .put("disabled", snippet.disabled)
+                .put("updatedAtMs", snippet.updatedAtMs)
+            json.put(id, item)
+        }
+    }
+    return json
 }
 
 data class LevyraHomeSnapshot(

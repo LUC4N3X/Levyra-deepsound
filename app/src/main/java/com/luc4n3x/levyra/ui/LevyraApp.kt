@@ -7954,8 +7954,7 @@ private fun ResonanceShelf(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
-            title = strings.voicesTitle,
-            subtitle = strings.voicesSubtitle,
+            title = strings.mostCommentedTracks,
             onPlayAll = onPlayAll,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
@@ -7994,10 +7993,10 @@ private fun ResonanceCard(
     onOpenComments: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(22.dp)
     Column(
         modifier = Modifier
-            .width(314.dp)
+            .width(328.dp)
             .clip(shape)
             .background(
                 if (active) LevyraCyan.copy(alpha = if (LevyraIsLight) 0.08f else 0.10f)
@@ -8008,8 +8007,8 @@ private fun ResonanceCard(
                 color = if (active) LevyraCyan.copy(alpha = 0.75f) else LevyraAdaptiveSoftHairline,
                 shape = shape
             )
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -8020,9 +8019,9 @@ private fun ResonanceCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(Dp.Hairline, LevyraAdaptiveSoftHairline, RoundedCornerShape(12.dp)),
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(Dp.Hairline, LevyraAdaptiveSoftHairline, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
@@ -8059,14 +8058,14 @@ private fun ResonanceCard(
                     text = track.title,
                     color = if (active) LevyraCyan else LevyraText,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.5.sp,
+                    fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = track.artist,
                     color = LevyraMuted,
-                    fontSize = 12.5.sp,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -8095,8 +8094,8 @@ private fun ResonanceCard(
         }
 
         Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = if (LevyraIsLight) Color.Black.copy(alpha = 0.04f) else Color.White.copy(alpha = 0.05f),
+            shape = RoundedCornerShape(16.dp),
+            color = if (LevyraIsLight) Color.Black.copy(alpha = 0.055f) else Color.White.copy(alpha = 0.075f),
             border = BorderStroke(
                 Dp.Hairline,
                 if (active) LevyraCyan.copy(alpha = 0.28f) else LevyraAdaptiveSoftHairline.copy(alpha = 0.50f)
@@ -8106,8 +8105,8 @@ private fun ResonanceCard(
                 .pressable(onClick = onOpenComments)
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -8122,12 +8121,20 @@ private fun ResonanceCard(
                     )
                     val count = snippet?.countText?.takeIf { it.isNotBlank() }
                     Text(
-                        text = if (count != null) "$count ${strings.commentsLabel.lowercase(Locale.ROOT)}" else strings.commentsLabel,
-                        color = LevyraCyan,
-                        fontSize = 11.5.sp,
+                        text = strings.commentsLabel,
+                        color = LevyraText,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
+                    if (count != null) {
+                        Text(
+                            text = count,
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            maxLines = 1
+                        )
+                    }
                     Spacer(modifier = Modifier.weight(1f))
                     Icon(
                         imageVector = Icons.Rounded.ChevronRight,
