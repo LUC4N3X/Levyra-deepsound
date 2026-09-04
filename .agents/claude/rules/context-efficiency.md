@@ -18,4 +18,11 @@ RTK filters remain in `.rtk/filters.toml`. Use RTK only when filtered output is
 sufficient. Rerun the exact command raw for exact failures, stack traces,
 security/signing evidence, Perfetto/R8 evidence, or ambiguous results.
 
+For Android device diagnostics, prefer bounded textual output before compression:
+use `rtk adb logcat -d -t 400` or `rtk adb -s <serial> logcat -d -t 400` for
+routine logcat inspection, and `rtk summary adb shell dumpsys <service>` for a
+large textual adb command without a dedicated filter. Keep tiny deterministic adb
+queries raw. Never route binary capture/transfer such as `adb exec-out screencap
+-p`, redirected screenshots, or exact device evidence through a text filter.
+
 Token savings never override correctness, validation, or publication controls.
