@@ -46,6 +46,7 @@ class YoutubeTranscriptLyricsProvider(context: Context) {
     }
 
     private fun playerResponse(videoId: String): JSONObject? {
+        if (!PlaybackClientCapabilities.isEnabled("WEB", PlaybackClientCapability.METADATA)) return null
         val body = JSONObject()
             .put(
                 "context",
