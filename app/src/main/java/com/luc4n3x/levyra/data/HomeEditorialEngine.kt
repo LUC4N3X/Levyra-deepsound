@@ -21,7 +21,7 @@ import kotlin.math.absoluteValue
 object HomeEditorialEngine {
     private const val collectionTrackLimit = 18
     private const val minimumCollectionSize = 4
-    private const val maximumCollectionCount = 7
+    private const val maximumCollectionCount = 8
     private const val stableCollectionSlots = 3
 
     private val localReleaseDateFormatters = listOf(
@@ -290,7 +290,10 @@ object HomeEditorialEngine {
         collections: List<HomeEditorialCollection>,
         nowMillis: Long
     ): List<HomeEditorialCollection> {
-        if (collections.size <= maximumCollectionCount) return collections
+        if (collections.size <= maximumCollectionCount) {
+            val pairedSize = collections.size - collections.size % 2
+            return collections.take(pairedSize)
+        }
 
         val featuredFresh = collections.firstOrNull {
             it.kind == HomeCollectionKind.Fresh && it.updatedToday
@@ -320,7 +323,8 @@ object HomeEditorialEngine {
             selected += rotated.take(rotatingSlots)
         }
 
-        return selected
+        val pairedSize = selected.size - selected.size % 2
+        return selected.take(pairedSize)
     }
 
     private fun collectionQuality(collection: HomeEditorialCollection): Int {
