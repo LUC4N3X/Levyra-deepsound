@@ -162,6 +162,23 @@ class HomeRenderSnapshotTest {
         assertEquals(false, idleSnapshot.derived.contentAvailability.hasCurrentTrack)
     }
 
+    @Test
+    fun prioritizesCommentedSectionTracksInResonanceShelf() {
+        val standardTrack = track("std11111111").copy(replayScore = 80)
+        val commentedTrack = track("cmt11111111").copy(replayScore = 20)
+        val state = LevyraUiState(
+            charts = listOf(standardTrack),
+            homeSections = listOf(
+                HomeSection("Tracce più commentate", listOf(commentedTrack))
+            ),
+            languageCode = "it"
+        )
+
+        val snapshot = buildHomeRenderSnapshot(state)
+
+        assertEquals("cmt11111111", snapshot.derived.resonanceTracks.firstOrNull()?.id)
+    }
+
     private fun track(id: String): Track {
         return Track(
             id = id,
