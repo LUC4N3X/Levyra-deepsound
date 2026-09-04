@@ -90,25 +90,19 @@ jobs:
               "home sizing constants",
           )
 
-          collections_block = '''            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
-              item(key = "home-editorial-collections", contentType = "home-collections") {
-                  HomeSectionLead(compactHome) {
-                      HomeEditorialCollectionsShelf(
-                          collections = visibleEditorialCollections,
-                          animationsEnabled = state.animationsEnabled,
-                          onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                      )
-                  }
-              }
-          }
-
-          '''
-          text = replace_once(text, collections_block, '', "collections current position")
+          collection_start_marker = '            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {'
+          collection_start = text.index(collection_start_marker)
+          resonance_marker = '''            if (
+              showDeferredHomeSections && state.interfaceSettings.showResonance &&'''
+          resonance_start = text.index(resonance_marker, collection_start)
+          collection_block = text[collection_start:resonance_start]
+          text = text[:collection_start] + text[resonance_start:]
           artists_marker = '''            if (
               showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
               (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
           ) {'''
-          text = replace_once(text, artists_marker, collections_block + artists_marker, "collections before artists")
+          artists_start = text.index(artists_marker)
+          text = text[:artists_start] + collection_block + text[artists_start:]
 
           start, end, block = composable_block(text, '''@Composable
           private fun HomeQuickPicksShelf(''')
@@ -143,18 +137,8 @@ jobs:
               }''',
               "quick picks header",
           )
-          block = replace_once(
-              block,
-              'horizontalArrangement = Arrangement.spacedBy(14.dp)',
-              'horizontalArrangement = Arrangement.spacedBy(12.dp)',
-              "quick picks column gap",
-          )
-          block = replace_once(
-              block,
-              'verticalArrangement = Arrangement.spacedBy(4.dp)',
-              'verticalArrangement = Arrangement.spacedBy(2.dp)',
-              "quick picks row gap",
-          )
+          block = replace_once(block, 'horizontalArrangement = Arrangement.spacedBy(14.dp)', 'horizontalArrangement = Arrangement.spacedBy(12.dp)', "quick picks column gap")
+          block = replace_once(block, 'verticalArrangement = Arrangement.spacedBy(4.dp)', 'verticalArrangement = Arrangement.spacedBy(2.dp)', "quick picks row gap")
           text = text[:start] + block + text[end:]
 
           start, end, block = composable_block(text, '''@Composable
@@ -172,8 +156,8 @@ jobs:
           private fun HomeEditorialCollectionCard(''')
           block = replace_once(block, 'val shape = RoundedCornerShape(20.dp)', 'val shape = RoundedCornerShape(16.dp)', "collection shape")
           block = replace_once(block, '    val secondaryTrack = collection.tracks.getOrNull(1)\n', '', "collection secondary artwork variable")
-          secondary_start = block.index('''        if (secondaryTrack != null) {''')
-          primary_start = block.index('''        if (primaryTrack != null) {''', secondary_start)
+          secondary_start = block.index('        if (secondaryTrack != null) {')
+          primary_start = block.index('        if (primaryTrack != null) {', secondary_start)
           block = block[:secondary_start] + block[primary_start:]
           block = replace_once(
               block,
@@ -215,12 +199,7 @@ jobs:
 
           start, end, block = composable_block(text, '''@Composable
           private fun TrendingArtistsShelf(''')
-          block = replace_once(
-              block,
-              'horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing)',
-              'horizontalArrangement = Arrangement.spacedBy(10.dp)',
-              "artist shelf spacing",
-          )
+          block = replace_once(block, 'horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing)', 'horizontalArrangement = Arrangement.spacedBy(10.dp)', "artist shelf spacing")
           block = replace_once(block, 'Column(verticalArrangement = Arrangement.spacedBy(14.dp))', 'Column(verticalArrangement = Arrangement.spacedBy(10.dp))', "artist header spacing")
           text = text[:start] + block + text[end:]
 
@@ -260,13 +239,11 @@ jobs:
           block = replace_once(block, '.width(LevyraHomeDesign.ArtworkCardWidth)', '.width(HOME_ALBUM_CARD_WIDTH)', "album width")
           block = replace_once(block, 'verticalArrangement = Arrangement.spacedBy(10.dp)', 'verticalArrangement = Arrangement.spacedBy(8.dp)', "album spacing")
           block = replace_once(block, '.shadow(16.dp, artworkShape, clip = false)', '.shadow(10.dp, artworkShape, clip = false)', "album shadow")
-          meta_start = block.index('''                    if (meta.isNotBlank()) {''')
-          meta_end_marker = '''                    }
-              }
-              Column(verticalArrangement = Arrangement.spacedBy(4.dp))'''
-          meta_end = block.index(meta_end_marker, meta_start)
-          block = block[:meta_start] + '''                }
-              Column(verticalArrangement = Arrangement.spacedBy(4.dp))''' + block[meta_end + len(meta_end_marker):]
+          meta_start = block.index('                    if (meta.isNotBlank()) {')
+          column_marker = '                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {'
+          column_start = block.index(column_marker, meta_start)
+          artwork_close = block.rfind('                }\n', meta_start, column_start)
+          block = block[:meta_start] + block[artwork_close:]
           text = text[:start] + block + text[end:]
 
           orbit_start = text.index(orbit_start_marker)
