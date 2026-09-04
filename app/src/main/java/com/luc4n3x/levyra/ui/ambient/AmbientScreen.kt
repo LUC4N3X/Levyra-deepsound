@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -139,7 +140,7 @@ internal fun AmbientScreen(
                 .fillMaxSize()
                 .systemBarsPadding()
                 .padding(horizontal = 32.dp, vertical = 24.dp)
-                .offset(x = shiftX, y = shiftY)
+                .offset { IntOffset(shiftX.roundToPx(), shiftY.roundToPx()) }
                 .alpha(contentAlpha),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
