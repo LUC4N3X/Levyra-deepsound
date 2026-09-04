@@ -64,6 +64,7 @@ class AutomaticBackupPolicyTest {
         assertTrue(vaultEntryAllowed("data/playlists.json"))
         assertTrue(vaultEntryAllowed("data/history.json"))
         assertTrue(vaultEntryAllowed("data/queue.json"))
+        assertTrue(vaultEntryAllowed("data/library_organization.json"))
         assertTrue(vaultEntryAllowed("payload.json"))
         assertFalse(vaultEntryAllowed("../manifest.json"))
         assertFalse(vaultEntryAllowed("/etc/passwd"))
@@ -71,6 +72,31 @@ class AutomaticBackupPolicyTest {
         assertFalse(vaultEntryAllowed("..\\manifest.json"))
         assertFalse(vaultEntryAllowed("data/evil.json"))
         assertFalse(vaultEntryAllowed(""))
+    }
+
+    @Test
+    fun everyWrittenVaultSectionIsAcceptedOnRead() {
+        val written = setOf(
+            LevyraBackupManager.MANIFEST_ENTRY,
+            LevyraBackupManager.SETTINGS_ENTRY,
+            LevyraBackupManager.FAVORITES_ENTRY,
+            LevyraBackupManager.FOLLOWED_ARTISTS_ENTRY,
+            LevyraBackupManager.PLAYLISTS_ENTRY,
+            LevyraBackupManager.ORGANIZATION_ENTRY,
+            LevyraBackupManager.HISTORY_ENTRY,
+            LevyraBackupManager.QUEUE_ENTRY
+        )
+        written.forEach { entry ->
+            assertTrue("$entry is written but rejected on read", vaultEntryAllowed(entry))
+        }
+        assertTrue(written.size <= LevyraBackupManager.MAX_ZIP_ENTRIES)
+    }
+
+    @Test
+    fun optionalVaultSectionsAreNotRequiredForRestore() {
+        val legacyEntries = REQUIRED_VAULT_ENTRIES + LevyraBackupManager.MANIFEST_ENTRY
+        assertTrue(vaultStructureCompatible(legacyEntries))
+        assertFalse(LevyraBackupManager.ORGANIZATION_ENTRY in REQUIRED_VAULT_ENTRIES)
     }
 
     @Test

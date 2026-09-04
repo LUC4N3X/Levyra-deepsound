@@ -137,9 +137,12 @@ internal class AmbientSessionPresenter(
         val artist = metadata?.artist?.toString().orEmpty()
 
         if (mediaId != lyricsMediaId) {
-            lyricsMediaId = mediaId
+            lyricsMediaId = ""
             lyricLines = emptyList()
-            loadLyrics(mediaId, title, artist, durationMs)
+            if (title.isNotBlank()) {
+                lyricsMediaId = mediaId
+                loadLyrics(mediaId, title, artist, durationMs)
+            }
         }
 
         _state.value = _state.value.copy(

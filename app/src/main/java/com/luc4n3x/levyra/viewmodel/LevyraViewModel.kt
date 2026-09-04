@@ -784,6 +784,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var radarJob: Job? = null
     private var followedArtistsJob: Job? = null
     private var forgottenFavoritesJob: Job? = null
+    private var excludedArtistsGeneration = 0L
     private var followedArtistsGeneration = 0L
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -1980,8 +1981,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun loadExcludedArtists() {
+        val loadGeneration = excludedArtistsGeneration
         viewModelScope.launch {
             val excluded = excludedArtistsStore.load()
+            if (loadGeneration != excludedArtistsGeneration) return@launch
             applyExcludedArtists(excluded)
         }
     }
@@ -2017,22 +2020,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 current.filterNot { it.key == key }
         }
         applyExcludedArtists(updated)
+        excludedArtistsGeneration++
+        val mutationGeneration = excludedArtistsGeneration
         viewModelScope.launch {
             if (alreadyExcluded) {
                 excludedArtistsStore.include(browseId, cleanName)
             } else {
                 excludedArtistsStore.exclude(browseId, cleanName)
             }
-            applyExcludedArtists(excludedArtistsStore.load())
+            val reloaded = excludedArtistsStore.load()
+            if (mutationGeneration != excludedArtistsGeneration) return@launch
+            applyExcludedArtists(reloaded)
         }
     }
 
     fun includeArtist(artist: ExcludedArtist) {
         val remaining = _state.value.excludedArtists.filterNot { it.key == artist.key }
         applyExcludedArtists(remaining)
+        excludedArtistsGeneration++
+        val mutationGeneration = excludedArtistsGeneration
         viewModelScope.launch {
             excludedArtistsStore.include(artist.browseId, artist.name)
-            applyExcludedArtists(excludedArtistsStore.load())
+            val reloaded = excludedArtistsStore.load()
+            if (mutationGeneration != excludedArtistsGeneration) return@launch
+            applyExcludedArtists(reloaded)
         }
     }
 
@@ -4164,6 +4175,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (snapshot.motionArtworkEnabled && restoredAnimationsEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         }
+        refreshForgottenFavorites()
     }
 
     fun setLanguage(code: String) {

@@ -1059,6 +1059,7 @@ class LevyraBackupManager(private val context: Context) {
             FAVORITES_ENTRY,
             FOLLOWED_ARTISTS_ENTRY,
             PLAYLISTS_ENTRY,
+            ORGANIZATION_ENTRY,
             HISTORY_ENTRY,
             QUEUE_ENTRY,
             LEGACY_PAYLOAD_ENTRY

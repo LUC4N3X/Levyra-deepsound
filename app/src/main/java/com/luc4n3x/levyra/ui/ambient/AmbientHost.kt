@@ -77,11 +77,15 @@ private fun AmbientWindowEffect(settings: LevyraAmbientSettings) {
             onDispose { }
         } else {
             val previousBrightness = window.attributes.screenBrightness
+            val keepScreenOnWasSet =
+                window.attributes.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0
             window.applyScreenBrightness(brightness)
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             onDispose {
                 window.applyScreenBrightness(previousBrightness)
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                if (!keepScreenOnWasSet) {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
             }
         }
     }
