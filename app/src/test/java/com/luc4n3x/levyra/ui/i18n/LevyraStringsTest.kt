@@ -20,7 +20,12 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, experienceLocalizationCodes())
         assertEquals(catalogCodes, insightLocalizationCodes())
         assertEquals(catalogCodes, integrationLocalizationCodes())
+        assertEquals(catalogCodes, resonanceLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
+            assertTrue(strings.commentsLabel.isNotBlank())
+            assertTrue(strings.mostCommentedTracks.isNotBlank())
+            assertTrue(strings.tapToOpenComments.isNotBlank())
+            assertTrue(strings.noCommentsAvailable.isNotBlank())
             assertTrue(strings.introHeadline.isNotBlank())
             assertTrue(strings.introBody.isNotBlank())
             assertTrue(strings.introFeatureSound.isNotBlank())
