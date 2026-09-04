@@ -26,6 +26,7 @@ import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.Track
@@ -270,6 +271,21 @@ class LevyraPreferences(context: Context) {
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
+        }
+    }
+
+    fun ambientSettings(): LevyraAmbientSettings = read(LevyraAmbientSettings()) { ambientSettingsFrom(it) }
+
+    fun setAmbientSettings(value: LevyraAmbientSettings) {
+        val normalized = value.normalized()
+        write {
+            it[KEY_AMBIENT_BRIGHTNESS] = normalized.brightness
+            it[KEY_AMBIENT_AUTO_DIM] = normalized.autoDim
+            it[KEY_AMBIENT_AUTO_DIM_SECONDS] = normalized.autoDimAfterSeconds
+            it[KEY_AMBIENT_PIXEL_SHIFT] = normalized.pixelShift
+            it[KEY_AMBIENT_PROXIMITY_BLACKOUT] = normalized.proximityBlackout
+            it[KEY_AMBIENT_SHOW_LYRICS] = normalized.showLyrics
+            it[KEY_AMBIENT_SHOW_CANVAS] = normalized.showCanvas
         }
     }
 
@@ -587,6 +603,16 @@ class LevyraPreferences(context: Context) {
         hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true
     ).normalized()
 
+    private fun ambientSettingsFrom(preferences: Preferences): LevyraAmbientSettings = LevyraAmbientSettings(
+        brightness = preferences[KEY_AMBIENT_BRIGHTNESS] ?: 0.35f,
+        autoDim = preferences[KEY_AMBIENT_AUTO_DIM] ?: true,
+        autoDimAfterSeconds = preferences[KEY_AMBIENT_AUTO_DIM_SECONDS] ?: 20,
+        pixelShift = preferences[KEY_AMBIENT_PIXEL_SHIFT] ?: true,
+        proximityBlackout = preferences[KEY_AMBIENT_PROXIMITY_BLACKOUT] ?: false,
+        showLyrics = preferences[KEY_AMBIENT_SHOW_LYRICS] ?: true,
+        showCanvas = preferences[KEY_AMBIENT_SHOW_CANVAS] ?: true
+    ).normalized()
+
     private fun downloadSettingsFrom(preferences: Preferences): LevyraDownloadSettings = LevyraDownloadSettings(
         wifiOnly = preferences[KEY_DOWNLOAD_WIFI_ONLY] ?: false,
         chargingOnly = preferences[KEY_DOWNLOAD_CHARGING_ONLY] ?: false,
@@ -789,6 +815,13 @@ class LevyraPreferences(context: Context) {
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
+        val KEY_AMBIENT_BRIGHTNESS = floatPreferencesKey("ambient_brightness")
+        val KEY_AMBIENT_AUTO_DIM = booleanPreferencesKey("ambient_auto_dim")
+        val KEY_AMBIENT_AUTO_DIM_SECONDS = intPreferencesKey("ambient_auto_dim_seconds")
+        val KEY_AMBIENT_PIXEL_SHIFT = booleanPreferencesKey("ambient_pixel_shift")
+        val KEY_AMBIENT_PROXIMITY_BLACKOUT = booleanPreferencesKey("ambient_proximity_blackout")
+        val KEY_AMBIENT_SHOW_LYRICS = booleanPreferencesKey("ambient_show_lyrics")
+        val KEY_AMBIENT_SHOW_CANVAS = booleanPreferencesKey("ambient_show_canvas")
         val KEY_DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
         val KEY_DOWNLOAD_CHARGING_ONLY = booleanPreferencesKey("download_charging_only")
         val KEY_DOWNLOAD_RESUMABLE = booleanPreferencesKey("download_resumable")

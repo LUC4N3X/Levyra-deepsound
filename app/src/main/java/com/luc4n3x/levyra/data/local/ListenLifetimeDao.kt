@@ -160,6 +160,12 @@ interface ListenLifetimeDao {
     suspend fun artistCount(): Int
 
     @Query(
+        "SELECT trackKey, lastPlayedAt FROM listen_lifetime_tracks " +
+            "WHERE trackKey IN (:trackKeys) AND lastPlayedAt > 0"
+    )
+    suspend fun lastPlayedFor(trackKeys: List<String>): List<ListenLifetimeLastPlayed>
+
+    @Query(
         "SELECT * FROM listen_lifetime_tracks ORDER BY listenedMs DESC, countedPlays DESC LIMIT :limit"
     )
     suspend fun topTracks(limit: Int): List<ListenLifetimeTrackEntity>

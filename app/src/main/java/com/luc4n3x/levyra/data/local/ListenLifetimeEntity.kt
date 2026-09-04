@@ -29,6 +29,11 @@ data class ListenLifetimeArtistEntity(
     val lastPlayedAt: Long
 )
 
+data class ListenLifetimeLastPlayed(
+    val trackKey: String,
+    val lastPlayedAt: Long
+)
+
 data class ListenLifetimeTotals(
     val listenedMs: Long,
     val countedPlays: Int,

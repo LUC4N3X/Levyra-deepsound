@@ -180,6 +180,21 @@ class ListeningPulseStore(context: Context) {
         )
     }
 
+    suspend fun lastPlayedByKey(trackKeys: List<String>): Map<String, Long> = withContext(Dispatchers.IO) {
+        val keys = trackKeys.filter(String::isNotEmpty).distinct()
+        if (keys.isEmpty()) return@withContext emptyMap()
+        try {
+            keys.chunked(LAST_PLAYED_QUERY_CHUNK)
+                .flatMap { chunk -> lifetimeDao.lastPlayedFor(chunk) }
+                .associate { it.trackKey to it.lastPlayedAt }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Timber.w(error, "Last played lookup failed")
+            emptyMap()
+        }
+    }
+
     suspend fun lifetime(): LifetimeListening = withContext(Dispatchers.IO) {
         try {
             val totals = lifetimeDao.trackTotals()
@@ -318,6 +333,7 @@ class ListeningPulseStore(context: Context) {
         const val MAX_LOOPS = 6L
         const val LIFETIME_BACKFILL_VERSION = 1
         const val LIFETIME_TOP_LIMIT = 8
+        const val LAST_PLAYED_QUERY_CHUNK = 500
         const val BACKFILL_PAGE_SIZE = 400
         const val BACKFILL_MAX_EVENTS = 50_000
         val RETENTION_MS = TimeUnit.DAYS.toMillis(RETENTION_DAYS.toLong())

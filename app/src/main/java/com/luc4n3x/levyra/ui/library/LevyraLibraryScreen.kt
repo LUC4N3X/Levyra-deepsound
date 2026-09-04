@@ -63,6 +63,9 @@ import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.filterByTagIds
+import com.luc4n3x.levyra.domain.hiddenInLibrary
+import com.luc4n3x.levyra.domain.visibleInLibrary
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -119,6 +122,8 @@ internal fun LevyraLibraryScreen(
     var showImportPlaylist by remember { mutableStateOf(false) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedTagIds by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var showHiddenPlaylists by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val scrollPositions = remember { mutableStateMapOf<String, Pair<Int, Int>>() }
 
@@ -127,6 +132,10 @@ internal fun LevyraLibraryScreen(
         scrollPositions[category.name] = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
         categoryName = next.name
         selectedKeys = emptySet()
+        if (next != LibraryCategory.Playlists) {
+            selectedTagIds = emptySet()
+            showHiddenPlaylists = false
+        }
     }
 
     LaunchedEffect(categoryName) {
@@ -134,8 +143,21 @@ internal fun LevyraLibraryScreen(
         runCatching { listState.scrollToItem(position.first, position.second) }
     }
 
-    val visiblePlaylists = remember(state.playlists, query, sort) {
-        filterLibraryPlaylists(state.playlists, query, sort)
+    val hiddenPlaylistCount = remember(state.playlists) { state.playlists.count { it.hidden } }
+    val knownTagIds = remember(state.playlistTags) { state.playlistTags.mapTo(hashSetOf()) { it.id } }
+    LaunchedEffect(knownTagIds) {
+        val pruned = selectedTagIds.filterTo(hashSetOf()) { it in knownTagIds }
+        if (pruned.size != selectedTagIds.size) selectedTagIds = pruned
+    }
+    LaunchedEffect(hiddenPlaylistCount) {
+        if (hiddenPlaylistCount == 0 && showHiddenPlaylists) showHiddenPlaylists = false
+    }
+    val scopedPlaylists = remember(state.playlists, showHiddenPlaylists, selectedTagIds) {
+        val scoped = if (showHiddenPlaylists) state.playlists.hiddenInLibrary() else state.playlists.visibleInLibrary()
+        scoped.filterByTagIds(selectedTagIds)
+    }
+    val visiblePlaylists = remember(scopedPlaylists, query, sort) {
+        filterLibraryPlaylists(scopedPlaylists, query, sort)
     }
     val visibleAlbums = remember(catalog.albums, query, sort) {
         filterLibraryAlbums(catalog.albums, query, sort)
@@ -203,7 +225,7 @@ internal fun LevyraLibraryScreen(
                     subtitle = when (category) {
                         LibraryCategory.Overview, LibraryCategory.Songs ->
                             strings.formatTrackCount(catalog.tracks.size)
-                        LibraryCategory.Playlists -> "${state.playlists.size} ${strings.playlistsPlain}"
+                        LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
                         LibraryCategory.Albums -> "${catalog.albums.size} ${strings.albumsPlain}"
                         LibraryCategory.Artists -> "${catalog.artists.size} ${strings.artists}"
                         LibraryCategory.Offline ->
@@ -344,6 +366,20 @@ internal fun LevyraLibraryScreen(
                 }
 
                 LibraryCategory.Playlists -> {
+                    item(key = "playlist-filters") {
+                        LibraryPlaylistFilterRow(
+                            tags = state.playlistTags,
+                            selectedTagIds = selectedTagIds,
+                            hiddenVisible = showHiddenPlaylists,
+                            hiddenCount = hiddenPlaylistCount,
+                            onClearTags = { selectedTagIds = emptySet() },
+                            onToggleTag = { tagId -> selectedTagIds = selectedTagIds.toggle(tagId) },
+                            onToggleHidden = {
+                                showHiddenPlaylists = !showHiddenPlaylists
+                                selectedKeys = emptySet()
+                            }
+                        )
+                    }
                     item(key = "playlist-import-action") {
                         if (showImportPlaylistCard) {
                             LibraryImportPlaylistCard(
@@ -356,14 +392,21 @@ internal fun LevyraLibraryScreen(
                     }
                     if (visiblePlaylists.isEmpty()) {
                         item {
-                            if (query.isBlank()) {
-                                LibraryEmpty(
+                            when {
+                                query.isNotBlank() -> LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt)
+                                showHiddenPlaylists -> LibraryEmpty(
+                                    Icons.AutoMirrored.Rounded.QueueMusic,
+                                    strings.hiddenPlaylistsEmpty
+                                )
+                                selectedTagIds.isNotEmpty() -> LibraryEmpty(
+                                    Icons.AutoMirrored.Rounded.QueueMusic,
+                                    strings.filterByTag
+                                )
+                                else -> LibraryEmpty(
                                     Icons.AutoMirrored.Rounded.QueueMusic,
                                     strings.createFirstPlaylist,
                                     strings.createFirstPlaylistSubtitle
                                 )
-                            } else {
-                                LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt)
                             }
                         }
                     } else if (layout == LibraryLayout.List) {
@@ -773,6 +816,7 @@ internal fun LevyraPlaylistDetailScreen(
     var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
     var renameDialog by remember { mutableStateOf(false) }
+    var tagEditorOpen by remember(playlist.id) { mutableStateOf(false) }
     var tracksToRemove by remember(playlist.id) { mutableStateOf<List<Track>>(emptyList()) }
     var addTracksDialog by remember { mutableStateOf(false) }
 
@@ -844,6 +888,13 @@ internal fun LevyraPlaylistDetailScreen(
             }
 
             if (!reorderMode) {
+                item(key = "playlist-detail-organization") {
+                    PlaylistOrganizationBar(
+                        playlist = playlist,
+                        onEditTags = { tagEditorOpen = true },
+                        onToggleHidden = { viewModel.setPlaylistHidden(playlist.id, !playlist.hidden) }
+                    )
+                }
                 item(key = "playlist-detail-search") {
                     OutlinedTextField(
                         value = query,
@@ -941,6 +992,26 @@ internal fun LevyraPlaylistDetailScreen(
                     .padding(14.dp)
             )
         }
+    }
+
+    if (tagEditorOpen) {
+        val assignedTagIds = remember(playlist.tags) { playlist.tags.mapTo(hashSetOf()) { it.id } }
+        PlaylistTagEditorDialog(
+            assignedTagIds = assignedTagIds,
+            tags = state.playlistTags,
+            onDismiss = { tagEditorOpen = false },
+            onToggleTag = { tagId ->
+                val next = if (tagId in assignedTagIds) {
+                    playlist.tags.map { it.id }.filterNot { it == tagId }
+                } else {
+                    playlist.tags.map { it.id } + tagId
+                }
+                viewModel.setPlaylistTags(playlist.id, next)
+            },
+            onCreateTag = { name -> viewModel.createPlaylistTag(name, playlist.id) },
+            onRenameTag = { tagId, name -> viewModel.renamePlaylistTag(tagId, name) },
+            onDeleteTag = { tagId -> viewModel.deletePlaylistTag(tagId) }
+        )
     }
 
     if (renameDialog) {
