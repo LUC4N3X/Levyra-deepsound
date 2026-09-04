@@ -217,6 +217,12 @@ class LevyraStrings private constructor(
     val voicesSubtitle: String get() = value("voicesSubtitle")
     val totalComments: String get() = value("totalComments")
     val engagement: String get() = value("engagement")
+    val commentsLabel: String get() = value("commentsLabel")
+    val mostCommentedTracks: String get() = value("mostCommentedTracks")
+    val tapToOpenComments: String get() = value("tapToOpenComments")
+    val noCommentsAvailable: String get() = value("noCommentsAvailable")
+    val commentsDisabledLabel: String get() = value("commentsDisabled")
+    val commentsDisabled: String get() = value("commentsDisabled")
     val audioSectionQuality: String get() = value("audioSectionQuality")
     val audioSectionEqualizer: String get() = value("audioSectionEqualizer")
     val audioSectionSpatial: String get() = value("audioSectionSpatial")
@@ -1430,8 +1436,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

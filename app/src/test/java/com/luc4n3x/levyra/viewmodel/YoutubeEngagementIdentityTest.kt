@@ -1,6 +1,11 @@
 package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeCommentsState
+import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.domain.YoutubeComment
+import com.luc4n3x.levyra.data.YoutubeCommentsPage
+import com.luc4n3x.levyra.data.YoutubeCommentsResult
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -52,6 +57,43 @@ class YoutubeEngagementIdentityTest {
                 track(id = "abcdefghijk", source = "Local library")
             )
         )
+    }
+
+    @Test
+    fun currentTrackAAllowsCommentsRequestForOpenedTrackBToComplete() {
+        val trackA = track(id = "aaaaaaaaaaa")
+        val trackB = track(id = "bbbbbbbbbbb")
+        val state = LevyraUiState(
+            currentTrack = trackA,
+            youtubeEngagement = YoutubeEngagementState(
+                videoId = trackB.id,
+                comments = YoutubeCommentsState(
+                    videoId = trackB.id,
+                    visible = true,
+                    loading = true
+                )
+            )
+        )
+
+        val loaded = state.withYoutubeCommentsResultIfCurrent(
+            videoId = trackB.id,
+            generation = 7L,
+            currentGeneration = 7L,
+            result = YoutubeCommentsResult.Available(
+                YoutubeCommentsPage(
+                    videoId = trackB.id,
+                    countText = "1",
+                    commentsDisabled = false,
+                    items = listOf(YoutubeComment(id = "comment-b", author = "Author", text = "Comment B")),
+                    nextToken = "next-b"
+                )
+            )
+        )
+
+        assertEquals(true, loaded.youtubeEngagement.comments.loaded)
+        assertEquals("Comment B", loaded.youtubeEngagement.comments.items.single().text)
+        assertEquals("next-b", loaded.youtubeEngagement.comments.nextToken)
+        assertEquals(trackA.id, loaded.currentTrack?.id)
     }
 
     @Test
