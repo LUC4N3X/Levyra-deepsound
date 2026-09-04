@@ -90,21 +90,6 @@ jobs:
               "home sizing constants",
           )
 
-          if text.count('HomeQuickPicksShelf(') != 3:
-              raise SystemExit(f"unexpected HomeQuickPicksShelf call count: {text.count('HomeQuickPicksShelf(')}")
-          text = replace_once(
-              text,
-              '                            onPlayAll = { viewModel.playAll(forgottenFavorites) },\n',
-              '',
-              "forgotten favorites play all",
-          )
-          text = replace_once(
-              text,
-              '                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },\n',
-              '',
-              "quick picks play all",
-          )
-
           collections_block = '''            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
               item(key = "home-editorial-collections", contentType = "home-collections") {
                   HomeSectionLead(compactHome) {
@@ -127,15 +112,6 @@ jobs:
 
           start, end, block = composable_block(text, '''@Composable
           private fun HomeQuickPicksShelf(''')
-          block = replace_once(
-              block,
-              '''    onPlay: (Track) -> Unit,
-              onPlayAll: () -> Unit,
-              onTrackActions: ((Track) -> Unit)? = null''',
-              '''    onPlay: (Track) -> Unit,
-              onTrackActions: ((Track) -> Unit)? = null''',
-              "quick picks signature",
-          )
           block = replace_once(
               block,
               '''        tracks
