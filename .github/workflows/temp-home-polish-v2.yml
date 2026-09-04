@@ -19,7 +19,7 @@ jobs:
         with:
           ref: ui/soft-home-ambient-blend
           fetch-depth: 0
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -30,11 +30,9 @@ jobs:
       - name: Commit Home polish
         shell: bash
         run: |
-          git config user.name "LUC4N3X"
-          git config user.email "luca.testing96@gmail.com"
-          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt
           git diff --cached --quiet && { echo "No Home changes produced"; exit 1; }
           git commit -m "Polish Home collections, videos and resonance [home-polish]"
           git push origin HEAD:ui/soft-home-ambient-blend
-
-# retry 2
