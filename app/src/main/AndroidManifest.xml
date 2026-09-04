@@ -205,6 +205,28 @@
             android:theme="@style/Theme.Levyra.Transparent" />
 
         <service
+            android:name=".feature.ambient.LevyraAmbientDreamService"
+            android:exported="true"
+            android:label="@string/ambient_dream_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".feature.ambient.LevyraAmbientTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_ambient"
+            android:label="@string/tile_ambient"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".feature.recognition.MusicRecognitionTileService"
             android:exported="true"
             android:icon="@drawable/ic_qs_recognize"

@@ -482,7 +482,9 @@ data class Playlist(
     val coverUrl: String,
     val tracks: List<Track>,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val tags: List<PlaylistTag> = emptyList(),
+    val hidden: Boolean = false
 ) {
     val size: Int get() = tracks.size
 }

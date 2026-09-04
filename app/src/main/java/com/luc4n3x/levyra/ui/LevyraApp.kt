@@ -196,7 +196,10 @@ import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Check
@@ -471,6 +474,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
+import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
@@ -491,6 +495,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.ui.player.PlayerDragEvent
 import com.luc4n3x.levyra.ui.player.PlayerGestureZone
@@ -1258,6 +1264,7 @@ fun LevyraApp(
                 viewModel.selectTab(LevyraTab.Search)
                 viewModel.startMusicRecognition()
             }
+            LevyraLaunchActions.SHORTCUT_AMBIENT -> viewModel.openAmbient()
         }
         if (pendingShortcut != null) LevyraLaunchActions.pendingShortcut.value = null
     }
@@ -1694,6 +1701,8 @@ fun LevyraApp(
                     currentLanguageCode = state.languageCode,
                     themePreset = state.themePreset,
                     interfaceSettings = state.interfaceSettings,
+                    ambientSettings = state.ambientSettings,
+                    excludedArtists = state.excludedArtists,
                     downloadSettings = state.downloadSettings,
                     backupSettings = state.backupSettings,
                     vaultStatus = state.vaultStatus,
@@ -1718,6 +1727,12 @@ fun LevyraApp(
                     },
                     onThemePreset = viewModel::setThemePreset,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
+                    onAmbientSettings = viewModel::updateAmbientSettings,
+                    onOpenAmbient = {
+                        viewModel.closeSettings()
+                        viewModel.openAmbient()
+                    },
+                    onIncludeArtist = viewModel::includeArtist,
                     onDownloadSettings = viewModel::setDownloadSettings,
                     onBackupSettings = viewModel::setBackupSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
@@ -1883,6 +1898,7 @@ fun LevyraApp(
                     onPlay = viewModel::playArtistSong,
                     onPlayAll = { tracks -> viewModel.playAll(tracks) },
                     onToggleFollow = viewModel::toggleFollowArtist,
+                    onToggleExclude = { browseId, name -> viewModel.toggleExcludeArtist(browseId, name) },
                     onOpenArtist = viewModel::openArtistFromHit,
                     onOpenRelease = viewModel::openArtistRelease,
                     onClose = viewModel::closeArtist
@@ -1891,6 +1907,15 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = overlayEnter, exit = overlayExit) {
                 LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
+            }
+
+            AnimatedVisibility(
+                visible = state.showAmbient,
+                modifier = Modifier.zIndex(50f),
+                enter = fadeIn(tween(320)),
+                exit = fadeOut(tween(240))
+            ) {
+                LevyraAmbientOverlay(state = state, viewModel = viewModel)
             }
 
             AnimatedVisibility(visible = showDownloadsFolder, enter = overlayEnter, exit = overlayExit) {
@@ -3299,6 +3324,7 @@ private fun ArtistOverlay(
     onPlay: (Track) -> Unit,
     onPlayAll: (List<Track>) -> Unit,
     onToggleFollow: () -> Unit,
+    onToggleExclude: (String, String) -> Unit,
     onOpenArtist: (ArtistHit) -> Unit,
     onOpenRelease: (ArtistRelease, String) -> Unit,
     onClose: () -> Unit
@@ -3308,6 +3334,9 @@ private fun ArtistOverlay(
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
             profile.name.trim().lowercase() in state.followedArtistKeys
         )
+    val isExcluded = profile != null && state.artistExclusions.let { exclusions ->
+        exclusions.excludesBrowseId(profile.browseId) || exclusions.excludesArtistName(profile.name)
+    }
     val accentStart = profile?.let { Color(it.accentStart) } ?: LevyraCyan
     val accentEnd = profile?.let { Color(it.accentEnd) } ?: LevyraViolet
     val strings = LocalLevyraStrings.current
@@ -3383,7 +3412,9 @@ private fun ArtistOverlay(
                                 onShuffle = artist.topSongs
                                     .takeIf { it.size > 1 }
                                     ?.let { songs -> { onPlayAll(songs.shuffled()) } },
-                                onToggleFollow = onToggleFollow
+                                onToggleFollow = onToggleFollow,
+                                isExcluded = isExcluded,
+                                onToggleExclude = { onToggleExclude(artist.browseId, artist.name) }
                             )
                             if (artist.hasBio) {
                                 ArtistBio(
@@ -3847,9 +3878,12 @@ private fun ArtistActionBar(
     isFollowed: Boolean,
     onPlay: (() -> Unit)?,
     onShuffle: (() -> Unit)?,
-    onToggleFollow: () -> Unit
+    onToggleFollow: () -> Unit,
+    isExcluded: Boolean,
+    onToggleExclude: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    var artistMenuExpanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
     val audience = remember(profile.monthlyListeners, profile.subscribers) {
         listOf(profile.monthlyListeners, profile.subscribers)
             .map(String::trim)
@@ -3880,6 +3914,40 @@ private fun ArtistActionBar(
         ) {
             ArtistFollowButton(isFollowed = isFollowed, onClick = onToggleFollow)
             Spacer(modifier = Modifier.weight(1f))
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .pressable(onClick = { artistMenuExpanded = true }),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = strings.options,
+                        tint = Color.White.copy(alpha = 0.86f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = artistMenuExpanded,
+                    onDismissRequest = { artistMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isExcluded) strings.includeArtist else strings.excludeArtist) },
+                        leadingIcon = {
+                            Icon(
+                                if (isExcluded) Icons.Rounded.Recommend else Icons.Rounded.DoNotDisturbOn,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            artistMenuExpanded = false
+                            onToggleExclude()
+                        }
+                    )
+                }
+            }
             if (onShuffle != null) {
                 Box(
                     modifier = Modifier
@@ -6128,6 +6196,7 @@ private fun HomeScreen(
     }
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
+    val forgottenFavorites = state.forgottenFavorites
     val homeAlbums = remember(
         state.homeAlbums,
         state.personalOrbitTracks,
@@ -6435,6 +6504,23 @@ private fun HomeScreen(
                             isResolving = state.isResolving,
                             onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
                             onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
+                            onTrackActions = onTrackActions
+                        )
+                    }
+                }
+            }
+
+            if (showDeferredHomeSections && forgottenFavorites.isNotEmpty()) {
+                item(key = "home-forgotten-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                    HomeSectionLead(compactHome) {
+                        HomeQuickPicksShelf(
+                            title = strings.forgottenFavorites,
+                            tracks = forgottenFavorites,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
+                            onPlayAll = { viewModel.playAll(forgottenFavorites) },
                             onTrackActions = onTrackActions
                         )
                     }
@@ -12889,7 +12975,8 @@ private fun PlayerQuickActionsBar(
                             compact = true,
                             onSpeed = viewModel::cycleSpeed,
                             onSleep = viewModel::openSleepTimer,
-                            onNormalization = viewModel::toggleAudioNormalization
+                            onNormalization = viewModel::toggleAudioNormalization,
+                            onAmbient = viewModel::openAmbient
                         )
                     }
                 }
@@ -13320,7 +13407,8 @@ private fun PlayerAdvancedControlsPanel(
                 compact = compact,
                 onSpeed = viewModel::cycleSpeed,
                 onSleep = viewModel::openSleepTimer,
-                onNormalization = viewModel::toggleAudioNormalization
+                onNormalization = viewModel::toggleAudioNormalization,
+                onAmbient = viewModel::openAmbient
             )
             PlayerInlineLyricsSection(
                 trackId = track.id,
@@ -15296,7 +15384,8 @@ private fun PlayerOptionsRow(
     compact: Boolean,
     onSpeed: () -> Unit,
     onSleep: () -> Unit,
-    onNormalization: () -> Unit
+    onNormalization: () -> Unit,
+    onAmbient: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -15337,6 +15426,15 @@ private fun PlayerOptionsRow(
             modifier = Modifier.weight(1f),
             compact = compact,
             onClick = onSleep
+        )
+        OptionChip(
+            icon = Icons.Rounded.Nightlight,
+            label = LocalLevyraStrings.current.ambientMode,
+            active = false,
+            activeColor = secondaryColor,
+            modifier = Modifier.weight(1f),
+            compact = compact,
+            onClick = onAmbient
         )
     }
 }
@@ -16047,6 +16145,8 @@ private fun SettingsOverlay(
     currentLanguageCode: String,
     themePreset: String,
     interfaceSettings: LevyraInterfaceSettings,
+    ambientSettings: LevyraAmbientSettings,
+    excludedArtists: List<ExcludedArtist>,
     downloadSettings: LevyraDownloadSettings,
     backupSettings: LevyraBackupSettings,
     vaultStatus: LevyraVaultStatus,
@@ -16068,6 +16168,9 @@ private fun SettingsOverlay(
     onOpenJam: () -> Unit,
     onThemePreset: (String) -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
+    onAmbientSettings: (LevyraAmbientSettings) -> Unit,
+    onOpenAmbient: () -> Unit,
+    onIncludeArtist: (ExcludedArtist) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
@@ -16527,6 +16630,97 @@ private fun SettingsOverlay(
                                         options = listOf("1.5" to "1.5×", "2.0" to "2×", "2.5" to "2.5×", "3.0" to "3×"),
                                         selected = String.format(Locale.US, "%.1f", interfaceSettings.longPressSpeed),
                                         onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat())) }
+                                    )
+                                }
+                            }
+                            item { SettingsSectionLabel(strings.ambientSettingsTitle) }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientOpen,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    onClick = onOpenAmbient
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientBrightness,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    options = listOf(
+                                        "0.10" to "10%",
+                                        "0.25" to "25%",
+                                        "0.35" to "35%",
+                                        "0.50" to "50%",
+                                        "0.75" to "75%"
+                                    ),
+                                    selected = String.format(Locale.US, "%.2f", ambientSettings.brightness),
+                                    onSelect = { value ->
+                                        onAmbientSettings(ambientSettings.copy(brightness = value.toFloat()))
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientAutoDim,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    checked = ambientSettings.autoDim,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(autoDim = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientPixelShift,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    checked = ambientSettings.pixelShift,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(pixelShift = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = strings.ambientProximityBlackout,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    checked = ambientSettings.proximityBlackout,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(proximityBlackout = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Subtitles,
+                                    title = strings.ambientShowLyrics,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    checked = ambientSettings.showLyrics,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(showLyrics = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.AutoAwesome,
+                                    title = strings.ambientShowCanvas,
+                                    subtitle = strings.ambientModeSubtitle,
+                                    checked = ambientSettings.showCanvas,
+                                    onCheckedChange = { onAmbientSettings(ambientSettings.copy(showCanvas = it)) }
+                                )
+                            }
+                            item { SettingsSectionLabel(strings.excludedArtists) }
+                            if (excludedArtists.isEmpty()) {
+                                item {
+                                    SettingsInfoCard(
+                                        icon = Icons.Rounded.DoNotDisturbOn,
+                                        title = strings.excludedArtists,
+                                        subtitle = strings.excludedArtistsEmpty
+                                    )
+                                }
+                            } else {
+                                items(excludedArtists, key = { "excluded-${it.key}" }) { artist ->
+                                    SettingsButton(
+                                        icon = Icons.Rounded.Recommend,
+                                        title = artist.name,
+                                        subtitle = strings.includeArtist,
+                                        onClick = { onIncludeArtist(artist) }
                                     )
                                 }
                             }

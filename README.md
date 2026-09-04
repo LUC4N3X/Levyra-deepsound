@@ -145,7 +145,7 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
   <h3>🎧 <b>Everything in the signal path. Nothing in the way.</b></h3>
   <p><sub>Playback, discovery, lyrics, offline ownership, recognition, local sync, privacy, and resilient networking — engineered as one native audio system.</sub></p>
   <p>
-    <code>10 CORE SYSTEMS</code> &nbsp;·&nbsp;
+    <code>12 CORE SYSTEMS</code> &nbsp;·&nbsp;
     <code>ANDROID + WINDOWS</code> &nbsp;·&nbsp;
     <code>LOCAL-FIRST</code> &nbsp;·&nbsp;
     <code>ZERO TRACKING</code>
@@ -259,6 +259,31 @@ Play counts, listening time, streaks, playlists, and listening insights are comp
         <li><b>Scrobbling:</b> Last.fm and ListenBrainz integration with bounded deduplication.</li>
         <li><b>Searchable Settings:</b> Instant search across settings, titles, and keywords in 26 languages.</li>
         <li><b>Video Subtitles:</b> Selectable multi-language subtitles during native-video playback.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr valign="top">
+    <td width="50%">
+      <h3>🌙 <b>Levyra Ambient</b></h3>
+      <p><b>A quiet screen for a loud song.</b><br><sub>An OLED-friendly now-playing surface driven by the existing PlaybackService session — never a second player.</sub></p>
+      <ul>
+        <li><b>Same Session:</b> Attaches to the running MediaSession, so entering and leaving Ambient never interrupts audio.</li>
+        <li><b>Artwork or Canvas:</b> Shows Levyra Canvas when available, with static artwork as the immediate fallback.</li>
+        <li><b>Synced Lyric Line:</b> The current line follows playback, alongside title, artist, and a minimal progress cue.</li>
+        <li><b>Burn-in Care:</b> Reduced brightness, auto dimming, periodic pixel shifting, and a minimal layout once idle.</li>
+        <li><b>Proximity Blackout:</b> Optional blackout while the sensor is covered, for pocket and nightstand use.</li>
+        <li><b>Tile & Screensaver:</b> A Quick Settings tile plus a native Android <code>DreamService</code> for docked playback.</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>🗂️ <b>Library Organization</b></h3>
+      <p><b>Shape the library around how you actually listen.</b><br><sub>Tags, visibility, and recommendation control — all local, all reversible, all included in Levyra Vault backups.</sub></p>
+      <ul>
+        <li><b>Playlist Tags:</b> Create, rename, and remove tags such as Rap, Gym, Relax, or Auto, and assign several to one playlist.</li>
+        <li><b>Tag Filtering:</b> Filter the Library by one or more tags without leaving the playlist view.</li>
+        <li><b>Hidden Playlists:</b> Hide a playlist from the Library without deleting it, then restore it from a dedicated filter. No track or metadata is lost.</li>
+        <li><b>Artist Exclusions:</b> Keep an artist out of the personalized Home, Your Orbit, radio, autoplay, and mixes while still being able to search and open them.</li>
+        <li><b>Rediscover:</b> A Home shelf for favorites you have not played in a long time, built only from listening history already on the device.</li>
       </ul>
     </td>
   </tr>

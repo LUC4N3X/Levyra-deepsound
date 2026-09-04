@@ -15,7 +15,14 @@ import com.luc4n3x.levyra.data.local.PlaylistEntity
 import com.luc4n3x.levyra.data.local.toFavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
 import com.luc4n3x.levyra.data.local.toTrack
+import com.luc4n3x.levyra.data.local.PlaylistTagEntity
+import com.luc4n3x.levyra.data.local.PlaylistTagLinkEntity
+import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.PLAYLIST_TAG_MAX_PER_PLAYLIST
+import com.luc4n3x.levyra.domain.PlaylistTag
+import com.luc4n3x.levyra.domain.isExcludableArtist
+import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
@@ -50,6 +57,8 @@ class LevyraBackupManager(private val context: Context) {
     private val database = LevyraDatabase.get(appContext)
     private val preferences = LevyraPreferences(appContext)
     private val followedArtistsStore = FollowedArtistsStore(appContext)
+    private val excludedArtistsStore = ExcludedArtistsStore(appContext)
+    private val tagsDao get() = database.playlistTagsDao()
 
     suspend fun exportTo(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
         LevyraVaultOperationMutex.withLock {
@@ -281,11 +290,16 @@ class LevyraBackupManager(private val context: Context) {
                         .put("coverUrl", playlist.coverUrl)
                         .put("createdAt", playlist.createdAt)
                         .put("updatedAt", playlist.updatedAt)
+                        .put("hidden", playlist.hidden)
+                        .put("tagIds", JSONArray(tagsDao.tagIdsOf(playlist.id)))
                         .put("tracks", JSONArray().apply { tracks.forEach { put(TrackJson.toJson(it.toTrack())) } })
                         .toString()
                     writer.write(json)
                 }
                 writer.write("]")
+            }
+            sections[ORGANIZATION_ENTRY] = writeJsonSection(zip, ORGANIZATION_ENTRY) { writer ->
+                writer.write(organizationToJson(tagsDao.allTags(), excludedArtistsStore.load()).toString())
             }
             sections[HISTORY_ENTRY] = writeJsonSection(zip, HISTORY_ENTRY) { writer ->
                 writeJsonArray(writer, database.listenEventsDao().all()) { listenEventToJson(it).toString() }
@@ -401,6 +415,8 @@ class LevyraBackupManager(private val context: Context) {
             settings = parseSettings(settingsJson),
             favorites = entries[FAVORITES_ENTRY].toJsonArray().toTrackList(),
             followedArtists = parseFollowedArtists(entries[FOLLOWED_ARTISTS_ENTRY].toJsonArray()),
+            excludedArtists = parseExcludedArtists(entries[ORGANIZATION_ENTRY].toJsonObject()),
+            playlistTags = parsePlaylistTags(entries[ORGANIZATION_ENTRY].toJsonObject()),
             playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray()),
             history = parseHistory(entries[HISTORY_ENTRY].toJsonArray()),
             queueItems = parseQueueItems(queueJson),
@@ -425,6 +441,8 @@ class LevyraBackupManager(private val context: Context) {
             settings = parseSettings(root.optJSONObject("settings") ?: JSONObject()),
             favorites = root.optJSONArray("favorites").toTrackList(),
             followedArtists = parseFollowedArtists(root.optJSONArray("followedArtists")),
+            excludedArtists = emptyList(),
+            playlistTags = emptyList(),
             playlists = parsePlaylists(root.optJSONArray("playlists") ?: JSONArray()),
             history = parseHistory(root.optJSONArray("history")),
             queueItems = parseQueueItems(queue),
@@ -458,6 +476,8 @@ class LevyraBackupManager(private val context: Context) {
                 coverUrl = playlist.coverUrl,
                 createdAt = playlist.createdAt,
                 updatedAt = playlist.updatedAt,
+                hidden = playlist.hidden,
+                tagIds = tagsDao.tagIdsOf(playlist.id),
                 tracks = database.playlistDao().tracksOf(playlist.id).map { it.toTrack() }
             )
         }
@@ -465,6 +485,8 @@ class LevyraBackupManager(private val context: Context) {
             settings = snapshot,
             favorites = database.favoriteTracksDao().all().map { it.toTrack() },
             followedArtists = followedArtistsStore.load(),
+            excludedArtists = excludedArtistsStore.load(),
+            playlistTags = tagsDao.allTags().map(::toPlaylistTag),
             playlists = playlists,
             history = database.listenEventsDao().all(),
             queueItems = database.playbackQueueDao().items(),
@@ -475,10 +497,12 @@ class LevyraBackupManager(private val context: Context) {
     private suspend fun applySnapshot(payload: VaultSnapshot) {
         preferences.restoreSnapshot(payload.settings)
         followedArtistsStore.saveDurable(payload.followedArtists)
+        excludedArtistsStore.replaceAll(payload.excludedArtists)
         val now = System.currentTimeMillis()
         database.withTransaction {
             database.favoriteTracksDao().replaceAll(payload.favorites.mapIndexed { index, track -> track.toFavoriteTrackEntity(now - index) })
             restorePlaylists(payload.playlists)
+            restorePlaylistTags(payload.playlistTags, payload.playlists)
             database.listenEventsDao().replaceAll(payload.history)
             restoreQueue(payload.queueItems, payload.queueState)
         }
@@ -496,7 +520,8 @@ class LevyraBackupManager(private val context: Context) {
                     playlist.name.ifBlank { "Playlist" },
                     playlist.coverUrl,
                     playlist.createdAt,
-                    playlist.updatedAt
+                    playlist.updatedAt,
+                    playlist.hidden
                 )
             )
             if (playlist.tracks.isNotEmpty()) {
@@ -505,6 +530,113 @@ class LevyraBackupManager(private val context: Context) {
                         track.toPlaylistTrackEntity(playlist.id, position, playlist.createdAt + position)
                     }
                 )
+            }
+        }
+    }
+
+    private suspend fun restorePlaylistTags(tags: List<PlaylistTag>, playlists: List<PlaylistBackup>) {
+        val now = System.currentTimeMillis()
+        val tagRows = tags
+            .filter { it.id.isNotBlank() && it.normalizedName.isNotBlank() }
+            .distinctBy { it.normalizedName }
+            .map {
+                PlaylistTagEntity(
+                    id = it.id,
+                    name = it.name.ifBlank { it.normalizedName },
+                    normalizedName = it.normalizedName,
+                    createdAt = if (it.createdAt > 0L) it.createdAt else now
+                )
+            }
+        val knownTagIds = tagRows.mapTo(hashSetOf()) { it.id }
+        val linkRows = playlists.flatMap { playlist ->
+            playlist.tagIds.distinct()
+                .filter { it in knownTagIds }
+                .take(PLAYLIST_TAG_MAX_PER_PLAYLIST)
+                .map { PlaylistTagLinkEntity(playlistId = playlist.id, tagId = it, assignedAt = now) }
+        }
+        tagsDao.replaceAll(tagRows, linkRows)
+    }
+
+    private fun toPlaylistTag(entity: PlaylistTagEntity): PlaylistTag = PlaylistTag(
+        id = entity.id,
+        name = entity.name,
+        normalizedName = entity.normalizedName,
+        createdAt = entity.createdAt
+    )
+
+    private fun organizationToJson(
+        tags: List<PlaylistTagEntity>,
+        excluded: List<ExcludedArtist>
+    ): JSONObject = JSONObject()
+        .put(
+            "tags",
+            JSONArray().apply {
+                tags.forEach { tag ->
+                    put(
+                        JSONObject()
+                            .put("id", tag.id)
+                            .put("name", tag.name)
+                            .put("normalizedName", tag.normalizedName)
+                            .put("createdAt", tag.createdAt)
+                    )
+                }
+            }
+        )
+        .put(
+            "excludedArtists",
+            JSONArray().apply {
+                excluded.forEach { artist ->
+                    put(
+                        JSONObject()
+                            .put("browseId", artist.browseId)
+                            .put("name", artist.name)
+                            .put("excludedAt", artist.excludedAt)
+                    )
+                }
+            }
+        )
+
+    private fun parsePlaylistTags(json: JSONObject?): List<PlaylistTag> {
+        val array = json?.optJSONArray("tags") ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val id = item.optString("id").trim()
+                val name = item.optString("name").trim()
+                val normalized = item.optString("normalizedName").trim()
+                    .ifBlank { normalizePlaylistTagName(name) }
+                if (id.isBlank() || normalized.isBlank()) continue
+                add(
+                    PlaylistTag(
+                        id = id,
+                        name = name.ifBlank { normalized },
+                        normalizedName = normalized,
+                        createdAt = item.optLong("createdAt", 0L)
+                    )
+                )
+            }
+        }
+    }
+
+    private fun parseExcludedArtists(json: JSONObject?): List<ExcludedArtist> {
+        val array = json?.optJSONArray("excludedArtists") ?: return emptyList()
+        return buildList {
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val name = item.optString("name").trim()
+                val browseId = item.optString("browseId").trim()
+                if (!isExcludableArtist(browseId, name)) continue
+                add(ExcludedArtist(browseId, name, item.optLong("excludedAt", 0L)))
+            }
+        }
+    }
+
+    private fun JSONArray?.toStringList(): List<String> {
+        if (this == null) return emptyList()
+        return buildList {
+            for (index in 0 until length()) {
+                val value = optString(index).trim()
+                if (value.isNotEmpty()) add(value)
             }
         }
     }
@@ -562,6 +694,8 @@ class LevyraBackupManager(private val context: Context) {
                         coverUrl = json.optString("coverUrl"),
                         createdAt = createdAt,
                         updatedAt = updatedAt,
+                        hidden = json.optBoolean("hidden", false),
+                        tagIds = json.optJSONArray("tagIds").toStringList(),
                         tracks = json.optJSONArray("tracks").toTrackList()
                     )
                 )
@@ -863,6 +997,8 @@ class LevyraBackupManager(private val context: Context) {
         val coverUrl: String,
         val createdAt: Long,
         val updatedAt: Long,
+        val hidden: Boolean,
+        val tagIds: List<String>,
         val tracks: List<Track>
     )
 
@@ -870,6 +1006,8 @@ class LevyraBackupManager(private val context: Context) {
         val settings: LevyraPreferencesSnapshot,
         val favorites: List<Track>,
         val followedArtists: List<FollowedArtist>,
+        val excludedArtists: List<ExcludedArtist>,
+        val playlistTags: List<PlaylistTag>,
         val playlists: List<PlaylistBackup>,
         val history: List<ListenEventEntity>,
         val queueItems: List<PlaybackQueueItemEntity>,
@@ -907,6 +1045,7 @@ class LevyraBackupManager(private val context: Context) {
         const val PLAYLISTS_ENTRY = "data/playlists.json"
         const val HISTORY_ENTRY = "data/history.json"
         const val QUEUE_ENTRY = "data/queue.json"
+        const val ORGANIZATION_ENTRY = "data/library_organization.json"
         const val MAX_ZIP_ENTRIES = 16
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
         const val MAX_TOTAL_BYTES = 96L * 1024L * 1024L
@@ -920,6 +1059,7 @@ class LevyraBackupManager(private val context: Context) {
             FAVORITES_ENTRY,
             FOLLOWED_ARTISTS_ENTRY,
             PLAYLISTS_ENTRY,
+            ORGANIZATION_ENTRY,
             HISTORY_ENTRY,
             QUEUE_ENTRY,
             LEGACY_PAYLOAD_ENTRY
