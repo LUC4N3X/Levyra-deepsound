@@ -15,11 +15,35 @@ protocol metadata:
 - direct versus ciphered formats and `n`-parameter presence
 - HLS/DASH availability
 - a bounded initial and continuation `Range` probe against a direct `*.googlevideo.com` media URL
+- two named capability checks that are evaluated separately from ordinary sentinel health
 - recent YouTube/player-related commit metadata from selected open-source extractor projects as
   **radar only**, never as trusted instructions
 
 The canary does not persist cookies, API keys, visitor data, signed media URLs, media query strings,
 or account state.
+
+## Capability checks
+
+Sentinels answer "does YouTube still play". They aggregate across clients, so a branch can break
+while the aggregate stays green. Capability checks close that gap by reporting their own
+`PASS` / `FAIL` / `BLOCKED` status, printed on stdout and rendered in the report:
+
+- `MADE_FOR_KIDS` probes a fixed public children's video across the Levyra client matrix. It passes
+  while at least one client still delivers that fixture, and fails when the made-for-kids branch
+  stops delivering even though ordinary playback is healthy. Any `isMadeForKids` / `isFamilySafe`
+  marker found on the watch page is recorded as evidence only, so a fixture that quietly loses its
+  made-for-kids status shows up in the report instead of becoming a false regression.
+- `POTOKEN` probes the same reference video and separates the clients Levyra ships as
+  PoToken-requiring (`WEB`, `WEB_REMIX`) from the PoToken-free fallback (`VISIONOS`,
+  `ANDROID_MUSIC`, `ANDROID`, `IOS`, `WEB_EMBEDDED_PLAYER`), plus one deliberately anonymous WEB
+  probe with no visitor data. It passes while a PoToken-free client still delivers, and fails when
+  PoToken becomes mandatory for every client. `po_token_enforced` records enforcement on the
+  PoToken-bound clients as information, not as a regression.
+
+A capability `FAIL` is material on its own and opens a repair even when every sentinel stays
+healthy. `BLOCKED` is never material: an unreachable watch page or a client matrix where every
+probe failed on our side says nothing about YouTube. Fixtures are configured in `config.json` under
+`capability_checks`; the built-in defaults apply when that key is absent.
 
 ## Baseline model
 

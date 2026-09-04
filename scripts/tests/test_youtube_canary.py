@@ -471,5 +471,348 @@ class YoutubeCanaryTest(unittest.TestCase):
         }
 
 
+class CapabilityProbePatch:
+    def __init__(self, clients, html=""):
+        self.clients = clients
+        self.html = html
+
+    def __enter__(self):
+        self.inputs = canary._capability_matrix_inputs
+        self.matrix = canary._probe_client_matrix
+        self.client = canary._probe_client
+        html = self.html
+        clients = self.clients
+        canary._capability_matrix_inputs = lambda video_id, *, hl, gl: {
+            "innertube_query_value": "key",
+            "web_client_version": "1.0",
+            "visitor_data": "visitor",
+            "_watch_html": html,
+        }
+        canary._probe_client_matrix = lambda **kwargs: clients
+        canary._probe_client = lambda entry, **kwargs: {
+            "client": entry["name"],
+            "delivery": canary.DELIVERY_SECURITY_FAILURE,
+        }
+        return self
+
+    def __exit__(self, *args):
+        canary._capability_matrix_inputs = self.inputs
+        canary._probe_client_matrix = self.matrix
+        canary._probe_client = self.client
+        return False
+
+
+class YoutubeCanaryCapabilityCheckTest(unittest.TestCase):
+    def _client(self, name, delivery, sabr=False):
+        entry = {"client": name, "delivery": delivery, "latency_ms": 10}
+        if delivery != canary.DELIVERY_TRANSPORT_FAILURE:
+            entry["player"] = {"has_server_abr_streaming_url": sabr}
+        return entry
+
+    def _observation(self, checks):
+        return {
+            "schema": canary.SCHEMA_VERSION,
+            "sentinels": [],
+            "capability_checks": checks,
+            "upstreams": [],
+        }
+
+    def test_default_checks_cover_made_for_kids_and_potoken(self):
+        names = {str(item["name"]) for item in canary.DEFAULT_CAPABILITY_CHECKS}
+        self.assertEqual({canary.CAPABILITY_MADE_FOR_KIDS, canary.CAPABILITY_POTOKEN}, names)
+        for item in canary.DEFAULT_CAPABILITY_CHECKS:
+            self.assertTrue(canary.VIDEO_ID_RE.fullmatch(str(item["video_id"])))
+
+    def test_shipped_config_declares_both_capability_checks(self):
+        config_path = (
+            Path(__file__).resolve().parents[2]
+            / "third_party"
+            / "LevyraExtractor"
+            / "canary"
+            / "config.json"
+        )
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        checks = canary._configured_capability_checks(config)
+        self.assertEqual(
+            {canary.CAPABILITY_MADE_FOR_KIDS, canary.CAPABILITY_POTOKEN},
+            {str(item["name"]) for item in checks},
+        )
+
+    def test_client_matrix_po_token_flags_match_the_shipped_playback_profiles(self):
+        flags = {
+            str(entry["name"]): bool(entry.get("requires_po_token", False))
+            for entry in canary.LEVYRA_CLIENT_MATRIX
+        }
+        self.assertEqual(
+            {
+                "VISIONOS": False,
+                "ANDROID_MUSIC": False,
+                "ANDROID": False,
+                "IOS": False,
+                "WEB_REMIX": True,
+                "WEB": True,
+                "WEB_EMBEDDED_PLAYER": False,
+            },
+            flags,
+        )
+
+    def test_made_for_kids_failure_is_material_even_when_sentinels_stay_healthy(self):
+        baseline = {
+            "schema": canary.SCHEMA_VERSION,
+            "observation": self._observation(
+                [{"name": canary.CAPABILITY_MADE_FOR_KIDS, "status": canary.CAPABILITY_STATUS_PASS}]
+            ),
+        }
+        observation = self._observation(
+            [
+                {
+                    "name": canary.CAPABILITY_MADE_FOR_KIDS,
+                    "status": canary.CAPABILITY_STATUS_FAIL,
+                    "detail": "no probed client delivers the made-for-kids fixture",
+                }
+            ]
+        )
+
+        decision = canary._classify(baseline, observation, {})
+
+        self.assertEqual("repair", decision["decision"])
+        self.assertTrue(
+            any(
+                "MADE_FOR_KIDS capability check FAIL" in item
+                for item in decision["material_changes"]
+            ),
+            decision["material_changes"],
+        )
+
+    def test_potoken_failure_is_material_even_when_sentinels_stay_healthy(self):
+        baseline = {
+            "schema": canary.SCHEMA_VERSION,
+            "observation": self._observation(
+                [{"name": canary.CAPABILITY_POTOKEN, "status": canary.CAPABILITY_STATUS_PASS}]
+            ),
+        }
+        observation = self._observation(
+            [
+                {
+                    "name": canary.CAPABILITY_POTOKEN,
+                    "status": canary.CAPABILITY_STATUS_FAIL,
+                    "detail": "no PoToken-free client delivers",
+                }
+            ]
+        )
+
+        decision = canary._classify(baseline, observation, {})
+
+        self.assertEqual("repair", decision["decision"])
+        self.assertTrue(
+            any("POTOKEN capability check FAIL" in item for item in decision["material_changes"]),
+            decision["material_changes"],
+        )
+
+    def test_blocked_capability_check_never_triggers_a_repair(self):
+        baseline = {
+            "schema": canary.SCHEMA_VERSION,
+            "observation": self._observation(
+                [{"name": canary.CAPABILITY_POTOKEN, "status": canary.CAPABILITY_STATUS_PASS}]
+            ),
+        }
+        observation = self._observation(
+            [
+                {
+                    "name": canary.CAPABILITY_POTOKEN,
+                    "status": canary.CAPABILITY_STATUS_BLOCKED,
+                    "detail": "every client probe failed on our side",
+                }
+            ]
+        )
+
+        decision = canary._classify(baseline, observation, {})
+
+        self.assertEqual("none", decision["decision"])
+        self.assertTrue(
+            any(
+                "POTOKEN capability check BLOCKED" in item
+                for item in decision["informational_changes"]
+            ),
+            decision["informational_changes"],
+        )
+
+    def test_recovered_capability_check_does_not_open_a_repair(self):
+        baseline = {
+            "schema": canary.SCHEMA_VERSION,
+            "observation": self._observation(
+                [{"name": canary.CAPABILITY_MADE_FOR_KIDS, "status": canary.CAPABILITY_STATUS_FAIL}]
+            ),
+        }
+        observation = self._observation(
+            [{"name": canary.CAPABILITY_MADE_FOR_KIDS, "status": canary.CAPABILITY_STATUS_PASS}]
+        )
+
+        decision = canary._classify(baseline, observation, {})
+
+        self.assertEqual("none", decision["decision"])
+
+    def test_report_renders_distinguishable_capability_lines(self):
+        observation = self._observation(
+            [
+                {
+                    "name": canary.CAPABILITY_MADE_FOR_KIDS,
+                    "status": canary.CAPABILITY_STATUS_PASS,
+                    "detail": "3/7 clients deliver the made-for-kids fixture",
+                },
+                {
+                    "name": canary.CAPABILITY_POTOKEN,
+                    "status": canary.CAPABILITY_STATUS_FAIL,
+                    "detail": "no PoToken-free client delivers",
+                },
+            ]
+        )
+
+        report = canary._render_report(
+            observation,
+            {
+                "decision": "repair",
+                "severity": "major",
+                "material_changes": [],
+                "informational_changes": [],
+            },
+        )
+
+        self.assertIn("MADE_FOR_KIDS PASS", report)
+        self.assertIn("POTOKEN FAIL", report)
+
+    def test_made_for_kids_passes_when_any_client_delivers(self):
+        clients = [
+            self._client("VISIONOS", canary.DELIVERY_DIRECT_HEALTHY),
+            self._client("WEB", canary.DELIVERY_SECURITY_FAILURE),
+        ]
+        with CapabilityProbePatch(clients, html='"isMadeForKids":true'):
+            result = canary._probe_capability_check(
+                {
+                    "name": canary.CAPABILITY_MADE_FOR_KIDS,
+                    "kind": canary.CAPABILITY_KIND_MADE_FOR_KIDS,
+                    "video_id": "XqZsoesa55w",
+                },
+                hl="en",
+                gl="US",
+            )
+
+        self.assertEqual(canary.CAPABILITY_STATUS_PASS, result["status"])
+        self.assertEqual(["VISIONOS"], result["playable_clients"])
+        self.assertEqual({"isMadeForKids": True}, result["fixture_markers"])
+
+    def test_made_for_kids_fails_when_no_client_delivers(self):
+        clients = [
+            self._client("VISIONOS", canary.DELIVERY_DIRECT_UNAVAILABLE),
+            self._client("WEB", canary.DELIVERY_SECURITY_FAILURE),
+        ]
+        with CapabilityProbePatch(clients):
+            result = canary._probe_capability_check(
+                {
+                    "name": canary.CAPABILITY_MADE_FOR_KIDS,
+                    "kind": canary.CAPABILITY_KIND_MADE_FOR_KIDS,
+                    "video_id": "XqZsoesa55w",
+                },
+                hl="en",
+                gl="US",
+            )
+
+        self.assertEqual(canary.CAPABILITY_STATUS_FAIL, result["status"])
+
+    def test_potoken_passes_while_only_potoken_bound_clients_are_blocked(self):
+        clients = [
+            self._client("VISIONOS", canary.DELIVERY_DIRECT_HEALTHY),
+            self._client("WEB", canary.DELIVERY_SECURITY_FAILURE),
+            self._client("WEB_REMIX", canary.DELIVERY_SECURITY_FAILURE),
+        ]
+        with CapabilityProbePatch(clients):
+            result = canary._probe_capability_check(
+                {
+                    "name": canary.CAPABILITY_POTOKEN,
+                    "kind": canary.CAPABILITY_KIND_POTOKEN,
+                    "video_id": "BaW_jenozKc",
+                },
+                hl="en",
+                gl="US",
+            )
+
+        self.assertEqual(canary.CAPABILITY_STATUS_PASS, result["status"])
+        self.assertTrue(result["po_token_enforced"])
+        self.assertEqual(["VISIONOS"], result["po_token_free_playable"])
+
+    def test_potoken_fails_when_the_potoken_free_path_disappears(self):
+        clients = [
+            self._client("VISIONOS", canary.DELIVERY_SECURITY_FAILURE),
+            self._client("IOS", canary.DELIVERY_SECURITY_FAILURE),
+            self._client("WEB", canary.DELIVERY_DIRECT_HEALTHY),
+        ]
+        with CapabilityProbePatch(clients):
+            result = canary._probe_capability_check(
+                {
+                    "name": canary.CAPABILITY_POTOKEN,
+                    "kind": canary.CAPABILITY_KIND_POTOKEN,
+                    "video_id": "BaW_jenozKc",
+                },
+                hl="en",
+                gl="US",
+            )
+
+        self.assertEqual(canary.CAPABILITY_STATUS_FAIL, result["status"])
+        self.assertEqual([], result["po_token_free_playable"])
+
+    def test_capability_check_is_blocked_when_the_watch_page_is_unreachable(self):
+        def fail_inputs(video_id, *, hl, gl):
+            raise canary.CanaryError("watch page HTTP 429", status=429)
+
+        original = canary._capability_matrix_inputs
+        canary._capability_matrix_inputs = fail_inputs
+        try:
+            result = canary._probe_capability_check(
+                {
+                    "name": canary.CAPABILITY_POTOKEN,
+                    "kind": canary.CAPABILITY_KIND_POTOKEN,
+                    "video_id": "BaW_jenozKc",
+                },
+                hl="en",
+                gl="US",
+            )
+        finally:
+            canary._capability_matrix_inputs = original
+
+        self.assertEqual(canary.CAPABILITY_STATUS_BLOCKED, result["status"])
+        self.assertIn("429", result["detail"])
+
+    def test_capability_check_is_blocked_when_every_probe_failed_on_our_side(self):
+        clients = [
+            self._client("VISIONOS", canary.DELIVERY_TRANSPORT_FAILURE),
+            self._client("WEB", canary.DELIVERY_TRANSPORT_FAILURE),
+        ]
+        with CapabilityProbePatch(clients):
+            result = canary._probe_capability_check(
+                {
+                    "name": canary.CAPABILITY_MADE_FOR_KIDS,
+                    "kind": canary.CAPABILITY_KIND_MADE_FOR_KIDS,
+                    "video_id": "XqZsoesa55w",
+                },
+                hl="en",
+                gl="US",
+            )
+
+        self.assertEqual(canary.CAPABILITY_STATUS_BLOCKED, result["status"])
+
+    def test_invalid_configured_video_id_is_blocked_not_failed(self):
+        result = canary._probe_capability_check(
+            {
+                "name": canary.CAPABILITY_POTOKEN,
+                "kind": canary.CAPABILITY_KIND_POTOKEN,
+                "video_id": "nope",
+            },
+            hl="en",
+            gl="US",
+        )
+
+        self.assertEqual(canary.CAPABILITY_STATUS_BLOCKED, result["status"])
+
+
 if __name__ == "__main__":
     unittest.main()

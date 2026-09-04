@@ -76,6 +76,12 @@ Relevant fields:
 - `videoStrategy`: ordered native-video strategies.
 - `androidReelClientVersion`: allowlisted client version string used by Android Reel requests.
 - `clients`: allowlisted per-client enable/priority/tier/PoToken/version overrides.
+- `clients.<CLIENT>.capabilities`: optional per-capability overrides (`player`, `streaming`,
+  `browse`, `metadata`). A capability that is not listed falls back to that client's `enabled`
+  flag, so a policy without this block behaves exactly as before. Use it to keep a client usable
+  for part of the pipeline while disabling another part, for example `ANDROID_VR` with
+  `player: false` but `browse: true`. Unknown capability names are ignored; a non-boolean
+  capability value rejects the whole payload. At least one client must keep `player` enabled.
 - `expiresAt`: optional absolute epoch milliseconds; `0` means no expiry.
 - `minSupportedAppVersion`: optional minimum Android version code; `0` means no lower bound.
 - `maxSupportedAppVersion`: optional maximum Android version code; `0` means no upper bound.
@@ -87,7 +93,7 @@ Never place credentials, cookies, arbitrary endpoints, arbitrary headers, JavaSc
 1. Start from the current `main` policy.
 2. Change only the strategy/client setting proven to be broken.
 3. Increment `revision`.
-4. Keep at least one viable playback path enabled.
+4. Keep at least one viable playback path enabled, including at least one client with the `player` and `streaming` capabilities.
 5. Commit the policy change to `main` only after JSON/schema review.
 6. Re-test song, native video, and a download on a real device.
 7. If the change makes things worse, publish a new higher revision restoring the previous known-good values. Do not lower the revision.

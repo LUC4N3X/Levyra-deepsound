@@ -397,4 +397,59 @@ class YoutubeMusicResilienceClientTest {
 
     private fun validSuggestions(): String =
         """{"contents":[{"searchSuggestionsSectionRenderer":{"contents":[{"searchSuggestionRenderer":{"navigationEndpoint":{"searchEndpoint":{"query":"daft punk"}}}}]}}]}"""
+
+    @Test
+    fun browseStopsWhenThePolicyDisablesBrowseOnEveryClient() {
+        val disabled = PlaybackCompatibilityPolicy.bundled().copy(
+            clientOverrides = listOf(
+                "WEB_REMIX",
+                "ANDROID_MUSIC",
+                "ANDROID",
+                "IOS",
+                "WEB"
+            ).associateWith {
+                PlaybackClientOverride(
+                    capabilities = mapOf(PlaybackClientCapability.BROWSE to false)
+                )
+            }
+        )
+        PlaybackClientCapabilities.publish(disabled)
+        try {
+            val calls = AtomicInteger(0)
+            val client = client { _ ->
+                calls.incrementAndGet()
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+
+            assertNull(client.search("test song", "it"))
+            assertEquals(0, calls.get())
+        } finally {
+            PlaybackClientCapabilities.publish(PlaybackCompatibilityPolicy.bundled())
+        }
+    }
+
+    @Test
+    fun browseKeepsTheClientsThePolicyStillPermits() {
+        val partial = PlaybackCompatibilityPolicy.bundled().copy(
+            clientOverrides = mapOf(
+                "WEB_REMIX" to PlaybackClientOverride(
+                    capabilities = mapOf(PlaybackClientCapability.BROWSE to false)
+                )
+            )
+        )
+        PlaybackClientCapabilities.publish(partial)
+        try {
+            val calls = mutableListOf<String>()
+            val client = client { request ->
+                calls += request.profile.id
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+
+            assertNotNull(client.search("test song", "it"))
+            assertTrue(calls.isNotEmpty())
+            assertTrue(calls.none { it == "web-remix" })
+        } finally {
+            PlaybackClientCapabilities.publish(PlaybackCompatibilityPolicy.bundled())
+        }
+    }
 }
