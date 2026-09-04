@@ -510,4 +510,107 @@ class PlaybackCompatibilityPolicyTest {
             )
         )
     }
+
+    @Test
+    fun policyLeavingNoClientWithBothPlayerAndStreamingIsRejected() {
+        val base = PlaybackCompatibilityPolicy.bundled()
+        val clients = setOf(
+            "VISIONOS",
+            "ANDROID_VR",
+            "ANDROID_MUSIC",
+            "ANDROID",
+            "IOS",
+            "WEB_REMIX",
+            "WEB",
+            "WEB_EMBEDDED_PLAYER"
+        )
+        val splitCapabilities = clients.mapIndexed { index, client ->
+            val disabled = if (index % 2 == 0) "player" else "streaming"
+            """"$client": { "capabilities": { "$disabled": false } }"""
+        }.joinToString(",")
+
+        assertNull(
+            PlaybackCompatibilityPolicyParser.parse(
+                """{ "schema": 1, "revision": 2026090406, "clients": { $splitCapabilities } }""",
+                base
+            )
+        )
+    }
+
+    @Test
+    fun policyKeepingOneCompletePlaybackPathIsAccepted() {
+        val base = PlaybackCompatibilityPolicy.bundled()
+
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026090407,
+              "clients": {
+                "VISIONOS": { "capabilities": { "streaming": false } },
+                "WEB": { "capabilities": { "player": false } },
+                "IOS": { "capabilities": { "player": true, "streaming": true } }
+              }
+            }
+            """.trimIndent(),
+            base
+        )
+
+        assertNotNull(parsed)
+        assertTrue(parsed!!.isClientCapabilityEnabled("IOS", PlaybackClientCapability.PLAYER))
+        assertTrue(parsed.isClientCapabilityEnabled("IOS", PlaybackClientCapability.STREAMING))
+        assertFalse(parsed.isClientCapabilityEnabled("VISIONOS", PlaybackClientCapability.STREAMING))
+        assertFalse(parsed.isClientCapabilityEnabled("WEB", PlaybackClientCapability.PLAYER))
+    }
+
+    @Test
+    fun rejectedPolicyLeavesTheCallerOnItsPreviousKnownGoodPolicy() {
+        val base = PlaybackCompatibilityPolicy.bundled()
+
+        val rejected = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026090408,
+              "clients": {
+                "VISIONOS": { "capabilities": { "streaming": false } },
+                "ANDROID_VR": { "capabilities": { "streaming": false } },
+                "ANDROID_MUSIC": { "capabilities": { "streaming": false } },
+                "ANDROID": { "capabilities": { "streaming": false } },
+                "IOS": { "capabilities": { "streaming": false } },
+                "WEB_REMIX": { "capabilities": { "streaming": false } },
+                "WEB": { "capabilities": { "streaming": false } },
+                "WEB_EMBEDDED_PLAYER": { "capabilities": { "streaming": false } }
+              }
+            }
+            """.trimIndent(),
+            base
+        )
+
+        assertNull(rejected)
+        assertTrue(base.isClientCapabilityEnabled("IOS", PlaybackClientCapability.STREAMING))
+    }
+
+    @Test
+    fun androidReelPathsSeeTheStreamingCapabilityOfTheAndroidClient() {
+        val base = PlaybackCompatibilityPolicy.bundled()
+
+        val parsed = PlaybackCompatibilityPolicyParser.parse(
+            """
+            {
+              "schema": 1,
+              "revision": 2026090409,
+              "clients": {
+                "ANDROID": { "capabilities": { "streaming": false } }
+              }
+            }
+            """.trimIndent(),
+            base
+        )
+
+        assertNotNull(parsed)
+        assertFalse(parsed!!.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.STREAMING))
+        assertTrue(parsed.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.PLAYER))
+        assertTrue(base.isClientCapabilityEnabled("ANDROID", PlaybackClientCapability.STREAMING))
+    }
 }

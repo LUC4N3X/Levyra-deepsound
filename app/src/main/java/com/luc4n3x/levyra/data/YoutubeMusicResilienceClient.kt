@@ -383,7 +383,7 @@ internal class YoutubeMusicResilienceClient(
     private fun orderedProfiles(now: Long): List<YoutubeMusicClientProfile> {
         val permitted = profiles.filter {
             PlaybackClientCapabilities.isEnabled(it.clientName, PlaybackClientCapability.BROWSE)
-        }.ifEmpty { profiles }
+        }
         val available = permitted.filter { (health[it.id]?.blockedUntilMs ?: 0L) <= now }
         if (available.isEmpty()) return emptyList()
         return available.sortedWith(

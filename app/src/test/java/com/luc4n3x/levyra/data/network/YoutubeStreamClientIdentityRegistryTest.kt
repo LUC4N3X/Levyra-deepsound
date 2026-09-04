@@ -139,4 +139,28 @@ class YoutubeStreamClientIdentityRegistryTest {
             )
         )
     }
+
+    @Test
+    fun exactUrlIdentityWinsOverTheMediaFallbackOfAnotherStream() {
+        val visionOsUrl =
+            "https://rr3---sn-abc.googlevideo.com/videoplayback?id=o-media&itag=140&pot=vision"
+        val webUrl =
+            "https://rr7---sn-xyz.googlevideo.com/videoplayback?id=o-media&itag=140&pot=web"
+        YoutubeStreamClientIdentityRegistry.register(listOf(visionOsUrl), visionOs)
+        YoutubeStreamClientIdentityRegistry.register(listOf(webUrl), web)
+
+        assertEquals(visionOs, YoutubeStreamClientIdentityRegistry.find(visionOsUrl))
+        assertEquals(web, YoutubeStreamClientIdentityRegistry.find(webUrl))
+    }
+
+    @Test
+    fun mediaFallbackStillAppliesToAnUrlThatWasNeverRegistered() {
+        val registered = "https://rr3---sn-abc.googlevideo.com/videoplayback?id=o-media&itag=251"
+        YoutubeStreamClientIdentityRegistry.register(listOf(registered), visionOs)
+
+        assertEquals(
+            visionOs,
+            YoutubeStreamClientIdentityRegistry.find("$registered&rn=4")
+        )
+    }
 }

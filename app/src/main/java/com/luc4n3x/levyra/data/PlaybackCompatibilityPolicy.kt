@@ -187,8 +187,11 @@ internal object PlaybackCompatibilityPolicyParser {
                 base.clientOverrides
             }
             require(
-                knownClients.any {
-                    clientOverrides[it]?.isCapabilityEnabled(PlaybackClientCapability.PLAYER) ?: true
+                knownClients.any { client ->
+                    val override = clientOverrides[client]
+                    val player = override?.isCapabilityEnabled(PlaybackClientCapability.PLAYER) ?: true
+                    val streaming = override?.isCapabilityEnabled(PlaybackClientCapability.STREAMING) ?: true
+                    player && streaming
                 }
             )
 

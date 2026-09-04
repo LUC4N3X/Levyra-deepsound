@@ -63,6 +63,7 @@ internal object YoutubeStreamClientIdentityRegistry {
 
     private fun keysFor(url: String): List<String> {
         val keys = ArrayList<String>(2)
+        keys += "url" + '\u0000' + url.substringBefore('#')
         val parsed = url.toHttpUrlOrNull()
         if (parsed != null) {
             val mediaId = parsed.queryParameter("id").orEmpty()
@@ -71,7 +72,6 @@ internal object YoutubeStreamClientIdentityRegistry {
                 keys += "media" + '\u0000' + mediaId + '\u0000' + itag
             }
         }
-        keys += "url" + '\u0000' + url.substringBefore('#')
         return keys
     }
 }
