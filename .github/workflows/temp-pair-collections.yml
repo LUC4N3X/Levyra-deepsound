@@ -1,0 +1,85 @@
+name: Temporary Collections pairing
+
+on:
+  push:
+    branches:
+      - ui/soft-home-ambient-blend
+    paths:
+      - .github/workflows/temp-pair-collections.yml
+
+permissions:
+  contents: write
+
+jobs:
+  pair-collections:
+    if: ${{ !contains(github.event.head_commit.message, '[pair-collections]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/soft-home-ambient-blend
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Keep Levyra Collections in complete pairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          engine = Path("app/src/main/java/com/luc4n3x/levyra/data/HomeEditorialEngine.kt")
+          text = engine.read_text(encoding="utf-8")
+
+          replacements = [
+              (
+                  "    private const val maximumCollectionCount = 7",
+                  "    private const val maximumCollectionCount = 8",
+              ),
+              (
+                  "        if (collections.size <= maximumCollectionCount) return collections",
+                  """        if (collections.size <= maximumCollectionCount) {
+              val pairedSize = collections.size - collections.size % 2
+              return collections.take(pairedSize)
+          }""",
+              ),
+              (
+                  "        return selected\n    }\n\n    private fun collectionQuality",
+                  """        val pairedSize = selected.size - selected.size % 2
+          return selected.take(pairedSize)
+      }
+
+      private fun collectionQuality""",
+              ),
+          ]
+
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise RuntimeError(f"expected exactly one match for: {old!r}")
+              text = text.replace(old, new, 1)
+
+          engine.write_text(text, encoding="utf-8")
+
+          test = Path("app/src/test/java/com/luc4n3x/levyra/data/HomeEditorialEngineTest.kt")
+          test_text = test.read_text(encoding="utf-8")
+          old_test = "            assertTrue(collections.size <= 7)"
+          new_test = """            assertTrue(collections.size <= 8)
+              assertEquals(0, collections.size % 2)"""
+          if test_text.count(old_test) != 1:
+              raise RuntimeError("expected exactly one collection-count assertion")
+          test.write_text(test_text.replace(old_test, new_test, 1), encoding="utf-8")
+          PY
+      - name: Test editorial collections
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --tests "com.luc4n3x.levyra.data.HomeEditorialEngineTest"
+      - name: Compile Android debug Kotlin
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
+      - name: Commit Collections pairing
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/data/HomeEditorialEngine.kt app/src/test/java/com/luc4n3x/levyra/data/HomeEditorialEngineTest.kt
+          git diff --cached --quiet && { echo "No Collections changes produced"; exit 1; }
+          git commit -m "Keep Levyra Collections in complete pairs [pair-collections]"
+          git push origin HEAD:ui/soft-home-ambient-blend
