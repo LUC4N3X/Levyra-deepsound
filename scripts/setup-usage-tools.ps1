@@ -10,7 +10,7 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $toolRoot = Join-Path $repoRoot '.levyra-tools'
 $headroomPrefix = Join-Path $toolRoot 'headroom'
 $headroomVersion = 'v0.3.0'
-$codeBurnVersion = '0.9.20'
+$codeBurnVersion = '0.9.24'
 $headroomInstallerUrl = "https://raw.githubusercontent.com/anthonybo/headroom/$headroomVersion/install.ps1"
 
 function Test-Command {
@@ -46,7 +46,7 @@ else {
 }
 
 if (-not (Test-Command 'npx')) {
-    Write-Warning "CodeBurn $codeBurnVersion requires Node.js/npm with npx. Headroom setup can still be used."
+    Write-Warning "CodeBurn $codeBurnVersion requires Node.js 22.13+ with npm/npx. Headroom setup can still be used."
 }
 elseif ($DryRun) {
     Write-Output "[dry-run] Verify CodeBurn $codeBurnVersion through npx without installing it globally"

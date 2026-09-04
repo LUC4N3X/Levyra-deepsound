@@ -7,7 +7,7 @@ dependencies, playback behavior, application telemetry, or release artifacts.
 ## Components
 
 - **RTK** remains the output-reduction layer already managed by Levyra.
-- **CodeBurn 0.9.20** reads local coding-agent session data and reports usage,
+- **CodeBurn 0.9.24** reads local coding-agent session data and reports usage,
   cost, model, tool, retry, and waste patterns. Levyra runs it through pinned
   `npx` wrappers and always adds the `Levyra-deepsound` project filter.
 - **Headroom v0.3.0** provides Claude Code's status line for model, context,
@@ -19,6 +19,9 @@ The project-local tool directory is ignored by Git. No downloaded binary is
 committed.
 
 ## Setup
+
+CodeBurn requires Node.js 22.13+ with npm/npx. Headroom does not depend on
+CodeBurn, so its project-local setup remains usable when Node is unavailable.
 
 Windows:
 
@@ -74,8 +77,8 @@ bash ./scripts/codeburn-levyra.sh optimize --provider claude
 bash ./scripts/codeburn-levyra.sh models --by-agent
 ```
 
-With no arguments the wrapper shows the last week. Explicit commands remain
-scoped to Levyra by appending `--project Levyra-deepsound`.
+With no arguments the wrapper prints a weekly `overview`. Explicit commands
+remain scoped to Levyra by appending `--project Levyra-deepsound`.
 
 Treat `codeburn optimize` findings as evidence to review, not as automatic
 authorization to rewrite Levyra configuration. Do not use `--apply` until each

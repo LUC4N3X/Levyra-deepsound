@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CODEBURN_VERSION = "0.9.20"
+CODEBURN_VERSION = "0.9.24"
 HEADROOM_VERSION = "v0.3.0"
 
 errors: list[str] = []
@@ -49,6 +49,8 @@ for relative in ("scripts/codeburn-levyra.ps1", "scripts/codeburn-levyra.sh"):
             errors.append(f"{relative} must pin CodeBurn {CODEBURN_VERSION}")
         if "Levyra-deepsound" not in text or "--project" not in text:
             errors.append(f"{relative} must force the Levyra project filter")
+        if "overview" not in text or "week" not in text:
+            errors.append(f"{relative} must default to a weekly overview")
 
 for relative in ("scripts/setup-usage-tools.ps1", "scripts/setup-usage-tools.sh"):
     path = ROOT / relative
@@ -56,6 +58,8 @@ for relative in ("scripts/setup-usage-tools.ps1", "scripts/setup-usage-tools.sh"
         text = path.read_text(encoding="utf-8")
         if HEADROOM_VERSION not in text:
             errors.append(f"{relative} must pin Headroom {HEADROOM_VERSION}")
+        if CODEBURN_VERSION not in text:
+            errors.append(f"{relative} must pin CodeBurn {CODEBURN_VERSION}")
         if ".levyra-tools" not in text:
             errors.append(f"{relative} must keep Headroom project-local")
         if "no-wire" not in text.lower() and "NoWire" not in text:

@@ -16,7 +16,7 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 TOOL_ROOT="$REPO_ROOT/.levyra-tools"
 HEADROOM_PREFIX="$TOOL_ROOT/headroom"
 HEADROOM_VERSION="v0.3.0"
-CODEBURN_VERSION="0.9.20"
+CODEBURN_VERSION="0.9.24"
 HEADROOM_INSTALLER_URL="https://raw.githubusercontent.com/anthonybo/headroom/$HEADROOM_VERSION/install.sh"
 
 echo "Levyra AI usage tooling setup"
@@ -40,7 +40,7 @@ else
 fi
 
 if ! command -v npx >/dev/null 2>&1; then
-  echo "[warn] CodeBurn $CODEBURN_VERSION requires Node.js/npm with npx. Headroom setup can still be used." >&2
+  echo "[warn] CodeBurn $CODEBURN_VERSION requires Node.js 22.13+ with npm/npx. Headroom setup can still be used." >&2
 elif [[ "$DRY_RUN" -eq 1 ]]; then
   echo "[dry-run] Verify CodeBurn $CODEBURN_VERSION through npx without installing it globally"
 else
