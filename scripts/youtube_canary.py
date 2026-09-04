@@ -47,6 +47,7 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
             "osVersion": "1.0.3.21O566",
         },
         "user_agent": "com.google.ios.youtube/1.04 (RealityDevice14,1; U; CPU visionOS 1_0_3 like Mac OS X)",
+        "requires_po_token": False,
     },
     {
         "name": "ANDROID_MUSIC",
@@ -58,6 +59,7 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
             "osVersion": "15",
         },
         "user_agent": "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15) gzip",
+        "requires_po_token": False,
     },
     {
         "name": "ANDROID",
@@ -69,6 +71,7 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
             "osVersion": "15",
         },
         "user_agent": "com.google.android.youtube/19.44.38 (Linux; U; Android 15) gzip",
+        "requires_po_token": False,
     },
     {
         "name": "IOS",
@@ -81,12 +84,18 @@ LEVYRA_CLIENT_MATRIX: tuple[dict[str, Any], ...] = (
             "osVersion": "18.3.0.22D63",
         },
         "user_agent": "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)",
+        "requires_po_token": False,
     },
-    {"name": "WEB_REMIX", "client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260804.16.00"}},
-    {"name": "WEB", "client": {"clientName": "WEB", "clientVersion": ""}},
+    {
+        "name": "WEB_REMIX",
+        "client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260804.16.00"},
+        "requires_po_token": True,
+    },
+    {"name": "WEB", "client": {"clientName": "WEB", "clientVersion": ""}, "requires_po_token": True},
     {
         "name": "WEB_EMBEDDED_PLAYER",
         "client": {"clientName": "WEB_EMBEDDED_PLAYER", "clientVersion": "1.20260423.01.00"},
+        "requires_po_token": False,
     },
 )
 
@@ -97,7 +106,32 @@ DELIVERY_SABR_ONLY = "sabr_only"
 DELIVERY_SECURITY_FAILURE = "security_failure"
 DELIVERY_CLIENT_FAILURE = "client_failure"
 DELIVERY_TRANSPORT_FAILURE = "transport_failure"
-KEYWORDS = ("youtube", "player", "cipher", "sabr", "innertube", "stream", "signature", "visionos", "reel")
+CAPABILITY_STATUS_PASS = "PASS"
+CAPABILITY_STATUS_FAIL = "FAIL"
+CAPABILITY_STATUS_BLOCKED = "BLOCKED"
+CAPABILITY_MADE_FOR_KIDS = "MADE_FOR_KIDS"
+CAPABILITY_POTOKEN = "POTOKEN"
+CAPABILITY_KIND_MADE_FOR_KIDS = "made_for_kids"
+CAPABILITY_KIND_POTOKEN = "potoken"
+
+# Fixed public fixtures. MADE_FOR_KIDS uses a long-standing children's video so the kids-specific
+# protocol branch is exercised even when ordinary playback is healthy; POTOKEN uses the same
+# youtube-dl reference video the sentinels use, probed once with and once without visitor data so
+# the PoToken-free fallback path is observed on its own.
+DEFAULT_CAPABILITY_CHECKS: tuple[dict[str, Any], ...] = (
+    {
+        "name": CAPABILITY_MADE_FOR_KIDS,
+        "kind": CAPABILITY_KIND_MADE_FOR_KIDS,
+        "video_id": "XqZsoesa55w",
+    },
+    {
+        "name": CAPABILITY_POTOKEN,
+        "kind": CAPABILITY_KIND_POTOKEN,
+        "video_id": "BaW_jenozKc",
+    },
+)
+
+KEYWORDS = ("youtube", "player", "cipher", "sabr", "innertube", "stream", "signature", "visionos", "reel", "kids", "potoken")
 
 EXACT_HTTPS_HOSTS = {
     "www.youtube.com",
@@ -838,6 +872,166 @@ def _summarize_delivery(clients: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _capability_matrix_inputs(video_id: str, *, hl: str, gl: str) -> dict[str, str]:
+    watch_url = "https://www.youtube.com/watch?" + urllib.parse.urlencode(
+        {"v": video_id, "hl": hl, "gl": gl, "bpctr": "9999999999", "has_verified": "1"}
+    )
+    watch = _bounded_request(
+        watch_url,
+        headers={"Accept": "text/html", "User-Agent": USER_AGENT},
+        max_bytes=WATCH_MAX_BYTES,
+    )
+    if watch.status < 200 or watch.status >= 300:
+        raise CanaryError(f"watch page HTTP {watch.status}", status=watch.status)
+    html = watch.body.decode("utf-8", errors="replace")
+    ytcfg = _extract_ytcfg(html)
+    return {
+        "innertube_query_value": str(ytcfg.get("INNERTUBE_API_KEY") or ""),
+        "web_client_version": str(ytcfg.get("INNERTUBE_CLIENT_VERSION") or ""),
+        "visitor_data": str(ytcfg.get("VISITOR_DATA") or ""),
+        "_watch_html": html,
+    }
+
+
+def _observed_kids_markers(html: str) -> dict[str, Any]:
+    """Record, never assert. A fixture that silently stops being made for kids must be visible in
+    the report instead of turning into a false regression."""
+    markers: dict[str, Any] = {}
+    for key in ("isMadeForKids", "isFamilySafe"):
+        match = re.search(rf'"{key}"\s*:\s*(true|false)', html)
+        if match:
+            markers[key] = match.group(1) == "true"
+    return markers
+
+
+def _playable_clients(clients: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        item
+        for item in clients
+        if item.get("delivery")
+        in (DELIVERY_DIRECT_HEALTHY, DELIVERY_DIRECT_DEGRADED, DELIVERY_SABR_ONLY)
+    ]
+
+
+def _probe_capability_check(
+    check: dict[str, Any], *, hl: str, gl: str
+) -> dict[str, Any]:
+    name = str(check.get("name") or "")
+    kind = str(check.get("kind") or "")
+    video_id = str(check.get("video_id") or "")
+    result: dict[str, Any] = {"name": name, "kind": kind, "video_id": video_id}
+    if not VIDEO_ID_RE.fullmatch(video_id):
+        result.update({"status": CAPABILITY_STATUS_BLOCKED, "detail": "invalid configured video id"})
+        return result
+
+    try:
+        inputs = _capability_matrix_inputs(video_id, hl=hl, gl=gl)
+    except CanaryError as error:
+        result.update({"status": CAPABILITY_STATUS_BLOCKED, "detail": str(error)[:240]})
+        return result
+
+    html = inputs.pop("_watch_html")
+    if not inputs["innertube_query_value"]:
+        result.update(
+            {"status": CAPABILITY_STATUS_BLOCKED, "detail": "watch page did not expose InnerTube inputs"}
+        )
+        return result
+
+    clients = _probe_client_matrix(video_id=video_id, hl=hl, gl=gl, **inputs)
+    delivery = _summarize_delivery(clients)
+    result["delivery_summary"] = delivery
+    if not _delivery_evidence_is_conclusive(delivery):
+        result.update(
+            {"status": CAPABILITY_STATUS_BLOCKED, "detail": "every client probe failed on our side"}
+        )
+        return result
+
+    if kind == CAPABILITY_KIND_MADE_FOR_KIDS:
+        result["fixture_markers"] = _observed_kids_markers(html)
+        playable = _playable_clients(clients)
+        result["playable_clients"] = sorted(str(item.get("client") or "") for item in playable)
+        if playable:
+            result.update(
+                {
+                    "status": CAPABILITY_STATUS_PASS,
+                    "detail": f"{len(playable)}/{len(clients)} clients deliver the made-for-kids fixture",
+                }
+            )
+        else:
+            result.update(
+                {
+                    "status": CAPABILITY_STATUS_FAIL,
+                    "detail": "no probed client delivers the made-for-kids fixture",
+                }
+            )
+        return result
+
+    if kind == CAPABILITY_KIND_POTOKEN:
+        po_token_free = [item for item in clients if not _matrix_requires_po_token(item)]
+        playable_free = _playable_clients(po_token_free)
+        po_token_bound = [item for item in clients if _matrix_requires_po_token(item)]
+        playable_bound = _playable_clients(po_token_bound)
+        anonymous = _probe_client(
+            {"name": "WEB_ANONYMOUS", "client": {"clientName": "WEB", "clientVersion": ""}},
+            video_id=video_id,
+            innertube_query_value=inputs["innertube_query_value"],
+            web_client_version=inputs["web_client_version"],
+            visitor_data="",
+            hl=hl,
+            gl=gl,
+        )
+        result["anonymous_web_delivery"] = str(anonymous.get("delivery") or "")
+        result["po_token_free_playable"] = sorted(
+            str(item.get("client") or "") for item in playable_free
+        )
+        result["po_token_enforced"] = bool(po_token_bound) and not playable_bound
+        if playable_free:
+            result.update(
+                {
+                    "status": CAPABILITY_STATUS_PASS,
+                    "detail": (
+                        f"{len(playable_free)}/{len(po_token_free)} PoToken-free clients still deliver"
+                    ),
+                }
+            )
+        else:
+            result.update(
+                {
+                    "status": CAPABILITY_STATUS_FAIL,
+                    "detail": "no PoToken-free client delivers; PoToken is now mandatory for playback",
+                }
+            )
+        return result
+
+    result.update({"status": CAPABILITY_STATUS_BLOCKED, "detail": f"unknown capability kind {kind!r}"})
+    return result
+
+
+def _matrix_requires_po_token(client_result: dict[str, Any]) -> bool:
+    name = str(client_result.get("client") or "")
+    for entry in LEVYRA_CLIENT_MATRIX:
+        if str(entry.get("name") or "") == name:
+            return bool(entry.get("requires_po_token", False))
+    return False
+
+
+def _configured_capability_checks(config: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+    configured = config.get("capability_checks")
+    if not isinstance(configured, list) or not configured:
+        return DEFAULT_CAPABILITY_CHECKS
+    return tuple(item for item in configured if isinstance(item, dict))
+
+
+def _capability_map(observation: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    checks = observation.get("capability_checks")
+    if isinstance(checks, list):
+        for item in checks:
+            if isinstance(item, dict):
+                result[str(item.get("name") or "")] = item
+    return result
+
+
 def _fetch_upstream(repo: str, branch: str) -> dict[str, Any]:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return {"repo": repo, "branch": branch, "error": "invalid repository name"}
@@ -908,11 +1102,16 @@ def _current_observation(config: dict[str, Any], private_evidence_dir: Path | No
                 upstreams.append(
                     _fetch_upstream(str(item.get("repo") or ""), str(item.get("branch") or "main"))
                 )
+    capability_checks = [
+        _probe_capability_check(item, hl=hl, gl=gl)
+        for item in _configured_capability_checks(config)
+    ]
     return {
         "schema": SCHEMA_VERSION,
         "observed_at_epoch": int(time.time()),
         "youtube": {"hl": hl, "gl": gl},
         "sentinels": observed,
+        "capability_checks": capability_checks,
         "upstreams": upstreams,
     }
 
@@ -1126,6 +1325,8 @@ def _classify(
         if disappeared:
             info.append(f"{name}: streaming keys disappeared: {', '.join(disappeared)}")
 
+    capability_material = _classify_capability_checks(accepted, observation, info)
+
     thresholds = config.get("thresholds") if isinstance(config.get("thresholds"), dict) else {}
     sentinel_threshold = int(thresholds.get("required_sentinel_regressions_for_repair") or 2)
     if material_sentinels and len(material_sentinels) < sentinel_threshold:
@@ -1141,6 +1342,8 @@ def _classify(
         material = [entry for entry in material if "Range probe regressed" not in entry]
         info.append(f"Range probe regression count {range_regressions} below repair threshold {range_threshold}")
 
+    material.extend(capability_material)
+
     decision = "repair" if material else "none"
     severity = "major" if material else "info"
     return {
@@ -1151,12 +1354,36 @@ def _classify(
     }
 
 
+def _classify_capability_checks(
+    accepted: dict[str, Any],
+    observation: dict[str, Any],
+    info: list[str],
+) -> list[str]:
+    """A capability regression is material even when ordinary sentinels stay healthy: Made for Kids
+    and the PoToken-free path can break while generic YouTube playback keeps working."""
+    before = _capability_map(accepted)
+    after = _capability_map(observation)
+    material: list[str] = []
+    for name, current in sorted(after.items()):
+        status = str(current.get("status") or "")
+        previous_status = str((before.get(name) or {}).get("status") or "")
+        detail = str(current.get("detail") or "")[:160]
+        if status == CAPABILITY_STATUS_FAIL and previous_status != CAPABILITY_STATUS_FAIL:
+            material.append(f"{name} capability check FAIL: {detail}")
+        elif status == CAPABILITY_STATUS_BLOCKED:
+            info.append(f"{name} capability check BLOCKED: {detail}")
+        elif previous_status and previous_status != status:
+            info.append(f"{name} capability check {previous_status} -> {status}")
+    return material
+
+
 def _sanitize_for_baseline(observation: dict[str, Any]) -> dict[str, Any]:
     safe = {
         "schema": SCHEMA_VERSION,
         "observed_at_epoch": observation.get("observed_at_epoch"),
         "youtube": observation.get("youtube"),
         "sentinels": observation.get("sentinels"),
+        "capability_checks": observation.get("capability_checks"),
         "upstreams": observation.get("upstreams"),
     }
     return json.loads(json.dumps(safe))
@@ -1198,6 +1425,21 @@ def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str
                 r1="yes" if media.get("continuation_ok") else ("no" if media.get("attempted") else "n/a"),
             )
         )
+    lines += ["", "## Capability checks", ""]
+    capability_checks = observation.get("capability_checks") or []
+    if not capability_checks:
+        lines.append("- None")
+    for check in capability_checks:
+        if not isinstance(check, dict):
+            continue
+        lines.append(
+            "- `{name} {status}` - {detail}".format(
+                name=str(check.get("name") or ""),
+                status=str(check.get("status") or CAPABILITY_STATUS_BLOCKED),
+                detail=str(check.get("detail") or "")[:200].replace("|", "/"),
+            )
+        )
+
     lines += ["", "## Delivery method by client", ""]
     lines.append("| Sentinel | Playable | Direct | SABR | SABR only | Security | Per client |")
     lines.append("|---|---:|---:|---:|---:|---:|---|")
@@ -1279,6 +1521,9 @@ def command_probe(args: argparse.Namespace) -> int:
     _write_json(out_dir / "observation.json", observation)
     _write_json(out_dir / "decision.json", decision)
     (out_dir / "report.md").write_text(_render_report(observation, decision), encoding="utf-8")
+    for check in observation.get("capability_checks") or []:
+        if isinstance(check, dict):
+            print(f"{check.get('name')} {check.get('status') or CAPABILITY_STATUS_BLOCKED}")
     print(json.dumps(decision, sort_keys=True))
     if args.github_output:
         with Path(args.github_output).open("a", encoding="utf-8") as handle:
