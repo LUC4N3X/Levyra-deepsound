@@ -555,7 +555,8 @@ private val HOME_DENSE_SHELF_PEEK = 34.dp
 private val HOME_DENSE_SHELF_MIN_WIDTH = 286.dp
 private val HOME_DENSE_SHELF_MAX_WIDTH = 338.dp
 private val HOME_DENSE_SHELF_END_PADDING = 38.dp
-private val HOME_COLLECTION_COLUMN_WIDTH = 306.dp
+private val HOME_COLLECTION_CARD_WIDTH = 272.dp
+private val HOME_COLLECTION_CARD_HEIGHT = 124.dp
 private val HOME_COLLECTION_SHELF_END_PADDING = 42.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraMiniPlayerHeight = 77.dp
@@ -6551,10 +6552,7 @@ private fun HomeScreen(
                 item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
-                            SectionHeaderAction(
-                                strings.newReleases,
-                                onPlayAll = { viewModel.playAll(newReleases.tracks) }
-                            )
+                            HomeSectionHeader(strings.newReleases)
                         }
                     }
                 }
@@ -6575,10 +6573,7 @@ private fun HomeScreen(
                 item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
-                            SectionHeaderAction(
-                                strings.albumsForYou,
-                                onPlayAll = { viewModel.playAlbumRecommendations(homeAlbums) }
-                            )
+                            HomeSectionHeader(strings.albumsForYou)
                         }
                     }
                 }
@@ -6591,18 +6586,6 @@ private fun HomeScreen(
                         )
                     } else if (showHomeAlbumShimmer) {
                         HomeAlbumLoadingRow()
-                    }
-                }
-            }
-
-            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
-                item(key = "home-editorial-collections", contentType = "home-collections") {
-                    HomeSectionLead(compactHome) {
-                        HomeEditorialCollectionsShelf(
-                            collections = visibleEditorialCollections,
-                            animationsEnabled = state.animationsEnabled,
-                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                        )
                     }
                 }
             }
@@ -6637,6 +6620,18 @@ private fun HomeScreen(
                             isResolving = state.isResolving,
                             onPlay = { track -> viewModel.playVideoFrom(homeVideoTracks, track) },
                             onToggleCurrent = viewModel::togglePlay
+                        )
+                    }
+                }
+            }
+
+            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+                item(key = "home-editorial-collections", contentType = "home-collections") {
+                    HomeSectionLead(compactHome) {
+                        HomeEditorialCollectionsShelf(
+                            collections = visibleEditorialCollections,
+                            animationsEnabled = state.animationsEnabled,
+                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
                         )
                     }
                 }
@@ -7434,37 +7429,28 @@ private fun HomeEditorialCollectionsShelf(
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val indexedColumns = remember(collections) {
-        collections.mapIndexed { index, collection -> index to collection }.chunked(2)
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
-            subtitle = strings.collectionsSubtitle,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HOME_COLLECTION_SHELF_END_PADDING)
         ) {
             itemsIndexed(
-                items = indexedColumns,
-                key = { _, column -> column.joinToString(prefix = "home-collection-column-") { it.second.id } },
-                contentType = { _, _ -> "home-collection-column" }
-            ) { _, column ->
-                Column(
-                    modifier = Modifier.width(HOME_COLLECTION_COLUMN_WIDTH),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    column.forEach { (visualIndex, collection) ->
-                        HomeEditorialCollectionCard(
-                            collection = collection,
-                            visualIndex = visualIndex,
-                            animationsEnabled = animationsEnabled,
-                            onOpen = { onOpen(collection) }
-                        )
-                    }
+                items = collections,
+                key = { _, collection -> "home-collection-${collection.id}" },
+                contentType = { _, _ -> "home-collection-card" }
+            ) { visualIndex, collection ->
+                Box(modifier = Modifier.width(HOME_COLLECTION_CARD_WIDTH)) {
+                    HomeEditorialCollectionCard(
+                        collection = collection,
+                        visualIndex = visualIndex,
+                        animationsEnabled = animationsEnabled,
+                        onOpen = { onOpen(collection) }
+                    )
                 }
             }
         }
@@ -7529,7 +7515,7 @@ private fun HomeEditorialCollectionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(132.dp)
+            .height(HOME_COLLECTION_CARD_HEIGHT)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(shape)
             .background(cardBrush)
@@ -18416,13 +18402,13 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 @Composable
 private fun HomeAlbumLoadingRow() {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         items(4, key = { "home-album-loading-$it" }) {
             Column(
                 modifier = Modifier
-                    .width(168.dp)
+                    .width(LevyraHomeDesign.ArtworkCardWidth)
                     .levyraShimmer(),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
@@ -18457,7 +18443,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
     if (albums.isEmpty()) return
     val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
@@ -18472,14 +18458,14 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
                 label = "homeAlbumScale"
             )
-            val meta = listOf(album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
+            val meta = album.year
             Column(
                 modifier = Modifier
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
                     }
-                    .width(172.dp)
+                    .width(LevyraHomeDesign.ArtworkCardWidth)
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
