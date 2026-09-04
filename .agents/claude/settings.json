@@ -65,6 +65,12 @@
       "Edit(./**/.env.*)"
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash -lc 'bash \"${CLAUDE_PROJECT_DIR}/scripts/claude-statusline.sh\"'",
+    "padding": 0,
+    "refreshInterval": 10
+  },
   "hooks": {
     "SessionStart": [
       {
