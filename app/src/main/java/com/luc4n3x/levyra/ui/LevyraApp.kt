@@ -810,38 +810,45 @@ private fun ActiveTrackEqualizer(
 }
 @Composable
 private fun HomePlayAllButton(onClick: () -> Unit, size: Dp = 36.dp) {
+    val strings = LocalLevyraStrings.current
     Box(
         modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.15f),
-                        LevyraViolet.copy(alpha = 0.11f)
-                    )
-                ),
-                CircleShape
-            )
-            .border(
-                1.dp,
-                Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.45f),
-                        LevyraViolet.copy(alpha = 0.32f)
-                    )
-                ),
-                CircleShape
-            )
+            .size(LevyraPlayerDesign.MinimumTouchTarget)
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Rounded.PlayArrow,
-            contentDescription = LocalLevyraStrings.current.play,
-            tint = LevyraCyan,
-            modifier = Modifier.size(size * 0.55f)
-        )
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            LevyraCyan.copy(alpha = 0.15f),
+                            LevyraViolet.copy(alpha = 0.11f)
+                        )
+                    ),
+                    CircleShape
+                )
+                .border(
+                    1.dp,
+                    Brush.linearGradient(
+                        listOf(
+                            LevyraCyan.copy(alpha = 0.45f),
+                            LevyraViolet.copy(alpha = 0.32f)
+                        )
+                    ),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = strings.playAll,
+                tint = LevyraCyan,
+                modifier = Modifier.size(size * 0.55f)
+            )
+        }
     }
 }
 
@@ -873,7 +880,6 @@ private fun HomeSectionHeader(
     title: String,
     subtitle: String? = null,
     onPlayAll: (() -> Unit)? = null,
-    titleMaxLines: Int = 1,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -896,7 +902,7 @@ private fun HomeSectionHeader(
                 lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
                 letterSpacing = (-0.65).sp,
                 fontWeight = FontWeight.Black,
-                maxLines = titleMaxLines,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (displaySubtitle.isNotBlank()) {
@@ -7954,6 +7960,59 @@ private fun TrendingArtistLoadingItem() {
 }
 
 @Composable
+private fun ResonanceSectionHeader(
+    title: String,
+    subtitle: String,
+    onPlayAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(
+            text = title,
+            color = LevyraText,
+            style = TextStyle(
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.65).sp
+            ),
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = 12.5.sp,
+                maxFontSize = 23.sp,
+                stepSize = 0.5.sp
+            ),
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = subtitle,
+                color = LevyraMuted,
+                style = TextStyle(fontSize = 12.5.sp, fontWeight = FontWeight.Medium),
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = 10.sp,
+                    maxFontSize = 12.5.sp,
+                    stepSize = 0.5.sp
+                ),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            HomePlayAllButton(onClick = onPlayAll)
+        }
+    }
+}
+
+@Composable
 private fun ResonanceShelf(
     tracks: List<Track>,
     comments: Map<String, ResonanceCommentSnippet>,
@@ -7969,11 +8028,10 @@ private fun ResonanceShelf(
     if (displayTracks.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HomeSectionHeader(
+        ResonanceSectionHeader(
             title = strings.mostCommentedTracks,
             subtitle = strings.tapToOpenComments,
             onPlayAll = onPlayAll,
-            titleMaxLines = 2,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
@@ -8011,22 +8069,33 @@ private fun ResonanceCard(
     onOpenComments: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(20.dp)
+    val fontScale = LocalDensity.current.fontScale
+    val cardHeight = 196.dp + (90.dp * (fontScale - 1f).coerceAtLeast(0f))
     Column(
         modifier = Modifier
-            .width(336.dp)
+            .width(324.dp)
+            .height(cardHeight)
             .clip(shape)
             .background(
-                if (active) LevyraCyan.copy(alpha = if (LevyraIsLight) 0.08f else 0.10f)
-                else LevyraAdaptiveCard
+                Brush.verticalGradient(
+                    if (active) {
+                        listOf(
+                            LevyraCyan.copy(alpha = if (LevyraIsLight) 0.10f else 0.13f),
+                            LevyraViolet.copy(alpha = if (LevyraIsLight) 0.05f else 0.07f)
+                        )
+                    } else {
+                        listOf(LevyraAdaptiveCard, LevyraAdaptiveCardDeep)
+                    }
+                )
             )
             .border(
                 width = if (active) 1.dp else Dp.Hairline,
                 color = if (active) LevyraCyan.copy(alpha = 0.58f) else LevyraAdaptiveSoftHairline,
                 shape = shape
             )
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(
             modifier = Modifier
@@ -8037,9 +8106,9 @@ private fun ResonanceCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(Dp.Hairline, LevyraAdaptiveSoftHairline, RoundedCornerShape(10.dp)),
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(Dp.Hairline, LevyraAdaptiveSoftHairline, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = false)
@@ -8097,7 +8166,7 @@ private fun ResonanceCard(
                     if (active) LevyraCyan.copy(alpha = 0.40f) else LevyraText.copy(alpha = 0.10f)
                 ),
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(36.dp)
                     .pressable(onClick = onPlay)
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -8112,7 +8181,7 @@ private fun ResonanceCard(
         }
 
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(14.dp),
             color = if (LevyraIsLight) Color.Black.copy(alpha = 0.06f) else LevyraAdaptiveCardDeep,
             border = BorderStroke(
                 Dp.Hairline,
@@ -8120,10 +8189,13 @@ private fun ResonanceCard(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f)
                 .pressable(onClick = onOpenComments)
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
