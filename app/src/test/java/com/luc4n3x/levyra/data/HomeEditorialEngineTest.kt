@@ -299,7 +299,8 @@ class HomeEditorialEngineTest {
                 includeFresh = true,
                 nowMillis = now
             )
-            assertTrue(collections.size <= 7)
+            assertTrue(collections.size <= 8)
+            assertEquals(0, collections.size % 2)
             observedKinds += collections.map { it.kind }
         }
 
