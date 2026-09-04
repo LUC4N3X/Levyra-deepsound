@@ -123,6 +123,61 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate18To19KeepsUserDataAndAddsOrganizationTables() {
+        helper.createDatabase(TEST_DB, 18).use { db ->
+            db.execSQL(
+                "INSERT INTO playlists (id, name, coverUrl, createdAt, updatedAt) " +
+                    "VALUES ('p4', 'Gym mix', 'cover', 400, 400)"
+            )
+            db.execSQL(
+                "INSERT INTO playlist_tracks " +
+                    "(playlistId, trackId, position, title, artist, album, durationMs, videoUrl, " +
+                    "thumbnailUrl, largeThumbnailUrl, source, accentStart, accentEnd, " +
+                    "youtubeLoudnessDb, youtubePerceptualLoudnessDb, isrc, upc, releaseDate, year, " +
+                    "trackNumber, discNumber, explicit, albumBrowseId, artistBrowseIds, " +
+                    "counterpartVideoId, videoType, metadataProvider, metadataConfidence, " +
+                    "canonicalAlbumUrl, addedAt) " +
+                    "VALUES ('p4', 't4', 0, 'Kept track', 'Artist', 'Album', 200000, '', '', '', " +
+                    "'yt', 0, 0, NULL, NULL, '', '', '', '', 0, 0, 0, '', '', '', '', '', 0, '', 400)"
+            )
+            db.execSQL(
+                "INSERT INTO followed_artists (artistKey, browseId, name, thumbnailUrl, followedAt) " +
+                    "VALUES ('UC1', 'UC1', 'Artist', '', 400)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 19, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name, coverUrl, hidden FROM playlists WHERE id = 'p4'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Gym mix", cursor.getString(0))
+            assertEquals("cover", cursor.getString(1))
+            assertEquals(0, cursor.getInt(2))
+        }
+        migrated.query("SELECT title FROM playlist_tracks WHERE playlistId = 'p4'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Kept track", cursor.getString(0))
+        }
+        migrated.query("SELECT name FROM followed_artists WHERE artistKey = 'UC1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Artist", cursor.getString(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM playlist_tags").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM playlist_tag_links").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM excluded_artists").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

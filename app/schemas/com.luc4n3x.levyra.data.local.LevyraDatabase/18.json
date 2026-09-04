@@ -1807,7 +1807,7 @@
                                       },
                                       {
                                           "tableName":  "followed_artists",
-                                          "createSql":  "CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (\u0007rtistKey TEXT NOT NULL, \browseId TEXT NOT NULL, \name TEXT NOT NULL, \thumbnailUrl TEXT NOT NULL, \followedAt INTEGER NOT NULL, PRIMARY KEY(\u0007rtistKey))",
+                                          "createSql":  "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`artistKey` TEXT NOT NULL, `browseId` TEXT NOT NULL, `name` TEXT NOT NULL, `thumbnailUrl` TEXT NOT NULL, `followedAt` INTEGER NOT NULL, PRIMARY KEY(`artistKey`))",
                                           "fields":  [
                                                          {
                                                              "fieldPath":  "artistKey",

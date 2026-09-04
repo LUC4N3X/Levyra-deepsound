@@ -95,7 +95,14 @@ import com.luc4n3x.levyra.ui.i18n.playlistImportFailureMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportStartedMessage
 import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.ArtistExclusions
+import com.luc4n3x.levyra.domain.ExcludedArtist
 import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.ForgottenFavorites
+import com.luc4n3x.levyra.domain.LevyraAmbientSettings
+import com.luc4n3x.levyra.domain.excludedArtistKeyOf
+import com.luc4n3x.levyra.domain.isExcludableArtist
+import com.luc4n3x.levyra.domain.isValidPlaylistTagName
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
@@ -669,6 +676,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
+    private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
@@ -775,6 +783,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
     private var followedArtistsJob: Job? = null
+    private var forgottenFavoritesJob: Job? = null
+    private var excludedArtistsGeneration = 0L
     private var followedArtistsGeneration = 0L
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -1270,6 +1280,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeDownloadTasks()
         observeDownloadBatches()
         loadPlaylists()
+        loadExcludedArtists()
+        loadAmbientSettings()
+        refreshForgottenFavorites()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
         viewModelScope.launch(Dispatchers.IO) {
             listeningPulseStore.ensureLifetimeBackfill()
@@ -1962,7 +1975,164 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun loadPlaylists() {
         viewModelScope.launch {
             val lists = playlistStore.loadAll()
-            _state.update { it.copy(playlists = lists) }
+            val tags = playlistStore.allTags()
+            _state.update { it.copy(playlists = lists, playlistTags = tags) }
+        }
+    }
+
+    private fun loadExcludedArtists() {
+        val loadGeneration = excludedArtistsGeneration
+        viewModelScope.launch {
+            val excluded = excludedArtistsStore.load()
+            if (loadGeneration != excludedArtistsGeneration) return@launch
+            applyExcludedArtists(excluded)
+        }
+    }
+
+    private fun loadAmbientSettings() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val settings = preferences.ambientSettings()
+            withContext(Dispatchers.Main) {
+                _state.update { it.copy(ambientSettings = settings) }
+            }
+        }
+    }
+
+    private fun applyExcludedArtists(excluded: List<ExcludedArtist>) {
+        _state.update {
+            it.copy(
+                excludedArtists = excluded,
+                artistExclusions = ArtistExclusions.from(excluded)
+            )
+        }
+    }
+
+    fun toggleExcludeArtist(browseId: String, name: String) {
+        val cleanName = name.trim()
+        if (!isExcludableArtist(browseId, cleanName)) return
+        val key = excludedArtistKeyOf(browseId, cleanName)
+        val current = _state.value.excludedArtists
+        val alreadyExcluded = current.any { it.key == key }
+        val updated = if (alreadyExcluded) {
+            current.filterNot { it.key == key }
+        } else {
+            listOf(ExcludedArtist(browseId.trim(), cleanName, System.currentTimeMillis())) +
+                current.filterNot { it.key == key }
+        }
+        applyExcludedArtists(updated)
+        excludedArtistsGeneration++
+        val mutationGeneration = excludedArtistsGeneration
+        viewModelScope.launch {
+            if (alreadyExcluded) {
+                excludedArtistsStore.include(browseId, cleanName)
+            } else {
+                excludedArtistsStore.exclude(browseId, cleanName)
+            }
+            val reloaded = excludedArtistsStore.load()
+            if (mutationGeneration != excludedArtistsGeneration) return@launch
+            applyExcludedArtists(reloaded)
+        }
+    }
+
+    fun includeArtist(artist: ExcludedArtist) {
+        val remaining = _state.value.excludedArtists.filterNot { it.key == artist.key }
+        applyExcludedArtists(remaining)
+        excludedArtistsGeneration++
+        val mutationGeneration = excludedArtistsGeneration
+        viewModelScope.launch {
+            excludedArtistsStore.include(artist.browseId, artist.name)
+            val reloaded = excludedArtistsStore.load()
+            if (mutationGeneration != excludedArtistsGeneration) return@launch
+            applyExcludedArtists(reloaded)
+        }
+    }
+
+    fun setPlaylistHidden(playlistId: String, hidden: Boolean) {
+        if (playlistId.isBlank()) return
+        viewModelScope.launch {
+            playlistStore.setHidden(playlistId, hidden)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun createPlaylistTag(name: String, assignToPlaylistId: String? = null) {
+        if (!isValidPlaylistTagName(name)) return
+        viewModelScope.launch {
+            val tag = playlistStore.createTag(name) ?: return@launch
+            if (!assignToPlaylistId.isNullOrBlank()) {
+                val existing = playlistStore.load(assignToPlaylistId)?.tags?.map { it.id }.orEmpty()
+                if (tag.id !in existing) {
+                    playlistStore.setPlaylistTags(assignToPlaylistId, existing + tag.id)
+                }
+            }
+            loadPlaylists()
+            assignToPlaylistId?.let { refreshOpenPlaylist(it) }
+        }
+    }
+
+    fun renamePlaylistTag(tagId: String, name: String) {
+        if (tagId.isBlank() || !isValidPlaylistTagName(name)) return
+        viewModelScope.launch {
+            playlistStore.renameTag(tagId, name)
+            loadPlaylists()
+            _state.value.openPlaylist?.id?.let { refreshOpenPlaylist(it) }
+        }
+    }
+
+    fun deletePlaylistTag(tagId: String) {
+        if (tagId.isBlank()) return
+        viewModelScope.launch {
+            playlistStore.deleteTag(tagId)
+            loadPlaylists()
+            _state.value.openPlaylist?.id?.let { refreshOpenPlaylist(it) }
+        }
+    }
+
+    fun setPlaylistTags(playlistId: String, tagIds: List<String>) {
+        if (playlistId.isBlank()) return
+        viewModelScope.launch {
+            playlistStore.setPlaylistTags(playlistId, tagIds)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun openAmbient() {
+        if (_state.value.showAmbient) return
+        _state.update { it.copy(showAmbient = true) }
+    }
+
+    fun closeAmbient() {
+        if (!_state.value.showAmbient) return
+        _state.update { it.copy(showAmbient = false) }
+    }
+
+    fun updateAmbientSettings(settings: LevyraAmbientSettings) {
+        val normalized = settings.normalized()
+        _state.update { it.copy(ambientSettings = normalized) }
+        viewModelScope.launch(Dispatchers.IO) { preferences.setAmbientSettings(normalized) }
+    }
+
+    private fun refreshForgottenFavorites() {
+        forgottenFavoritesJob?.cancel()
+        val favorites = _state.value.favorites
+        if (favorites.isEmpty()) {
+            if (_state.value.forgottenFavorites.isNotEmpty()) {
+                _state.update { it.copy(forgottenFavorites = emptyList()) }
+            }
+            return
+        }
+        forgottenFavoritesJob = viewModelScope.launch(Dispatchers.Default) {
+            val keys = ForgottenFavorites.listeningKeys(favorites)
+            val lastPlayed = listeningPulseStore.lastPlayedByKey(keys)
+            val selected = ForgottenFavorites.select(favorites, lastPlayed)
+            withContext(Dispatchers.Main) {
+                if (_state.value.favorites !== favorites) return@withContext
+                if (_state.value.forgottenFavorites != selected) {
+                    _state.update { it.copy(forgottenFavorites = selected) }
+                }
+            }
         }
     }
 
@@ -3945,8 +4115,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = withContext(Dispatchers.IO) { preferences.snapshot() }
         val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
         val playlists = playlistStore.loadAll()
+        val playlistTags = playlistStore.allTags()
         val followed = followedArtistsStore.load()
         applyFollowedArtists(followed)
+        applyExcludedArtists(excludedArtistsStore.load())
         pendingSeekMs = snapshot.lastPositionMs.coerceAtLeast(0L)
         val restoredTrack = snapshot.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
         val restoredAnimationsEnabled = snapshot.animationsEnabled &&
@@ -3959,6 +4131,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 favorites = favorites,
                 favoriteIds = favorites.map { track -> track.id }.toSet(),
                 playlists = playlists,
+                playlistTags = playlistTags,
                 recentSearches = snapshot.recentSearches,
                 personalOrbitTracks = snapshot.personalOrbitTracks,
                 userName = snapshot.userName,
@@ -4002,6 +4175,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (snapshot.motionArtworkEnabled && restoredAnimationsEnabled) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         }
+        refreshForgottenFavorites()
     }
 
     fun setLanguage(code: String) {
@@ -4540,6 +4714,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 updated to isFavorite
             }
+            refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
                 updated,
@@ -4563,6 +4738,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
             }
+            refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
                 updated,
@@ -4579,6 +4755,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (updated.size == current.size) return
         _state.update { it.copy(favorites = updated, favoriteIds = updated.map { favorite -> favorite.id }.toSet()) }
         viewModelScope.launch(Dispatchers.IO) { favoritesStore.saveSuspending(updated) }
+        refreshForgottenFavorites()
         _state.update { it.copy(offlineExportMessage = "Rimossi dai preferiti: ${current.size - updated.size}") }
     }
 
@@ -7972,13 +8149,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         request: RadioTailRequest,
         playWhenReady: Boolean
     ) {
-        val radioTracks = try {
+        val fetchedRadioTracks = try {
             repository.radio(request.seed, _state.value.languageCode, 5)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
             emptyList()
         }
+        val radioTracks = _state.value.artistExclusions.filterTracks(fetchedRadioTracks)
         if (radioTracks.isEmpty()) return
         val current = queueEngine.state.value
         if (!current.radioEnabled) return
@@ -9058,7 +9236,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     ?: snapshot.currentTrack
                     ?: snapshot.recentListens.firstOrNull()
                     ?: snapshot.mostPlayedTracks.firstOrNull()
-                val pool = collectMixPool(kind, seed, seedQuery, snapshot)
+                val pool = snapshot.artistExclusions.filterTracks(
+                    collectMixPool(kind, seed, seedQuery, snapshot)
+                )
                 if (pool.isEmpty()) {
                     _state.update { it.copy(mixLoading = false, mixMessage = MIX_UNAVAILABLE_MARKER) }
                     return@launch

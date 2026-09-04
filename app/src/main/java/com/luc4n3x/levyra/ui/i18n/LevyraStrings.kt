@@ -15,6 +15,34 @@ class LevyraStrings private constructor(
         return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
     }
 
+    val ambientMode: String get() = value("ambientMode")
+    val ambientModeSubtitle: String get() = value("ambientModeSubtitle")
+    val ambientOpen: String get() = value("ambientOpen")
+    val ambientExit: String get() = value("ambientExit")
+    val ambientSettingsTitle: String get() = value("ambientSettingsTitle")
+    val ambientBrightness: String get() = value("ambientBrightness")
+    val ambientAutoDim: String get() = value("ambientAutoDim")
+    val ambientPixelShift: String get() = value("ambientPixelShift")
+    val ambientProximityBlackout: String get() = value("ambientProximityBlackout")
+    val ambientShowLyrics: String get() = value("ambientShowLyrics")
+    val ambientShowCanvas: String get() = value("ambientShowCanvas")
+    val ambientNothingPlaying: String get() = value("ambientNothingPlaying")
+    val forgottenFavorites: String get() = value("forgottenFavorites")
+    val forgottenFavoritesSubtitle: String get() = value("forgottenFavoritesSubtitle")
+    val excludeArtist: String get() = value("excludeArtist")
+    val includeArtist: String get() = value("includeArtist")
+    val excludedArtists: String get() = value("excludedArtists")
+    val excludedArtistsEmpty: String get() = value("excludedArtistsEmpty")
+    val playlistTags: String get() = value("playlistTags")
+    val newPlaylistTag: String get() = value("newPlaylistTag")
+    val playlistTagName: String get() = value("playlistTagName")
+    val editPlaylistTags: String get() = value("editPlaylistTags")
+    val filterByTag: String get() = value("filterByTag")
+    val playlistTagLimitReached: String get() = value("playlistTagLimitReached")
+    val hidePlaylist: String get() = value("hidePlaylist")
+    val unhidePlaylist: String get() = value("unhidePlaylist")
+    val hiddenPlaylists: String get() = value("hiddenPlaylists")
+    val hiddenPlaylistsEmpty: String get() = value("hiddenPlaylistsEmpty")
     val welcomeBadge: String get() = value("welcomeBadge")
     val levyraMix: String get() = value("levyraMix")
     val mixCreate: String get() = value("mixCreate")
@@ -1436,8 +1464,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

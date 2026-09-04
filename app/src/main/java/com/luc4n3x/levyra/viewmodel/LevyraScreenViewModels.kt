@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -363,6 +364,12 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun removeFromPlaylist(playlistId: String, trackId: String) = root.removeFromPlaylist(playlistId, trackId)
     fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) = root.removeTracksFromPlaylist(playlistId, tracks)
     fun renamePlaylist(playlistId: String, name: String) = root.renamePlaylist(playlistId, name)
+    fun setPlaylistHidden(playlistId: String, hidden: Boolean) = root.setPlaylistHidden(playlistId, hidden)
+    fun createPlaylistTag(name: String, assignToPlaylistId: String? = null) =
+        root.createPlaylistTag(name, assignToPlaylistId)
+    fun renamePlaylistTag(tagId: String, name: String) = root.renamePlaylistTag(tagId, name)
+    fun deletePlaylistTag(tagId: String) = root.deletePlaylistTag(tagId)
+    fun setPlaylistTags(playlistId: String, tagIds: List<String>) = root.setPlaylistTags(playlistId, tagIds)
     fun reorderPlaylist(playlistId: String, tracks: List<Track>) = root.reorderPlaylist(playlistId, tracks)
     fun resumeDownload(taskKey: String) = root.resumeDownload(taskKey)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
@@ -375,6 +382,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun cycleSpeed() = root.cycleSpeed()
     fun openSleepTimer() = root.openSleepTimer()
+    fun openAmbient() = root.openAmbient()
     fun exportCurrentTrack() = root.exportCurrentTrack()
     fun next() = root.next()
     fun openArtist(track: Track) = root.openArtist(track)
@@ -509,7 +517,7 @@ private data class HomeDerivedInput(
 )
 
 internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
-    val renderState = state.withDeduplicatedHomeAlbums()
+    val renderState = state.withoutExcludedArtists().withDeduplicatedHomeAlbums()
     return HomeRenderSnapshot(
         state = renderState,
         derived = buildHomeDerivedState(renderState.toHomeDerivedInput())
@@ -520,7 +528,7 @@ internal fun buildHomeRenderSnapshot(
     state: LevyraUiState,
     previous: HomeRenderSnapshot
 ): HomeRenderSnapshot {
-    val renderState = state.withDeduplicatedHomeAlbums()
+    val renderState = state.withoutExcludedArtists().withDeduplicatedHomeAlbums()
     val derived = if (sameHomeDerivedInputs(previous.state, renderState)) {
         previous.derived
     } else {
@@ -532,6 +540,41 @@ internal fun buildHomeRenderSnapshot(
 private fun LevyraUiState.withDeduplicatedHomeAlbums(): LevyraUiState {
     val distinctAlbums = deduplicateHomeAlbums(homeAlbums)
     return if (distinctAlbums.size == homeAlbums.size) this else copy(homeAlbums = distinctAlbums)
+}
+
+private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
+    val exclusions = artistExclusions
+    if (exclusions.isEmpty) return this
+    val filteredSections = exclusions.filterHomeSections(homeSections)
+    val filteredAlbums = exclusions.filterAlbumHits(homeAlbums)
+    val filteredArtists = exclusions.filterArtistHits(homeArtists)
+    val filteredSimilar = exclusions.filterArtistHits(similarArtists)
+    val filteredOrbit = exclusions.filterTracks(personalOrbitTracks)
+    val filteredResonance = exclusions.filterTracks(homeResonanceTracks)
+    val filteredRadar = exclusions.filterReleaseRadar(releaseRadar)
+    val filteredTracks = exclusions.filterTracks(tracks)
+    val filteredForgotten = exclusions.filterTracks(forgottenFavorites)
+    val unchanged = filteredSections === homeSections &&
+        filteredAlbums === homeAlbums &&
+        filteredArtists === homeArtists &&
+        filteredSimilar === similarArtists &&
+        filteredOrbit === personalOrbitTracks &&
+        filteredResonance === homeResonanceTracks &&
+        filteredRadar === releaseRadar &&
+        filteredTracks === tracks &&
+        filteredForgotten === forgottenFavorites
+    if (unchanged) return this
+    return copy(
+        homeSections = filteredSections,
+        homeAlbums = filteredAlbums,
+        homeArtists = filteredArtists,
+        similarArtists = filteredSimilar,
+        personalOrbitTracks = filteredOrbit,
+        homeResonanceTracks = filteredResonance,
+        releaseRadar = filteredRadar,
+        tracks = filteredTracks,
+        forgottenFavorites = filteredForgotten
+    )
 }
 
 private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiState): Boolean {
@@ -896,6 +939,7 @@ private data class HomeProjection(
     val downloadingTrackIds: Set<String>,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
+    val forgottenFavorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
     val homeArtists: List<ArtistHit>,
     val homeResonanceTracks: List<Track>,
@@ -934,6 +978,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     downloadingTrackIds = state.downloadingTrackIds,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
+    forgottenFavorites = state.forgottenFavorites,
     homeAlbums = state.homeAlbums,
     homeArtists = state.homeArtists,
     homeResonanceTracks = state.homeResonanceTracks,
@@ -1084,6 +1129,7 @@ internal data class LibraryProjection(
     val listeningPulse: ListeningPulse,
     val openPlaylist: Playlist?,
     val playlists: List<Playlist>,
+    val playlistTags: List<PlaylistTag>,
     val recentListens: List<Track>
 )
 
@@ -1104,6 +1150,7 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     listeningPulse = state.listeningPulse,
     openPlaylist = state.openPlaylist,
     playlists = state.playlists,
+    playlistTags = state.playlistTags,
     recentListens = state.recentListens
 )
 
