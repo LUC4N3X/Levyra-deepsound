@@ -232,6 +232,9 @@ rtk find <pattern> <path>
 rtk log <file>
 rtk test <command>
 rtk err <command>
+rtk adb logcat -d -t 400
+rtk adb -s <serial> logcat -d -t 400
+rtk summary adb shell dumpsys <service>
 ```
 
 Keep commands raw when exact evidence matters:
@@ -242,6 +245,7 @@ gradlew.bat --stacktrace <task>
 git diff --check
 sha256sum <artifact>
 certutil -hashfile <artifact> SHA256
+adb exec-out screencap -p > screenshot.png
 ```
 
 Security scans and decisive reproductions also remain raw.
@@ -252,6 +256,29 @@ Security scans and decisive reproductions also remain raw.
 CodeRabbit review output, bounded `adb logcat`, and setup-script runs. Gradle,
 Git, GitHub CLI, common tests, lint, Docker, searches, and standard logs continue
 to use RTK's built-in handlers.
+
+The logcat filter is intentionally narrow. Agents invoke it explicitly with
+`rtk adb logcat ...` or `rtk adb -s <serial> logcat ...`; short deterministic ADB
+queries stay raw, while large textual commands without a dedicated filter use
+`rtk summary`. Binary or redirected payloads such as `adb exec-out screencap -p`
+never go through a text filter.
+
+### Trusting project filters
+
+RTK custom filters are gated by an explicit local trust decision. A fresh clone
+or any content change to `.rtk/filters.toml` invalidates the previously trusted
+hash, so RTK skips the project filters until they are reviewed again.
+
+From the Levyra repository root run:
+
+```text
+rtk trust
+```
+
+Use `rtk trust --yes` only after reviewing the current `.rtk/filters.toml` and
+when a non-interactive trust action is deliberately intended. Do not add an
+automatic lifecycle hook that silently trusts future filter changes; the hash
+review is a security boundary, not setup noise.
 
 ## Measuring real savings
 
@@ -265,7 +292,8 @@ rtk session
 ```
 
 Do not add filters merely to inflate a percentage. Preserve enough information
-to diagnose failures correctly.
+to diagnose failures correctly. In particular, do not wrap tiny ADB commands
+only to improve the adoption metric.
 
 ## Failure recovery
 

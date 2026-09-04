@@ -156,6 +156,30 @@ def validate_filters(errors: list[str]) -> None:
                     if matcher.search(command) is None:
                         fail(errors, f"levyra-agent-tests does not match documented command: {command}")
 
+    adb_logcat_filter = filters.get("levyra-adb-logcat")
+    if isinstance(adb_logcat_filter, dict):
+        pattern = adb_logcat_filter.get("match_command")
+        if isinstance(pattern, str):
+            try:
+                matcher = re.compile(pattern)
+            except re.error as exc:
+                fail(errors, f"levyra-adb-logcat match_command is invalid regex: {exc}")
+            else:
+                for command in (
+                    "adb logcat -d -t 400",
+                    "adb.exe logcat -d -t 400",
+                    "adb -s emulator-5554 logcat -d -t 400",
+                    "adb.exe -s R5CY735RFMV logcat -d -t 400",
+                ):
+                    if matcher.search(command) is None:
+                        fail(errors, f"levyra-adb-logcat does not match supported command: {command}")
+                if matcher.search("adb shell getprop sys.boot_completed") is not None:
+                    fail(errors, "levyra-adb-logcat must not capture unrelated adb shell commands")
+        if adb_logcat_filter.get("tail_lines") != 240:
+            fail(errors, "levyra-adb-logcat must keep the newest 240 lines with tail_lines = 240")
+        if "max_lines" in adb_logcat_filter:
+            fail(errors, "levyra-adb-logcat must not use max_lines because that keeps the oldest logcat lines")
+
 
 def main() -> int:
     errors: list[str] = []
@@ -189,6 +213,9 @@ def main() -> int:
             "danger-full-access",
             "scripts/setup-ai.ps1",
             "scripts/setup-ai.sh",
+            "rtk adb logcat -d -t 400",
+            "rtk summary adb shell dumpsys",
+            "adb exec-out screencap -p",
         ):
             if required_term not in skill:
                 fail(errors, f"context-efficiency skill is missing: {required_term}")
@@ -364,7 +391,13 @@ def main() -> int:
         errors,
         f"{CLAUDE_ROOT}/rules/context-efficiency.md",
         "Claude context-efficiency rule",
-        ("levyra-context-efficiency", ".rtk/filters.toml", "Rerun the exact command raw"),
+        (
+            "levyra-context-efficiency",
+            ".rtk/filters.toml",
+            "Rerun the exact command raw",
+            "rtk adb logcat -d -t 400",
+            "adb exec-out screencap",
+        ),
     )
     require_terms(
         errors,
