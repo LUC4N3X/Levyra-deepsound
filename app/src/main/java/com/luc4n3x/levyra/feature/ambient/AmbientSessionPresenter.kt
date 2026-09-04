@@ -60,8 +60,10 @@ internal class AmbientSessionPresenter(
     fun connect() {
         if (controller != null || connectJob?.isActive == true) return
         _state.value = _state.value.copy(settings = preferences.ambientSettings())
-        val token = SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
-        val future = MediaController.Builder(appContext, token).buildAsync()
+        val future = MediaController.Builder(
+            appContext,
+            SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
+        ).buildAsync()
         connectJob = scope.launch {
             val connected = try {
                 withContext(Dispatchers.IO) { future.get(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS) }
