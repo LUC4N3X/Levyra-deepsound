@@ -79,7 +79,6 @@ class HomeEditorialEngineTest {
         assertEquals(listOf("quick"), candidates.map { it.track.id })
     }
 
-
     @Test
     fun playingSpotlightRemainsAvailableAfterPlaybackStarts() {
         val now = Calendar.getInstance().apply {
@@ -103,7 +102,6 @@ class HomeEditorialEngineTest {
 
         assertTrue(candidates.any { it.track.id == "spotlight" })
     }
-
 
     @Test
     fun hiddenNewReleasesDoNotApplyFreshnessLabelsThroughOtherSources() {
@@ -231,7 +229,6 @@ class HomeEditorialEngineTest {
         assertEquals(HomeSpotlightKind.ChartTrending, candidate.kind)
     }
 
-
     @Test
     fun utcReleaseTimestampUsesUtcBeforeConvertingToLocalDate() {
         val previousZone = TimeZone.getDefault()
@@ -299,7 +296,8 @@ class HomeEditorialEngineTest {
                 includeFresh = true,
                 nowMillis = now
             )
-            assertTrue(collections.size <= 7)
+            assertTrue(collections.size <= 8)
+            assertEquals(0, collections.size % 2)
             observedKinds += collections.map { it.kind }
         }
 
