@@ -137,6 +137,7 @@ import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
+import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
@@ -1075,6 +1076,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val startupResonanceTracks = instantSnapshot?.resonanceTracks.orEmpty()
         val startupResonanceUpdatedAt = instantSnapshot?.resonanceUpdatedAt ?: 0L
+        val startupResonanceComments = instantSnapshot?.resonanceComments.orEmpty()
         val rawCachedOrbitTracks = LevyraStartupCatalog.repairTracks(
             settings.personalOrbitTracks
                 .ifEmpty { instantSnapshot?.personalOrbit.orEmpty() }
@@ -1133,6 +1135,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeArtists = startupHomeArtists,
                 homeResonanceTracks = startupResonanceTracks,
                 homeResonanceUpdatedAt = startupResonanceUpdatedAt,
+                homeResonanceComments = startupResonanceComments,
                 homeArtistsLoading = startupHomeArtists.isEmpty(),
                 homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
@@ -1276,6 +1279,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
         updateWidget()
+        refreshHomeResonanceComments(startupResonanceTracks)
     }
 
     private fun observeDownloadBatches() {
@@ -1484,13 +1488,84 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             personalOrbit = snapshot.personalOrbitTracks,
             homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists,
             resonanceTracks = snapshot.homeResonanceTracks,
-            resonanceUpdatedAt = snapshot.homeResonanceUpdatedAt
+            resonanceUpdatedAt = snapshot.homeResonanceUpdatedAt,
+            resonanceComments = snapshot.homeResonanceComments
         )
+    }
+
+    private var homeResonanceCommentsJob: Job? = null
+
+    fun refreshHomeResonanceComments(tracks: List<Track> = _state.value.homeResonanceTracks) {
+        if (tracks.isEmpty()) return
+        val candidates = tracks.take(10).filter { it.id.length == 11 }
+        if (candidates.isEmpty()) return
+        if (homeResonanceCommentsJob?.isActive == true) return
+        homeResonanceCommentsJob = viewModelScope.launch(Dispatchers.IO) {
+            val currentComments = _state.value.homeResonanceComments
+            candidates.forEach { track ->
+                if (!isActive) return@launch
+                val cached = currentComments[track.id]
+                if (cached != null && (cached.text.isNotBlank() || cached.disabled)) return@forEach
+
+                _state.update { state ->
+                    val map = state.homeResonanceComments.toMutableMap()
+                    map[track.id] = (map[track.id] ?: ResonanceCommentSnippet(videoId = track.id)).copy(isLoading = true)
+                    state.copy(homeResonanceComments = map)
+                }
+
+                val result = try {
+                    youtubeCommentsRepository.initial(track.id, forceRefresh = false)
+                } catch (e: Exception) {
+                    YoutubeCommentsResult.Failed(e)
+                }
+
+                if (!isActive) return@launch
+                val snippet = when (result) {
+                    is YoutubeCommentsResult.Available -> {
+                        val top = result.page.items.firstOrNull()
+                        ResonanceCommentSnippet(
+                            videoId = track.id,
+                            countText = result.page.countText,
+                            author = top?.author.orEmpty(),
+                            authorAvatarUrl = top?.authorAvatarUrl.orEmpty(),
+                            text = top?.text.orEmpty(),
+                            likeCountText = top?.likeCountText.orEmpty(),
+                            isLoading = false,
+                            disabled = result.page.commentsDisabled
+                        )
+                    }
+                    YoutubeCommentsResult.Disabled -> {
+                        ResonanceCommentSnippet(
+                            videoId = track.id,
+                            disabled = true,
+                            isLoading = false
+                        )
+                    }
+                    is YoutubeCommentsResult.Failed -> {
+                        ResonanceCommentSnippet(
+                            videoId = track.id,
+                            hasError = true,
+                            isLoading = false
+                        )
+                    }
+                }
+
+                _state.update { state ->
+                    val map = state.homeResonanceComments.toMutableMap()
+                    map[track.id] = snippet
+                    state.copy(homeResonanceComments = map)
+                }
+            }
+            persistHomeSnapshot()
+        }
     }
 
     private fun refreshHomeResonanceIfStale() {
         val initial = _state.value
-        if (isHomeResonanceFresh(initial, System.currentTimeMillis())) return
+        if (isHomeResonanceFresh(initial, System.currentTimeMillis())) {
+            refreshHomeResonanceComments(initial.homeResonanceTracks)
+            return
+        }
         if (homeResonanceJob?.isActive == true) return
         val languageCode = initial.languageCode
         homeResonanceJob = viewModelScope.launch(Dispatchers.Default) {
@@ -1512,6 +1587,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             if (changed) persistHomeSnapshot()
+            refreshHomeResonanceComments(resolved)
         }
     }
 
@@ -7093,12 +7169,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openYoutubeComments() {
         val track = _state.value.currentTrack ?: return
+        openYoutubeCommentsFor(track)
+    }
+
+    fun openYoutubeCommentsFor(track: Track) {
         val videoId = youtubeEngagementVideoId(track)
         if (videoId.isBlank()) return
         val generation = prepareYoutubeEngagement(videoId)
         _state.update { state ->
             state.copy(
                 youtubeEngagement = state.youtubeEngagement.copy(
+                    videoId = videoId,
                     comments = state.youtubeEngagement.comments.copy(
                         videoId = videoId,
                         visible = true

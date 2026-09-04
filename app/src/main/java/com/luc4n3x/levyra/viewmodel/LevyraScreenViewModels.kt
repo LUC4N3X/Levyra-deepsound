@@ -174,6 +174,8 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun openSearch() = root.selectTab(LevyraTab.Search)
     fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
     fun refreshHomeArtists() = root.refreshHomeArtists()
+    fun refreshHomeResonanceComments(tracks: List<Track>) = root.refreshHomeResonanceComments(tracks)
+    fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         val current = root.state.value
@@ -350,6 +352,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
         )
     )
     fun openPlayerScreen() = root.openPlayerScreen()
+    fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
     fun pauseDownload(taskKey: String) = root.pauseDownload(taskKey)
     fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
@@ -715,7 +718,12 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
 }
 
 private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
+    val directCommentedSectionTracks = input.homeSections
+        .filter { isHomeResonanceSectionTitle(it.title, input.languageCode) || it.title.contains("comment", ignoreCase = true) }
+        .flatMap { it.tracks }
+    val directCommentedIds = directCommentedSectionTracks.map { it.id }.toSet()
     return buildList {
+        addAll(directCommentedSectionTracks)
         addAll(input.charts)
         input.homeSections.forEach { section -> addAll(section.tracks) }
         addAll(input.favorites)
@@ -726,8 +734,10 @@ private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
         .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
         .distinctBy { it.id }
         .sortedWith(
-            compareByDescending<Track> { it.replayScore + it.vocal + it.cacheScore / 2 }
-                .thenBy { it.title }
+            compareByDescending<Track> {
+                (if (directCommentedIds.contains(it.id)) 1000 else 0) +
+                    it.replayScore + it.vocal + it.cacheScore / 2
+            }.thenBy { it.title }
         )
         .take(8)
         .toList()
@@ -839,12 +849,18 @@ private fun isHomeSectionVisible(title: String, input: HomeDerivedInput): Boolea
 private fun isHomeResonanceSectionTitle(title: String, languageCode: String): Boolean {
     val normalized = title.trim().lowercase(Locale.ROOT)
     val localized = LevyraStrings.forCode(languageCode).voicesTitle.trim().lowercase(Locale.ROOT)
+    val localizedCommented = LevyraStrings.forCode(languageCode).mostCommentedTracks.trim().lowercase(Locale.ROOT)
     return normalized == localized ||
+        normalized == localizedCommented ||
         normalized.contains("voices that resonate") ||
         normalized.contains("voci che risuonano") ||
         normalized.contains("voces que resuenan") ||
         normalized.contains("voix qui résonnent") ||
-        normalized.contains("stimmen, die nachklingen")
+        normalized.contains("stimmen, die nachklingen") ||
+        normalized.contains("tracce più commentate") ||
+        normalized.contains("più commentate") ||
+        normalized.contains("most discussed") ||
+        normalized.contains("most commented")
 }
 
 private fun isLikelyHomePlaylistOrCompilation(track: Track): Boolean {

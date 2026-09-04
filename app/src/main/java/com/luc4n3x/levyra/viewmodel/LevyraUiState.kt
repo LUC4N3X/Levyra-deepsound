@@ -37,6 +37,7 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
@@ -110,6 +111,7 @@ data class LevyraUiState(
     val homeArtists: List<ArtistHit> = emptyList(),
     val homeResonanceTracks: List<Track> = emptyList(),
     val homeResonanceUpdatedAt: Long = 0L,
+    val homeResonanceComments: Map<String, ResonanceCommentSnippet> = emptyMap(),
     val homeArtistsLoading: Boolean = false,
     val homeAlbumsLoading: Boolean = false,
     val isLoadingHome: Boolean = false,
