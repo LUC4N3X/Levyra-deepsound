@@ -1,0 +1,1 @@
+Levyra 2.5.3 adds Similar Songs in Now Playing, Levyra Ambient, Rediscover, artist exclusions, playlist tags and hidden playlists, tighter Home shelves, and stronger YouTube playback recovery.
