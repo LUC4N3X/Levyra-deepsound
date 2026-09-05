@@ -184,6 +184,7 @@ import com.luc4n3x.levyra.feature.jam.JamPlayerBridge
 import com.luc4n3x.levyra.feature.jam.JamRole
 import com.luc4n3x.levyra.feature.jam.JamSessionState
 import com.luc4n3x.levyra.feature.jam.JamTrack
+import com.luc4n3x.levyra.feature.jam.JamUiState
 import com.luc4n3x.levyra.feature.recognition.RecognitionCatalogMatcher
 import com.luc4n3x.levyra.feature.recognition.RecognitionErrorKind
 import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
@@ -237,6 +238,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
@@ -261,6 +263,7 @@ private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
+private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
@@ -761,6 +764,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
     private var similarSongsSeedJob: Job? = null
+    private var jamSimilarSongJob: Job? = null
     private var similarSongsJob: Job? = null
     private var similarSongsSeedIdentity: String = ""
     private val similarSongsGeneration = AtomicLong(0L)
@@ -4397,12 +4401,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun playSimilarSong(track: Track) {
-        if (_state.value.jam.role == JamRole.Guest) {
-            play(track)
+        val jam = _state.value.jam
+        if (jam.role != JamRole.Guest) {
+            queueEngine.playNext(track)
+            playQueueTrack(track)
             return
         }
-        queueEngine.playNext(track)
-        playQueueTrack(track)
+        val existingIndex = jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1
+        when (jamSimilarSongAction(jam, existingIndex)) {
+            JamSimilarSongAction.SelectExisting -> routeJamAction(JamAction.SelectIndex(existingIndex))
+            JamSimilarSongAction.AddOnly -> routeJamAction(JamAction.AddTrack(toJamTrack(track)))
+            JamSimilarSongAction.Reject -> jamController.rejectGuestLocalMutation()
+            JamSimilarSongAction.AddThenSelect -> addAndSelectJamTrack(track)
+        }
+    }
+
+    private fun addAndSelectJamTrack(track: Track) {
+        jamSimilarSongJob?.cancel()
+        jamSimilarSongJob = viewModelScope.launch {
+            if (!routeJamAction(JamAction.AddTrack(toJamTrack(track)))) return@launch
+            val index = withTimeoutOrNull(JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS) {
+                jamController.state
+                    .map { jam -> jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1 }
+                    .first { it >= 0 }
+            } ?: return@launch
+            routeJamAction(JamAction.SelectIndex(index))
+        }
     }
 
     private fun observeSimilarSongsSeed() {
@@ -9515,6 +9539,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+}
+
+internal enum class JamSimilarSongAction {
+    SelectExisting,
+    AddThenSelect,
+    AddOnly,
+    Reject
+}
+
+internal fun jamSimilarSongAction(jam: JamUiState, existingIndex: Int): JamSimilarSongAction = when {
+    jam.canControlPlayback && existingIndex >= 0 -> JamSimilarSongAction.SelectExisting
+    jam.canControlPlayback && jam.canAddTracks -> JamSimilarSongAction.AddThenSelect
+    jam.canAddTracks -> JamSimilarSongAction.AddOnly
+    else -> JamSimilarSongAction.Reject
 }
 
 internal fun playbackIdentity(track: Track): String = LevyraPersonalOrbit.identityKey(track)

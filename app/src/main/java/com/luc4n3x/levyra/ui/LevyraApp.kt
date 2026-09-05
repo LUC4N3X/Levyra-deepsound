@@ -13391,6 +13391,7 @@ private fun PlayerAdvancedControlsPanel(
 private fun PlayerSimilarSongsSection(
     similarSongs: List<Track>,
     queuedTrackIds: Set<String>,
+    canPlayNow: Boolean,
     loading: Boolean,
     radioEnabled: Boolean,
     accent: Color,
@@ -13512,7 +13513,7 @@ private fun PlayerSimilarSongsSection(
                         track = candidate,
                         queued = candidate.id in queuedTrackIds,
                         accent = accent,
-                        playLabel = strings.playNow,
+                        playLabel = if (canPlayNow) strings.playNow else strings.addToQueue,
                         addLabel = strings.addToQueue,
                         onPlay = { onPlay(candidate) },
                         onAddToQueue = {
@@ -14656,6 +14657,7 @@ private fun PlayerScreen(
             PlayerSimilarSongsSection(
                 similarSongs = visibleSimilarSongs,
                 queuedTrackIds = queuedTrackIds,
+                canPlayNow = !state.jam.isActive || state.jam.canControlPlayback,
                 loading = state.similarSongsLoading,
                 radioEnabled = state.radioEnabled,
                 accent = primary.playerMix(Color.White, 0.48f),
