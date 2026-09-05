@@ -59,10 +59,13 @@ jobs:
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text()
 
-          def slice_between(source: str, start: str, end: str) -> str:
-              start_index = source.index(start)
-              end_index = source.index(end, start_index)
-              return source[start_index:end_index]
+          def composable_block(source: str, name: str) -> str:
+              marker = f'@Composable\nprivate fun {name}('
+              start = source.index(marker)
+              end = source.find('\n@Composable\nprivate fun ', start + len(marker))
+              if end == -1:
+                  raise SystemExit(f'Could not resolve end of {name}')
+              return source[start:end]
 
           def replace_once(source: str, old: str, new: str, label: str) -> str:
               count = source.count(old)
@@ -70,11 +73,10 @@ jobs:
                   raise SystemExit(f'{label}: expected exactly one match, found {count}')
               return source.replace(old, new, 1)
 
-          orbit_start = '@Composable\nprivate fun HomeOrbitHeader('
-          quick_start = '@Composable\nprivate fun HomeQuickPicksShelf('
-          quick_end = '@Composable\nprivate fun HomeQuickPickRow('
-          orbit_before = slice_between(text, orbit_start, quick_start)
-          quick_before = slice_between(text, quick_start, quick_end)
+          protected_before = {
+              name: composable_block(text, name)
+              for name in ('HomeOrbitHeader', 'PersonalListeningShelf', 'HomeQuickPicksShelf')
+          }
 
           text = replace_once(
               text,
@@ -150,12 +152,10 @@ jobs:
               'video shelf rhythm',
           )
 
-          orbit_after = slice_between(text, orbit_start, quick_start)
-          quick_after = slice_between(text, quick_start, quick_end)
-          if orbit_before != orbit_after:
-              raise SystemExit('Personal Orbit changed unexpectedly')
-          if quick_before != quick_after:
-              raise SystemExit('Quick Picks changed unexpectedly')
+          for name, before in protected_before.items():
+              after = composable_block(text, name)
+              if before != after:
+                  raise SystemExit(f'{name} changed unexpectedly')
 
           path.write_text(text)
           PY
