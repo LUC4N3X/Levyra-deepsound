@@ -25,4 +25,14 @@ large textual adb command without a dedicated filter. Keep tiny deterministic ad
 queries raw. Never route binary capture/transfer such as `adb exec-out screencap
 -p`, redirected screenshots, or exact device evidence through a text filter.
 
+Do not retry the same materially unchanged approach more than twice. After the
+second failure, stop that approach, revisit the evidence and root-cause
+hypothesis, then switch to a materially different strategy or report the
+blocker. Cosmetic command or prompt changes do not reset the retry count.
+
+When accumulated conversation, exploratory output, or superseded hypotheses no
+longer materially help the current deliverable, suggest a fresh session at the
+next natural task boundary and provide a compact verified handoff. Do not stop
+an active deliverable solely because the context is large.
+
 Token savings never override correctness, validation, or publication controls.
