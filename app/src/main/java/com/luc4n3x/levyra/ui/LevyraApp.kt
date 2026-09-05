@@ -7430,9 +7430,10 @@ private fun HomeEditorialCollectionsShelf(
     onOpen: (HomeEditorialCollection) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.collectionsTitle,
+            subtitle = strings.collectionsSubtitle,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
@@ -7904,7 +7905,7 @@ private fun TrendingArtistsShelf(
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             itemsIndexed(
@@ -7998,9 +7999,10 @@ private fun ResonanceShelf(
     val displayTracks = remember(tracks) { tracks.take(4) }
     if (displayTracks.isEmpty()) return
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
             title = strings.mostCommentedTracks,
+            subtitle = strings.tapToOpenComments,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         Column(
@@ -8195,11 +8197,11 @@ private fun HomeMusicVideoShelf(
             .map(::homeMusicVideoPreviewTrack)
     }
     if (videos.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionInset { HomeSectionHeader(title) }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             itemsIndexed(
