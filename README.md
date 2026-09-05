@@ -500,6 +500,10 @@ We welcome community contributions, bug fixes, localization, and performance enh
 
 <br>
 
+<p align="center">
+  <sub><b>Branding credit</b> · Special thanks to <a href="https://github.com/gauravbhindwar"><b>@gauravbhindwar</b></a> for designing and contributing Levyra's new app logo through <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525"><b>#525</b></a>.</sub>
+</p>
+
 ### Built With & Inspired By
 
 * **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Reference for Levyra's renderer-recovery backoff policy and BetterLyrics TTML parsing behavior, reimplemented for Levyra.
