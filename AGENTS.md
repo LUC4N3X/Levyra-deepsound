@@ -122,12 +122,7 @@ the evidence and root-cause hypothesis, then switch to a materially different
 strategy or report the blocker. Cosmetic command or prompt changes do not reset
 the retry count.
 
-For long-running work, when the accumulated conversation, exploratory logs, or
-superseded hypotheses no longer materially help the current deliverable, suggest
-a fresh session at the next natural task boundary and provide a compact verified
-handoff. Do not abandon an active deliverable merely because the context is
-large; recommend a reset when stale context is now overhead or before a distinct
-next task.
+For long-running work, when the accumulated conversation, exploratory logs, or superseded hypotheses no longer materially help the current deliverable, suggest a fresh session at the next natural task boundary and provide a compact verified handoff. Do not abandon an active deliverable merely because the context is large; recommend a reset when stale context is now overhead or before a distinct next task.
 
 Keep blocking network, database, disk, parsing, decoding, extraction, and native
 media work off UI threads. Preserve lifecycle, cancellation, shared-work,
