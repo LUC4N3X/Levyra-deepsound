@@ -136,6 +136,8 @@ data class LevyraUiState(
     val motionArtwork: MotionArtwork? = null,
     val motionArtworkLoading: Boolean = false,
     val youtubeEngagement: YoutubeEngagementState = YoutubeEngagementState(),
+    val similarSongs: List<Track> = emptyList(),
+    val similarSongsLoading: Boolean = false,
     val lyrics: List<LyricLine> = emptyList(),
     val lyricsSections: List<LyricSection> = emptyList(),
     val activeLyric: LyricLine? = null,

@@ -21,6 +21,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, insightLocalizationCodes())
         assertEquals(catalogCodes, integrationLocalizationCodes())
         assertEquals(catalogCodes, resonanceLocalizationCodes())
+        assertEquals(catalogCodes, similarSongsLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.commentsLabel.isNotBlank())
             assertTrue(strings.mostCommentedTracks.isNotBlank())
@@ -43,6 +44,7 @@ class LevyraStringsTest {
             assertTrue(strings.lyricsCalibrate.isNotBlank())
             assertTrue(strings.motionArtworkSubtitle.isNotBlank())
             assertTrue(strings.lyricsFocus.isNotBlank())
+            assertTrue(strings.startRadio.isNotBlank())
             assertTrue(strings.changeLyrics.isNotBlank())
             assertTrue(strings.automaticLyrics.isNotBlank())
             assertTrue(strings.selectVerses.isNotBlank())

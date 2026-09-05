@@ -106,6 +106,7 @@ import com.luc4n3x.levyra.domain.isValidPlaylistTagName
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.SimilarSongsSelector
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
@@ -183,6 +184,7 @@ import com.luc4n3x.levyra.feature.jam.JamPlayerBridge
 import com.luc4n3x.levyra.feature.jam.JamRole
 import com.luc4n3x.levyra.feature.jam.JamSessionState
 import com.luc4n3x.levyra.feature.jam.JamTrack
+import com.luc4n3x.levyra.feature.jam.JamUiState
 import com.luc4n3x.levyra.feature.recognition.RecognitionCatalogMatcher
 import com.luc4n3x.levyra.feature.recognition.RecognitionErrorKind
 import com.luc4n3x.levyra.feature.recognition.RecognitionHistoryEntry
@@ -234,6 +236,10 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
@@ -256,6 +262,8 @@ import java.util.concurrent.atomic.AtomicReference
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
 private const val EXPLORE_SHORTS_FEED_LIMIT = 24
+private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
+private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
@@ -755,6 +763,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var motionArtworkPrefetchJob: Job? = null
     private var sleepTimerCollectorJob: Job? = null
     private var audioSettingsPersistJob: Job? = null
+    private var similarSongsSeedJob: Job? = null
+    private var jamSimilarSongJob: Job? = null
+    private var similarSongsJob: Job? = null
+    private var similarSongsSeedIdentity: String = ""
+    private val similarSongsGeneration = AtomicLong(0L)
     private var lyricsJob: Job? = null
     private var lyricsVersionsJob: Job? = null
     private var lyricsPrefetchJob: Job? = null
@@ -1053,6 +1066,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         observeRecognitionHistory()
         observeJamState()
+        observeSimilarSongsSeed()
         val favorites = favoritesStore.load()
         val settings = startupSettings
         val repairedRecentSearches = settings.recentSearches
@@ -4377,6 +4391,106 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val enabled = !queueEngine.state.value.radioEnabled
         queueEngine.setRadioEnabled(enabled)
         if (enabled) ensureRadioTail(force = true) else radioJob?.cancel()
+    }
+
+    fun startSongRadio() {
+        if (jamController.rejectGuestLocalMutation()) return
+        if (!queueEngine.state.value.radioEnabled) queueEngine.setRadioEnabled(true)
+        radioJob?.cancel()
+        ensureRadioTail(force = true, insertAfterCurrent = true)
+    }
+
+    fun playSimilarSong(track: Track) {
+        val jam = _state.value.jam
+        if (jam.role != JamRole.Guest) {
+            queueEngine.playNext(track)
+            playQueueTrack(track)
+            return
+        }
+        val existingIndex = jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1
+        when (jamSimilarSongAction(jam, existingIndex)) {
+            JamSimilarSongAction.SelectExisting -> routeJamAction(JamAction.SelectIndex(existingIndex))
+            JamSimilarSongAction.AddOnly -> routeJamAction(JamAction.AddTrack(toJamTrack(track)))
+            JamSimilarSongAction.Reject -> jamController.rejectGuestLocalMutation()
+            JamSimilarSongAction.AddThenSelect -> addAndSelectJamTrack(track)
+        }
+    }
+
+    private fun addAndSelectJamTrack(track: Track) {
+        jamSimilarSongJob?.cancel()
+        jamSimilarSongJob = viewModelScope.launch {
+            if (!routeJamAction(JamAction.AddTrack(toJamTrack(track)))) return@launch
+            val index = withTimeoutOrNull(JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS) {
+                jamController.state
+                    .map { jam -> jam.session?.queue?.indexOfFirst { it.id == track.id } ?: -1 }
+                    .first { it >= 0 }
+            } ?: return@launch
+            routeJamAction(JamAction.SelectIndex(index))
+        }
+    }
+
+    private fun observeSimilarSongsSeed() {
+        similarSongsSeedJob?.cancel()
+        similarSongsSeedJob = viewModelScope.launch {
+            val seedTrack = _state.map { it.currentTrack }.distinctUntilChanged()
+            val playerVisible = _state.map { it.selectedTab == LevyraTab.Player }.distinctUntilChanged()
+            combine(seedTrack, playerVisible, ::Pair).collect { (track, visible) ->
+                refreshSimilarSongs(track, visible)
+            }
+        }
+    }
+
+    private fun refreshSimilarSongs(track: Track?, playerVisible: Boolean) {
+        if (track == null || !playerVisible) {
+            if (similarSongsJob?.isActive == true) {
+                similarSongsJob?.cancel()
+                similarSongsSeedIdentity = ""
+            }
+            similarSongsJob = null
+            if (track == null) {
+                similarSongsSeedIdentity = ""
+                if (_state.value.similarSongs.isNotEmpty() || _state.value.similarSongsLoading) {
+                    _state.update { it.copy(similarSongs = emptyList(), similarSongsLoading = false) }
+                }
+            }
+            return
+        }
+
+        val seedIdentity = playbackIdentity(track)
+        if (seedIdentity == similarSongsSeedIdentity) return
+        similarSongsJob?.cancel()
+        similarSongsSeedIdentity = seedIdentity
+        val generation = similarSongsGeneration.incrementAndGet()
+        _state.update { it.copy(similarSongs = emptyList(), similarSongsLoading = true) }
+        similarSongsJob = viewModelScope.launch {
+            try {
+                delay(SIMILAR_SONGS_DEBOUNCE_MS)
+                val pool = try {
+                    repository.radio(track, _state.value.languageCode, SimilarSongsSelector.POOL_SIZE)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                if (generation != similarSongsGeneration.get()) return@launch
+                val exclusions = _state.value.artistExclusions
+                val queuedTracks = queueEngine.state.value.tracks
+                val selected = withContext(Dispatchers.Default) {
+                    SimilarSongsSelector.select(
+                        candidates = exclusions.filterTracks(pool),
+                        seed = track,
+                        excludedIdentities = queuedTracks.mapTo(HashSet(), ::playbackIdentity)
+                    )
+                }
+                if (generation != similarSongsGeneration.get()) return@launch
+                if (selected.isEmpty()) similarSongsSeedIdentity = ""
+                _state.update { it.copy(similarSongs = selected, similarSongsLoading = false) }
+            } finally {
+                if (generation == similarSongsGeneration.get() && _state.value.similarSongsLoading) {
+                    _state.update { it.copy(similarSongsLoading = false) }
+                }
+            }
+        }
     }
 
     fun setLyricsTranslationEnabled(value: Boolean) {
@@ -8128,10 +8242,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val generation: Long
     )
 
-    private fun ensureRadioTail(force: Boolean, playWhenReady: Boolean = false) {
+    private fun ensureRadioTail(
+        force: Boolean,
+        playWhenReady: Boolean = false,
+        insertAfterCurrent: Boolean = false
+    ) {
         val request = radioTailRequest(force) ?: return
         radioJob = viewModelScope.launch(Dispatchers.IO) {
-            appendRadioTail(request, playWhenReady)
+            appendRadioTail(request, playWhenReady, insertAfterCurrent)
         }
     }
 
@@ -8147,7 +8265,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun appendRadioTail(
         request: RadioTailRequest,
-        playWhenReady: Boolean
+        playWhenReady: Boolean,
+        insertAfterCurrent: Boolean = false
     ) {
         val fetchedRadioTracks = try {
             repository.radio(request.seed, _state.value.languageCode, 5)
@@ -8170,7 +8289,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 contextArtist = request.seed.artist
             )
         } ?: radioTracks
-        queueEngine.appendRadioTracks(orderedRadioTracks)
+        if (insertAfterCurrent) {
+            queueEngine.insertRadioTracksAfterCurrent(orderedRadioTracks)
+        } else {
+            queueEngine.appendRadioTracks(orderedRadioTracks)
+        }
         if (!playWhenReady) return
         withContext(Dispatchers.Main) {
             queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
@@ -9416,6 +9539,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+}
+
+internal enum class JamSimilarSongAction {
+    SelectExisting,
+    AddThenSelect,
+    AddOnly,
+    Reject
+}
+
+internal fun jamSimilarSongAction(jam: JamUiState, existingIndex: Int): JamSimilarSongAction = when {
+    jam.canControlPlayback && existingIndex >= 0 -> JamSimilarSongAction.SelectExisting
+    jam.canControlPlayback && jam.canAddTracks -> JamSimilarSongAction.AddThenSelect
+    jam.canAddTracks -> JamSimilarSongAction.AddOnly
+    else -> JamSimilarSongAction.Reject
 }
 
 internal fun playbackIdentity(track: Track): String = LevyraPersonalOrbit.identityKey(track)

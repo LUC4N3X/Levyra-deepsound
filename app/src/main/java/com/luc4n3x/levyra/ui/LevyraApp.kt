@@ -156,6 +156,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
@@ -545,6 +546,15 @@ private val CinematicGlassDeep = Color(0xFF0B0A14)
 private val CinematicHairline = Color.White.copy(alpha = 0.105f)
 private val HomeHorizontalInset = LevyraHomeDesign.HorizontalInset
 private val HomeHorizontalShelfEndPadding = 30.dp
+private val SimilarSongCardWidth = 118.dp
+private val SimilarSongBadgeSize = 30.dp
+private const val SimilarSongDisabledAlpha = 0.38f
+private val PlayerQuickActionIndicatorSize = 4.dp
+private val PlayerQuickActionIndicatorGap = 5.dp
+private val SimilarSongsPeekSize = 32.dp
+private val SimilarSongsPeekOverlap = 22.dp
+private val SimilarSongsUnderlineWidth = 52.dp
+private const val SIMILAR_SONGS_PEEK_COUNT = 3
 private const val HOME_ARTIST_SHELF_SIZE = 13
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
 private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
@@ -12853,29 +12863,11 @@ private fun PlayerQuickActionsBar(
             .height(LevyraPlayerDesign.MinimumTouchTarget),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (compact) 44.dp else 48.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape)
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.14f),
-                                Color.White.copy(alpha = 0.04f)
-                            )
-                        )
-                    ),
-                    CircleShape
-                )
-        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(LevyraPlayerDesign.MinimumTouchTarget)
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = LevyraPlayerDesign.SpaceSm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -12991,22 +12983,11 @@ private fun PlayerQuickAction(
     onClick: () -> Unit
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val fill by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.14f) else Color.Transparent,
+    val indicatorAlpha by animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-fill"
+        label = "player-quick-indicator"
     )
-    val borderTop by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.36f) else Color.Transparent,
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-border-top"
-    )
-    val borderBottom by animateColorAsState(
-        targetValue = if (active) tint.copy(alpha = 0.12f) else Color.Transparent,
-        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-border-bottom"
-    )
-    val shape = CircleShape
 
     Box(
         modifier = modifier
@@ -13023,29 +13004,13 @@ private fun PlayerQuickAction(
             .pressable(enabled = enabled, pressedScale = 0.90f, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(if (compact) 34.dp else 36.dp)
-                .then(
-                    if (active) {
-                        Modifier
-                            .background(fill, shape)
-                            .border(
-                                BorderStroke(
-                                    LevyraPlayerDesign.Hairline,
-                                    Brush.verticalGradient(listOf(borderTop, borderBottom))
-                                ),
-                                shape
-                            )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentAlignment = Alignment.Center
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(PlayerQuickActionIndicatorGap)
         ) {
             if (busy) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 16.dp else 18.dp),
+                    modifier = Modifier.size(if (compact) 18.dp else 20.dp),
                     strokeWidth = 2.dp,
                     color = tint
                 )
@@ -13053,9 +13018,15 @@ private fun PlayerQuickAction(
                 PlayerIcon(
                     icon = icon,
                     tint = tint,
-                    modifier = Modifier.size(if (compact) 18.dp else 20.dp)
+                    modifier = Modifier.size(if (compact) 21.dp else 23.dp)
                 )
             }
+            Box(
+                modifier = Modifier
+                    .size(PlayerQuickActionIndicatorSize)
+                    .graphicsLayer { alpha = indicatorAlpha }
+                    .background(tint, CircleShape)
+            )
         }
     }
 }
@@ -13412,6 +13383,319 @@ private fun PlayerAdvancedControlsPanel(
                 compact = compact,
                 strings = strings,
                 onSeek = viewModel::seekTo
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerSimilarSongsSection(
+    similarSongs: List<Track>,
+    queuedTrackIds: Set<String>,
+    canPlayNow: Boolean,
+    canAddToQueue: Boolean,
+    loading: Boolean,
+    radioEnabled: Boolean,
+    accent: Color,
+    compact: Boolean,
+    strings: LevyraStrings,
+    onPlay: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onStartRadio: () -> Unit
+) {
+    if (similarSongs.isEmpty() && !loading) return
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "similar-songs-chevron"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(LevyraPlayerDesign.ShapeMd)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(accent.copy(alpha = 0.16f), Color.Transparent)
+                    )
+                )
+                .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
+                .pressable { expanded = !expanded }
+                .padding(
+                    start = LevyraPlayerDesign.SpaceMd,
+                    end = LevyraPlayerDesign.SpaceMd,
+                    top = if (compact) 8.dp else 10.dp,
+                    bottom = if (compact) 8.dp else 10.dp
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    text = strings.youMightAlsoLike,
+                    color = LevyraPlayerDesign.TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.2).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Box(
+                    modifier = Modifier
+                        .width(SimilarSongsUnderlineWidth)
+                        .height(3.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    accent.playerMix(Color.White, 0.35f),
+                                    accent.copy(alpha = 0.45f),
+                                    Color.Transparent
+                                )
+                            ),
+                            LevyraPlayerDesign.ShapePill
+                        )
+                )
+            }
+            when {
+                loading && similarSongs.isEmpty() -> CircularProgressIndicator(
+                    color = accent,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(18.dp)
+                )
+
+                !expanded -> PlayerSimilarSongsPeek(similarSongs)
+            }
+            Icon(
+                Icons.Rounded.KeyboardArrowDown,
+                null,
+                tint = LevyraPlayerDesign.TextTertiary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = chevronRotation }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded && similarSongs.isNotEmpty(),
+            enter = if (animationsEnabled) {
+                fadeIn(tween(120)) + expandVertically(tween(180, easing = FastOutSlowInEasing))
+            } else {
+                EnterTransition.None
+            },
+            exit = if (animationsEnabled) {
+                fadeOut(tween(90)) + shrinkVertically(tween(140, easing = FastOutSlowInEasing))
+            } else {
+                ExitTransition.None
+            }
+        ) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd),
+                contentPadding = PaddingValues(horizontal = LevyraPlayerDesign.SpaceXxs)
+            ) {
+                item(key = "similar-start-radio") {
+                    PlayerSimilarSongsRadioTile(
+                        active = radioEnabled,
+                        accent = accent,
+                        label = strings.startRadio,
+                        onClick = onStartRadio
+                    )
+                }
+                items(similarSongs, key = { "similar-${it.id}" }) { candidate ->
+                    PlayerSimilarSongCard(
+                        track = candidate,
+                        queued = candidate.id in queuedTrackIds,
+                        accent = accent,
+                        canPlay = canPlayNow || canAddToQueue,
+                        canAddToQueue = canAddToQueue,
+                        playLabel = if (canPlayNow) strings.playNow else strings.addToQueue,
+                        addLabel = strings.addToQueue,
+                        onPlay = { onPlay(candidate) },
+                        onAddToQueue = {
+                            if (candidate.id !in queuedTrackIds) onAddToQueue(candidate)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerSimilarSongsPeek(similarSongs: List<Track>) {
+    val peek = remember(similarSongs) { similarSongs.take(SIMILAR_SONGS_PEEK_COUNT) }
+    if (peek.isEmpty()) return
+    val stackWidth = SimilarSongsPeekSize + SimilarSongsPeekOverlap * (peek.size - 1)
+    Box(modifier = Modifier.width(stackWidth)) {
+        peek.asReversed().forEachIndexed { index, candidate ->
+            val artworkUrl = candidate.thumbnailUrl.ifBlank { candidate.largeThumbnailUrl }
+            Box(
+                modifier = Modifier
+                    .offset(x = SimilarSongsPeekOverlap * index)
+                    .size(SimilarSongsPeekSize)
+                    .clip(LevyraPlayerDesign.ShapeXxs)
+                    .background(LevyraPanelSoft)
+                    .border(
+                        LevyraPlayerDesign.Hairline,
+                        Color.White.copy(alpha = 0.22f),
+                        LevyraPlayerDesign.ShapeXxs
+                    )
+            ) {
+                if (artworkUrl.isNotBlank()) {
+                    StableRemoteArtwork(
+                        url = artworkUrl,
+                        contentDescription = "",
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerSimilarSongsRadioTile(
+    active: Boolean,
+    accent: Color,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(SimilarSongCardWidth)
+            .pressable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(SimilarSongCardWidth)
+                .clip(LevyraPlayerDesign.ShapeSm)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            accent.copy(alpha = if (active) 0.42f else 0.24f),
+                            Color.White.copy(alpha = 0.06f)
+                        )
+                    )
+                )
+                .border(
+                    LevyraPlayerDesign.Hairline,
+                    if (active) accent.copy(alpha = 0.55f) else LevyraPlayerDesign.GlassBorderTop,
+                    LevyraPlayerDesign.ShapeSm
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.Radio,
+                null,
+                tint = LevyraPlayerDesign.TextPrimary,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Text(
+            text = label,
+            color = LevyraPlayerDesign.TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun PlayerSimilarSongCard(
+    track: Track,
+    queued: Boolean,
+    canPlay: Boolean,
+    canAddToQueue: Boolean,
+    accent: Color,
+    playLabel: String,
+    addLabel: String,
+    onPlay: () -> Unit,
+    onAddToQueue: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(SimilarSongCardWidth)
+            .graphicsLayer { alpha = if (canPlay) 1f else SimilarSongDisabledAlpha }
+            .pressable(enabled = canPlay, onClick = onPlay),
+        verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(SimilarSongCardWidth)
+                .clip(LevyraPlayerDesign.ShapeSm)
+                .background(LevyraPanelSoft)
+        ) {
+            val artworkUrl = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
+            if (artworkUrl.isNotBlank()) {
+                StableRemoteArtwork(
+                    url = artworkUrl,
+                    contentDescription = playLabel,
+                    modifier = Modifier.matchParentSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.MusicNote,
+                    null,
+                    tint = LevyraMuted,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(30.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(LevyraPlayerDesign.MinimumTouchTarget)
+                    .pressable(enabled = canAddToQueue, onClick = onAddToQueue),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(6.dp)
+                        .size(SimilarSongBadgeSize)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.62f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (queued) Icons.Rounded.Check else Icons.Rounded.Add,
+                        addLabel,
+                        tint = if (queued) accent else LevyraPlayerDesign.TextPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = track.title,
+                color = LevyraPlayerDesign.TextPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                color = LevyraPlayerDesign.TextTertiary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -14370,6 +14654,29 @@ private fun PlayerScreen(
             )
         }
 
+        val queuedTrackIds = remember(state.queue) {
+            state.queue.mapTo(HashSet(state.queue.size)) { it.id }
+        }
+        val visibleSimilarSongs = remember(state.similarSongs, state.artistExclusions) {
+            state.artistExclusions.filterTracks(state.similarSongs)
+        }
+        val similarSongsBlock: @Composable (Track) -> Unit = {
+            PlayerSimilarSongsSection(
+                similarSongs = visibleSimilarSongs,
+                queuedTrackIds = queuedTrackIds,
+                canPlayNow = !state.jam.isActive || state.jam.canControlPlayback,
+                canAddToQueue = !state.jam.isActive || state.jam.canAddTracks,
+                loading = state.similarSongsLoading,
+                radioEnabled = state.radioEnabled,
+                accent = primary.playerMix(Color.White, 0.48f),
+                compact = compactPlayer,
+                strings = strings,
+                onPlay = viewModel::playSimilarSong,
+                onAddToQueue = viewModel::addToQueue,
+                onStartRadio = viewModel::startSongRadio
+            )
+        }
+
         if (playerPane == LevyraPlayerPane.SideBySide && track != null) {
             Column(
                 modifier = Modifier
@@ -14407,6 +14714,7 @@ private fun PlayerScreen(
                         timelineBlock()
                         transportBlock()
                         quickActionsBlock(track)
+                        similarSongsBlock(track)
                         PlayerError(state.playerError)
                     }
                 }
@@ -14468,6 +14776,7 @@ private fun PlayerScreen(
                         timelineBlock()
                         transportBlock()
                         quickActionsBlock(track)
+                        similarSongsBlock(track)
                         PlayerError(state.playerError)
                     }
                 }

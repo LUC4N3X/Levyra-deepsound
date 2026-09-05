@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -378,9 +379,12 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addToQueue(track: Track) = root.addToQueue(track)
     fun closePlayer() = root.closePlayer()
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun cycleSpeed() = root.cycleSpeed()
+    fun playSimilarSong(track: Track) = root.playSimilarSong(track)
+    fun startSongRadio() = root.startSongRadio()
     fun openSleepTimer() = root.openSleepTimer()
     fun openAmbient() = root.openAmbient()
     fun exportCurrentTrack() = root.exportCurrentTrack()
@@ -1154,7 +1158,7 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     recentListens = state.recentListens
 )
 
-private data class PlayerProjection(
+internal data class PlayerProjection(
     val animationsEnabled: Boolean,
     val motionArtworkEnabled: Boolean,
     val motionArtwork: MotionArtwork?,
@@ -1179,10 +1183,17 @@ private data class PlayerProjection(
     val sleepTimerMinutes: Int,
     val sleepTimerEndOfTrack: Boolean,
     val interfaceSettings: LevyraInterfaceSettings,
-    val youtubeEngagement: YoutubeEngagementState
+    val youtubeEngagement: YoutubeEngagementState,
+    val similarSongs: List<Track>,
+    val similarSongsLoading: Boolean,
+    val radioEnabled: Boolean,
+    val queue: List<Track>,
+    val artistExclusions: ArtistExclusions,
+    val canPlaySimilarSongNow: Boolean,
+    val canQueueSimilarSong: Boolean
 )
 
-private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
+internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
     animationsEnabled = state.animationsEnabled,
     motionArtworkEnabled = state.motionArtworkEnabled,
     motionArtwork = state.motionArtwork,
@@ -1207,5 +1218,12 @@ private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPro
     sleepTimerMinutes = state.sleepTimerMinutes,
     sleepTimerEndOfTrack = state.sleepTimerEndOfTrack,
     interfaceSettings = state.interfaceSettings,
-    youtubeEngagement = state.youtubeEngagement
+    youtubeEngagement = state.youtubeEngagement,
+    similarSongs = state.similarSongs,
+    similarSongsLoading = state.similarSongsLoading,
+    radioEnabled = state.radioEnabled,
+    queue = state.queue,
+    artistExclusions = state.artistExclusions,
+    canPlaySimilarSongNow = !state.jam.isActive || state.jam.canControlPlayback,
+    canQueueSimilarSong = !state.jam.isActive || state.jam.canAddTracks
 )
