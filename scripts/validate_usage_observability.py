@@ -96,7 +96,7 @@ if windows_setup.is_file():
 usage_docs = ROOT / "docs/ai/USAGE_OBSERVABILITY.md"
 if usage_docs.is_file():
     text = usage_docs.read_text(encoding="utf-8")
-    for term in ("optimize -p week", "commands that support `--project`", "passed through without an", "native argument passthrough"):
+    for term in ("optimize -p week", "CodeBurn documents with `--project` support", "passed through without an", "native argument passthrough"):
         if term not in text:
             errors.append(f"usage observability docs are missing current wrapper behavior: {term}")
 
