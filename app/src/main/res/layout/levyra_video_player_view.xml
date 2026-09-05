@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.media3.ui.PlayerView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.luc4n3x.levyra.ui.player.LevyraGesturePlayerView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/levyra_video_player_view"
     android:layout_width="match_parent"
@@ -9,5 +9,5 @@
     app:resize_mode="fit"
     app:show_buffering="always"
     app:shutter_background_color="@android:color/black"
-    app:surface_type="surface_view"
+    app:surface_type="texture_view"
     app:use_controller="false" />

@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.luc4n3x.levyra.ui.components
 
 import android.content.Intent
@@ -45,6 +47,8 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
@@ -54,6 +58,8 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.ThumbDown
+import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -88,19 +94,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.recommendations.RecommendationFeedbackController
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.recommendationDiagnosticsCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 private const val TrackActionSheetExitMs = 210
 private const val TrackActionSheetEnterMs = 260
@@ -139,15 +147,24 @@ internal fun LevyraTrackActionSheet(
     onRemoveFromHistory: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val recommendationCopy = strings.recommendationDiagnosticsCopy()
     val context = LocalContext.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val recommendationController = remember(context.applicationContext) {
+        RecommendationFeedbackController(context.applicationContext)
+    }
     val dragOffset = remember { Animatable(0f) }
     val dismissDistancePx = remember(density) { with(density) { TrackActionSheetDismissDistance.toPx() } }
     var visible by remember { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
+    var showDiagnostics by remember(track.id) { mutableStateOf(false) }
+    var artistBlocked by remember(track.id, track.artist) { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(track.id, track.artist) {
+        artistBlocked = track.artist.isNotBlank() && recommendationController.isArtistBlocked(track)
+    }
     LaunchedEffect(closing) {
         if (closing) {
             if (animationsEnabled) delay(TrackActionSheetExitMs.toLong())
@@ -168,7 +185,7 @@ internal fun LevyraTrackActionSheet(
         }
     }
 
-    BackHandler(enabled = !closing, onBack = dismiss)
+    BackHandler(enabled = !closing && !showDiagnostics, onBack = dismiss)
 
     val scrimEnter = if (animationsEnabled) {
         fadeIn(animationSpec = tween(TrackActionSheetEnterMs))
@@ -339,7 +356,7 @@ internal fun LevyraTrackActionSheet(
 
                         TrackActionDivider()
 
-                        Column(modifier = Modifier.padding(top = 6.dp, bottom = 14.dp)) {
+                        Column(modifier = Modifier.padding(top = 6.dp, bottom = 8.dp)) {
                             TrackActionRow(
                                 icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
                                 label = strings.addToPlaylist,
@@ -402,10 +419,85 @@ internal fun LevyraTrackActionSheet(
                                 )
                             }
                         }
+
+                        TrackActionDivider()
+
+                        Column(modifier = Modifier.padding(top = 8.dp, bottom = 14.dp)) {
+                            TrackActionRow(
+                                icon = Icons.Rounded.ThumbUp,
+                                label = recommendationCopy.moreLikeThis,
+                                onClick = {
+                                    if (!closing) {
+                                        scope.launch {
+                                            try {
+                                                recommendationController.moreLike(track)
+                                            } finally {
+                                                dismiss()
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                            TrackActionRow(
+                                icon = Icons.Rounded.ThumbDown,
+                                label = recommendationCopy.lessLikeThis,
+                                onClick = {
+                                    if (!closing) {
+                                        scope.launch {
+                                            try {
+                                                recommendationController.lessLike(track)
+                                            } finally {
+                                                dismiss()
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                            if (track.artist.isNotBlank()) {
+                                TrackActionRow(
+                                    icon = Icons.Rounded.Block,
+                                    label = if (artistBlocked) {
+                                        recommendationCopy.allowArtistAgain
+                                    } else {
+                                        recommendationCopy.blockArtist
+                                    },
+                                    tint = if (artistBlocked) LevyraCyan else LevyraPink,
+                                    onClick = {
+                                        if (!closing) {
+                                            scope.launch {
+                                                try {
+                                                    if (artistBlocked) {
+                                                        recommendationController.unblockArtist(track)
+                                                        artistBlocked = false
+                                                    } else {
+                                                        recommendationController.blockArtist(track)
+                                                        artistBlocked = true
+                                                    }
+                                                } finally {
+                                                    dismiss()
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            TrackActionRow(
+                                icon = Icons.Rounded.BugReport,
+                                label = recommendationCopy.diagnosticsTitle,
+                                onClick = { showDiagnostics = true }
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showDiagnostics) {
+        PlaybackDiagnosticsDialog(
+            track = track,
+            onDismiss = { showDiagnostics = false }
+        )
     }
 }
 

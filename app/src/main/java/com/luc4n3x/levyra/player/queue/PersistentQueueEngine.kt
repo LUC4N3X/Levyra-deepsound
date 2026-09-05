@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.player.queue
 
 import android.content.Context
+import com.luc4n3x.levyra.data.RecommendationFeedbackStore
+import com.luc4n3x.levyra.data.rankRecommendationCandidates
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
@@ -92,6 +94,7 @@ private fun radioTitleKey(track: Track): String =
 
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
+    private val recommendationFeedbackStore = RecommendationFeedbackStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private val _state = MutableStateFlow(PlaybackQueueSnapshot())
@@ -514,21 +517,27 @@ class PersistentQueueEngine private constructor(context: Context) {
         return indices.mapNotNull(current.tracks::getOrNull)
     }
 
-    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
-        val candidates = radioCandidateTracks(
-            existingTracks = current.tracks,
+    suspend fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot {
+        val ranked = rankRecommendationCandidates(
             candidates = tracks,
-            limit = RADIO_BATCH_SIZE
+            feedback = recommendationFeedbackStore.snapshot()
         )
-        if (candidates.isEmpty()) return@mutate current
+        return mutate(structural = true, immediatePersist = true) { current ->
+            val candidates = radioCandidateTracks(
+                existingTracks = current.tracks,
+                candidates = ranked,
+                limit = RADIO_BATCH_SIZE
+            )
+            if (candidates.isEmpty()) return@mutate current
 
-        val prepared = trimPlayedRadioHistory(current, candidates.size)
-        val available = (MAX_RADIO_QUEUE_SIZE - prepared.tracks.size).coerceAtLeast(0)
-        val additions = candidates
-            .take(minOf(RADIO_BATCH_SIZE, available))
-            .map { it.queueStoredCopy() }
-        if (additions.isEmpty()) return@mutate current
-        rebuildAfterStructureChange(prepared, prepared.tracks + additions, prepared.currentIndex)
+            val prepared = trimPlayedRadioHistory(current, candidates.size)
+            val available = (MAX_RADIO_QUEUE_SIZE - prepared.tracks.size).coerceAtLeast(0)
+            val additions = candidates
+                .take(minOf(RADIO_BATCH_SIZE, available))
+                .map { it.queueStoredCopy() }
+            if (additions.isEmpty()) return@mutate current
+            rebuildAfterStructureChange(prepared, prepared.tracks + additions, prepared.currentIndex)
+        }
     }
 
     private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
