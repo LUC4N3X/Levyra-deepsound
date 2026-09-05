@@ -252,6 +252,18 @@ def main() -> int:
     require_terms(
         errors,
         "AGENTS.md",
+        "root retry and session-reset contract",
+        (
+            "more than twice",
+            "materially different",
+            "suggest a fresh session",
+            "compact verified handoff",
+            "stale context",
+        ),
+    )
+    require_terms(
+        errors,
+        "AGENTS.md",
         "root AI quality-gate contract",
         (
             "Mandatory AI quality gate",
@@ -397,6 +409,10 @@ def main() -> int:
             "Rerun the exact command raw",
             "rtk adb logcat -d -t 400",
             "adb exec-out screencap",
+            "more than twice",
+            "materially different strategy",
+            "suggest a fresh session",
+            "compact verified handoff",
         ),
     )
     require_terms(
@@ -421,7 +437,8 @@ def main() -> int:
     print(
         "AI efficiency validation passed: native compact Claude bridge, canonical .agents runtime layout, "
         f"{len(EXPECTED_FILTERS)} project filters, {len(EXPECTED_PLUGINS)} verified plugin, "
-        "cross-runtime security routing, dependency-review preflight, and no local-model profiles."
+        "bounded retry/context reset discipline, cross-runtime security routing, dependency-review preflight, "
+        "and no local-model profiles."
     )
     return 0
 

@@ -61,7 +61,7 @@ output could hide decisive diagnostics, security, signing, Perfetto, or R8 evide
 - `docs/ai/`: detailed cross-runtime engineering procedures.
 - `.agents/skills/`: the single canonical Levyra skill tree.
 - `.agents/claude/`: canonical Claude-specific settings, hooks, agents, and rules.
-- `.agents/codex/`: canonical Codex-specific configuration and hooks.
+- `.agents/codex/`: canonical Codex project configuration and hooks.
 - `.claude/` and `.codex/`: generated local runtime projections; never sources of truth.
 
 Claude Code has a tracked root `CLAUDE.md` whose sole purpose is reliable native
@@ -115,6 +115,14 @@ Use `Plan -> Execute -> Verify` for non-trivial implementation:
 5. run the narrowest useful checks after the latest material edit;
 6. inspect the complete final diff and run `git diff --check`;
 7. report exactly what changed, what passed, what failed, and what is unverified.
+
+Treat repeated failures as evidence. Do not retry the same materially unchanged
+approach more than twice. After the second failure, stop that approach, revisit
+the evidence and root-cause hypothesis, then switch to a materially different
+strategy or report the blocker. Cosmetic command or prompt changes do not reset
+the retry count.
+
+For long-running work, when the accumulated conversation, exploratory logs, or superseded hypotheses no longer materially help the current deliverable, suggest a fresh session at the next natural task boundary and provide a compact verified handoff. Do not abandon an active deliverable merely because the context is large; recommend a reset when stale context is now overhead or before a distinct next task.
 
 Keep blocking network, database, disk, parsing, decoding, extraction, and native
 media work off UI threads. Preserve lifecycle, cancellation, shared-work,
