@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -1185,7 +1186,9 @@ internal data class PlayerProjection(
     val youtubeEngagement: YoutubeEngagementState,
     val similarSongs: List<Track>,
     val similarSongsLoading: Boolean,
-    val radioEnabled: Boolean
+    val radioEnabled: Boolean,
+    val queue: List<Track>,
+    val artistExclusions: ArtistExclusions
 )
 
 internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
@@ -1216,5 +1219,7 @@ internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPr
     youtubeEngagement = state.youtubeEngagement,
     similarSongs = state.similarSongs,
     similarSongsLoading = state.similarSongsLoading,
-    radioEnabled = state.radioEnabled
+    radioEnabled = state.radioEnabled,
+    queue = state.queue,
+    artistExclusions = state.artistExclusions
 )

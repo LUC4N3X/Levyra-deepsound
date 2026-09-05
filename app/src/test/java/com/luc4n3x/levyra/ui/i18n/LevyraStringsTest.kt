@@ -45,8 +45,6 @@ class LevyraStringsTest {
             assertTrue(strings.motionArtworkSubtitle.isNotBlank())
             assertTrue(strings.lyricsFocus.isNotBlank())
             assertTrue(strings.startRadio.isNotBlank())
-            assertTrue(strings.similarSongsPlay.isNotBlank())
-            assertTrue(strings.similarSongsAddToQueue.isNotBlank())
             assertTrue(strings.changeLyrics.isNotBlank())
             assertTrue(strings.automaticLyrics.isNotBlank())
             assertTrue(strings.selectVerses.isNotBlank())

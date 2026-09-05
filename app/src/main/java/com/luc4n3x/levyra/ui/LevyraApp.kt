@@ -547,6 +547,7 @@ private val CinematicHairline = Color.White.copy(alpha = 0.105f)
 private val HomeHorizontalInset = LevyraHomeDesign.HorizontalInset
 private val HomeHorizontalShelfEndPadding = 30.dp
 private val SimilarSongCardWidth = 118.dp
+private val SimilarSongBadgeSize = 30.dp
 private val PlayerQuickActionIndicatorSize = 4.dp
 private val PlayerQuickActionIndicatorGap = 5.dp
 private val SimilarSongsPeekSize = 32.dp
@@ -13388,8 +13389,8 @@ private fun PlayerAdvancedControlsPanel(
 
 @Composable
 private fun PlayerSimilarSongsSection(
-    seedTrackId: String,
     similarSongs: List<Track>,
+    queuedTrackIds: Set<String>,
     loading: Boolean,
     radioEnabled: Boolean,
     accent: Color,
@@ -13401,7 +13402,6 @@ private fun PlayerSimilarSongsSection(
 ) {
     if (similarSongs.isEmpty() && !loading) return
     var expanded by rememberSaveable { mutableStateOf(false) }
-    var queuedIds by remember(seedTrackId) { mutableStateOf(emptySet<String>()) }
     val animationsEnabled = LocalAnimationsEnabled.current
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -13510,16 +13510,13 @@ private fun PlayerSimilarSongsSection(
                 items(similarSongs, key = { "similar-${it.id}" }) { candidate ->
                     PlayerSimilarSongCard(
                         track = candidate,
-                        queued = candidate.id in queuedIds,
+                        queued = candidate.id in queuedTrackIds,
                         accent = accent,
-                        playLabel = strings.similarSongsPlay,
-                        addLabel = strings.similarSongsAddToQueue,
+                        playLabel = strings.playNow,
+                        addLabel = strings.addToQueue,
                         onPlay = { onPlay(candidate) },
                         onAddToQueue = {
-                            if (candidate.id !in queuedIds) {
-                                queuedIds = queuedIds + candidate.id
-                                onAddToQueue(candidate)
-                            }
+                            if (candidate.id !in queuedTrackIds) onAddToQueue(candidate)
                         }
                     )
                 }
@@ -13654,19 +13651,25 @@ private fun PlayerSimilarSongCard(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.62f))
+                    .size(LevyraPlayerDesign.MinimumTouchTarget)
                     .pressable(onClick = onAddToQueue),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    if (queued) Icons.Rounded.Check else Icons.Rounded.Add,
-                    addLabel,
-                    tint = if (queued) accent else LevyraPlayerDesign.TextPrimary,
-                    modifier = Modifier.size(18.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .padding(6.dp)
+                        .size(SimilarSongBadgeSize)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.62f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (queued) Icons.Rounded.Check else Icons.Rounded.Add,
+                        addLabel,
+                        tint = if (queued) accent else LevyraPlayerDesign.TextPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -14643,10 +14646,16 @@ private fun PlayerScreen(
             )
         }
 
-        val similarSongsBlock: @Composable (Track) -> Unit = { activeTrack ->
+        val queuedTrackIds = remember(state.queue) {
+            state.queue.mapTo(HashSet(state.queue.size)) { it.id }
+        }
+        val visibleSimilarSongs = remember(state.similarSongs, state.artistExclusions) {
+            state.artistExclusions.filterTracks(state.similarSongs)
+        }
+        val similarSongsBlock: @Composable (Track) -> Unit = {
             PlayerSimilarSongsSection(
-                seedTrackId = activeTrack.id,
-                similarSongs = state.similarSongs,
+                similarSongs = visibleSimilarSongs,
+                queuedTrackIds = queuedTrackIds,
                 loading = state.similarSongsLoading,
                 radioEnabled = state.radioEnabled,
                 accent = primary.playerMix(Color.White, 0.48f),

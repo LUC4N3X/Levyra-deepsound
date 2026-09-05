@@ -400,8 +400,6 @@ class LevyraStrings private constructor(
     val lyricsRomanization: String get() = value("lyricsRomanization")
     val lyricsCompact: String get() = value("lyricsCompact")
     val startRadio: String get() = value("startRadio")
-    val similarSongsPlay: String get() = value("similarSongsPlay")
-    val similarSongsAddToQueue: String get() = value("similarSongsAddToQueue")
     val changeLyrics: String get() = value("changeLyrics")
     val automaticLyrics: String get() = value("automaticLyrics")
     val selectVerses: String get() = value("selectVerses")

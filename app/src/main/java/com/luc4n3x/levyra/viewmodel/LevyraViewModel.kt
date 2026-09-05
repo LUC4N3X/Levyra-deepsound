@@ -4392,12 +4392,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun startSongRadio() {
         if (jamController.rejectGuestLocalMutation()) return
         if (!queueEngine.state.value.radioEnabled) queueEngine.setRadioEnabled(true)
-        ensureRadioTail(force = true)
+        radioJob?.cancel()
+        ensureRadioTail(force = true, insertAfterCurrent = true)
     }
 
     fun playSimilarSong(track: Track) {
-        if (_state.value.jam.isActive) {
-            routeJamAction(JamAction.AddTrack(toJamTrack(track)))
+        if (_state.value.jam.role == JamRole.Guest) {
+            play(track)
             return
         }
         queueEngine.playNext(track)
@@ -8217,10 +8218,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val generation: Long
     )
 
-    private fun ensureRadioTail(force: Boolean, playWhenReady: Boolean = false) {
+    private fun ensureRadioTail(
+        force: Boolean,
+        playWhenReady: Boolean = false,
+        insertAfterCurrent: Boolean = false
+    ) {
         val request = radioTailRequest(force) ?: return
         radioJob = viewModelScope.launch(Dispatchers.IO) {
-            appendRadioTail(request, playWhenReady)
+            appendRadioTail(request, playWhenReady, insertAfterCurrent)
         }
     }
 
@@ -8236,7 +8241,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun appendRadioTail(
         request: RadioTailRequest,
-        playWhenReady: Boolean
+        playWhenReady: Boolean,
+        insertAfterCurrent: Boolean = false
     ) {
         val fetchedRadioTracks = try {
             repository.radio(request.seed, _state.value.languageCode, 5)
@@ -8259,7 +8265,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 contextArtist = request.seed.artist
             )
         } ?: radioTracks
-        queueEngine.appendRadioTracks(orderedRadioTracks)
+        if (insertAfterCurrent) {
+            queueEngine.insertRadioTracksAfterCurrent(orderedRadioTracks)
+        } else {
+            queueEngine.appendRadioTracks(orderedRadioTracks)
+        }
         if (!playWhenReady) return
         withContext(Dispatchers.Main) {
             queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
