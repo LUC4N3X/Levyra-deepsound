@@ -35,7 +35,7 @@ Available today
 Released this week
 Popular in the charts
 Levyra Collections
-Curated playlists for every moment, shaped around the music you love
+Curated playlists around the music you love
 Fresh right now
 Local essentials
 Workout energy
@@ -79,7 +79,7 @@ Disponible desde hoy
 Lanzado esta semana
 Popular en las listas
 Levyra Collections
-Playlists seleccionadas para cada momento, creadas alrededor de la música que te gusta
+Playlists seleccionadas en torno a la música que amas
 Novedades del momento
 Esenciales locales
 Energía para entrenar
@@ -101,7 +101,7 @@ Disponible dès aujourd’hui
 Sorti cette semaine
 Populaire dans les classements
 Levyra Collections
-Des playlists soigneusement sélectionnées pour chaque moment, pensées autour de la musique que vous aimez
+Playlists pensées autour de la musique que vous aimez
 Nouveautés du moment
 Essentiels locaux
 Énergie pour l’entraînement
@@ -123,7 +123,7 @@ Ab heute verfügbar
 Diese Woche erschienen
 Beliebt in den Charts
 Levyra Collections
-Kuratierte Playlists für jeden Moment, abgestimmt auf die Musik, die du liebst
+Kuratierte Playlists rund um die Musik, die du liebst
 Gerade neu
 Lokale Essentials
 Workout-Energie
@@ -145,7 +145,7 @@ Disponível a partir de hoje
 Lançado esta semana
 Popular nos tops
 Levyra Collections
-Playlists selecionadas para cada momento, pensadas em torno da música que você ama
+Playlists selecionadas em torno da música que você ama
 Novidades do momento
 Essenciais locais
 Energia para treinar
@@ -167,7 +167,7 @@ Vanaf vandaag beschikbaar
 Deze week uitgebracht
 Populair in de hitlijsten
 Levyra Collections
-Samengestelde playlists voor elk moment, afgestemd op de muziek waar je van houdt
+Playlists rond de muziek waar je van houdt
 Nu vers
 Lokale essentials
 Workoutenergie
@@ -189,7 +189,7 @@ Dostępne od dzisiaj
 Wydane w tym tygodniu
 Popularne na listach
 Levyra Collections
-Starannie wybrane playlisty na każdą chwilę, dopasowane do muzyki, którą lubisz
+Playlisty dopasowane do muzyki, którą lubisz
 Świeże teraz
 Lokalne klasyki
 Energia do treningu
@@ -211,7 +211,7 @@ Disponibil de astăzi
 Lansat săptămâna aceasta
 Popular în topuri
 Levyra Collections
-Playlisturi atent selectate pentru fiecare moment, create în jurul muzicii pe care o iubești
+Playlisturi create în jurul muzicii pe care o iubești
 Noutăți acum
 Esențiale locale
 Energie pentru antrenament
@@ -233,7 +233,7 @@ Colecție editorială
 Κυκλοφόρησε αυτή την εβδομάδα
 Δημοφιλές στα charts
 Levyra Collections
-Επιμελημένες λίστες για κάθε στιγμή, προσαρμοσμένες στη μουσική που αγαπάς
+Λίστες φτιαγμένες γύρω από τη μουσική που αγαπάς
 Φρέσκα τώρα
 Τοπικά απαραίτητα
 Ενέργεια για προπόνηση
@@ -255,7 +255,7 @@ Tillgängligt från idag
 Släppt den här veckan
 Populär på topplistorna
 Levyra Collections
-Utvalda spellistor för varje stund, formade kring musiken du älskar
+Spellistor formade kring musiken du älskar
 Nytt just nu
 Lokala måsten
 Träningsenergi
@@ -277,7 +277,7 @@ Tilgængelig fra i dag
 Udgivet i denne uge
 Populær på hitlisterne
 Levyra Collections
-Håndplukkede playlister til ethvert øjeblik, tilpasset den musik du elsker
+Playlister tilpasset den musik du elsker
 Nyt lige nu
 Lokale favoritter
 Træningsenergi
@@ -299,7 +299,7 @@ Dostupné ode dneška
 Vydáno tento týden
 Populární v žebříčcích
 Levyra Collections
-Pečlivě vybrané playlisty pro každý okamžik, sestavené podle hudby, kterou máš rád
+Playlisty sestavené podle hudby, kterou máš rád
 Čerstvé novinky
 Místní essentials
 Energie na trénink
@@ -321,7 +321,7 @@ Redakční kolekce
 Вийшло цього тижня
 Популярне в чартах
 Levyra Collections
-Добірні плейлисти для кожного моменту, створені навколо музики, яку ви любите
+Плейлисти, створені навколо музики, яку ви любите
 Свіже зараз
 Місцеві хіти
 Енергія для тренування
@@ -343,7 +343,7 @@ Levyra Collections
 Вышло на этой неделе
 Популярно в чартах
 Levyra Collections
-Тщательно подобранные плейлисты для любого момента, созданные вокруг любимой музыки
+Плейлисты, собранные вокруг любимой музыки
 Свежее сейчас
 Местные хиты
 Энергия для тренировки
@@ -365,7 +365,7 @@ Bugünden itibaren kullanılabilir
 Bu hafta yayınlandı
 Listelerde popüler
 Levyra Collections
-Her ana özel, sevdiğin müziğe göre hazırlanmış seçkin çalma listeleri
+Sevdiğin müziğe göre hazırlanmış çalma listeleri
 Şu an yeni
 Yerel vazgeçilmezler
 Antrenman enerjisi
@@ -387,7 +387,7 @@ Editoryal koleksiyon
 صدر هذا الأسبوع
 رائج في القوائم
 مجموعات Levyra
-قوائم تشغيل مختارة لكل لحظة، مصممة حول الموسيقى التي تحبها
+قوائم تشغيل مصممة حول الموسيقى التي تحبها
 جديد الآن
 أساسيات محلية
 طاقة للتمرين
@@ -409,7 +409,7 @@ Levyra 精选
 本周发行
 榜单中的热门歌曲
 Levyra 合集
-为每个时刻精心挑选的歌单，围绕你喜爱的音乐打造
+围绕你喜爱的音乐打造的歌单
 此刻新鲜
 本地精选
 训练能量
@@ -431,7 +431,7 @@ Levyra セレクション
 今週リリース
 チャートで注目
 Levyra Collections
-あらゆる時間に寄り添う、あなたの好きな音楽を中心に選んだプレイリスト
+あなたの好きな音楽を中心に選んだプレイリスト
 今すぐ聴きたい新曲
 ローカル定番
 ワークアウト・エナジー
@@ -453,7 +453,7 @@ Levyra 셀렉션
 이번 주 발매
 차트에서 인기
 Levyra Collections
-모든 순간을 위한 엄선된 플레이리스트, 좋아하는 음악을 중심으로 구성했습니다
+좋아하는 음악을 중심으로 구성한 플레이리스트
 지금 막 나온 음악
 로컬 필수곡
 운동 에너지
@@ -475,7 +475,7 @@ Levyra चयन
 इस सप्ताह रिलीज़
 चार्ट में लोकप्रिय गीत
 Levyra Collections
-हर पल के लिए चुनी गई प्लेलिस्ट, आपके पसंदीदा संगीत के आसपास तैयार
+आपके पसंदीदा संगीत के आसपास तैयार प्लेलिस्ट
 अभी नया
 स्थानीय पसंदीदा
 वर्कआउट ऊर्जा
@@ -497,7 +497,7 @@ Tersedia mulai hari ini
 Dirilis minggu ini
 Populer di tangga lagu
 Levyra Collections
-Playlist pilihan untuk setiap suasana, disusun berdasarkan musik yang kamu sukai
+Playlist yang disusun dari musik yang kamu sukai
 Baru saat ini
 Esensial lokal
 Energi olahraga
@@ -519,7 +519,7 @@ Có từ hôm nay
 Phát hành tuần này
 Phổ biến trên bảng xếp hạng
 Levyra Collections
-Playlist được tuyển chọn cho từng khoảnh khắc, xây dựng quanh âm nhạc bạn yêu thích
+Playlist được xây dựng quanh âm nhạc bạn yêu thích
 Mới ngay lúc này
 Tinh hoa địa phương
 Năng lượng luyện tập
@@ -541,7 +541,7 @@ Levyra คัดสรร
 เปิดตัวสัปดาห์นี้
 เพลงยอดนิยมในชาร์ต
 Levyra Collections
-เพลย์ลิสต์คัดสรรสำหรับทุกช่วงเวลา จัดขึ้นจากเพลงที่คุณชื่นชอบ
+เพลย์ลิสต์ที่จัดขึ้นจากเพลงที่คุณชื่นชอบ
 เพลงใหม่ตอนนี้
 เพลงท้องถิ่นที่ต้องฟัง
 พลังสำหรับออกกำลังกาย
@@ -563,7 +563,7 @@ Available simula ngayon
 Inilabas ngayong linggo
 Popular sa charts
 Levyra Collections
-Mga piling playlist para sa bawat sandali, binuo ayon sa musikang gusto mo
+Mga playlist na binuo ayon sa musikang gusto mo
 Bagong-bago ngayon
 Lokal na essentials
 Enerhiya sa workout
@@ -585,7 +585,7 @@ Editorial collection
 יצא השבוע
 בין השירים הפופולריים במצעדים
 אוספי Levyra
-פלייליסטים שנבחרו בקפידה לכל רגע, סביב המוזיקה שאתם אוהבים
+פלייליסטים סביב המוזיקה שאתם אוהבים
 חדש עכשיו
 מקומיים חיוניים
 אנרגיה לאימון
