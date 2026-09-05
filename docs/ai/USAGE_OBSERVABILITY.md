@@ -9,7 +9,8 @@ dependencies, playback behavior, application telemetry, or release artifacts.
 - **RTK** remains the output-reduction layer already managed by Levyra.
 - **CodeBurn 0.9.24** reads local coding-agent session data and reports usage,
   cost, model, tool, retry, and waste patterns. Levyra runs it through pinned
-  `npx` wrappers and always adds the `Levyra-deepsound` project filter.
+  `npx` wrappers and adds the `Levyra-deepsound` project filter only to CodeBurn
+  commands that support `--project`.
 - **Headroom v0.3.0** provides Claude Code's status line for model, context,
   spend, and usage headroom. Levyra installs its verified release binary under
   `/.levyra-tools/headroom/` and does not let the upstream installer rewrite
@@ -40,8 +41,10 @@ bash ./scripts/setup-usage-tools.sh
 The setup downloads the pinned Headroom installer from its matching release tag,
 uses Headroom's `NoWire`/`--no-wire` and `NoPath`/`--no-path` modes, installs the
 binary only inside Levyra's ignored tool directory, then verifies the binary.
-If `npx` is available it also verifies the pinned CodeBurn package without a
-global npm installation.
+On Windows, an upstream installer error that occurs after the binary was written
+is treated as recoverable only when the project-local `headroom.exe` still passes
+its version check. If `npx` is available the setup also verifies the pinned
+CodeBurn package without a global npm installation.
 
 Claude's tracked source of truth remains `.agents/claude/settings.json`. Its
 `statusLine` calls `scripts/claude-statusline.sh`, which forwards the status-line
@@ -65,7 +68,7 @@ Windows:
 
 ```powershell
 .\scripts\codeburn-levyra.ps1
-.\scripts\codeburn-levyra.ps1 optimize --provider claude
+.\scripts\codeburn-levyra.ps1 optimize -p week
 .\scripts\codeburn-levyra.ps1 models --by-agent
 ```
 
@@ -73,12 +76,21 @@ Linux/macOS:
 
 ```bash
 bash ./scripts/codeburn-levyra.sh
-bash ./scripts/codeburn-levyra.sh optimize --provider claude
+bash ./scripts/codeburn-levyra.sh optimize -p week
 bash ./scripts/codeburn-levyra.sh models --by-agent
 ```
 
-With no arguments the wrapper prints a weekly `overview`. Explicit commands
-remain scoped to Levyra by appending `--project Levyra-deepsound`.
+With no arguments the wrapper prints a weekly `overview` scoped to
+`Levyra-deepsound`. Commands that CodeBurn documents with `--project` support
+(`report`, `today`, `month`, `overview`, `status`, `export`, and `web`) receive
+the Levyra filter automatically. Analysis commands such as `optimize`, `models`,
+`sessions`, `compare`, `audit`, and `yield` are passed through without an
+unsupported project flag. Their output can therefore include other local
+projects and must be interpreted accordingly.
+
+The PowerShell wrapper intentionally uses native argument passthrough rather than
+advanced script parameter binding, so CodeBurn flags such as `-p week` reach the
+CLI unchanged.
 
 Treat `codeburn optimize` findings as evidence to review, not as automatic
 authorization to rewrite Levyra configuration. Do not use `--apply` until each

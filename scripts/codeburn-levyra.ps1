@@ -1,24 +1,32 @@
-[CmdletBinding()]
-param(
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]] $CodeBurnArgs
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $projectFilter = 'Levyra-deepsound'
+$projectAwareCommands = @(
+    'report',
+    'today',
+    'month',
+    'overview',
+    'status',
+    'export',
+    'web'
+)
 
 if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
     throw 'CodeBurn requires Node.js 22.13+ with npm/npx.'
 }
 
-$commandArgs = if ($CodeBurnArgs -and $CodeBurnArgs.Count -gt 0) {
-    $CodeBurnArgs
-}
-else {
-    @('overview', '-p', 'week')
+$commandArgs = @($args)
+if ($commandArgs.Count -eq 0) {
+    $commandArgs = @('overview', '-p', 'week')
 }
 
-& npx -y "codeburn@0.9.24" @commandArgs --project $projectFilter
+$subcommand = [string] $commandArgs[0]
+if ($projectAwareCommands -contains $subcommand) {
+    & npx -y "codeburn@0.9.24" @commandArgs --project $projectFilter
+}
+else {
+    & npx -y "codeburn@0.9.24" @commandArgs
+}
+
 exit $LASTEXITCODE
