@@ -1,0 +1,234 @@
+name: Home Spotify Rhythm Pass
+
+on:
+  push:
+    branches:
+      - chatgpt/home-visual-hierarchy
+
+permissions: {}
+
+concurrency:
+  group: home-spotify-rhythm-pass
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.actor == 'LUC4N3X' && !contains(github.event.head_commit.message, 'Polish Home shelf rhythm') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      patch_b64: ${{ steps.patch.outputs.patch_b64 }}
+      head_sha: ${{ steps.patch.outputs.head_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: chatgpt/home-visual-hierarchy
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          cache-disabled: true
+
+      - name: Apply Home rhythm pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text()
+
+          def slice_between(source: str, start: str, end: str) -> str:
+              start_index = source.index(start)
+              end_index = source.index(end, start_index)
+              return source[start_index:end_index]
+
+          def replace_once(source: str, old: str, new: str, label: str) -> str:
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return source.replace(old, new, 1)
+
+          orbit_start = '@Composable\nprivate fun HomeOrbitHeader('
+          quick_start = '@Composable\nprivate fun HomeQuickPicksShelf('
+          quick_end = '@Composable\nprivate fun HomeQuickPickRow('
+          orbit_before = slice_between(text, orbit_start, quick_start)
+          quick_before = slice_between(text, quick_start, quick_end)
+
+          text = replace_once(
+              text,
+              '''    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                  HomeSectionHeader(
+                      title = strings.collectionsTitle,
+                      modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                  )
+                  LazyRow(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),''',
+              '''    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                  HomeSectionHeader(
+                      title = strings.collectionsTitle,
+                      subtitle = strings.collectionsSubtitle,
+                      modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                  )
+                  LazyRow(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),''',
+              'collections header rhythm',
+          )
+
+          text = replace_once(
+              text,
+              '''    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                  HomeSectionHeader(
+                      title = strings.artists,
+                      modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                  )
+                  LazyRow(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(12.dp),''',
+              '''    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                  HomeSectionHeader(
+                      title = strings.artists,
+                      modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                  )
+                  LazyRow(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing),''',
+              'artist shelf spacing',
+          )
+
+          text = replace_once(
+              text,
+              '''    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                  HomeSectionHeader(
+                      title = strings.mostCommentedTracks,
+                      modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                  )''',
+              '''    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                  HomeSectionHeader(
+                      title = strings.mostCommentedTracks,
+                      subtitle = strings.tapToOpenComments,
+                      modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+                  )''',
+              'resonance subtitle rhythm',
+          )
+
+          text = replace_once(
+              text,
+              '''    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                  HomeSectionInset { HomeSectionHeader(title) }
+                  LazyRow(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(10.dp),''',
+              '''    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                  HomeSectionInset { HomeSectionHeader(title) }
+                  LazyRow(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),''',
+              'video shelf rhythm',
+          )
+
+          orbit_after = slice_between(text, orbit_start, quick_start)
+          quick_after = slice_between(text, quick_start, quick_end)
+          if orbit_before != orbit_after:
+              raise SystemExit('Personal Orbit changed unexpectedly')
+          if quick_before != quick_after:
+              raise SystemExit('Quick Picks changed unexpectedly')
+
+          path.write_text(text)
+          PY
+
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git rm .github/workflows/_home-spotify-rhythm-pass.yml
+          mapfile -t changed < <(git diff --cached --name-only HEAD | sort)
+          expected=(
+            .github/workflows/_home-spotify-rhythm-pass.yml
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          )
+          if [ "${changed[*]}" != "${expected[*]}" ]; then
+            printf 'Unexpected staged files: %s\n' "${changed[*]}"
+            exit 1
+          fi
+          git diff --cached --check
+          git diff --cached -- app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+
+      - name: Fast AI quality gate
+        run: python3 scripts/ai_quality_gate.py --profile fast --base-ref origin/main
+
+      - name: Full AI quality gate
+        run: python3 scripts/ai_quality_gate.py --profile full --base-ref origin/main
+
+      - name: Export validated patch
+        id: patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --binary HEAD > /tmp/home.patch
+          test -s /tmp/home.patch
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "patch_b64=$(base64 -w 0 /tmp/home.patch)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: validate
+    if: ${{ needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout validated head
+        uses: actions/checkout@v7
+        with:
+          ref: chatgpt/home-visual-hierarchy
+          fetch-depth: 0
+
+      - name: Apply validated patch
+        shell: bash
+        env:
+          PATCH_B64: ${{ needs.validate.outputs.patch_b64 }}
+          VALIDATED_HEAD: ${{ needs.validate.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${VALIDATED_HEAD}"
+          printf '%s' "${PATCH_B64}" | base64 --decode > /tmp/home.patch
+          git apply --index /tmp/home.patch
+          mapfile -t changed < <(git diff --cached --name-only | sort)
+          expected=(
+            .github/workflows/_home-spotify-rhythm-pass.yml
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          )
+          if [ "${changed[*]}" != "${expected[*]}" ]; then
+            printf 'Unexpected publish files: %s\n' "${changed[*]}"
+            exit 1
+          fi
+          git diff --cached --check
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'LUC4N3X'
+          git config user.email '241364318+LUC4N3X@users.noreply.github.com'
+          git commit -m 'Polish Home shelf rhythm'
+          git push origin HEAD:chatgpt/home-visual-hierarchy
