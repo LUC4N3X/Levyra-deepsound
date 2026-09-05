@@ -6523,7 +6523,6 @@ private fun HomeScreen(
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
                             onPlay = { track -> viewModel.playFrom(forgottenFavorites, track) },
-                            onPlayAll = { viewModel.playAll(forgottenFavorites) },
                             onTrackActions = onTrackActions
                         )
                     }
@@ -6540,7 +6539,6 @@ private fun HomeScreen(
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
                             onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
-                            onPlayAll = { viewModel.playAll(quickPicks.tracks) },
                             onTrackActions = onTrackActions
                         )
                     }
@@ -6721,8 +6719,7 @@ private fun HomeScreen(
                                         currentId = state.currentTrack?.id,
                                         isPlaying = state.isPlaying,
                                         isResolving = state.isResolving,
-                                        onPlay = { track -> viewModel.playFrom(section.tracks, track) },
-                                        onPlayAll = { viewModel.playAll(section.tracks) }
+                                        onPlay = { track -> viewModel.playFrom(section.tracks, track) }
                                     )
                                 }
                             }
@@ -7454,7 +7451,7 @@ private fun HomeEditorialCollectionsShelf(
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val cardWidth = ((maxWidth - (HomeHorizontalInset * 2) - LevyraHomeDesign.ShelfItemGap) / 2f)
-                .coerceIn(154.dp, 188.dp)
+                .coerceIn(HOME_COLLECTION_CARD_WIDTH, 188.dp)
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
@@ -7718,13 +7715,11 @@ private fun HomeQuickPicksShelf(
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit,
-    onPlayAll: () -> Unit,
     onTrackActions: ((Track) -> Unit)? = null
 ) {
     val columns = remember(tracks) {
         tracks
             .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(8)
             .chunked(2)
     }
     val density = LocalDensity.current
@@ -8065,7 +8060,7 @@ private fun ResonanceShelf(
     onOpenComments: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val displayTracks = remember(tracks) { tracks.take(4) }
+    val displayTracks = tracks
     if (displayTracks.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -8268,6 +8263,19 @@ private fun ResonanceFeaturedCard(
                         contentAlignment = Alignment.CenterStart
                     ) {
                         ResonanceCommentShimmer()
+                    }
+                    snippet?.disabled == true -> Box(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = strings.commentsDisabled,
+                            color = LevyraMuted,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     snippet?.hasComment == true -> Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
