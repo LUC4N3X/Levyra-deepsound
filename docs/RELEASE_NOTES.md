@@ -1,4 +1,49 @@
-# Levyra 2.5.2
+# Levyra 2.5.3
+
+## Highlights
+
+Levyra 2.5.3 expands discovery and library control while tightening playback recovery. Now Playing gains Similar Songs with queue and radio actions, Levyra Ambient adds an OLED-friendly playback surface, Home can rediscover older favorites, and playlists gain tags and hidden-library organization.
+
+## ✦ More ways to keep listening
+
+Now Playing adds a "You might also like" shelf based on the track that is actually playing. Recommendations avoid the current song, tracks already in the queue, obvious repeats and common re-uploads, and can be played immediately, added to the queue or used to start continuous radio. Jam actions follow the guest permissions already active for the session.
+
+Home also gains Rediscover, built from favorites and listening history already stored on the device. Narrow-screen shelves have been tightened so titles, artwork and video metadata fit more reliably.
+
+## ✦ Ambient and library control
+
+Levyra Ambient reuses the existing playback session for an OLED-friendly artwork or Canvas view with the current lyric line and progress. It is available in-app, through a Quick Settings tile and as an Android DreamService without creating a second player.
+
+Playlist tags and hidden playlists make larger libraries easier to organize, while artist exclusions keep selected artists out of personalized recommendations without blocking search or the artist page. These settings are included in Levyra Vault backups.
+
+## ✦ Playback resilience
+
+YouTube player configurations are verified before Levyra trusts them, and playback client policy can now be applied separately to player, streaming, browse and metadata capabilities. Stream requests also keep the identity of the client that resolved them instead of falling back to an unrelated request profile.
+
+## Validation
+
+The 2.5.3 release content was reviewed against the Android changes currently on `main` after the 2.5.2 version bump. The repository contains focused automated coverage for Similar Songs selection and Jam actions, the Room 18-to-19 migration, artist exclusions and playlist organization, player-config verification, playback compatibility policy, and stream client identity.
+
+This version metadata update does not claim a new signed-artifact, physical-device, Android Auto or long-session validation run. The repository-required local quality-gate commands were not executed by this metadata edit environment.
+
+## Versioning
+
+- Version name: `2.5.3`
+- Version code: `2050300`
+
+`gradle.properties`, the Android Gradle fallback, README version wiring, architecture metadata, release notes and Fastlane changelogs are aligned to 2.5.3. Levyra Desktop continues to use its own version file and release tags.
+
+## Upgrade notes
+
+No manual migration is required. The Android database moves from schema 18 to 19 through the existing additive migration, preserving playlists, tracks and followed artists while adding playlist organization and artist exclusions. Install the update normally over an existing Levyra installation from the same compatible signing channel.
+
+## Final note
+
+Levyra 2.5.3 makes discovery easier to continue, gives the library more structure, and strengthens the playback paths underneath it without changing the app's local-first model.
+
+---
+
+# Levyra 2.5.2 (previous release)
 
 ## Highlights
 
@@ -34,7 +79,7 @@ No manual migration is required. Install the update normally over an existing Le
 
 ---
 
-# Levyra 2.5.1 (previous release)
+# Levyra 2.5.1 (earlier release)
 
 ## Highlights
 
