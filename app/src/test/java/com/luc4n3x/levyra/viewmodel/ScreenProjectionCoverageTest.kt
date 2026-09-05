@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.BatchDownloadState
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -78,6 +79,49 @@ class ScreenProjectionCoverageTest {
 
         assertNotEquals(libraryProjection(early), libraryProjection(later))
     }
+
+    @Test
+    fun `player projection reacts to similar songs`() {
+        val withSimilar = base.copy(similarSongs = listOf(similarTrack()))
+
+        assertNotEquals(playerProjection(base), playerProjection(withSimilar))
+    }
+
+    @Test
+    fun `player projection reacts to similar songs loading`() {
+        assertNotEquals(
+            playerProjection(base),
+            playerProjection(base.copy(similarSongsLoading = true))
+        )
+    }
+
+    @Test
+    fun `player projection reacts to continuous radio state`() {
+        assertNotEquals(
+            playerProjection(base),
+            playerProjection(base.copy(radioEnabled = !base.radioEnabled))
+        )
+    }
+
+    private fun similarTrack() = Track(
+        id = "abcdefghijk",
+        title = "Similar",
+        artist = "Artist",
+        album = "Album",
+        durationMs = 180_000L,
+        streamUrl = "",
+        videoUrl = "https://www.youtube.com/watch?v=abcdefghijk",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "YouTube Music Radio",
+        moodTags = emptySet(),
+        energy = 50,
+        vocal = 50,
+        replayScore = 70,
+        cacheScore = 70,
+        accentStart = 0,
+        accentEnd = 0
+    )
 
     private fun batch(completed: Int, progress: Int) = BatchDownload(
         key = "album:test",

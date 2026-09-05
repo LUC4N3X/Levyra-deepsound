@@ -80,6 +80,23 @@ class PersistentQueueRadioPolicyTest {
         assertEquals(listOf("fresh"), selected.map(Track::id))
     }
 
+    @Test
+    fun radioInsertsRightAfterTheCurrentTrackWhenStartedFromIt() {
+        assertEquals(3, radioInsertionIndex(currentIndex = 2, queueSize = 9, afterCurrent = true))
+    }
+
+    @Test
+    fun radioAppendsToTheTailWhenItIsAContinuationBatch() {
+        assertEquals(9, radioInsertionIndex(currentIndex = 2, queueSize = 9, afterCurrent = false))
+    }
+
+    @Test
+    fun radioInsertionStaysInsideTheQueueBounds() {
+        assertEquals(0, radioInsertionIndex(currentIndex = -1, queueSize = 4, afterCurrent = true))
+        assertEquals(4, radioInsertionIndex(currentIndex = 3, queueSize = 4, afterCurrent = true))
+        assertEquals(0, radioInsertionIndex(currentIndex = 7, queueSize = 0, afterCurrent = true))
+    }
+
     private fun track(id: String, title: String, artist: String = "Artist") = Track(
         id = id,
         title = title,
