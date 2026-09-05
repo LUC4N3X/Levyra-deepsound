@@ -87,6 +87,9 @@ internal fun radioCandidateTracks(
         .toList()
 }
 
+internal fun radioInsertionIndex(currentIndex: Int, queueSize: Int, afterCurrent: Boolean): Int =
+    if (afterCurrent) (currentIndex + 1).coerceIn(0, queueSize) else queueSize
+
 private fun radioTitleKey(track: Track): String =
     "${track.artist.trim().lowercase(Locale.ROOT)}|${track.title.trim().lowercase(Locale.ROOT)}"
 
@@ -514,7 +517,15 @@ class PersistentQueueEngine private constructor(context: Context) {
         return indices.mapNotNull(current.tracks::getOrNull)
     }
 
-    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = addRadioTracks(tracks, afterCurrent = false)
+
+    fun insertRadioTracksAfterCurrent(tracks: List<Track>): PlaybackQueueSnapshot =
+        addRadioTracks(tracks, afterCurrent = true)
+
+    private fun addRadioTracks(
+        tracks: List<Track>,
+        afterCurrent: Boolean
+    ): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
         val candidates = radioCandidateTracks(
             existingTracks = current.tracks,
             candidates = tracks,
@@ -528,7 +539,13 @@ class PersistentQueueEngine private constructor(context: Context) {
             .take(minOf(RADIO_BATCH_SIZE, available))
             .map { it.queueStoredCopy() }
         if (additions.isEmpty()) return@mutate current
-        rebuildAfterStructureChange(prepared, prepared.tracks + additions, prepared.currentIndex)
+        val insertionIndex = radioInsertionIndex(
+            currentIndex = prepared.currentIndex,
+            queueSize = prepared.tracks.size,
+            afterCurrent = afterCurrent
+        )
+        val nextTracks = prepared.tracks.toMutableList().apply { addAll(insertionIndex, additions) }
+        rebuildAfterStructureChange(prepared, nextTracks, prepared.currentIndex)
     }
 
     private fun trimPlayedRadioHistory(current: PlaybackQueueSnapshot, desiredSlots: Int): PlaybackQueueSnapshot {
