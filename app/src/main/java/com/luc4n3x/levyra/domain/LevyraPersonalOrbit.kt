@@ -253,6 +253,10 @@ object LevyraPersonalOrbit {
         }
     }
 
+    internal fun musicTitleKey(track: Track): String = normalizedMusicTitle(track.title)
+
+    internal fun artistKeys(track: Track): Set<String> = normalizedArtists(track.artist).toSet()
+
     fun sameRecording(first: Track, second: Track): Boolean =
         fingerprintsMatch(recordingFingerprint(first), recordingFingerprint(second))
 
