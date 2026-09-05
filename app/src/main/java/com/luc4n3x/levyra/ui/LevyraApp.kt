@@ -548,6 +548,7 @@ private val HomeHorizontalInset = LevyraHomeDesign.HorizontalInset
 private val HomeHorizontalShelfEndPadding = 30.dp
 private val SimilarSongCardWidth = 118.dp
 private val SimilarSongBadgeSize = 30.dp
+private const val SimilarSongDisabledAlpha = 0.38f
 private val PlayerQuickActionIndicatorSize = 4.dp
 private val PlayerQuickActionIndicatorGap = 5.dp
 private val SimilarSongsPeekSize = 32.dp
@@ -13392,6 +13393,7 @@ private fun PlayerSimilarSongsSection(
     similarSongs: List<Track>,
     queuedTrackIds: Set<String>,
     canPlayNow: Boolean,
+    canAddToQueue: Boolean,
     loading: Boolean,
     radioEnabled: Boolean,
     accent: Color,
@@ -13513,6 +13515,8 @@ private fun PlayerSimilarSongsSection(
                         track = candidate,
                         queued = candidate.id in queuedTrackIds,
                         accent = accent,
+                        canPlay = canPlayNow || canAddToQueue,
+                        canAddToQueue = canAddToQueue,
                         playLabel = if (canPlayNow) strings.playNow else strings.addToQueue,
                         addLabel = strings.addToQueue,
                         onPlay = { onPlay(candidate) },
@@ -13613,6 +13617,8 @@ private fun PlayerSimilarSongsRadioTile(
 private fun PlayerSimilarSongCard(
     track: Track,
     queued: Boolean,
+    canPlay: Boolean,
+    canAddToQueue: Boolean,
     accent: Color,
     playLabel: String,
     addLabel: String,
@@ -13622,7 +13628,8 @@ private fun PlayerSimilarSongCard(
     Column(
         modifier = Modifier
             .width(SimilarSongCardWidth)
-            .pressable(onClick = onPlay),
+            .graphicsLayer { alpha = if (canPlay) 1f else SimilarSongDisabledAlpha }
+            .pressable(enabled = canPlay, onClick = onPlay),
         verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
     ) {
         Box(
@@ -13653,7 +13660,7 @@ private fun PlayerSimilarSongCard(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .size(LevyraPlayerDesign.MinimumTouchTarget)
-                    .pressable(onClick = onAddToQueue),
+                    .pressable(enabled = canAddToQueue, onClick = onAddToQueue),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -14658,6 +14665,7 @@ private fun PlayerScreen(
                 similarSongs = visibleSimilarSongs,
                 queuedTrackIds = queuedTrackIds,
                 canPlayNow = !state.jam.isActive || state.jam.canControlPlayback,
+                canAddToQueue = !state.jam.isActive || state.jam.canAddTracks,
                 loading = state.similarSongsLoading,
                 radioEnabled = state.radioEnabled,
                 accent = primary.playerMix(Color.White, 0.48f),

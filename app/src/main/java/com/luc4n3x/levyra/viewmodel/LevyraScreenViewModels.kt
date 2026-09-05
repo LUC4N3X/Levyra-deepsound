@@ -1189,7 +1189,8 @@ internal data class PlayerProjection(
     val radioEnabled: Boolean,
     val queue: List<Track>,
     val artistExclusions: ArtistExclusions,
-    val canPlaySimilarSongNow: Boolean
+    val canPlaySimilarSongNow: Boolean,
+    val canQueueSimilarSong: Boolean
 )
 
 internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
@@ -1223,5 +1224,6 @@ internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPr
     radioEnabled = state.radioEnabled,
     queue = state.queue,
     artistExclusions = state.artistExclusions,
-    canPlaySimilarSongNow = !state.jam.isActive || state.jam.canControlPlayback
+    canPlaySimilarSongNow = !state.jam.isActive || state.jam.canControlPlayback,
+    canQueueSimilarSong = !state.jam.isActive || state.jam.canAddTracks
 )
