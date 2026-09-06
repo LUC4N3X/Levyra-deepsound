@@ -123,8 +123,6 @@ import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
-import com.luc4n3x.levyra.domain.PlayerBackgroundMode
-import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -761,6 +759,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var youtubeCommentsPageJob: Job? = null
     private val youtubeCommentReplyJobs = ConcurrentHashMap<String, Job>()
     private val youtubeCommentContinuationHistory = linkedSetOf<String>()
+    private var lastLiveChatPageAtMs = 0L
     private val youtubeEngagementGeneration = AtomicLong(0L)
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
@@ -3893,18 +3892,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setDynamicColor(value: Boolean) {
         preferences.setDynamicColor(value)
         _state.update { it.copy(dynamicColor = value) }
-    }
-
-    fun setPlayerVisualMode(mode: PlayerVisualMode) {
-        val current = _state.value.interfaceSettings
-        if (current.playerVisualMode == mode) return
-        setInterfaceSettings(current.copy(playerVisualMode = mode))
-    }
-
-    fun setPlayerBackground(mode: PlayerBackgroundMode) {
-        val current = _state.value.interfaceSettings
-        if (current.playerBackground == mode) return
-        setInterfaceSettings(current.copy(playerBackground = mode))
     }
 
     fun setInterfaceSettings(value: LevyraInterfaceSettings) {
@@ -7462,6 +7449,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (current.videoId == videoId) return youtubeEngagementGeneration.get()
         val generation = youtubeEngagementGeneration.incrementAndGet()
         youtubeCommentContinuationHistory.clear()
+        lastLiveChatPageAtMs = 0L
         _state.update { state ->
             state.copy(youtubeEngagement = YoutubeEngagementState(videoId = videoId))
         }
@@ -7568,6 +7556,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val result = youtubeCommentsRepository.initial(videoId, forceRefresh = force)
             if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch
             if (result !is YoutubeCommentsResult.Failed) youtubeCommentContinuationHistory.clear()
+            if (result is YoutubeCommentsResult.Available && result.page.liveChat) {
+                lastLiveChatPageAtMs = SystemClock.elapsedRealtime()
+            }
             _state.update { state ->
                 state.withYoutubeCommentsResultIfCurrent(
                     videoId = videoId,
@@ -7630,6 +7621,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadMoreYoutubeComments(forceRefresh = true)
     }
 
+    private fun rememberYoutubeCommentContinuation(token: String) {
+        youtubeCommentContinuationHistory += token
+        while (youtubeCommentContinuationHistory.size > MAX_YOUTUBE_COMMENT_CONTINUATIONS) {
+            val oldest = youtubeCommentContinuationHistory.firstOrNull() ?: break
+            youtubeCommentContinuationHistory.remove(oldest)
+        }
+    }
+
     private fun loadMoreYoutubeComments(forceRefresh: Boolean) {
         val engagement = _state.value.youtubeEngagement
         val comments = engagement.comments
@@ -7651,12 +7650,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         youtubeCommentsPageJob = viewModelScope.launch {
+            if (comments.liveChat) {
+                val pollIntervalMs = youtubeLiveChatPollIntervalMs(comments.nextPollDelayMs)
+                val elapsed = SystemClock.elapsedRealtime() - lastLiveChatPageAtMs
+                if (elapsed < pollIntervalMs) {
+                    delay(pollIntervalMs - elapsed)
+                }
+            }
             val result = youtubeCommentsRepository.more(
                 videoId = videoId,
                 continuationToken = token,
+                pageUrl = comments.nextPageUrl,
                 forceRefresh = forceRefresh
             )
             if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch
+            if (comments.liveChat) {
+                lastLiveChatPageAtMs = SystemClock.elapsedRealtime()
+            }
             _state.update { state ->
                 if (!isYoutubeCommentsRequestCurrent(
                         videoId,
@@ -7668,8 +7678,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val currentComments = state.youtubeEngagement.comments
                 val updated = when (result) {
                     is YoutubeCommentsResult.Available -> {
-                        youtubeCommentContinuationHistory += token
-                        val merged = (currentComments.items + result.page.items).distinctBy(YoutubeComment::id)
+                        rememberYoutubeCommentContinuation(token)
+                        val combined = (currentComments.items + result.page.items)
+                            .distinctBy(YoutubeComment::id)
+                        val merged = if (result.page.liveChat) {
+                            combined.takeLast(MAX_LIVE_CHAT_ITEMS)
+                        } else {
+                            combined
+                        }
                         val nextToken = nextYoutubeCommentsToken(
                             requestedToken = token,
                             candidateToken = result.page.nextToken,
@@ -7680,6 +7696,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             loadingMore = false,
                             items = merged,
                             nextToken = nextToken,
+                            nextPageUrl = result.page.nextPageUrl,
+                            nextPollDelayMs = result.page.nextPollDelayMs,
+                            liveChat = result.page.liveChat,
                             error = null
                         )
                     }
@@ -9690,6 +9709,14 @@ internal fun youtubeEngagementVideoId(track: Track): String {
 }
 
 
+internal const val MAX_LIVE_CHAT_ITEMS = 500
+internal const val LIVE_CHAT_POLL_INTERVAL_MS = 2_000L
+internal const val MAX_LIVE_CHAT_POLL_INTERVAL_MS = 60_000L
+internal const val MAX_YOUTUBE_COMMENT_CONTINUATIONS = 512
+
+internal fun youtubeLiveChatPollIntervalMs(serverDelayMs: Long): Long =
+    serverDelayMs.coerceIn(LIVE_CHAT_POLL_INTERVAL_MS, MAX_LIVE_CHAT_POLL_INTERVAL_MS)
+
 internal fun nextYoutubeCommentsToken(
     requestedToken: String,
     candidateToken: String,
@@ -9727,6 +9754,9 @@ internal fun LevyraUiState.withYoutubeCommentsResultIfCurrent(
             countText = result.page.countText,
             items = result.page.items.distinctBy(YoutubeComment::id),
             nextToken = result.page.nextToken,
+            nextPageUrl = result.page.nextPageUrl,
+            nextPollDelayMs = result.page.nextPollDelayMs,
+            liveChat = result.page.liveChat,
             error = null
         )
         YoutubeCommentsResult.Disabled -> YoutubeCommentsState(
