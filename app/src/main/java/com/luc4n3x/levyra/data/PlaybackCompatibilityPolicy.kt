@@ -363,6 +363,8 @@ internal object PlaybackClientCapabilities {
 
     fun isEnabled(clientName: String, capability: PlaybackClientCapability): Boolean =
         active.get().isClientCapabilityEnabled(clientName, capability)
+
+    fun active(): PlaybackCompatibilityPolicy = active.get()
 }
 
 internal fun PlaybackCompatibilityPolicy.isExpired(nowMs: Long = System.currentTimeMillis()): Boolean {

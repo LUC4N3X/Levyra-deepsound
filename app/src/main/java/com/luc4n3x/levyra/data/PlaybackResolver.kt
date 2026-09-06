@@ -737,6 +737,9 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun strategyOriginKey(mode: String, url: String): String = "$mode\u0000$url"
 
+    fun activeStrategyFor(track: Track, isVideoMode: Boolean): String =
+        strategyOriginFor(track, isVideoMode)?.strategy.orEmpty()
+
     fun playbackDiagnostics(): String {
         val health = clientHealth.mapValues { (_, value) ->
             JSONObject()

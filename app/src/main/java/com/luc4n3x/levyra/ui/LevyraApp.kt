@@ -1,7 +1,14 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
+import com.luc4n3x.levyra.domain.isExcludableArtist
+import androidx.compose.runtime.key
 import com.luc4n3x.levyra.ui.components.LevyraIonicons
+import com.luc4n3x.levyra.ui.components.PlaybackDiagnosticsDialog
+import com.luc4n3x.levyra.ui.player.PlayerVideoTransform
+import com.luc4n3x.levyra.ui.player.applyPlayerVideoGesture
+import com.luc4n3x.levyra.ui.player.playerVideoZoomGestures
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.PlayerAccentColors
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
@@ -1199,6 +1206,7 @@ fun LevyraApp(
     }
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
+    var showPlaybackDiagnostics by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
     var trackActionTarget by remember { mutableStateOf<Track?>(null) }
     var trackActionPlaylistTarget by remember { mutableStateOf<Track?>(null) }
@@ -1796,6 +1804,7 @@ fun LevyraApp(
                     onPauseDownload = viewModel::pauseDownload,
                     onResumeDownload = viewModel::resumeDownload,
                     onCancelDownload = viewModel::cancelDownload,
+                    onOpenPlaybackDiagnostics = { showPlaybackDiagnostics = true },
                     onShareDiagnostics = {
                         val diagnostics = viewModel.refreshPlaybackDiagnostics()
                         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -2008,6 +2017,13 @@ fun LevyraApp(
                 )
             }
 
+            if (showPlaybackDiagnostics) {
+                PlaybackDiagnosticsDialog(
+                    capture = viewModel::capturePlaybackDiagnostics,
+                    onDismiss = { showPlaybackDiagnostics = false }
+                )
+            }
+
             if (showLanguageRestartDialog) {
                 LanguageRestartDialog(
                     onRestart = {
@@ -2034,6 +2050,9 @@ fun LevyraApp(
                         }
                     },
                     animationsEnabled = state.animationsEnabled,
+                    feedbackKind = state.recommendationFeedback.kindFor(target),
+                    canExcludeArtist = isExcludableArtist(target.artistBrowseIds.firstOrNull().orEmpty(), target.artist),
+                    isArtistExcluded = state.artistExclusions.excludesTrack(target),
                     onDismiss = { trackActionTarget = null },
                     onPlayNext = { viewModel.playNext(target) },
                     onAddToQueue = { viewModel.addToQueue(target) },
@@ -2043,7 +2062,19 @@ fun LevyraApp(
                     onDeleteDownload = { download?.let(viewModel::deleteDownload) },
                     onOpenAlbum = { viewModel.openAlbum(trackAlbumHit(target)) },
                     onOpenArtist = { viewModel.openArtist(target) },
-                    onRemoveFromHistory = { viewModel.removeRecentSearch(target) }
+                    onRemoveFromHistory = { viewModel.removeRecentSearch(target) },
+                    onMoreLikeThis = {
+                        viewModel.setTrackFeedback(target, RecommendationFeedbackKind.MORE_LIKE_THIS)
+                    },
+                    onLessLikeThis = {
+                        viewModel.setTrackFeedback(target, RecommendationFeedbackKind.LESS_LIKE_THIS)
+                    },
+                    onToggleExcludeArtist = {
+                        viewModel.toggleExcludeArtist(
+                            target.artistBrowseIds.firstOrNull().orEmpty(),
+                            target.artist
+                        )
+                    }
                 )
             }
 
@@ -14114,6 +14145,9 @@ private fun PlayerScreen(
             artworkUrl.isNotBlank() &&
             (state.motionArtwork == null || !state.motionArtworkEnabled)
         var showArtworkPreview by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
+        val videoTransform = remember(track?.id, state.isVideoMode) {
+            mutableStateOf(PlayerVideoTransform.None)
+        }
 
         PlayerImmersiveBackdrop(
             // The immersive layer already draws the artwork bed. Avoid decoding/drawing a second
@@ -14292,12 +14326,15 @@ private fun PlayerScreen(
 
         val mediaBlock: @Composable (Track) -> Unit = { activeTrack ->
             Box(
-                modifier = if (playerPane == LevyraPlayerPane.SideBySide) {
-                    Modifier
+                modifier = when {
+                    state.isVideoMode -> Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
+                    playerPane == LevyraPlayerPane.SideBySide -> Modifier
                         .size(width = artworkSize, height = artworkSize)
                         .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
-                } else {
-                    Modifier
+                    else -> Modifier
                         .fillMaxHeight()
                         .aspectRatio(1f, matchHeightConstraintsFirst = true)
                         .widthIn(max = maxWidth - playerHorizontalPadding * 2f)
@@ -14305,25 +14342,33 @@ private fun PlayerScreen(
                 }
             ) {
                 if (state.isVideoMode && activeTrack.videoUrl.isNotBlank()) {
-                    LevyraVideoSurface(
-                        state = state,
+                    val zoom = videoTransform.value
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 8.dp, vertical = 8.dp)
                             .graphicsLayer {
-                                scaleX = artScale
-                                scaleY = artScale
-                                translationY = artOffset.toPx()
                                 shadowElevation = artShadow
-                                shape = RoundedCornerShape(artCorner)
+                                shape = LevyraPlayerDesign.ShapeSm
                                 clip = true
                             }
                             .border(
                                 width = 1.dp,
                                 color = Color.White.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(artCorner)
+                                shape = LevyraPlayerDesign.ShapeSm
                             )
-                    )
+                    ) {
+                        LevyraVideoSurface(
+                            state = state,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .graphicsLayer {
+                                    scaleX = zoom.scale
+                                    scaleY = zoom.scale
+                                    translationX = zoom.offsetX
+                                    translationY = zoom.offsetY
+                                }
+                        )
+                    }
                 } else {
                     PlayerArtworkCanvas(
                         track = activeTrack,
@@ -14356,7 +14401,8 @@ private fun PlayerScreen(
                     )
                 }
 
-                if (state.interfaceSettings.playerGesturesEnabled) {
+                val videoGesturesEnabled = state.isVideoMode && activeTrack.videoUrl.isNotBlank()
+                if (state.interfaceSettings.playerGesturesEnabled || videoGesturesEnabled) {
                     PlayerGestureLayer(
                         config = PlayerGestureConfig(
                             trackId = activeTrack.id,
@@ -14397,9 +14443,10 @@ private fun PlayerScreen(
                                 null
                             }
                         ),
+                        videoTransform = videoTransform.takeIf { videoGesturesEnabled },
                         modifier = Modifier
                             .matchParentSize()
-                            .zIndex(20f)
+                            .zIndex(if (videoGesturesEnabled) 21f else 20f)
                     )
                 }
 
@@ -14843,13 +14890,30 @@ private fun PlayerGestureLayer(
     config: PlayerGestureConfig,
     mediaActions: PlayerGestureMediaActions,
     uiActions: PlayerGestureUiActions,
+    videoTransform: MutableState<PlayerVideoTransform>? = null,
     modifier: Modifier = Modifier
 ) {
     val currentPlaybackSpeed by rememberUpdatedState(config.playbackSpeed)
     val volumeAccumulator = remember(config.trackId) { mutableFloatStateOf(0f) }
     val environment = config.environment
-    Box(
-        modifier = modifier
+    val zoomModifier = if (videoTransform == null) {
+        modifier
+    } else {
+        modifier.playerVideoZoomGestures(
+            key = config.trackId,
+            enabled = true,
+            transform = videoTransform,
+            onTakeOver = {
+                cancelPlayerGesture(mediaActions, uiActions, volumeAccumulator)
+            },
+            onTransform = { zoomChange, pan, sizePx ->
+                videoTransform.value = videoTransform.value
+                    .applyPlayerVideoGesture(zoomChange, pan, sizePx)
+            }
+        )
+    }
+    val inputModifier = if (config.settings.playerGesturesEnabled) {
+        zoomModifier
             .pointerInput(
                 config.trackId,
                 config.settings.doubleTapSeekSeconds,
@@ -14913,6 +14977,11 @@ private fun PlayerGestureLayer(
                     volumeAccumulator = volumeAccumulator
                 )
             }
+    } else {
+        zoomModifier
+    }
+    Box(
+        modifier = inputModifier
     )
 }
 
@@ -16492,6 +16561,7 @@ private fun SettingsOverlay(
     onResumeDownload: (String) -> Unit,
     onCancelDownload: (String) -> Unit,
     onShareDiagnostics: () -> Unit,
+    onOpenPlaybackDiagnostics: () -> Unit,
     onBeginLastFm: (String, String) -> Unit,
     onCompleteLastFm: () -> Unit,
     onClearLastFm: () -> Unit,
@@ -17349,6 +17419,14 @@ private fun SettingsOverlay(
                                             }
                                         }
                                     }
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Bolt,
+                                    title = strings.playbackDiagnostics,
+                                    subtitle = strings.playbackDiagnosticsSubtitle,
+                                    onClick = onOpenPlaybackDiagnostics
                                 )
                             }
                             item {
@@ -21953,33 +22031,28 @@ private fun LevyraVideoSurface(
     ) {
         if (player != null) {
             AndroidView(
-                factory = { context ->
-                    // TextureView stays inside Compose bounds; SurfaceView can cover sibling controls.
-                    (android.view.LayoutInflater.from(context).inflate(
-                        R.layout.levyra_video_player_view,
-                        null,
-                        false
-                    ) as androidx.media3.ui.PlayerView).apply {
-                        keepScreenOn = true
-                        this.player = player
-                    }
-                },
-                update = { view ->
-                    val active = PlaybackService.activePlayer
-                    if (view.player !== active) view.player = active
-                    view.resizeMode = if (pictureInPicture) {
-                        AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    } else {
-                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    }
-                    view.keepScreenOn = state.isPlaying
-                },
-                onRelease = { view ->
-                    view.player = null
-                    view.keepScreenOn = false
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+                    factory = { context ->
+                        (android.view.LayoutInflater.from(context).inflate(
+                            R.layout.levyra_video_player_view_zoomable,
+                            null,
+                            false
+                        ) as androidx.media3.ui.PlayerView).apply {
+                            keepScreenOn = true
+                            this.player = player
+                        }
+                    },
+                    update = { view ->
+                        val active = PlaybackService.activePlayer
+                        if (view.player !== active) view.player = active
+                        view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        view.keepScreenOn = state.isPlaying
+                    },
+                    onRelease = { view ->
+                        view.player = null
+                        view.keepScreenOn = false
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
         } else if (!pictureInPicture) {
             VideoLoadingSkeleton()
         }
