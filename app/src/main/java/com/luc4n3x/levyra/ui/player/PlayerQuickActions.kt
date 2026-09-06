@@ -6,13 +6,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -29,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.contentDescription
@@ -49,6 +53,7 @@ internal fun PlayerQuickActions(
     showLyrics: Boolean,
     isDownloaded: Boolean,
     isExporting: Boolean,
+    radioActive: Boolean,
     radioAvailable: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
@@ -138,8 +143,12 @@ internal fun PlayerQuickActions(
             PlayerQuickActionButton(
                 icon = Icons.Rounded.Radio,
                 contentDescription = radioLabel,
-                tint = if (radioAvailable) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.36f),
-                active = false,
+                tint = when {
+                    !radioAvailable -> Color.White.copy(alpha = 0.36f)
+                    radioActive -> primaryColor
+                    else -> Color.White.copy(alpha = 0.82f)
+                },
+                active = radioActive,
                 enabled = radioAvailable,
                 compact = compact,
                 modifier = Modifier
