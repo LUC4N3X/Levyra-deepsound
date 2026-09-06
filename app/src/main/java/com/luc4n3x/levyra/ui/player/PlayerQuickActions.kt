@@ -145,10 +145,13 @@ internal fun PlayerQuickActions(
                 contentDescription = radioLabel,
                 tint = when {
                     !radioAvailable -> Color.White.copy(alpha = 0.36f)
-                    radioActive -> primaryColor
+                    radioActive -> Color.White
                     else -> Color.White.copy(alpha = 0.82f)
                 },
                 active = radioActive,
+                activeColor = primaryColor,
+                emphasizedActive = true,
+                toggleableState = ToggleableState(radioActive),
                 enabled = radioAvailable,
                 compact = compact,
                 modifier = Modifier
@@ -168,6 +171,8 @@ private fun PlayerQuickActionButton(
     active: Boolean,
     compact: Boolean,
     modifier: Modifier = Modifier,
+    activeColor: Color = tint,
+    emphasizedActive: Boolean = false,
     toggleableState: ToggleableState? = null,
     busy: Boolean = false,
     enabled: Boolean = true,
@@ -175,14 +180,27 @@ private fun PlayerQuickActionButton(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val containerAlpha by animateFloatAsState(
-        targetValue = if (active) 0.20f else 0.06f,
+        targetValue = when {
+            active && emphasizedActive -> 0.48f
+            active -> 0.20f
+            else -> 0.06f
+        },
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-container"
     )
     val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.40f else 0.10f,
+        targetValue = when {
+            active && emphasizedActive -> 0.86f
+            active -> 0.40f
+            else -> 0.10f
+        },
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
         label = "player-quick-border"
+    )
+    val activeScale by animateFloatAsState(
+        targetValue = if (active && emphasizedActive) 1.06f else 1f,
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
+        label = "player-quick-active-scale"
     )
 
     Box(
@@ -209,13 +227,17 @@ private fun PlayerQuickActionButton(
         Box(
             modifier = Modifier
                 .size(pillSize)
+                .graphicsLayer {
+                    scaleX = activeScale
+                    scaleY = activeScale
+                }
                 .background(
-                    if (active) tint.copy(alpha = containerAlpha) else Color.White.copy(alpha = containerAlpha),
+                    if (active) activeColor.copy(alpha = containerAlpha) else Color.White.copy(alpha = containerAlpha),
                     CircleShape
                 )
                 .border(
                     1.dp,
-                    if (active) tint.copy(alpha = borderAlpha) else Color.White.copy(alpha = borderAlpha),
+                    if (active) activeColor.copy(alpha = borderAlpha) else Color.White.copy(alpha = borderAlpha),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
