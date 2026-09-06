@@ -735,7 +735,7 @@ fun LevyraNowPlaying(
 
         val quickActionsBlock: @Composable (Track) -> Unit = { activeTrack ->
             val isDownloaded = activeTrack.id in state.downloadedTrackIds
-            val canStartRadio = !state.jam.isActive || state.jam.canControlPlayback
+            val canStartRadio = !state.jam.isActive || state.jam.isHost
 
             PlayerQuickActions(
                 visualMode = visualMode,
