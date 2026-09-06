@@ -14359,7 +14359,6 @@ private fun PlayerScreen(
                     ) {
                         LevyraVideoSurface(
                             state = state,
-                            zoomed = zoom.isZoomed,
                             modifier = Modifier
                                 .matchParentSize()
                                 .graphicsLayer {
@@ -21998,8 +21997,7 @@ private fun LevyraPictureInPictureSurface(state: LevyraUiState) {
 private fun LevyraVideoSurface(
     state: LevyraUiState,
     modifier: Modifier,
-    pictureInPicture: Boolean = false,
-    zoomed: Boolean = false
+    pictureInPicture: Boolean = false
 ) {
     val player = PlaybackService.activePlayer
     var aspectRatio by remember(player, state.currentTrack?.id) {
@@ -22032,16 +22030,10 @@ private fun LevyraVideoSurface(
         contentAlignment = Alignment.Center
     ) {
         if (player != null) {
-            val surfaceLayout = if (zoomed) {
-                R.layout.levyra_video_player_view_zoomable
-            } else {
-                R.layout.levyra_video_player_view
-            }
-            key(surfaceLayout) {
-                AndroidView(
+            AndroidView(
                     factory = { context ->
                         (android.view.LayoutInflater.from(context).inflate(
-                            surfaceLayout,
+                            R.layout.levyra_video_player_view_zoomable,
                             null,
                             false
                         ) as androidx.media3.ui.PlayerView).apply {
@@ -22061,7 +22053,6 @@ private fun LevyraVideoSurface(
                     },
                     modifier = Modifier.fillMaxSize()
                 )
-            }
         } else if (!pictureInPicture) {
             VideoLoadingSkeleton()
         }

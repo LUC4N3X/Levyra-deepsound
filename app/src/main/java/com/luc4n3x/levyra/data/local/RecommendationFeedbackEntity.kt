@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Transaction
 
 @Entity(tableName = "recommendation_feedback")
 data class RecommendationFeedbackEntity(
@@ -31,6 +32,12 @@ interface RecommendationFeedbackDao {
             "(SELECT trackKey FROM recommendation_feedback ORDER BY updatedAt DESC LIMIT :keep)"
     )
     suspend fun trim(keep: Int)
+
+    @Transaction
+    suspend fun upsertAndTrim(row: RecommendationFeedbackEntity, keep: Int) {
+        upsert(row)
+        trim(keep)
+    }
 
     @Query("DELETE FROM recommendation_feedback")
     suspend fun clear()

@@ -34,8 +34,7 @@ class RecommendationFeedbackStore(context: Context) {
     suspend fun record(entry: RecommendationFeedbackEntry): RecommendationFeedback = withContext(Dispatchers.IO) {
         mutationMutex.withLock {
             try {
-                dao.upsert(entry.toEntity())
-                dao.trim(RecommendationFeedback.MAX_ENTRIES)
+                dao.upsertAndTrim(entry.toEntity(), RecommendationFeedback.MAX_ENTRIES)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
