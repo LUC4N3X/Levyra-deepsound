@@ -28,6 +28,7 @@ public class CommentsInfoItem extends InfoItem {
     private boolean pinned;
     private int streamPosition;
     private int replyCount;
+    private boolean liveChat;
     @Nullable
     private Page replies;
     @Nonnull
@@ -172,6 +173,14 @@ public class CommentsInfoItem extends InfoItem {
     @Nullable
     public Page getReplies() {
         return this.replies;
+    }
+
+    public boolean isLiveChat() {
+        return liveChat;
+    }
+
+    public void setLiveChat(final boolean liveChat) {
+        this.liveChat = liveChat;
     }
 
     @Nonnull

@@ -48,6 +48,7 @@ public final class CommentsInfo extends ListInfo<CommentsInfoItem> {
         final InfoItemsPage<CommentsInfoItem> initialCommentsPage =
                 ExtractorHelper.getItemsPageOrLogError(commentsInfo, commentsExtractor);
         commentsInfo.setCommentsDisabled(commentsExtractor.isCommentsDisabled());
+        commentsInfo.setLiveChat(commentsExtractor.isLiveChat());
         commentsInfo.setCommentsCountText(commentsExtractor.getCommentsCountText());
         commentsInfo.setRelatedItems(initialCommentsPage.getItems());
         commentsInfo.setNextPage(initialCommentsPage.getNextPage());
@@ -86,6 +87,7 @@ public final class CommentsInfo extends ListInfo<CommentsInfoItem> {
 
     private transient CommentsExtractor commentsExtractor;
     private boolean commentsDisabled = false;
+    private boolean liveChat = false;
     private String commentsCountText = "";
 
     public CommentsExtractor getCommentsExtractor() {
@@ -111,6 +113,14 @@ public final class CommentsInfo extends ListInfo<CommentsInfoItem> {
      */
     public void setCommentsDisabled(final boolean commentsDisabled) {
         this.commentsDisabled = commentsDisabled;
+    }
+
+    public boolean isLiveChat() {
+        return liveChat;
+    }
+
+    public void setLiveChat(final boolean liveChat) {
+        this.liveChat = liveChat;
     }
 
     /**

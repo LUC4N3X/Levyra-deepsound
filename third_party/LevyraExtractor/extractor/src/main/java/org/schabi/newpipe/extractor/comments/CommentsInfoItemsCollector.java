@@ -102,6 +102,12 @@ public final class CommentsInfoItemsCollector
         }
 
         try {
+            resultItem.setLiveChat(extractor.isLiveChat());
+        } catch (final Exception e) {
+            addError(e);
+        }
+
+        try {
             resultItem.setPictures(extractor.getPictures());
         } catch (final Exception e) {
             addError(e);
