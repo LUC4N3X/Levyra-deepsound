@@ -290,7 +290,7 @@ fun LevyraNowPlaying(
         label = "artwork-scale"
     )
     val artCorner by animateDpAsState(
-        targetValue = if (state.isPlaying) 28.dp else 32.dp,
+        targetValue = if (state.isPlaying) 26.dp else 30.dp,
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "artwork-corner"
     )
@@ -329,12 +329,12 @@ fun LevyraNowPlaying(
         val targetContainedWidth = if (playerPane == LevyraPlayerPane.SideBySide) {
             (phoneUsableWidth / 2f).coerceAtLeast(200.dp)
         } else {
-            phoneUsableWidth
+            phoneUsableWidth * 0.76f
         }
         val maxContainedHeight = if (playerPane == LevyraPlayerPane.SideBySide) {
             (maxHeight * 0.82f).coerceAtLeast(200.dp)
         } else {
-            (maxHeight * 0.46f).coerceAtLeast(260.dp)
+            (maxHeight * 0.35f).coerceAtLeast(180.dp)
         }
         val artworkSize = minOf(
             targetContainedWidth,
@@ -345,6 +345,7 @@ fun LevyraNowPlaying(
 
         val artworkPreviewAvailable = !state.isVideoMode && artworkUrl.isNotBlank() && visualMode == PlayerVisualMode.Artwork
         var showArtworkPreview by remember(track?.id, state.isVideoMode) { mutableStateOf(false) }
+        var optionsExpanded by remember(track?.id) { mutableStateOf(false) }
 
         PlayerVisualHost(
             visualMode = visualMode,
@@ -489,13 +490,29 @@ fun LevyraNowPlaying(
                             onClick = { LevyraPipBridge.enter() }
                         )
                     }
-                    PlayerGlassIconButton(
-                        icon = Icons.Rounded.MoreVert,
-                        contentDescription = strings.options,
-                        size = headerButtonSize,
-                        iconSize = if (compactPlayer) 20.dp else 21.dp,
-                        onClick = { viewModel.openAudioQualityPanel() }
-                    )
+                    Box(contentAlignment = Alignment.TopEnd) {
+                        PlayerGlassIconButton(
+                            icon = Icons.Rounded.MoreVert,
+                            contentDescription = strings.options,
+                            size = headerButtonSize,
+                            iconSize = if (compactPlayer) 20.dp else 21.dp,
+                            onClick = { optionsExpanded = !optionsExpanded }
+                        )
+                        if (optionsMenuContent != null) {
+                            DropdownMenu(
+                                expanded = optionsExpanded,
+                                onDismissRequest = { optionsExpanded = false },
+                                modifier = Modifier
+                                    .width(if (compactPlayer) 276.dp else 296.dp)
+                                    .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                                    .border(1.dp, Color.White.copy(alpha = 0.12f), LevyraPlayerDesign.ShapeMd)
+                            ) {
+                                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                    optionsMenuContent()
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -509,7 +526,7 @@ fun LevyraNowPlaying(
                 } else {
                     Modifier
                         .size(width = artworkSize, height = artworkSize)
-                        .padding(vertical = if (compactPlayer) 2.dp else 4.dp)
+                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
                 },
                 contentAlignment = Alignment.Center
             ) {
@@ -712,11 +729,6 @@ fun LevyraNowPlaying(
 
         val quickActionsBlock: @Composable (Track) -> Unit = { activeTrack ->
             val isDownloaded = activeTrack.id in state.downloadedTrackIds
-            val optionsActive = state.playbackSpeed != 1f ||
-                state.sleepTimerMinutes > 0 ||
-                state.sleepTimerEndOfTrack ||
-                state.audioNormalization
-            var optionsExpanded by remember(activeTrack.id) { mutableStateOf(false) }
 
             PlayerQuickActions(
                 visualMode = visualMode,
@@ -724,7 +736,7 @@ fun LevyraNowPlaying(
                 showLyrics = state.showLyrics,
                 isDownloaded = isDownloaded,
                 isExporting = state.isOfflineExporting,
-                optionsActive = optionsActive,
+                equalizerActive = state.audioSettings.equalizerEnabled,
                 primaryColor = primary,
                 secondaryColor = secondary,
                 compact = compactPlayer,
@@ -740,7 +752,7 @@ fun LevyraNowPlaying(
                     isDownloaded -> strings.downloaded
                     else -> strings.download
                 },
-                optionsLabel = strings.options,
+                equalizerLabel = strings.equalizer,
                 onQueueClick = viewModel::openQueue,
                 onLyricsClick = viewModel::openLyrics,
                 onCycleVisualMode = {
@@ -753,9 +765,10 @@ fun LevyraNowPlaying(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onDownloadClick = viewModel::exportCurrentTrack,
-                onOptionsClick = { optionsExpanded = !optionsExpanded },
-                onOptionsDismiss = { optionsExpanded = false },
-                optionsMenuContent = optionsMenuContent
+                onEqualizerClick = {
+                    viewModel.openAudioQualityPanel()
+                    hapticFeedback.perform(LevyraHapticAction.Confirm)
+                }
             )
         }
 
@@ -812,12 +825,12 @@ fun LevyraNowPlaying(
                     .padding(
                         start = playerHorizontalPadding,
                         end = playerHorizontalPadding,
-                        top = if (compactPlayer) 6.dp else 10.dp,
-                        bottom = if (compactPlayer) 12.dp else 18.dp
+                        top = if (compactPlayer) 4.dp else 6.dp,
+                        bottom = if (compactPlayer) 8.dp else 12.dp
                     )
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
+                verticalArrangement = Arrangement.spacedBy(if (compactPlayer) 4.dp else 6.dp)
             ) {
                 headerBlock()
                 if (track == null) {
@@ -837,14 +850,14 @@ fun LevyraNowPlaying(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = if (compactPlayer) 2.dp else 6.dp),
+                            .padding(vertical = if (compactPlayer) 1.dp else 2.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         mediaHeroBlock(track)
                     }
                     Column(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(if (compactPlayer) 6.dp else 10.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (compactPlayer) 4.dp else 6.dp)
                     ) {
                         metadataBlock(track)
                         progressBlock()

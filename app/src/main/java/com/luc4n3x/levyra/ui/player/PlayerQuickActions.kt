@@ -27,7 +27,6 @@ import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -54,7 +53,7 @@ internal fun PlayerQuickActions(
     showLyrics: Boolean,
     isDownloaded: Boolean,
     isExporting: Boolean,
-    optionsActive: Boolean,
+    equalizerActive: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
     compact: Boolean,
@@ -62,15 +61,13 @@ internal fun PlayerQuickActions(
     lyricsLabel: String,
     visualModeLabel: String,
     downloadLabel: String,
-    optionsLabel: String,
+    equalizerLabel: String,
     onQueueClick: () -> Unit,
     onLyricsClick: () -> Unit,
     onCycleVisualMode: () -> Unit,
     onDownloadClick: () -> Unit,
-    onOptionsClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    onOptionsDismiss: () -> Unit = {},
-    optionsMenuContent: (@Composable () -> Unit)? = null
+    onEqualizerClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val visualModeIcon: ImageVector = when (visualMode) {
         PlayerVisualMode.Artwork -> Icons.Rounded.Image
@@ -142,36 +139,18 @@ internal fun PlayerQuickActions(
                     .fillMaxHeight(),
                 onClick = onDownloadClick
             )
-            Box(
+            PlayerQuickActionButton(
+                icon = Icons.Rounded.Equalizer,
+                contentDescription = equalizerLabel,
+                tint = if (equalizerActive) primaryColor else Color.White.copy(alpha = 0.82f),
+                active = equalizerActive,
+                toggleableState = ToggleableState(equalizerActive),
+                compact = compact,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                contentAlignment = Alignment.Center
-            ) {
-                PlayerQuickActionButton(
-                    icon = Icons.Rounded.Equalizer,
-                    contentDescription = optionsLabel,
-                    tint = if (optionsActive) primaryColor else Color.White.copy(alpha = 0.82f),
-                    active = optionsActive,
-                    compact = compact,
-                    modifier = Modifier.fillMaxSize(),
-                    onClick = onOptionsClick
-                )
-                if (optionsMenuContent != null) {
-                    DropdownMenu(
-                        expanded = optionsActive,
-                        onDismissRequest = onOptionsDismiss,
-                        modifier = Modifier
-                            .width(if (compact) 276.dp else 296.dp)
-                            .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
-                            .border(1.dp, Color.White.copy(alpha = 0.12f), LevyraPlayerDesign.ShapeMd)
-                    ) {
-                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                            optionsMenuContent()
-                        }
-                    }
-                }
-            }
+                onClick = onEqualizerClick
+            )
         }
     }
 }
