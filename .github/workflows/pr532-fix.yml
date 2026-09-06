@@ -1,0 +1,227 @@
+name: PR 532 Review Fix
+
+on:
+  push:
+    branches:
+      - feat/youtube-live-chat
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/youtube-live-chat
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          cache-disabled: true
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 "platform-tools" "platforms;android-37.0" "build-tools;36.0.0"
+
+      - name: Apply fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          extractor = "third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeCommentsExtractor.java"
+          replace_once(
+              extractor,
+              "    private static final int MAX_LIVE_CHAT_ACTIONS = 500;\n",
+              "    private static final int MAX_LIVE_CHAT_ACTIONS = 500;\n    private static final long MAX_LIVE_CHAT_POLL_DELAY_MS = 60_000L;\n"
+          )
+          replace_once(
+              extractor,
+              '''        final String nextContinuation =\n                extractNextLiveChatContinuation(liveChatContinuationObject);\n        final Page nextPage = isNullOrEmpty(nextContinuation)\n                ? null\n                : new Page(replay ? LIVE_CHAT_REPLAY_PAGE_URL : LIVE_CHAT_PAGE_URL,\n                        nextContinuation);\n''',
+              '''        final LiveChatContinuation nextContinuation =\n                extractNextLiveChatContinuationData(liveChatContinuationObject, replay);\n        final Page nextPage = nextContinuation == null\n                ? null\n                : new Page(\n                        nextContinuation.replay\n                                ? LIVE_CHAT_REPLAY_PAGE_URL : LIVE_CHAT_PAGE_URL,\n                        nextContinuation.token,\n                        null,\n                        null,\n                        nextContinuation.pollDelayMs > 0\n                                ? Long.toString(nextContinuation.pollDelayMs)\n                                        .getBytes(StandardCharsets.UTF_8)\n                                : null);\n'''
+          )
+          replace_once(
+              extractor,
+              '''        final String reloadToken = liveChatRenderer.getArray("continuations")\n                .stream()\n                .filter(JsonObject.class::isInstance)\n                .map(JsonObject.class::cast)\n                .map(continuation -> continuation.getObject("reloadContinuationData")\n                        .getString("continuation", ""))\n                .filter(candidate -> !isNullOrEmpty(candidate))\n                .findFirst()\n                .orElse(null);\n        if (reloadToken == null) {\n            return null;\n        }\n        return new LiveChatContinuation(reloadToken,\n                liveChatRenderer.getBoolean("isReplay", false));\n''',
+              '''        return extractLiveChatContinuation(\n                liveChatRenderer.getArray("continuations"),\n                liveChatRenderer.getBoolean("isReplay", false));\n'''
+          )
+          replace_once(
+              extractor,
+              '''    @Nullable\n    static String extractNextLiveChatContinuation(\n            @Nullable final JsonObject liveChatContinuationObject) {\n        if (liveChatContinuationObject == null) {\n            return null;\n        }\n        final JsonArray continuations = liveChatContinuationObject.getArray("continuations");\n        for (final String continuationKey : LIVE_CHAT_CONTINUATION_KEYS) {\n            for (final Object continuation : continuations) {\n                if (!(continuation instanceof JsonObject)) {\n                    continue;\n                }\n                final String candidate = ((JsonObject) continuation)\n                        .getObject(continuationKey)\n                        .getString("continuation", "");\n                if (!isNullOrEmpty(candidate)) {\n                    return candidate;\n                }\n            }\n        }\n        return null;\n    }\n''',
+              '''    @Nullable\n    static String extractNextLiveChatContinuation(\n            @Nullable final JsonObject liveChatContinuationObject) {\n        final LiveChatContinuation continuation =\n                extractNextLiveChatContinuationData(liveChatContinuationObject, false);\n        return continuation == null ? null : continuation.token;\n    }\n\n    @Nullable\n    static LiveChatContinuation extractNextLiveChatContinuationData(\n            @Nullable final JsonObject liveChatContinuationObject,\n            final boolean replay) {\n        if (liveChatContinuationObject == null) {\n            return null;\n        }\n        return extractLiveChatContinuation(\n                liveChatContinuationObject.getArray("continuations"), replay);\n    }\n\n    @Nullable\n    private static LiveChatContinuation extractLiveChatContinuation(\n            @Nullable final JsonArray continuations,\n            final boolean replay) {\n        if (continuations == null) {\n            return null;\n        }\n        for (final String continuationKey : LIVE_CHAT_CONTINUATION_KEYS) {\n            for (final Object continuation : continuations) {\n                if (!(continuation instanceof JsonObject)) {\n                    continue;\n                }\n                final JsonObject continuationData =\n                        ((JsonObject) continuation).getObject(continuationKey);\n                final String candidate = continuationData.getString("continuation", "");\n                if (isNullOrEmpty(candidate)) {\n                    continue;\n                }\n                final Object timeoutValue = continuationData.get("timeoutMs");\n                final long rawPollDelayMs = timeoutValue instanceof Number\n                        ? ((Number) timeoutValue).longValue() : 0L;\n                final long pollDelayMs = Math.max(0L,\n                        Math.min(rawPollDelayMs, MAX_LIVE_CHAT_POLL_DELAY_MS));\n                return new LiveChatContinuation(candidate, replay, pollDelayMs);\n            }\n        }\n        return null;\n    }\n'''
+          )
+          replace_once(
+              extractor,
+              '''    static final class LiveChatContinuation {\n        @Nonnull\n        final String token;\n        final boolean replay;\n\n        LiveChatContinuation(@Nonnull final String token, final boolean replay) {\n            this.token = token;\n            this.replay = replay;\n        }\n    }\n''',
+              '''    static final class LiveChatContinuation {\n        @Nonnull\n        final String token;\n        final boolean replay;\n        final long pollDelayMs;\n\n        LiveChatContinuation(@Nonnull final String token,\n                             final boolean replay,\n                             final long pollDelayMs) {\n            this.token = token;\n            this.replay = replay;\n            this.pollDelayMs = pollDelayMs;\n        }\n    }\n'''
+          )
+
+          repository = "app/src/main/java/com/luc4n3x/levyra/data/YoutubeCommentsRepository.kt"
+          replace_once(
+              repository,
+              '''    val nextToken: String,\n    val liveChat: Boolean = false,\n    val nextPageUrl: String = ""\n''',
+              '''    val nextToken: String,\n    val liveChat: Boolean = false,\n    val nextPageUrl: String = "",\n    val nextPollDelayMs: Long = 0L\n'''
+          )
+          replace_once(
+              repository,
+              '''                    nextToken = info.nextPage?.id.orEmpty(),\n                    nextPageUrl = sanitizeContinuationPageUrl(info.nextPage?.url, normalized)\n''',
+              '''                    nextToken = info.nextPage?.id.orEmpty(),\n                    nextPageUrl = sanitizeContinuationPageUrl(info.nextPage?.url, normalized),\n                    nextPollDelayMs = liveChatPollDelayMs(info.nextPage)\n'''
+          )
+          replace_once(
+              repository,
+              '''            nextToken = nextPage?.id.orEmpty(),\n            nextPageUrl = sanitizeContinuationPageUrl(nextPage?.url, videoId)\n''',
+              '''            nextToken = nextPage?.id.orEmpty(),\n            nextPageUrl = sanitizeContinuationPageUrl(nextPage?.url, videoId),\n            nextPollDelayMs = liveChatPollDelayMs(nextPage)\n'''
+          )
+          replace_once(
+              repository,
+              '''internal val LIVE_CHAT_PAGE_URLS = setOf("live_chat", "live_chat_replay")\n\ninternal fun youtubeWatchUrl''',
+              '''internal val LIVE_CHAT_PAGE_URLS = setOf("live_chat", "live_chat_replay")\ninternal const val MAX_LIVE_CHAT_POLL_DELAY_MS = 60_000L\n\ninternal fun liveChatPollDelayMs(page: Page?): Long {\n    val body = page?.body ?: return 0L\n    if (body.isEmpty() || body.size > 32) return 0L\n    return body.toString(Charsets.UTF_8)\n        .trim()\n        .toLongOrNull()\n        ?.coerceIn(0L, MAX_LIVE_CHAT_POLL_DELAY_MS)\n        ?: 0L\n}\n\ninternal fun youtubeWatchUrl'''
+          )
+
+          domain = "app/src/main/java/com/luc4n3x/levyra/domain/YoutubeEngagement.kt"
+          replace_once(
+              domain,
+              '''    val nextPageUrl: String = "",\n    val liveChat: Boolean = false,\n''',
+              '''    val nextPageUrl: String = "",\n    val nextPollDelayMs: Long = 0L,\n    val liveChat: Boolean = false,\n'''
+          )
+
+          viewmodel = "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
+          replace_once(
+              viewmodel,
+              '''        youtubeCommentContinuationHistory.clear()\n        _state.update { state ->\n''',
+              '''        youtubeCommentContinuationHistory.clear()\n        lastLiveChatPageAtMs = 0L\n        _state.update { state ->\n'''
+          )
+          replace_once(
+              viewmodel,
+              '''            if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch\n            if (result !is YoutubeCommentsResult.Failed) youtubeCommentContinuationHistory.clear()\n            _state.update { state ->\n''',
+              '''            if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch\n            if (result !is YoutubeCommentsResult.Failed) youtubeCommentContinuationHistory.clear()\n            if (result is YoutubeCommentsResult.Available && result.page.liveChat) {\n                lastLiveChatPageAtMs = SystemClock.elapsedRealtime()\n            }\n            _state.update { state ->\n'''
+          )
+          replace_once(
+              viewmodel,
+              '''            if (comments.liveChat) {\n                val elapsed = System.currentTimeMillis() - lastLiveChatPageAtMs\n                if (elapsed < LIVE_CHAT_POLL_INTERVAL_MS) {\n                    delay(LIVE_CHAT_POLL_INTERVAL_MS - elapsed)\n                }\n                lastLiveChatPageAtMs = System.currentTimeMillis()\n            }\n''',
+              '''            if (comments.liveChat) {\n                val pollIntervalMs = youtubeLiveChatPollIntervalMs(comments.nextPollDelayMs)\n                val elapsed = SystemClock.elapsedRealtime() - lastLiveChatPageAtMs\n                if (elapsed < pollIntervalMs) {\n                    delay(pollIntervalMs - elapsed)\n                }\n            }\n'''
+          )
+          replace_once(
+              viewmodel,
+              '''            if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch\n            _state.update { state ->\n''',
+              '''            if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch\n            if (comments.liveChat) {\n                lastLiveChatPageAtMs = SystemClock.elapsedRealtime()\n            }\n            _state.update { state ->\n'''
+          )
+          replace_once(
+              viewmodel,
+              '''                            nextPageUrl = result.page.nextPageUrl,\n                            liveChat = result.page.liveChat,\n''',
+              '''                            nextPageUrl = result.page.nextPageUrl,\n                            nextPollDelayMs = result.page.nextPollDelayMs,\n                            liveChat = result.page.liveChat,\n'''
+          )
+          replace_once(
+              viewmodel,
+              '''internal const val LIVE_CHAT_POLL_INTERVAL_MS = 2_000L\ninternal const val MAX_YOUTUBE_COMMENT_CONTINUATIONS = 512\n\ninternal fun nextYoutubeCommentsToken''',
+              '''internal const val LIVE_CHAT_POLL_INTERVAL_MS = 2_000L\ninternal const val MAX_LIVE_CHAT_POLL_INTERVAL_MS = 60_000L\ninternal const val MAX_YOUTUBE_COMMENT_CONTINUATIONS = 512\n\ninternal fun youtubeLiveChatPollIntervalMs(serverDelayMs: Long): Long =\n    serverDelayMs.coerceIn(LIVE_CHAT_POLL_INTERVAL_MS, MAX_LIVE_CHAT_POLL_INTERVAL_MS)\n\ninternal fun nextYoutubeCommentsToken'''
+          )
+          replace_once(
+              viewmodel,
+              '''            nextPageUrl = result.page.nextPageUrl,\n            liveChat = result.page.liveChat,\n''',
+              '''            nextPageUrl = result.page.nextPageUrl,\n            nextPollDelayMs = result.page.nextPollDelayMs,\n            liveChat = result.page.liveChat,\n'''
+          )
+
+          app = "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"
+          replace_once(
+              app,
+              '''                    comments.items.isEmpty() -> {\n                        Column(\n''',
+              '''                    comments.items.isEmpty() -> {\n                        val emptyCommentsLabel = if (comments.liveChat) strings.liveChat else strings.totalComments\n                        Column(\n'''
+          )
+          replace_once(
+              app,
+              '''                                label = if (comments.nextToken.isBlank()) {\n                                    "${strings.totalComments}: 0"\n                                } else {\n                                    strings.totalComments\n                                },\n''',
+              '''                                label = if (comments.nextToken.isBlank()) {\n                                    "$emptyCommentsLabel: 0"\n                                } else {\n                                    emptyCommentsLabel\n                                },\n'''
+          )
+
+          parsing = "third_party/LevyraExtractor/extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java"
+          replace_once(
+              parsing,
+              '''        if (!isNullOrEmpty(clientVersion)) {\n            clientVersionExtracted = true;\n            return;\n        }\n\n        JsonObject initialData = null;\n''',
+              '''        if (!isNullOrEmpty(clientVersion)) {\n            clientVersionExtracted = true;\n            clientVersionResolvedAtMs = System.currentTimeMillis();\n            return;\n        }\n\n        JsonObject initialData = null;\n'''
+          )
+
+          extractor_test = "third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeLiveChatExtractionTest.java"
+          replace_once(
+              extractor_test,
+              '''    @Test\n    void extractsNextContinuationForEveryKnownType() throws Exception {\n''',
+              '''    @Test\n    void preservesAndBoundsContinuationPollDelay() throws Exception {\n        final YoutubeCommentsExtractor.LiveChatContinuation timed =\n                YoutubeCommentsExtractor.extractNextLiveChatContinuationData(\n                        json("{\\\"continuations\\\":[{\\\"timedContinuationData\\\":"\n                                + "{\\\"continuation\\\":\\\"TIMED\\\",\\\"timeoutMs\\\":8500}}]}"),\n                        false);\n        assertNotNull(timed);\n        assertEquals("TIMED", timed.token);\n        assertEquals(8500L, timed.pollDelayMs);\n\n        final YoutubeCommentsExtractor.LiveChatContinuation bounded =\n                YoutubeCommentsExtractor.extractNextLiveChatContinuationData(\n                        json("{\\\"continuations\\\":[{\\\"invalidationContinuationData\\\":"\n                                + "{\\\"continuation\\\":\\\"FAST\\\",\\\"timeoutMs\\\":999999}}]}"),\n                        true);\n        assertNotNull(bounded);\n        assertTrue(bounded.replay);\n        assertEquals(60000L, bounded.pollDelayMs);\n    }\n\n    @Test\n    void extractsNextContinuationForEveryKnownType() throws Exception {\n'''
+          )
+
+          repo_test = "app/src/test/java/com/luc4n3x/levyra/data/YoutubeCommentsRepositoryTest.kt"
+          replace_once(
+              repo_test,
+              '''    @Test\n    fun keepsOnlyKnownLiveChatContinuationPageUrls() {\n''',
+              '''    @Test\n    fun readsAndBoundsLiveChatPollDelayFromContinuationPage() {\n        assertEquals(8_500L, liveChatPollDelayMs(Page("live_chat", "token", null, null, "8500".toByteArray())))\n        assertEquals(60_000L, liveChatPollDelayMs(Page("live_chat", "token", null, null, "999999".toByteArray())))\n        assertEquals(0L, liveChatPollDelayMs(Page("live_chat", "token", null, null, "invalid".toByteArray())))\n        assertEquals(0L, liveChatPollDelayMs(null))\n    }\n\n    @Test\n    fun keepsOnlyKnownLiveChatContinuationPageUrls() {\n'''
+          )
+          replace_once(
+              repo_test,
+              '''import org.junit.Assert.assertEquals\n''',
+              '''import org.junit.Assert.assertEquals\nimport org.schabi.newpipe.extractor.Page\n'''
+          )
+
+          identity_test = "app/src/test/java/com/luc4n3x/levyra/viewmodel/YoutubeEngagementIdentityTest.kt"
+          replace_once(
+              identity_test,
+              '''    @Test\n    fun continuationCyclesAreStoppedAcrossSuccessfulPages() {\n''',
+              '''    @Test\n    fun liveChatPollingKeepsSafetyFloorAndHonorsServerDelay() {\n        assertEquals(2_000L, youtubeLiveChatPollIntervalMs(0L))\n        assertEquals(8_500L, youtubeLiveChatPollIntervalMs(8_500L))\n        assertEquals(60_000L, youtubeLiveChatPollIntervalMs(999_999L))\n    }\n\n    @Test\n    fun continuationCyclesAreStoppedAcrossSuccessfulPages() {\n'''
+          )
+
+          client_test = "third_party/LevyraExtractor/extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/YoutubeSwJsDataClientVersionTest.java"
+          replace_once(
+              client_test,
+              '''    @Test\n    void nonBlockingAccessorReusesCachedVersion() throws Exception {\n''',
+              '''    @Test\n    void htmlFallbackPublishesAReusableCachedVersion() throws Exception {\n        final HtmlFallbackDownloader downloader = new HtmlFallbackDownloader(CLIENT_VERSION);\n        NewPipe.init(downloader, Localization.DEFAULT, ContentCountry.DEFAULT);\n\n        assertEquals(CLIENT_VERSION, YoutubeParsingHelper.getClientVersion());\n        assertEquals(CLIENT_VERSION, YoutubeParsingHelper.getCachedClientVersion());\n        final int requestsAfterResolution = downloader.requestCount.get();\n        assertEquals(CLIENT_VERSION,\n                YoutubeParsingHelper.getClientVersionWithoutBlocking("1.2.3"));\n        assertEquals(requestsAfterResolution, downloader.requestCount.get());\n    }\n\n    @Test\n    void nonBlockingAccessorReusesCachedVersion() throws Exception {\n'''
+          )
+          replace_once(
+              client_test,
+              '''    private static final class FailingDownloader extends Downloader {\n''',
+              '''    private static final class HtmlFallbackDownloader extends Downloader {\n        private final AtomicInteger requestCount = new AtomicInteger();\n        private final String version;\n\n        private HtmlFallbackDownloader(final String version) {\n            this.version = version;\n        }\n\n        @Override\n        public Response execute(@Nonnull final Request request) throws IOException {\n            requestCount.incrementAndGet();\n            if (request.url().contains("sw.js_data")) {\n                throw new IOException("sw.js_data unavailable");\n            }\n            if (request.url().contains("/results?")) {\n                final String body = "<html><script>{\\\"INNERTUBE_CONTEXT_CLIENT_VERSION\\\":\\\""\n                        + version + "\\\"}</script></html>";\n                return new Response(200, "OK", Collections.emptyMap(), body, null, request.url());\n            }\n            throw new IOException("Unexpected request: " + request.url());\n        }\n\n        @Override\n        public CancellableCall executeAsync(@Nonnull final Request request,\n                                            final AsyncCallback callback) {\n            throw new UnsupportedOperationException();\n        }\n    }\n\n    private static final class FailingDownloader extends Downloader {\n'''
+          )
+          PY
+
+      - name: Focused extractor tests
+        run: |
+          ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test \
+            --tests 'org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeLiveChatExtractionTest' \
+            --tests 'org.schabi.newpipe.extractor.services.youtube.YoutubeSwJsDataClientVersionTest'
+
+      - name: Focused Android tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.YoutubeCommentsRepositoryTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.YoutubeEngagementIdentityTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest'
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/pr532-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(youtube): harden live chat polling and client version cache"
+          git push origin HEAD:feat/youtube-live-chat
