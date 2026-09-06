@@ -601,7 +601,7 @@ class LevyraPreferences(context: Context) {
                     PlayerVisualMode.Artwork
                 }
             }
-            else -> PlayerVisualMode.CanvasCard
+            else -> PlayerVisualMode.Artwork
         }
         val storedBackground = preferences[KEY_UI_PLAYER_BACKGROUND]
         val background = when {
