@@ -252,6 +252,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
         val now = System.currentTimeMillis()
         return withContext(Dispatchers.IO) {
             val strategies = readStrategyHealth(playerState.videoMode, now)
+            val network = networkSnapshot()
             PlaybackDiagnosticSnapshot(
                 status = playbackDiagnosticStatus(
                     errorCode = playerState.playerErrorCode,
@@ -275,9 +276,9 @@ internal class PlaybackDiagnosticsReader(context: Context) {
                 audioFormat = playerState.audioFormat,
                 videoFormat = playerState.videoFormat,
                 cacheBytes = LevyraMediaCache.currentCacheSpace(),
-                networkTransport = playerState.network.transport,
-                networkValidated = playerState.network.validated,
-                networkMetered = playerState.network.metered,
+                networkTransport = network.transport,
+                networkValidated = network.validated,
+                networkMetered = network.metered,
                 playerErrorCode = playerState.playerErrorCode,
                 activeStrategy = activeStrategy,
                 client = playerState.client,
@@ -315,7 +316,6 @@ internal class PlaybackDiagnosticsReader(context: Context) {
             audioSessionId = player?.audioSessionId?.takeIf { it > 0 },
             audioFormat = selected.firstOrNull { it.sampleMimeType?.startsWith("audio/") == true }?.toDiagnosticFormat(),
             videoFormat = selected.firstOrNull { it.sampleMimeType?.startsWith("video/") == true }?.toDiagnosticFormat(),
-            network = networkSnapshot(),
             playerErrorCode = player?.playerError?.errorCodeName.orEmpty(),
             client = PlaybackDiagnosticClient(
                 name = identity?.clientName.orEmpty(),
@@ -409,7 +409,6 @@ private data class PlayerDiagnosticState(
     val audioSessionId: Int?,
     val audioFormat: PlaybackDiagnosticFormat?,
     val videoFormat: PlaybackDiagnosticFormat?,
-    val network: PlaybackDiagnosticNetwork,
     val playerErrorCode: String,
     val client: PlaybackDiagnosticClient
 )

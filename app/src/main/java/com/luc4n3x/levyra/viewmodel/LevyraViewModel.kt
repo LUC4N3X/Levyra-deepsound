@@ -685,6 +685,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
+    private val recommendationFeedbackMutationMutex = Mutex()
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
@@ -2010,7 +2011,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun loadRecommendationFeedback() {
         viewModelScope.launch {
-            applyRecommendationFeedback(recommendationFeedbackStore.load())
+            recommendationFeedbackMutationMutex.withLock {
+                applyRecommendationFeedback(recommendationFeedbackStore.load())
+            }
         }
     }
 
@@ -2021,14 +2024,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setTrackFeedback(track: Track, kind: RecommendationFeedbackKind) {
         val entry = RecommendationFeedback.entryFor(track, kind) ?: return
-        val current = _state.value.recommendationFeedback.kindFor(track)
         viewModelScope.launch {
-            val updated = if (current == kind) {
-                recommendationFeedbackStore.clear(entry.trackKey)
-            } else {
-                recommendationFeedbackStore.record(entry)
+            recommendationFeedbackMutationMutex.withLock {
+                val current = _state.value.recommendationFeedback.kindFor(track)
+                val updated = if (current == kind) {
+                    recommendationFeedbackStore.clear(entry.trackKey)
+                } else {
+                    recommendationFeedbackStore.record(entry)
+                }
+                applyRecommendationFeedback(updated)
             }
-            applyRecommendationFeedback(updated)
         }
     }
 
