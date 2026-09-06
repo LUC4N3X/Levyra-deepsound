@@ -14,7 +14,7 @@ internal val playerVisualKeys = setOf(
     "playerBackgroundPureBlack",
     "enterImmersive",
     "exitImmersive"
-)
+) + liveChatKeys + diagnosticsKeys
 
 private fun playerVisual(
     visualMode: String,
@@ -76,6 +76,6 @@ private val playerVisualBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> =
-    playerVisualBundles.getValue(code)
+    playerVisualBundles.getValue(code) + liveChatLocalizationEntries(code) + diagnosticsLocalizationEntries(code)
 
 internal fun playerVisualLocalizationCodes(): Set<String> = playerVisualBundles.keys
