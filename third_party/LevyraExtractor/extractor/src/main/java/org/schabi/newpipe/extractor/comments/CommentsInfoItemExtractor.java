@@ -136,6 +136,10 @@ public interface CommentsInfoItemExtractor extends InfoItemExtractor {
         return null;
     }
 
+    default boolean isLiveChat() throws ParsingException {
+        return false;
+    }
+
     @Nonnull
     default Collection<Image> getPictures() throws ParsingException {
         return Collections.emptyList();
