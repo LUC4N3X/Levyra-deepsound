@@ -125,3 +125,33 @@ fun playerSwipeContentAlpha(offsetPx: Float, widthPx: Float): Float {
 }
 
 private fun Float.finiteOr(fallback: Float): Float = if (isFinite()) this else fallback
+
+data class PlayerGestureEnvironment(
+    val activity: android.app.Activity?,
+    val audioManager: android.media.AudioManager?,
+    val brightnessLabel: String,
+    val volumeLabel: String,
+    val rightToLeft: Boolean
+)
+
+data class PlayerGestureConfig(
+    val trackId: String,
+    val settings: com.luc4n3x.levyra.domain.LevyraInterfaceSettings,
+    val playbackSpeed: Float,
+    val environment: PlayerGestureEnvironment
+)
+
+data class PlayerGestureMediaActions(
+    val seekBy: (Long) -> Unit,
+    val next: () -> Unit,
+    val previous: () -> Unit,
+    val swipeOffset: (Float) -> Unit,
+    val temporarySpeed: (Float) -> Unit
+)
+
+data class PlayerGestureUiActions(
+    val feedback: (String) -> Unit,
+    val haptic: () -> Unit,
+    val collapse: PlayerCollapseActions,
+    val artworkPreview: (() -> Unit)? = null
+)
