@@ -823,6 +823,7 @@ fun LevyraNowPlaying(
                 onDownloadClick = viewModel::exportCurrentTrack,
                 onStartRadio = {
                     viewModel.startSongRadio()
+                    viewModel.openQueue()
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 }
             )
