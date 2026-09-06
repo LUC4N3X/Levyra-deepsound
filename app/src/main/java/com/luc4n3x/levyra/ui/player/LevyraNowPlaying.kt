@@ -735,6 +735,7 @@ fun LevyraNowPlaying(
 
         val quickActionsBlock: @Composable (Track) -> Unit = { activeTrack ->
             val isDownloaded = activeTrack.id in state.downloadedTrackIds
+            val canStartRadio = !state.jam.isActive || state.jam.canControlPlayback
 
             PlayerQuickActions(
                 visualMode = visualMode,
@@ -742,7 +743,8 @@ fun LevyraNowPlaying(
                 showLyrics = state.showLyrics,
                 isDownloaded = isDownloaded,
                 isExporting = state.isOfflineExporting,
-                equalizerActive = state.audioSettings.equalizerEnabled,
+                radioActive = state.radioEnabled,
+                radioAvailable = canStartRadio,
                 primaryColor = primary,
                 secondaryColor = secondary,
                 compact = compactPlayer,
@@ -758,7 +760,7 @@ fun LevyraNowPlaying(
                     isDownloaded -> strings.downloaded
                     else -> strings.download
                 },
-                equalizerLabel = strings.equalizer,
+                radioLabel = strings.startRadio,
                 onQueueClick = viewModel::openQueue,
                 onLyricsClick = viewModel::openLyrics,
                 onCycleVisualMode = {
@@ -771,8 +773,8 @@ fun LevyraNowPlaying(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onDownloadClick = viewModel::exportCurrentTrack,
-                onEqualizerClick = {
-                    viewModel.openAudioQualityPanel()
+                onStartRadio = {
+                    viewModel.startSongRadio()
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 }
             )
