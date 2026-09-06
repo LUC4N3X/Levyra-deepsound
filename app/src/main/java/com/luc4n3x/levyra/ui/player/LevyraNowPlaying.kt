@@ -505,15 +505,6 @@ fun LevyraNowPlaying(
                             borderBottom = primary.copy(alpha = 0.14f),
                             onClick = { LevyraPipBridge.enter() }
                         )
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.Fullscreen,
-                            contentDescription = strings.enterImmersive,
-                            size = headerButtonSize,
-                            iconSize = 20.dp,
-                            borderTop = primary.copy(alpha = 0.48f),
-                            borderBottom = primary.copy(alpha = 0.14f),
-                            onClick = { videoFullscreen = true }
-                        )
                     }
                     Box(contentAlignment = Alignment.TopEnd) {
                         PlayerGlassIconButton(
@@ -661,6 +652,22 @@ fun LevyraNowPlaying(
                         Modifier
                             .matchParentSize()
                             .zIndex(if (videoGesturesEnabled) 21f else 20f)
+                    )
+                }
+
+                if (videoGesturesEnabled && !videoFullscreen) {
+                    PlayerGlassIconButton(
+                        icon = Icons.Rounded.Fullscreen,
+                        contentDescription = strings.enterImmersive,
+                        size = LevyraPlayerDesign.MinimumTouchTarget,
+                        iconSize = 21.dp,
+                        borderTop = primary.copy(alpha = 0.48f),
+                        borderBottom = primary.copy(alpha = 0.14f),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = LevyraPlayerDesign.SpaceSm, bottom = LevyraPlayerDesign.SpaceSm)
+                            .zIndex(23f),
+                        onClick = { videoFullscreen = true }
                     )
                 }
 
@@ -989,7 +996,7 @@ fun LevyraNowPlaying(
                 PlayerGlassIconButton(
                     icon = Icons.Rounded.CloseFullscreen,
                     contentDescription = strings.exitImmersive,
-                    size = LevyraPlayerDesign.HeaderButton,
+                    size = LevyraPlayerDesign.MinimumTouchTarget,
                     iconSize = 22.dp,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
