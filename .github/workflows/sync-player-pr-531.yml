@@ -9,8 +9,38 @@ permissions:
   contents: write
 
 jobs:
-  probe:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe runner
-        run: echo ready
+      - name: Checkout helper
+        uses: actions/checkout@v7
+        with:
+          ref: automation/sync-player-pr-531
+          path: helper
+          fetch-depth: 1
+
+      - name: Checkout player branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/player-experience-redesign
+          path: repo
+          fetch-depth: 0
+
+      - name: Merge current main and apply video integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repo
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git fetch origin main
+          git merge origin/main --no-commit --no-ff -Xours
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+          python3 ../helper/.github/scripts/sync_player_pr_531.py .
+          git add -A
+          git diff --cached --check
+          git commit -m "chore(player): sync redesign with main video mode"
+          git push origin HEAD:feat/player-experience-redesign
