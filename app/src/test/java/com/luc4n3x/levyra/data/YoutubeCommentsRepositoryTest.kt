@@ -58,4 +58,25 @@ class YoutubeCommentsRepositoryTest {
             )
         )
     }
+
+    @Test
+    fun keepsOnlyKnownLiveChatContinuationPageUrls() {
+        assertEquals("live_chat", sanitizeContinuationPageUrl("live_chat", "aBcDeFgHiJk"))
+        assertEquals(
+            "live_chat_replay",
+            sanitizeContinuationPageUrl("  live_chat_replay  ", "aBcDeFgHiJk")
+        )
+        assertEquals(
+            "https://www.youtube.com/watch?v=aBcDeFgHiJk",
+            sanitizeContinuationPageUrl(null, "aBcDeFgHiJk")
+        )
+        assertEquals(
+            "https://www.youtube.com/watch?v=aBcDeFgHiJk",
+            sanitizeContinuationPageUrl("", "aBcDeFgHiJk")
+        )
+        assertEquals(
+            "https://www.youtube.com/watch?v=aBcDeFgHiJk",
+            sanitizeContinuationPageUrl("https://evil.example/live_chat", "aBcDeFgHiJk")
+        )
+    }
 }

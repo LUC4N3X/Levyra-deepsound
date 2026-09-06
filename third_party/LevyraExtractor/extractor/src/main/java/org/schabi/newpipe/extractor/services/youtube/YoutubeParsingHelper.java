@@ -68,6 +68,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -211,8 +212,11 @@ YoutubeParsingHelper {
     public static final String SAFARI_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)";
 
     private static final long CLIENT_VERSION_TTL_MS = 6L * 60L * 60L * 1000L;
-    private static String clientVersion;
-    private static long clientVersionResolvedAtMs;
+    private static final Pattern WEB_CLIENT_VERSION_PATTERN =
+            Pattern.compile("^\\d{1,3}\\.\\d{6,10}(?:\\.\\d{1,4}){1,3}$");
+    private static final AtomicBoolean CLIENT_VERSION_REFRESH_RUNNING = new AtomicBoolean();
+    private static volatile String clientVersion;
+    private static volatile long clientVersionResolvedAtMs;
 
     private static String youtubeMusicClientVersion;
 
@@ -699,10 +703,59 @@ YoutubeParsingHelper {
             if (isNullOrEmpty(version)) {
                 throw new ParsingException("YouTube WEB client version missing from sw.js_data");
             }
-            return version;
+            final String trimmedVersion = version.trim();
+            if (!isValidWebClientVersion(trimmedVersion)) {
+                throw new ParsingException(
+                        "Invalid YouTube WEB client version returned by sw.js_data");
+            }
+            return trimmedVersion;
         } catch (final JsonParserException | RuntimeException e) {
             throw new ParsingException(
                     "Could not extract YouTube WEB InnerTube client version from sw.js_data", e);
+        }
+    }
+
+    static boolean isValidWebClientVersion(@Nullable final String version) {
+        return !isNullOrEmpty(version) && WEB_CLIENT_VERSION_PATTERN.matcher(version).matches();
+    }
+
+    @Nullable
+    public static String getCachedClientVersion() {
+        if (isNullOrEmpty(clientVersion)
+                || System.currentTimeMillis() - clientVersionResolvedAtMs
+                        >= CLIENT_VERSION_TTL_MS) {
+            return null;
+        }
+        return clientVersion;
+    }
+
+    @Nonnull
+    public static String getClientVersionWithoutBlocking(@Nonnull final String fallback) {
+        final String cached = getCachedClientVersion();
+        if (cached != null) {
+            return cached;
+        }
+        refreshClientVersionInBackground();
+        return fallback;
+    }
+
+    private static void refreshClientVersionInBackground() {
+        if (!CLIENT_VERSION_REFRESH_RUNNING.compareAndSet(false, true)) {
+            return;
+        }
+        final Thread refreshThread = new Thread(() -> {
+            try {
+                getClientVersion();
+            } catch (final Exception ignored) {
+            } finally {
+                CLIENT_VERSION_REFRESH_RUNNING.set(false);
+            }
+        }, "Levyra-client-version-refresh");
+        refreshThread.setDaemon(true);
+        try {
+            refreshThread.start();
+        } catch (final Exception ignored) {
+            CLIENT_VERSION_REFRESH_RUNNING.set(false);
         }
     }
 
@@ -1154,6 +1207,7 @@ YoutubeParsingHelper {
         clientVersion = null;
         clientVersionResolvedAtMs = 0L;
         clientVersionExtracted = false;
+        CLIENT_VERSION_REFRESH_RUNNING.set(false);
     }
 
     /**

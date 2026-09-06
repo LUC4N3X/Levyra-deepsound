@@ -15160,7 +15160,7 @@ private fun PlayerYoutubeCommentsSheet(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = strings.totalComments,
+                            text = if (comments.liveChat) strings.liveChat else strings.totalComments,
                             color = Color.White,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black

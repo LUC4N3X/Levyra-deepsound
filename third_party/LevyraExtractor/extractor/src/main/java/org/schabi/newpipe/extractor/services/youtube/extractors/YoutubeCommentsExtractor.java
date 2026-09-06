@@ -34,6 +34,22 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
     private static final String COMMENT_VIEW_MODEL_KEY = "commentViewModel";
     private static final String COMMENT_RENDERER_KEY = "commentRenderer";
 
+    static final String LIVE_CHAT_PAGE_URL = "live_chat";
+    static final String LIVE_CHAT_REPLAY_PAGE_URL = "live_chat_replay";
+
+    private static final String LIVE_CHAT_ENDPOINT = "live_chat/get_live_chat";
+    private static final String LIVE_CHAT_REPLAY_ENDPOINT = "live_chat/get_live_chat_replay";
+
+    private static final int MAX_LIVE_CHAT_ACTIONS = 500;
+
+    private static final String[] LIVE_CHAT_CONTINUATION_KEYS = {
+            "invalidationContinuationData",
+            "timedContinuationData",
+            "liveChatReplayContinuationData",
+            "reloadContinuationData",
+            "playerSeekContinuationData"
+    };
+
     /**
      * Whether comments are disabled on video.
      */
@@ -48,6 +64,10 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
     private JsonObject ajaxJson;
     private JSONObject ajaxJsonSafe;
 
+    @Nullable
+    private String liveChatContinuation;
+    private boolean liveChatReplay;
+
     public YoutubeCommentsExtractor(
             final StreamingService service,
             final ListLinkHandler uiHandler) {
@@ -58,6 +78,10 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
     @Override
     public InfoItemsPage<CommentsInfoItem> getInitialPage()
             throws IOException, ExtractionException {
+
+        if (liveChatContinuation != null) {
+            return getLiveChatPage(liveChatContinuation, liveChatReplay);
+        }
 
         if (commentsDisabled) {
             return getInfoItemsPageForDisabledComments();
@@ -248,6 +272,11 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
     @Override
     public InfoItemsPage<CommentsInfoItem> getPage(final Page page)
             throws IOException, ExtractionException {
+
+        if (isLiveChatPage(page)) {
+            return getLiveChatPage(page.getId(),
+                    LIVE_CHAT_REPLAY_PAGE_URL.equals(page.getUrl()));
+        }
 
         if (commentsDisabled) {
             return getInfoItemsPageForDisabledComments();
@@ -489,10 +518,16 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
                 .getBytes(StandardCharsets.UTF_8);
         // @formatter:on
 
-        final String initialToken =
-                findInitialCommentsToken(getJsonPostResponse("next", body, localization));
+        final JsonObject nextResponse = getJsonPostResponse("next", body, localization);
+        final String initialToken = findInitialCommentsToken(nextResponse);
 
         if (initialToken == null) {
+            final LiveChatContinuation continuation =
+                    extractInitialLiveChatContinuation(nextResponse);
+            if (continuation != null) {
+                liveChatContinuation = continuation.token;
+                liveChatReplay = continuation.replay;
+            }
             return;
         }
 
@@ -518,6 +553,156 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
 
     @Override
     public boolean isCommentsDisabled() {
-        return commentsDisabled;
+        return commentsDisabled && liveChatContinuation == null;
+    }
+
+    @Override
+    public boolean isLiveChat() {
+        return liveChatContinuation != null;
+    }
+
+    private static boolean isLiveChatPage(@Nullable final Page page) {
+        return page != null
+                && !isNullOrEmpty(page.getId())
+                && (LIVE_CHAT_PAGE_URL.equals(page.getUrl())
+                        || LIVE_CHAT_REPLAY_PAGE_URL.equals(page.getUrl()));
+    }
+
+    private InfoItemsPage<CommentsInfoItem> getLiveChatPage(final String continuation,
+                                                            final boolean replay)
+            throws IOException, ExtractionException {
+        final Localization localization = getExtractorLocalization();
+        final byte[] body = JsonWriter.string(
+                        prepareDesktopJsonBuilder(localization, getExtractorContentCountry())
+                                .value("continuation", continuation)
+                                .done())
+                .getBytes(StandardCharsets.UTF_8);
+
+        final JsonObject liveChatContinuationObject = getJsonPostResponse(
+                        replay ? LIVE_CHAT_REPLAY_ENDPOINT : LIVE_CHAT_ENDPOINT, body, localization)
+                .getObject("continuationContents")
+                .getObject("liveChatContinuation");
+
+        final CommentsInfoItemsCollector collector =
+                new CommentsInfoItemsCollector(getServiceId());
+        collectLiveChatMessages(liveChatContinuationObject, collector, getUrl());
+
+        final String nextContinuation =
+                extractNextLiveChatContinuation(liveChatContinuationObject);
+        final Page nextPage = isNullOrEmpty(nextContinuation)
+                ? null
+                : new Page(replay ? LIVE_CHAT_REPLAY_PAGE_URL : LIVE_CHAT_PAGE_URL,
+                        nextContinuation);
+
+        return new InfoItemsPage<>(collector.getItems(), nextPage, collector.getErrors(), true);
+    }
+
+    @Nullable
+    static LiveChatContinuation extractInitialLiveChatContinuation(
+            @Nullable final JsonObject nextResponse) {
+        if (nextResponse == null) {
+            return null;
+        }
+        final JsonObject liveChatRenderer = nextResponse.getObject("contents")
+                .getObject("twoColumnWatchNextResults")
+                .getObject("conversationBar")
+                .getObject("liveChatRenderer");
+        if (liveChatRenderer.isEmpty()) {
+            return null;
+        }
+        final String reloadToken = liveChatRenderer.getArray("continuations")
+                .stream()
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                .map(continuation -> continuation.getObject("reloadContinuationData")
+                        .getString("continuation", ""))
+                .filter(candidate -> !isNullOrEmpty(candidate))
+                .findFirst()
+                .orElse(null);
+        if (reloadToken == null) {
+            return null;
+        }
+        return new LiveChatContinuation(reloadToken,
+                liveChatRenderer.getBoolean("isReplay", false));
+    }
+
+    @Nullable
+    static String extractNextLiveChatContinuation(
+            @Nullable final JsonObject liveChatContinuationObject) {
+        if (liveChatContinuationObject == null) {
+            return null;
+        }
+        final JsonArray continuations = liveChatContinuationObject.getArray("continuations");
+        for (final String continuationKey : LIVE_CHAT_CONTINUATION_KEYS) {
+            for (final Object continuation : continuations) {
+                if (!(continuation instanceof JsonObject)) {
+                    continue;
+                }
+                final String candidate = ((JsonObject) continuation)
+                        .getObject(continuationKey)
+                        .getString("continuation", "");
+                if (!isNullOrEmpty(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+        return null;
+    }
+
+    static void collectLiveChatMessages(@Nullable final JsonObject liveChatContinuationObject,
+                                        @Nonnull final CommentsInfoItemsCollector collector,
+                                        @Nonnull final String videoUrl) {
+        if (liveChatContinuationObject == null) {
+            return;
+        }
+        int inspected = 0;
+        for (final Object action : liveChatContinuationObject.getArray("actions")) {
+            if (inspected >= MAX_LIVE_CHAT_ACTIONS) {
+                break;
+            }
+            inspected++;
+            if (!(action instanceof JsonObject)) {
+                continue;
+            }
+            final JsonObject actionObject = (JsonObject) action;
+            if (actionObject.has("replayChatItemAction")) {
+                for (final Object replayAction
+                        : actionObject.getObject("replayChatItemAction").getArray("actions")) {
+                    if (inspected >= MAX_LIVE_CHAT_ACTIONS) {
+                        break;
+                    }
+                    inspected++;
+                    if (replayAction instanceof JsonObject) {
+                        collectLiveChatMessage((JsonObject) replayAction, collector, videoUrl);
+                    }
+                }
+            } else {
+                collectLiveChatMessage(actionObject, collector, videoUrl);
+            }
+        }
+    }
+
+    private static void collectLiveChatMessage(
+            @Nonnull final JsonObject action,
+            @Nonnull final CommentsInfoItemsCollector collector,
+            @Nonnull final String videoUrl) {
+        final JsonObject renderer = action.getObject("addChatItemAction")
+                .getObject("item")
+                .getObject("liveChatTextMessageRenderer");
+        if (renderer.isEmpty()) {
+            return;
+        }
+        collector.commit(new YoutubeLiveChatInfoItemExtractor(renderer, videoUrl));
+    }
+
+    static final class LiveChatContinuation {
+        @Nonnull
+        final String token;
+        final boolean replay;
+
+        LiveChatContinuation(@Nonnull final String token, final boolean replay) {
+            this.token = token;
+            this.replay = replay;
+        }
     }
 }

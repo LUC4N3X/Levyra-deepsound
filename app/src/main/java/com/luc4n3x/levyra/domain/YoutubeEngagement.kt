@@ -17,6 +17,7 @@ data class YoutubeComment(
     val streamPositionSeconds: Int = -1,
     val replyCount: Int = 0,
     val replyToken: String = "",
+    val liveChat: Boolean = false,
     val replies: List<YoutubeComment> = emptyList(),
     val repliesNextToken: String = "",
     val repliesExpanded: Boolean = false,
@@ -35,6 +36,8 @@ data class YoutubeCommentsState(
     val countText: String = "",
     val items: List<YoutubeComment> = emptyList(),
     val nextToken: String = "",
+    val nextPageUrl: String = "",
+    val liveChat: Boolean = false,
     val error: String? = null
 )
 

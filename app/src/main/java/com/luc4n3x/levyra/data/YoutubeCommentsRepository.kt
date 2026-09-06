@@ -26,7 +26,9 @@ internal data class YoutubeCommentsPage(
     val countText: String,
     val commentsDisabled: Boolean,
     val items: List<YoutubeComment>,
-    val nextToken: String
+    val nextToken: String,
+    val liveChat: Boolean = false,
+    val nextPageUrl: String = ""
 )
 
 internal sealed interface YoutubeCommentsResult {
@@ -48,7 +50,7 @@ internal class YoutubeCommentsRepository {
         }
         return resolve(RequestKey(normalized, "initial"), forceRefresh = forceRefresh) {
             NewPipeRuntime.ensure()
-            val url = youtubeUrl(normalized)
+            val url = youtubeWatchUrl(normalized)
             val info = CommentsInfo.getInfo(ServiceList.YouTube, url)
                 ?: return@resolve YoutubeCommentsResult.Failed()
             if (info.isCommentsDisabled) {
@@ -58,8 +60,10 @@ internal class YoutubeCommentsRepository {
                     videoId = normalized,
                     countText = info.commentsCountText.orEmpty().trim().take(MAX_COUNT_TEXT_LENGTH),
                     commentsDisabled = false,
+                    liveChat = info.isLiveChat,
                     items = info.relatedItems.orEmpty().mapNotNull(::toComment),
-                    nextToken = info.nextPage?.id.orEmpty()
+                    nextToken = info.nextPage?.id.orEmpty(),
+                    nextPageUrl = sanitizeContinuationPageUrl(info.nextPage?.url, normalized)
                 )
                 YoutubeCommentsResult.Available(
                     advancePastEmptyParsedPages(
@@ -74,6 +78,7 @@ internal class YoutubeCommentsRepository {
     suspend fun more(
         videoId: String,
         continuationToken: String,
+        pageUrl: String = "",
         forceRefresh: Boolean = false
     ): YoutubeCommentsResult {
         val normalized = videoId.trim()
@@ -81,9 +86,13 @@ internal class YoutubeCommentsRepository {
         if (!COMMENTS_VIDEO_ID.matches(normalized) || token.isBlank()) {
             return YoutubeCommentsResult.Failed(IllegalArgumentException("Invalid comments continuation"))
         }
-        return resolve(RequestKey(normalized, "page:$token"), forceRefresh = forceRefresh) {
+        val resolvedPageUrl = sanitizeContinuationPageUrl(pageUrl, normalized)
+        return resolve(
+            RequestKey(normalized, "page:$resolvedPageUrl:$token"),
+            forceRefresh = forceRefresh
+        ) {
             NewPipeRuntime.ensure()
-            val firstPage = fetchContinuationPage(normalized, token)
+            val firstPage = fetchContinuationPage(normalized, token, resolvedPageUrl)
             YoutubeCommentsResult.Available(
                 advancePastEmptyParsedPages(
                     videoId = normalized,
@@ -98,7 +107,7 @@ internal class YoutubeCommentsRepository {
         videoId: String,
         continuationToken: String,
         forceRefresh: Boolean = false
-    ): YoutubeCommentsResult = more(videoId, continuationToken, forceRefresh)
+    ): YoutubeCommentsResult = more(videoId, continuationToken, forceRefresh = forceRefresh)
 
     fun close() {
         scope.cancel()
@@ -130,7 +139,8 @@ internal class YoutubeCommentsRepository {
                 }
             }
             val ttlMs = when (result) {
-                is YoutubeCommentsResult.Available -> POSITIVE_TTL_MS
+                is YoutubeCommentsResult.Available ->
+                    if (result.page.liveChat) LIVE_CHAT_TTL_MS else POSITIVE_TTL_MS
                 YoutubeCommentsResult.Disabled -> DISABLED_TTL_MS
                 is YoutubeCommentsResult.Failed -> FAILURE_TTL_MS
             }
@@ -158,13 +168,18 @@ internal class YoutubeCommentsRepository {
         cache[key] = CachedCommentsResult(result, now + ttlMs)
     }
 
-    private fun fetchContinuationPage(videoId: String, continuationToken: String): YoutubeCommentsPage {
-        val url = youtubeUrl(videoId)
+    private fun fetchContinuationPage(
+        videoId: String,
+        continuationToken: String,
+        pageUrl: String
+    ): YoutubeCommentsPage {
+        val videoUrl = youtubeWatchUrl(videoId)
+        val resolvedPageUrl = sanitizeContinuationPageUrl(pageUrl, videoId)
         return CommentsInfo.getMoreItems(
             ServiceList.YouTube,
-            url,
-            Page(url, continuationToken)
-        ).toCommentsPage(videoId)
+            videoUrl,
+            Page(resolvedPageUrl, continuationToken)
+        ).toCommentsPage(videoId, resolvedPageUrl in LIVE_CHAT_PAGE_URLS)
     }
 
     /**
@@ -180,6 +195,7 @@ internal class YoutubeCommentsRepository {
         initialPage: YoutubeCommentsPage,
         firstRequestedToken: String = ""
     ): YoutubeCommentsPage {
+        if (initialPage.liveChat) return initialPage
         var page = initialPage
         val seenTokens = linkedSetOf<String>()
         if (firstRequestedToken.isNotBlank()) seenTokens += firstRequestedToken
@@ -195,19 +211,24 @@ internal class YoutubeCommentsRepository {
             ) ?: break
             seenTokens += nextToken
             hops++
-            val nextPage = fetchContinuationPage(videoId, nextToken)
+            val nextPage = fetchContinuationPage(videoId, nextToken, page.nextPageUrl)
             page = nextPage.copy(countText = page.countText.ifBlank { nextPage.countText })
         }
         return page
     }
 
-    private fun InfoItemsPage<CommentsInfoItem>.toCommentsPage(videoId: String): YoutubeCommentsPage =
+    private fun InfoItemsPage<CommentsInfoItem>.toCommentsPage(
+        videoId: String,
+        liveChat: Boolean
+    ): YoutubeCommentsPage =
         YoutubeCommentsPage(
             videoId = videoId,
             countText = "",
             commentsDisabled = false,
+            liveChat = liveChat,
             items = items.orEmpty().mapNotNull(::toComment),
-            nextToken = nextPage?.id.orEmpty()
+            nextToken = nextPage?.id.orEmpty(),
+            nextPageUrl = sanitizeContinuationPageUrl(nextPage?.url, videoId)
         )
 
     private fun toComment(item: CommentsInfoItem): YoutubeComment? {
@@ -231,11 +252,10 @@ internal class YoutubeCommentsRepository {
             verifiedAuthor = item.isUploaderVerified,
             streamPositionSeconds = item.streamPosition,
             replyCount = item.replyCount.coerceAtLeast(0),
-            replyToken = item.replies?.id.orEmpty()
+            replyToken = item.replies?.id.orEmpty(),
+            liveChat = item.isLiveChat
         )
     }
-
-    private fun youtubeUrl(videoId: String): String = "https://www.youtube.com/watch?v=$videoId"
 
     private data class RequestKey(val videoId: String, val page: String)
     private data class CachedCommentsResult(
@@ -247,6 +267,7 @@ internal class YoutubeCommentsRepository {
         const val MAX_CACHE_ENTRIES = 256
         const val MAX_EMPTY_PAGE_HOPS = 6
         const val POSITIVE_TTL_MS = 5L * 60L * 1_000L
+        const val LIVE_CHAT_TTL_MS = 10L * 1_000L
         const val DISABLED_TTL_MS = 30L * 60L * 1_000L
         const val FAILURE_TTL_MS = 45L * 1_000L
         const val MAX_COUNT_TEXT_LENGTH = 96
@@ -256,6 +277,15 @@ internal class YoutubeCommentsRepository {
         const val MAX_LIKE_TEXT_LENGTH = 40
         const val MAX_DATE_TEXT_LENGTH = 120
     }
+}
+
+internal val LIVE_CHAT_PAGE_URLS = setOf("live_chat", "live_chat_replay")
+
+internal fun youtubeWatchUrl(videoId: String): String = "https://www.youtube.com/watch?v=$videoId"
+
+internal fun sanitizeContinuationPageUrl(pageUrl: String?, videoId: String): String {
+    val candidate = pageUrl.orEmpty().trim()
+    return if (candidate in LIVE_CHAT_PAGE_URLS) candidate else youtubeWatchUrl(videoId)
 }
 
 internal fun nextEmptyCommentsContinuation(
