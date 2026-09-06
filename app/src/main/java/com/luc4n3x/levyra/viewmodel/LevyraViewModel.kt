@@ -121,6 +121,8 @@ import com.luc4n3x.levyra.domain.LevyraVaultStatus
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -3857,6 +3859,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setDynamicColor(value: Boolean) {
         preferences.setDynamicColor(value)
         _state.update { it.copy(dynamicColor = value) }
+    }
+
+    fun setPlayerVisualMode(mode: PlayerVisualMode) {
+        val current = _state.value.interfaceSettings
+        if (current.playerVisualMode == mode) return
+        setInterfaceSettings(current.copy(playerVisualMode = mode))
+    }
+
+    fun setPlayerBackground(mode: PlayerBackgroundMode) {
+        val current = _state.value.interfaceSettings
+        if (current.playerBackground == mode) return
+        setInterfaceSettings(current.copy(playerBackground = mode))
     }
 
     fun setInterfaceSettings(value: LevyraInterfaceSettings) {

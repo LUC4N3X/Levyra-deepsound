@@ -29,6 +29,8 @@ import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -777,6 +779,8 @@ class LevyraBackupManager(private val context: Context) {
         .put("longPressSpeed", value.longPressSpeed.toDouble())
         .put("pureBlack", value.pureBlack)
         .put("hapticFeedback", value.hapticFeedback)
+        .put("playerVisualMode", value.playerVisualMode.name)
+        .put("playerBackground", value.playerBackground.name)
 
     private fun parseInterfaceSettings(json: JSONObject?): LevyraInterfaceSettings {
         if (json == null) return LevyraInterfaceSettings()
@@ -793,7 +797,9 @@ class LevyraBackupManager(private val context: Context) {
             doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
             longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat(),
             pureBlack = json.optBoolean("pureBlack", false),
-            hapticFeedback = json.optBoolean("hapticFeedback", true)
+            hapticFeedback = json.optBoolean("hapticFeedback", true),
+            playerVisualMode = PlayerVisualMode.from(json.optString("playerVisualMode", PlayerVisualMode.Artwork.name)),
+            playerBackground = PlayerBackgroundMode.from(json.optString("playerBackground", PlayerBackgroundMode.Dynamic.name))
         ).normalized()
     }
 

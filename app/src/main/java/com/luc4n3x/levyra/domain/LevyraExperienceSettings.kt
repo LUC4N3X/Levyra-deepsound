@@ -23,6 +23,41 @@ enum class LevyraCanvasSource {
     }
 }
 
+enum class PlayerVisualMode {
+    Artwork,
+    CanvasCard,
+    CanvasImmersive;
+
+    companion object {
+        fun from(value: String): PlayerVisualMode =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: when (value.trim().lowercase()) {
+                    "canvas_card", "card" -> CanvasCard
+                    "canvas_immersive", "immersive" -> CanvasImmersive
+                    else -> Artwork
+                }
+    }
+}
+
+enum class PlayerBackgroundMode {
+    Dynamic,
+    Blur,
+    Dark,
+    PureBlack;
+
+    companion object {
+        fun from(value: String): PlayerBackgroundMode =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: when (value.trim().lowercase()) {
+                    "adaptive", "dynamic" -> Dynamic
+                    "blur" -> Blur
+                    "dark" -> Dark
+                    "pure_black", "pureblack", "black" -> PureBlack
+                    else -> Dynamic
+                }
+    }
+}
+
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,
     val showPersonalOrbit: Boolean = true,
@@ -39,7 +74,9 @@ data class LevyraInterfaceSettings(
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
-    val hapticFeedback: Boolean = true
+    val hapticFeedback: Boolean = true,
+    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Artwork,
+    val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
         doubleTapSeekSeconds = doubleTapSeekSeconds.coerceIn(5, 30),

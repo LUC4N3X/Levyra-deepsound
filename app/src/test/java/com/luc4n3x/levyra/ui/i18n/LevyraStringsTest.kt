@@ -22,6 +22,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, integrationLocalizationCodes())
         assertEquals(catalogCodes, resonanceLocalizationCodes())
         assertEquals(catalogCodes, similarSongsLocalizationCodes())
+        assertEquals(catalogCodes, playerVisualLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.commentsLabel.isNotBlank())
             assertTrue(strings.mostCommentedTracks.isNotBlank())
@@ -63,6 +64,10 @@ class LevyraStringsTest {
             assertTrue(strings.lastFmApprovalHint.isNotBlank())
             assertTrue(strings.subtitlesOff.isNotBlank())
             assertTrue(strings.subtitlesLabel.isNotBlank())
+            assertTrue(strings.playerVisualMode.isNotBlank())
+            assertTrue(strings.playerBackground.isNotBlank())
+            assertTrue(strings.enterImmersive.isNotBlank())
+            assertTrue(strings.exitImmersive.isNotBlank())
         }
     }
 

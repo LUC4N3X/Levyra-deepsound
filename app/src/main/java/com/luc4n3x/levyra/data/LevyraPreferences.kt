@@ -29,6 +29,8 @@ import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraFontPreset
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -139,6 +141,8 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
             mutable[KEY_UI_HAPTIC_FEEDBACK] = normalizedInterface.hapticFeedback
+            mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
+            mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
             mutable[KEY_DOWNLOAD_WIFI_ONLY] = normalizedDownloads.wifiOnly
             mutable[KEY_DOWNLOAD_CHARGING_ONLY] = normalizedDownloads.chargingOnly
             mutable[KEY_DOWNLOAD_RESUMABLE] = normalizedDownloads.resumable
@@ -271,6 +275,8 @@ class LevyraPreferences(context: Context) {
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
             it[KEY_UI_HAPTIC_FEEDBACK] = normalized.hapticFeedback
+            it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
+            it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
         }
     }
 
@@ -584,24 +590,46 @@ class LevyraPreferences(context: Context) {
     )
 
 
-    private fun interfaceSettingsFrom(preferences: Preferences): LevyraInterfaceSettings = LevyraInterfaceSettings(
-        compactHome = preferences[KEY_UI_COMPACT_HOME] ?: false,
-        showPersonalOrbit = preferences[KEY_UI_PERSONAL_ORBIT] ?: true,
-        showResonance = preferences[KEY_UI_RESONANCE] ?: true,
-        showNewReleases = preferences[KEY_UI_NEW_RELEASES] ?: true,
-        showAlbumsForYou = preferences[KEY_UI_ALBUMS] ?: true,
-        showTrendingArtists = preferences[KEY_UI_ARTISTS] ?: true,
-        showCharts = preferences[KEY_UI_CHARTS] ?: true,
-        fontPreset = LevyraFontPreset.from(preferences[KEY_UI_FONT_PRESET].orEmpty()),
-        playerGesturesEnabled = preferences[KEY_UI_PLAYER_GESTURES] ?: true,
-        doubleTapSeekSeconds = preferences[KEY_UI_DOUBLE_TAP_SECONDS] ?: 10,
-        longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f,
-        canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
-        canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
-        enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
-        pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
-        hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true
-    ).normalized()
+    private fun interfaceSettingsFrom(preferences: Preferences): LevyraInterfaceSettings {
+        val storedVisualMode = preferences[KEY_UI_PLAYER_VISUAL_MODE]
+        val visualMode = when {
+            storedVisualMode != null -> PlayerVisualMode.from(storedVisualMode)
+            preferences.contains(KEY_MOTION_ARTWORK) -> {
+                if (preferences[KEY_MOTION_ARTWORK] == true) {
+                    PlayerVisualMode.CanvasImmersive
+                } else {
+                    PlayerVisualMode.Artwork
+                }
+            }
+            else -> PlayerVisualMode.Artwork
+        }
+        val storedBackground = preferences[KEY_UI_PLAYER_BACKGROUND]
+        val background = when {
+            storedBackground != null -> PlayerBackgroundMode.from(storedBackground)
+            preferences[KEY_UI_PURE_BLACK] == true -> PlayerBackgroundMode.PureBlack
+            else -> PlayerBackgroundMode.Dynamic
+        }
+        return LevyraInterfaceSettings(
+            compactHome = preferences[KEY_UI_COMPACT_HOME] ?: false,
+            showPersonalOrbit = preferences[KEY_UI_PERSONAL_ORBIT] ?: true,
+            showResonance = preferences[KEY_UI_RESONANCE] ?: true,
+            showNewReleases = preferences[KEY_UI_NEW_RELEASES] ?: true,
+            showAlbumsForYou = preferences[KEY_UI_ALBUMS] ?: true,
+            showTrendingArtists = preferences[KEY_UI_ARTISTS] ?: true,
+            showCharts = preferences[KEY_UI_CHARTS] ?: true,
+            fontPreset = LevyraFontPreset.from(preferences[KEY_UI_FONT_PRESET].orEmpty()),
+            playerGesturesEnabled = preferences[KEY_UI_PLAYER_GESTURES] ?: true,
+            doubleTapSeekSeconds = preferences[KEY_UI_DOUBLE_TAP_SECONDS] ?: 10,
+            longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f,
+            canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
+            canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
+            enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
+            pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
+            hapticFeedback = preferences[KEY_UI_HAPTIC_FEEDBACK] ?: true,
+            playerVisualMode = visualMode,
+            playerBackground = background
+        ).normalized()
+    }
 
     private fun ambientSettingsFrom(preferences: Preferences): LevyraAmbientSettings = LevyraAmbientSettings(
         brightness = preferences[KEY_AMBIENT_BRIGHTNESS] ?: 0.35f,
@@ -815,6 +843,8 @@ class LevyraPreferences(context: Context) {
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
+        val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")
+        val KEY_UI_PLAYER_BACKGROUND = stringPreferencesKey("ui_player_background")
         val KEY_AMBIENT_BRIGHTNESS = floatPreferencesKey("ambient_brightness")
         val KEY_AMBIENT_AUTO_DIM = booleanPreferencesKey("ambient_auto_dim")
         val KEY_AMBIENT_AUTO_DIM_SECONDS = intPreferencesKey("ambient_auto_dim_seconds")
