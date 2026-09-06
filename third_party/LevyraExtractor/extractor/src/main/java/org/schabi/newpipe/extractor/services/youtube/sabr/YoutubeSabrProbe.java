@@ -907,11 +907,8 @@ public final class YoutubeSabrProbe {
             throws ParsingException {
         if (profile == YoutubeSabrClientProfile.WEB
                 || profile == YoutubeSabrClientProfile.MWEB) {
-            try {
-                return YoutubeParsingHelper.getClientVersion();
-            } catch (final Exception e) {
-                return profile.getClientVersion();
-            }
+            return YoutubeParsingHelper.getClientVersionWithoutBlocking(
+                    profile.getClientVersion());
         }
         return profile.getClientVersion();
     }
