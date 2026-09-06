@@ -189,6 +189,27 @@ class YoutubeLiveChatExtractionTest {
     }
 
     @Test
+    void preservesAndBoundsContinuationPollDelay() throws Exception {
+        final YoutubeCommentsExtractor.LiveChatContinuation timed =
+                YoutubeCommentsExtractor.extractNextLiveChatContinuationData(
+                        json("{\"continuations\":[{\"timedContinuationData\":"
+                                + "{\"continuation\":\"TIMED\",\"timeoutMs\":8500}}]}"),
+                        false);
+        assertNotNull(timed);
+        assertEquals("TIMED", timed.token);
+        assertEquals(8500L, timed.pollDelayMs);
+
+        final YoutubeCommentsExtractor.LiveChatContinuation bounded =
+                YoutubeCommentsExtractor.extractNextLiveChatContinuationData(
+                        json("{\"continuations\":[{\"invalidationContinuationData\":"
+                                + "{\"continuation\":\"FAST\",\"timeoutMs\":999999}}]}"),
+                        true);
+        assertNotNull(bounded);
+        assertTrue(bounded.replay);
+        assertEquals(60000L, bounded.pollDelayMs);
+    }
+
+    @Test
     void extractsNextContinuationForEveryKnownType() throws Exception {
         assertEquals("INVALIDATION", YoutubeCommentsExtractor.extractNextLiveChatContinuation(
                 json("{\"continuations\":[{\"timedContinuationData\":"

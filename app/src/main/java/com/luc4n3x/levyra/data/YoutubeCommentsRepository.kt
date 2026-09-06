@@ -28,7 +28,8 @@ internal data class YoutubeCommentsPage(
     val items: List<YoutubeComment>,
     val nextToken: String,
     val liveChat: Boolean = false,
-    val nextPageUrl: String = ""
+    val nextPageUrl: String = "",
+    val nextPollDelayMs: Long = 0L
 )
 
 internal sealed interface YoutubeCommentsResult {
@@ -63,7 +64,8 @@ internal class YoutubeCommentsRepository {
                     liveChat = info.isLiveChat,
                     items = info.relatedItems.orEmpty().mapNotNull(::toComment),
                     nextToken = info.nextPage?.id.orEmpty(),
-                    nextPageUrl = sanitizeContinuationPageUrl(info.nextPage?.url, normalized)
+                    nextPageUrl = sanitizeContinuationPageUrl(info.nextPage?.url, normalized),
+                    nextPollDelayMs = liveChatPollDelayMs(info.nextPage)
                 )
                 YoutubeCommentsResult.Available(
                     advancePastEmptyParsedPages(
@@ -228,7 +230,8 @@ internal class YoutubeCommentsRepository {
             liveChat = liveChat,
             items = items.orEmpty().mapNotNull(::toComment),
             nextToken = nextPage?.id.orEmpty(),
-            nextPageUrl = sanitizeContinuationPageUrl(nextPage?.url, videoId)
+            nextPageUrl = sanitizeContinuationPageUrl(nextPage?.url, videoId),
+            nextPollDelayMs = liveChatPollDelayMs(nextPage)
         )
 
     private fun toComment(item: CommentsInfoItem): YoutubeComment? {
@@ -280,6 +283,17 @@ internal class YoutubeCommentsRepository {
 }
 
 internal val LIVE_CHAT_PAGE_URLS = setOf("live_chat", "live_chat_replay")
+internal const val MAX_LIVE_CHAT_POLL_DELAY_MS = 60_000L
+
+internal fun liveChatPollDelayMs(page: Page?): Long {
+    val body = page?.body ?: return 0L
+    if (body.isEmpty() || body.size > 32) return 0L
+    return body.toString(Charsets.UTF_8)
+        .trim()
+        .toLongOrNull()
+        ?.coerceIn(0L, MAX_LIVE_CHAT_POLL_DELAY_MS)
+        ?: 0L
+}
 
 internal fun youtubeWatchUrl(videoId: String): String = "https://www.youtube.com/watch?v=$videoId"
 

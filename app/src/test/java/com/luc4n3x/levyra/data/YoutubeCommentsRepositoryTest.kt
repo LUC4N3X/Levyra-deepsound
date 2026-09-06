@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import org.junit.Assert.assertEquals
+import org.schabi.newpipe.extractor.Page
 import org.junit.Test
 
 class YoutubeCommentsRepositoryTest {
@@ -57,6 +58,14 @@ class YoutubeCommentsRepositoryTest {
                 maxHops = 6
             )
         )
+    }
+
+    @Test
+    fun readsAndBoundsLiveChatPollDelayFromContinuationPage() {
+        assertEquals(8_500L, liveChatPollDelayMs(Page("live_chat", "token", null, null, "8500".toByteArray())))
+        assertEquals(60_000L, liveChatPollDelayMs(Page("live_chat", "token", null, null, "999999".toByteArray())))
+        assertEquals(0L, liveChatPollDelayMs(Page("live_chat", "token", null, null, "invalid".toByteArray())))
+        assertEquals(0L, liveChatPollDelayMs(null))
     }
 
     @Test

@@ -135,6 +135,19 @@ class YoutubeSwJsDataClientVersionTest {
     }
 
     @Test
+    void htmlFallbackPublishesAReusableCachedVersion() throws Exception {
+        final HtmlFallbackDownloader downloader = new HtmlFallbackDownloader(CLIENT_VERSION);
+        NewPipe.init(downloader, Localization.DEFAULT, ContentCountry.DEFAULT);
+
+        assertEquals(CLIENT_VERSION, YoutubeParsingHelper.getClientVersion());
+        assertEquals(CLIENT_VERSION, YoutubeParsingHelper.getCachedClientVersion());
+        final int requestsAfterResolution = downloader.requestCount.get();
+        assertEquals(CLIENT_VERSION,
+                YoutubeParsingHelper.getClientVersionWithoutBlocking("1.2.3"));
+        assertEquals(requestsAfterResolution, downloader.requestCount.get());
+    }
+
+    @Test
     void nonBlockingAccessorReusesCachedVersion() throws Exception {
         final FixtureDownloader downloader = new FixtureDownloader(CLIENT_VERSION);
         NewPipe.init(downloader, Localization.DEFAULT, ContentCountry.DEFAULT);
@@ -159,6 +172,35 @@ class YoutubeSwJsDataClientVersionTest {
             requestCount.incrementAndGet();
             return new Response(200, "OK", Collections.emptyMap(), swJsDataBody(version), null,
                     "https://www.youtube.com/sw.js_data");
+        }
+
+        @Override
+        public CancellableCall executeAsync(@Nonnull final Request request,
+                                            final AsyncCallback callback) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    private static final class HtmlFallbackDownloader extends Downloader {
+        private final AtomicInteger requestCount = new AtomicInteger();
+        private final String version;
+
+        private HtmlFallbackDownloader(final String version) {
+            this.version = version;
+        }
+
+        @Override
+        public Response execute(@Nonnull final Request request) throws IOException {
+            requestCount.incrementAndGet();
+            if (request.url().contains("sw.js_data")) {
+                throw new IOException("sw.js_data unavailable");
+            }
+            if (request.url().contains("/results?")) {
+                final String body = "<html><script>{\"INNERTUBE_CONTEXT_CLIENT_VERSION\":\""
+                        + version + "\"}</script></html>";
+                return new Response(200, "OK", Collections.emptyMap(), body, null, request.url());
+            }
+            throw new IOException("Unexpected request: " + request.url());
         }
 
         @Override

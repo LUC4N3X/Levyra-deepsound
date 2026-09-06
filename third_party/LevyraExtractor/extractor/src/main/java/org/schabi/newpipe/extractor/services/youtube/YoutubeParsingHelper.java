@@ -775,6 +775,7 @@ YoutubeParsingHelper {
         }
         if (!isNullOrEmpty(clientVersion)) {
             clientVersionExtracted = true;
+            clientVersionResolvedAtMs = System.currentTimeMillis();
             return;
         }
 

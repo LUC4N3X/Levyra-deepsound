@@ -41,6 +41,7 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
     private static final String LIVE_CHAT_REPLAY_ENDPOINT = "live_chat/get_live_chat_replay";
 
     private static final int MAX_LIVE_CHAT_ACTIONS = 500;
+    private static final long MAX_LIVE_CHAT_POLL_DELAY_MS = 60_000L;
 
     private static final String[] LIVE_CHAT_CONTINUATION_KEYS = {
             "invalidationContinuationData",
@@ -587,12 +588,20 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
                 new CommentsInfoItemsCollector(getServiceId());
         collectLiveChatMessages(liveChatContinuationObject, collector, getUrl());
 
-        final String nextContinuation =
-                extractNextLiveChatContinuation(liveChatContinuationObject);
-        final Page nextPage = isNullOrEmpty(nextContinuation)
+        final LiveChatContinuation nextContinuation =
+                extractNextLiveChatContinuationData(liveChatContinuationObject, replay);
+        final Page nextPage = nextContinuation == null
                 ? null
-                : new Page(replay ? LIVE_CHAT_REPLAY_PAGE_URL : LIVE_CHAT_PAGE_URL,
-                        nextContinuation);
+                : new Page(
+                        nextContinuation.replay
+                                ? LIVE_CHAT_REPLAY_PAGE_URL : LIVE_CHAT_PAGE_URL,
+                        nextContinuation.token,
+                        null,
+                        null,
+                        nextContinuation.pollDelayMs > 0
+                                ? Long.toString(nextContinuation.pollDelayMs)
+                                        .getBytes(StandardCharsets.UTF_8)
+                                : null);
 
         return new InfoItemsPage<>(collector.getItems(), nextPage, collector.getErrors(), true);
     }
@@ -610,40 +619,54 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
         if (liveChatRenderer.isEmpty()) {
             return null;
         }
-        final String reloadToken = liveChatRenderer.getArray("continuations")
-                .stream()
-                .filter(JsonObject.class::isInstance)
-                .map(JsonObject.class::cast)
-                .map(continuation -> continuation.getObject("reloadContinuationData")
-                        .getString("continuation", ""))
-                .filter(candidate -> !isNullOrEmpty(candidate))
-                .findFirst()
-                .orElse(null);
-        if (reloadToken == null) {
-            return null;
-        }
-        return new LiveChatContinuation(reloadToken,
+        return extractLiveChatContinuation(
+                liveChatRenderer.getArray("continuations"),
                 liveChatRenderer.getBoolean("isReplay", false));
     }
 
     @Nullable
     static String extractNextLiveChatContinuation(
             @Nullable final JsonObject liveChatContinuationObject) {
+        final LiveChatContinuation continuation =
+                extractNextLiveChatContinuationData(liveChatContinuationObject, false);
+        return continuation == null ? null : continuation.token;
+    }
+
+    @Nullable
+    static LiveChatContinuation extractNextLiveChatContinuationData(
+            @Nullable final JsonObject liveChatContinuationObject,
+            final boolean replay) {
         if (liveChatContinuationObject == null) {
             return null;
         }
-        final JsonArray continuations = liveChatContinuationObject.getArray("continuations");
+        return extractLiveChatContinuation(
+                liveChatContinuationObject.getArray("continuations"), replay);
+    }
+
+    @Nullable
+    private static LiveChatContinuation extractLiveChatContinuation(
+            @Nullable final JsonArray continuations,
+            final boolean replay) {
+        if (continuations == null) {
+            return null;
+        }
         for (final String continuationKey : LIVE_CHAT_CONTINUATION_KEYS) {
             for (final Object continuation : continuations) {
                 if (!(continuation instanceof JsonObject)) {
                     continue;
                 }
-                final String candidate = ((JsonObject) continuation)
-                        .getObject(continuationKey)
-                        .getString("continuation", "");
-                if (!isNullOrEmpty(candidate)) {
-                    return candidate;
+                final JsonObject continuationData =
+                        ((JsonObject) continuation).getObject(continuationKey);
+                final String candidate = continuationData.getString("continuation", "");
+                if (isNullOrEmpty(candidate)) {
+                    continue;
                 }
+                final Object timeoutValue = continuationData.get("timeoutMs");
+                final long rawPollDelayMs = timeoutValue instanceof Number
+                        ? ((Number) timeoutValue).longValue() : 0L;
+                final long pollDelayMs = Math.max(0L,
+                        Math.min(rawPollDelayMs, MAX_LIVE_CHAT_POLL_DELAY_MS));
+                return new LiveChatContinuation(candidate, replay, pollDelayMs);
             }
         }
         return null;
@@ -699,10 +722,14 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
         @Nonnull
         final String token;
         final boolean replay;
+        final long pollDelayMs;
 
-        LiveChatContinuation(@Nonnull final String token, final boolean replay) {
+        LiveChatContinuation(@Nonnull final String token,
+                             final boolean replay,
+                             final long pollDelayMs) {
             this.token = token;
             this.replay = replay;
+            this.pollDelayMs = pollDelayMs;
         }
     }
 }

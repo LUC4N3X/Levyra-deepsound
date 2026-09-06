@@ -7449,6 +7449,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (current.videoId == videoId) return youtubeEngagementGeneration.get()
         val generation = youtubeEngagementGeneration.incrementAndGet()
         youtubeCommentContinuationHistory.clear()
+        lastLiveChatPageAtMs = 0L
         _state.update { state ->
             state.copy(youtubeEngagement = YoutubeEngagementState(videoId = videoId))
         }
@@ -7555,6 +7556,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val result = youtubeCommentsRepository.initial(videoId, forceRefresh = force)
             if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch
             if (result !is YoutubeCommentsResult.Failed) youtubeCommentContinuationHistory.clear()
+            if (result is YoutubeCommentsResult.Available && result.page.liveChat) {
+                lastLiveChatPageAtMs = SystemClock.elapsedRealtime()
+            }
             _state.update { state ->
                 state.withYoutubeCommentsResultIfCurrent(
                     videoId = videoId,
@@ -7647,11 +7651,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         youtubeCommentsPageJob = viewModelScope.launch {
             if (comments.liveChat) {
-                val elapsed = System.currentTimeMillis() - lastLiveChatPageAtMs
-                if (elapsed < LIVE_CHAT_POLL_INTERVAL_MS) {
-                    delay(LIVE_CHAT_POLL_INTERVAL_MS - elapsed)
+                val pollIntervalMs = youtubeLiveChatPollIntervalMs(comments.nextPollDelayMs)
+                val elapsed = SystemClock.elapsedRealtime() - lastLiveChatPageAtMs
+                if (elapsed < pollIntervalMs) {
+                    delay(pollIntervalMs - elapsed)
                 }
-                lastLiveChatPageAtMs = System.currentTimeMillis()
             }
             val result = youtubeCommentsRepository.more(
                 videoId = videoId,
@@ -7660,6 +7664,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 forceRefresh = forceRefresh
             )
             if (!isActive || !isYoutubeCommentsRequestCurrent(videoId, generation)) return@launch
+            if (comments.liveChat) {
+                lastLiveChatPageAtMs = SystemClock.elapsedRealtime()
+            }
             _state.update { state ->
                 if (!isYoutubeCommentsRequestCurrent(
                         videoId,
@@ -7690,6 +7697,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             items = merged,
                             nextToken = nextToken,
                             nextPageUrl = result.page.nextPageUrl,
+                            nextPollDelayMs = result.page.nextPollDelayMs,
                             liveChat = result.page.liveChat,
                             error = null
                         )
@@ -9703,7 +9711,11 @@ internal fun youtubeEngagementVideoId(track: Track): String {
 
 internal const val MAX_LIVE_CHAT_ITEMS = 500
 internal const val LIVE_CHAT_POLL_INTERVAL_MS = 2_000L
+internal const val MAX_LIVE_CHAT_POLL_INTERVAL_MS = 60_000L
 internal const val MAX_YOUTUBE_COMMENT_CONTINUATIONS = 512
+
+internal fun youtubeLiveChatPollIntervalMs(serverDelayMs: Long): Long =
+    serverDelayMs.coerceIn(LIVE_CHAT_POLL_INTERVAL_MS, MAX_LIVE_CHAT_POLL_INTERVAL_MS)
 
 internal fun nextYoutubeCommentsToken(
     requestedToken: String,
@@ -9743,6 +9755,7 @@ internal fun LevyraUiState.withYoutubeCommentsResultIfCurrent(
             items = result.page.items.distinctBy(YoutubeComment::id),
             nextToken = result.page.nextToken,
             nextPageUrl = result.page.nextPageUrl,
+            nextPollDelayMs = result.page.nextPollDelayMs,
             liveChat = result.page.liveChat,
             error = null
         )

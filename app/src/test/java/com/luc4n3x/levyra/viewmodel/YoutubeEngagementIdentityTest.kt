@@ -97,6 +97,13 @@ class YoutubeEngagementIdentityTest {
     }
 
     @Test
+    fun liveChatPollingKeepsSafetyFloorAndHonorsServerDelay() {
+        assertEquals(2_000L, youtubeLiveChatPollIntervalMs(0L))
+        assertEquals(8_500L, youtubeLiveChatPollIntervalMs(8_500L))
+        assertEquals(60_000L, youtubeLiveChatPollIntervalMs(999_999L))
+    }
+
+    @Test
     fun continuationCyclesAreStoppedAcrossSuccessfulPages() {
         assertEquals(
             "",

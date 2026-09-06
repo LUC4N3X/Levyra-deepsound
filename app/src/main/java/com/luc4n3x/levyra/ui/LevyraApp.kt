@@ -15262,6 +15262,7 @@ private fun PlayerYoutubeCommentsSheet(
                         }
                     }
                     comments.items.isEmpty() -> {
+                        val emptyCommentsLabel = if (comments.liveChat) strings.liveChat else strings.totalComments
                         Column(
                             modifier = Modifier.fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -15270,9 +15271,9 @@ private fun PlayerYoutubeCommentsSheet(
                             YoutubeCommentsEmptyState(
                                 icon = Icons.Rounded.ChatBubbleOutline,
                                 label = if (comments.nextToken.isBlank()) {
-                                    "${strings.totalComments}: 0"
+                                    "$emptyCommentsLabel: 0"
                                 } else {
-                                    strings.totalComments
+                                    emptyCommentsLabel
                                 },
                                 primary = primary,
                                 modifier = Modifier.weight(1f, fill = false)

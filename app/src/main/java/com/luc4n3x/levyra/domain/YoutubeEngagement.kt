@@ -37,6 +37,7 @@ data class YoutubeCommentsState(
     val items: List<YoutubeComment> = emptyList(),
     val nextToken: String = "",
     val nextPageUrl: String = "",
+    val nextPollDelayMs: Long = 0L,
     val liveChat: Boolean = false,
     val error: String? = null
 )
