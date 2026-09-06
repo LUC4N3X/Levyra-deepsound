@@ -23,9 +23,9 @@ import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -53,7 +53,8 @@ internal fun PlayerQuickActions(
     showLyrics: Boolean,
     isDownloaded: Boolean,
     isExporting: Boolean,
-    equalizerActive: Boolean,
+    radioActive: Boolean,
+    radioAvailable: Boolean,
     primaryColor: Color,
     secondaryColor: Color,
     compact: Boolean,
@@ -61,12 +62,12 @@ internal fun PlayerQuickActions(
     lyricsLabel: String,
     visualModeLabel: String,
     downloadLabel: String,
-    equalizerLabel: String,
+    radioLabel: String,
     onQueueClick: () -> Unit,
     onLyricsClick: () -> Unit,
     onCycleVisualMode: () -> Unit,
     onDownloadClick: () -> Unit,
-    onEqualizerClick: () -> Unit,
+    onStartRadio: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val visualModeIcon: ImageVector = when (visualMode) {
@@ -140,16 +141,20 @@ internal fun PlayerQuickActions(
                 onClick = onDownloadClick
             )
             PlayerQuickActionButton(
-                icon = Icons.Rounded.Equalizer,
-                contentDescription = equalizerLabel,
-                tint = if (equalizerActive) primaryColor else Color.White.copy(alpha = 0.82f),
-                active = equalizerActive,
-                toggleableState = ToggleableState(equalizerActive),
+                icon = Icons.Rounded.Radio,
+                contentDescription = radioLabel,
+                tint = when {
+                    !radioAvailable -> Color.White.copy(alpha = 0.36f)
+                    radioActive -> primaryColor
+                    else -> Color.White.copy(alpha = 0.82f)
+                },
+                active = radioActive,
+                enabled = radioAvailable,
                 compact = compact,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
-                onClick = onEqualizerClick
+                onClick = onStartRadio
             )
         }
     }
