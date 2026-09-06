@@ -14326,12 +14326,15 @@ private fun PlayerScreen(
 
         val mediaBlock: @Composable (Track) -> Unit = { activeTrack ->
             Box(
-                modifier = if (playerPane == LevyraPlayerPane.SideBySide) {
-                    Modifier
+                modifier = when {
+                    state.isVideoMode -> Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
+                    playerPane == LevyraPlayerPane.SideBySide -> Modifier
                         .size(width = artworkSize, height = artworkSize)
                         .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
-                } else {
-                    Modifier
+                    else -> Modifier
                         .fillMaxHeight()
                         .aspectRatio(1f, matchHeightConstraintsFirst = true)
                         .widthIn(max = maxWidth - playerHorizontalPadding * 2f)
@@ -14343,16 +14346,15 @@ private fun PlayerScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 8.dp, vertical = 8.dp)
                             .graphicsLayer {
                                 shadowElevation = artShadow
-                                shape = RoundedCornerShape(artCorner)
+                                shape = LevyraPlayerDesign.ShapeSm
                                 clip = true
                             }
                             .border(
                                 width = 1.dp,
                                 color = Color.White.copy(alpha = 0.18f),
-                                shape = RoundedCornerShape(artCorner)
+                                shape = LevyraPlayerDesign.ShapeSm
                             )
                     ) {
                         LevyraVideoSurface(
@@ -14445,13 +14447,6 @@ private fun PlayerScreen(
                         videoTransform = videoTransform.takeIf { videoGesturesEnabled },
                         modifier = Modifier
                             .matchParentSize()
-                            .run {
-                                if (videoGesturesEnabled) {
-                                    padding(horizontal = 8.dp, vertical = 8.dp)
-                                } else {
-                                    this
-                                }
-                            }
                             .zIndex(if (videoGesturesEnabled) 21f else 20f)
                     )
                 }
@@ -22057,11 +22052,7 @@ private fun LevyraVideoSurface(
                     update = { view ->
                         val active = PlaybackService.activePlayer
                         if (view.player !== active) view.player = active
-                        view.resizeMode = if (pictureInPicture) {
-                            AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        } else {
-                            AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                        }
+                        view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                         view.keepScreenOn = state.isPlaying
                     },
                     onRelease = { view ->
