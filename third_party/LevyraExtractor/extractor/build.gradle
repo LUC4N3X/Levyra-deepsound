@@ -22,6 +22,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.22.0'
     compileOnly "org.json:json:20260522"
 
+    testImplementation "org.json:json:20260522"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
 }

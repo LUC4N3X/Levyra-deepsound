@@ -22,6 +22,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, integrationLocalizationCodes())
         assertEquals(catalogCodes, resonanceLocalizationCodes())
         assertEquals(catalogCodes, similarSongsLocalizationCodes())
+        assertEquals(catalogCodes, liveChatLocalizationCodes())
         assertEquals(catalogCodes, diagnosticsLocalizationCodes())
         LevyraStrings.all().forEach { strings ->
             assertTrue(strings.moreLikeThis.isNotBlank())
