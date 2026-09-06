@@ -75,7 +75,7 @@ data class LevyraInterfaceSettings(
     val enhanceVideoMetadata: Boolean = false,
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
-    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasCard,
+    val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Artwork,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic
 ) {
     fun normalized(): LevyraInterfaceSettings = copy(
