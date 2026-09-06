@@ -1,4 +1,4 @@
-name: Polish player PR 531 fullscreen
+name: Validate player PR 531
 
 on:
   push:
@@ -6,35 +6,41 @@ on:
       - automation/sync-player-pr-531
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  polish:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
-      - name: Checkout helper
-        uses: actions/checkout@v7
-        with:
-          ref: automation/sync-player-pr-531
-          path: helper
-          fetch-depth: 1
-
       - name: Checkout player branch
         uses: actions/checkout@v7
         with:
           ref: feat/player-experience-redesign
-          path: repo
           fetch-depth: 0
 
-      - name: Move fullscreen control onto video surface
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
         shell: bash
         run: |
           set -euo pipefail
-          cd repo
-          git config user.name "LUC4N3X"
-          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
-          python3 ../helper/.github/scripts/fix_player_fullscreen_overlay.py .
-          git add app/src/main/java/com/luc4n3x/levyra/ui/player/LevyraNowPlaying.kt
-          git diff --cached --check
-          git commit -m "refactor(player): place fullscreen action on video"
-          git push origin HEAD:feat/player-experience-redesign
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --channel=3 \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Compile Android debug
+        run: ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Test video zoom
+        run: ./gradlew :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.ui.player.PlayerVideoZoomTest' --no-daemon
+
+      - name: AI quality gate
+        run: python3 scripts/ai_quality_gate.py --profile fast
