@@ -521,7 +521,8 @@ private data class HomeDerivedInput(
     val showNewReleases: Boolean,
     val showPersonalOrbit: Boolean,
     val showResonance: Boolean,
-    val showCharts: Boolean
+    val showCharts: Boolean,
+    val artistExclusions: ArtistExclusions
 )
 
 internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
@@ -602,7 +603,8 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.interfaceSettings.showNewReleases == current.interfaceSettings.showNewReleases &&
         previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
         previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance &&
-        previous.interfaceSettings.showCharts == current.interfaceSettings.showCharts
+        previous.interfaceSettings.showCharts == current.interfaceSettings.showCharts &&
+        previous.artistExclusions == current.artistExclusions
 }
 
 private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
@@ -623,7 +625,8 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         showNewReleases = interfaceSettings.showNewReleases,
         showPersonalOrbit = interfaceSettings.showPersonalOrbit,
         showResonance = interfaceSettings.showResonance,
-        showCharts = interfaceSettings.showCharts
+        showCharts = interfaceSettings.showCharts,
+        artistExclusions = artistExclusions
     )
 }
 
@@ -645,7 +648,9 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         if (mood == null || tracks.size < 2) return tracks
         return tracks.sortedByDescending(::moodPreferenceScore)
     }
-    val quickPicks = buildQuickPicks(input)?.let { it.copy(tracks = moodRank(it.tracks)) }
+    val quickPicks = buildQuickPicks(input)?.let { section ->
+        section.copy(tracks = moodRank(section.tracks))
+    }
     val newReleases = input.homeSections.firstOrNull {
         isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
     }?.let { it.copy(tracks = moodRank(it.tracks)) }
@@ -715,7 +720,7 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
         .map { track -> LevyraPersonalOrbit.identityKey(track) }
         .filter(String::isNotBlank)
         .toHashSet()
-    val candidates = buildList {
+    val candidates = input.artistExclusions.filterTracks(buildList {
         input.homeSections
             .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
             ?.tracks
@@ -737,7 +742,7 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
             .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
             ?.tracks
             ?.let(::addAll)
-    }
+    })
 
     val selected = ArrayList<Track>(HOME_QUICK_PICKS_LIMIT)
     val seen = HashSet<String>()

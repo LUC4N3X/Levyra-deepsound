@@ -53,11 +53,13 @@ data class ListeningSignalProfile(
     val playlistKeys: Set<String> = emptySet(),
     val followedArtistKeys: Set<String> = emptySet(),
     val referenceNowMs: Long = 0L,
-    val weights: ListeningSignalWeights = ListeningSignalWeights.Default
+    val weights: ListeningSignalWeights = ListeningSignalWeights.Default,
+    val feedback: RecommendationFeedback = RecommendationFeedback.Empty
 ) {
     val hasSignal: Boolean
         get() = tracks.isNotEmpty() || artists.isNotEmpty() ||
-            favoriteKeys.isNotEmpty() || playlistKeys.isNotEmpty() || followedArtistKeys.isNotEmpty()
+            favoriteKeys.isNotEmpty() || playlistKeys.isNotEmpty() ||
+            followedArtistKeys.isNotEmpty() || !feedback.isEmpty
 
     fun trackScore(track: Track): Int {
         val key = ListenIdentity.trackKey(track.id, track.title, track.artist)
@@ -75,6 +77,7 @@ data class ListeningSignalProfile(
         if (key in favoriteKeys) score += weights.favorite
         if (key in playlistKeys) score += weights.playlist
         score += artistScore(track.artist)
+        score += feedback.trackScore(track)
         return score
     }
 
@@ -95,6 +98,7 @@ data class ListeningSignalProfile(
 
     fun isSuppressed(track: Track): Boolean {
         val key = ListenIdentity.trackKey(track.id, track.title, track.artist)
+        if (key in feedback.preferredTrackKeys) return false
         if (key in favoriteKeys || key in playlistKeys) return false
         val signal = tracks[key] ?: return false
         if (signal.countedPlays > 0) return false

@@ -397,8 +397,8 @@ cd desktop
 **Version Wiring Contract:**
 ```properties
 # Android: gradle.properties
-levyraVersionName=2.5.2
-levyraVersionCode=2050200
+levyraVersionName=2.5.3
+levyraVersionCode=2050300
 
 # Windows: desktop/version.properties
 levyraDesktopVersion=1.2.0
@@ -499,6 +499,10 @@ We welcome community contributions, bug fixes, localization, and performance enh
 </table>
 
 <br>
+
+<p align="center">
+  <sub><b>Branding credit</b> · Special thanks to <a href="https://github.com/gauravbhindwar"><b>@gauravbhindwar</b></a> for designing and contributing Levyra's new app logo through <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues/525"><b>#525</b></a>.</sub>
+</p>
 
 ### Built With & Inspired By
 

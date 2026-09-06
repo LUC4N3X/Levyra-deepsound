@@ -97,6 +97,8 @@ import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.RecommendationFeedback
+import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.ForgottenFavorites
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
@@ -685,8 +687,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
+    private val recommendationFeedbackMutationMutex = Mutex()
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
+    private val recommendationFeedbackStore =
+        com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
@@ -1297,6 +1302,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeDownloadBatches()
         loadPlaylists()
         loadExcludedArtists()
+        loadRecommendationFeedback()
         loadAmbientSettings()
         refreshForgottenFavorites()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
@@ -2002,6 +2008,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val excluded = excludedArtistsStore.load()
             if (loadGeneration != excludedArtistsGeneration) return@launch
             applyExcludedArtists(excluded)
+        }
+    }
+
+    private fun loadRecommendationFeedback() {
+        viewModelScope.launch {
+            recommendationFeedbackMutationMutex.withLock {
+                applyRecommendationFeedback(recommendationFeedbackStore.load())
+            }
+        }
+    }
+
+    private fun applyRecommendationFeedback(feedback: RecommendationFeedback) {
+        if (_state.value.recommendationFeedback == feedback) return
+        _state.update { it.copy(recommendationFeedback = feedback) }
+    }
+
+    fun setTrackFeedback(track: Track, kind: RecommendationFeedbackKind) {
+        val entry = RecommendationFeedback.entryFor(track, kind) ?: return
+        viewModelScope.launch {
+            recommendationFeedbackMutationMutex.withLock {
+                val current = _state.value.recommendationFeedback.kindFor(track)
+                val updated = if (current == kind) {
+                    recommendationFeedbackStore.clear(entry.trackKey)
+                } else {
+                    recommendationFeedbackStore.record(entry)
+                }
+                applyRecommendationFeedback(updated)
+            }
         }
     }
 
@@ -4130,6 +4164,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(preUpdateBackupFailed = value) }
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    private var playbackDiagnosticsReader: com.luc4n3x.levyra.player.PlaybackDiagnosticsReader? = null
+
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    internal suspend fun capturePlaybackDiagnostics(): com.luc4n3x.levyra.player.PlaybackDiagnosticSnapshot {
+        val reader = playbackDiagnosticsReader
+            ?: com.luc4n3x.levyra.player.PlaybackDiagnosticsReader(getApplication<Application>().applicationContext)
+                .also { playbackDiagnosticsReader = it }
+        val snapshot = _state.value
+        val track = snapshot.currentTrack
+        val activeStrategy = track?.let { resolver.activeStrategyFor(it, snapshot.isVideoMode) }.orEmpty()
+        return reader.capture(track, activeStrategy)
+    }
+
     fun refreshPlaybackDiagnostics(): String {
         val diagnostics = listOf(
             resolver.playbackDiagnostics(),
@@ -4489,9 +4537,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (generation != similarSongsGeneration.get()) return@launch
                 val exclusions = _state.value.artistExclusions
                 val queuedTracks = queueEngine.state.value.tracks
+                val rankingProfile = rankingSignalProfile()
                 val selected = withContext(Dispatchers.Default) {
+                    val allowed = exclusions.filterTracks(pool)
+                    val ordered = rankingProfile?.let { profile ->
+                        com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
+                            candidates = allowed,
+                            profile = profile,
+                            limit = allowed.size,
+                            contextArtist = track.artist
+                        )
+                    } ?: allowed
                     SimilarSongsSelector.select(
-                        candidates = exclusions.filterTracks(pool),
+                        candidates = ordered,
                         seed = track,
                         excludedIdentities = queuedTracks.mapTo(HashSet(), ::playbackIdentity)
                     )
@@ -8295,7 +8353,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!current.radioEnabled) return
         if (!isSameRadioSeed(current.currentTrack, request.seed)) return
         if (current.generation != request.generation) return
-        val orderedRadioTracks = listeningSignals?.takeIf { it.hasSignal }?.let { signals ->
+        val orderedRadioTracks = rankingSignalProfile()?.let { signals ->
             com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
                 candidates = radioTracks,
                 profile = signals,
@@ -8312,6 +8370,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         withContext(Dispatchers.Main) {
             queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
         }
+    }
+
+    private fun rankingSignalProfile(): com.luc4n3x.levyra.domain.ListeningSignalProfile? {
+        val feedback = _state.value.recommendationFeedback
+        val signals = listeningSignals
+        val profile = when {
+            signals == null && feedback.isEmpty -> return null
+            signals == null -> com.luc4n3x.levyra.domain.ListeningSignalProfile(feedback = feedback)
+            signals.feedback == feedback -> signals
+            else -> signals.copy(feedback = feedback)
+        }
+        return profile.takeIf { it.hasSignal }
     }
 
     private fun isSameRadioSeed(current: Track?, seed: Track): Boolean =
@@ -9133,13 +9203,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
             listeningSignals = signals
             _state.update { current ->
+                val rankingProfile = signals.copy(feedback = current.recommendationFeedback)
                 val updated = current.copy(
                     listeningPulse = pulse,
                     recentListens = recent,
                     mostPlayedTracks = mostPlayed,
                     personalOrbitTracks = com.luc4n3x.levyra.domain.ListeningSignalRanker.rank(
                         candidates = current.personalOrbitTracks,
-                        profile = signals,
+                        profile = rankingProfile,
                         limit = current.personalOrbitTracks.size,
                         dropSuppressed = false
                     )
