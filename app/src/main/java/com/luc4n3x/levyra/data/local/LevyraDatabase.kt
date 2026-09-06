@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 19
+const val LEVYRA_DATABASE_VERSION = 20
 
 @Database(
     entities = [
@@ -30,7 +30,8 @@ const val LEVYRA_DATABASE_VERSION = 19
         FollowedArtistEntity::class,
         PlaylistTagEntity::class,
         PlaylistTagLinkEntity::class,
-        ExcludedArtistEntity::class
+        ExcludedArtistEntity::class,
+        RecommendationFeedbackEntity::class
     ],
     version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
@@ -52,6 +53,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun followedArtistsDao(): FollowedArtistsDao
     abstract fun playlistTagsDao(): PlaylistTagsDao
     abstract fun excludedArtistsDao(): ExcludedArtistsDao
+    abstract fun recommendationFeedbackDao(): RecommendationFeedbackDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -591,6 +593,16 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS recommendation_feedback (" +
+                        "trackKey TEXT NOT NULL, artistKeys TEXT NOT NULL, kind TEXT NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, PRIMARY KEY(trackKey))"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -609,7 +621,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_15_16,
             MIGRATION_16_17,
             MIGRATION_17_18,
-            MIGRATION_18_19
+            MIGRATION_18_19,
+            MIGRATION_19_20
         )
 
         fun get(context: Context): LevyraDatabase {

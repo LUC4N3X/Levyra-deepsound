@@ -178,6 +178,28 @@ class LevyraDatabaseMigrationTest {
         migrated.close()
     }
 
+    @Test
+    fun migrate19To20KeepsUserDataAndAddsRecommendationFeedback() {
+        helper.createDatabase(TEST_DB, 19).use { db ->
+            db.execSQL(
+                "INSERT INTO excluded_artists (artistKey, browseId, name, excludedAt) " +
+                    "VALUES ('UC2', 'UC2', 'Excluded artist', 500)"
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 20, true, *LevyraDatabase.MIGRATIONS)
+
+        migrated.query("SELECT name FROM excluded_artists WHERE artistKey = 'UC2'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Excluded artist", cursor.getString(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM recommendation_feedback").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
     private companion object {
         const val TEST_DB = "levyra-migration-test.db"
     }

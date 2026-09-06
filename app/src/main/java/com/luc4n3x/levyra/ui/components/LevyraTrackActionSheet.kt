@@ -46,6 +46,7 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
@@ -53,7 +54,10 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.ThumbDown
+import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -87,6 +91,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -127,6 +132,9 @@ internal fun LevyraTrackActionSheet(
     isDownloading: Boolean,
     canRemoveFromHistory: Boolean,
     animationsEnabled: Boolean,
+    feedbackKind: RecommendationFeedbackKind?,
+    canExcludeArtist: Boolean,
+    isArtistExcluded: Boolean,
     onDismiss: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
@@ -136,7 +144,10 @@ internal fun LevyraTrackActionSheet(
     onDeleteDownload: () -> Unit,
     onOpenAlbum: () -> Unit,
     onOpenArtist: () -> Unit,
-    onRemoveFromHistory: () -> Unit
+    onRemoveFromHistory: () -> Unit,
+    onMoreLikeThis: () -> Unit,
+    onLessLikeThis: () -> Unit,
+    onToggleExcludeArtist: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
@@ -399,6 +410,43 @@ internal fun LevyraTrackActionSheet(
                                     label = strings.removeFromRecentSearches,
                                     tint = LevyraPink,
                                     onClick = { perform(onRemoveFromHistory) }
+                                )
+                            }
+                        }
+
+                        TrackActionDivider()
+
+                        Column(modifier = Modifier.padding(top = 6.dp, bottom = 14.dp)) {
+                            TrackActionRow(
+                                icon = Icons.Rounded.ThumbUp,
+                                label = strings.moreLikeThis,
+                                tint = if (feedbackKind == RecommendationFeedbackKind.MORE_LIKE_THIS) {
+                                    LevyraCyan
+                                } else {
+                                    LevyraText
+                                },
+                                onClick = { perform(onMoreLikeThis) }
+                            )
+                            TrackActionRow(
+                                icon = Icons.Rounded.ThumbDown,
+                                label = strings.lessLikeThis,
+                                tint = if (feedbackKind == RecommendationFeedbackKind.LESS_LIKE_THIS) {
+                                    LevyraPink
+                                } else {
+                                    LevyraText
+                                },
+                                onClick = { perform(onLessLikeThis) }
+                            )
+                            if (canExcludeArtist) {
+                                TrackActionRow(
+                                    icon = if (isArtistExcluded) {
+                                        Icons.Rounded.Recommend
+                                    } else {
+                                        Icons.Rounded.DoNotDisturbOn
+                                    },
+                                    label = if (isArtistExcluded) strings.includeArtist else strings.excludeArtist,
+                                    tint = if (isArtistExcluded) LevyraCyan else LevyraPink,
+                                    onClick = { perform(onToggleExcludeArtist) }
                                 )
                             }
                         }

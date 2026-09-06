@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.PlaylistTag
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -237,6 +238,7 @@ data class LevyraUiState(
     val followedArtistKeys: Set<String> = emptySet(),
     val excludedArtists: List<ExcludedArtist> = emptyList(),
     val artistExclusions: ArtistExclusions = ArtistExclusions.Empty,
+    val recommendationFeedback: RecommendationFeedback = RecommendationFeedback.Empty,
     val showAmbient: Boolean = false,
     val ambientSettings: LevyraAmbientSettings = LevyraAmbientSettings(),
     val releaseRadar: List<ReleaseRadarEntry> = emptyList(),

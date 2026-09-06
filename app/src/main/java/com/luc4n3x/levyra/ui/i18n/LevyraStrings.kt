@@ -400,6 +400,22 @@ class LevyraStrings private constructor(
     val lyricsRomanization: String get() = value("lyricsRomanization")
     val lyricsCompact: String get() = value("lyricsCompact")
     val startRadio: String get() = value("startRadio")
+    val moreLikeThis: String get() = value("moreLikeThis")
+    val lessLikeThis: String get() = value("lessLikeThis")
+    val playbackDiagnostics: String get() = value("playbackDiagnostics")
+    val playbackDiagnosticsSubtitle: String get() = value("playbackDiagnosticsSubtitle")
+    val diagnosticsCopyReport: String get() = value("diagnosticsCopyReport")
+    val diagnosticsCopied: String get() = value("diagnosticsCopied")
+    val diagnosticsPrivacyNote: String get() = value("diagnosticsPrivacyNote")
+    val diagnosticsStatusHealthy: String get() = value("diagnosticsStatusHealthy")
+    val diagnosticsStatusFallback: String get() = value("diagnosticsStatusFallback")
+    val diagnosticsStatusError: String get() = value("diagnosticsStatusError")
+    val diagnosticsStatusIdle: String get() = value("diagnosticsStatusIdle")
+    val diagnosticsSectionPlayback: String get() = value("diagnosticsSectionPlayback")
+    val diagnosticsSectionFormats: String get() = value("diagnosticsSectionFormats")
+    val diagnosticsSectionNetwork: String get() = value("diagnosticsSectionNetwork")
+    val diagnosticsSectionResolver: String get() = value("diagnosticsSectionResolver")
+    val diagnosticsNoPlayback: String get() = value("diagnosticsNoPlayback")
     val changeLyrics: String get() = value("changeLyrics")
     val automaticLyrics: String get() = value("automaticLyrics")
     val selectVerses: String get() = value("selectVerses")
@@ -1465,8 +1481,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + diagnosticsLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + diagnosticsKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
