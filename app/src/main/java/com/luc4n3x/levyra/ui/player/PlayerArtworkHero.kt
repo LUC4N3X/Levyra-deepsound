@@ -87,6 +87,11 @@ internal fun PlayerArtworkHero(
                     spotColor = Color.Black.copy(alpha = 0.75f)
                 )
                 .clip(artworkShape)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.14f),
+                    shape = artworkShape
+                )
                 .background(Color.Black.copy(alpha = 0.24f), artworkShape)
         ) {
             when (visualMode) {

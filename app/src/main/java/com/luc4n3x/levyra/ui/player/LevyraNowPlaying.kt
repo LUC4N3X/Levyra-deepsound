@@ -290,7 +290,7 @@ fun LevyraNowPlaying(
         label = "artwork-scale"
     )
     val artCorner by animateDpAsState(
-        targetValue = if (state.isPlaying) LevyraPlayerDesign.CornerLg else LevyraPlayerDesign.CornerXl,
+        targetValue = if (state.isPlaying) 28.dp else 32.dp,
         animationSpec = if (state.animationsEnabled) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "artwork-corner"
     )
@@ -327,14 +327,19 @@ fun LevyraNowPlaying(
 
         val phoneUsableWidth = maxWidth - playerHorizontalPadding * 2f
         val targetContainedWidth = if (playerPane == LevyraPlayerPane.SideBySide) {
-            (phoneUsableWidth / 2f).coerceAtLeast(180.dp)
+            (phoneUsableWidth / 2f).coerceAtLeast(200.dp)
         } else {
-            phoneUsableWidth * 0.78f
+            phoneUsableWidth
+        }
+        val maxContainedHeight = if (playerPane == LevyraPlayerPane.SideBySide) {
+            (maxHeight * 0.82f).coerceAtLeast(200.dp)
+        } else {
+            (maxHeight * 0.46f).coerceAtLeast(260.dp)
         }
         val artworkSize = minOf(
             targetContainedWidth,
             levyraPlayerArtworkMaxWidthDp(playerPane, layoutMode).dp,
-            (maxHeight * 0.40f).coerceAtLeast(180.dp)
+            maxContainedHeight
         )
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
 
@@ -740,18 +745,17 @@ fun LevyraNowPlaying(
                 onLyricsClick = viewModel::openLyrics,
                 onCycleVisualMode = {
                     val nextMode = when (visualMode) {
-                        PlayerVisualMode.Artwork -> PlayerVisualMode.CanvasCard
                         PlayerVisualMode.CanvasCard -> PlayerVisualMode.CanvasImmersive
                         PlayerVisualMode.CanvasImmersive -> PlayerVisualMode.Artwork
+                        PlayerVisualMode.Artwork -> PlayerVisualMode.CanvasCard
                     }
                     viewModel.setPlayerVisualMode(nextMode)
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onDownloadClick = viewModel::exportCurrentTrack,
                 onOptionsClick = { optionsExpanded = !optionsExpanded },
-                optionsMenuContent = if (optionsMenuContent != null) {
-                    optionsMenuContent
-                } else null
+                onOptionsDismiss = { optionsExpanded = false },
+                optionsMenuContent = optionsMenuContent
             )
         }
 

@@ -596,12 +596,12 @@ class LevyraPreferences(context: Context) {
             storedVisualMode != null -> PlayerVisualMode.from(storedVisualMode)
             preferences.contains(KEY_MOTION_ARTWORK) -> {
                 if (preferences[KEY_MOTION_ARTWORK] == true) {
-                    PlayerVisualMode.CanvasImmersive
+                    PlayerVisualMode.CanvasCard
                 } else {
                     PlayerVisualMode.Artwork
                 }
             }
-            else -> PlayerVisualMode.Artwork
+            else -> PlayerVisualMode.CanvasCard
         }
         val storedBackground = preferences[KEY_UI_PLAYER_BACKGROUND]
         val background = when {

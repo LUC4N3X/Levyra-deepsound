@@ -13912,7 +13912,7 @@ private fun PlayerScreen(
             PlayerYoutubeEngagementRow(
                 track = activeTrack,
                 engagement = state.youtubeEngagement,
-                compact = false,
+                compact = true,
                 onComments = viewModel::openYoutubeComments
             )
         },

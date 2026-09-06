@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -43,9 +46,6 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerIcon
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
-
-private val QuickActionIndicatorSize = 4.dp
-private val QuickActionIndicatorGap = 5.dp
 
 @Composable
 internal fun PlayerQuickActions(
@@ -69,6 +69,7 @@ internal fun PlayerQuickActions(
     onDownloadClick: () -> Unit,
     onOptionsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onOptionsDismiss: () -> Unit = {},
     optionsMenuContent: (@Composable () -> Unit)? = null
 ) {
     val visualModeIcon: ImageVector = when (visualMode) {
@@ -88,14 +89,14 @@ internal fun PlayerQuickActions(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(LevyraPlayerDesign.MinimumTouchTarget)
-                .padding(horizontal = LevyraPlayerDesign.SpaceSm),
+                .padding(horizontal = if (compact) 8.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             PlayerQuickActionButton(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
                 contentDescription = queueLabel,
-                tint = Color.White.copy(alpha = 0.76f),
+                tint = Color.White.copy(alpha = 0.82f),
                 active = false,
                 compact = compact,
                 modifier = Modifier
@@ -106,7 +107,7 @@ internal fun PlayerQuickActions(
             PlayerQuickActionButton(
                 icon = Icons.AutoMirrored.Rounded.Subject,
                 contentDescription = lyricsLabel,
-                tint = if (showLyrics) primaryColor else Color.White.copy(alpha = 0.72f),
+                tint = if (showLyrics) primaryColor else Color.White.copy(alpha = 0.82f),
                 active = showLyrics,
                 compact = compact,
                 modifier = Modifier
@@ -118,7 +119,7 @@ internal fun PlayerQuickActions(
                 PlayerQuickActionButton(
                     icon = visualModeIcon,
                     contentDescription = visualModeLabel,
-                    tint = if (visualModeActive) primaryColor else Color.White.copy(alpha = 0.65f),
+                    tint = if (visualModeActive) primaryColor else Color.White.copy(alpha = 0.75f),
                     active = visualModeActive,
                     toggleableState = ToggleableState(visualModeActive),
                     compact = compact,
@@ -131,7 +132,7 @@ internal fun PlayerQuickActions(
             PlayerQuickActionButton(
                 icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
                 contentDescription = downloadLabel,
-                tint = if (isExporting || isDownloaded) secondaryColor else Color.White.copy(alpha = 0.72f),
+                tint = if (isExporting || isDownloaded) secondaryColor else Color.White.copy(alpha = 0.82f),
                 active = isExporting || isDownloaded,
                 busy = isExporting,
                 enabled = !isExporting,
@@ -150,13 +151,26 @@ internal fun PlayerQuickActions(
                 PlayerQuickActionButton(
                     icon = Icons.Rounded.Equalizer,
                     contentDescription = optionsLabel,
-                    tint = if (optionsActive) primaryColor else Color.White.copy(alpha = 0.72f),
+                    tint = if (optionsActive) primaryColor else Color.White.copy(alpha = 0.82f),
                     active = optionsActive,
                     compact = compact,
                     modifier = Modifier.fillMaxSize(),
                     onClick = onOptionsClick
                 )
-                optionsMenuContent?.invoke()
+                if (optionsMenuContent != null) {
+                    DropdownMenu(
+                        expanded = optionsActive,
+                        onDismissRequest = onOptionsDismiss,
+                        modifier = Modifier
+                            .width(if (compact) 276.dp else 296.dp)
+                            .background(Color(0xFF15161A), LevyraPlayerDesign.ShapeMd)
+                            .border(1.dp, Color.White.copy(alpha = 0.12f), LevyraPlayerDesign.ShapeMd)
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                            optionsMenuContent()
+                        }
+                    }
+                }
             }
         }
     }
@@ -176,10 +190,15 @@ private fun PlayerQuickActionButton(
     onClick: () -> Unit
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
-    val indicatorAlpha by animateFloatAsState(
-        targetValue = if (active) 1f else 0f,
+    val containerAlpha by animateFloatAsState(
+        targetValue = if (active) 0.20f else 0.06f,
         animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
-        label = "player-quick-indicator"
+        label = "player-quick-container"
+    )
+    val borderAlpha by animateFloatAsState(
+        targetValue = if (active) 0.40f else 0.10f,
+        animationSpec = if (animationsEnabled) LevyraPlayerDesign.standardTween(170) else snap(),
+        label = "player-quick-border"
     )
 
     Box(
@@ -201,9 +220,21 @@ private fun PlayerQuickActionButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(QuickActionIndicatorGap)
+        val pillSize = if (compact) 38.dp else 42.dp
+        val iconSize = if (compact) 20.dp else 22.dp
+        Box(
+            modifier = Modifier
+                .size(pillSize)
+                .background(
+                    if (active) tint.copy(alpha = containerAlpha) else Color.White.copy(alpha = containerAlpha),
+                    CircleShape
+                )
+                .border(
+                    1.dp,
+                    if (active) tint.copy(alpha = borderAlpha) else Color.White.copy(alpha = borderAlpha),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
             if (busy) {
                 CircularProgressIndicator(
@@ -215,15 +246,9 @@ private fun PlayerQuickActionButton(
                 PlayerIcon(
                     icon = icon,
                     tint = tint,
-                    modifier = Modifier.size(if (compact) 21.dp else 23.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(QuickActionIndicatorSize)
-                    .graphicsLayer { alpha = indicatorAlpha }
-                    .background(tint, CircleShape)
-            )
         }
     }
 }

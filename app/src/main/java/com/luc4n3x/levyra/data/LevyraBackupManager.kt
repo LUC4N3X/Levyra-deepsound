@@ -732,6 +732,13 @@ class LevyraBackupManager(private val context: Context) {
     }
 
     private fun parseSettings(json: JSONObject): LevyraPreferencesSnapshot {
+        val legacyVisualMode = if (json.has("playerVisualMode")) {
+            PlayerVisualMode.from(json.optString("playerVisualMode"))
+        } else if (json.optBoolean("motionArtworkEnabled", true)) {
+            PlayerVisualMode.CanvasCard
+        } else {
+            PlayerVisualMode.Artwork
+        }
         return LevyraPreferencesSnapshot(
             onboarded = json.optBoolean("onboarded", false),
             tastes = json.optJSONArray("tastes").toStringSet(),
@@ -752,7 +759,7 @@ class LevyraBackupManager(private val context: Context) {
             lyricsTranslationEnabled = json.optBoolean("lyricsTranslationEnabled", false),
             themePreset = json.optString("themePreset"),
             audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
-            interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings")),
+            interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings"), legacyVisualMode),
             downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings")),
             backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
             jamDisplayName = json.optString("jamDisplayName")
@@ -765,43 +772,14 @@ class LevyraBackupManager(private val context: Context) {
     private fun parseAudioSettings(json: JSONObject?): LevyraAudioSettings =
         backupAudioSettingsFromJson(json)
 
-    private fun interfaceSettingsToJson(value: LevyraInterfaceSettings): JSONObject = JSONObject()
-        .put("compactHome", value.compactHome)
-        .put("showPersonalOrbit", value.showPersonalOrbit)
-        .put("showResonance", value.showResonance)
-        .put("showNewReleases", value.showNewReleases)
-        .put("showAlbumsForYou", value.showAlbumsForYou)
-        .put("showTrendingArtists", value.showTrendingArtists)
-        .put("showCharts", value.showCharts)
-        .put("fontPreset", value.fontPreset.name)
-        .put("playerGesturesEnabled", value.playerGesturesEnabled)
-        .put("doubleTapSeekSeconds", value.doubleTapSeekSeconds)
-        .put("longPressSpeed", value.longPressSpeed.toDouble())
-        .put("pureBlack", value.pureBlack)
-        .put("hapticFeedback", value.hapticFeedback)
-        .put("playerVisualMode", value.playerVisualMode.name)
-        .put("playerBackground", value.playerBackground.name)
+    private fun interfaceSettingsToJson(value: LevyraInterfaceSettings): JSONObject =
+        backupInterfaceSettingsToJson(value)
 
-    private fun parseInterfaceSettings(json: JSONObject?): LevyraInterfaceSettings {
-        if (json == null) return LevyraInterfaceSettings()
-        return LevyraInterfaceSettings(
-            compactHome = json.optBoolean("compactHome"),
-            showPersonalOrbit = json.optBoolean("showPersonalOrbit", true),
-            showResonance = json.optBoolean("showResonance", true),
-            showNewReleases = json.optBoolean("showNewReleases", true),
-            showAlbumsForYou = json.optBoolean("showAlbumsForYou", true),
-            showTrendingArtists = json.optBoolean("showTrendingArtists", true),
-            showCharts = json.optBoolean("showCharts", true),
-            fontPreset = LevyraFontPreset.from(json.optString("fontPreset")),
-            playerGesturesEnabled = json.optBoolean("playerGesturesEnabled", true),
-            doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
-            longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat(),
-            pureBlack = json.optBoolean("pureBlack", false),
-            hapticFeedback = json.optBoolean("hapticFeedback", true),
-            playerVisualMode = PlayerVisualMode.from(json.optString("playerVisualMode", PlayerVisualMode.Artwork.name)),
-            playerBackground = PlayerBackgroundMode.from(json.optString("playerBackground", PlayerBackgroundMode.Dynamic.name))
-        ).normalized()
-    }
+    private fun parseInterfaceSettings(
+        json: JSONObject?,
+        legacyVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasCard
+    ): LevyraInterfaceSettings =
+        backupInterfaceSettingsFromJson(json, legacyVisualMode)
 
     private fun downloadSettingsToJson(value: LevyraDownloadSettings): JSONObject = JSONObject()
         .put("wifiOnly", value.wifiOnly)
@@ -1170,5 +1148,58 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         pitch = json.optDouble("pitch", 1.0).toFloat(),
         gaplessEnabled = json.optBoolean("gaplessEnabled", true),
         customPresets = customPresets
+    ).normalized()
+}
+
+internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSONObject = JSONObject()
+    .put("compactHome", value.compactHome)
+    .put("showPersonalOrbit", value.showPersonalOrbit)
+    .put("showResonance", value.showResonance)
+    .put("showNewReleases", value.showNewReleases)
+    .put("showAlbumsForYou", value.showAlbumsForYou)
+    .put("showTrendingArtists", value.showTrendingArtists)
+    .put("showCharts", value.showCharts)
+    .put("fontPreset", value.fontPreset.name)
+    .put("playerGesturesEnabled", value.playerGesturesEnabled)
+    .put("doubleTapSeekSeconds", value.doubleTapSeekSeconds)
+    .put("longPressSpeed", value.longPressSpeed.toDouble())
+    .put("pureBlack", value.pureBlack)
+    .put("hapticFeedback", value.hapticFeedback)
+    .put("playerVisualMode", value.playerVisualMode.name)
+    .put("playerBackground", value.playerBackground.name)
+
+internal fun backupInterfaceSettingsFromJson(
+    json: JSONObject?,
+    legacyVisualMode: PlayerVisualMode = PlayerVisualMode.CanvasCard
+): LevyraInterfaceSettings {
+    if (json == null) return LevyraInterfaceSettings(playerVisualMode = legacyVisualMode).normalized()
+    val visualMode = if (json.has("playerVisualMode")) {
+        PlayerVisualMode.from(json.optString("playerVisualMode"))
+    } else {
+        legacyVisualMode
+    }
+    val backgroundMode = if (json.has("playerBackground")) {
+        PlayerBackgroundMode.from(json.optString("playerBackground"))
+    } else if (json.optBoolean("pureBlack", false)) {
+        PlayerBackgroundMode.PureBlack
+    } else {
+        PlayerBackgroundMode.Dynamic
+    }
+    return LevyraInterfaceSettings(
+        compactHome = json.optBoolean("compactHome"),
+        showPersonalOrbit = json.optBoolean("showPersonalOrbit", true),
+        showResonance = json.optBoolean("showResonance", true),
+        showNewReleases = json.optBoolean("showNewReleases", true),
+        showAlbumsForYou = json.optBoolean("showAlbumsForYou", true),
+        showTrendingArtists = json.optBoolean("showTrendingArtists", true),
+        showCharts = json.optBoolean("showCharts", true),
+        fontPreset = LevyraFontPreset.from(json.optString("fontPreset")),
+        playerGesturesEnabled = json.optBoolean("playerGesturesEnabled", true),
+        doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
+        longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat(),
+        pureBlack = json.optBoolean("pureBlack", false),
+        hapticFeedback = json.optBoolean("hapticFeedback", true),
+        playerVisualMode = visualMode,
+        playerBackground = backgroundMode
     ).normalized()
 }
