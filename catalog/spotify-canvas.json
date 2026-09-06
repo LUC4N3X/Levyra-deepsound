@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-06T15:30:31Z",
+  "generatedAt": "2026-09-06T20:27:39Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -507,6 +507,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Great Expectation",
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
@@ -565,7 +572,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Nice To Each Other",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -1806,13 +1813,6 @@
       "artist": "Effe Serieus",
       "album": "Baila de Gasolina",
       "url": "https://canvaz.scdn.co/upload/artist/3NRhf1UyPB4XwxBq1eQE93/video/b13c49e1f64742f09e62f260bcc4deaf.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
