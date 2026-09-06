@@ -326,15 +326,21 @@ fun LevyraNowPlaying(
         val paneCount = if (playerPane == LevyraPlayerPane.SideBySide) 2f else 1f
 
         val phoneUsableWidth = maxWidth - playerHorizontalPadding * 2f
+        val stackedArtworkWidthFraction = if (compactPlayer) 0.84f else 0.90f
+        val stackedArtworkHeightFraction = if (compactPlayer) 0.36f else 0.42f
         val targetContainedWidth = if (playerPane == LevyraPlayerPane.SideBySide) {
             (phoneUsableWidth / 2f).coerceAtLeast(200.dp)
-        } else {
+        } else if (state.isVideoMode) {
             phoneUsableWidth * 0.76f
+        } else {
+            phoneUsableWidth * stackedArtworkWidthFraction
         }
         val maxContainedHeight = if (playerPane == LevyraPlayerPane.SideBySide) {
             (maxHeight * 0.82f).coerceAtLeast(200.dp)
-        } else {
+        } else if (state.isVideoMode) {
             (maxHeight * 0.35f).coerceAtLeast(180.dp)
+        } else {
+            (maxHeight * stackedArtworkHeightFraction).coerceAtLeast(180.dp)
         }
         val artworkSize = minOf(
             targetContainedWidth,
