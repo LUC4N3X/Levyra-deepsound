@@ -1,13 +1,15 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraCanvasQuality
+import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
+import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -54,8 +56,11 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun backupRoundTripPreservesPlayerVisualAndBackgroundSettings() {
+    fun backupRoundTripPreservesPlayerVisualAndCanvasSettings() {
         val original = LevyraInterfaceSettings(
+            canvasQuality = LevyraCanvasQuality.High,
+            canvasSource = LevyraCanvasSource.Tidal,
+            enhanceVideoMetadata = true,
             playerVisualMode = PlayerVisualMode.CanvasCard,
             playerBackground = PlayerBackgroundMode.Blur
         )
@@ -64,6 +69,9 @@ class LevyraPreferencesDefaultsTest {
             legacyVisualMode = PlayerVisualMode.Artwork
         )
 
+        assertEquals(LevyraCanvasQuality.High, restored.canvasQuality)
+        assertEquals(LevyraCanvasSource.Tidal, restored.canvasSource)
+        assertTrue(restored.enhanceVideoMetadata)
         assertEquals(PlayerVisualMode.CanvasCard, restored.playerVisualMode)
         assertEquals(PlayerBackgroundMode.Blur, restored.playerBackground)
     }
@@ -75,8 +83,12 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun defaultPlayerVisualModeIsCanvasCard() {
-        assertEquals(PlayerVisualMode.CanvasCard, LevyraInterfaceSettings().playerVisualMode)
+    fun defaultPlayerVisualModeIsArtwork() {
+        assertEquals(PlayerVisualMode.Artwork, LevyraInterfaceSettings().playerVisualMode)
+    }
+
+    @Test
+    fun legacyBackupWithoutVisualModeDefaultsToCanvasCard() {
         assertEquals(PlayerVisualMode.CanvasCard, backupInterfaceSettingsFromJson(JSONObject()).playerVisualMode)
     }
 }
