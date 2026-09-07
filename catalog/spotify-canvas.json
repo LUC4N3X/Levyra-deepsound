@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-06T20:27:39Z",
+  "generatedAt": "2026-09-07T04:47:48Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -313,7 +313,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -397,7 +397,7 @@
     {
       "song": "Iris",
       "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
+      "album": "Dizzy up the Girl",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
@@ -507,13 +507,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Great Expectation",
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
@@ -542,13 +535,6 @@
       "scope": "track"
     },
     {
-      "song": "Midnight Sun",
-      "artist": "Zara Larsson",
-      "album": "Midnight Sun",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "iloveitiloveitiloveit",
       "artist": "Bella Kay",
       "album": "My Reckless Abandon",
@@ -560,13 +546,6 @@
       "artist": "Alex Warren",
       "album": "You'll Be Alright, Kid (Chapter 1)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fa41c665765f46f9bc0cba39028b00d5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Dizzy up the Girl",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2383,6 +2362,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Matadoren",
       "artist": "Yasin",
       "album": "Your Turn In Blue",
@@ -3205,7 +3191,7 @@
       "song": "Yes! 東京",
       "artist": "EBiDAN (恵比寿学園男子部), chotokkyu, M!LK, 原因は自分にある。, SUPER★DRAGON, Sakurashimeji, ONE N' ONLY, BUDDiiS, ICEx, Lienel",
       "album": "Yes! 東京",
-      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/0452d97a7c334bd7bfbc23b6b2174ccc.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4jtwvvkDVrBZosFsvbSLXm/video/5c3650a04d1347a99d65849a4a3408f4.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4112,6 +4098,13 @@
       "scope": "track"
     },
     {
+      "song": "Lưu Niên",
+      "artist": "Jack - J97",
+      "album": "Lưu Niên",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/8dd6d88d85a74c279336aea4f9b8030e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Sandwich & Story",
       "artist": "MONO, EmceeDan",
       "album": "MỸ ĐIỆU CA",
@@ -4151,6 +4144,13 @@
       "artist": "Obito",
       "album": "Dạo Này",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/22b1638564f54be2ae599a88549b51c1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Người Dưng",
+      "artist": "Jack - J97",
+      "album": "Người Dưng",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/82dc921c916a43d287e73c89f0708d7f.cnvs.mp4",
       "scope": "track"
     },
     {
