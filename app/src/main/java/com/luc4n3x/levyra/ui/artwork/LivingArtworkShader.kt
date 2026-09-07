@@ -10,6 +10,7 @@ internal const val LIVING_ARTWORK_AGSL = """
 uniform float2 uSize;
 uniform float uTime;
 uniform float uIntensity;
+uniform float uSeed;
 layout(color) uniform half4 uTone0;
 layout(color) uniform half4 uTone1;
 layout(color) uniform half4 uTone2;
@@ -22,27 +23,60 @@ float field(float2 uv, float2 center, float radius) {
     return f * f * (3.0 - 2.0 * f);
 }
 
+float2 flowWarp(float2 uv, float t, float seed) {
+    float2 p = uv - float2(0.5);
+    float xFlow = sin(p.y * 5.1 + t * 0.10 + seed * 1.37);
+    xFlow += 0.55 * sin((p.x + p.y) * 4.2 - t * 0.07 + seed * 0.73);
+    float yFlow = cos(p.x * 4.7 - t * 0.09 + seed * 1.11);
+    yFlow += 0.50 * cos((p.x - p.y) * 3.8 + t * 0.06 + seed * 1.61);
+    return float2(xFlow, yFlow) * 0.042;
+}
+
+float meshModulation(float2 uv, float t, float seed, float phase) {
+    float a = sin((uv.x * 2.3 + uv.y * 1.7) * 3.14159265 + t * 0.075 + seed + phase);
+    float b = cos((uv.x * 1.4 - uv.y * 2.1) * 3.14159265 - t * 0.055 + seed * 0.83 - phase);
+    return 0.82 + 0.18 * (0.5 + 0.25 * a + 0.25 * b);
+}
+
 half4 main(float2 fragCoord) {
     float2 uv = fragCoord / uSize;
     float t = uTime;
+    float seed = uSeed;
+    float2 warpedUv = uv + flowWarp(uv, t, seed);
 
-    float2 c0 = float2(0.30 + 0.17 * sin(t * 0.19), 0.30 + 0.14 * cos(t * 0.23));
-    float2 c1 = float2(0.74 + 0.15 * cos(t * 0.15), 0.28 + 0.16 * sin(t * 0.21));
-    float2 c2 = float2(0.52 + 0.19 * sin(t * 0.11 + 1.7), 0.72 + 0.13 * cos(t * 0.17 + 0.6));
-    float2 c3 = float2(0.20 + 0.13 * cos(t * 0.13 + 2.4), 0.74 + 0.15 * sin(t * 0.12 + 1.1));
-    float2 c4 = float2(0.80 + 0.12 * sin(t * 0.09 + 3.1), 0.66 + 0.12 * cos(t * 0.14 + 2.2));
+    float2 c0 = float2(
+        0.27 + 0.18 * sin(t * 0.105 + seed * 0.91),
+        0.29 + 0.15 * cos(t * 0.121 + seed * 1.17)
+    );
+    float2 c1 = float2(
+        0.73 + 0.16 * cos(t * 0.087 + seed * 1.43),
+        0.27 + 0.17 * sin(t * 0.113 + seed * 0.69)
+    );
+    float2 c2 = float2(
+        0.52 + 0.20 * sin(t * 0.071 + seed * 1.09 + 1.7),
+        0.70 + 0.14 * cos(t * 0.097 + seed * 0.77 + 0.6)
+    );
+    float2 c3 = float2(
+        0.21 + 0.14 * cos(t * 0.079 + seed * 1.31 + 2.4),
+        0.73 + 0.16 * sin(t * 0.067 + seed * 0.57 + 1.1)
+    );
+    float2 c4 = float2(
+        0.79 + 0.13 * sin(t * 0.061 + seed * 0.63 + 3.1),
+        0.65 + 0.13 * cos(t * 0.083 + seed * 1.23 + 2.2)
+    );
 
-    float breathe = 0.94 + 0.06 * sin(t * 0.27);
-    float w0 = field(uv, c0, 0.62 * breathe);
-    float w1 = field(uv, c1, 0.56 * breathe);
-    float w2 = field(uv, c2, 0.58 * breathe);
-    float w3 = field(uv, c3, 0.48 * breathe);
-    float w4 = field(uv, c4, 0.44 * breathe);
+    float breathe = 0.95 + 0.05 * sin(t * 0.19 + seed * 0.4);
+    float w0 = field(warpedUv, c0, 0.63 * breathe) * meshModulation(warpedUv, t, seed, 0.0);
+    float w1 = field(warpedUv, c1, 0.58 * breathe) * meshModulation(warpedUv, t, seed, 1.1);
+    float w2 = field(warpedUv, c2, 0.60 * breathe) * meshModulation(warpedUv, t, seed, 2.2);
+    float w3 = field(warpedUv, c3, 0.51 * breathe) * meshModulation(warpedUv, t, seed, 3.3);
+    float w4 = field(warpedUv, c4, 0.47 * breathe) * meshModulation(warpedUv, t, seed, 4.4);
 
     float total = w0 + w1 + w2 + w3 + w4;
     if (total <= 0.0001) {
         return half4(0.0);
     }
+
     half3 blended =
         uTone0.rgb * half(w0) +
         uTone1.rgb * half(w1) +
@@ -51,9 +85,11 @@ half4 main(float2 fragCoord) {
         uTone4.rgb * half(w4);
     blended = blended / half(total);
 
-    float coverage = clamp(total * 0.55, 0.0, 1.0);
-    float vignette = 1.0 - 0.35 * clamp(distance(uv, float2(0.5, 0.5)) * 1.35, 0.0, 1.0);
-    half alpha = half(clamp(coverage * vignette * uIntensity, 0.0, 1.0));
+    float coverage = clamp(total * 0.52, 0.0, 1.0);
+    float edgeDistance = distance(uv, float2(0.5, 0.48));
+    float vignette = 1.0 - 0.30 * smoothstep(0.28, 0.78, edgeDistance);
+    float controlSafe = 1.0 - 0.16 * smoothstep(0.64, 1.0, uv.y);
+    half alpha = half(clamp(coverage * vignette * controlSafe * uIntensity, 0.0, 1.0));
     return half4(blended * alpha, alpha);
 }
 """
@@ -73,7 +109,17 @@ internal fun RuntimeShader.applyLivingArtworkTones(tones: List<Color>): Boolean 
         val color = tones.getOrElse(index) { tones.lastOrNull() ?: Color.Black }
         setColorUniform("uTone$index", color.toArgb())
     }
+    setFloatUniform("uSeed", livingArtworkSeed(tones))
     true
 } catch (error: IllegalArgumentException) {
     false
+}
+
+internal fun livingArtworkSeed(tones: List<Color>): Float {
+    var hash = 0x811C9DC5.toInt()
+    for (index in 0 until livingArtworkToneCount()) {
+        val color = tones.getOrElse(index) { tones.lastOrNull() ?: Color.Black }
+        hash = (hash xor color.toArgb()) * 16777619
+    }
+    return (hash ushr 1) / Int.MAX_VALUE.toFloat() * 6.2831855f
 }
