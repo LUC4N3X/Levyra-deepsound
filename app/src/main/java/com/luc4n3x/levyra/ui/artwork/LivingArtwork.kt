@@ -28,7 +28,7 @@ import kotlin.math.sin
 private const val FRAME_INTERVAL_MS = 34L
 private const val FADE_IN_MS = 520
 private const val FADE_OUT_MS = 260
-private const val SHADER_INTENSITY = 0.62f
+private const val SHADER_INTENSITY = 0.74f
 private const val LEGACY_INTENSITY = 0.50f
 
 @Composable
@@ -80,7 +80,7 @@ private fun rememberLivingArtworkShader(colors: LivingArtworkColors): RuntimeSha
     remember(colors) {
         if (!livingArtworkShaderSupported()) return@remember null
         val shader = createLivingArtworkShader() ?: return@remember null
-        if (!shader.applyLivingArtworkTones(colors.tones)) return@remember null
+        if (!shader.applyLivingArtworkColors(colors)) return@remember null
         shader
     }
 
