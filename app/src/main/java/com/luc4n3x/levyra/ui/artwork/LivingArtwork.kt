@@ -28,7 +28,7 @@ import kotlin.math.sin
 private const val FRAME_INTERVAL_MS = 34L
 private const val FADE_IN_MS = 520
 private const val FADE_OUT_MS = 260
-private const val SHADER_INTENSITY = 0.74f
+private const val SHADER_INTENSITY = 0.60f
 private const val LEGACY_INTENSITY = 0.50f
 
 @Composable
@@ -101,7 +101,7 @@ private fun LivingArtworkShaderSurface(
                 if (visible <= 0.001f) return@onDrawBehind
                 shader.setFloatUniform("uTime", phase())
                 shader.setFloatUniform("uIntensity", SHADER_INTENSITY * visible)
-                drawRect(brush = brush, blendMode = BlendMode.Screen)
+                drawRect(brush = brush)
             }
         }
     )

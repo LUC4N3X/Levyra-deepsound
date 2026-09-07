@@ -58,39 +58,50 @@ half4 main(float2 fragCoord) {
     float t = uTime;
     float seed = uSeed;
 
-    float2 drift = float2(t * 0.055, -t * 0.041);
-    float warpX = fbm(p * 1.12 + drift + float2(seed * 0.17, seed * 0.09));
-    float warpY = fbm(p * 1.12 - drift + float2(5.73 + seed * 0.11, 2.19 - seed * 0.07));
-    float2 warped = p + (float2(warpX, warpY) - float2(0.5, 0.5)) * 0.56;
+    float2 drift = float2(t * 0.050, -t * 0.036);
+    float warpX = fbm(p * 0.92 + drift + float2(seed * 0.17, seed * 0.09));
+    float warpY = fbm(p * 0.92 - drift + float2(5.73 + seed * 0.11, 2.19 - seed * 0.07));
+    float2 warped = p + (float2(warpX, warpY) - float2(0.5, 0.5)) * 0.58;
 
     float radius = length(warped);
-    float lens = sin(radius * 4.4 - t * 0.17 + seed * 0.63) * 0.12;
+    float lens = sin(radius * 3.6 - t * 0.13 + seed * 0.63) * 0.08;
     warped = rotatePoint(warped, lens);
-    warped += warped * (0.055 * sin(radius * 3.2 + t * 0.11 + seed));
+    warped += warped * (0.032 * sin(radius * 2.7 + t * 0.09 + seed));
 
-    float2 mesh = warped * 0.82;
-    float mask0 = smoothstep(0.27, 0.75, valueNoise(mesh * 1.08 + float2(t * 0.026, seed * 0.23)));
-    float mask1 = smoothstep(0.29, 0.77, valueNoise(rotatePoint(mesh, 0.61) * 1.24 + float2(-t * 0.021 + 4.1, seed * 0.31 + 1.7)));
-    float mask2 = smoothstep(0.31, 0.79, valueNoise(rotatePoint(mesh, -0.48) * 1.39 + float2(seed * 0.19 + 7.4, t * 0.018 + 3.2)));
-    float mask3 = smoothstep(0.33, 0.81, valueNoise(mesh * 1.55 + float2(t * 0.016 + 2.8, -seed * 0.27 + 8.6)));
-    float mask4 = smoothstep(0.35, 0.83, valueNoise(rotatePoint(mesh, 0.92) * 1.72 + float2(-t * 0.014 + 9.3, seed * 0.37 + 5.1)));
+    float2 mesh = warped * 0.52;
+    float mask0 = smoothstep(0.50, 0.74, valueNoise(mesh * 0.66 + float2(t * 0.018, seed * 0.23)));
+    float mask1 = smoothstep(0.52, 0.76, valueNoise(rotatePoint(mesh, 0.58) * 0.78 + float2(-t * 0.017 + 4.1, seed * 0.31 + 1.7)));
+    float mask2 = smoothstep(0.54, 0.78, valueNoise(rotatePoint(mesh, -0.43) * 0.90 + float2(seed * 0.19 + 7.4, t * 0.015 + 3.2)));
+    float mask3 = smoothstep(0.56, 0.80, valueNoise(mesh * 1.04 + float2(t * 0.013 + 2.8, -seed * 0.27 + 8.6)));
+    float mask4 = smoothstep(0.58, 0.82, valueNoise(rotatePoint(mesh, 0.88) * 1.16 + float2(-t * 0.012 + 9.3, seed * 0.37 + 5.1)));
+
+    float macroField = valueNoise(warped * 0.42 + float2(seed * 0.41, t * 0.010));
+    float edgeField = smoothstep(0.26, 0.86, distance(uv, float2(0.5, 0.48)));
 
     half3 color = uBase.rgb;
-    color = mix(color, uTone0.rgb, half(mask0 * 0.94));
-    color = mix(color, uTone1.rgb, half(mask1 * 0.88));
-    color = mix(color, uTone2.rgb, half(mask2 * 0.72));
-    color = mix(color, uTone3.rgb, half(mask3 * 0.64));
-    color = mix(color, uTone4.rgb, half(mask4 * 0.58));
+    color = mix(color, uTone0.rgb, half(mask0 * 0.86));
+    color = mix(color, uTone1.rgb, half(mask1 * 0.78));
+    color = mix(color, uTone2.rgb, half(mask2 * 0.68));
+    color = mix(color, uTone3.rgb, half(mask3 * 0.56));
+    color = mix(color, uTone4.rgb, half(mask4 * 0.46));
 
-    float silkNoise = valueNoise(mesh * 2.85 + float2(t * 0.022, -t * 0.017) + float2(seed * 0.41, seed * 0.13));
-    float silk = 1.0 - smoothstep(0.07, 0.24, abs(silkNoise - 0.5));
-    color += half3(half(silk * 0.055));
+    float sheenNoise = valueNoise(mesh * 1.80 + float2(t * 0.018, -t * 0.014) + float2(seed * 0.41, seed * 0.13));
+    float sheen = 1.0 - smoothstep(0.18, 0.34, abs(sheenNoise - 0.5));
+    color += half3(half(sheen * 0.012));
 
-    float coverage = 0.60 + (warpX + warpY) * 0.12 + max(mask0, mask1) * 0.08;
+    float dominantCoverage = max(max(mask0, mask1), max(mask2, max(mask3, mask4)));
+    float layeredCoverage = (mask0 + mask1 + mask2 + mask3 + mask4) * 0.06;
+    float coverage = 0.22 + dominantCoverage * 0.32 + layeredCoverage + macroField * 0.10 + edgeField * 0.08;
+
     float edgeDistance = distance(uv, float2(0.5, 0.47));
-    float vignette = 1.0 - 0.24 * smoothstep(0.30, 0.80, edgeDistance);
-    float controlSafe = 1.0 - 0.18 * smoothstep(0.63, 1.0, uv.y);
-    half alpha = half(clamp(coverage * vignette * controlSafe * uIntensity, 0.0, 1.0));
+    float vignette = 1.0 - 0.16 * smoothstep(0.36, 0.88, edgeDistance);
+
+    float artworkDistance = distance(uv, float2(0.5, 0.34));
+    float artworkSafe = 1.0 - 0.42 * (1.0 - smoothstep(0.18, 0.50, artworkDistance));
+
+    float controlSafe = 1.0 - 0.24 * smoothstep(0.60, 1.0, uv.y);
+
+    half alpha = half(clamp(coverage * vignette * artworkSafe * controlSafe * uIntensity, 0.0, 1.0));
     return half4(color * alpha, alpha);
 }
 """
