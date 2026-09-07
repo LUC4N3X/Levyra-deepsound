@@ -24,18 +24,10 @@ float field(float2 uv, float2 center, float radius) {
 }
 
 float2 flowWarp(float2 uv, float t, float seed) {
-    float2 p = uv - float2(0.5);
-    float xFlow = sin(p.y * 5.1 + t * 0.10 + seed * 1.37);
-    xFlow += 0.55 * sin((p.x + p.y) * 4.2 - t * 0.07 + seed * 0.73);
-    float yFlow = cos(p.x * 4.7 - t * 0.09 + seed * 1.11);
-    yFlow += 0.50 * cos((p.x - p.y) * 3.8 + t * 0.06 + seed * 1.61);
-    return float2(xFlow, yFlow) * 0.042;
-}
-
-float meshModulation(float2 uv, float t, float seed, float phase) {
-    float a = sin((uv.x * 2.3 + uv.y * 1.7) * 3.14159265 + t * 0.075 + seed + phase);
-    float b = cos((uv.x * 1.4 - uv.y * 2.1) * 3.14159265 - t * 0.055 + seed * 0.83 - phase);
-    return 0.82 + 0.18 * (0.5 + 0.25 * a + 0.25 * b);
+    float2 p = uv - float2(0.5, 0.5);
+    float xFlow = sin((p.y + p.x * 0.34) * 5.0 + t * 0.082 + seed * 1.37);
+    float yFlow = cos((p.x - p.y * 0.29) * 4.6 - t * 0.071 + seed * 1.11);
+    return float2(xFlow, yFlow) * 0.050;
 }
 
 half4 main(float2 fragCoord) {
@@ -66,11 +58,11 @@ half4 main(float2 fragCoord) {
     );
 
     float breathe = 0.95 + 0.05 * sin(t * 0.19 + seed * 0.4);
-    float w0 = field(warpedUv, c0, 0.63 * breathe) * meshModulation(warpedUv, t, seed, 0.0);
-    float w1 = field(warpedUv, c1, 0.58 * breathe) * meshModulation(warpedUv, t, seed, 1.1);
-    float w2 = field(warpedUv, c2, 0.60 * breathe) * meshModulation(warpedUv, t, seed, 2.2);
-    float w3 = field(warpedUv, c3, 0.51 * breathe) * meshModulation(warpedUv, t, seed, 3.3);
-    float w4 = field(warpedUv, c4, 0.47 * breathe) * meshModulation(warpedUv, t, seed, 4.4);
+    float w0 = field(warpedUv, c0, 0.63 * breathe);
+    float w1 = field(warpedUv, c1, 0.58 * breathe);
+    float w2 = field(warpedUv, c2, 0.60 * breathe);
+    float w3 = field(warpedUv, c3, 0.51 * breathe);
+    float w4 = field(warpedUv, c4, 0.47 * breathe);
 
     float total = w0 + w1 + w2 + w3 + w4;
     if (total <= 0.0001) {
