@@ -487,6 +487,24 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
+    fun provenanceMergeKeepsOnlyOneCausalDecoderProducer() {
+        val first = YoutubeDecoderProvenance(
+            playerHash = "2182a2cc",
+            configIdentity = "config-a",
+            configEpoch = 7L,
+            configOrigin = YoutubePlayerConfigOrigin.ANALYZED,
+            decodedAtMs = 100L
+        )
+        val newer = first.copy(decodedAtMs = 200L)
+        val other = first.copy(configIdentity = "config-b", decodedAtMs = 300L)
+
+        assertEquals(newer, YoutubeDecoderProvenancePolicy.merge(first, newer))
+        assertEquals(null, YoutubeDecoderProvenancePolicy.merge(first, other))
+        assertEquals(newer, YoutubeDecoderProvenancePolicy.coherent(listOf(first, newer)))
+        assertEquals(null, YoutubeDecoderProvenancePolicy.coherent(listOf(first, other)))
+    }
+
+    @Test
     fun streamRejectionSkippedOrNetworkFailureNeverInvalidatesPlayerSource() {
         val skipped = YoutubeStreamRejectionActionPolicy.decide(
             YoutubeStreamRefreshResult.SKIPPED,
