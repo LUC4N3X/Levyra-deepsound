@@ -62,7 +62,10 @@ internal data class YoutubeGuestSession(
 
 internal data class YoutubePoTokens(
     val playerToken: String,
-    val streamingToken: String
+    val streamingToken: String,
+    val sessionGeneration: Long,
+    val runtimeGeneration: Long,
+    val expiresAtMs: Long
 )
 
 internal class YoutubePlayerRequestException(
@@ -176,7 +179,14 @@ internal class YoutubePlaybackSecurity private constructor(
         return tokenGenerator.generate(videoId, session.visitorData, session.generation, remainingBudgetMs)
     }
 
-    suspend fun rotateIfNeeded(error: Throwable): Boolean {
+    suspend fun rotateIfNeeded(error: Throwable, expectedGeneration: Long? = null): Boolean {
+        if (
+            expectedGeneration != null &&
+            expectedGeneration >= 0L &&
+            cachedSession().generation != expectedGeneration
+        ) {
+            return false
+        }
         val decision = classifyFailure(error)
         if (!decision.rotate) {
             if (decision.resetCounter) failureCount.set(0)
@@ -185,6 +195,13 @@ internal class YoutubePlaybackSecurity private constructor(
         val attempts = failureCount.incrementAndGet()
         if (!decision.immediate && attempts < 2) return false
         return sessionMutex.withLock {
+            if (
+                expectedGeneration != null &&
+                expectedGeneration >= 0L &&
+                cachedSession().generation != expectedGeneration
+            ) {
+                return@withLock false
+            }
             val lastRotation = prefs.getLong(KEY_LAST_ROTATION, 0L)
             val now = System.currentTimeMillis()
             if (now - lastRotation < ROTATION_COOLDOWN_MS) return@withLock false
@@ -434,7 +451,13 @@ private class YoutubeWebPoTokenGenerator(
             streamingToken = ready.runtime.generate(videoId)
         }
         refreshAheadIfStale(session, visitorData, generation)
-        return YoutubePoTokens(playerToken = ready.playerToken, streamingToken = streamingToken)
+        return YoutubePoTokens(
+            playerToken = ready.playerToken,
+            streamingToken = streamingToken,
+            sessionGeneration = generation,
+            runtimeGeneration = session.version,
+            expiresAtMs = ready.runtime.validUntilMs
+        )
     }
 
     private suspend fun awaitBuild(session: PoTokenSession): ReadyPoTokenRuntime {
@@ -482,7 +505,13 @@ private class YoutubeWebPoTokenGenerator(
         val cached = ready.runtime.cachedToken(videoId) ?: return null
         return CachedPoTokens(
             session = current,
-            tokens = YoutubePoTokens(playerToken = ready.playerToken, streamingToken = cached)
+            tokens = YoutubePoTokens(
+                playerToken = ready.playerToken,
+                streamingToken = cached,
+                sessionGeneration = generation,
+                runtimeGeneration = current.version,
+                expiresAtMs = ready.runtime.validUntilMs
+            )
         )
     }
 
@@ -871,6 +900,9 @@ internal class YoutubePoTokenRuntime private constructor(
 
     val isExpired: Boolean
         get() = closed.get() || dead.get() || expiresAtMs <= System.currentTimeMillis()
+
+    val validUntilMs: Long
+        get() = expiresAtMs
 
     val isStale: Boolean
         get() = isExpired || refreshAtMs <= System.currentTimeMillis()

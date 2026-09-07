@@ -59,7 +59,7 @@ class PlaybackFailureClassificationTest {
         assertEquals(PlaybackFailureKind.Forbidden, classifyPlaybackFailureReason("HTTP 403"))
         assertEquals(PlaybackFailureKind.Gone, classifyPlaybackFailureReason("HTTP 410"))
         assertEquals(PlaybackFailureKind.RateLimited, classifyPlaybackFailureReason("HTTP 429"))
-        assertEquals(PlaybackFailureKind.Signature, classifyPlaybackFailureReason("PO Token rejected"))
+        assertEquals(PlaybackFailureKind.PoToken, classifyPlaybackFailureReason("PO Token rejected"))
     }
 
     @Test
@@ -110,7 +110,7 @@ class PlaybackFailureClassificationTest {
         listOf(PlaybackFailureKind.Network, PlaybackFailureKind.Timeout).forEach { kind ->
             val plan = playbackRecoveryPlanFor(kind)
             assertTrue(plan.invalidateStream)
-            assertTrue(plan.rotateClient)
+            assertFalse(plan.rotateClient)
             assertFalse(plan.rotateCodec)
             assertFalse(plan.refreshSecurity)
             assertFalse(plan.invalidateCache)
@@ -122,7 +122,7 @@ class PlaybackFailureClassificationTest {
     fun expiredAndRejectedUrlsUseFreshResolutionWithBoundedQuarantine() {
         val expired = playbackRecoveryPlanFor(PlaybackFailureKind.ExpiredUrl)
         assertTrue(expired.invalidateStream)
-        assertTrue(expired.rotateClient)
+        assertFalse(expired.rotateClient)
         assertFalse(expired.rotateCodec)
         assertFalse(expired.refreshSecurity)
         assertFalse(expired.invalidateCache)
@@ -131,11 +131,43 @@ class PlaybackFailureClassificationTest {
         listOf(PlaybackFailureKind.Forbidden, PlaybackFailureKind.Gone).forEach { kind ->
             val plan = playbackRecoveryPlanFor(kind)
             assertTrue(plan.invalidateStream)
-            assertTrue(plan.rotateClient)
-            assertTrue(plan.refreshSecurity)
+            assertFalse(plan.rotateClient)
+            assertFalse(plan.refreshSecurity)
             assertFalse(plan.invalidateCache)
             assertEquals(10L * 60L * 1000L, plan.quarantineMs)
         }
+    }
+
+    @Test
+    fun recoveryInvalidatesOnlyTheAttributedLayer() {
+        listOf(PlaybackFailureKind.Signature, PlaybackFailureKind.NTransform, PlaybackFailureKind.Renderer)
+            .forEach { kind ->
+                val plan = playbackRecoveryPlanFor(kind)
+                assertTrue(plan.refreshDecoder)
+                assertFalse(plan.refreshSecurity)
+                assertFalse(plan.rotateClient)
+                assertFalse(plan.refreshClientPolicy)
+            }
+
+        val poToken = playbackRecoveryPlanFor(PlaybackFailureKind.PoToken)
+        assertTrue(poToken.refreshSecurity)
+        assertFalse(poToken.refreshDecoder)
+        assertFalse(poToken.rotateClient)
+
+        val client = playbackRecoveryPlanFor(PlaybackFailureKind.ClientRejected)
+        assertTrue(client.rotateClient)
+        assertTrue(client.refreshClientPolicy)
+        assertFalse(client.refreshSecurity)
+        assertFalse(client.refreshDecoder)
+    }
+
+    @Test
+    fun decoderSecurityAndClientFailuresRemainDistinct() {
+        assertEquals(PlaybackFailureKind.Signature, classifyPlaybackFailureReason("signature decode failed"))
+        assertEquals(PlaybackFailureKind.NTransform, classifyPlaybackFailureReason("n-transform unchanged"))
+        assertEquals(PlaybackFailureKind.PoToken, classifyPlaybackFailureReason("potoken rejected"))
+        assertEquals(PlaybackFailureKind.ClientRejected, classifyPlaybackFailureReason("invalid client profile"))
+        assertEquals(PlaybackFailureKind.Renderer, classifyPlaybackFailureReason("WebView renderer process gone"))
     }
 
     @Test

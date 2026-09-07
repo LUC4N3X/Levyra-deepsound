@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import org.json.JSONArray
 import org.json.JSONObject
@@ -33,7 +34,7 @@ object PlaybackManifestCodec {
             )
         }
         return JSONObject()
-            .put("schemaVersion", 1)
+            .put("schemaVersion", 2)
             .put("sourceVideoId", manifest.sourceVideoId)
             .put("provider", manifest.provider)
             .put("resolvedAtMs", manifest.resolvedAtMs)
@@ -43,13 +44,14 @@ object PlaybackManifestCodec {
             .put("selectedVideoUrl", manifest.selectedVideoUrl)
             .put("loudnessDb", manifest.loudnessDb)
             .put("perceptualLoudnessDb", manifest.perceptualLoudnessDb)
+            .put("provenance", manifest.provenance?.toJson())
             .put("streams", streams)
             .toString()
     }
 
     fun decode(raw: String): ResolvedPlaybackManifest? = runCatching {
         val root = JSONObject(raw)
-        if (root.optInt("schemaVersion", 0) != 1) return@runCatching null
+        if (root.optInt("schemaVersion", 0) !in 1..2) return@runCatching null
         val streamArray = root.optJSONArray("streams") ?: JSONArray()
         val streams = buildList {
             for (index in 0 until streamArray.length()) {
@@ -91,10 +93,52 @@ object PlaybackManifestCodec {
             selectedVideoUrl = root.optString("selectedVideoUrl"),
             streams = streams,
             loudnessDb = root.optNullableFloat("loudnessDb"),
-            perceptualLoudnessDb = root.optNullableFloat("perceptualLoudnessDb")
+            perceptualLoudnessDb = root.optNullableFloat("perceptualLoudnessDb"),
+            provenance = root.optJSONObject("provenance")?.toPlaybackStreamProvenance()
         )
     }.getOrNull()
 }
+
+private fun PlaybackStreamProvenance.toJson(): JSONObject = JSONObject()
+    .put("clientName", clientName)
+    .put("clientHeaderName", clientHeaderName)
+    .put("clientVersion", clientVersion)
+    .put("userAgent", userAgent)
+    .put("origin", origin)
+    .put("referer", referer)
+    .put("requiresPoToken", requiresPoToken)
+    .put("resolverGeneration", resolverGeneration)
+    .put("playerHash", playerHash)
+    .put("playerConfigIdentity", playerConfigIdentity)
+    .put("playerConfigEpoch", playerConfigEpoch)
+    .put("playerConfigOrigin", playerConfigOrigin)
+    .put("securitySessionGeneration", securitySessionGeneration)
+    .put("poTokenGeneration", poTokenGeneration)
+    .put("networkGeneration", networkGeneration)
+    .put("networkRoute", networkRoute)
+    .put("resolvedAtMs", resolvedAtMs)
+    .put("expiresAtMs", expiresAtMs)
+
+private fun JSONObject.toPlaybackStreamProvenance(): PlaybackStreamProvenance = PlaybackStreamProvenance(
+    clientName = optString("clientName"),
+    clientHeaderName = optString("clientHeaderName"),
+    clientVersion = optString("clientVersion"),
+    userAgent = optString("userAgent"),
+    origin = optString("origin"),
+    referer = optString("referer"),
+    requiresPoToken = optBoolean("requiresPoToken", false),
+    resolverGeneration = optLong("resolverGeneration", -1L),
+    playerHash = optString("playerHash"),
+    playerConfigIdentity = optString("playerConfigIdentity"),
+    playerConfigEpoch = optLong("playerConfigEpoch", -1L),
+    playerConfigOrigin = optString("playerConfigOrigin"),
+    securitySessionGeneration = optLong("securitySessionGeneration", -1L),
+    poTokenGeneration = optLong("poTokenGeneration", -1L),
+    networkGeneration = optLong("networkGeneration", -1L),
+    networkRoute = optString("networkRoute"),
+    resolvedAtMs = optLong("resolvedAtMs", 0L),
+    expiresAtMs = optLong("expiresAtMs", 0L)
+)
 
 private inline fun <reified T : Enum<T>> JSONObject.optEnum(key: String, fallback: T): T {
     return enumValues<T>().firstOrNull { it.name == optString(key) } ?: fallback

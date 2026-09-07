@@ -163,4 +163,28 @@ class YoutubeStreamClientIdentityRegistryTest {
             YoutubeStreamClientIdentityRegistry.find("$registered&rn=4")
         )
     }
+
+    @Test
+    fun expiredProvenanceIsNotReusedForMediaRequests() {
+        val url = "https://rr3---sn-abc.googlevideo.com/videoplayback?id=expired&itag=140"
+        YoutubeStreamClientIdentityRegistry.register(
+            listOf(url),
+            visionOs.copy(expiresAtMs = 1L)
+        )
+
+        assertNull(YoutubeStreamClientIdentityRegistry.find(url))
+    }
+
+    @Test
+    fun conflictingClientProvenanceDisablesOnlyTheAmbiguousMediaFallback() {
+        val visionOsUrl = "https://rr3---sn-abc.googlevideo.com/videoplayback?id=o-media&itag=140&pot=vision"
+        val webUrl = "https://rr7---sn-xyz.googlevideo.com/videoplayback?id=o-media&itag=140&pot=web"
+        val unseenUrl = "https://rr9---sn-new.googlevideo.com/videoplayback?id=o-media&itag=140&rn=2"
+        YoutubeStreamClientIdentityRegistry.register(listOf(visionOsUrl), visionOs)
+        YoutubeStreamClientIdentityRegistry.register(listOf(webUrl), web)
+
+        assertEquals(visionOs, YoutubeStreamClientIdentityRegistry.find(visionOsUrl))
+        assertEquals(web, YoutubeStreamClientIdentityRegistry.find(webUrl))
+        assertNull(YoutubeStreamClientIdentityRegistry.find(unseenUrl))
+    }
 }

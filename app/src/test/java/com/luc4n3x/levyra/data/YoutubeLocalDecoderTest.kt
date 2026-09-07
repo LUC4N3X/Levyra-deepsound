@@ -151,6 +151,13 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
+    fun rejectsUnchangedRealSignatureOutput() {
+        assertTrue(YoutubePlayerJsSupport.isValidSignatureTransform("abcdef", "fedcba"))
+        assertFalse(YoutubePlayerJsSupport.isValidSignatureTransform("abcdef", "abcdef"))
+        assertFalse(YoutubePlayerJsSupport.isValidSignatureTransform("abcdef", ""))
+    }
+
+    @Test
     fun extractsPlayerHashFromEscapedIframeApiResponse() {
         val hash = YoutubePlayerJsSupport.extractPlayerHash(
             "var x={player_js_url:\"\\/s\\/player\\/2182a2cc\\/www-widgetapi.vflset\\/www-widgetapi.js\"};"
@@ -311,6 +318,22 @@ class YoutubeLocalDecoderTest {
         """.trimIndent()
 
         assertEquals(null, YoutubePlayerJsAnalyzer.analyze("2182a2cc", javascript))
+    }
+
+    @Test
+    fun automaticAnalyzerSurfacesAmbiguousCandidatesForRuntimeVerification() {
+        val javascript = """
+            x&&(y=Ab(4,decodeURIComponent(z)));
+            q&&(r=Cd(5,decodeURIComponent(s)));
+            a.get("n"))&&(b=Nz[2](b));
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+
+        assertEquals(2, candidates.size)
+        assertEquals(listOf("Ab(4,INPUT)", "Cd(5,INPUT)"), candidates.map { it.signatureExpression })
+        assertTrue(candidates.all { it.nExpression == "Nz[2](INPUT)" })
     }
 
     @Test

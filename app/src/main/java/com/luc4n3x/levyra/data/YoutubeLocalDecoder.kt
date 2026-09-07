@@ -94,8 +94,8 @@ class YoutubeLocalDecoder private constructor(
         engine.prewarm()
     }
 
-    private suspend fun rejectionInternal(source: String) {
-        engine.onStreamRejected(source)
+    private suspend fun rejectionInternal(source: String, expectedConfigIdentity: String?) {
+        engine.onStreamRejected(source, expectedConfigIdentity)
     }
 
     private suspend fun trimInternal() {
@@ -125,13 +125,16 @@ class YoutubeLocalDecoder private constructor(
             instance?.prewarmInternal()
         }
 
-        fun notifyStreamRejected(source: String) {
+        fun notifyStreamRejected(source: String, expectedConfigIdentity: String? = null) {
             val decoder = instance ?: return
             scope.launch {
-                runCatching { decoder.rejectionInternal(source) }
+                runCatching { decoder.rejectionInternal(source, expectedConfigIdentity) }
                     .onFailure { Timber.w(it, "Local decoder rejection refresh failed") }
             }
         }
+
+        internal fun provenanceSnapshot(): YoutubeDecoderProvenance? =
+            instance?.engine?.provenanceSnapshot()
 
         fun trimMemory() {
             val decoder = instance ?: return
@@ -144,6 +147,14 @@ class YoutubeLocalDecoder private constructor(
 }
 
 private const val MAX_TRACKED_CONFIG_IDENTITIES = 64
+
+internal data class YoutubeDecoderProvenance(
+    val playerHash: String,
+    val configIdentity: String,
+    val configEpoch: Long,
+    val configOrigin: YoutubePlayerConfigOrigin,
+    val decodedAtMs: Long
+)
 
 private class YoutubeLocalDecoderEngine(
     private val context: Context,
@@ -170,6 +181,26 @@ private class YoutubeLocalDecoderEngine(
 
     @Volatile
     private var lastSuccessfulDecodeOrigin = YoutubePlayerConfigOrigin.VALIDATED
+
+    @Volatile
+    private var lastSuccessfulDecodeConfigIdentity = ""
+
+    @Volatile
+    private var lastSuccessfulDecodeConfigEpoch = -1L
+
+    fun provenanceSnapshot(): YoutubeDecoderProvenance? {
+        val decodedAtMs = lastSuccessfulDecodeAtMs.get()
+        val playerHash = lastSuccessfulDecodePlayerHash
+        val configIdentity = lastSuccessfulDecodeConfigIdentity
+        if (decodedAtMs <= 0L || playerHash.isBlank() || configIdentity.isBlank()) return null
+        return YoutubeDecoderProvenance(
+            playerHash = playerHash,
+            configIdentity = configIdentity,
+            configEpoch = lastSuccessfulDecodeConfigEpoch,
+            configOrigin = lastSuccessfulDecodeOrigin,
+            decodedAtMs = decodedAtMs
+        )
+    }
 
     suspend fun playerData(): YoutubeJavaScriptDecoder.PlayerData {
         var player = playerSource.get(forceRefresh = false)
@@ -224,9 +255,7 @@ private class YoutubeLocalDecoderEngine(
                 if (firstError is CancellationException) throw firstError
                 if (firstError is YoutubeRendererBackoffException) throw firstError
                 Timber.w(firstError, "Local decoder first attempt failed for player %s", playerId)
-                invalidateRuntime()
                 configStore.refresh(force = true, reason = "decode-failure")
-                playerSource.invalidate()
                 try {
                     decodeAttempt(playerId, missingSignatures, missingNs, forceRefresh = true)
                 } catch (secondError: Throwable) {
@@ -269,16 +298,21 @@ private class YoutubeLocalDecoderEngine(
             player = playerSource.get(forceRefresh = false)
             config = configStore.configFor(player.configKey, refreshUnknown = false)
         }
-        val resolvedConfig = config ?: player.analyzedConfig ?: return
+        val candidateConfigs = config?.let(::listOf) ?: player.analyzedConfigs
+        if (candidateConfigs.isEmpty()) return
         runtimeMutex.withLock {
-            ensureRuntime(player, resolvedConfig)
+            ensureRuntime(player, candidateConfigs, forceReplace = false)
         }
     }
 
-    suspend fun onStreamRejected(source: String) {
+    suspend fun onStreamRejected(source: String, expectedConfigIdentity: String?) {
         val feedbackAt = lastSuccessfulDecodeAtMs.get()
         val now = System.currentTimeMillis()
         if (!YoutubeLocalDecoderFeedbackPolicy.shouldRefresh(source, now, feedbackAt)) return
+        if (
+            !expectedConfigIdentity.isNullOrBlank() &&
+            expectedConfigIdentity != lastSuccessfulDecodeConfigIdentity
+        ) return
         val rejectedHash = lastSuccessfulDecodePlayerHash
         val rejectedOrigin = lastSuccessfulDecodeOrigin
         if (
@@ -286,7 +320,8 @@ private class YoutubeLocalDecoderEngine(
             rejectedHash.isNotBlank() &&
             lastSuccessfulDecodeAtMs.get() == feedbackAt
         ) {
-            playerSource.rejectAnalyzedConfig(rejectedHash)
+            val snapshot = provenanceSnapshot()
+            if (snapshot != null) playerSource.rejectAnalyzedConfig(rejectedHash, snapshot.configIdentity)
         }
         val refreshResult = configStore.refreshAfterStreamRejection()
         if (refreshResult == YoutubeStreamRefreshResult.CHANGED) {
@@ -331,21 +366,25 @@ private class YoutubeLocalDecoderEngine(
             player = playerSource.get(forceRefresh = false)
             config = configStore.configFor(player.configKey, refreshUnknown = false)
         }
-        val resolvedConfig = config ?: player.analyzedConfig ?: throw ParsingException(
+        val candidateConfigs = config?.let(::listOf) ?: player.analyzedConfigs
+        if (candidateConfigs.isEmpty()) throw ParsingException(
             "No validated or analyzed local config for player $playerId using key ${player.configKey}"
         )
 
+        var selectedConfig: YoutubePlayerCipherConfig? = null
         return try {
             runtimeMutex.withLock {
                 val recoveryIdentity = "${player.hash}:${configStore.epoch}"
                 try {
-                    val active = ensureRuntime(player, resolvedConfig)
+                    val selected = ensureRuntime(player, candidateConfigs, forceReplace = forceRefresh)
+                    val active = selected.runtime
+                    selectedConfig = selected.config
                     val signatureResults = LinkedHashMap<String, String>()
                     val nResults = LinkedHashMap<String, String>()
                     signatures.forEach { input ->
                         val output = active.decodeSignature(input)
-                        if (output.isBlank()) {
-                            throw YoutubeAnalyzedConfigFailureException("Empty local signature result")
+                        if (!YoutubePlayerJsSupport.isValidSignatureTransform(input, output)) {
+                            throw YoutubeAnalyzedConfigFailureException("Invalid local signature result")
                         }
                         signatureResults[input] = output
                     }
@@ -357,7 +396,9 @@ private class YoutubeLocalDecoderEngine(
                         nResults[input] = output
                     }
                     lastSuccessfulDecodePlayerHash = player.hash
-                    lastSuccessfulDecodeOrigin = resolvedConfig.origin
+                    lastSuccessfulDecodeOrigin = selected.config.origin
+                    lastSuccessfulDecodeConfigIdentity = selected.config.identity
+                    lastSuccessfulDecodeConfigEpoch = runtimeConfigEpoch
                     lastSuccessfulDecodeAtMs.set(System.currentTimeMillis())
                     rendererRecovery.onSuccess()
                     YoutubeDecodedBatch(signatureResults, nResults, runtimeConfigEpoch)
@@ -369,11 +410,13 @@ private class YoutubeLocalDecoderEngine(
                 }
             }
         } catch (error: Throwable) {
+            val rejected = selectedConfig
             if (
+                rejected != null &&
                 YoutubeRendererFailureClassifier.provesAnalyzedConfigWrong(error) &&
-                resolvedConfig.origin == YoutubePlayerConfigOrigin.ANALYZED
+                rejected.origin == YoutubePlayerConfigOrigin.ANALYZED
             ) {
-                playerSource.rejectAnalyzedConfig(player.hash)
+                playerSource.rejectAnalyzedConfig(player.hash, rejected.identity)
             }
             throw error
         }
@@ -389,13 +432,45 @@ private class YoutubeLocalDecoderEngine(
         val configEpoch: Long
     )
 
+    private data class SelectedYoutubeRuntime(
+        val runtime: YoutubeCipherWebRuntime,
+        val config: YoutubePlayerCipherConfig
+    )
+
     private suspend fun ensureRuntime(
         player: YoutubePlayerScript,
-        config: YoutubePlayerCipherConfig
+        configs: List<YoutubePlayerCipherConfig>,
+        forceReplace: Boolean
+    ): SelectedYoutubeRuntime {
+        var lastFailure: Throwable? = null
+        configs.forEach { config ->
+            try {
+                return SelectedYoutubeRuntime(
+                    runtime = ensureRuntime(player, config, forceReplace),
+                    config = config
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastFailure = error
+                if (config.origin != YoutubePlayerConfigOrigin.ANALYZED) throw error
+                if (YoutubeRendererFailureClassifier.provesAnalyzedConfigWrong(error)) {
+                    rememberRejectedConfig(config.identity)
+                    playerSource.rejectAnalyzedConfig(player.hash, config.identity)
+                }
+            }
+        }
+        throw lastFailure ?: ParsingException("No player.js candidate available for ${player.hash}")
+    }
+
+    private suspend fun ensureRuntime(
+        player: YoutubePlayerScript,
+        config: YoutubePlayerCipherConfig,
+        forceReplace: Boolean
     ): YoutubeCipherWebRuntime {
         val current = runtime
         if (
-            current != null &&
+            !forceReplace && current != null &&
             YoutubeRuntimeReusePolicy.canReuse(
                 isDead = current.isDead,
                 runtimeHash = runtimeHash,
@@ -408,7 +483,6 @@ private class YoutubeLocalDecoderEngine(
         ) {
             return current
         }
-        invalidateRuntimeLocked()
         val recoveryIdentity = "${player.hash}:${configStore.epoch}"
         if (!rendererRecovery.shouldAttempt(recoveryIdentity, SystemClock.elapsedRealtime())) {
             throw YoutubeRendererBackoffException()
@@ -420,11 +494,14 @@ private class YoutubeLocalDecoderEngine(
         }
         val created = YoutubeCipherWebRuntime.create(context, player, config)
         val verification = verifyConfig(created, config)
-        if (verification.provesConfigWrong) {
+        if (
+            verification.provesConfigWrong ||
+            config.origin == YoutubePlayerConfigOrigin.ANALYZED && verification.verdict != YoutubeConfigVerdict.ACCEPTED
+        ) {
             created.close()
             rememberRejectedConfig(config.identity)
             if (config.origin == YoutubePlayerConfigOrigin.ANALYZED) {
-                playerSource.rejectAnalyzedConfig(player.hash)
+                playerSource.rejectAnalyzedConfig(player.hash, config.identity)
             }
             throw YoutubeAnalyzedConfigFailureException(
                 "Player config verification rejected for ${player.hash}: ${verification.reason}"
@@ -436,11 +513,13 @@ private class YoutubeLocalDecoderEngine(
                 "Player config verification left the runtime dead for ${player.hash}"
             )
         }
+        val previous = runtime
         runtime = created
         runtimeHash = player.hash
         runtimeConfigKey = player.configKey
         runtimeConfigEpoch = configStore.epoch
         runtimeConfigOrigin = config.origin
+        if (previous != null && previous !== created) previous.close()
         return created
     }
 
@@ -484,10 +563,6 @@ private class YoutubeLocalDecoderEngine(
             verification.reason
         )
         return verification
-    }
-
-    private suspend fun invalidateRuntime() {
-        runtimeMutex.withLock { invalidateRuntimeLocked() }
     }
 
     private suspend fun invalidateRuntimeLocked() {
@@ -954,8 +1029,11 @@ private data class YoutubePlayerScript(
     val configKey: String,
     val javascript: String,
     val signatureTimestamp: Int?,
-    val analyzedConfig: YoutubePlayerCipherConfig? = null
-)
+    val analyzedConfigs: List<YoutubePlayerCipherConfig> = emptyList()
+) {
+    val analyzedConfig: YoutubePlayerCipherConfig?
+        get() = analyzedConfigs.firstOrNull()
+}
 
 private class YoutubePlayerJsSource(
     private val context: Context,
@@ -966,7 +1044,7 @@ private class YoutubePlayerJsSource(
     private val diskMutex = Mutex()
     private val cacheDir = File(context.filesDir, "youtube_decoder")
     private val metadataFile = File(cacheDir, "current_player.json")
-    private val rejectedAnalyzers = ConcurrentHashMap.newKeySet<String>()
+    private val rejectedAnalyzerIdentities = ConcurrentHashMap.newKeySet<String>()
 
     @Volatile
     private var memory: YoutubePlayerScript? = null
@@ -988,9 +1066,14 @@ private class YoutubePlayerJsSource(
         player
     }
 
-    suspend fun rejectAnalyzedConfig(hash: String) = mutex.withLock {
-        rejectedAnalyzers += hash
-        if (memory?.hash == hash) memory = memory?.copy(analyzedConfig = null)
+    suspend fun rejectAnalyzedConfig(hash: String, identity: String) = mutex.withLock {
+        if (identity.isBlank()) return@withLock
+        rejectedAnalyzerIdentities += identity
+        if (memory?.hash == hash) {
+            memory = memory?.copy(
+                analyzedConfigs = memory?.analyzedConfigs.orEmpty().filterNot { it.identity == identity }
+            )
+        }
     }
 
     private suspend fun resolvePlayer(
@@ -1000,14 +1083,15 @@ private class YoutubePlayerJsSource(
     ): YoutubePlayerScript {
         val configKey = resolveConfigKey(hash, javascript, refreshUnknown) ?: hash
         val validated = configStore.configFor(configKey, refreshUnknown = false)
-        val analyzed = if (validated == null && hash !in rejectedAnalyzers) {
-            YoutubePlayerJsAnalyzer.analyze(hash, javascript)
+        val analyzed = if (validated == null) {
+            YoutubePlayerJsAnalyzer.analyzeCandidates(hash, javascript)
+                .filterNot { it.identity in rejectedAnalyzerIdentities }
         } else {
-            null
+            emptyList()
         }
         val sts = extractSignatureTimestamp(javascript)
             ?: validated?.signatureTimestamp
-            ?: analyzed?.signatureTimestamp
+            ?: analyzed.firstOrNull()?.signatureTimestamp
         return YoutubePlayerScript(hash, configKey, javascript, sts, analyzed)
     }
 
@@ -1018,17 +1102,16 @@ private class YoutubePlayerJsSource(
         val configKey = resolveConfigKey(player.hash, player.javascript, refreshUnknown) ?: player.hash
         val validated = configStore.configFor(configKey, refreshUnknown = false)
         val analyzed = when {
-            validated != null -> null
-            player.hash in rejectedAnalyzers -> null
-            player.analyzedConfig != null -> player.analyzedConfig
-            else -> YoutubePlayerJsAnalyzer.analyze(player.hash, player.javascript)
-        }
+            validated != null -> emptyList()
+            player.analyzedConfigs.isNotEmpty() -> player.analyzedConfigs
+            else -> YoutubePlayerJsAnalyzer.analyzeCandidates(player.hash, player.javascript)
+        }.filterNot { it.identity in rejectedAnalyzerIdentities }
         return player.copy(
             configKey = configKey,
             signatureTimestamp = extractSignatureTimestamp(player.javascript)
                 ?: validated?.signatureTimestamp
-                ?: analyzed?.signatureTimestamp,
-            analyzedConfig = analyzed
+                ?: analyzed.firstOrNull()?.signatureTimestamp,
+            analyzedConfigs = analyzed
         )
     }
 
@@ -1271,18 +1354,31 @@ internal object YoutubePlayerJsAnalyzer {
     private val safeFunctionName = Regex("^[A-Za-z_$][A-Za-z0-9_$]{0,31}$")
 
     fun analyze(hash: String, javascript: String): YoutubePlayerCipherConfig? {
-        if (!YoutubePlayerConfigParser.isValidHash(hash)) return null
-        val signature = uniqueExpression(javascript, signatureRules) ?: return null
-        val nExpression = uniqueExpression(javascript, nRules) ?: return null
-        val sts = extractSignatureTimestamp(javascript) ?: return null
-        return YoutubePlayerCipherConfig(
-            primaryHash = hash,
-            signatureExpression = signature,
-            nClass = null,
-            signatureTimestamp = sts,
-            nExpressionOverride = nExpression,
-            origin = YoutubePlayerConfigOrigin.ANALYZED
-        )
+        return analyzeCandidates(hash, javascript).singleOrNull()
+    }
+
+    fun analyzeCandidates(hash: String, javascript: String): List<YoutubePlayerCipherConfig> {
+        if (!YoutubePlayerConfigParser.isValidHash(hash)) return emptyList()
+        val signatures = expressions(javascript, signatureRules)
+        val nExpressions = expressions(javascript, nRules)
+        val sts = extractSignatureTimestamp(javascript) ?: return emptyList()
+        if (signatures.isEmpty() || nExpressions.isEmpty()) return emptyList()
+        return signatures.asSequence()
+            .flatMap { signature ->
+                nExpressions.asSequence().map { nExpression ->
+                    YoutubePlayerCipherConfig(
+                        primaryHash = hash,
+                        signatureExpression = signature,
+                        nClass = null,
+                        signatureTimestamp = sts,
+                        nExpressionOverride = nExpression,
+                        origin = YoutubePlayerConfigOrigin.ANALYZED
+                    )
+                }
+            }
+            .distinctBy { it.identity }
+            .take(MAX_CANDIDATES)
+            .toList()
     }
 
     fun extractSignatureTimestamp(javascript: String): Int? {
@@ -1290,15 +1386,15 @@ internal object YoutubePlayerJsAnalyzer {
             ?: looseSts.find(javascript)?.groupValues?.getOrNull(1)?.toIntOrNull()
     }
 
-    private fun uniqueExpression(javascript: String, rules: List<Rule>): String? {
+    private fun expressions(javascript: String, rules: List<Rule>): List<String> {
         val expressions = LinkedHashSet<String>()
         for (rule in rules) {
             rule.regex.findAll(javascript).take(MAX_MATCHES_PER_RULE).forEach { match ->
                 rule.expression(match)?.let(expressions::add)
             }
-            if (expressions.size > 1) return null
+            if (expressions.size >= MAX_EXPRESSIONS_PER_KIND) break
         }
-        return expressions.singleOrNull()
+        return expressions.take(MAX_EXPRESSIONS_PER_KIND)
     }
 
     private fun functionExpression(name: String, rawIndex: String?, input: String): String? {
@@ -1310,6 +1406,8 @@ internal object YoutubePlayerJsAnalyzer {
     private fun safeName(name: String): String? = name.takeIf(safeFunctionName::matches)
 
     private const val MAX_MATCHES_PER_RULE = 4
+    private const val MAX_EXPRESSIONS_PER_KIND = 3
+    private const val MAX_CANDIDATES = 6
 }
 
 internal object YoutubeLocalDecoderFeedbackPolicy {
@@ -1435,6 +1533,10 @@ internal object YoutubePlayerJsSupport {
             .take(8)
     }
 
+    fun isValidSignatureTransform(input: String, output: String): Boolean {
+        return output.isNotBlank() && output != input
+    }
+
     fun isValidNTransform(input: String, output: String): Boolean {
         return output != input && output.length >= 5 && transformedNRegex.matches(output)
     }
@@ -1505,6 +1607,10 @@ private class YoutubeCipherWebRuntime private constructor(
                 webView.evaluateJavascript(script, null)
             }
             val output = withTimeout(EVALUATION_TIMEOUT_MS) { deferred.await() }
+            if (kind == "sig" && !YoutubePlayerJsSupport.isValidSignatureTransform(value, output)) {
+                isDead = true
+                throw YoutubeAnalyzedConfigFailureException("Invalid local signature result")
+            }
             if (kind == "n" && !YoutubePlayerJsSupport.isValidNTransform(value, output)) {
                 isDead = true
                 throw YoutubeAnalyzedConfigFailureException("Invalid local n-transform result")
