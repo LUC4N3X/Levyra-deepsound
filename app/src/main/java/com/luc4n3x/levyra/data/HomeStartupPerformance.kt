@@ -31,12 +31,6 @@ internal data class HomeStartupWorkPlan(
     val releasesPerArtist: Int
 )
 
-// The artist shelf used to start 8.5-12s after launch, behind the album wave,
-// which left a visibly empty section on every cold start. It now runs ahead of
-// the album wave instead. Concurrency, artwork counts and the album budgets are
-// untouched, so peak memory is unchanged: only the ordering moved. Constrained
-// tiers still wait for the secondary wave first, and awaitHomeUiIdle keeps the
-// work off the main thread while the user is flinging.
 internal object HomeStartupWorkPolicy {
     fun create(lowRam: Boolean, powerConstrained: Boolean): HomeStartupWorkPlan {
         return when {
@@ -44,7 +38,7 @@ internal object HomeStartupWorkPolicy {
                 idleWindowMs = 900L,
                 homeFeedStartDelayMs = 1_400L,
                 secondaryStartDelayMs = 6_000L,
-                albumStartDelayMs = 9_000L,
+                albumStartDelayMs = 0L,
                 artistStartDelayMs = 7_500L,
                 chartRefreshStartDelayMs = 4_500L,
                 chartPrefetchStartDelayMs = 9_000L,
@@ -68,7 +62,7 @@ internal object HomeStartupWorkPolicy {
                 idleWindowMs = 800L,
                 homeFeedStartDelayMs = 1_100L,
                 secondaryStartDelayMs = 5_000L,
-                albumStartDelayMs = 7_500L,
+                albumStartDelayMs = 0L,
                 artistStartDelayMs = 5_600L,
                 chartRefreshStartDelayMs = 3_800L,
                 chartPrefetchStartDelayMs = 7_500L,
@@ -92,7 +86,7 @@ internal object HomeStartupWorkPolicy {
                 idleWindowMs = 700L,
                 homeFeedStartDelayMs = 850L,
                 secondaryStartDelayMs = 4_200L,
-                albumStartDelayMs = 6_500L,
+                albumStartDelayMs = 0L,
                 artistStartDelayMs = 2_200L,
                 chartRefreshStartDelayMs = 3_000L,
                 chartPrefetchStartDelayMs = 6_500L,
