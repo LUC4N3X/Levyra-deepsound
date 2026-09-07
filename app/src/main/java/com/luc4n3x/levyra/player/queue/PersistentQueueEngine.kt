@@ -30,6 +30,16 @@ internal fun queueRemovalCurrentIndex(removedIndex: Int, currentIndex: Int, newL
     else -> currentIndex.coerceAtMost(newLastIndex)
 }
 
+internal fun queueMultiRemovalCurrentIndex(
+    removedIndices: Set<Int>,
+    currentIndex: Int,
+    newLastIndex: Int
+): Int = when {
+    newLastIndex < 0 -> -1
+    currentIndex < 0 -> -1
+    else -> (currentIndex - removedIndices.count { it < currentIndex }).coerceIn(0, newLastIndex)
+}
+
 internal fun queueUndoInsertionIndex(originalIndex: Int, size: Int): Int = originalIndex.coerceIn(0, size)
 
 internal fun queueUndoCurrentIndex(insertionIndex: Int, currentIndex: Int): Int = when {
@@ -299,6 +309,19 @@ class PersistentQueueEngine private constructor(context: Context) {
         val nextTracks = current.tracks.toMutableList().apply { removeAt(index) }
         val nextCurrentIndex = queueRemovalCurrentIndex(index, current.currentIndex, nextTracks.lastIndex)
         rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex).copy(undoAvailable = true)
+    }
+
+    fun removeIndices(indices: Collection<Int>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        val targets = indices.filterTo(sortedSetOf<Int>()) { it in current.tracks.indices }
+        if (targets.isEmpty()) return@mutate current
+        undoRemoval = targets.singleOrNull()?.let { QueueRemoval(current.tracks[it], it) }
+        val currentIdentity = current.currentTrack?.let(::playbackQueueIdentity)
+        val nextTracks = current.tracks.filterIndexed { index, _ -> index !in targets }
+        val nextCurrentIndex = currentIdentity
+            ?.let { key -> nextTracks.indexOfFirst { playbackQueueIdentity(it) == key } }
+            ?.takeIf { it >= 0 }
+            ?: queueMultiRemovalCurrentIndex(targets, current.currentIndex, nextTracks.lastIndex)
+        rebuildAfterStructureChange(current, nextTracks, nextCurrentIndex)
     }
 
     fun undoRemove(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->

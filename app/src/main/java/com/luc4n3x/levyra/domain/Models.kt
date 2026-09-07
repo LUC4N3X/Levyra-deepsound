@@ -270,10 +270,14 @@ enum class RepeatMode {
     One
 }
 
+const val SPONSOR_SEGMENT_ACTION_SKIP = "skip"
+
 data class SponsorSegment(
     val startMs: Long,
     val endMs: Long,
-    val category: String
+    val category: String,
+    val uuid: String = "",
+    val actionType: String = SPONSOR_SEGMENT_ACTION_SKIP
 )
 
 data class AppUpdateInfo(
