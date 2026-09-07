@@ -25,12 +25,10 @@ import kotlinx.coroutines.isActive
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val STEADY_FRAME_MS = 34L
-private const val BOOST_FRAME_MS = 20L
-private const val BOOST_DURATION_MS = 1_100L
+private const val FRAME_INTERVAL_MS = 34L
 private const val FADE_IN_MS = 520
 private const val FADE_OUT_MS = 260
-private const val SHADER_INTENSITY = 0.62f
+private const val SHADER_INTENSITY = 0.60f
 private const val LEGACY_INTENSITY = 0.50f
 
 @Composable
@@ -51,12 +49,9 @@ internal fun LivingArtworkLayer(
 
     LaunchedEffect(active, colors) {
         if (!active) return@LaunchedEffect
-        var boostRemainingMs = BOOST_DURATION_MS
         while (isActive) {
-            val intervalMs = if (boostRemainingMs > 0L) BOOST_FRAME_MS else STEADY_FRAME_MS
-            phase.floatValue += intervalMs / 1_000f
-            delay(intervalMs)
-            if (boostRemainingMs > 0L) boostRemainingMs -= intervalMs
+            phase.floatValue += FRAME_INTERVAL_MS / 1_000f
+            delay(FRAME_INTERVAL_MS)
         }
     }
 
@@ -85,7 +80,7 @@ private fun rememberLivingArtworkShader(colors: LivingArtworkColors): RuntimeSha
     remember(colors) {
         if (!livingArtworkShaderSupported()) return@remember null
         val shader = createLivingArtworkShader() ?: return@remember null
-        if (!shader.applyLivingArtworkTones(colors.tones)) return@remember null
+        if (!shader.applyLivingArtworkColors(colors)) return@remember null
         shader
     }
 
@@ -106,7 +101,7 @@ private fun LivingArtworkShaderSurface(
                 if (visible <= 0.001f) return@onDrawBehind
                 shader.setFloatUniform("uTime", phase())
                 shader.setFloatUniform("uIntensity", SHADER_INTENSITY * visible)
-                drawRect(brush = brush, blendMode = BlendMode.Screen)
+                drawRect(brush = brush)
             }
         }
     )
