@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class HomeStartupPerformanceTest {
     @Test
-    fun lowRamPlanKeepsBackgroundWorkSmallAndLate() {
+    fun lowRamPlanKeepsBackgroundWorkBounded() {
         val plan = HomeStartupWorkPolicy.create(lowRam = true, powerConstrained = true)
         assertTrue(plan.priorityArtworkCount <= 2)
         assertTrue(plan.refreshedArtworkCount <= 4)
@@ -22,11 +22,8 @@ class HomeStartupPerformanceTest {
         assertTrue(plan.idleWindowMs >= 850L)
         assertTrue(plan.homeFeedStartDelayMs >= 1_200L)
         assertTrue(plan.secondaryStartDelayMs >= 6_000L)
-        assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
-        // The artist shelf is visible content, so it starts right after the home
-        // feed and ahead of the album and maintenance waves.
+        assertEquals(0L, plan.albumStartDelayMs)
         assertTrue(plan.artistStartDelayMs > plan.homeFeedStartDelayMs)
-        assertTrue(plan.artistStartDelayMs < plan.albumStartDelayMs)
         assertTrue(plan.chartPrefetchStartDelayMs > plan.chartRefreshStartDelayMs)
         assertTrue(plan.maintenanceStartDelayMs >= 20_000L)
         assertTrue(plan.activePlaybackProtectionMs >= 14_000L)
@@ -36,7 +33,7 @@ class HomeStartupPerformanceTest {
     }
 
     @Test
-    fun normalPlanKeepsFirstSecondsFreeFromNonessentialWork() {
+    fun normalPlanKeepsBackgroundWorkBounded() {
         val plan = HomeStartupWorkPolicy.create(lowRam = false, powerConstrained = false)
         assertTrue(plan.priorityArtworkCount in 2..3)
         assertTrue(plan.refreshedArtworkCount in 4..5)
@@ -49,16 +46,24 @@ class HomeStartupPerformanceTest {
         assertTrue(plan.secondaryStartDelayMs >= 4_000L)
         assertTrue(plan.chartPrefetchStartDelayMs >= 6_000L)
         assertTrue(plan.chartMemoryWarmStartDelayMs > plan.chartPrefetchStartDelayMs)
-        assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
-        // The artist shelf is visible content, so it starts right after the home
-        // feed and ahead of the album and maintenance waves.
+        assertEquals(0L, plan.albumStartDelayMs)
         assertTrue(plan.artistStartDelayMs > plan.homeFeedStartDelayMs)
-        assertTrue(plan.artistStartDelayMs < plan.albumStartDelayMs)
         assertTrue(plan.maintenanceStartDelayMs >= 15_000L)
         assertTrue(plan.activePlaybackProtectionMs >= 10_000L)
         assertEquals(1, plan.albumConcurrency)
         assertTrue(plan.albumSeedCount <= 6)
         assertTrue(plan.albumCandidateCount <= 12)
+    }
+
+    @Test
+    fun powerConstrainedPlanKeepsAlbumWorkBoundedWithImmediateHandoff() {
+        val plan = HomeStartupWorkPolicy.create(lowRam = false, powerConstrained = true)
+
+        assertTrue(plan.homeFeedStartDelayMs >= 1_000L)
+        assertEquals(0L, plan.albumStartDelayMs)
+        assertEquals(1, plan.albumConcurrency)
+        assertTrue(plan.albumSeedCount <= 5)
+        assertTrue(plan.albumCandidateCount <= 11)
     }
 
     @Test
