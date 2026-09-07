@@ -95,6 +95,19 @@ class YoutubeStreamClientIdentityRegistryTest {
     }
 
     @Test
+    fun playerNavigationProvenanceDoesNotOverrideMediaNavigationHeaders() {
+        val capturedPlayerRequest = web.copy(
+            origin = "https://www.youtube.com",
+            referer = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        )
+
+        val headers = capturedPlayerRequest.mediaRequestHeaders()
+
+        assertEquals("https://www.youtube.com", headers["Origin"])
+        assertEquals("https://www.youtube.com/", headers["Referer"])
+    }
+
+    @Test
     fun musicWebClientMediaHeadersUseTheMusicOrigin() {
         val remix = web.copy(clientName = "WEB_REMIX", clientHeaderName = "67")
 
