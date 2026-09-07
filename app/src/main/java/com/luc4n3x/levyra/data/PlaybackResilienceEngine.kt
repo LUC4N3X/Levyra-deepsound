@@ -74,6 +74,7 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
             value.contains("accedi per confermare") -> PlaybackFailureKind.LoginRequired
         value.contains("age restrict") ||
             value.contains("age-restrict") -> PlaybackFailureKind.ContentRestricted
+        value.contains("renderer process") || value.contains("webview renderer") -> PlaybackFailureKind.Renderer
         httpStatus == 403 || value.contains("forbidden") -> PlaybackFailureKind.Forbidden
         httpStatus == 410 || value.contains("gone") -> PlaybackFailureKind.Gone
         httpStatus == 429 || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
@@ -95,7 +96,6 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
         value.contains("n-transform") || value.contains("throttling parameter") -> PlaybackFailureKind.NTransform
         value.contains("signature") -> PlaybackFailureKind.Signature
         value.contains("client rejected") || value.contains("invalid client") || value.contains("unsupported client") -> PlaybackFailureKind.ClientRejected
-        value.contains("renderer process") || value.contains("webview renderer") -> PlaybackFailureKind.Renderer
         value.contains("unsupported format") ||
             value.contains("format unsupported") ||
             value.contains("unsupported media") -> PlaybackFailureKind.UnsupportedFormat
