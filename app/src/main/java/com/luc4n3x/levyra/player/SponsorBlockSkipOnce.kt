@@ -39,11 +39,6 @@ internal fun sponsorBlockSkipDecision(
     return SponsorBlockSkipDecision(targetPositionMs, encountered)
 }
 
-/**
- * Skip-once bookkeeping for one media item. The consumed set is bounded by the segment count of the
- * bound media and is cleared whenever a different media item, segment set or playback session takes
- * over, so consumed state can never leak across videos.
- */
 internal class SponsorBlockSkipOnceTracker {
 
     private val lock = Any()
