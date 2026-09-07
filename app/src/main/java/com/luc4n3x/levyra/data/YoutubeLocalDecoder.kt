@@ -56,8 +56,7 @@ class YoutubeLocalDecoder private constructor(
     private val engine = YoutubeLocalDecoderEngine(context.applicationContext, httpClient)
 
     override fun getPlayerData(videoId: String): YoutubeJavaScriptDecoder.PlayerData {
-        callerProvenance.remove()
-        callerProvenanceConflicted.remove()
+        clearCallerProvenance()
         return blocking("player metadata") { engine.playerData() }
     }
 
@@ -149,6 +148,11 @@ class YoutubeLocalDecoder private constructor(
                 runCatching { decoder.rejectionInternal(source, expectedConfigIdentity) }
                     .onFailure { Timber.w(it, "Local decoder rejection refresh failed") }
             }
+        }
+
+        internal fun clearCallerProvenance() {
+            callerProvenance.remove()
+            callerProvenanceConflicted.remove()
         }
 
         internal fun provenanceSnapshot(): YoutubeDecoderProvenance? =
@@ -1163,6 +1167,9 @@ private class YoutubePlayerJsSource(
 
     suspend fun rejectAnalyzedConfig(hash: String, identity: String) = mutex.withLock {
         if (identity.isBlank()) return@withLock
+        if (rejectedAnalyzerIdentities.size >= MAX_TRACKED_CONFIG_IDENTITIES) {
+            rejectedAnalyzerIdentities.clear()
+        }
         rejectedAnalyzerIdentities += identity
         if (memory?.hash == hash) {
             memory = memory?.copy(
