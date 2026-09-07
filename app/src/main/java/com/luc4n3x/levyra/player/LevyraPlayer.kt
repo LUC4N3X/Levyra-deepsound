@@ -136,6 +136,7 @@ class LevyraPlayer(context: Context) {
     private var audioNormalization: Boolean? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var sponsorJob: Job? = null
+    private val sponsorSkipTracker = SponsorBlockSkipOnceTracker()
 
     private val videoRenderListener = object : Player.Listener {
         override fun onRenderedFirstFrame() {
@@ -608,14 +609,18 @@ class LevyraPlayer(context: Context) {
 
     private fun startSponsorBlockMonitor(track: Track) {
         sponsorJob?.cancel()
-        if (track.sponsorSegments.isEmpty()) return
+        sponsorJob = null
+        val segments = track.sponsorSegments
+        if (segments.isEmpty()) {
+            sponsorSkipTracker.reset()
+            return
+        }
+        val mediaKey = track.id
+        sponsorSkipTracker.bind(mediaKey)
         sponsorJob = scope.launch {
             while (isActive) {
                 if (isPlaying) {
-                    val current = positionMs
-                    track.sponsorSegments.firstOrNull { current >= it.startMs && current < it.endMs }?.let {
-                        seekTo(it.endMs)
-                    }
+                    sponsorSkipTracker.planSkip(mediaKey, positionMs, segments)?.let(::seekTo)
                 }
                 delay(500L)
             }
@@ -627,6 +632,7 @@ class LevyraPlayer(context: Context) {
     }
 
     private fun clearLoadedState() {
+        sponsorSkipTracker.reset()
         pendingStartPositionMs = null
         loadedTrack = null
         loadedStreamIdentity = null

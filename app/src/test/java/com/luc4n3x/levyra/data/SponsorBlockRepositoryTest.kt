@@ -178,6 +178,55 @@ class SponsorBlockRepositoryTest {
         assertEquals(SPONSORBLOCK_CACHE_LIMIT, cache.size)
     }
 
+    @Test
+    fun upstreamSegmentIdentityIsPreserved() {
+        val fetcher = QueueSponsorBlockFetcher(
+            response(
+                200,
+                """[{"videoID":"video","segments":[{"UUID":"seg-uuid-1","segment":[1.0,2.5],"category":"sponsor","actionType":"skip"}]}]"""
+            )
+        )
+        val repository = SponsorBlockRepository(fetcher) { 1_000L }
+
+        val segment = repositorySegments(repository, "video").single()
+
+        assertEquals("seg-uuid-1", segment.uuid)
+        assertEquals("sponsor", segment.category)
+        assertEquals("skip", segment.actionType)
+        assertEquals(1_000L, segment.startMs)
+        assertEquals(2_500L, segment.endMs)
+    }
+
+    @Test
+    fun legacyResponseWithoutIdentityFieldsStillParses() {
+        val fetcher = QueueSponsorBlockFetcher(
+            response(200, """[{"videoID":"video","segments":[{"segment":[1.0,2.5],"category":"intro"}]}]""")
+        )
+        val repository = SponsorBlockRepository(fetcher) { 1_000L }
+
+        val segment = repositorySegments(repository, "video").single()
+
+        assertEquals("", segment.uuid)
+        assertEquals("intro", segment.category)
+        assertEquals("skip", segment.actionType)
+    }
+
+    @Test
+    fun nonSkipActionTypeIsPreservedVerbatim() {
+        val fetcher = QueueSponsorBlockFetcher(
+            response(
+                200,
+                """[{"videoID":"video","segments":[{"UUID":"poi-1","segment":[3.0,4.0],"category":"poi_highlight","actionType":"poi"}]}]"""
+            )
+        )
+        val repository = SponsorBlockRepository(fetcher) { 1_000L }
+
+        val segment = repositorySegments(repository, "video").single()
+
+        assertEquals("poi", segment.actionType)
+        assertEquals("poi_highlight", segment.category)
+    }
+
     private fun repositorySegments(repository: SponsorBlockRepository, videoId: String): List<SponsorSegment> =
         kotlinx.coroutines.runBlocking { repository.segments(videoId) }
 

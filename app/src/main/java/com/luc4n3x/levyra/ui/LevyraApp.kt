@@ -182,7 +182,9 @@ import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Translate
@@ -277,6 +279,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
@@ -487,6 +490,8 @@ import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
+import com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog
+import com.luc4n3x.levyra.ui.library.LibrarySelectionAction
 import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
 import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.ui.library.SavedAlbumBookmarkOverlay
@@ -1885,15 +1890,24 @@ fun LevyraApp(
             }
 
             AnimatedVisibility(visible = state.showQueue, enter = overlayEnter, exit = overlayExit) {
+                val offlineLabel = LocalLevyraStrings.current.offline
                 QueueOverlay(
                     state = state,
                     onPlay = viewModel::playQueueTrack,
                     onPlayNext = viewModel::playNext,
                     onRemove = viewModel::removeFromQueue,
+                    onRemoveSelected = viewModel::removeTracksFromQueue,
                     onMove = viewModel::moveQueueItem,
                     onUndo = viewModel::undoQueueRemoval,
                     onToggleRadio = viewModel::toggleContinuousRadio,
                     onSaveSelection = { name -> viewModel.saveActiveMixAsPlaylist(name) },
+                    onAddSelectedToPlaylist = { playlistId, tracks ->
+                        viewModel.addTracksToPlaylist(playlistId, tracks)
+                    },
+                    onCreatePlaylistWithSelected = { name, tracks ->
+                        viewModel.createPlaylistWithTracks(name, tracks)
+                    },
+                    onDownloadSelected = { tracks -> viewModel.exportTracks(tracks, offlineLabel) },
                     onClose = viewModel::closeQueue
                 )
             }
@@ -4398,22 +4412,59 @@ private fun openExternalUrl(
     }
 }
 
+internal fun queueSelectionKeys(queue: List<Track>): List<String> {
+    val occurrences = HashMap<String, Int>(queue.size)
+    return queue.map { track ->
+        val base = "${track.id}|${track.videoUrl}"
+        val occurrence = (occurrences[base] ?: 0) + 1
+        occurrences[base] = occurrence
+        "$base#$occurrence"
+    }
+}
+
+private val queueSelectionSaver = listSaver<Set<String>, String>(
+    save = { it.toList() },
+    restore = { it.toSet() }
+)
+
 @Composable
 private fun QueueOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
     onPlayNext: (Track) -> Unit,
     onRemove: (Int) -> Unit,
+    onRemoveSelected: (List<Int>) -> Unit,
     onMove: (Int, Int) -> Unit,
     onUndo: () -> Unit,
     onToggleRadio: () -> Unit,
     onSaveSelection: (String) -> Unit,
+    onAddSelectedToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithSelected: (String, List<Track>) -> Unit,
+    onDownloadSelected: (List<Track>) -> Unit,
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
     val queueAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     val connectedStyle = LevyraConnectedDefaults.style(accent = queueAccent)
+    var selectedQueueKeys by rememberSaveable(stateSaver = queueSelectionSaver) {
+        mutableStateOf(emptySet<String>())
+    }
+    var addToPlaylistTracks by remember { mutableStateOf(emptyList<Track>()) }
+    val rowSelectionKeys = remember(state.queue) { queueSelectionKeys(state.queue) }
+    val selectedTracks = remember(state.queue, rowSelectionKeys, selectedQueueKeys) {
+        state.queue.filterIndexed { index, _ -> rowSelectionKeys[index] in selectedQueueKeys }
+    }
+    val removableIndices = remember(rowSelectionKeys, selectedQueueKeys, state.queueCurrentIndex) {
+        rowSelectionKeys.indices.filter { index ->
+            index != state.queueCurrentIndex && rowSelectionKeys[index] in selectedQueueKeys
+        }
+    }
+    val selectionActive = selectedTracks.isNotEmpty()
+    val allSelected = state.queue.isNotEmpty() && selectedTracks.size == state.queue.size
+
+    BackHandler(enabled = selectionActive) { selectedQueueKeys = emptySet() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -4424,7 +4475,12 @@ private fun QueueOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(
+                start = 18.dp,
+                end = 18.dp,
+                top = 18.dp,
+                bottom = if (selectionActive) 210.dp else 120.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(connectedStyle.gap)
         ) {
             item(contentType = "queue-header") {
@@ -4521,6 +4577,8 @@ private fun QueueOverlay(
                     contentType = { _, _ -> "queue-track" }
                 ) { index, track ->
                     val isCurrent = index == state.queueCurrentIndex
+                    val rowKey = rowSelectionKeys[index]
+                    val rowSelected = rowKey in selectedQueueKeys
                     var dragDistance by remember(track) { mutableFloatStateOf(0f) }
                     val latestQueue by rememberUpdatedState(state.queue)
                     val latestMove by rememberUpdatedState(onMove)
@@ -4540,28 +4598,31 @@ private fun QueueOverlay(
                     SwipeToDismissBox(
                         state = dismissState,
                         enableDismissFromStartToEnd = false,
-                        enableDismissFromEndToStart = !isCurrent,
+                        enableDismissFromEndToStart = !isCurrent && !selectionActive,
                         backgroundContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(connectedStyle.shapes.forPosition(queuePosition))
-                                    .background(LevyraCyan.copy(alpha = 0.16f))
-                                    .padding(horizontal = 18.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Delete,
-                                    strings.remove,
-                                    tint = LevyraCyan,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                            if (!selectionActive) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(connectedStyle.shapes.forPosition(queuePosition))
+                                        .background(LevyraCyan.copy(alpha = 0.16f))
+                                        .padding(horizontal = 18.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Delete,
+                                        strings.remove,
+                                        tint = LevyraCyan,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .semantics {
-                                if (!isCurrent) {
+                                if (selectionActive) selected = rowSelected
+                                if (!isCurrent && !selectionActive) {
                                     customActions = listOf(
                                         CustomAccessibilityAction(strings.remove) {
                                             onRemove(index)
@@ -4574,59 +4635,90 @@ private fun QueueOverlay(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .levyraConnectedSurface(queuePosition, connectedStyle, selected = isCurrent)
+                                .levyraConnectedSurface(
+                                    queuePosition,
+                                    connectedStyle,
+                                    selected = isCurrent || rowSelected
+                                )
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .levyraPressable(
-                                        onClick = { onPlay(track) },
-                                        pressedScale = LevyraPressScale.Row
+                                        onClick = {
+                                            if (selectionActive) {
+                                                selectedQueueKeys = if (rowSelected) {
+                                                    selectedQueueKeys - rowKey
+                                                } else {
+                                                    selectedQueueKeys + rowKey
+                                                }
+                                            } else {
+                                                onPlay(track)
+                                            }
+                                        },
+                                        pressedScale = LevyraPressScale.Row,
+                                        role = if (selectionActive) Role.Checkbox else Role.Button,
+                                        onClickLabel = when {
+                                            !selectionActive -> strings.play
+                                            rowSelected -> strings.deselectTrack
+                                            else -> strings.selectTrack
+                                        },
+                                        onLongClickLabel = strings.selectTrack,
+                                        onLongClick = { selectedQueueKeys = selectedQueueKeys + rowKey }
                                     )
                                     .padding(horizontal = 10.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Icon(
-                                    Icons.Rounded.DragHandle,
-                                    LocalLevyraStrings.current.dragToReorder,
-                                    tint = LevyraMuted,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .pointerInput(track) {
-                                            var dragIndex = index
-                                            detectDragGesturesAfterLongPress(
-                                                onDragStart = {
-                                                    dragDistance = 0f
-                                                    dragIndex = latestQueue.indexOfFirst { it === track }
-                                                        .takeIf { it >= 0 }
-                                                        ?: latestQueue.indexOf(track).takeIf { it >= 0 }
-                                                        ?: index
-                                                },
-                                                onDragCancel = { dragDistance = 0f },
-                                                onDragEnd = { dragDistance = 0f },
-                                                onDrag = { change, amount ->
-                                                    change.consume()
-                                                    dragDistance += amount.y
-                                                    val threshold = 46.dp.toPx()
-                                                    val lastIndex = latestQueue.lastIndex
-                                                    when {
-                                                        dragDistance > threshold && dragIndex < lastIndex -> {
-                                                            latestMove(dragIndex, dragIndex + 1)
-                                                            dragIndex += 1
-                                                            dragDistance = 0f
-                                                            haptics.perform(LevyraHapticAction.Reorder)
-                                                        }
-                                                        dragDistance < -threshold && dragIndex > 0 -> {
-                                                            latestMove(dragIndex, dragIndex - 1)
-                                                            dragIndex -= 1
-                                                            dragDistance = 0f
-                                                            haptics.perform(LevyraHapticAction.Reorder)
-                                                        }
+                                val reorderModifier = if (selectionActive) {
+                                    Modifier
+                                } else {
+                                    Modifier.pointerInput(track) {
+                                        var dragIndex = index
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = {
+                                                dragDistance = 0f
+                                                dragIndex = latestQueue.indexOfFirst { it === track }
+                                                    .takeIf { it >= 0 }
+                                                    ?: latestQueue.indexOf(track).takeIf { it >= 0 }
+                                                    ?: index
+                                            },
+                                            onDragCancel = { dragDistance = 0f },
+                                            onDragEnd = { dragDistance = 0f },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragDistance += amount.y
+                                                val threshold = 46.dp.toPx()
+                                                val lastIndex = latestQueue.lastIndex
+                                                when {
+                                                    dragDistance > threshold && dragIndex < lastIndex -> {
+                                                        latestMove(dragIndex, dragIndex + 1)
+                                                        dragIndex += 1
+                                                        dragDistance = 0f
+                                                        haptics.perform(LevyraHapticAction.Reorder)
+                                                    }
+                                                    dragDistance < -threshold && dragIndex > 0 -> {
+                                                        latestMove(dragIndex, dragIndex - 1)
+                                                        dragIndex -= 1
+                                                        dragDistance = 0f
+                                                        haptics.perform(LevyraHapticAction.Reorder)
                                                     }
                                                 }
-                                            )
-                                        }
+                                            }
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    Icons.Rounded.DragHandle,
+                                    if (selectionActive) null else strings.dragToReorder,
+                                    tint = if (selectionActive) {
+                                        LevyraMuted.copy(alpha = 0.35f)
+                                    } else {
+                                        LevyraMuted
+                                    },
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .then(reorderModifier)
                                 )
                                 CoverImage(track, Modifier.size(48.dp).clip(LevyraPlayerDesign.ShapeXs))
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -4640,7 +4732,19 @@ private fun QueueOverlay(
                                         size = 18.dp,
                                         contentDescription = strings.playing
                                     )
-                                } else {
+                                }
+                                if (selectionActive) {
+                                    Icon(
+                                        if (rowSelected) {
+                                            Icons.Rounded.CheckCircle
+                                        } else {
+                                            Icons.Rounded.RadioButtonUnchecked
+                                        },
+                                        contentDescription = null,
+                                        tint = if (rowSelected) queueAccent else LevyraMuted.copy(alpha = 0.35f),
+                                        modifier = Modifier.padding(horizontal = 6.dp)
+                                    )
+                                } else if (!isCurrent) {
                                     IconButton(onClick = { onPlayNext(track) }, modifier = Modifier.size(34.dp)) {
                                         Icon(Icons.Rounded.SkipNext, strings.playNext, tint = LevyraText, modifier = Modifier.size(19.dp))
                                     }
@@ -4652,6 +4756,131 @@ private fun QueueOverlay(
                         }
                     }
                 }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = selectionActive,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(start = 12.dp, end = 12.dp, bottom = 20.dp)
+        ) {
+            QueueSelectionBar(
+                count = selectedTracks.size,
+                allSelected = allSelected,
+                canRemove = removableIndices.isNotEmpty(),
+                onSelectAll = { selectedQueueKeys = rowSelectionKeys.toSet() },
+                onClear = { selectedQueueKeys = emptySet() },
+                onAddToPlaylist = { addToPlaylistTracks = selectedTracks },
+                onDownload = {
+                    onDownloadSelected(selectedTracks)
+                    selectedQueueKeys = emptySet()
+                },
+                onRemove = {
+                    onRemoveSelected(removableIndices)
+                    selectedQueueKeys = emptySet()
+                }
+            )
+        }
+    }
+
+    if (addToPlaylistTracks.isNotEmpty()) {
+        val pendingTracks = addToPlaylistTracks
+        AddTracksToPlaylistDialog(
+            tracks = pendingTracks,
+            playlists = state.playlists,
+            onDismiss = { addToPlaylistTracks = emptyList() },
+            onAdd = { playlistId ->
+                onAddSelectedToPlaylist(playlistId, pendingTracks)
+                addToPlaylistTracks = emptyList()
+                selectedQueueKeys = emptySet()
+            },
+            onCreate = { name ->
+                onCreatePlaylistWithSelected(name, pendingTracks)
+                addToPlaylistTracks = emptyList()
+                selectedQueueKeys = emptySet()
+            }
+        )
+    }
+}
+
+@Composable
+private fun QueueSelectionBar(
+    count: Int,
+    allSelected: Boolean,
+    canRemove: Boolean,
+    onSelectAll: () -> Unit,
+    onClear: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onDownload: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = LevyraPanel.copy(alpha = 0.98f),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        shadowElevation = 14.dp,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Rounded.Close, contentDescription = strings.clear, tint = LevyraText)
+                }
+                Text(
+                    strings.formatTrackCount(count),
+                    color = LevyraText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onSelectAll, enabled = !allSelected) {
+                    Text(
+                        strings.selectAll,
+                        color = if (allSelected) LevyraMuted.copy(alpha = 0.35f) else LevyraCyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                LibrarySelectionAction(
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    label = strings.addToPlaylist,
+                    enabled = true,
+                    onClick = onAddToPlaylist,
+                    tint = LevyraText,
+                    modifier = Modifier.weight(1f)
+                )
+                LibrarySelectionAction(
+                    icon = Icons.Rounded.Download,
+                    label = strings.offline,
+                    enabled = true,
+                    onClick = onDownload,
+                    tint = LevyraText,
+                    modifier = Modifier.weight(1f)
+                )
+                LibrarySelectionAction(
+                    icon = Icons.Rounded.Delete,
+                    label = strings.removeFromQueue,
+                    enabled = canRemove,
+                    onClick = onRemove,
+                    tint = LevyraPink,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }

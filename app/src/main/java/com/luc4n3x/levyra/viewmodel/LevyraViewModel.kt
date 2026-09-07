@@ -213,6 +213,7 @@ import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackSleepTimerState
 import com.luc4n3x.levyra.player.PlaybackWarmup
+import com.luc4n3x.levyra.player.SponsorBlockSkipOnceTracker
 import com.luc4n3x.levyra.player.queuePrefetchPrimeBytes
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
@@ -807,6 +808,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var followedArtistsGeneration = 0L
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
+    private val sponsorSkipTracker = SponsorBlockSkipOnceTracker()
     private val tabBackStack = ArrayDeque<LevyraTab>()
 
     private sealed interface DetailPage {
@@ -4415,6 +4417,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         removeFromQueueLocal(index)
     }
 
+    fun removeTracksFromQueue(indices: Collection<Int>) {
+        val snapshot = _state.value
+        val currentIndex = snapshot.queueCurrentIndex
+        val targets = indices.filterTo(sortedSetOf<Int>()) {
+            it in snapshot.queue.indices && it != currentIndex
+        }
+        if (targets.isEmpty()) return
+        if (snapshot.jam.isActive) {
+            targets.forEach { index ->
+                snapshot.queue.getOrNull(index)?.let { routeJamAction(JamAction.RemoveTrack(it.id)) }
+            }
+            return
+        }
+        val updated = queueEngine.removeIndices(targets)
+        if (updated.tracks.isEmpty()) closePlayer() else refreshQueuePrefetch()
+    }
+
     private fun removeFromQueueLocal(index: Int) {
         val snapshot = queueEngine.remove(index)
         if (snapshot.tracks.isEmpty()) {
@@ -7798,12 +7817,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun fetchSponsorSegments(track: Track) {
         sponsorJob?.cancel()
         sponsorSegments = emptyList()
+        sponsorSkipTracker.reset()
         if (
             !_state.value.sponsorBlockEnabled ||
             isLocalPlaybackTrack(track) ||
             track.id.isBlank() ||
             track.id.startsWith("chart-")
         ) return
+        sponsorSkipTracker.beginPlayback(track.id)
         sponsorJob = viewModelScope.launch {
             val result = runCatching { sponsorBlockRepository.segments(track.id) }.getOrDefault(emptyList())
             if (_state.value.currentTrack?.id == track.id) sponsorSegments = result
@@ -7816,6 +7837,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!value) {
             sponsorJob?.cancel()
             sponsorSegments = emptyList()
+            sponsorSkipTracker.reset()
         } else {
             _state.value.currentTrack?.let { fetchSponsorSegments(it) }
         }
@@ -8565,6 +8587,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         radioJob = null
         PlaybackService.cancelSleepTimer()
         sponsorSegments = emptyList()
+        sponsorSkipTracker.reset()
         cancelBackgroundWarmups(cancelList = true)
         pendingSeekMs = 0L
         queueIndex = -1
@@ -8762,10 +8785,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val current = snapshot.currentTrack
                 val duration = current?.let { effectiveDuration(it) } ?: player.durationMs
 
-                if (snapshot.sponsorBlockEnabled && sponsorSegments.isNotEmpty() && player.isPlaying) {
-                    val pos = player.positionMs
-                    val segment = sponsorSegments.firstOrNull { pos >= it.startMs && pos < it.endMs - 250 }
-                    if (segment != null) player.seekTo(segment.endMs)
+                val sponsorMediaKey = current?.id
+                if (
+                    snapshot.sponsorBlockEnabled &&
+                    sponsorSegments.isNotEmpty() &&
+                    sponsorMediaKey != null &&
+                    player.isPlaying
+                ) {
+                    sponsorSkipTracker
+                        .planSkip(sponsorMediaKey, player.positionMs, sponsorSegments)
+                        ?.let(player::seekTo)
                 }
 
                 val nowElapsed = android.os.SystemClock.elapsedRealtime()
