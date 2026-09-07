@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.domain.SPONSOR_SEGMENT_ACTION_SKIP
 import com.luc4n3x.levyra.domain.SponsorSegment
 
 internal const val SPONSOR_BLOCK_SKIP_GUARD_MS = 250L
@@ -14,7 +15,8 @@ internal data class SponsorBlockSkipDecision(
 )
 
 private fun SponsorSegment.coversSkipPosition(positionMs: Long): Boolean =
-    endMs > startMs &&
+    actionType.equals(SPONSOR_SEGMENT_ACTION_SKIP, ignoreCase = true) &&
+        endMs > startMs &&
         positionMs >= startMs &&
         positionMs < endMs - SPONSOR_BLOCK_SKIP_GUARD_MS
 
@@ -39,13 +41,14 @@ internal fun sponsorBlockSkipDecision(
 
 /**
  * Skip-once bookkeeping for one media item. The consumed set is bounded by the segment count of the
- * bound media and is cleared whenever a different media item or a new playback session takes over,
- * so consumed state can never leak across videos.
+ * bound media and is cleared whenever a different media item, segment set or playback session takes
+ * over, so consumed state can never leak across videos.
  */
 internal class SponsorBlockSkipOnceTracker {
 
     private val lock = Any()
     private var boundMediaKey: String? = null
+    private var boundSegments: List<SponsorSegment>? = null
     private val consumedIdentities = LinkedHashSet<String>()
 
     val activeMediaKey: String?
@@ -58,6 +61,7 @@ internal class SponsorBlockSkipOnceTracker {
         synchronized(lock) {
             if (boundMediaKey == mediaKey) return@synchronized
             boundMediaKey = mediaKey
+            boundSegments = null
             consumedIdentities.clear()
         }
     }
@@ -65,6 +69,7 @@ internal class SponsorBlockSkipOnceTracker {
     fun beginPlayback(mediaKey: String) {
         synchronized(lock) {
             boundMediaKey = mediaKey
+            boundSegments = null
             consumedIdentities.clear()
         }
     }
@@ -72,6 +77,7 @@ internal class SponsorBlockSkipOnceTracker {
     fun reset() {
         synchronized(lock) {
             boundMediaKey = null
+            boundSegments = null
             consumedIdentities.clear()
         }
     }
@@ -79,6 +85,10 @@ internal class SponsorBlockSkipOnceTracker {
     fun planSkip(mediaKey: String, positionMs: Long, segments: List<SponsorSegment>): Long? =
         synchronized(lock) {
             if (boundMediaKey != mediaKey) return@synchronized null
+            if (boundSegments !== segments) {
+                boundSegments = segments
+                consumedIdentities.clear()
+            }
             val decision = sponsorBlockSkipDecision(segments, positionMs, consumedIdentities)
                 ?: return@synchronized null
             consumedIdentities += decision.encounteredIdentities
