@@ -19,11 +19,7 @@ internal data class YoutubeStreamClientIdentity(
             "Accept" to "*/*",
             "Accept-Encoding" to "identity"
         )
-        val navigation = if (origin.isNotBlank() && referer.isNotBlank()) {
-            YoutubeClientIdentityInterceptor.MediaNavigation(origin, referer)
-        } else {
-            YoutubeClientIdentityInterceptor.mediaNavigationFor(clientHeaderName, videoId)
-        }
+        val navigation = YoutubeClientIdentityInterceptor.mediaNavigationFor(clientHeaderName, videoId)
         if (navigation != null) {
             headers["Origin"] = navigation.origin
             headers["Referer"] = navigation.referer
