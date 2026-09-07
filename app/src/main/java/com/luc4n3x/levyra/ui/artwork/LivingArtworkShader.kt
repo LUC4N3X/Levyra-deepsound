@@ -37,14 +37,11 @@ float valueNoise(float2 p) {
 }
 
 float fbm(float2 p) {
-    float value = 0.0;
-    value += valueNoise(p) * 0.52;
+    float value = valueNoise(p) * 0.58;
     p = p * 2.03 + float2(17.1, 9.2);
-    value += valueNoise(p) * 0.26;
+    value += valueNoise(p) * 0.28;
     p = p * 2.01 + float2(8.3, 19.7);
-    value += valueNoise(p) * 0.13;
-    p = p * 2.04 + float2(13.7, 5.9);
-    value += valueNoise(p) * 0.065;
+    value += valueNoise(p) * 0.14;
     return value;
 }
 
@@ -72,11 +69,11 @@ half4 main(float2 fragCoord) {
     warped += warped * (0.055 * sin(radius * 3.2 + t * 0.11 + seed));
 
     float2 mesh = warped * 0.82;
-    float mask0 = smoothstep(0.26, 0.78, fbm(mesh * 1.03 + float2(t * 0.026, seed * 0.23)));
-    float mask1 = smoothstep(0.30, 0.80, fbm(mesh * 1.17 + float2(-t * 0.021 + 4.1, seed * 0.31 + 1.7)));
-    float mask2 = smoothstep(0.32, 0.82, fbm(mesh * 1.31 + float2(seed * 0.19 + 7.4, t * 0.018 + 3.2)));
-    float mask3 = smoothstep(0.34, 0.84, fbm(mesh * 1.46 + float2(t * 0.016 + 2.8, -seed * 0.27 + 8.6)));
-    float mask4 = smoothstep(0.36, 0.86, fbm(mesh * 1.63 + float2(-t * 0.014 + 9.3, seed * 0.37 + 5.1)));
+    float mask0 = smoothstep(0.27, 0.75, valueNoise(mesh * 1.08 + float2(t * 0.026, seed * 0.23)));
+    float mask1 = smoothstep(0.29, 0.77, valueNoise(rotatePoint(mesh, 0.61) * 1.24 + float2(-t * 0.021 + 4.1, seed * 0.31 + 1.7)));
+    float mask2 = smoothstep(0.31, 0.79, valueNoise(rotatePoint(mesh, -0.48) * 1.39 + float2(seed * 0.19 + 7.4, t * 0.018 + 3.2)));
+    float mask3 = smoothstep(0.33, 0.81, valueNoise(mesh * 1.55 + float2(t * 0.016 + 2.8, -seed * 0.27 + 8.6)));
+    float mask4 = smoothstep(0.35, 0.83, valueNoise(rotatePoint(mesh, 0.92) * 1.72 + float2(-t * 0.014 + 9.3, seed * 0.37 + 5.1)));
 
     half3 color = uBase.rgb;
     color = mix(color, uTone0.rgb, half(mask0 * 0.94));
@@ -85,12 +82,11 @@ half4 main(float2 fragCoord) {
     color = mix(color, uTone3.rgb, half(mask3 * 0.64));
     color = mix(color, uTone4.rgb, half(mask4 * 0.58));
 
-    float silkNoise = fbm(mesh * 2.35 + float2(t * 0.022, -t * 0.017) + float2(seed * 0.41, seed * 0.13));
-    float silk = 1.0 - smoothstep(0.07, 0.26, abs(silkNoise - 0.5));
+    float silkNoise = valueNoise(mesh * 2.85 + float2(t * 0.022, -t * 0.017) + float2(seed * 0.41, seed * 0.13));
+    float silk = 1.0 - smoothstep(0.07, 0.24, abs(silkNoise - 0.5));
     color += half3(half(silk * 0.055));
 
-    float coverageNoise = fbm(mesh * 0.71 + float2(seed * 0.29, t * 0.012));
-    float coverage = 0.58 + coverageNoise * 0.34;
+    float coverage = 0.60 + (warpX + warpY) * 0.12 + max(mask0, mask1) * 0.08;
     float edgeDistance = distance(uv, float2(0.5, 0.47));
     float vignette = 1.0 - 0.24 * smoothstep(0.30, 0.80, edgeDistance);
     float controlSafe = 1.0 - 0.18 * smoothstep(0.63, 1.0, uv.y);
