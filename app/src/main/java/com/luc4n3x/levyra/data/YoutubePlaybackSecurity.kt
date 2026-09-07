@@ -87,7 +87,10 @@ internal class YoutubePlaybackSecurity private constructor(
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("levyra_youtube_guest", Context.MODE_PRIVATE)
     private val sessionMutex = Mutex()
+    private val sessionStateLock = Any()
+    private val failureStateLock = Any()
     private val failureCount = AtomicInteger(0)
+    private val failureGeneration = AtomicLong(-1L)
     private val tokenGenerator = YoutubeWebPoTokenGenerator(appContext, httpClient)
 
     private val warmScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -114,7 +117,12 @@ internal class YoutubePlaybackSecurity private constructor(
     }
 
     fun cachedSession(): YoutubeGuestSession {
-        return YoutubeGuestSession(
+        YoutubeLocalDecoder.clearCallerProvenance()
+        return readCachedSession()
+    }
+
+    private fun readCachedSession(): YoutubeGuestSession = synchronized(sessionStateLock) {
+        YoutubeGuestSession(
             visitorData = prefs.getString(KEY_VISITOR_DATA, "").orEmpty(),
             generation = prefs.getLong(KEY_GENERATION, 0L)
         )
@@ -130,7 +138,7 @@ internal class YoutubePlaybackSecurity private constructor(
     suspend fun currentSessionRequired(): YoutubeGuestSession = ensureCurrentSession()
 
     private suspend fun ensureCurrentSession(): YoutubeGuestSession = sessionMutex.withLock {
-        val cached = cachedSession()
+        val cached = readCachedSession()
         if (cached.visitorData.isNotBlank()) return@withLock cached
         val fresh = fetchVisitorData()
         persistSession(fresh, cached.generation + 1L)
@@ -138,14 +146,19 @@ internal class YoutubePlaybackSecurity private constructor(
 
     fun observeVisitorData(visitorData: String) {
         if (visitorData.isBlank()) return
-        val current = prefs.getString(KEY_VISITOR_DATA, "").orEmpty()
-        if (current == visitorData) return
-        val generation = prefs.getLong(KEY_GENERATION, 0L) + 1L
-        prefs.edit()
-            .putString(KEY_VISITOR_DATA, visitorData)
-            .putLong(KEY_GENERATION, generation)
-            .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
-            .apply()
+        val changed = synchronized(sessionStateLock) {
+            val current = prefs.getString(KEY_VISITOR_DATA, "").orEmpty()
+            if (current == visitorData) return@synchronized false
+            val generation = prefs.getLong(KEY_GENERATION, 0L) + 1L
+            prefs.edit()
+                .putString(KEY_VISITOR_DATA, visitorData)
+                .putLong(KEY_GENERATION, generation)
+                .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
+                .apply()
+            resetFailureStateForGeneration(generation)
+            true
+        }
+        if (!changed) return
         lastWarmAtMs.set(0L)
         tokenGenerator.invalidate()
     }
@@ -154,11 +167,15 @@ internal class YoutubePlaybackSecurity private constructor(
         require(session.visitorData.isNotBlank()) {
             "PO Token visitor identity is required"
         }
-        return tokenGenerator.playerToken(
-            session.visitorData,
-            session.generation,
-            FULL_WAIT_BUDGET_MS
-        )
+        return try {
+            tokenGenerator.playerToken(
+                session.visitorData,
+                session.generation,
+                FULL_WAIT_BUDGET_MS
+            )
+        } finally {
+            YoutubeLocalDecoder.clearCallerProvenance()
+        }
     }
 
     suspend fun poTokensForPlayback(
@@ -176,41 +193,48 @@ internal class YoutubePlaybackSecurity private constructor(
         if (remainingBudgetMs <= 0L) {
             throw YoutubePoTokenRuntimeUnavailableException("Playback security wait budget exhausted")
         }
-        return tokenGenerator.generate(videoId, session.visitorData, session.generation, remainingBudgetMs)
+        return try {
+            tokenGenerator.generate(videoId, session.visitorData, session.generation, remainingBudgetMs)
+        } finally {
+            YoutubeLocalDecoder.clearCallerProvenance()
+        }
     }
 
     suspend fun rotateIfNeeded(error: Throwable, expectedGeneration: Long? = null): Boolean {
-        if (
-            expectedGeneration != null &&
-            expectedGeneration >= 0L &&
-            cachedSession().generation != expectedGeneration
-        ) {
-            return false
-        }
         val decision = classifyFailure(error)
-        if (!decision.rotate) {
-            if (decision.resetCounter) failureCount.set(0)
-            return false
-        }
-        val attempts = failureCount.incrementAndGet()
-        if (!decision.immediate && attempts < 2) return false
         return sessionMutex.withLock {
+            val session = readCachedSession()
             if (
                 expectedGeneration != null &&
                 expectedGeneration >= 0L &&
-                cachedSession().generation != expectedGeneration
+                session.generation != expectedGeneration
             ) {
                 return@withLock false
             }
+            if (!decision.rotate) {
+                if (decision.resetCounter) resetFailureStateForGeneration(session.generation)
+                return@withLock false
+            }
+            val attempts = recordFailureAttempt(session.generation)
+            if (!decision.immediate && attempts < 2) return@withLock false
             val lastRotation = prefs.getLong(KEY_LAST_ROTATION, 0L)
             val now = System.currentTimeMillis()
             if (now - lastRotation < ROTATION_COOLDOWN_MS) return@withLock false
-            val generation = prefs.getLong(KEY_GENERATION, 0L) + 1L
-            prefs.edit()
-                .remove(KEY_VISITOR_DATA)
-                .putLong(KEY_GENERATION, generation)
-                .putLong(KEY_LAST_ROTATION, now)
-                .apply()
+            val generation = synchronized(sessionStateLock) {
+                val latestGeneration = prefs.getLong(KEY_GENERATION, 0L)
+                if (latestGeneration != session.generation) {
+                    null
+                } else {
+                    val nextGeneration = latestGeneration + 1L
+                    prefs.edit()
+                        .remove(KEY_VISITOR_DATA)
+                        .putLong(KEY_GENERATION, nextGeneration)
+                        .putLong(KEY_LAST_ROTATION, now)
+                        .apply()
+                    resetFailureStateForGeneration(nextGeneration)
+                    nextGeneration
+                }
+            } ?: return@withLock false
             lastWarmAtMs.set(0L)
             tokenGenerator.invalidate()
             val fresh = try {
@@ -222,12 +246,24 @@ internal class YoutubePlaybackSecurity private constructor(
                 ""
             }
             if (fresh.isNotBlank()) persistSession(fresh, generation)
-            failureCount.set(0)
             true
         }
     }
 
     fun resetFailureState() {
+        resetFailureStateForGeneration(readCachedSession().generation)
+    }
+
+    private fun recordFailureAttempt(generation: Long): Int = synchronized(failureStateLock) {
+        if (failureGeneration.get() != generation) {
+            failureGeneration.set(generation)
+            failureCount.set(0)
+        }
+        failureCount.incrementAndGet()
+    }
+
+    private fun resetFailureStateForGeneration(generation: Long) = synchronized(failureStateLock) {
+        failureGeneration.set(generation)
         failureCount.set(0)
     }
 
@@ -257,12 +293,22 @@ internal class YoutubePlaybackSecurity private constructor(
     }
 
     private fun persistSession(visitorData: String, generation: Long): YoutubeGuestSession {
-        prefs.edit()
-            .putString(KEY_VISITOR_DATA, visitorData)
-            .putLong(KEY_GENERATION, generation)
-            .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
-            .apply()
-        return YoutubeGuestSession(visitorData, generation)
+        return synchronized(sessionStateLock) {
+            val currentGeneration = prefs.getLong(KEY_GENERATION, 0L)
+            if (currentGeneration > generation) {
+                return@synchronized YoutubeGuestSession(
+                    prefs.getString(KEY_VISITOR_DATA, "").orEmpty(),
+                    currentGeneration
+                )
+            }
+            prefs.edit()
+                .putString(KEY_VISITOR_DATA, visitorData)
+                .putLong(KEY_GENERATION, generation)
+                .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
+                .apply()
+            resetFailureStateForGeneration(generation)
+            YoutubeGuestSession(visitorData, generation)
+        }
     }
 
     private fun classifyFailure(error: Throwable): RotationDecision {
