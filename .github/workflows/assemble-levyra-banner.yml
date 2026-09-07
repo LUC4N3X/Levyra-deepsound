@@ -1,0 +1,35 @@
+name: Assemble Levyra banner
+
+on:
+  push:
+    branches:
+      - docs/refresh-levyra-github-banner-pro
+    paths:
+      - docs/assets/levyra-github-banner-fix.webp.b64
+      - .github/workflows/assemble-levyra-banner.yml
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode valid WebP banner
+        run: |
+          base64 --decode docs/assets/levyra-github-banner-fix.webp.b64 > docs/assets/levyra-github-banner.webp
+          rm -f docs/assets/levyra-github-banner-fix.webp.b64
+          rm -rf docs/assets/.banner_parts
+          rm -f .github/workflows/assemble-levyra-banner.yml
+
+      - name: Commit repaired banner
+        run: |
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add -A
+          git commit -m "docs(assets): repair GitHub banner WebP" || exit 0
+          git push origin HEAD:docs/refresh-levyra-github-banner-pro
