@@ -359,7 +359,7 @@ internal fun LibrarySelectionBar(
 }
 
 @Composable
-private fun LibrarySelectionAction(
+internal fun LibrarySelectionAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     enabled: Boolean,
