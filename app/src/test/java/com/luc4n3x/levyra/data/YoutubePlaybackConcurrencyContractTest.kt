@@ -48,6 +48,21 @@ class YoutubePlaybackConcurrencyContractTest {
     }
 
     @Test
+    fun sameGenerationVisitorCannotBeOverwrittenByLateFetch() {
+        val security = readSource("data/YoutubePlaybackSecurity.kt")
+        val persist = security.substring(
+            security.indexOf("private fun persistSession("),
+            security.indexOf("private fun classifyFailure(")
+        )
+
+        assertTrue(persist.contains("val currentVisitorData = prefs.getString(KEY_VISITOR_DATA"))
+        assertTrue(persist.contains("currentGeneration == generation"))
+        assertTrue(persist.contains("currentVisitorData.isNotBlank()"))
+        assertTrue(persist.contains("currentVisitorData != visitorData"))
+        assertTrue(persist.indexOf("return@synchronized") < persist.indexOf("prefs.edit()"))
+    }
+
+    @Test
     fun rejectedAnalyzerIdentityTrackingRemainsBounded() {
         val decoder = readSource("data/YoutubeLocalDecoder.kt")
         val reject = decoder.substring(
