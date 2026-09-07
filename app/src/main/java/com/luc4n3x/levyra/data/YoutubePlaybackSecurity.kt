@@ -295,11 +295,14 @@ internal class YoutubePlaybackSecurity private constructor(
     private fun persistSession(visitorData: String, generation: Long): YoutubeGuestSession {
         return synchronized(sessionStateLock) {
             val currentGeneration = prefs.getLong(KEY_GENERATION, 0L)
-            if (currentGeneration > generation) {
-                return@synchronized YoutubeGuestSession(
-                    prefs.getString(KEY_VISITOR_DATA, "").orEmpty(),
-                    currentGeneration
-                )
+            val currentVisitorData = prefs.getString(KEY_VISITOR_DATA, "").orEmpty()
+            if (
+                currentGeneration > generation ||
+                currentGeneration == generation &&
+                    currentVisitorData.isNotBlank() &&
+                    currentVisitorData != visitorData
+            ) {
+                return@synchronized YoutubeGuestSession(currentVisitorData, currentGeneration)
             }
             prefs.edit()
                 .putString(KEY_VISITOR_DATA, visitorData)
