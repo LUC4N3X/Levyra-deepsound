@@ -94,3 +94,10 @@ private fun normalize(value: Float, start: Float, end: Float): Float {
 }
 
 private fun Float.finiteOr(fallback: Float): Float = if (isFinite()) this else fallback
+
+data class PlayerCollapseActions(
+    val collapse: () -> Unit,
+    val dragStart: () -> Unit,
+    val drag: (Float) -> Unit,
+    val dragEnd: (Float) -> Unit
+)
