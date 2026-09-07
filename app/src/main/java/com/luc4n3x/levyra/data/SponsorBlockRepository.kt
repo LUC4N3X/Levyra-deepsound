@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.SPONSOR_SEGMENT_ACTION_SKIP
 import com.luc4n3x.levyra.domain.SponsorSegment
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
@@ -93,7 +94,17 @@ internal fun parseSponsorBlockSegments(body: String, videoId: String): List<Spon
                 val startMs = (range.optDouble(0, 0.0) * 1000).toLong()
                 val endMs = (range.optDouble(1, 0.0) * 1000).toLong()
                 if (endMs > startMs) {
-                    add(SponsorSegment(startMs, endMs, item.optString("category", "sponsor")))
+                    add(
+                        SponsorSegment(
+                            startMs = startMs,
+                            endMs = endMs,
+                            category = item.optString("category", "sponsor"),
+                            uuid = item.optString("UUID").trim(),
+                            actionType = item.optString("actionType")
+                                .trim()
+                                .ifBlank { SPONSOR_SEGMENT_ACTION_SKIP }
+                        )
+                    )
                 }
             }
         }.sortedBy { it.startMs }
