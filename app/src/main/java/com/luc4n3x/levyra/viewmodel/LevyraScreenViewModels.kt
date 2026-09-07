@@ -24,6 +24,8 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.PlayerBackgroundMode
+import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.LevyraMixKind
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
@@ -413,6 +415,8 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun toggleVideoMode() = root.toggleVideoMode()
     fun selectVideoSubtitle(trackId: String?) = root.selectVideoSubtitle(trackId)
     fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
+    fun setPlayerVisualMode(mode: PlayerVisualMode) = root.setPlayerVisualMode(mode)
+    fun setPlayerBackground(mode: PlayerBackgroundMode) = root.setPlayerBackground(mode)
 }
 
 class LevyraScreenViewModelFactory(
