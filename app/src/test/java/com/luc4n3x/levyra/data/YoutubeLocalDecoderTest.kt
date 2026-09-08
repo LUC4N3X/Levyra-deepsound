@@ -151,6 +151,13 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
+    fun rejectsUnchangedRealSignatureOutput() {
+        assertTrue(YoutubePlayerJsSupport.isValidSignatureTransform("abcdef", "fedcba"))
+        assertFalse(YoutubePlayerJsSupport.isValidSignatureTransform("abcdef", "abcdef"))
+        assertFalse(YoutubePlayerJsSupport.isValidSignatureTransform("abcdef", ""))
+    }
+
+    @Test
     fun extractsPlayerHashFromEscapedIframeApiResponse() {
         val hash = YoutubePlayerJsSupport.extractPlayerHash(
             "var x={player_js_url:\"\\/s\\/player\\/2182a2cc\\/www-widgetapi.vflset\\/www-widgetapi.js\"};"
@@ -314,6 +321,22 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
+    fun automaticAnalyzerSurfacesAmbiguousCandidatesForRuntimeVerification() {
+        val javascript = """
+            x&&(y=Ab(4,decodeURIComponent(z)));
+            q&&(r=Cd(5,decodeURIComponent(s)));
+            a.get("n"))&&(b=Nz[2](b));
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+
+        assertEquals(2, candidates.size)
+        assertEquals(listOf("Ab(4,INPUT)", "Cd(5,INPUT)"), candidates.map { it.signatureExpression })
+        assertTrue(candidates.all { it.nExpression == "Nz[2](INPUT)" })
+    }
+
+    @Test
     fun atomicWriterReplacesFileWithoutLeavingTemporaryArtifacts() {
         val directory = createTempDirectory(prefix = "levyra-decoder-").toFile()
         try {
@@ -461,6 +484,24 @@ class YoutubeLocalDecoderTest {
                 YoutubeAnalyzedConfigFailureException("Invalid local n-transform result")
             )
         )
+    }
+
+    @Test
+    fun provenanceMergeKeepsOnlyOneCausalDecoderProducer() {
+        val first = YoutubeDecoderProvenance(
+            playerHash = "2182a2cc",
+            configIdentity = "config-a",
+            configEpoch = 7L,
+            configOrigin = YoutubePlayerConfigOrigin.ANALYZED,
+            decodedAtMs = 100L
+        )
+        val newer = first.copy(decodedAtMs = 200L)
+        val other = first.copy(configIdentity = "config-b", decodedAtMs = 300L)
+
+        assertEquals(newer, YoutubeDecoderProvenancePolicy.merge(first, newer))
+        assertEquals(null, YoutubeDecoderProvenancePolicy.merge(first, other))
+        assertEquals(newer, YoutubeDecoderProvenancePolicy.coherent(listOf(first, newer)))
+        assertEquals(null, YoutubeDecoderProvenancePolicy.coherent(listOf(first, other)))
     }
 
     @Test

@@ -21,6 +21,10 @@ internal enum class PlaybackFailureKind {
     ContentRestricted,
     ExpiredUrl,
     Signature,
+    NTransform,
+    PoToken,
+    ClientRejected,
+    Renderer,
     UnsupportedFormat,
     MalformedContainer,
     Decoder,
@@ -36,7 +40,9 @@ internal data class PlaybackRecoveryPlan(
     val rotateCodec: Boolean,
     val refreshSecurity: Boolean,
     val quarantineMs: Long,
-    val invalidateCache: Boolean = false
+    val invalidateCache: Boolean = false,
+    val refreshDecoder: Boolean = false,
+    val refreshClientPolicy: Boolean = false
 )
 
 internal data class PlaybackTraceEvent(
@@ -68,6 +74,7 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
             value.contains("accedi per confermare") -> PlaybackFailureKind.LoginRequired
         value.contains("age restrict") ||
             value.contains("age-restrict") -> PlaybackFailureKind.ContentRestricted
+        value.contains("renderer process") || value.contains("webview renderer") -> PlaybackFailureKind.Renderer
         httpStatus == 403 || value.contains("forbidden") -> PlaybackFailureKind.Forbidden
         httpStatus == 410 || value.contains("gone") -> PlaybackFailureKind.Gone
         httpStatus == 429 || value.contains("rate limit") -> PlaybackFailureKind.RateLimited
@@ -85,7 +92,10 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
             value.contains("bad gateway") ||
             value.contains("gateway timeout") -> PlaybackFailureKind.ServerError
         value.contains("expired") || value.contains("scadut") || value.contains("stream non valido") -> PlaybackFailureKind.ExpiredUrl
-        value.contains("signature") || value.contains("n-transform") || value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.Signature
+        value.contains("potoken") || value.contains("po token") -> PlaybackFailureKind.PoToken
+        value.contains("n-transform") || value.contains("throttling parameter") -> PlaybackFailureKind.NTransform
+        value.contains("signature") -> PlaybackFailureKind.Signature
+        value.contains("client rejected") || value.contains("invalid client") || value.contains("unsupported client") -> PlaybackFailureKind.ClientRejected
         value.contains("unsupported format") ||
             value.contains("format unsupported") ||
             value.contains("unsupported media") -> PlaybackFailureKind.UnsupportedFormat
@@ -106,9 +116,18 @@ internal fun classifyPlaybackFailureReason(raw: String): PlaybackFailureKind {
 
 internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecoveryPlan = when (kind) {
     PlaybackFailureKind.Forbidden,
-    PlaybackFailureKind.Gone,
-    PlaybackFailureKind.RateLimited,
-    PlaybackFailureKind.LoginRequired -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.Gone -> PlaybackRecoveryPlan(true, false, false, false, 10L * 60L * 1000L)
+    PlaybackFailureKind.RateLimited -> PlaybackRecoveryPlan(true, true, false, false, 10L * 60L * 1000L)
+    PlaybackFailureKind.LoginRequired,
+    PlaybackFailureKind.PoToken -> PlaybackRecoveryPlan(true, false, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.ClientRejected -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = true,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 10L * 60L * 1000L,
+        refreshClientPolicy = true
+    )
     PlaybackFailureKind.ContentRestricted -> PlaybackRecoveryPlan(true, false, false, false, 0L)
     PlaybackFailureKind.NotFound -> PlaybackRecoveryPlan(true, false, false, false, 60_000L)
     PlaybackFailureKind.RangeNotSatisfiable -> PlaybackRecoveryPlan(
@@ -129,8 +148,17 @@ internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecover
     )
     PlaybackFailureKind.ServerError,
     PlaybackFailureKind.Truncated -> PlaybackRecoveryPlan(true, false, false, false, 30_000L)
-    PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, true, false, false, 2L * 60L * 1000L)
-    PlaybackFailureKind.Signature -> PlaybackRecoveryPlan(true, true, false, true, 10L * 60L * 1000L)
+    PlaybackFailureKind.ExpiredUrl -> PlaybackRecoveryPlan(true, false, false, false, 2L * 60L * 1000L)
+    PlaybackFailureKind.Signature,
+    PlaybackFailureKind.NTransform,
+    PlaybackFailureKind.Renderer -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = false,
+        refreshSecurity = false,
+        quarantineMs = 10L * 60L * 1000L,
+        refreshDecoder = true
+    )
     PlaybackFailureKind.UnsupportedFormat -> PlaybackRecoveryPlan(true, false, true, false, 0L)
     PlaybackFailureKind.MalformedContainer -> PlaybackRecoveryPlan(
         invalidateStream = true,
@@ -142,8 +170,8 @@ internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecover
     )
     PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)
     PlaybackFailureKind.Timeout,
-    PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, true, false, false, 45_000L)
-    PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, true, true, false, 20_000L)
+    PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, false, false, false, 45_000L)
+    PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, false, false, false, 20_000L)
 }
 
 internal fun isTerminalPlaybackFailure(kind: PlaybackFailureKind): Boolean =

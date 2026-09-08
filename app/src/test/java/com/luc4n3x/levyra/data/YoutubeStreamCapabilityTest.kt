@@ -50,6 +50,15 @@ class YoutubeStreamCapabilityTest {
     }
 
     @Test
+    fun `trusted media detection rejects insecure ports credentials and lookalikes`() {
+        assertTrue(YoutubeStreamCapability.isTrustedGoogleVideoMedia(progressiveMuxed))
+        assertFalse(YoutubeStreamCapability.isTrustedGoogleVideoMedia(progressiveMuxed.replace("https://", "http://")))
+        assertFalse(YoutubeStreamCapability.isTrustedGoogleVideoMedia("https://googlevideo.com.evil.test/videoplayback"))
+        assertFalse(YoutubeStreamCapability.isTrustedGoogleVideoMedia("https://user:pass@r1.googlevideo.com/videoplayback"))
+        assertFalse(YoutubeStreamCapability.isTrustedGoogleVideoMedia("https://r1.googlevideo.com:444/videoplayback"))
+    }
+
+    @Test
     fun `extensionless and mime signaled hls urls stay eligible`() {
         assertTrue(
             YoutubeStreamCapability.servesCompleteStream(
