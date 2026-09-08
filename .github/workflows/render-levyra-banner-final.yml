@@ -1,0 +1,188 @@
+name: Render refined Levyra banner
+
+on:
+  push:
+    branches:
+      - docs/refresh-levyra-github-banner-pro
+    paths:
+      - .github/workflows/render-levyra-banner-final.yml
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Render 2880x1080 banner
+        run: |
+          python - <<'PY'
+          from PIL import Image, ImageDraw, ImageFont, ImageFilter
+          import math, os
+
+          W,H=2880,1080
+          OUT='docs/assets/levyra-github-banner.webp'
+          LOGO='app/src/main/res/drawable/levyra_logo.png'
+          if not os.path.exists(LOGO):
+              raise SystemExit('missing official Levyra logo')
+
+          # Deep matte website-like base, intentionally quiet and non-cosmic.
+          bg=Image.new('RGB',(W,H))
+          p=bg.load()
+          for y in range(H):
+              ny=y/H
+              for x in range(W):
+                  nx=x/W
+                  left=math.exp(-((nx-.11)/.30)**2-((ny-.18)/.46)**2)
+                  right=math.exp(-((nx-.91)/.34)**2-((ny-.68)/.40)**2)
+                  mid=math.exp(-((nx-.52)/.55)**2-((ny-.50)/.75)**2)
+                  p[x,y]=(int(2+4*mid+3*right),int(7+7*mid+5*left),int(22+18*mid+24*left+13*right))
+          canvas=bg.convert('RGBA')
+
+          # Subtle ambient glow only.
+          glow=Image.new('RGBA',(W,H),(0,0,0,0)); gd=ImageDraw.Draw(glow)
+          gd.ellipse((-480,-430,1080,970),fill=(18,70,255,31))
+          gd.ellipse((1960,220,3420,1450),fill=(135,35,255,24))
+          glow=glow.filter(ImageFilter.GaussianBlur(180)); canvas=Image.alpha_composite(canvas,glow)
+
+          # Bespoke vinyl-groove arcs: musical, graphic, not sci-fi scenery.
+          art=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(art)
+          cx,cy=-70,-80
+          for i in range(34):
+              r=330+i*16
+              col=(32,112,255,max(10,56-i)) if i<20 else (116,56,255,max(8,42-i//2))
+              d.arc((cx-r,cy-r,cx+r,cy+r),2,172,fill=col,width=2)
+          # Large quiet crop-circle arcs on the upper right.
+          cx2,cy2=2850,-250
+          for i in range(15):
+              r=470+i*22
+              d.arc((cx2-r,cy2-r,cx2+r,cy2+r),120,245,fill=(118,55,255,18+i),width=2)
+
+          # Parametric spectral ribbons across the lower third.
+          def wave(x,phase,base,amp):
+              t=x/W
+              return base+amp*math.sin(t*2.45*math.pi+phase)+32*math.sin(t*5.15*math.pi+phase*.45)
+          for i in range(29):
+              pts=[]; off=(i-14)*7
+              for x in range(-100,W+101,12): pts.append((x,wave(x,.18,760+off,122)))
+              a=max(10,51-abs(i-14)*2)
+              mid=len(pts)//2
+              d.line(pts[:mid+1],fill=(25,105,255,a),width=2)
+              d.line(pts[mid:],fill=(151,48,255,a),width=2)
+
+          # Dotted interference field, sparse and intentional.
+          for row in range(15):
+              for col in range(88):
+                  x=1120+col*21
+                  t=col/87
+                  y=742+70*math.sin(t*3.0*math.pi)+row*8
+                  if (col+row)%3==0:
+                      a=int(12+24*(1-abs(t-.55)))
+                      d.ellipse((x,y,x+2,y+2),fill=(58,114,255,a))
+          canvas=Image.alpha_composite(canvas,art)
+
+          # Official icon asset, never redrawn.
+          logo=Image.open(LOGO).convert('RGBA')
+          if logo.getextrema()[3]==(255,255):
+              dat=[]
+              for r,g,b,a in logo.getdata():
+                  m=max(r,g,b)
+                  na=0 if m<18 else (int((m-18)/32*225) if m<50 else 255)
+                  dat.append((r,g,b,max(0,min(255,na))))
+              logo.putdata(dat)
+          if logo.getbbox(): logo=logo.crop(logo.getbbox())
+          scale=min(660/logo.width,650/logo.height)
+          logo=logo.resize((int(logo.width*scale),int(logo.height*scale)),Image.Resampling.LANCZOS)
+          lx=285; ly=88
+          halo=Image.new('RGBA',(W,H),(0,0,0,0)); hd=ImageDraw.Draw(halo)
+          hd.ellipse((lx-100,ly-90,lx+logo.width+100,ly+logo.height+100),fill=(35,69,255,28))
+          halo=halo.filter(ImageFilter.GaussianBlur(100)); canvas=Image.alpha_composite(canvas,halo)
+          canvas.alpha_composite(logo,(lx,ly))
+
+          # Fonts.
+          bold='/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
+          reg='/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+          word=ImageFont.truetype(bold,112)
+          deep=ImageFont.truetype(reg,40)
+          hero=ImageFont.truetype(bold,126)
+          sub=ImageFont.truetype(reg,42)
+          badge=ImageFont.truetype(reg,36)
+
+          # Gradient helper.
+          def gtext(text,xy,font,start,end):
+              mask=Image.new('L',(W,H),0); md=ImageDraw.Draw(mask); md.text(xy,text,font=font,fill=255)
+              box=mask.getbbox()
+              if not box:return
+              grad=Image.new('RGBA',(W,H),(0,0,0,0)); gp=grad.load(); x0,y0,x1,y1=box
+              for xx in range(x0,x1):
+                  q=(xx-x0)/max(1,x1-x0)
+                  c=tuple(int(start[k]*(1-q)+end[k]*q) for k in range(3))
+                  for yy in range(y0,y1): gp[xx,yy]=(*c,255)
+              grad.putalpha(mask); canvas.alpha_composite(grad)
+
+          # LEVYRA lockup under icon — large enough to survive GitHub mobile scaling.
+          wx,wy=245,650
+          gtext('LEVYRA',(wx,wy),word,(248,250,255),(206,59,255))
+          layer=Image.new('RGBA',(W,H),(0,0,0,0)); ld=ImageDraw.Draw(layer)
+          label='D E E P S O U N D'
+          bbox=ld.textbbox((0,0),label,font=deep); lw=bbox[2]-bbox[0]
+          ld.text((wx+245-lw/2,wy+132),label,font=deep,fill=(193,202,228,245))
+          ld.rounded_rectangle((wx,wy+158,wx+112,wy+164),3,fill=(35,106,255,220))
+          ld.rounded_rectangle((wx+388,wy+158,wx+500,wy+164),3,fill=(207,52,255,220))
+          canvas=Image.alpha_composite(canvas,layer)
+
+          # Right editorial message.
+          tx,ty=1450,270
+          text=Image.new('RGBA',(W,H),(0,0,0,0)); td=ImageDraw.Draw(text)
+          td.text((tx,ty),'Play beyond',font=hero,fill=(248,249,253,255))
+          canvas=Image.alpha_composite(canvas,text)
+          gtext('the obvious.',(tx,ty+142),hero,(215,232,255),(213,53,255))
+          text=Image.new('RGBA',(W,H),(0,0,0,0)); td=ImageDraw.Draw(text)
+          td.text((tx+8,ty+322),'A cleaner space for deep listening.',font=sub,fill=(181,191,220,232))
+          canvas=Image.alpha_composite(canvas,text)
+
+          # Small open-source pill.
+          b=Image.new('RGBA',(W,H),(0,0,0,0)); bd=ImageDraw.Draw(b)
+          bx,by=tx+8,ty+418
+          bd.rounded_rectangle((bx,by,bx+395,by+82),41,fill=(8,14,31,180),outline=(81,106,178,110),width=2)
+          cx,cy=bx+52,by+41
+          bd.ellipse((cx-22,cy-22,cx+22,cy+22),fill=(245,247,252,245))
+          bd.polygon([(cx-18,cy-14),(cx-24,cy-28),(cx-7,cy-20)],fill=(245,247,252,245))
+          bd.polygon([(cx+18,cy-14),(cx+24,cy-28),(cx+7,cy-20)],fill=(245,247,252,245))
+          bd.ellipse((cx-13,cy-10,cx+13,cy+17),fill=(8,14,31,255))
+          bd.line((bx+94,by+21,bx+94,by+61),fill=(91,113,178,120),width=2)
+          bd.text((bx+119,by+19),'Open source',font=badge,fill=(203,211,231,240))
+          canvas=Image.alpha_composite(canvas,b)
+
+          # Edge vignette.
+          vig=Image.new('L',(W,H),0); vp=vig.load()
+          for y in range(H):
+              for x in range(W):
+                  dx=(x-W/2)/(W/2); dy=(y-H/2)/(H/2)
+                  vp[x,y]=int(min(90,(dx*dx+dy*dy)*42))
+          black=Image.new('RGBA',(W,H),(0,0,0,0)); black.putalpha(vig); canvas=Image.alpha_composite(canvas,black)
+
+          final=canvas.convert('RGB')
+          final.save(OUT,'WEBP',quality=92,method=6)
+          check=Image.open(OUT)
+          assert check.size==(2880,1080)
+          print('banner',check.size,os.path.getsize(OUT),'bytes')
+          PY
+
+      - name: Commit banner and clean workflow
+        run: |
+          rm -f .github/workflows/render-levyra-banner-final.yml
+          rm -rf docs/assets/.banner_upload_parts docs/assets/.banner_parts docs/assets/.banner_hq_parts docs/assets/.banner_final2_parts
+          rm -f docs/assets/levyra-github-banner-final.webp.b64 docs/assets/levyra-github-banner-fix.webp.b64
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add -A
+          git commit -m "docs(assets): refine Levyra GitHub banner" || exit 0
+          git push origin HEAD:docs/refresh-levyra-github-banner-pro
