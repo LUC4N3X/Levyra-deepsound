@@ -74,14 +74,20 @@ compression path.
 ## Cross-session context
 
 Use claude-mem only when earlier-session context materially affects the task and
-the runtime exposes it. Retrieve progressively: search, then only relevant
-observations, then verify against the current repository. Current code, tests,
-CI, runtime evidence, and owner decisions always outrank memory.
+the runtime exposes it. Retrieve progressively: `search` -> `timeline` when
+chronology matters -> `get_observations` for only relevant IDs -> verify against
+the current repository. Current code, tests, CI, runtime evidence, and owner
+decisions always outrank memory.
+
+**Fail open:** if memory tooling is unavailable, unhealthy, or unsupported,
+continue ordinary engineering without it. Do not enable cloud sync or semantic
+injection implicitly. For ChatGPT, Repository configuration alone cannot make ChatGPT reach a
+local claude-mem worker.
 
 If a shell-capable runtime genuinely needs the optional integration and it is
 missing, one bounded setup attempt may use `scripts/setup-ai.ps1` or
-`scripts/setup-ai.sh` according to the documented project flow. Failure must not
-block ordinary engineering work.
+`scripts/setup-ai.sh`. Manual forcing remains `scripts/setup-ai.ps1 -ClaudeMem`
+or `./scripts/setup-ai.sh --claude-mem`. Failure must not block ordinary work.
 
 Never store or retrieve secrets, tokens, cookies, keystores, private URLs,
 `.env`, or `local.properties` through project memory.
