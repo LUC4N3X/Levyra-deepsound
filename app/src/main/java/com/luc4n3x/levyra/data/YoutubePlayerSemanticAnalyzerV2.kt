@@ -632,6 +632,9 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                     .thenBy { it.expression }
             )
             .take(MAX_CANDIDATES_PER_KIND)
+            .mapIndexed { index, candidate ->
+                if (index == 0) candidate else candidate.copy(confidence = SECONDARY_RESERVE_CONFIDENCE)
+            }
     }
 
     private fun addIfConfident(
@@ -657,6 +660,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
     )
 
     private const val MIN_CONFIDENCE = 110
+    private const val SECONDARY_RESERVE_CONFIDENCE = 0
     private const val MAX_ANCHORS_PER_NEEDLE = 16
     private const val MAX_ANCHORS_PER_KIND = 32
     private const val MAX_WINDOW_TOKENS = 900
