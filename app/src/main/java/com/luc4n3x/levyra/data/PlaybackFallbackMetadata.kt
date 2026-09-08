@@ -5,6 +5,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 private const val CANONICAL_FALLBACK_DURATION_TOLERANCE_MS = 12_000L
+private const val CANONICAL_AMBIGUITY_DELTA_MS = 1_500L
 
 private val KNOWN_MISATTRIBUTED_PLAYBACK_ARTISTS = setOf(
     "neptune"
@@ -20,36 +21,55 @@ internal fun bestCanonicalPlaybackMetadataMatch(
     val originalTitleKey = original.title.playbackMatchKey()
     if (originalTitleKey.isBlank()) return null
 
-    return candidates
+    val exactTitleCandidates = candidates
         .asSequence()
         .filter { candidate ->
             candidate.artist.isNotBlank() &&
                 !isKnownMisattributedPlaybackArtist(candidate.artist) &&
                 candidate.title.playbackMatchKey() == originalTitleKey
         }
+        .distinctBy { candidate -> "${candidate.id}|${candidate.artist.playbackMatchKey()}" }
+        .toList()
+    if (exactTitleCandidates.isEmpty()) return null
+
+    if (original.durationMs <= 0L) {
+        val artistKeys = exactTitleCandidates
+            .map { candidate -> candidate.artist.playbackMatchKey() }
+            .filter(String::isNotBlank)
+            .distinct()
+        if (artistKeys.size != 1) return null
+        return exactTitleCandidates.maxWithOrNull(canonicalMetadataComparator(original))
+    }
+
+    val durationMatches = exactTitleCandidates
         .filter { candidate ->
-            val originalDurationMs = original.durationMs
-            val candidateDurationMs = candidate.durationMs
-            when {
-                originalDurationMs <= 0L -> true
-                candidateDurationMs <= 0L -> false
-                else -> abs(originalDurationMs - candidateDurationMs) <= CANONICAL_FALLBACK_DURATION_TOLERANCE_MS
-            }
+            candidate.durationMs > 0L &&
+                abs(original.durationMs - candidate.durationMs) <= CANONICAL_FALLBACK_DURATION_TOLERANCE_MS
         }
-        .sortedWith(
-            compareBy<Track> { candidate ->
-                if (original.durationMs > 0L && candidate.durationMs > 0L) {
-                    abs(original.durationMs - candidate.durationMs)
-                } else {
-                    Long.MAX_VALUE
-                }
-            }
-                .thenByDescending { candidate -> candidate.isrc.isNotBlank() }
-                .thenByDescending { candidate -> candidate.album.isNotBlank() }
-                .thenByDescending { candidate -> candidate.metadataConfidence }
-        )
-        .firstOrNull()
+        .sortedWith(canonicalMetadataComparator(original).reversed())
+    val best = durationMatches.firstOrNull() ?: return null
+    val runnerUp = durationMatches.drop(1).firstOrNull { candidate ->
+        candidate.artist.playbackMatchKey() != best.artist.playbackMatchKey()
+    }
+    if (runnerUp != null) {
+        val bestDelta = abs(original.durationMs - best.durationMs)
+        val runnerUpDelta = abs(original.durationMs - runnerUp.durationMs)
+        if (runnerUpDelta - bestDelta <= CANONICAL_AMBIGUITY_DELTA_MS) return null
+    }
+    return best
 }
+
+private fun canonicalMetadataComparator(original: Track): Comparator<Track> =
+    compareBy<Track> { candidate ->
+        if (original.durationMs > 0L && candidate.durationMs > 0L) {
+            -abs(original.durationMs - candidate.durationMs)
+        } else {
+            Long.MIN_VALUE
+        }
+    }
+        .thenBy { candidate -> candidate.isrc.isNotBlank() }
+        .thenBy { candidate -> candidate.album.isNotBlank() }
+        .thenBy { candidate -> candidate.metadataConfidence }
 
 internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
     val title = track.title.playbackSearchToken()
