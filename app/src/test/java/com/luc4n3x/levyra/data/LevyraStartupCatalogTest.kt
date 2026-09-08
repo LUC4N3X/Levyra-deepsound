@@ -25,29 +25,58 @@ class LevyraStartupCatalogTest {
     }
 
     @Test
-    fun repairHomeSectionsDropsPersistedLegacyEnergyShelfInAnyLanguage() {
+    fun startupHomeKeepsFullLegacySeedPoolWithoutEnergyShelf() {
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val tracks = LevyraStartupCatalog.homeSections(language.code)
+                .flatMap { it.tracks }
+                .distinctBy { it.title.lowercase() to it.artist.lowercase() }
+            val titles = tracks.mapTo(mutableSetOf()) { it.title }
+
+            assertEquals("Startup seed count changed for ${language.code}", 20, tracks.size)
+            assertTrue("Midnight City missing for ${language.code}", "Midnight City" in titles)
+            assertTrue("Starboy missing for ${language.code}", "Starboy" in titles)
+            assertTrue("Believer missing for ${language.code}", "Believer" in titles)
+        }
+    }
+
+    @Test
+    fun repairHomeSectionsMovesPersistedLegacyEnergyTracksIntoQuickPicks() {
         LevyraLanguageCatalog.languages.forEach { language ->
             val locale = LevyraContentLocales.forLanguage(language.code)
+            val startupTracks = LevyraStartupCatalog.homeSections(language.code).flatMap { it.tracks }
+            val quickTrack = startupTracks.first { it.title == "Bohemian Rhapsody" }
+            val energyTrack = startupTracks.first { it.title == "Midnight City" }
+
             val repaired = LevyraStartupCatalog.repairHomeSections(
                 listOf(
-                    HomeSection(locale.quickSectionTitle, emptyList()),
-                    HomeSection(locale.energySectionTitle, emptyList())
+                    HomeSection(locale.quickSectionTitle, listOf(quickTrack)),
+                    HomeSection(locale.energySectionTitle, listOf(energyTrack))
                 ),
                 language.code
             )
 
-            assertEquals(
+            assertFalse(
                 "Legacy energy shelf still restored for ${language.code}",
-                listOf(locale.quickSectionTitle),
-                repaired.map { it.title }
+                repaired.any { section ->
+                    section.title.trim().equals(locale.energySectionTitle.trim(), ignoreCase = true)
+                }
+            )
+            val quick = repaired.single { section ->
+                section.title.trim().equals(locale.quickSectionTitle.trim(), ignoreCase = true)
+            }
+            assertEquals(
+                setOf("Bohemian Rhapsody", "Midnight City"),
+                quick.tracks.mapTo(mutableSetOf()) { it.title }
             )
         }
     }
 
     @Test
-    fun chartFallbackKeepsLegacyFocusSeedsWithoutRenderingTheirShelf() {
-        val titles = LevyraStartupCatalog.chartTracks("en").mapTo(mutableSetOf()) { it.title }
+    fun chartFallbackStillContainsTwentyStartupSeeds() {
+        val tracks = LevyraStartupCatalog.chartTracks("en")
+        val titles = tracks.mapTo(mutableSetOf()) { it.title }
 
+        assertEquals(20, tracks.size)
         assertTrue("Midnight City" in titles)
         assertTrue("Starboy" in titles)
         assertTrue("Believer" in titles)
