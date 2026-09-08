@@ -1,0 +1,40 @@
+name: Assemble Levyra final banner
+
+on:
+  push:
+    branches:
+      - docs/refresh-levyra-github-banner-pro
+    paths:
+      - docs/assets/levyra-github-banner-final.webp.b64
+      - .github/workflows/assemble-levyra-banner-final.yml
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode and verify final banner
+        run: |
+          base64 --decode docs/assets/levyra-github-banner-final.webp.b64 > docs/assets/levyra-github-banner.webp
+          test "$(stat -c%s docs/assets/levyra-github-banner.webp)" -eq 98146
+          file docs/assets/levyra-github-banner.webp
+          rm -f docs/assets/levyra-github-banner-final.webp.b64
+          rm -rf docs/assets/.banner_final2_parts
+          rm -rf docs/assets/.banner_hq_parts
+          rm -rf docs/assets/.banner_parts
+          rm -f docs/assets/levyra-github-banner-fix.webp.b64
+          rm -f .github/workflows/assemble-levyra-banner-final.yml
+
+      - name: Commit final banner
+        run: |
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add -A
+          git commit -m "docs(assets): replace GitHub banner with final minimal artwork" || exit 0
+          git push origin HEAD:docs/refresh-levyra-github-banner-pro
