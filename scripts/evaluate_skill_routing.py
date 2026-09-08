@@ -37,6 +37,12 @@ class EvalResult:
 
 CASES = (
     EvalCase(
+        "owner-action-mode",
+        "VAI, intervieni e apri la PR",
+        required=("levyra-mode", "levyra-pr-review", "levyra-humanizer"),
+        max_skills=3,
+    ),
+    EvalCase(
         "playback-crash",
         "Fix a playback crash when skipping tracks",
         required=("levyra-real-engineering", "levyra-player"),
