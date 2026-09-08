@@ -3,10 +3,15 @@ package com.luc4n3x.levyra.desktop.app.state
 import com.luc4n3x.levyra.desktop.app.DesktopDiagnostics
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRateLimitException
+import com.luc4n3x.levyra.desktop.core.localmusic.LocalMediaSource
+import com.luc4n3x.levyra.desktop.core.localmusic.resolveLocalFile
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.model.Track
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorBlockRepository
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorSegment
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorSkipTracker
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import com.luc4n3x.levyra.desktop.core.storage.SessionData
 import com.luc4n3x.levyra.desktop.core.storage.SessionStore
@@ -71,6 +76,7 @@ class PlaybackController(
     private val settingsStore: SettingsStore,
     private val libraryStore: LibraryStore,
     private val sessionStore: SessionStore,
+    private val sponsorBlock: SponsorBlockRepository,
     private val playerFactory: () -> AudioPlayer
 ) {
     private val internalState = MutableStateFlow(
@@ -86,6 +92,8 @@ class PlaybackController(
 
     private val playerScope = CoroutineScope(scope.coroutineContext + SupervisorJob())
     private val transitionLock = Any()
+    private val sponsorSkipTracker = SponsorSkipTracker()
+    private val sponsorSegments = AtomicReference<List<SponsorSegment>>(emptyList())
 
     private var player: AudioPlayer? = null
     private var companionPlayer: AudioPlayer? = null
@@ -99,6 +107,7 @@ class PlaybackController(
     private var transitionActive: Boolean = false
     private var playbackJob: Job? = null
     private var eventJob: Job? = null
+    private var sponsorJob: Job? = null
     private var persistJob: Job? = null
     private var prefetchJob: Job? = null
     private var sleepJob: Job? = null
@@ -142,6 +151,22 @@ class PlaybackController(
                     outputDeviceMissingState.value = false
                     player?.applyOutputDevice(deviceId)
                     companionPlayer?.applyOutputDevice(deviceId)
+                }
+        }
+        playerScope.launch {
+            settingsStore.settings
+                .map { it.sponsorBlock }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    if (enabled) {
+                        internalState.value.queue.current?.let { track ->
+                            if (!track.isLocalFile) {
+                                startSponsorBlockWatch(track)
+                            }
+                        }
+                    } else {
+                        clearSponsorBlockWatch()
+                    }
                 }
         }
     }
@@ -292,6 +317,10 @@ class PlaybackController(
 
     fun seekTo(positionMs: Long) {
         cancelTransition()
+        seekWithinTrack(positionMs)
+    }
+
+    private fun seekWithinTrack(positionMs: Long) {
         val safe = positionMs.coerceAtLeast(0L)
         pendingResumeMs = safe
         player?.seekTo(safe)
@@ -370,6 +399,7 @@ class PlaybackController(
 
     fun stop() {
         cancelTransition()
+        clearSponsorBlockWatch()
         playbackJob?.cancel()
         player?.stop()
         internalState.update { state ->
@@ -384,6 +414,7 @@ class PlaybackController(
     }
 
     fun shutdown() {
+        clearSponsorBlockWatch()
         transitionJob?.cancel()
         transitionEventJob?.cancel()
         prepareJob?.cancel()
@@ -406,6 +437,7 @@ class PlaybackController(
     private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false) {
         val track = internalState.value.queue.current ?: return
         cancelTransition()
+        clearSponsorBlockWatch()
         playbackJob?.cancel()
         if (track.id != prefetchedTrackId) {
             prefetchJob?.cancel()
@@ -435,9 +467,52 @@ class PlaybackController(
         if (forceRestart) {
             activePlayer.stop()
         }
+        if (track.isLocalFile) {
+            val localSource = resolveLocalSource(track)
+            if (localSource == null) {
+                internalState.update { state -> state.copy(preparingTrackId = "") }
+                messageFlow.tryEmit("File locale non disponibile: ${track.title}")
+                skipAfterFailure(track)
+                return
+            }
+            beginLocalPlayback(activePlayer, track, localSource, startAtMs)
+            return
+        }
         val playable = resolvePlayable(track) ?: return
         val resolved = resolveStream(playable, track) ?: return
         beginPlayback(activePlayer, track, resolved, startAtMs)
+    }
+
+    private fun resolveLocalSource(track: Track): LocalMediaSource? {
+        val file = resolveLocalFile(track.offlinePath) ?: return null
+        return LocalMediaSource(
+            url = file.toUri().toASCIIString(),
+            label = track.offlineMediaLabel.ifBlank { "Local" }
+        )
+    }
+
+    private fun beginLocalPlayback(
+        activePlayer: AudioPlayer,
+        track: Track,
+        source: LocalMediaSource,
+        startAtMs: Long
+    ) {
+        clearSponsorBlockWatch()
+        activePlayer.play(source.url, startAtMs)
+        val current = internalState.value
+        activePlayer.setVolume(current.volume)
+        activePlayer.setMuted(current.muted)
+        applySpeed(settingsStore.current.playbackSpeed, activePlayer)
+        internalState.update { state ->
+            state.copy(
+                preparingTrackId = "",
+                status = PlaybackStatus.BUFFERING,
+                streamLabel = source.label,
+                durationMs = if (track.durationMs > 0L) track.durationMs else state.durationMs
+            )
+        }
+        libraryStore.recordPlayback(track)
+        persistSession()
     }
 
     private suspend fun resolvePlayable(track: Track): Track? {
@@ -498,6 +573,7 @@ class PlaybackController(
             durationMs = if (resolved.durationMs > 0L) resolved.durationMs else track.durationMs
         )
         updateTrackMetadata(enriched)
+        startSponsorBlockWatch(enriched)
         activePlayer.play(resolved.url, startAtMs)
         val current = internalState.value
         activePlayer.setVolume(current.volume)
@@ -552,7 +628,9 @@ class PlaybackController(
     }
 
     private fun skipAfterFailure(track: Track) {
-        resolver.invalidate(track)
+        if (!track.isLocalFile) {
+            resolver.invalidate(track)
+        }
         val queue = internalState.value.queue
         consecutiveFailures += 1
         if (queue.items.size <= 1 || consecutiveFailures >= queue.items.size) {
@@ -568,6 +646,43 @@ class PlaybackController(
         }
         internalState.update { state -> state.copy(queue = advanced) }
         startCurrent(0L)
+    }
+
+    private fun startSponsorBlockWatch(track: Track) {
+        clearSponsorBlockWatch()
+        if (!settingsStore.current.sponsorBlock) return
+        val videoId = Track.videoIdOf(track.videoUrl)
+        if (videoId.isBlank()) return
+        sponsorSkipTracker.bind(track.id)
+        sponsorJob = playerScope.launch {
+            val segments = try {
+                sponsorBlock.segmentsFor(videoId)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                DesktopDiagnostics.background("sponsor segments of ${track.title}", error)
+                return@launch
+            }
+            if (segments.isNotEmpty() && internalState.value.queue.current?.id == track.id) {
+                sponsorSegments.set(segments)
+            }
+        }
+    }
+
+    private fun clearSponsorBlockWatch() {
+        sponsorJob?.cancel()
+        sponsorJob = null
+        sponsorSegments.set(emptyList())
+        sponsorSkipTracker.reset()
+    }
+
+    private fun maybeSkipSponsorSegment(positionMs: Long) {
+        if (transitionActive || !settingsStore.current.sponsorBlock) return
+        val segments = sponsorSegments.get()
+        if (segments.isEmpty()) return
+        val trackId = internalState.value.queue.current?.id ?: return
+        val target = sponsorSkipTracker.planSkip(trackId, positionMs, segments) ?: return
+        seekWithinTrack(target)
     }
 
     private fun maybePrepareHandoff() {
@@ -614,15 +729,33 @@ class PlaybackController(
             val companion = ensureCompanion() ?: return
             val settings = settingsStore.current
             val playable = resolveHandoffTrack(next) ?: return
-            val resolved = try {
-                resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Exception) {
-                DesktopDiagnostics.background("handoff resolve of ${next.title}", error)
-                return
+            val resolvedUrl: String
+            val streamLabel: String
+            val enriched: Track
+            if (playable.isLocalFile) {
+                val source = resolveLocalSource(playable) ?: return
+                resolvedUrl = source.url
+                streamLabel = source.label
+                enriched = playable
+            } else {
+                val resolved = try {
+                    resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Exception) {
+                    DesktopDiagnostics.background("handoff resolve of ${next.title}", error)
+                    return
+                }
+                resolvedUrl = resolved.url
+                streamLabel = resolved.label
+                enriched = playable.copy(
+                    title = resolved.title.ifBlank { playable.title },
+                    artist = resolved.artist.ifBlank { playable.artist },
+                    artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
+                    durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
+                )
             }
-            if (!companion.prepare(resolved.url, 0L)) return
+            if (!companion.prepare(resolvedUrl, 0L)) return
             currentCoroutineContext().ensureActive()
             companion.setVolume(0)
             companion.setMuted(internalState.value.muted)
@@ -630,12 +763,6 @@ class PlaybackController(
             companion.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
             companion.applyOutputDevice(effectiveOutputDeviceId(settings.audioOutputDeviceId))
             companion.setSpeed(DesktopSettings.normalizeSpeed(settings.playbackSpeed))
-            val enriched = playable.copy(
-                title = resolved.title.ifBlank { playable.title },
-                artist = resolved.artist.ifBlank { playable.artist },
-                artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
-                durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
-            )
             published = synchronized(transitionLock) {
                 if (
                     prepareJob !== ownerJob ||
@@ -646,7 +773,7 @@ class PlaybackController(
                 } else {
                     preparedTrackId = next.id
                     preparedTransitionMs = transitionMs
-                    preparedStreamLabel = resolved.label
+                    preparedStreamLabel = streamLabel
                     true
                 }
             }
@@ -857,7 +984,10 @@ class PlaybackController(
                 streamLabel = streamLabel
             )
         }
-        advanced.current?.let(libraryStore::recordPlayback)
+        advanced.current?.let { track ->
+            startSponsorBlockWatch(track)
+            libraryStore.recordPlayback(track)
+        }
         persistSession()
     }
 
@@ -1073,6 +1203,7 @@ class PlaybackController(
             is PlayerEvent.TimeChanged -> {
                 pendingResumeMs = event.positionMs
                 internalState.update { state -> state.copy(positionMs = event.positionMs) }
+                maybeSkipSponsorSegment(event.positionMs)
                 maybePrefetchNext()
                 maybePrepareHandoff()
             }
@@ -1087,7 +1218,9 @@ class PlaybackController(
         val track = internalState.value.queue.current ?: return
         if (retriedTrackId != track.id) {
             retriedTrackId = track.id
-            resolver.invalidate(track)
+            if (!track.isLocalFile) {
+                resolver.invalidate(track)
+            }
             startCurrent(0L)
             return
         }

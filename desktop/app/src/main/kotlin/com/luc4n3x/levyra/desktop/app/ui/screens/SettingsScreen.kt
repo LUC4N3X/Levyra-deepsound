@@ -368,6 +368,12 @@ fun SettingsScreen(
                     onCheckedChange = { value -> onUpdate { it.copy(preloadNextTrack = value) } }
                 )
                 SettingsToggle(
+                    title = strings.settingsSponsorBlock,
+                    body = strings.settingsSponsorBlockBody,
+                    checked = settings.sponsorBlock,
+                    onCheckedChange = { value -> onUpdate { it.copy(sponsorBlock = value) } }
+                )
+                SettingsToggle(
                     title = strings.settingsMediaKeys,
                     body = strings.settingsMediaKeysBody,
                     checked = settings.globalMediaKeys,

@@ -1,10 +1,13 @@
 package com.luc4n3x.levyra.desktop.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.luc4n3x.levyra.desktop.core.artwork.ArtworkSource
+import com.luc4n3x.levyra.desktop.core.artwork.ArtworkSources
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import java.awt.image.BufferedImage
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.Optional
-import java.util.concurrent.ConcurrentHashMap
 import javax.imageio.ImageIO
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,18 +19,22 @@ object ArtworkPalette {
     private const val MIN_SATURATION = 0.22f
     private const val MIN_BRIGHTNESS = 0.18f
     private const val MAX_BRIGHTNESS = 0.96f
+    private const val CACHE_LIMIT = 128
 
-    private val cache = ConcurrentHashMap<String, Optional<Color>>()
+    private val cache = object : LinkedHashMap<String, Optional<Color>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Optional<Color>>): Boolean =
+            size > CACHE_LIMIT
+    }
 
-    suspend fun accentFor(url: String): Color? {
-        if (url.isBlank()) return null
-        cache[url]?.let { return it.orElse(null) }
-        val accent = withContext(Dispatchers.IO) {
-            val image = download(url) ?: return@withContext null
-            dominant(image)
-        }
-        cache[url] = Optional.ofNullable(accent)
-        return accent
+    suspend fun accentFor(artworkReference: String): Color? {
+        val source = ArtworkSources.of(artworkReference) ?: return null
+        cached(source.cacheKey)?.let { return it.orElse(null) }
+        val resolved = withContext(Dispatchers.IO) {
+            val image = decode(source) ?: return@withContext null
+            Optional.ofNullable(dominant(image))
+        } ?: return null
+        publish(source.cacheKey, resolved)
+        return resolved.orElse(null)
     }
 
     fun dominant(image: BufferedImage): Color? {
@@ -98,6 +105,21 @@ object ArtworkPalette {
             blue = (rgb and 0xFF) / 255f
         )
     }
+
+    private fun cached(key: String): Optional<Color>? = synchronized(cache) { cache[key] }
+
+    private fun publish(key: String, accent: Optional<Color>) {
+        synchronized(cache) { cache[key] = accent }
+    }
+
+    private fun decode(source: ArtworkSource): BufferedImage? = when (source) {
+        is ArtworkSource.Remote -> download(source.url)
+        is ArtworkSource.LocalFile -> read(source.path)
+    }
+
+    private fun read(path: Path): BufferedImage? = runCatching {
+        if (Files.isRegularFile(path)) ImageIO.read(path.toFile()) else null
+    }.getOrNull()
 
     private fun download(url: String): BufferedImage? {
         val request = Request.Builder()
