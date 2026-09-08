@@ -127,6 +127,7 @@ data class DesktopSettings(
     val resumeOnStartup: Boolean = true,
     val minimizeToTray: Boolean = true,
     val preloadNextTrack: Boolean = true,
+    val sponsorBlock: Boolean = true,
     val crossfadeMs: Int = 0,
     val smartCrossfade: Boolean = true,
     val globalMediaKeys: Boolean = true,

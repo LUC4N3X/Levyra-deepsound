@@ -8,7 +8,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,13 +19,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.PlatformContext
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
-import java.io.File
+import com.luc4n3x.levyra.desktop.core.artwork.ArtworkSource
+import com.luc4n3x.levyra.desktop.core.artwork.ArtworkSources
 
 @Composable
 fun Artwork(
@@ -32,17 +38,8 @@ fun Artwork(
     iconSize: Dp = 24.dp
 ) {
     val shape = RoundedCornerShape(cornerRadius)
-    val context = LocalPlatformContext.current
-    val request = remember(url, context) {
-        if (url.isBlank()) {
-            null
-        } else {
-            ImageRequest.Builder(context)
-                .data(if (url.startsWith("http", ignoreCase = true)) url else File(url))
-                .crossfade(false)
-                .build()
-        }
-    }
+    val request = rememberArtworkRequest(url)
+    var unavailable by remember(url) { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -57,7 +54,7 @@ fun Artwork(
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (request == null) {
+        if (request == null || unavailable) {
             Icon(
                 imageVector = LevyraIcons.Disc,
                 contentDescription = null,
@@ -69,8 +66,27 @@ fun Artwork(
                 model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                onState = { state -> unavailable = state is AsyncImagePainter.State.Error },
                 modifier = Modifier.fillMaxSize()
             )
         }
     }
 }
+
+@Composable
+fun rememberArtworkRequest(url: String): ImageRequest? {
+    val context = LocalPlatformContext.current
+    return remember(url, context) {
+        when (val source = ArtworkSources.of(url)) {
+            null -> null
+            is ArtworkSource.Remote -> imageRequest(context, source.url)
+            is ArtworkSource.LocalFile -> imageRequest(context, source.path.toFile())
+        }
+    }
+}
+
+private fun imageRequest(context: PlatformContext, data: Any): ImageRequest =
+    ImageRequest.Builder(context)
+        .data(data)
+        .crossfade(false)
+        .build()

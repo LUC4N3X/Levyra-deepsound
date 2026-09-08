@@ -28,6 +28,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import com.luc4n3x.levyra.desktop.app.state.CollectionUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.CollectionCard
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
@@ -46,6 +51,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
+import com.luc4n3x.levyra.desktop.app.ui.components.rememberArtworkRequest
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
@@ -238,9 +244,9 @@ private fun ArtistHero(
                     )
                 )
         ) {
-            if (artist.bannerUrl.isNotBlank()) {
+            rememberArtworkRequest(artist.bannerUrl)?.let { banner ->
                 AsyncImage(
-                    model = artist.bannerUrl,
+                    model = banner,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -328,7 +334,9 @@ private fun ArtistPortrait(url: String) {
         shadowElevation = 16.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (url.isBlank()) {
+            val portrait = rememberArtworkRequest(url)
+            var unavailable by remember(url) { mutableStateOf(false) }
+            if (portrait == null || unavailable) {
                 Icon(
                     imageVector = LevyraIcons.Disc,
                     contentDescription = null,
@@ -337,9 +345,14 @@ private fun ArtistPortrait(url: String) {
                 )
             } else {
                 AsyncImage(
-                    model = url,
+                    model = portrait,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Error) {
+                            unavailable = true
+                        }
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -424,7 +437,9 @@ private fun ArtistRelatedSection(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
-                        if (artist.artworkUrl.isBlank()) {
+                        val avatar = rememberArtworkRequest(artist.artworkUrl)
+                        var unavailable by remember(artist.artworkUrl) { mutableStateOf(false) }
+                        if (avatar == null || unavailable) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = LevyraIcons.Disc,
@@ -434,9 +449,14 @@ private fun ArtistRelatedSection(
                             }
                         } else {
                             AsyncImage(
-                                model = artist.artworkUrl,
+                                model = avatar,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                onState = { state ->
+                                    if (state is AsyncImagePainter.State.Error) {
+                                        unavailable = true
+                                    }
+                                },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

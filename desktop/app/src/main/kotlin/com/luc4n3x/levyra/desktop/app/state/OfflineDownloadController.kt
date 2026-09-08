@@ -80,6 +80,7 @@ class OfflineDownloadController(
     }
 
     fun enqueue(track: Track) {
+        if (track.isLocalFile) return
         val id = downloadId(track)
         val existing = store.record(id)
         if (existing?.isPlayable == true && Files.isRegularFile(Path.of(existing.filePath))) return
