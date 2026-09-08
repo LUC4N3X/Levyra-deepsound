@@ -1,22 +1,24 @@
 package com.luc4n3x.levyra.data
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+
 internal object YoutubeStreamCapability {
     fun servesCompleteStream(url: String): Boolean {
         if (url.isBlank()) return false
         val lower = url.lowercase()
-        if (!isGoogleVideoMedia(lower)) return true
+        if (!isTrustedGoogleVideoMedia(url)) return true
         if (queryParameter(lower, "ratebypass") == "yes") return true
         return !queryParameter(lower, "pot").isNullOrBlank()
     }
 
-    private fun isGoogleVideoMedia(lowerUrl: String): Boolean {
-        if (!lowerUrl.startsWith("https://")) return false
-        val authority = lowerUrl.substringAfter("https://").substringBefore('/')
-        val host = authority.substringBefore(':')
+    fun isTrustedGoogleVideoMedia(url: String): Boolean {
+        val parsed = url.toHttpUrlOrNull() ?: return false
+        if (parsed.scheme != "https" || parsed.port != 443) return false
+        if (parsed.username.isNotEmpty() || parsed.password.isNotEmpty()) return false
+        val host = parsed.host.lowercase()
         if (host != "googlevideo.com" && !host.endsWith(".googlevideo.com")) return false
-        if (isManifestUrl(lowerUrl)) return false
-        val path = lowerUrl.substringAfter("https://$authority").substringBefore('?').substringBefore('#')
-        return path.contains("videoplayback")
+        if (isManifestUrl(url.lowercase())) return false
+        return parsed.encodedPath.split('/').any { it == "videoplayback" }
     }
 
     private fun isManifestUrl(lowerUrl: String): Boolean {

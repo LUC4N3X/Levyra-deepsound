@@ -12,27 +12,34 @@ class DirectAudioFallbackContractTest {
         val function = resolver.indexOf("private suspend fun resolveWithInnerTubeOnce")
         val candidates = resolver.indexOf("val audioCandidates = buildList", function)
         val loop = resolver.indexOf("for ((format, _, label) in audioCandidates)", candidates)
-        val strictProbe = resolver.indexOf(
-            "!verifyDirectAudioUrlFast(url, trustAttestedGoogleVideo = false)",
-            loop
-        )
+        val strictProbe = resolver.indexOf("!verifyDirectAudioUrlFast(", loop)
+        val identity = resolver.indexOf("identity = clientIdentity", strictProbe)
+        val strictValidation = resolver.indexOf("trustAttestedGoogleVideo = false", identity)
         val assignment = resolver.indexOf("bestAudioUrl = url", loop)
 
         assertTrue(function >= 0)
         assertTrue(candidates > function)
         assertTrue(loop > candidates)
         assertTrue(strictProbe > loop)
-        assertTrue(assignment > strictProbe)
+        assertTrue(identity > strictProbe)
+        assertTrue(strictValidation > identity)
+        assertTrue(assignment > strictValidation)
     }
 
     @Test
     fun strictCandidateProbeIsLimitedToNormalAudioFallback() {
         val resolver = readSource("data/PlaybackResolver.kt")
+        val function = resolver.indexOf("private suspend fun resolveWithInnerTubeOnce")
+        val candidates = resolver.indexOf("val audioCandidates = buildList", function)
+        val loop = resolver.indexOf("for ((format, _, label) in audioCandidates)", candidates)
+        val assignment = resolver.indexOf("bestAudioUrl = url", loop)
+        val candidateProbe = resolver.substring(loop, assignment)
+        val normalizedProbe = candidateProbe.replace(Regex("\\s+"), " ")
 
         assertTrue(
-            resolver.contains(
-                "if (!isVideoMode && !preferMp4Audio &&\n" +
-                    "                    !verifyDirectAudioUrlFast(url, trustAttestedGoogleVideo = false)"
+            normalizedProbe.contains(
+                "if (!isVideoMode && !preferMp4Audio && !verifyDirectAudioUrlFast( " +
+                    "url, identity = clientIdentity, trustAttestedGoogleVideo = false ) ) continue"
             )
         )
         assertTrue(resolver.contains("trustAttestedGoogleVideo: Boolean = true"))

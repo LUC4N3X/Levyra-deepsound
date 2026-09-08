@@ -15,6 +15,27 @@ enum class PlaybackDeliveryMethod {
     UNKNOWN
 }
 
+data class PlaybackStreamProvenance(
+    val clientName: String = "",
+    val clientHeaderName: String = "",
+    val clientVersion: String = "",
+    val userAgent: String = "",
+    val origin: String = "",
+    val referer: String = "",
+    val requiresPoToken: Boolean = false,
+    val resolverGeneration: Long = -1L,
+    val playerHash: String = "",
+    val playerConfigIdentity: String = "",
+    val playerConfigEpoch: Long = -1L,
+    val playerConfigOrigin: String = "",
+    val securitySessionGeneration: Long = -1L,
+    val poTokenGeneration: Long = -1L,
+    val networkGeneration: Long = -1L,
+    val networkRoute: String = "",
+    val resolvedAtMs: Long = 0L,
+    val expiresAtMs: Long = 0L
+)
+
 data class PlaybackStreamDescriptor(
     val url: String,
     val kind: PlaybackStreamKind,
@@ -69,7 +90,8 @@ data class ResolvedPlaybackManifest(
     val selectedVideoUrl: String,
     val streams: List<PlaybackStreamDescriptor>,
     val loudnessDb: Float? = null,
-    val perceptualLoudnessDb: Float? = null
+    val perceptualLoudnessDb: Float? = null,
+    val provenance: PlaybackStreamProvenance? = null
 ) {
     val isMuxed: Boolean
         get() = selectedAudioUrl.isNotBlank() && selectedVideoUrl.isBlank() &&
