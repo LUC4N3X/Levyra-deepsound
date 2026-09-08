@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,6 +53,26 @@ class PlaybackManifestCodecTest {
                     expiresAtMs = now + 3_600_000L,
                     selected = true
                 )
+            ),
+            provenance = PlaybackStreamProvenance(
+                clientName = "WEB",
+                clientHeaderName = "1",
+                clientVersion = "2.20260904.01.00",
+                userAgent = "effective-agent",
+                origin = "https://www.youtube.com",
+                referer = "https://www.youtube.com/",
+                requiresPoToken = true,
+                resolverGeneration = 4L,
+                playerHash = "f572e43c",
+                playerConfigIdentity = "f572e43c:config",
+                playerConfigEpoch = 7L,
+                playerConfigOrigin = "ANALYZED",
+                securitySessionGeneration = 8L,
+                poTokenGeneration = 9L,
+                networkGeneration = 10L,
+                networkRoute = "streaming-direct",
+                resolvedAtMs = now,
+                expiresAtMs = now + 3_600_000L
             )
         )
 
@@ -63,7 +84,18 @@ class PlaybackManifestCodecTest {
         assertEquals(manifest.selectedVideoUrl, decoded.selectedVideoUrl)
         assertEquals("opus", decoded.streams.first { it.kind == PlaybackStreamKind.AUDIO }.codec)
         assertEquals(1080, decoded.streams.first { it.kind == PlaybackStreamKind.VIDEO }.height)
+        assertEquals(manifest.provenance, decoded.provenance)
         assertTrue(decoded.isFresh(now))
+    }
+
+    @Test
+    fun schemaOneManifestRemainsReadableWithoutProvenance() {
+        val decoded = PlaybackManifestCodec.decode(
+            """{"schemaVersion":1,"sourceVideoId":"dQw4w9WgXcQ","provider":"YouTube","resolvedAtMs":1,"expiresAtMs":2,"durationMs":3,"selectedAudioUrl":"https://r1.googlevideo.com/videoplayback","selectedVideoUrl":"","streams":[{"url":"https://r1.googlevideo.com/videoplayback","kind":"AUDIO","deliveryMethod":"PROGRESSIVE","selected":true}]}"""
+        )
+
+        requireNotNull(decoded)
+        assertEquals(null, decoded.provenance)
     }
 
     @Test

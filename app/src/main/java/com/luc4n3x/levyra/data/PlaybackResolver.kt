@@ -7,12 +7,15 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
+import com.luc4n3x.levyra.data.network.YoutubeClientIdentityInterceptor
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.PlaybackStreamDescriptor
 import com.luc4n3x.levyra.domain.PlaybackStreamKind
+import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
 import com.luc4n3x.levyra.domain.ResolvedPlaybackManifest
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
@@ -324,7 +327,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val failedPlaybackUrlsMutationLock = Any()
     private val youtubeEngagementCache = ConcurrentHashMap<String, CachedYoutubeEngagement>()
     private val videoSelector = LevyraVideoStreamSelector(context)
-    private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
+    private val youtubeHttpClient: OkHttpClient
+        get() = LevyraHttpClientFactory.youtubePlayer(context)
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val playbackSecurity = YoutubePlaybackSecurity.getInstance(context)
     private val playbackPolicyStore = PlaybackCompatibilityPolicyStore(
@@ -346,12 +350,13 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val playbackResolveTimeoutMs = 30_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
-    private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
-        .connectTimeout(450, TimeUnit.MILLISECONDS)
-        .readTimeout(800, TimeUnit.MILLISECONDS)
-        .writeTimeout(350, TimeUnit.MILLISECONDS)
-        .callTimeout(950, TimeUnit.MILLISECONDS)
-        .build()
+    private val streamProbeClientLock = Any()
+
+    @Volatile
+    private var streamProbeClientGeneration = -1L
+
+    @Volatile
+    private var streamProbeClient: OkHttpClient? = null
     private val searchFallbackClient: OkHttpClient = youtubeHttpClient.newBuilder()
         .connectTimeout(800, TimeUnit.MILLISECONDS)
         .readTimeout(2_000, TimeUnit.MILLISECONDS)
@@ -576,6 +581,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
         val recovery = resilienceEngine.recoveryPlan(reason)
+        val provenance = track.playbackManifest?.provenance
         val attributedUrl = failedUrl?.takeIf { it.isNotBlank() }
             ?: if (isVideoMode) {
                 track.videoStreamUrl.ifBlank { track.streamUrl }
@@ -591,12 +597,18 @@ class PlaybackResolver private constructor(private val context: Context) {
             .filter { it.isNotBlank() }
             .forEach { quarantinePlaybackUrl(it, now + recovery.quarantineMs, now) }
         if (recovery.rotateClient) {
-            profileFromSource(track.source)?.let { profile ->
-                recordClientFailure(profile, null, PlaybackBlockedException(reason))
+            val profile = provenance?.clientName
+                ?.takeIf { it.isNotBlank() }
+                ?.let { expected -> effectiveProfiles().firstOrNull { it.clientName == expected } }
+                ?: profileFromSource(track.source)
+            profile?.let {
+                recordClientFailure(it, null, PlaybackBlockedException(reason))
             }
         }
-        if (recovery.refreshSecurity) {
-            YoutubeLocalDecoder.notifyStreamRejected(track.source)
+        if (recovery.refreshDecoder) {
+            YoutubeLocalDecoder.notifyStreamRejected(track.source, provenance?.playerConfigIdentity)
+        }
+        if (recovery.refreshClientPolicy) {
             resolveScope.launch {
                 val policyChanged = runCatchingPreservingCancellation {
                     playbackPolicyStore.refreshAfterRejection()
@@ -604,8 +616,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                     Timber.w(error, "Playback compatibility policy rejection refresh failed")
                 }.getOrDefault(false)
                 if (policyChanged) clearResolvedStreamCaches()
+            }
+        }
+        if (recovery.refreshSecurity) {
+            resolveScope.launch {
                 runCatchingPreservingCancellation {
-                    playbackSecurity.rotateIfNeeded(PlaybackBlockedException(reason))
+                    playbackSecurity.rotateIfNeeded(
+                        PlaybackBlockedException(reason),
+                        provenance?.securitySessionGeneration
+                    )
                 }.onFailure { error ->
                     Timber.w(error, "YouTube playback security refresh failed")
                 }
@@ -662,37 +681,19 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
     }
 
-    private fun rememberAndroidReelClientIdentity(
-        stream: DirectStream,
-        userAgent: String,
-        clientVersion: String
-    ) {
-        rememberClientIdentity(
-            stream = stream,
-            clientName = ANDROID_REEL_CLIENT_NAME,
-            clientHeaderName = "3",
-            clientVersion = clientVersion,
-            userAgent = userAgent,
-            requiresPoToken = false
-        )
-    }
-
     private fun streamingCapabilityAllows(clientName: String): Boolean =
         playbackPolicyStore.current()
             .isClientCapabilityEnabled(clientName, PlaybackClientCapability.STREAMING)
 
     private fun rememberClientIdentity(
-        stream: DirectStream,
-        clientName: String,
-        clientHeaderName: String,
-        clientVersion: String,
-        userAgent: String,
-        requiresPoToken: Boolean
+        manifest: ResolvedPlaybackManifest
     ) {
+        val provenance = manifest.provenance ?: return
+        if (provenance.clientHeaderName.isBlank() || provenance.userAgent.isBlank()) return
         val urls = buildList {
-            add(stream.url)
-            add(stream.videoUrl)
-            stream.manifest.streams
+            add(manifest.selectedAudioUrl)
+            add(manifest.selectedVideoUrl)
+            manifest.streams
                 .filter { it.deliveryMethod != PlaybackDeliveryMethod.SABR }
                 .forEach { add(it.url) }
         }.filter { it.isNotBlank() }
@@ -700,12 +701,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         YoutubeStreamClientIdentityRegistry.register(
             urls,
             YoutubeStreamClientIdentity(
-                clientName = clientName,
-                clientHeaderName = clientHeaderName,
-                clientVersion = clientVersion,
-                userAgent = userAgent,
-                requiresPoToken = requiresPoToken,
-                videoId = stream.manifest.sourceVideoId
+                clientName = provenance.clientName,
+                clientHeaderName = provenance.clientHeaderName,
+                clientVersion = provenance.clientVersion,
+                userAgent = provenance.userAgent,
+                requiresPoToken = provenance.requiresPoToken,
+                videoId = manifest.sourceVideoId,
+                origin = provenance.origin,
+                referer = provenance.referer,
+                expiresAtMs = provenance.expiresAtMs
             )
         )
     }
@@ -1284,6 +1288,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         audioQuality: String
     ): Track {
+        val resolutionStartedAtMs = System.currentTimeMillis()
         if (!streamingCapabilityAllows(ANDROID_REEL_CLIENT_NAME)) {
             throw YoutubePlayerRequestException(
                 null,
@@ -1296,7 +1301,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
         val reelClientVersion = playbackPolicyStore.current().androidReelClientVersion
         val userAgent = androidReelUserAgent(locale.gl, reelClientVersion)
-        val cachedVisitorData = playbackSecurity.cachedSession().visitorData
+        val reelStreamIdentity = YoutubeStreamClientIdentity(
+            clientName = ANDROID_REEL_CLIENT_NAME,
+            clientHeaderName = "3",
+            clientVersion = reelClientVersion,
+            userAgent = userAgent,
+            requiresPoToken = false,
+            videoId = sourceVideoId
+        )
+        val securitySession = playbackSecurity.cachedSession()
+        val cachedVisitorData = securitySession.visitorData
         val visitorData = runCatchingPreservingCancellation {
             fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent, reelClientVersion)
         }.getOrNull().orEmpty().ifBlank { cachedVisitorData }
@@ -1368,7 +1382,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         var selectedAudio: Triple<JSONObject, String, Int>? = null
         for (candidate in audioCandidates) {
-            if (verifyDirectAudioUrlFast(candidate.second)) {
+            if (verifyDirectAudioUrlFast(candidate.second, identity = reelStreamIdentity)) {
                 selectedAudio = candidate
                 break
             }
@@ -1391,7 +1405,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = duration,
                 selectedAudioUrl = url,
                 selectedVideoUrl = "",
-                streams = listOf(innerTubeAudioDescriptor(format, url, true))
+                streams = listOf(innerTubeAudioDescriptor(format, url, true)),
+                provenance = androidReelProvenance(
+                    userAgent = userAgent,
+                    clientVersion = reelClientVersion,
+                    securityGeneration = securitySession.generation,
+                    resolutionStartedAtMs = resolutionStartedAtMs
+                )
             )
             val reelStream = DirectStream(
                 url = url,
@@ -1401,7 +1421,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 source = "YouTube Android Reel Audio",
                 manifest = manifest
             )
-            rememberAndroidReelClientIdentity(reelStream, userAgent, reelClientVersion)
+            rememberClientIdentity(reelStream.manifest)
             return track.withDirectStream(reelStream)
         }
 
@@ -1409,6 +1429,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private suspend fun resolveVideoWithAndroidReel(track: Track): Track {
+        val resolutionStartedAtMs = System.currentTimeMillis()
         if (!streamingCapabilityAllows(ANDROID_REEL_CLIENT_NAME)) {
             throw YoutubePlayerRequestException(
                 null,
@@ -1421,7 +1442,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
         val reelClientVersion = playbackPolicyStore.current().androidReelClientVersion
         val userAgent = androidReelUserAgent(locale.gl, reelClientVersion)
-        val cachedVisitorData = playbackSecurity.cachedSession().visitorData
+        val securitySession = playbackSecurity.cachedSession()
+        val cachedVisitorData = securitySession.visitorData
         val visitorData = runCatchingPreservingCancellation {
             fetchAndroidReelVisitorData(locale.hl, locale.gl, userAgent, reelClientVersion)
         }.getOrNull().orEmpty().ifBlank { cachedVisitorData }
@@ -1513,7 +1535,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             durationMs = duration,
             selectedAudioUrl = selection.candidate.url,
             selectedVideoUrl = "",
-            streams = listOf(videoDescriptor(selection.candidate, true))
+            streams = listOf(videoDescriptor(selection.candidate, true)),
+            provenance = androidReelProvenance(
+                userAgent = userAgent,
+                clientVersion = reelClientVersion,
+                securityGeneration = securitySession.generation,
+                resolutionStartedAtMs = resolutionStartedAtMs
+            )
         )
         val reelStream = DirectStream(
             url = selection.candidate.url,
@@ -1524,7 +1552,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             manifest = manifest,
             videoSubtitleTracks = videoSubtitleTracks(playerResponse)
         )
-        rememberAndroidReelClientIdentity(reelStream, userAgent, reelClientVersion)
+        rememberClientIdentity(reelStream.manifest)
         return track.withDirectStream(reelStream)
     }
 
@@ -1793,6 +1821,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         sourceVideoUrl: String,
         source: String
     ): Track {
+        rememberClientIdentity(manifest)
         return copy(
             streamUrl = manifest.selectedAudioUrl,
             videoStreamUrl = manifest.selectedVideoUrl,
@@ -2252,6 +2281,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 )
                 val audioCache = key.contains("_audio_", ignoreCase = true)
                 if (track != null && streamUrl.isNotBlank() && now < expiresAt && streamStillFresh(streamUrl) && (!audioCache || isPlayableAudioUrl(streamUrl))) {
+                    manifest?.let(::rememberClientIdentity)
                     streamCache[key] = CachedStream(track, expiresAt)
                 } else {
                     editor.remove(key)
@@ -2397,21 +2427,31 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun verifyDirectAudioUrlFast(
         url: String,
+        identity: YoutubeStreamClientIdentity? = YoutubeStreamClientIdentityRegistry.find(url),
         trustAttestedGoogleVideo: Boolean = true
     ): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
         if (SabrStreamSpec.isSabrUri(url)) return SabrStreamSpec.parse(url) != null
-        if (trustAttestedGoogleVideo && isTrustedGoogleVideoUrl(url) && url.containsQueryParameter("pot")) return true
-        val request = Request.Builder()
+        if (
+            trustAttestedGoogleVideo &&
+            YoutubeStreamCapability.isTrustedGoogleVideoMedia(url) &&
+            url.containsQueryParameter("pot")
+        ) return true
+        val requestBuilder = Request.Builder()
             .url(url)
             .get()
             .header("Range", "bytes=0-8191")
             .header("Accept", "*/*")
             .header("Accept-Encoding", "identity")
-            .header("User-Agent", profiles.first().userAgent)
-            .build()
+        val headers = identity?.mediaRequestHeaders().orEmpty()
+        if (headers.isEmpty()) {
+            requestBuilder.header("User-Agent", effectiveProfiles().firstOrNull()?.userAgent ?: profiles.first().userAgent)
+        } else {
+            headers.forEach { (name, value) -> requestBuilder.header(name, value) }
+        }
+        val request = requestBuilder.build()
         val result = runCatchingPreservingCancellation {
-            streamProbeClient.newCall(request).execute().use { response ->
+            currentStreamProbeClient().newCall(request).execute().use { response ->
                 if (response.code == 403 || response.code == 404 || response.code == 410 || response.code == 416 || response.code == 429) return@use false
                 if (response.code !in 200..299 && response.code != 206) return@use false
                 val contentType = response.header("Content-Type").orEmpty().lowercase()
@@ -2424,12 +2464,23 @@ class PlaybackResolver private constructor(private val context: Context) {
         return result
     }
 
-    private fun isTrustedGoogleVideoUrl(url: String): Boolean {
-        val clean = url.lowercase()
-        if (!clean.startsWith("https://")) return false
-        if (!clean.contains("googlevideo.com/")) return false
-        if (clean.contains("mime=audio%2f") || clean.contains("mime=audio/")) return true
-        return clean.contains("/videoplayback") && !isHlsManifestUrl(clean)
+    private fun currentStreamProbeClient(): OkHttpClient {
+        val generation = LevyraNetworkConfiguration.generation
+        streamProbeClient?.takeIf { streamProbeClientGeneration == generation }?.let { return it }
+        return synchronized(streamProbeClientLock) {
+            streamProbeClient?.takeIf { streamProbeClientGeneration == generation } ?: LevyraHttpClientFactory
+                .streaming(context)
+                .newBuilder()
+                .connectTimeout(450, TimeUnit.MILLISECONDS)
+                .readTimeout(800, TimeUnit.MILLISECONDS)
+                .writeTimeout(350, TimeUnit.MILLISECONDS)
+                .callTimeout(950, TimeUnit.MILLISECONDS)
+                .build()
+                .also {
+                    streamProbeClient = it
+                    streamProbeClientGeneration = generation
+                }
+        }
     }
 
     private fun expiresAtFor(url: String): Long {
@@ -2487,14 +2538,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 RuntimeHooks.hot(RuntimeSignal.HOT_FALLBACK)
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
-            rememberClientIdentity(
-                stream = stream,
-                clientName = profile.clientName,
-                clientHeaderName = profile.clientHeaderName,
-                clientVersion = profile.clientVersion,
-                userAgent = playerUserAgent(profile),
-                requiresPoToken = profile.requiresPoToken
-            )
+            rememberClientIdentity(stream.manifest)
             playbackSecurity.resetFailureState()
             val latency = elapsedMs(startedAt)
             recordClientSuccess(profile, latency)
@@ -2543,6 +2587,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean,
         audioQuality: String
     ): DirectStream = withContext(Dispatchers.IO) {
+        val resolutionStartedAtMs = System.currentTimeMillis()
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
             .takeIf(youtubeVideoIdRegex::matches)
             ?: throw YoutubePlayerRequestException(null, "Identità video YouTube assente o non valida")
@@ -2589,7 +2634,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (profile.clientName == "ANDROID_VR") {
             requestBuilder.header("X-Goog-Api-Format-Version", "2")
         }
-        val request = GoogleApiKeyHeaders.applyTo(requestBuilder, context).build()
+        val request = YoutubeClientIdentityInterceptor.normalize(
+            GoogleApiKeyHeaders.applyTo(requestBuilder, context).build()
+        )
+        val clientIdentity = streamClientIdentity(profile, request, sourceVideoId)
+        fun currentProvenance(): PlaybackStreamProvenance = innerTubeProvenance(
+            profile = profile,
+            request = request,
+            sourceVideoId = sourceVideoId,
+            session = session,
+            poTokens = poTokens,
+            resolutionStartedAtMs = resolutionStartedAtMs
+        )
 
         youtubeHttpClient.newCall(request).execute().use responseUse@{ response ->
             val responseText = response.body.string()
@@ -2652,7 +2708,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 )
                 if (url.isBlank() || isPlaybackUrlBlocked(url) || !streamStillFresh(url)) continue
                 if (!isVideoMode && !preferMp4Audio &&
-                    !verifyDirectAudioUrlFast(url, trustAttestedGoogleVideo = false)
+                    !verifyDirectAudioUrlFast(
+                        url,
+                        identity = clientIdentity,
+                        trustAttestedGoogleVideo = false
+                    )
                 ) continue
                 bestAudioUrl = url
                 bestAudioLabel = label
@@ -2735,7 +2795,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             selectedAudioUrl = selection.candidate.url,
                             selectedVideoUrl = "",
                             streams = listOf(videoDescriptor(selection.candidate, true)),
-                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
+                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
+                            provenance = currentProvenance()
                         )
                         DirectStream(
                             url = selection.candidate.url,
@@ -2760,7 +2821,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                                 innerTubeAudioDescriptor(bestAudioFormat, bestAudioUrl, true),
                                 videoDescriptor(selection.candidate, true)
                             ) + sabrAudioStreams + sabrVideoStreams,
-                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
+                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
+                            provenance = currentProvenance()
                         )
                         DirectStream(
                             url = bestAudioUrl,
@@ -2782,7 +2844,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             selectedAudioUrl = hlsUrl,
                             selectedVideoUrl = "",
                             streams = listOf(hlsDescriptor(hlsUrl)),
-                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
+                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
+                            provenance = currentProvenance()
                         )
                         DirectStream(
                             url = hlsUrl,
@@ -2806,7 +2869,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                             selectedAudioUrl = sabrAudio.url,
                             selectedVideoUrl = sabrVideo.url,
                             streams = sabrAudioStreams + sabrVideoStreams,
-                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
+                            loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
+                            provenance = currentProvenance()
                         )
                         DirectStream(
                             url = sabrAudio.url,
@@ -2845,7 +2909,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 selectedAudioUrl = selectedAudioUrl,
                 selectedVideoUrl = "",
                 streams = directAudioStreams + sabrAudioStreams,
-                loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb)
+                loudness = PlaybackLoudness(loudnessDb, perceptualLoudnessDb),
+                provenance = currentProvenance()
             )
             DirectStream(
                 url = selectedAudioUrl,
@@ -3261,6 +3326,85 @@ class PlaybackResolver private constructor(private val context: Context) {
             .orEmpty()
     }
 
+    private fun streamClientIdentity(
+        profile: ClientProfile,
+        request: Request,
+        sourceVideoId: String
+    ): YoutubeStreamClientIdentity = YoutubeStreamClientIdentity(
+        clientName = profile.clientName,
+        clientHeaderName = request.header("X-Youtube-Client-Name").orEmpty().ifBlank { profile.clientHeaderName },
+        clientVersion = request.header("X-Youtube-Client-Version").orEmpty().ifBlank { profile.clientVersion },
+        userAgent = request.header("User-Agent").orEmpty().ifBlank { playerUserAgent(profile) },
+        requiresPoToken = profile.requiresPoToken,
+        videoId = sourceVideoId,
+        origin = request.header("Origin").orEmpty(),
+        referer = request.header("Referer").orEmpty()
+    )
+
+    private fun androidReelProvenance(
+        userAgent: String,
+        clientVersion: String,
+        securityGeneration: Long,
+        resolutionStartedAtMs: Long
+    ): PlaybackStreamProvenance {
+        val decoder = YoutubeLocalDecoder.provenanceSnapshot()
+            ?.takeIf { it.decodedAtMs >= resolutionStartedAtMs }
+        return basePlaybackProvenance().copy(
+            clientName = ANDROID_REEL_CLIENT_NAME,
+            clientHeaderName = "3",
+            clientVersion = clientVersion,
+            userAgent = userAgent,
+            playerHash = decoder?.playerHash.orEmpty(),
+            playerConfigIdentity = decoder?.configIdentity.orEmpty(),
+            playerConfigEpoch = decoder?.configEpoch ?: -1L,
+            playerConfigOrigin = decoder?.configOrigin?.name.orEmpty(),
+            securitySessionGeneration = securityGeneration
+        )
+    }
+
+    private fun innerTubeProvenance(
+        profile: ClientProfile,
+        request: Request,
+        sourceVideoId: String,
+        session: YoutubeGuestSession,
+        poTokens: YoutubePoTokens?,
+        resolutionStartedAtMs: Long
+    ): PlaybackStreamProvenance {
+        val identity = streamClientIdentity(profile, request, sourceVideoId)
+        val decoder = YoutubeLocalDecoder.provenanceSnapshot()
+            ?.takeIf { it.decodedAtMs >= resolutionStartedAtMs }
+        return basePlaybackProvenance().copy(
+            clientName = identity.clientName,
+            clientHeaderName = identity.clientHeaderName,
+            clientVersion = identity.clientVersion,
+            userAgent = identity.userAgent,
+            origin = identity.origin,
+            referer = identity.referer,
+            requiresPoToken = identity.requiresPoToken,
+            playerHash = decoder?.playerHash.orEmpty(),
+            playerConfigIdentity = decoder?.configIdentity.orEmpty(),
+            playerConfigEpoch = decoder?.configEpoch ?: -1L,
+            playerConfigOrigin = decoder?.configOrigin?.name.orEmpty(),
+            securitySessionGeneration = poTokens?.sessionGeneration ?: session.generation,
+            poTokenGeneration = poTokens?.runtimeGeneration ?: -1L,
+            expiresAtMs = poTokens?.expiresAtMs ?: 0L
+        )
+    }
+
+    private fun basePlaybackProvenance(): PlaybackStreamProvenance {
+        val settings = LevyraNetworkConfiguration.current()
+        val route = when {
+            settings.usesProxy && settings.bypassProxyForStreams -> "streaming-direct"
+            settings.usesProxy -> "streaming-proxy"
+            else -> "streaming-direct"
+        }
+        return PlaybackStreamProvenance(
+            resolverGeneration = resolverGeneration.get(),
+            networkGeneration = LevyraNetworkConfiguration.generation,
+            networkRoute = route
+        )
+    }
+
     private fun buildManifest(
         sourceVideoId: String,
         provider: String,
@@ -3268,8 +3412,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         selectedAudioUrl: String,
         selectedVideoUrl: String,
         streams: List<PlaybackStreamDescriptor>,
-        loudness: PlaybackLoudness = PlaybackLoudness()
+        loudness: PlaybackLoudness = PlaybackLoudness(),
+        provenance: PlaybackStreamProvenance = basePlaybackProvenance()
     ): ResolvedPlaybackManifest {
+        val resolvedAtMs = System.currentTimeMillis()
         val selectedUrls = setOf(selectedAudioUrl, selectedVideoUrl).filter { it.isNotBlank() }.toSet()
         val normalizedStreams = streams
             .filter { it.url.isNotBlank() }
@@ -3280,17 +3426,25 @@ class PlaybackResolver private constructor(private val context: Context) {
             .mapNotNull { it.expiresAtMs.takeIf { expiry -> expiry > 0L } }
             .minOrNull()
             ?: expiresAtFor(selectedAudioUrl)
+        val provenanceExpiry = listOf(selectedExpiry, provenance.expiresAtMs)
+            .filter { it > 0L }
+            .minOrNull()
+            ?: selectedExpiry
         return ResolvedPlaybackManifest(
             sourceVideoId = sourceVideoId,
             provider = provider,
-            resolvedAtMs = System.currentTimeMillis(),
-            expiresAtMs = selectedExpiry,
+            resolvedAtMs = resolvedAtMs,
+            expiresAtMs = provenanceExpiry,
             durationMs = durationMs,
             selectedAudioUrl = selectedAudioUrl,
             selectedVideoUrl = selectedVideoUrl,
             streams = normalizedStreams,
             loudnessDb = loudness.loudnessDb,
-            perceptualLoudnessDb = loudness.perceptualLoudnessDb
+            perceptualLoudnessDb = loudness.perceptualLoudnessDb,
+            provenance = provenance.copy(
+                resolvedAtMs = resolvedAtMs,
+                expiresAtMs = provenanceExpiry
+            )
         ).compact()
     }
 

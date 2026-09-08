@@ -52,6 +52,26 @@ class YoutubeApiDecoderLocalFallbackTest {
     }
 
     @Test
+    void unchangedLocalSignatureIsRejectedAndNeverCached() {
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0, true, false));
+
+        assertThrows(ParsingException.class, () -> YoutubeApiDecoder.decodeBatch(
+                "player", Arrays.asList("s1"), null));
+
+        assertEquals(0, YoutubeApiDecoder.getCacheSize());
+    }
+
+    @Test
+    void unchangedLocalNParameterIsRejectedAndNeverCached() {
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0, false, true));
+
+        assertThrows(ParsingException.class, () -> YoutubeApiDecoder.decodeBatch(
+                "player", null, Arrays.asList("n1")));
+
+        assertEquals(0, YoutubeApiDecoder.getCacheSize());
+    }
+
+    @Test
     void decodeCacheStaysBounded() throws Exception {
         YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0));
 
@@ -69,9 +89,19 @@ class YoutubeApiDecoderLocalFallbackTest {
 
     private static final class StubDecoder implements YoutubeJavaScriptDecoder {
         private final int droppedSignatures;
+        private final boolean unchangedSignatures;
+        private final boolean unchangedNParameters;
 
         private StubDecoder(final int droppedSignatures) {
+            this(droppedSignatures, false, false);
+        }
+
+        private StubDecoder(final int droppedSignatures,
+                            final boolean unchangedSignatures,
+                            final boolean unchangedNParameters) {
             this.droppedSignatures = droppedSignatures;
+            this.unchangedSignatures = unchangedSignatures;
+            this.unchangedNParameters = unchangedNParameters;
         }
 
         @Nonnull
@@ -87,17 +117,19 @@ class YoutubeApiDecoderLocalFallbackTest {
                 @Nullable final List<String> signatures,
                 @Nullable final List<String> throttlingParameters) {
             return new YoutubeApiDecoder.BatchDecodeResult(
-                    decodeValues(signatures, droppedSignatures),
-                    decodeValues(throttlingParameters, 0));
+                    decodeValues(signatures, droppedSignatures, unchangedSignatures),
+                    decodeValues(throttlingParameters, 0, unchangedNParameters));
         }
 
         @Nonnull
         private static Map<String, String> decodeValues(@Nullable final List<String> values,
-                                                        final int dropped) {
+                                                        final int dropped,
+                                                        final boolean unchanged) {
             final Map<String, String> decoded = new HashMap<>();
             if (values != null) {
                 for (int i = 0; i < values.size() - dropped; i++) {
-                    decoded.put(values.get(i), "decoded-" + values.get(i));
+                    final String value = values.get(i);
+                    decoded.put(value, unchanged ? value : "decoded-" + value);
                 }
             }
             return decoded;
