@@ -35,6 +35,9 @@ class AgentTokenBudgetTest(unittest.TestCase):
             with self.subTest(prompt=prompt):
                 self.assertLessEqual(len(context_for(prompt).encode("utf-8")), 1024)
 
+    def test_unmatched_prompt_adds_no_router_context(self) -> None:
+        self.assertEqual("", context_for("Modifica il README"))
+
     def test_small_tasks_do_not_load_efficiency_layers(self) -> None:
         cases = {
             "Modifica il README": (),
@@ -55,6 +58,25 @@ class AgentTokenBudgetTest(unittest.TestCase):
             selected,
         )
         self.assertNotIn("levyra-context-efficiency", selected)
+
+    def test_owner_mode_accepts_conversational_prefixes(self) -> None:
+        for prompt in (
+            "Ok intervieni sul player",
+            "Dai vai col fix",
+            "Ora procedi con la PR",
+            "Adesso intervieni",
+        ):
+            with self.subTest(prompt=prompt):
+                self.assertIn("levyra-mode", self.selected(prompt))
+
+    def test_owner_mode_is_documented_for_compatible_runtimes(self) -> None:
+        contract = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("explicit owner execution cues", contract)
+        self.assertIn("`levyra-mode`", contract)
+        self.assertIn(
+            "PR creation or description -> `levyra-mode` plus `levyra-pr-review` plus `levyra-humanizer`",
+            contract,
+        )
 
     def test_high_volume_work_still_gets_context_efficiency(self) -> None:
         for prompt in (
