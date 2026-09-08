@@ -61,7 +61,8 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                 }
                 if (decode < 0 || lexemes.getOrNull(decode + 1)?.text != "(") return@forEach
                 val decodeClose = matchingParen(lexemes, decode + 1) ?: return@forEach
-                val sourceEvidence = if (mentionsKey(lexemes, decode + 2, decodeClose - 1, "s")) 30 else 0
+                if (!mentionsKey(lexemes, decode + 2, decodeClose - 1, "s")) return@forEach
+                val sourceEvidence = 30
 
                 enclosingCalls(lexemes, decode, decodeClose).forEach { call ->
                     if (isNonTransformTarget(call.target)) return@forEach
@@ -154,18 +155,16 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                 index++
                 continue
             }
-            val expressionEnd = statementEnd(lexemes, index + 1, limit)
-            val rhs = (index + 1 until expressionEnd).toList()
-            val identifiers = rhs.mapNotNull { lexemeIndex ->
-                lexemes[lexemeIndex].takeIf { it.kind == LexemeKind.IDENTIFIER }?.text
-            }
-            if (identifiers.size == 1 && identifiers.first() in tainted) {
+            val expressionStart = index + 1
+            val expressionEnd = statementEnd(lexemes, expressionStart, limit)
+            if (isPureAlias(lexemes, expressionStart, expressionEnd, tainted)) {
                 tainted += lhs
                 index = expressionEnd + 1
                 continue
             }
 
-            callsBetween(lexemes, index + 1, expressionEnd).forEach { call ->
+            callsBetween(lexemes, expressionStart, expressionEnd).forEach { call ->
+                if (!coversExpression(call, expressionStart, expressionEnd)) return@forEach
                 val expression = expressionForIdentifiers(lexemes, call, tainted) ?: return@forEach
                 val confidence = baseConfidence + sinkScore(lexemes, expressionEnd + 1, lhs)
                 addIfConfident(output, expression, confidence)
@@ -175,6 +174,20 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         }
         return output
     }
+
+    private fun isPureAlias(
+        lexemes: List<Lexeme>,
+        start: Int,
+        endExclusive: Int,
+        tainted: Set<String>
+    ): Boolean {
+        if (endExclusive - start != 1) return false
+        val lexeme = lexemes.getOrNull(start) ?: return false
+        return lexeme.kind == LexemeKind.IDENTIFIER && lexeme.text in tainted
+    }
+
+    private fun coversExpression(call: CallSite, start: Int, endExclusive: Int): Boolean =
+        call.targetStart == start && call.close == endExclusive - 1
 
     private fun expressionForRange(
         lexemes: List<Lexeme>,
@@ -204,16 +217,9 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         var replaced = 0
         val arguments = ArrayList<String>(call.arguments.size)
         call.arguments.forEach { range ->
-            val names = range.mapNotNull { lexemeIndex ->
-                lexemes[lexemeIndex].takeIf { it.kind == LexemeKind.IDENTIFIER }?.text
-            }
-            if (names.any { it in tainted }) {
-                if (names.count { it in tainted } != 1) return null
-                if (range.any { lexemeIndex ->
-                        val lexeme = lexemes[lexemeIndex]
-                        lexeme.kind == LexemeKind.IDENTIFIER && lexeme.text !in tainted
-                    }
-                ) return null
+            val sole = lexemes.getOrNull(range.first)
+                ?.takeIf { range.first == range.last }
+            if (sole?.kind == LexemeKind.IDENTIFIER && sole.text in tainted) {
                 arguments += "INPUT"
                 replaced++
             } else {
@@ -383,11 +389,18 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
             lexemes.getOrNull(index - 1)?.text != "<"
     }
 
+    private fun isAssignmentTo(lexemes: List<Lexeme>, index: Int, variable: String): Boolean {
+        if (lexemes.getOrNull(index)?.kind != LexemeKind.IDENTIFIER || lexemes[index].text != variable) return false
+        val assignment = index + 1
+        return lexemes.getOrNull(assignment)?.text == "=" && isAssignmentOperator(lexemes, assignment)
+    }
+
     private fun signatureSinkScore(lexemes: List<Lexeme>, start: Int, variable: String): Int {
         var score = 0
         val end = minOf(lexemes.size, start + MAX_SINK_SCAN_TOKENS)
         var index = start.coerceAtLeast(0)
         while (index < end) {
+            if (isAssignmentTo(lexemes, index, variable)) return score
             if (lexemes[index].text == "encodeURIComponent" && lexemes.getOrNull(index + 1)?.text == "(") {
                 val close = matchingParen(lexemes, index + 1)
                 if (close != null && close < end && containsIdentifier(lexemes, index + 2, close, variable)) {
@@ -409,6 +422,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         val end = minOf(lexemes.size, start + MAX_SINK_SCAN_TOKENS)
         var index = start.coerceAtLeast(0)
         while (index < end) {
+            if (isAssignmentTo(lexemes, index, variable)) return 0
             if (lexemes[index].text == "set" && lexemes.getOrNull(index - 1)?.text == "." && lexemes.getOrNull(index + 1)?.text == "(") {
                 val close = matchingParen(lexemes, index + 1)
                 if (close != null && close < end) {
