@@ -1,0 +1,45 @@
+name: Assemble exact Levyra banner
+
+on:
+  push:
+    branches:
+      - docs/refresh-levyra-github-banner-pro
+    paths:
+      - docs/assets/.banner_exact_upload/full.b64
+      - .github/workflows/assemble-exact-levyra-banner.yml
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode exact final artwork
+        run: |
+          base64 --decode docs/assets/.banner_exact_upload/full.b64 > docs/assets/levyra-github-banner.webp
+          test "$(stat -c%s docs/assets/levyra-github-banner.webp)" -eq 320228
+          echo "002b5aa37e0069c19243f20f4a2fcad78cc5465f5466c21c1a2f3e776a242a43  docs/assets/levyra-github-banner.webp" | sha256sum -c -
+          file docs/assets/levyra-github-banner.webp
+
+      - name: Clean staging files
+        run: |
+          rm -rf docs/assets/.banner_exact20
+          rm -rf docs/assets/.banner_exact40
+          rm -rf docs/assets/.banner_exact_final
+          rm -rf docs/assets/.banner_exact_small
+          rm -rf docs/assets/.banner_exact_upload
+          rm -rf docs/assets/.banner_exactq90
+          rm -f .github/workflows/assemble-exact-levyra-banner.yml
+
+      - name: Commit exact banner
+        run: |
+          git config user.name "LUC4N3X"
+          git config user.email "luca.testing96@gmail.com"
+          git add -A
+          git commit -m "docs(assets): use exact final Levyra banner artwork" || exit 0
+          git push origin HEAD:docs/refresh-levyra-github-banner-pro
