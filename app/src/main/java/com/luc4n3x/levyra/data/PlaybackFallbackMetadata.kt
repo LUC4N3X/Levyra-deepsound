@@ -6,6 +6,51 @@ import kotlin.math.abs
 
 private const val CANONICAL_FALLBACK_DURATION_TOLERANCE_MS = 12_000L
 
+private val KNOWN_MISATTRIBUTED_PLAYBACK_ARTISTS = setOf(
+    "neptune"
+)
+
+internal fun isKnownMisattributedPlaybackArtist(value: String): Boolean =
+    value.playbackMatchKey() in KNOWN_MISATTRIBUTED_PLAYBACK_ARTISTS
+
+internal fun bestCanonicalPlaybackMetadataMatch(
+    original: Track,
+    candidates: List<Track>
+): Track? {
+    val originalTitleKey = original.title.playbackMatchKey()
+    if (originalTitleKey.isBlank()) return null
+
+    return candidates
+        .asSequence()
+        .filter { candidate ->
+            candidate.artist.isNotBlank() &&
+                !isKnownMisattributedPlaybackArtist(candidate.artist) &&
+                candidate.title.playbackMatchKey() == originalTitleKey
+        }
+        .filter { candidate ->
+            val originalDurationMs = original.durationMs
+            val candidateDurationMs = candidate.durationMs
+            when {
+                originalDurationMs <= 0L -> true
+                candidateDurationMs <= 0L -> false
+                else -> abs(originalDurationMs - candidateDurationMs) <= CANONICAL_FALLBACK_DURATION_TOLERANCE_MS
+            }
+        }
+        .sortedWith(
+            compareBy<Track> { candidate ->
+                if (original.durationMs > 0L && candidate.durationMs > 0L) {
+                    abs(original.durationMs - candidate.durationMs)
+                } else {
+                    Long.MAX_VALUE
+                }
+            }
+                .thenByDescending { candidate -> candidate.isrc.isNotBlank() }
+                .thenByDescending { candidate -> candidate.album.isNotBlank() }
+                .thenByDescending { candidate -> candidate.metadataConfidence }
+        )
+        .firstOrNull()
+}
+
 internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
     val title = track.title.playbackSearchToken()
     val artist = track.artist.playbackSearchToken()
@@ -13,15 +58,22 @@ internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
         .filter { it.isNotBlank() }
         .joinToString(" ")
         .ifBlank { title.ifBlank { track.id.trim() } }
+    val misattributedArtist = isKnownMisattributedPlaybackArtist(artist)
 
     return buildList {
+        if (misattributedArtist && title.isNotBlank()) {
+            add("$title official audio")
+            add("$title official video")
+            add("$title topic")
+            add(title)
+        }
         add("$base official audio")
-        if (artist.isNotBlank() && title.isNotBlank()) add("$title official audio")
+        if (!misattributedArtist && artist.isNotBlank() && title.isNotBlank()) add("$title official audio")
         add("$base official video")
-        if (artist.isNotBlank() && title.isNotBlank()) add("$title official video")
+        if (!misattributedArtist && artist.isNotBlank() && title.isNotBlank()) add("$title official video")
         add("$base topic")
         add(base)
-        if (title.isNotBlank() && title != base) add(title)
+        if (!misattributedArtist && title.isNotBlank() && title != base) add(title)
     }
         .map(String::trim)
         .filter { it.length >= 2 }
@@ -34,7 +86,11 @@ internal fun canonicalPlaybackFallbackArtist(
     resolved: Track
 ): String {
     val donorArtist = resolved.artist.trim().ifBlank { candidate.artist.trim() }
-    if (donorArtist.isBlank() || donorArtist.equals(original.artist.trim(), ignoreCase = true)) {
+    if (
+        donorArtist.isBlank() ||
+        isKnownMisattributedPlaybackArtist(donorArtist) ||
+        donorArtist.equals(original.artist.trim(), ignoreCase = true)
+    ) {
         return original.artist
     }
 
@@ -61,7 +117,11 @@ internal fun shouldAdoptYoutubeCanonicalArtist(
     metadataDurationMs: Long?
 ): Boolean {
     val donorArtist = metadataArtist.trim()
-    if (donorArtist.isBlank() || donorArtist.equals(track.artist.trim(), ignoreCase = true)) return false
+    if (
+        donorArtist.isBlank() ||
+        isKnownMisattributedPlaybackArtist(donorArtist) ||
+        donorArtist.equals(track.artist.trim(), ignoreCase = true)
+    ) return false
     val durationMs = metadataDurationMs?.takeIf { it > 0L } ?: return false
     return isCanonicalPlaybackRecordingMatch(
         originalTitle = track.title,
