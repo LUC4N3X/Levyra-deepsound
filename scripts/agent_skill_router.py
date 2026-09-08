@@ -34,6 +34,11 @@ ROUTES = (
         r"openclaw|levyra-worker|levyra-reviewer|levyra-ci|delegat.*(?:agent|runtime|review|ci)|orchestrat",
     ),
     route(
+        "levyra-mode",
+        "owner-directed action-first execution",
+        r"\blevyra[- ]mode\b|^\s*vai\b|\bprocedi\b|\bintervieni\b|\bfai tu\b|\bfallo tu\b|\bfalla tu\b|\bsistem(?:a|alo|ala)\b|\brisolv(?:i|ilo|ila)\b|\bcorreggi\b|\bimplementa\b|\baggiorna\b|\bmodifica\b|(?:apri|crea|open|create).{0,30}\b(?:pr|pull request)\b",
+    ),
+    route(
         "levyra-real-engineering",
         "non-trivial engineering, debugging, requirements, or architecture",
         r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|debug|diagnos|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug|root cause|causa radice",
