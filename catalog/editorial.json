@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07T21:33:26Z",
+  "generatedAt": "2026-09-08T04:42:58Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -408,6 +408,12 @@
           },
           "durationMs": 142200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "B827pl48xkU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
         },
         {
@@ -904,6 +910,12 @@
           },
           "durationMs": 211453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "FWDgJ-Ku_J8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCWoaWH-09froV-IlhV3bG1Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dcceee76ed8d7d01d0b0d109"
         },
         {
@@ -967,6 +979,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -1263,6 +1281,12 @@
           },
           "durationMs": 151500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BI9HQCzpDgQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRLE_fwmN2CQw1vuWPwo6eA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c1f34ecc1929fb59908aad1"
         },
         {
@@ -1449,6 +1473,12 @@
           },
           "durationMs": 170859,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "C2elY5Tctqg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCTXWFnISFBHXsfR-ghjU3qA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b6c2112750367e20464b6b7"
         },
         {
@@ -1555,12 +1585,6 @@
           },
           "durationMs": 257800,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "swJOIjjW69U",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -1578,12 +1602,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "UnuEzP1rDLY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -1641,6 +1659,12 @@
           },
           "durationMs": 213805,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "HOqxmOXrZnY",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC5xaQ6_dP7EGDmGLzVGZ1Ow"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02349f6c0133abbfca063891c1"
         },
         {
@@ -1930,11 +1954,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 34,
@@ -2092,6 +2116,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -2479,6 +2509,12 @@
           },
           "durationMs": 151500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BI9HQCzpDgQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRLE_fwmN2CQw1vuWPwo6eA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c1f34ecc1929fb59908aad1"
         },
         {
@@ -2567,6 +2603,12 @@
           },
           "durationMs": 170859,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "C2elY5Tctqg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCTXWFnISFBHXsfR-ghjU3qA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b6c2112750367e20464b6b7"
         },
         {
@@ -2676,11 +2718,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 17,
@@ -2697,12 +2739,6 @@
           },
           "durationMs": 257800,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "swJOIjjW69U",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -2755,7 +2791,7 @@
         },
         {
           "position": 20,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2763,12 +2799,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 21,
@@ -2941,6 +2977,12 @@
           },
           "durationMs": 142222,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "81GUbfBqTv0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCH6UaeHTZm9tP9y_ZV-gW3w"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029980b2d7b734e739626d79d5"
         },
         {
@@ -3127,12 +3169,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "UnuEzP1rDLY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -3150,12 +3186,6 @@
           },
           "durationMs": 217008,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "dXncjYrvuNY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCf5GUgSQC4CU8idz_OH8jqQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b09eea420767969b6729962b"
         },
         {
@@ -3196,6 +3226,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -3219,6 +3255,12 @@
           },
           "durationMs": 142200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "B827pl48xkU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
         },
         {
@@ -3925,7 +3967,7 @@
             "confidence": 100,
             "artistBrowseId": "UCj6HoOP59UGegqUC-fu4Wlg"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023e513539cda42cc2f9fb8132"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028083e603398823a8d8ed94cc"
         },
         {
           "position": 21,
@@ -6005,6 +6047,12 @@
           },
           "durationMs": 142200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "B827pl48xkU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
         },
         {
@@ -6074,6 +6122,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -6283,12 +6337,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "UnuEzP1rDLY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -6452,6 +6500,12 @@
           },
           "durationMs": 258431,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "96L5sV7rqX0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC93q7WvkXEJBlk_QcO8aAuA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022a6b364528b128a4a17d100d"
         },
         {
@@ -6509,6 +6563,12 @@
           },
           "durationMs": 258296,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "kOn-HdEg6AQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCoIOOL7QKuBhQHVKL8y7BEQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0232a7d87248d1b75463483df5"
         },
         {
@@ -6646,14 +6706,6 @@
           },
           "durationMs": 236200,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "uyWQmebx6gc",
-            "audioConfidence": 100,
-            "videoId": "X5kmM98iklo",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCnS-aTAcLzj1ylzsJA6jzPg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023110ac6b32c463f398a9e051"
         },
         {
@@ -6677,12 +6729,6 @@
           },
           "durationMs": 139636,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "rGOeYuMfDx0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC9LOlUaRmulq7GoI_A4yvVg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022fec23cc2ef2898a7ecf5326"
         },
         {
@@ -8797,6 +8843,12 @@
           },
           "durationMs": 198300,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "aaQryp24OOc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC5TYeA9Hw3L5VlZYtMt3pqg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0286626ffe26c2d2c68e8956b7"
         },
         {
@@ -8900,12 +8952,6 @@
           },
           "durationMs": 184173,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "U5zYN6H_9eA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0kxNxFQCK6d2spPz5Sme7Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2e90fbdec84b25e46573469"
         },
         {
@@ -9267,12 +9313,6 @@
           },
           "durationMs": 263306,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "OhXeBoTlCr4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCtSeeqnGJM5ngqJWZ1vQygw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0263f3b7f5abf86ad483b57b77"
         },
         {
@@ -9290,6 +9330,12 @@
           },
           "durationMs": 226035,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "AR9R8_Gzm8Y",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCwA5HHGsAlpU1UlhwWD52uA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ef88ad49166e31598ff7d4d0"
         },
         {
@@ -9789,6 +9835,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -9994,6 +10046,12 @@
           },
           "durationMs": 142200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "B827pl48xkU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
         },
         {
@@ -10064,7 +10122,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-793926acb78fe72b3e5e",
+          "id": "levyra-7ae2c440dc98c296e8e1",
           "title": "So Incredible",
           "artists": [
             {
@@ -10072,12 +10130,18 @@
             }
           ],
           "album": {
-            "name": "Incredible",
+            "name": "So Incredible",
             "releaseDate": "2008-01-01"
           },
-          "durationMs": 177120,
+          "durationMs": 177760,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fedfb590fb3271844e7c18a8"
+          "youtubeMusic": {
+            "audioVideoId": "ADIBuAIB2-U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCkLSiagaR-ddDSlv2ZlnMjg"
+          },
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e026f4aa6326fa77503dddbf895"
         },
         {
           "position": 30,
@@ -10159,6 +10223,12 @@
           },
           "durationMs": 170859,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "C2elY5Tctqg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCTXWFnISFBHXsfR-ghjU3qA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b6c2112750367e20464b6b7"
         },
         {
@@ -10362,12 +10432,6 @@
           },
           "durationMs": 174179,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3sWqKheo2es",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCzdEB9l2_70sH6-tYtLU_Yg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02696e6f59c77c4d7d7e165ddd"
         },
         {
@@ -10517,12 +10581,6 @@
           },
           "durationMs": 257800,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "swJOIjjW69U",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -11689,6 +11747,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -12245,6 +12309,12 @@
           },
           "durationMs": 148453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "yXbJrm-XzAo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0294f8c9168a79ba591e7b0a3b"
         },
         {
@@ -13213,12 +13283,6 @@
           },
           "durationMs": 168500,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "mneEO7-WMiA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCSsBeuqr0XnbuY-CkYSGJ8Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fde3ac528cb5a72594ff359b"
         },
         {
@@ -13683,12 +13747,6 @@
           },
           "durationMs": 169485,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "zkOenLnt70E",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCSsBeuqr0XnbuY-CkYSGJ8Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fde3ac528cb5a72594ff359b"
         },
         {
@@ -14079,12 +14137,6 @@
           },
           "durationMs": 146820,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "TzMAFm0I40g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCG74OYZjMni4ViKkJDHp_7A"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0281dd21ae2198f6b6cb6cb63c"
         },
         {
@@ -14585,7 +14637,7 @@
           "durationMs": 120545,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "-SjIG7QlOIk",
+            "audioVideoId": "9YU5lFqpgV4",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
@@ -14933,12 +14985,6 @@
           },
           "durationMs": 152807,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SP-eAHf2YMo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2941cc5b200a0b17f9c6de"
         },
         {
@@ -14999,6 +15045,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -15159,6 +15211,12 @@
           },
           "durationMs": 142200,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "B827pl48xkU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCO1o6IjIVBcbr_DS1tmarhQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2eac0964d8ef1900f1c101"
         },
         {
@@ -15285,6 +15343,12 @@
           },
           "durationMs": 151500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BI9HQCzpDgQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRLE_fwmN2CQw1vuWPwo6eA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c1f34ecc1929fb59908aad1"
         },
         {
@@ -16265,6 +16329,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -16803,6 +16873,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -17767,12 +17843,6 @@
           },
           "durationMs": 108000,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "tRAmPLYjbGg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCvJLQlVdWiIU0qYmowdKh6g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02486d56969b1223a6a610e7be"
         },
         {
@@ -18079,12 +18149,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "UnuEzP1rDLY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -18271,6 +18335,12 @@
           },
           "durationMs": 134188,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "LSDqn53EsGk",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCJmVt8htuGdmAN7eETDHVGg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dd014cb3cdc0f97d108ee872"
         },
         {
@@ -20056,6 +20126,12 @@
           },
           "durationMs": 151500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BI9HQCzpDgQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRLE_fwmN2CQw1vuWPwo6eA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c1f34ecc1929fb59908aad1"
         },
         {
@@ -20232,6 +20308,12 @@
           },
           "durationMs": 227986,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UdWvA3FNaC0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGvj8kfUV5Q6lzECIrGY19g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f1d02a6cec967f8b6b78f76e"
         },
         {
@@ -20274,6 +20356,12 @@
           },
           "durationMs": 236906,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "oodQMZLjoBU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVV5M4OEFsKnB9HBhwOhHbA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028aa339341a0b0c813909c831"
         },
         {
@@ -20433,6 +20521,12 @@
           },
           "durationMs": 187973,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qSay_8xzijg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC6ZjlLJhqP79nqGr3Ic6Adg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021376b4b16f4bfcba02dc571b"
         },
         {
@@ -20519,12 +20613,6 @@
           },
           "durationMs": 97960,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "UnuEzP1rDLY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCsWqHrJvOU_uukQCU92VEvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b1b6f41c1645af9757d5616"
         },
         {
@@ -20590,6 +20678,12 @@
           },
           "durationMs": 253894,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "n_1f2cbFnkQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCYmclddSeUDeJwe8PkUr4SA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025527bb726ed8036c3b232a8d"
         },
         {
@@ -21716,12 +21810,6 @@
           },
           "durationMs": 163001,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "5sOgJQ3N03Q",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCraxhuo4vXXMMgXJ6Gil4Eg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02da2a04ef57dfebfb8946fd49"
         },
         {
@@ -21882,12 +21970,6 @@
           },
           "durationMs": 156034,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3F9jlnANW08",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCmWwbZ-8SngcUzRAD8rCVvw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027e77585ffef632e51313b3e0"
         },
         {
@@ -21905,6 +21987,12 @@
           },
           "durationMs": 184000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "_1juftZumOQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022d3d7a09566b6d612c890824"
         },
         {
@@ -21922,6 +22010,12 @@
           },
           "durationMs": 164208,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ZBFzUSdS2nI",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCI5OIwx9z32Zurb8t4Umzwg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024d02d148d2ae249bdd2991e3"
         },
         {
@@ -22211,12 +22305,12 @@
           "durationMs": 145680,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "z9ifbheDGFM",
+            "audioVideoId": "jsdbYg8xrvE",
             "audioConfidence": 100,
             "videoId": "_IT83Y_HcAw",
             "videoConfidence": 96,
             "confidence": 100,
-            "artistBrowseId": "UCAl7xQ6q0PEgZMQD7zr4AKQ"
+            "artistBrowseId": "UCTL-JC-I42dV_QsHv3lt1Hg"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021568796289f10031724bc780"
         },
@@ -22258,6 +22352,12 @@
           },
           "durationMs": 179586,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "MUny_GDYIDM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCfCiP0obFQZOB6fJqN-eF8A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020cc65398388cbc486fa4fff7"
         },
         {
@@ -22481,6 +22581,12 @@
           },
           "durationMs": 190000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Cbs8h6nJWBc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3M9MRdZz-WWtAQos94_h6w"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025e0c6f72c2e7d712f34b01e2"
         },
         {
@@ -22613,12 +22719,6 @@
           },
           "durationMs": 180000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "hGqYdubpcCM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_Cx288SDUD9liYn7CiJLAA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d179b01c0b9baac10170d1ad"
         },
         {
@@ -22659,12 +22759,6 @@
           },
           "durationMs": 169000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "f7-z0FDBpZo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCSH_oG3bEBUsjmPuKsKWdQA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029ee310150eb907c28c40397a"
         },
         {
@@ -22682,12 +22776,6 @@
           },
           "durationMs": 189000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "A9EpZWrQ3dM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCC3Hg75KxQk4VTrBSphEbGw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ccf2a687cd03daa7c9696e73"
         },
         {
@@ -23180,6 +23268,12 @@
           },
           "durationMs": 269184,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "pUwpLoLlzNQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCG9GwLnakwT-HcXUfKmnzSQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028a7ae7092464f6685355dc3c"
         },
         {
@@ -24122,6 +24216,12 @@
           },
           "durationMs": 245462,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "sYfzcAKzB3Y",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCWlxzIM_ruFSkraPvImck7Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025cfcb24701901b0e53ce4fae"
         },
         {
@@ -24210,6 +24310,12 @@
           },
           "durationMs": 245226,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "D0fzGl640wE",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCb_E36en08Yl0gB-oHWPXPg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b1f0e17d6a48da664cbdcbe5"
         },
         {
@@ -24275,6 +24381,12 @@
           },
           "durationMs": 227415,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "rouojv6Xu8Q",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCx8r4c5ZB_CpbYHTBLaNemw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025bd00b369e89c5cbc74d827b"
         },
         {
@@ -24332,6 +24444,12 @@
           },
           "durationMs": 225153,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "G_EgkHCayU0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -24554,6 +24672,14 @@
           },
           "durationMs": 166850,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "n5Mo9hC9d_Y",
+            "audioConfidence": 100,
+            "videoId": "fLdVq8n-KQg",
+            "videoConfidence": 98,
+            "confidence": 100,
+            "artistBrowseId": "UCnHAGsl2PpcNqgmOwBz0hLQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02db45ed33946536fd099548b0"
         },
         {
@@ -24665,6 +24791,12 @@
           },
           "durationMs": 187973,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qSay_8xzijg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC6ZjlLJhqP79nqGr3Ic6Adg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021376b4b16f4bfcba02dc571b"
         },
         {
@@ -25516,10 +25648,10 @@
           "durationMs": 234168,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "-zNB1BT2mi4",
+            "audioVideoId": "5q906vfrzyY",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCO2EZyzX5-X3Dc65bta6yDg"
+            "artistBrowseId": "UCjhtSjcSCUWbfFAWrp8Ow6w"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d6ebd978c7c460eaf3f75f85"
         },
@@ -26298,12 +26430,6 @@
           },
           "durationMs": 273939,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "PdJ95gNcGzI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UClgIlOWRhnG0dStvLNT_cYg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e6508f2160d972cc736776fe"
         },
         {
@@ -26351,14 +26477,6 @@
           },
           "durationMs": 198845,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "zceOUJvPDFw",
-            "audioConfidence": 100,
-            "videoId": "08ZJvWQ1pVM",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCJOXMxI99o8azJ_uV7qEZdA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c59b4265cad7c51a39c87fcf"
         },
         {
@@ -26692,12 +26810,6 @@
           },
           "durationMs": 250232,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9owV4em4Q64",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCkIq_N5Jwma0f9zvHgz3mGg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b665b01883c990a870e2a99c"
         },
         {
@@ -26738,6 +26850,12 @@
           },
           "durationMs": 241973,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "E5LW_NRgoCs",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC6K8mtCiHnZ-MyT7CmCsGBw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f049f5c0135c1d77045eea7a"
         },
         {
@@ -26892,6 +27010,12 @@
           },
           "durationMs": 206416,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "44DrBGXCm9g",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdCskNuCMMAU7FqK9pW7wiQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02afbae55931618ecd661b6db0"
         },
         {
@@ -27029,6 +27153,12 @@
           },
           "durationMs": 264960,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "JrW1p-UJ9Ag",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0205c3fb79c77c600a45e9c992"
         },
         {
@@ -27100,6 +27230,12 @@
           },
           "durationMs": 281693,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "DdoJWX8YEWs",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCd_VT5P5adW2-PRQiXM_tmg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02edb7b68c0c956b02b71e5823"
         },
         {
@@ -27117,6 +27253,12 @@
           },
           "durationMs": 151500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BI9HQCzpDgQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRLE_fwmN2CQw1vuWPwo6eA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c1f34ecc1929fb59908aad1"
         },
         {
@@ -27180,14 +27322,6 @@
           },
           "durationMs": 196187,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "j3B5RY8KY7w",
-            "audioConfidence": 100,
-            "videoId": "ssKJYCw7Z7c",
-            "videoConfidence": 95,
-            "confidence": 100,
-            "artistBrowseId": "UCgfon7MlYjVKFT1xv5tyU8g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0289010986807175896f24855e"
         },
         {
@@ -27268,6 +27402,12 @@
           },
           "durationMs": 276315,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "pKZ1sraf-Eo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCTKJyum8atjrmRTi5OXxTyw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ba88f47523d8dfe21480e45e"
         },
         {
@@ -27366,6 +27506,12 @@
           },
           "durationMs": 276000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "FpJxPzveHzA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVZoM1H-jFwni_C4nogarjw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0201cb2e736602194466522135"
         },
         {
@@ -27563,6 +27709,12 @@
           },
           "durationMs": 237692,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "2cL2LkST4a4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCgz-JXAkpKjIli7OTg_QM5g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0285a7fd707d00e5d255807add"
         },
         {
@@ -27901,7 +28053,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
         },
         {
           "position": 26,
@@ -28029,6 +28181,12 @@
           },
           "durationMs": 151500,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BI9HQCzpDgQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCRLE_fwmN2CQw1vuWPwo6eA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022c1f34ecc1929fb59908aad1"
         },
         {
@@ -28357,6 +28515,12 @@
           },
           "durationMs": 209480,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "d0n3vgtsnzY",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCj9zcZK6FSiDsQYkevHS2Ig"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02089ce120f5b4f793f4fd5ce7"
         },
         {
@@ -28510,12 +28674,6 @@
           },
           "durationMs": 157959,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "DGIGqbBAm3c",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2-rG7DMkCdDL3lE15wUrSw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021f50eee9553ec21741a42c38"
         },
         {
@@ -28681,12 +28839,6 @@
           },
           "durationMs": 184883,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "FJRjlaooOrA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCpqDiWhFY6B76xF7iMDOVAA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0244d94f8ffd83da40a609a875"
         },
         {
@@ -29011,6 +29163,12 @@
           },
           "durationMs": 188591,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "jJ8fPgsiwvg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCNsMksDl9za5N9R7hyYa97g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02759a0f224bec949bf7218a2d"
         },
         {
