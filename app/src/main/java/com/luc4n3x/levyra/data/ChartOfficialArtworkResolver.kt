@@ -69,9 +69,11 @@ internal class ChartOfficialArtworkResolver(context: Context) {
 
     private suspend fun recoverCanonicalMetadata(track: Track): Track {
         if (!isKnownMisattributedPlaybackArtist(track.artist)) return track
-        val candidates = withTimeoutOrNull(CANONICAL_METADATA_LOOKUP_MS) {
-            youtubeMusicRepository.search(track.title, CANONICAL_METADATA_CANDIDATE_LIMIT)
-        }.orEmpty()
+        val candidates = runCatchingPreservingCancellation {
+            withTimeoutOrNull(CANONICAL_METADATA_LOOKUP_MS) {
+                youtubeMusicRepository.search(track.title, CANONICAL_METADATA_CANDIDATE_LIMIT)
+            }.orEmpty()
+        }.getOrDefault(emptyList())
         val best = bestCanonicalPlaybackMetadataMatch(track, candidates) ?: return track
         return track.copy(
             artist = best.artist,
