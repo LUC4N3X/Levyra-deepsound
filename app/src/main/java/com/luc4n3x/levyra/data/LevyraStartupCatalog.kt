@@ -35,22 +35,31 @@ object LevyraStartupCatalog {
 
     fun repairHomeSections(sections: List<HomeSection>, languageCode: String): List<HomeSection> {
         if (sections.isEmpty()) return sections
-        val locale = LevyraContentLocales.forLanguage(languageCode)
-        val energyTitle = locale.energySectionTitle.trim()
+        val legacyEnergyTitles = LevyraLanguageCatalog.languages
+            .map { language -> LevyraContentLocales.forLanguage(language.code).energySectionTitle.trim() }
+            .filter { it.isNotEmpty() }
+        val legacyQuickTitles = LevyraLanguageCatalog.languages
+            .map { language -> LevyraContentLocales.forLanguage(language.code).quickSectionTitle.trim() }
+            .filter { it.isNotEmpty() }
+        fun matchesTitle(section: HomeSection, titles: List<String>): Boolean {
+            val sectionTitle = section.title.trim()
+            return titles.any { title -> sectionTitle.equals(title, ignoreCase = true) }
+        }
+
         val legacyEnergyTracks = sections
             .asSequence()
-            .filter { section -> section.title.trim().equals(energyTitle, ignoreCase = true) }
+            .filter { section -> matchesTitle(section, legacyEnergyTitles) }
             .flatMap { section -> section.tracks.asSequence() }
             .toList()
         val repairedSections = sections
-            .filterNot { section -> section.title.trim().equals(energyTitle, ignoreCase = true) }
+            .filterNot { section -> matchesTitle(section, legacyEnergyTitles) }
             .map { section ->
                 section.copy(tracks = repairTracks(section.tracks, languageCode))
             }
         if (legacyEnergyTracks.isEmpty()) return repairedSections
 
         val quickIndex = repairedSections.indexOfFirst { section ->
-            section.title.trim().equals(locale.quickSectionTitle.trim(), ignoreCase = true)
+            matchesTitle(section, legacyQuickTitles)
         }
         if (quickIndex < 0) return repairedSections
 
