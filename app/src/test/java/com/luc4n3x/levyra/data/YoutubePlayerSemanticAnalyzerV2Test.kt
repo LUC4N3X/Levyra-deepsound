@@ -112,6 +112,55 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
+    fun requiresSignatureSourceToComeFromSDespiteAValidLookingSink() {
+        val javascript = """
+            var decoded=decodeURIComponent(value);
+            var signed=LooksReal(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+    }
+
+    @Test
+    fun doesNotEraseOperatorsAroundTaintedArguments() {
+        val javascript = """
+            var decoded=decodeURIComponent(cipher.s);
+            var signed=Actual(decoded+1);
+            query.set(signatureKey,encodeURIComponent(signed));
+            var throttle=query.get("n");
+            var rewritten=Throttle(throttle+1);
+            query.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+        assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
+    fun ignoresSinkEvidenceAfterTransformOutputIsReassigned() {
+        val javascript = """
+            var decoded=decodeURIComponent(cipher.s);
+            var signed=Actual(decoded);
+            signed=other;
+            query.set(signatureKey,encodeURIComponent(signed));
+            var throttle=query.get("n");
+            var rewritten=Throttle(throttle);
+            rewritten=otherN;
+            query.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+        assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
     fun reservesCompleteLegacyPairWhenSemanticCandidatesSaturatePool() {
         val javascript = """
             var decoded=decodeURIComponent(cipher.s);
