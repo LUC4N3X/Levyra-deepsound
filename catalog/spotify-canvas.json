@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-08T04:42:58Z",
+  "generatedAt": "2026-09-08T11:24:05Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -1806,6 +1806,13 @@
       "artist": "Cameron Whitcomb",
       "album": "The Hard Way (Complete Edition)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/d4f535d121fc422eb3dbf0543ca00ea6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
