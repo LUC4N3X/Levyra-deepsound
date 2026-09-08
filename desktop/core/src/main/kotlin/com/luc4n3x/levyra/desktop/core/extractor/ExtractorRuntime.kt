@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicReference
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
+import org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor
 
 object ExtractorRuntime {
     private val current = AtomicReference<String>(null)
@@ -15,6 +16,7 @@ object ExtractorRuntime {
         val country = countryCode.trim().uppercase().take(2).ifBlank { "IT" }
         val signature = "${language.tag}-$country"
         if (current.get() == signature) return
+        YoutubeStreamExtractor.setAndroidVrPlayerClientEnabled(true)
         NewPipe.init(
             downloader,
             Localization(language.tag, country),

@@ -146,7 +146,7 @@ fun PlayerBar(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                    if (track != null && downloadActions != null) {
+                    if (track != null && downloadActions != null && !track.isLocalFile) {
                         IconButton(
                             onClick = {
                                 val record = downloadRecord

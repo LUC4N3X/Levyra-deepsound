@@ -40,6 +40,8 @@ class DesktopStringsTest {
                 strings.playbackClose,
                 strings.settingsLanguage,
                 strings.settingsCountry,
+                strings.settingsSponsorBlock,
+                strings.settingsSponsorBlockBody,
                 strings.onboardingWelcomeBadge,
                 strings.onboardingWelcomeTitle,
                 strings.onboardingLanguageQuestion,

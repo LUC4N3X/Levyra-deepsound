@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.desktop.core.charts.ChartsRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalLibraryStore
 import com.luc4n3x.levyra.desktop.core.lyrics.LyricsRepository
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorBlockRepository
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStore
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
@@ -48,6 +49,7 @@ class AppContainer {
     private val streamResolver = YoutubeStreamResolver()
     private val chartsRepository = ChartsRepository()
     private val lyricsRepository = LyricsRepository()
+    private val sponsorBlockRepository = SponsorBlockRepository()
 
     internal val updateController: DesktopUpdateController = DesktopUpdateController(
         scope = scope,
@@ -61,6 +63,7 @@ class AppContainer {
         settingsStore = settingsStore,
         libraryStore = libraryStore,
         sessionStore = sessionStore,
+        sponsorBlock = sponsorBlockRepository,
         playerFactory = ::createAudioPlayer
     )
 
