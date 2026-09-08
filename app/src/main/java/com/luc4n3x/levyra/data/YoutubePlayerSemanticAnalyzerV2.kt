@@ -167,13 +167,17 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                 continue
             }
 
+            val sourceTaint = LinkedHashSet(tainted)
+            tainted.remove(lhs)
+            var derivesFromTaint = false
             callsBetween(lexemes, expressionStart, expressionEnd).forEach { call ->
                 if (!coversExpression(call, expressionStart, expressionEnd)) return@forEach
-                val expression = expressionForIdentifiers(lexemes, call, tainted) ?: return@forEach
+                val expression = expressionForIdentifiers(lexemes, call, sourceTaint) ?: return@forEach
                 val confidence = baseConfidence + sinkScore(lexemes, expressionEnd + 1, lhs)
                 addIfConfident(output, expression, confidence)
-                tainted += lhs
+                derivesFromTaint = true
             }
+            if (derivesFromTaint) tainted += lhs
             index = expressionEnd + 1
         }
         return output
