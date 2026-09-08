@@ -1461,22 +1461,38 @@ internal object YoutubePlayerJsAnalyzer {
 
     fun analyzeCandidates(hash: String, javascript: String): List<YoutubePlayerCipherConfig> {
         if (!YoutubePlayerConfigParser.isValidHash(hash)) return emptyList()
-        val signatures = expressions(javascript, signatureRules)
-        val nExpressions = expressions(javascript, nRules)
         val sts = extractSignatureTimestamp(javascript) ?: return emptyList()
+        val semantic = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+        val signatures = mergeExpressions(
+            semantic.signatures,
+            expressions(javascript, signatureRules)
+        )
+        val nExpressions = mergeExpressions(
+            semantic.nTransforms,
+            expressions(javascript, nRules)
+        )
         if (signatures.isEmpty() || nExpressions.isEmpty()) return emptyList()
-        return signatures.asSequence()
-            .flatMap { signature ->
-                nExpressions.asSequence().map { nExpression ->
-                    YoutubePlayerCipherConfig(
-                        primaryHash = hash,
-                        signatureExpression = signature,
-                        nClass = null,
-                        signatureTimestamp = sts,
-                        nExpressionOverride = nExpression,
-                        origin = YoutubePlayerConfigOrigin.ANALYZED
-                    )
-                }
+
+        val combinations = ArrayList<Pair<YoutubeSemanticTransformCandidate, YoutubeSemanticTransformCandidate>>()
+        signatures.forEach { signature ->
+            nExpressions.forEach { nExpression -> combinations += signature to nExpression }
+        }
+        combinations.sortWith(
+            compareByDescending<Pair<YoutubeSemanticTransformCandidate, YoutubeSemanticTransformCandidate>> {
+                it.first.confidence + it.second.confidence
+            }.thenByDescending { it.first.confidence }
+                .thenByDescending { it.second.confidence }
+        )
+        return combinations.asSequence()
+            .map { (signature, nExpression) ->
+                YoutubePlayerCipherConfig(
+                    primaryHash = hash,
+                    signatureExpression = signature.expression,
+                    nClass = null,
+                    signatureTimestamp = sts,
+                    nExpressionOverride = nExpression.expression,
+                    origin = YoutubePlayerConfigOrigin.ANALYZED
+                )
             }
             .distinctBy { it.identity }
             .take(MAX_CANDIDATES)
@@ -1486,6 +1502,29 @@ internal object YoutubePlayerJsAnalyzer {
     fun extractSignatureTimestamp(javascript: String): Int? {
         return anchoredSts.find(javascript)?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: looseSts.find(javascript)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    }
+
+    private fun mergeExpressions(
+        semantic: List<YoutubeSemanticTransformCandidate>,
+        legacy: List<String>
+    ): List<YoutubeSemanticTransformCandidate> {
+        val output = LinkedHashMap<String, YoutubeSemanticTransformCandidate>()
+        semantic.take(MAX_SEMANTIC_EXPRESSIONS_PER_KIND).forEach { candidate ->
+            output[candidate.expression] = candidate
+        }
+        legacy.forEach { expression ->
+            if (output.size >= MAX_EXPRESSIONS_PER_KIND) return@forEach
+            output.putIfAbsent(
+                expression,
+                YoutubeSemanticTransformCandidate(expression, LEGACY_CONFIDENCE)
+            )
+        }
+        if (output.size < MAX_EXPRESSIONS_PER_KIND) {
+            semantic.drop(MAX_SEMANTIC_EXPRESSIONS_PER_KIND).forEach { candidate ->
+                if (output.size < MAX_EXPRESSIONS_PER_KIND) output.putIfAbsent(candidate.expression, candidate)
+            }
+        }
+        return output.values.toList()
     }
 
     private fun expressions(javascript: String, rules: List<Rule>): List<String> {
@@ -1507,7 +1546,9 @@ internal object YoutubePlayerJsAnalyzer {
 
     private fun safeName(name: String): String? = name.takeIf(safeFunctionName::matches)
 
+    private const val LEGACY_CONFIDENCE = 40
     private const val MAX_MATCHES_PER_RULE = 4
+    private const val MAX_SEMANTIC_EXPRESSIONS_PER_KIND = 2
     private const val MAX_EXPRESSIONS_PER_KIND = 3
     private const val MAX_CANDIDATES = 6
 }
