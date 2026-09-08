@@ -102,9 +102,7 @@ public final class YoutubeApiDecoder {
                         "n".equals(paramType) ? Collections.singletonList(value) : null);
                 final String decodedValue = "sig".equals(paramType)
                         ? result.getSignatures().get(value) : result.getNParameters().get(value);
-                if (decodedValue == null || decodedValue.isEmpty()) {
-                    throw new ParsingException("Local decoder returned empty value for: " + value);
-                }
+                requireTransformed(value, decodedValue, "Local decoder", paramType);
                 DECODE_CACHE.put(cacheKey, decodedValue);
                 return decodedValue;
             } catch (final Exception error) {
@@ -137,9 +135,7 @@ public final class YoutubeApiDecoder {
             final JsonObject data = firstResponse.getObject("data");
             final String decodedValue = data.getString(value);
 
-            if (decodedValue == null || decodedValue.isEmpty()) {
-                throw new ParsingException("API returned empty decoded value for: " + value);
-            }
+            requireTransformed(value, decodedValue, "API", paramType);
 
             DECODE_CACHE.put(cacheKey, decodedValue);
             return decodedValue;
@@ -226,6 +222,10 @@ public final class YoutubeApiDecoder {
                 throw new ParsingException(
                         "Local decoder returned no " + label + " for: " + value);
             }
+            if (value.equals(result)) {
+                throw new ParsingException(
+                        "Local decoder returned unchanged " + label + " for: " + value);
+            }
         }
     }
 
@@ -246,7 +246,7 @@ public final class YoutubeApiDecoder {
         }
         for (final String value : requested) {
             final String result = decoded.get(value);
-            if (result != null && !result.isEmpty()) {
+            if (result != null && !result.isEmpty() && !value.equals(result)) {
                 DECODE_CACHE.put(playerId + ':' + type + ':' + value, result);
             }
         }
@@ -342,9 +342,7 @@ public final class YoutubeApiDecoder {
                 final JsonObject nData = nResponse.getObject("data");
                 for (final String nParam : uncachedNs) {
                     final String decodedValue = nData.getString(nParam);
-                    if (decodedValue == null || decodedValue.isEmpty()) {
-                        throw new ParsingException("API returned empty decoded value for n parameter: " + nParam);
-                    }
+                    requireTransformed(nParam, decodedValue, "API", "n parameter");
                     nResults.put(nParam, decodedValue);
                     DECODE_CACHE.put(playerId + ":n:" + nParam, decodedValue);
                 }
@@ -359,9 +357,7 @@ public final class YoutubeApiDecoder {
                 final JsonObject sigData = sigResponse.getObject("data");
                 for (final String sig : uncachedSigs) {
                     final String decodedValue = sigData.getString(sig);
-                    if (decodedValue == null || decodedValue.isEmpty()) {
-                        throw new ParsingException("API returned empty decoded value for signature: " + sig);
-                    }
+                    requireTransformed(sig, decodedValue, "API", "signature");
                     sigResults.put(sig, decodedValue);
                     DECODE_CACHE.put(playerId + ":sig:" + sig, decodedValue);
                 }
@@ -376,6 +372,18 @@ public final class YoutubeApiDecoder {
             throw e instanceof ParsingException
                     ? (ParsingException) e
                     : new ParsingException("Unexpected error during batch decoding", e);
+        }
+    }
+
+    private static void requireTransformed(@Nonnull final String input,
+                                           @Nullable final String output,
+                                           @Nonnull final String source,
+                                           @Nonnull final String label) throws ParsingException {
+        if (output == null || output.isEmpty()) {
+            throw new ParsingException(source + " returned empty " + label + " for: " + input);
+        }
+        if (input.equals(output)) {
+            throw new ParsingException(source + " returned unchanged " + label + " for: " + input);
         }
     }
 
