@@ -20,28 +20,56 @@ object LevyraStartupCatalog {
             track("Billie Jean", "Michael Jackson", "Thriller", "Zi_XLOBDo_Y", setOf("pop", "classic", "groove"), 82, 68, 96),
             track("Numb", "Linkin Park", "Meteora", "kXYiU_JCYtU", setOf("rock", "alt", "energy"), 88, 76, 93),
             track("Viva La Vida", "Coldplay", "Viva La Vida", "dvgZkm1xWPE", setOf("pop", "anthem", "mood"), 74, 70, 90)
-        )
-        val focus = listOf(
-            track("Midnight City", "M83", "Hurry Up, We're Dreaming", "dX3k_QDnzHE", setOf("electronic", "night", "drive"), 78, 45, 88),
-            track("Starboy", "The Weeknd", "Starboy", "34Na4j8AVgA", setOf("pop", "night", "drive"), 84, 68, 91),
-            track("Believer", "Imagine Dragons", "Evolve", "7wtfhZwyrcc", setOf("rock", "gym", "energy"), 90, 72, 89),
-            track("One More Time", "Daft Punk", "Discovery", "FGBhQbmPwH8", setOf("electronic", "dance", "classic"), 88, 48, 92),
-            track("Take On Me", "a-ha", "Hunting High and Low", "djV11Xbc914", setOf("pop", "classic", "drive"), 80, 72, 90),
-            track("In The End", "Linkin Park", "Hybrid Theory", "eVTXPUF4Oz4", setOf("rock", "alt", "energy"), 86, 76, 93)
-        )
+        ) + focusTracks()
         return listOf(
             HomeSection(locale.quickSectionTitle, quick),
-            HomeSection(locale.localSectionTitle, localTracks(languageCode)),
-            HomeSection(locale.energySectionTitle, focus)
+            HomeSection(locale.localSectionTitle, localTracks(languageCode))
         )
     }
 
-    fun chartTracks(languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = homeSections(languageCode).flatMap { it.tracks }.distinctBy { it.title.lowercase() to it.artist.lowercase() }.take(20)
+    fun chartTracks(languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> =
+        homeSections(languageCode)
+            .flatMap { it.tracks }
+            .distinctBy { it.title.lowercase() to it.artist.lowercase() }
+            .take(20)
 
     fun repairHomeSections(sections: List<HomeSection>, languageCode: String): List<HomeSection> {
         if (sections.isEmpty()) return sections
-        return sections.map { section ->
-            section.copy(tracks = repairTracks(section.tracks, languageCode))
+        val legacyEnergyTitles = LevyraLanguageCatalog.languages
+            .map { language -> LevyraContentLocales.forLanguage(language.code).energySectionTitle.trim() }
+            .filter { it.isNotEmpty() }
+        val legacyQuickTitles = LevyraLanguageCatalog.languages
+            .map { language -> LevyraContentLocales.forLanguage(language.code).quickSectionTitle.trim() }
+            .filter { it.isNotEmpty() }
+        fun matchesTitle(section: HomeSection, titles: List<String>): Boolean {
+            val sectionTitle = section.title.trim()
+            return titles.any { title -> sectionTitle.equals(title, ignoreCase = true) }
+        }
+
+        val legacyEnergyTracks = sections
+            .asSequence()
+            .filter { section -> matchesTitle(section, legacyEnergyTitles) }
+            .flatMap { section -> section.tracks.asSequence() }
+            .toList()
+        val repairedSections = sections
+            .filterNot { section -> matchesTitle(section, legacyEnergyTitles) }
+            .map { section ->
+                section.copy(tracks = repairTracks(section.tracks, languageCode))
+            }
+        if (legacyEnergyTracks.isEmpty()) return repairedSections
+
+        val quickIndex = repairedSections.indexOfFirst { section ->
+            matchesTitle(section, legacyQuickTitles)
+        }
+        if (quickIndex < 0) return repairedSections
+
+        val repairedEnergyTracks = repairTracks(legacyEnergyTracks, languageCode)
+        if (repairedEnergyTracks.isEmpty()) return repairedSections
+        val quickSection = repairedSections[quickIndex]
+        val mergedQuickTracks = (quickSection.tracks + repairedEnergyTracks)
+            .distinctBy { track -> seedTrackKey(track.title, track.artist) }
+        return repairedSections.toMutableList().apply {
+            this[quickIndex] = quickSection.copy(tracks = mergedQuickTracks)
         }
     }
 
@@ -85,6 +113,15 @@ object LevyraStartupCatalog {
             .replace(Regex("""\s+"""), " ")
             .trim()
     }
+
+    private fun focusTracks(): List<Track> = listOf(
+        track("Midnight City", "M83", "Hurry Up, We're Dreaming", "dX3k_QDnzHE", setOf("electronic", "night", "drive"), 78, 45, 88),
+        track("Starboy", "The Weeknd", "Starboy", "34Na4j8AVgA", setOf("pop", "night", "drive"), 84, 68, 91),
+        track("Believer", "Imagine Dragons", "Evolve", "7wtfhZwyrcc", setOf("rock", "gym", "energy"), 90, 72, 89),
+        track("One More Time", "Daft Punk", "Discovery", "FGBhQbmPwH8", setOf("electronic", "dance", "classic"), 88, 48, 92),
+        track("Take On Me", "a-ha", "Hunting High and Low", "djV11Xbc914", setOf("pop", "classic", "drive"), 80, 72, 90),
+        track("In The End", "Linkin Park", "Hybrid Theory", "eVTXPUF4Oz4", setOf("rock", "alt", "energy"), 86, 76, 93)
+    )
 
     private fun localTracks(languageCode: String): List<Track> {
         return when (LevyraLanguageCatalog.normalize(languageCode)) {
