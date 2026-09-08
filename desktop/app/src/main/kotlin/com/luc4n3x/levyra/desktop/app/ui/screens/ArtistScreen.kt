@@ -46,6 +46,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
+import com.luc4n3x.levyra.desktop.app.ui.components.rememberArtworkRequest
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
@@ -238,9 +239,9 @@ private fun ArtistHero(
                     )
                 )
         ) {
-            if (artist.bannerUrl.isNotBlank()) {
+            rememberArtworkRequest(artist.bannerUrl)?.let { banner ->
                 AsyncImage(
-                    model = artist.bannerUrl,
+                    model = banner,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -328,7 +329,8 @@ private fun ArtistPortrait(url: String) {
         shadowElevation = 16.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (url.isBlank()) {
+            val portrait = rememberArtworkRequest(url)
+            if (portrait == null) {
                 Icon(
                     imageVector = LevyraIcons.Disc,
                     contentDescription = null,
@@ -337,7 +339,7 @@ private fun ArtistPortrait(url: String) {
                 )
             } else {
                 AsyncImage(
-                    model = url,
+                    model = portrait,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -424,7 +426,8 @@ private fun ArtistRelatedSection(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
-                        if (artist.artworkUrl.isBlank()) {
+                        val avatar = rememberArtworkRequest(artist.artworkUrl)
+                        if (avatar == null) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = LevyraIcons.Disc,
@@ -434,7 +437,7 @@ private fun ArtistRelatedSection(
                             }
                         } else {
                             AsyncImage(
-                                model = artist.artworkUrl,
+                                model = avatar,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()

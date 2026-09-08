@@ -205,7 +205,7 @@ fun TrackRow(
                         onAddToPlaylist()
                     }
                 )
-                if (downloadActions != null) {
+                if (downloadActions != null && !track.isLocalFile) {
                     val record = downloadRecord
                     when (record?.status) {
                         DownloadStatus.QUEUED,
