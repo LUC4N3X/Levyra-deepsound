@@ -7,6 +7,9 @@ import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.model.Track
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorBlockRepository
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorSegment
+import com.luc4n3x.levyra.desktop.core.sponsorblock.SponsorSkipTracker
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import com.luc4n3x.levyra.desktop.core.storage.SessionData
 import com.luc4n3x.levyra.desktop.core.storage.SessionStore
@@ -71,6 +74,7 @@ class PlaybackController(
     private val settingsStore: SettingsStore,
     private val libraryStore: LibraryStore,
     private val sessionStore: SessionStore,
+    private val sponsorBlock: SponsorBlockRepository,
     private val playerFactory: () -> AudioPlayer
 ) {
     private val internalState = MutableStateFlow(
@@ -86,6 +90,8 @@ class PlaybackController(
 
     private val playerScope = CoroutineScope(scope.coroutineContext + SupervisorJob())
     private val transitionLock = Any()
+    private val sponsorSkipTracker = SponsorSkipTracker()
+    private val sponsorSegments = AtomicReference<List<SponsorSegment>>(emptyList())
 
     private var player: AudioPlayer? = null
     private var companionPlayer: AudioPlayer? = null
@@ -99,6 +105,7 @@ class PlaybackController(
     private var transitionActive: Boolean = false
     private var playbackJob: Job? = null
     private var eventJob: Job? = null
+    private var sponsorJob: Job? = null
     private var persistJob: Job? = null
     private var prefetchJob: Job? = null
     private var sleepJob: Job? = null
@@ -292,6 +299,10 @@ class PlaybackController(
 
     fun seekTo(positionMs: Long) {
         cancelTransition()
+        seekWithinTrack(positionMs)
+    }
+
+    private fun seekWithinTrack(positionMs: Long) {
         val safe = positionMs.coerceAtLeast(0L)
         pendingResumeMs = safe
         player?.seekTo(safe)
@@ -370,6 +381,7 @@ class PlaybackController(
 
     fun stop() {
         cancelTransition()
+        clearSponsorBlockWatch()
         playbackJob?.cancel()
         player?.stop()
         internalState.update { state ->
@@ -384,6 +396,7 @@ class PlaybackController(
     }
 
     fun shutdown() {
+        clearSponsorBlockWatch()
         transitionJob?.cancel()
         transitionEventJob?.cancel()
         prepareJob?.cancel()
@@ -406,6 +419,7 @@ class PlaybackController(
     private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false) {
         val track = internalState.value.queue.current ?: return
         cancelTransition()
+        clearSponsorBlockWatch()
         playbackJob?.cancel()
         if (track.id != prefetchedTrackId) {
             prefetchJob?.cancel()
@@ -498,6 +512,7 @@ class PlaybackController(
             durationMs = if (resolved.durationMs > 0L) resolved.durationMs else track.durationMs
         )
         updateTrackMetadata(enriched)
+        startSponsorBlockWatch(enriched)
         activePlayer.play(resolved.url, startAtMs)
         val current = internalState.value
         activePlayer.setVolume(current.volume)
@@ -568,6 +583,43 @@ class PlaybackController(
         }
         internalState.update { state -> state.copy(queue = advanced) }
         startCurrent(0L)
+    }
+
+    private fun startSponsorBlockWatch(track: Track) {
+        clearSponsorBlockWatch()
+        if (!settingsStore.current.sponsorBlock) return
+        val videoId = Track.videoIdOf(track.videoUrl)
+        if (videoId.isBlank()) return
+        sponsorSkipTracker.bind(track.id)
+        sponsorJob = playerScope.launch {
+            val segments = try {
+                sponsorBlock.segmentsFor(videoId)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                DesktopDiagnostics.background("sponsor segments of ${track.title}", error)
+                return@launch
+            }
+            if (segments.isNotEmpty() && internalState.value.queue.current?.id == track.id) {
+                sponsorSegments.set(segments)
+            }
+        }
+    }
+
+    private fun clearSponsorBlockWatch() {
+        sponsorJob?.cancel()
+        sponsorJob = null
+        sponsorSegments.set(emptyList())
+        sponsorSkipTracker.reset()
+    }
+
+    private fun maybeSkipSponsorSegment(positionMs: Long) {
+        if (transitionActive || !settingsStore.current.sponsorBlock) return
+        val segments = sponsorSegments.get()
+        if (segments.isEmpty()) return
+        val trackId = internalState.value.queue.current?.id ?: return
+        val target = sponsorSkipTracker.planSkip(trackId, positionMs, segments) ?: return
+        seekWithinTrack(target)
     }
 
     private fun maybePrepareHandoff() {
@@ -857,7 +909,10 @@ class PlaybackController(
                 streamLabel = streamLabel
             )
         }
-        advanced.current?.let(libraryStore::recordPlayback)
+        advanced.current?.let { track ->
+            startSponsorBlockWatch(track)
+            libraryStore.recordPlayback(track)
+        }
         persistSession()
     }
 
@@ -1073,6 +1128,7 @@ class PlaybackController(
             is PlayerEvent.TimeChanged -> {
                 pendingResumeMs = event.positionMs
                 internalState.update { state -> state.copy(positionMs = event.positionMs) }
+                maybeSkipSponsorSegment(event.positionMs)
                 maybePrefetchNext()
                 maybePrepareHandoff()
             }
