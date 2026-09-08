@@ -503,8 +503,9 @@ class VlcAudioPlayer private constructor(
     }
 
     private fun shouldIgnoreTerminalEvent(eventPlayer: MediaPlayer): Boolean {
-        if (released.get() || replacementGuard.shouldSuppressTerminalEvent()) return true
-        return !eventTargetsLoadedMedia(eventPlayer)
+        if (released.get()) return true
+        if (eventTargetsLoadedMedia(eventPlayer)) return false
+        return replacementGuard.shouldSuppressTerminalEvent()
     }
 
     private fun shouldIgnoreReplacementEvent(eventPlayer: MediaPlayer): Boolean =

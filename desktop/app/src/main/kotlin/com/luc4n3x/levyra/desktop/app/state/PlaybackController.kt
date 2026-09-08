@@ -153,6 +153,22 @@ class PlaybackController(
                     companionPlayer?.applyOutputDevice(deviceId)
                 }
         }
+        playerScope.launch {
+            settingsStore.settings
+                .map { it.sponsorBlock }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    if (enabled) {
+                        internalState.value.queue.current?.let { track ->
+                            if (!track.isLocalFile) {
+                                startSponsorBlockWatch(track)
+                            }
+                        }
+                    } else {
+                        clearSponsorBlockWatch()
+                    }
+                }
+        }
     }
 
     fun refreshAudioOutputDevices(createEngine: Boolean = false) {

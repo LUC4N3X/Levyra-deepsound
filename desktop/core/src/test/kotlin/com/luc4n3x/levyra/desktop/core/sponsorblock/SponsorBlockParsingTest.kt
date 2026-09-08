@@ -64,4 +64,18 @@ class SponsorBlockParsingTest {
         val body = """[{"videoID":"v","segments":[{"segment":[0,10],"category":"sponsor","actionType":"mute"}]}]"""
         assertEquals("mute", parseSponsorSegments(body, "v")?.first()?.actionType)
     }
+
+    @Test
+    fun missingOrUnsupportedCategoriesAreDropped() {
+        val body = """
+            [{"videoID":"v","segments":[
+              {"segment":[1,5],"category":"sponsor","UUID":"valid"},
+              {"segment":[6,10],"category":"","UUID":"blank"},
+              {"segment":[11,15],"category":"unknown_category","UUID":"unknown"},
+              {"segment":[16,20],"UUID":"missing"}
+            ]}]
+        """.trimIndent()
+        val segments = parseSponsorSegments(body, "v")
+        assertEquals(listOf("valid"), segments?.map { it.uuid })
+    }
 }

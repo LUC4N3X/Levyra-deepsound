@@ -28,6 +28,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import com.luc4n3x.levyra.desktop.app.state.CollectionUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.CollectionCard
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
@@ -330,7 +335,8 @@ private fun ArtistPortrait(url: String) {
     ) {
         Box(contentAlignment = Alignment.Center) {
             val portrait = rememberArtworkRequest(url)
-            if (portrait == null) {
+            var unavailable by remember(url) { mutableStateOf(false) }
+            if (portrait == null || unavailable) {
                 Icon(
                     imageVector = LevyraIcons.Disc,
                     contentDescription = null,
@@ -342,6 +348,11 @@ private fun ArtistPortrait(url: String) {
                     model = portrait,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    onState = { state ->
+                        if (state is AsyncImagePainter.State.Error) {
+                            unavailable = true
+                        }
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -427,7 +438,8 @@ private fun ArtistRelatedSection(
                         color = MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
                         val avatar = rememberArtworkRequest(artist.artworkUrl)
-                        if (avatar == null) {
+                        var unavailable by remember(artist.artworkUrl) { mutableStateOf(false) }
+                        if (avatar == null || unavailable) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = LevyraIcons.Disc,
@@ -440,6 +452,11 @@ private fun ArtistRelatedSection(
                                 model = avatar,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                onState = { state ->
+                                    if (state is AsyncImagePainter.State.Error) {
+                                        unavailable = true
+                                    }
+                                },
                                 modifier = Modifier.fillMaxSize()
                             )
                         }

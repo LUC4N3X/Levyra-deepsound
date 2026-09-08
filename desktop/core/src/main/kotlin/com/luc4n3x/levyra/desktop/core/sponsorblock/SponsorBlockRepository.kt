@@ -4,8 +4,11 @@ import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -41,7 +44,7 @@ class SponsorBlockRepository(
         }
     }
 
-    private fun fetch(videoId: String): SponsorBlockResponse? {
+    private suspend fun fetch(videoId: String): SponsorBlockResponse? {
         val categories = URLEncoder.encode(
             SKIPPABLE_CATEGORIES.joinToString(",", prefix = "[", postfix = "]") { "\"$it\"" },
             StandardCharsets.UTF_8
@@ -52,8 +55,12 @@ class SponsorBlockRepository(
             .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
             .header("Accept", "application/json")
             .build()
-        return runCatching {
-            client.newCall(request).execute().use { response ->
+        val call = client.newCall(request)
+        val cancellationHandle = currentCoroutineContext()[Job]?.invokeOnCompletion {
+            call.cancel()
+        }
+        return try {
+            call.execute().use { response ->
                 when {
                     response.code == HTTP_NOT_FOUND -> SponsorBlockResponse.Empty
                     !response.isSuccessful -> null
@@ -61,7 +68,13 @@ class SponsorBlockRepository(
                     else -> boundedBody(response)
                 }
             }
-        }.getOrNull()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            null
+        } finally {
+            cancellationHandle?.dispose()
+        }
     }
 
     private fun boundedBody(response: Response): SponsorBlockResponse? {
@@ -104,18 +117,18 @@ class SponsorBlockRepository(
         const val CACHE_LIMIT = 200
         const val NEGATIVE_TTL_MS = 2L * 60L * 1000L
         const val POSITIVE_TTL_MS = 30L * 60L * 1000L
-
-        val SKIPPABLE_CATEGORIES = listOf(
-            "sponsor",
-            "selfpromo",
-            "intro",
-            "outro",
-            "interaction",
-            "music_offtopic",
-            "preview"
-        )
     }
 }
+
+internal val SKIPPABLE_CATEGORIES = listOf(
+    "sponsor",
+    "selfpromo",
+    "intro",
+    "outro",
+    "interaction",
+    "music_offtopic",
+    "preview"
+)
 
 internal fun hashPrefixOf(videoId: String): String =
     MessageDigest.getInstance("SHA-256")
@@ -135,7 +148,6 @@ internal fun parseSponsorSegments(body: String, videoId: String): List<SponsorSe
 }
 
 private const val HASH_PREFIX_BYTES = 2
-private const val DEFAULT_CATEGORY = "sponsor"
 
 private val sponsorJson = Json { ignoreUnknownKeys = true }
 
@@ -146,10 +158,12 @@ private fun toSponsorSegment(element: JsonElement): SponsorSegment? {
     val startMs = range[0].milliseconds() ?: return null
     val endMs = range[1].milliseconds() ?: return null
     if (endMs <= startMs) return null
+    val category = entry.text("category").trim()
+    if (category !in SKIPPABLE_CATEGORIES) return null
     return SponsorSegment(
         startMs = startMs,
         endMs = endMs,
-        category = entry.text("category").ifBlank { DEFAULT_CATEGORY },
+        category = category,
         uuid = entry.text("UUID").trim(),
         actionType = entry.text("actionType").trim().ifBlank { SPONSOR_SEGMENT_ACTION_SKIP }
     )
