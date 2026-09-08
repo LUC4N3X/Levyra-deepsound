@@ -72,6 +72,43 @@ class LevyraStartupCatalogTest {
     }
 
     @Test
+    fun repairHomeSectionsMigratesLegacyEnergyShelfAfterLanguageChange() {
+        val allEnergyTitles = LevyraLanguageCatalog.languages
+            .map { language -> LevyraContentLocales.forLanguage(language.code).energySectionTitle.trim() }
+            .filter { it.isNotEmpty() }
+
+        LevyraLanguageCatalog.languages.forEach { savedLanguage ->
+            val targetLanguageCode = if (savedLanguage.code == "en") "it" else "en"
+            val savedLocale = LevyraContentLocales.forLanguage(savedLanguage.code)
+            val startupTracks = LevyraStartupCatalog.homeSections(savedLanguage.code).flatMap { it.tracks }
+            val quickTrack = startupTracks.first { it.title == "Bohemian Rhapsody" }
+            val energyTrack = startupTracks.first { it.title == "Midnight City" }
+
+            val repaired = LevyraStartupCatalog.repairHomeSections(
+                listOf(
+                    HomeSection(savedLocale.quickSectionTitle, listOf(quickTrack)),
+                    HomeSection(savedLocale.energySectionTitle, listOf(energyTrack))
+                ),
+                targetLanguageCode
+            )
+
+            assertFalse(
+                "Legacy ${savedLanguage.code} energy shelf survived after switching to $targetLanguageCode",
+                repaired.any { section ->
+                    allEnergyTitles.any { title -> section.title.trim().equals(title, ignoreCase = true) }
+                }
+            )
+            val quick = repaired.single { section ->
+                section.title.trim().equals(savedLocale.quickSectionTitle.trim(), ignoreCase = true)
+            }
+            assertEquals(
+                setOf("Bohemian Rhapsody", "Midnight City"),
+                quick.tracks.mapTo(mutableSetOf()) { it.title }
+            )
+        }
+    }
+
+    @Test
     fun chartFallbackStillContainsTwentyStartupSeeds() {
         val tracks = LevyraStartupCatalog.chartTracks("en")
         val titles = tracks.mapTo(mutableSetOf()) { it.title }
