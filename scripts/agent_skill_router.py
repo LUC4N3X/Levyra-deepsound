@@ -36,7 +36,7 @@ ROUTES = (
     route(
         "levyra-mode",
         "owner-directed action-first execution",
-        r"\blevyra[- ]mode\b|^\s*vai\b|^\s*procedi\b|^\s*intervieni\b|\bfai tu\b|\bfallo tu\b|\bfalla tu\b|(?:apri|crea|open|create).{0,30}\b(?:pr|pull request)\b",
+        r"\blevyra[- ]mode\b|^\s*(?:(?:ok|okay|ora|adesso|dai)\s*[,;:.-]?\s*)*(?:vai|procedi|intervieni)\b|\bfai tu\b|\bfallo tu\b|\bfalla tu\b|(?:apri|crea|open|create).{0,30}\b(?:pr|pull request)\b",
     ),
     route(
         "levyra-real-engineering",
@@ -200,7 +200,7 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
 def context_for(prompt: str) -> str:
     matched = route_prompt(prompt)
     if not matched:
-        return "No specialized Levyra skill matched; always-on guards still apply."
+        return ""
 
     lines = ["Mandatory skill load (only these routed skills):"]
     for skill, topic in matched:
