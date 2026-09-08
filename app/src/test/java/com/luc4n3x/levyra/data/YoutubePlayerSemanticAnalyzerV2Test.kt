@@ -204,6 +204,22 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
+    fun signatureDiscoveryIgnoresUnrelatedDecodeNoise() {
+        val javascript = buildString {
+            repeat(100) { index ->
+                append("var noise$index=decodeURIComponent(value$index);")
+            }
+            append("var decoded=decodeURIComponent(cipher.s);")
+            append("var signed=SemanticSig(decoded);")
+            append("query.set(signatureKey,encodeURIComponent(signed));")
+        }
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertEquals("SemanticSig(INPUT)", result.signatures.first().expression)
+    }
+
+    @Test
     fun nDiscoveryIgnoresUnrelatedNStringNoise() {
         val javascript = buildString {
             repeat(100) { index ->
