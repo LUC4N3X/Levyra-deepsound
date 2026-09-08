@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.desktop.app.state
 import com.luc4n3x.levyra.desktop.app.DesktopDiagnostics
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRateLimitException
+import com.luc4n3x.levyra.desktop.core.localmusic.LocalMediaSource
+import com.luc4n3x.levyra.desktop.core.localmusic.resolveLocalFile
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
@@ -449,9 +451,52 @@ class PlaybackController(
         if (forceRestart) {
             activePlayer.stop()
         }
+        if (track.isLocalFile) {
+            val localSource = resolveLocalSource(track)
+            if (localSource == null) {
+                internalState.update { state -> state.copy(preparingTrackId = "") }
+                messageFlow.tryEmit("File locale non disponibile: ${track.title}")
+                skipAfterFailure(track)
+                return
+            }
+            beginLocalPlayback(activePlayer, track, localSource, startAtMs)
+            return
+        }
         val playable = resolvePlayable(track) ?: return
         val resolved = resolveStream(playable, track) ?: return
         beginPlayback(activePlayer, track, resolved, startAtMs)
+    }
+
+    private fun resolveLocalSource(track: Track): LocalMediaSource? {
+        val file = resolveLocalFile(track.offlinePath) ?: return null
+        return LocalMediaSource(
+            url = file.toUri().toASCIIString(),
+            label = track.offlineMediaLabel.ifBlank { "Local" }
+        )
+    }
+
+    private fun beginLocalPlayback(
+        activePlayer: AudioPlayer,
+        track: Track,
+        source: LocalMediaSource,
+        startAtMs: Long
+    ) {
+        clearSponsorBlockWatch()
+        activePlayer.play(source.url, startAtMs)
+        val current = internalState.value
+        activePlayer.setVolume(current.volume)
+        activePlayer.setMuted(current.muted)
+        applySpeed(settingsStore.current.playbackSpeed, activePlayer)
+        internalState.update { state ->
+            state.copy(
+                preparingTrackId = "",
+                status = PlaybackStatus.BUFFERING,
+                streamLabel = source.label,
+                durationMs = if (track.durationMs > 0L) track.durationMs else state.durationMs
+            )
+        }
+        libraryStore.recordPlayback(track)
+        persistSession()
     }
 
     private suspend fun resolvePlayable(track: Track): Track? {
@@ -567,7 +612,9 @@ class PlaybackController(
     }
 
     private fun skipAfterFailure(track: Track) {
-        resolver.invalidate(track)
+        if (!track.isLocalFile) {
+            resolver.invalidate(track)
+        }
         val queue = internalState.value.queue
         consecutiveFailures += 1
         if (queue.items.size <= 1 || consecutiveFailures >= queue.items.size) {
@@ -666,15 +713,33 @@ class PlaybackController(
             val companion = ensureCompanion() ?: return
             val settings = settingsStore.current
             val playable = resolveHandoffTrack(next) ?: return
-            val resolved = try {
-                resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Exception) {
-                DesktopDiagnostics.background("handoff resolve of ${next.title}", error)
-                return
+            val resolvedUrl: String
+            val streamLabel: String
+            val enriched: Track
+            if (playable.isLocalFile) {
+                val source = resolveLocalSource(playable) ?: return
+                resolvedUrl = source.url
+                streamLabel = source.label
+                enriched = playable
+            } else {
+                val resolved = try {
+                    resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Exception) {
+                    DesktopDiagnostics.background("handoff resolve of ${next.title}", error)
+                    return
+                }
+                resolvedUrl = resolved.url
+                streamLabel = resolved.label
+                enriched = playable.copy(
+                    title = resolved.title.ifBlank { playable.title },
+                    artist = resolved.artist.ifBlank { playable.artist },
+                    artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
+                    durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
+                )
             }
-            if (!companion.prepare(resolved.url, 0L)) return
+            if (!companion.prepare(resolvedUrl, 0L)) return
             currentCoroutineContext().ensureActive()
             companion.setVolume(0)
             companion.setMuted(internalState.value.muted)
@@ -682,12 +747,6 @@ class PlaybackController(
             companion.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
             companion.applyOutputDevice(effectiveOutputDeviceId(settings.audioOutputDeviceId))
             companion.setSpeed(DesktopSettings.normalizeSpeed(settings.playbackSpeed))
-            val enriched = playable.copy(
-                title = resolved.title.ifBlank { playable.title },
-                artist = resolved.artist.ifBlank { playable.artist },
-                artworkUrl = resolved.artworkUrl.ifBlank { playable.artworkUrl },
-                durationMs = if (resolved.durationMs > 0L) resolved.durationMs else playable.durationMs
-            )
             published = synchronized(transitionLock) {
                 if (
                     prepareJob !== ownerJob ||
@@ -698,7 +757,7 @@ class PlaybackController(
                 } else {
                     preparedTrackId = next.id
                     preparedTransitionMs = transitionMs
-                    preparedStreamLabel = resolved.label
+                    preparedStreamLabel = streamLabel
                     true
                 }
             }
@@ -1143,7 +1202,9 @@ class PlaybackController(
         val track = internalState.value.queue.current ?: return
         if (retriedTrackId != track.id) {
             retriedTrackId = track.id
-            resolver.invalidate(track)
+            if (!track.isLocalFile) {
+                resolver.invalidate(track)
+            }
             startCurrent(0L)
             return
         }

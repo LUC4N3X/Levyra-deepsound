@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.desktop.player
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
+import com.luc4n3x.levyra.desktop.core.localmusic.matchesMediaUrl
+import com.luc4n3x.levyra.desktop.core.localmusic.resolveLocalFile
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import java.net.URI
 import java.nio.file.Path
@@ -470,7 +472,13 @@ class VlcAudioPlayer private constructor(
     }
 
     private fun playbackLocation(url: String): String? {
-        if (!shouldBridgeYoutubePlayback(url)) return youtubePlaybackUrl(url)
+        if (!shouldBridgeYoutubePlayback(url)) {
+            val localFile = resolveLocalFile(url)
+            if (localFile != null) {
+                return localFile.toUri().toASCIIString()
+            }
+            return youtubePlaybackUrl(url)
+        }
         return runCatching {
             bridge().openSession(url).also { activeBridgeUrl = it }
         }.getOrElse {
@@ -510,7 +518,9 @@ class VlcAudioPlayer private constructor(
         val expectedUrl = loadedUrl
         if (expectedUrl.isBlank()) return false
         val currentUrl = runCatching { eventPlayer.media().info().mrl().orEmpty() }.getOrDefault("")
-        return currentUrl == expectedUrl || allowUnknownMrl && currentUrl.isBlank()
+        if (currentUrl.isBlank()) return allowUnknownMrl
+        if (currentUrl == expectedUrl) return true
+        return matchesMediaUrl(currentUrl, expectedUrl)
     }
 
     private fun bridge(): YoutubeLocalStreamBridge = synchronized(bridgeLock) {
