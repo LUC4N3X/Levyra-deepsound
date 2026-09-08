@@ -51,43 +51,42 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
 
     private fun discoverSignatures(javascript: String): List<YoutubeSemanticTransformCandidate> {
         val output = ArrayList<YoutubeSemanticTransformCandidate>()
-        scanWindows(javascript, listOf("decodeURIComponent"), SIGNATURE_BEFORE_CHARS, SIGNATURE_AFTER_CHARS)
-            .forEach { window ->
-                val lexemes = tokenize(javascript, window.start, window.end)
-                val decode = lexemes.indexOfFirst { lexeme ->
-                    lexeme.kind == LexemeKind.IDENTIFIER &&
-                        lexeme.text == "decodeURIComponent" &&
-                        window.anchor in lexeme.start until lexeme.end
-                }
-                if (decode < 0 || lexemes.getOrNull(decode + 1)?.text != "(") return@forEach
-                val decodeClose = matchingParen(lexemes, decode + 1) ?: return@forEach
-                if (!mentionsKey(lexemes, decode + 2, decodeClose - 1, "s")) return@forEach
-                val sourceEvidence = 30
-
-                enclosingCalls(lexemes, decode, decodeClose).forEach { call ->
-                    if (isNonTransformTarget(call.target)) return@forEach
-                    val expression = expressionForRange(lexemes, call, decode, decodeClose) ?: return@forEach
-                    val outputVariable = assignedVariableForExpression(lexemes, call.targetStart)
-                    val sinkEvidence = when {
-                        outputVariable != null && isWholeAssignedExpression(lexemes, call) ->
-                            signatureSinkScore(lexemes, call.close + 1, outputVariable)
-                        isNestedInCallable(lexemes, call.targetStart, call.close, "encodeURIComponent") -> 35
-                        else -> 0
-                    }
-                    addIfConfident(output, expression, 70 + sourceEvidence + sinkEvidence)
-                }
-
-                val sourceVariable = assignedVariableForExpression(lexemes, decode)
-                if (sourceVariable != null) {
-                    output += followVariableFlow(
-                        lexemes = lexemes,
-                        startIndex = decodeClose + 1,
-                        sourceVariable = sourceVariable,
-                        baseConfidence = 70 + sourceEvidence,
-                        sinkScore = ::signatureSinkScore
-                    )
-                }
+        scanSignatureWindows(javascript).forEach { window ->
+            val lexemes = tokenize(javascript, window.start, window.end)
+            val decode = lexemes.indexOfFirst { lexeme ->
+                lexeme.kind == LexemeKind.IDENTIFIER &&
+                    lexeme.text == "decodeURIComponent" &&
+                    window.anchor in lexeme.start until lexeme.end
             }
+            if (decode < 0 || lexemes.getOrNull(decode + 1)?.text != "(") return@forEach
+            val decodeClose = matchingParen(lexemes, decode + 1) ?: return@forEach
+            if (!mentionsKey(lexemes, decode + 2, decodeClose - 1, "s")) return@forEach
+            val sourceEvidence = 30
+
+            enclosingCalls(lexemes, decode, decodeClose).forEach { call ->
+                if (isNonTransformTarget(call.target)) return@forEach
+                val expression = expressionForRange(lexemes, call, decode, decodeClose) ?: return@forEach
+                val outputVariable = assignedVariableForExpression(lexemes, call.targetStart)
+                val sinkEvidence = when {
+                    outputVariable != null && isWholeAssignedExpression(lexemes, call) ->
+                        signatureSinkScore(lexemes, call.close + 1, outputVariable)
+                    isNestedInCallable(lexemes, call.targetStart, call.close, "encodeURIComponent") -> 35
+                    else -> 0
+                }
+                addIfConfident(output, expression, 70 + sourceEvidence + sinkEvidence)
+            }
+
+            val sourceVariable = assignedVariableForExpression(lexemes, decode)
+            if (sourceVariable != null) {
+                output += followVariableFlow(
+                    lexemes = lexemes,
+                    startIndex = decodeClose + 1,
+                    sourceVariable = sourceVariable,
+                    baseConfidence = 70 + sourceEvidence,
+                    sinkScore = ::signatureSinkScore
+                )
+            }
+        }
         return output
     }
 
@@ -555,6 +554,39 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return null
     }
 
+    private fun scanSignatureWindows(javascript: String): List<ScanWindow> {
+        val output = ArrayList<ScanWindow>()
+        val seen = HashSet<Long>()
+        var cursor = 0
+        while (cursor < javascript.length && output.size < MAX_ANCHORS_PER_KIND) {
+            val anchor = javascript.indexOf("decodeURIComponent", cursor)
+            if (anchor < 0) break
+            if (isSignatureDecodeAnchor(javascript, anchor)) {
+                val start = (anchor - SIGNATURE_BEFORE_CHARS).coerceAtLeast(0)
+                val end = (anchor + "decodeURIComponent".length + SIGNATURE_AFTER_CHARS)
+                    .coerceAtMost(javascript.length)
+                val identity = (start.toLong() shl 32) xor end.toLong()
+                if (seen.add(identity)) output += ScanWindow(start, end, anchor)
+            }
+            cursor = anchor + "decodeURIComponent".length
+        }
+        return output
+    }
+
+    private fun isSignatureDecodeAnchor(source: String, anchor: Int): Boolean {
+        val start = anchor.coerceAtLeast(0)
+        val end = (anchor + SIGNATURE_SOURCE_PROBE_CHARS).coerceAtMost(source.length)
+        val lexemes = tokenize(source, start, end)
+        val decode = lexemes.indexOfFirst { lexeme ->
+            lexeme.kind == LexemeKind.IDENTIFIER &&
+                lexeme.text == "decodeURIComponent" &&
+                anchor in lexeme.start until lexeme.end
+        }
+        if (decode < 0 || lexemes.getOrNull(decode + 1)?.text != "(") return false
+        val close = matchingParen(lexemes, decode + 1) ?: return false
+        return mentionsKey(lexemes, decode + 2, close - 1, "s")
+    }
+
     private fun scanNWindows(javascript: String): List<ScanWindow> {
         val output = ArrayList<ScanWindow>()
         val seen = HashSet<Long>()
@@ -568,7 +600,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
             ) {
                 val anchor = javascript.indexOf(needle, cursor)
                 if (anchor < 0) break
-                if (isRawGetKey(javascript, anchor)) {
+                if (isNGetAnchor(javascript, anchor)) {
                     val start = (anchor - N_BEFORE_CHARS).coerceAtLeast(0)
                     val end = (anchor + needle.length + N_AFTER_CHARS).coerceAtMost(javascript.length)
                     val identity = (start.toLong() shl 32) xor end.toLong()
@@ -581,46 +613,16 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return output.sortedBy { it.anchor }
     }
 
-    private fun isRawGetKey(source: String, keyStart: Int): Boolean {
-        var index = keyStart - 1
-        while (index >= 0 && source[index].isWhitespace()) index--
-        if (index < 0 || source[index] != '(') return false
-        index--
-        while (index >= 0 && source[index].isWhitespace()) index--
-        val identifierEnd = index + 1
-        while (index >= 0 && isIdentifierPart(source[index])) index--
-        if (source.substring(index + 1, identifierEnd) != "get") return false
-        while (index >= 0 && source[index].isWhitespace()) index--
-        return index >= 0 && source[index] == '.'
-    }
-
-    private fun scanWindows(
-        javascript: String,
-        needles: List<String>,
-        before: Int,
-        after: Int
-    ): List<ScanWindow> {
-        val output = ArrayList<ScanWindow>()
-        val seen = HashSet<Long>()
-        needles.forEach { needle ->
-            var cursor = 0
-            var foundForNeedle = 0
-            while (
-                cursor < javascript.length &&
-                foundForNeedle < MAX_ANCHORS_PER_NEEDLE &&
-                output.size < MAX_ANCHORS_PER_KIND
-            ) {
-                val anchor = javascript.indexOf(needle, cursor)
-                if (anchor < 0) break
-                val start = (anchor - before).coerceAtLeast(0)
-                val end = (anchor + needle.length + after).coerceAtMost(javascript.length)
-                val identity = (start.toLong() shl 32) xor end.toLong()
-                if (seen.add(identity)) output += ScanWindow(start, end, anchor)
-                foundForNeedle++
-                cursor = anchor + needle.length
-            }
+    private fun isNGetAnchor(source: String, anchor: Int): Boolean {
+        val start = (anchor - N_SOURCE_PROBE_BEFORE_CHARS).coerceAtLeast(0)
+        val end = (anchor + N_SOURCE_PROBE_AFTER_CHARS).coerceAtMost(source.length)
+        val lexemes = tokenize(source, start, end)
+        val keyIndex = lexemes.indexOfFirst { lexeme ->
+            lexeme.kind == LexemeKind.STRING &&
+                lexeme.text == "n" &&
+                anchor in lexeme.start until lexeme.end
         }
-        return output.sortedBy { it.anchor }
+        return isGetCallKey(lexemes, keyIndex)
     }
 
     private fun tokenize(source: String, start: Int, endExclusive: Int): List<Lexeme> {
@@ -754,6 +756,9 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
     private const val MAX_CALLABLE_LENGTH = 64
     private const val SIGNATURE_BEFORE_CHARS = 1_200
     private const val SIGNATURE_AFTER_CHARS = 2_600
+    private const val SIGNATURE_SOURCE_PROBE_CHARS = 320
     private const val N_BEFORE_CHARS = 1_800
     private const val N_AFTER_CHARS = 2_600
+    private const val N_SOURCE_PROBE_BEFORE_CHARS = 64
+    private const val N_SOURCE_PROBE_AFTER_CHARS = 32
 }
