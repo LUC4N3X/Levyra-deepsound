@@ -37,22 +37,57 @@ internal class ChartOfficialArtworkResolver(context: Context) {
         if (tracks.isEmpty()) return@withContext tracks
         val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: DEFAULT_COUNTRY
         val resolved = ConcurrentHashMap<String, CachedArtwork>()
+        val correctedTracks = ConcurrentHashMap<String, Track>()
 
         withTimeoutOrNull(TOTAL_ARTWORK_BUDGET_MS) {
             coroutineScope {
                 tracks.map { track ->
                     async {
-                        val key = identityKey(track)
-                        val artwork = lookupSlots.withPermit { resolve(key, track, normalizedCountry) }
-                        if (artwork != null) resolved[key] = artwork
+                        val originalKey = identityKey(track)
+                        val correctedTrack = if (isKnownMisattributedPlaybackArtist(track.artist)) {
+                            lookupSlots.withPermit { recoverCanonicalMetadata(track) }
+                        } else {
+                            track
+                        }
+                        correctedTracks[originalKey] = correctedTrack
+                        val correctedKey = identityKey(correctedTrack)
+                        val artwork = lookupSlots.withPermit { resolve(correctedKey, correctedTrack, normalizedCountry) }
+                        if (artwork != null) resolved[originalKey] = artwork
                     }
                 }.awaitAll()
             }
         }
 
         tracks.map { track ->
-            resolved[identityKey(track)]?.applyTo(track) ?: cached(identityKey(track))?.applyTo(track) ?: track
+            val originalKey = identityKey(track)
+            val correctedTrack = correctedTracks[originalKey] ?: track
+            resolved[originalKey]?.applyTo(correctedTrack)
+                ?: cached(identityKey(correctedTrack))?.applyTo(correctedTrack)
+                ?: correctedTrack
         }
+    }
+
+    private suspend fun recoverCanonicalMetadata(track: Track): Track {
+        if (!isKnownMisattributedPlaybackArtist(track.artist)) return track
+        val candidates = withTimeoutOrNull(CANONICAL_METADATA_LOOKUP_MS) {
+            youtubeMusicRepository.search(track.title, CANONICAL_METADATA_CANDIDATE_LIMIT)
+        }.orEmpty()
+        val best = bestCanonicalPlaybackMetadataMatch(track, candidates) ?: return track
+        return track.copy(
+            artist = best.artist,
+            album = track.album.ifBlank { best.album },
+            isrc = track.isrc.ifBlank { best.isrc },
+            upc = track.upc.ifBlank { best.upc },
+            releaseDate = track.releaseDate.ifBlank { best.releaseDate },
+            year = track.year.ifBlank { best.year },
+            trackNumber = track.trackNumber.takeIf { it > 0 } ?: best.trackNumber,
+            discNumber = track.discNumber.takeIf { it > 0 } ?: best.discNumber,
+            explicit = track.explicit || best.explicit,
+            albumBrowseId = track.albumBrowseId.ifBlank { best.albumBrowseId },
+            artistBrowseIds = best.artistBrowseIds.ifEmpty { track.artistBrowseIds },
+            metadataProvider = best.metadataProvider.ifBlank { best.source.ifBlank { track.metadataProvider } },
+            metadataConfidence = maxOf(track.metadataConfidence, best.metadataConfidence)
+        )
     }
 
     private suspend fun resolve(key: String, track: Track, country: String): CachedArtwork? {
@@ -193,9 +228,6 @@ internal class ChartOfficialArtworkResolver(context: Context) {
             thumbnailUrl.isNotBlank() && now - cachedAt in 0 until ARTWORK_TTL_MS
 
         fun applyTo(track: Track): Track {
-            // An editorial row already carries the catalog's album cover. Keep it: it is the artwork the
-            // user is looking at, and replacing it with a title/artist match would make the row and the
-            // player disagree. The rest of the looked-up metadata is still worth taking.
             val editorialArtwork = track.source.equals(EDITORIAL_ARTWORK_SOURCE, ignoreCase = true) &&
                 track.thumbnailUrl.isNotBlank()
             val resolvedThumbnail = if (editorialArtwork) track.thumbnailUrl else thumbnailUrl
@@ -218,9 +250,6 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 metadataProvider = provider.ifBlank { track.metadataProvider },
                 metadataConfidence = maxOf(track.metadataConfidence, confidence(score)),
                 canonicalAlbumUrl = canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
-                // The lock exists to hold editorial cover art through playback resolution. Stamping it on
-                // every enriched chart track would also freeze YouTube/Apple chart artwork, which is not
-                // what it is for.
                 moodTags = if (editorialArtwork) {
                     track.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
                 } else {
@@ -317,6 +346,8 @@ internal class ChartOfficialArtworkResolver(context: Context) {
         const val KEY_LOCK_COUNT = 64
         const val MAX_CONCURRENT_LOOKUPS = 8
         const val TOTAL_ARTWORK_BUDGET_MS = 7_000L
+        const val CANONICAL_METADATA_LOOKUP_MS = 1_800L
+        const val CANONICAL_METADATA_CANDIDATE_LIMIT = 12
         const val ARTWORK_TTL_MS = 90L * 24L * 60L * 60L * 1000L
         const val MISS_TTL_MS = 12L * 60L * 60L * 1000L
         const val MIN_YOUTUBE_MATCH_SCORE = 150
