@@ -34,10 +34,14 @@ class DirectAudioFallbackContractTest {
         val loop = resolver.indexOf("for ((format, _, label) in audioCandidates)", candidates)
         val assignment = resolver.indexOf("bestAudioUrl = url", loop)
         val candidateProbe = resolver.substring(loop, assignment)
+        val normalizedProbe = candidateProbe.replace(Regex("\\s+"), " ")
 
-        assertTrue(candidateProbe.contains("if (!isVideoMode && !preferMp4Audio &&"))
-        assertTrue(candidateProbe.contains("identity = clientIdentity"))
-        assertTrue(candidateProbe.contains("trustAttestedGoogleVideo = false"))
+        assertTrue(
+            normalizedProbe.contains(
+                "if (!isVideoMode && !preferMp4Audio && !verifyDirectAudioUrlFast( " +
+                    "url, identity = clientIdentity, trustAttestedGoogleVideo = false ) ) continue"
+            )
+        )
         assertTrue(resolver.contains("trustAttestedGoogleVideo: Boolean = true"))
     }
 
