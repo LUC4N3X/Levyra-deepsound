@@ -18,7 +18,7 @@ class EvalCase:
     required: tuple[str, ...] = ()
     forbidden: tuple[str, ...] = ()
     max_skills: int = 6
-    max_context_bytes: int = 4096
+    max_context_bytes: int = 2048
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,38 @@ class EvalResult:
 
 
 CASES = (
+    EvalCase(
+        "owner-action-mode",
+        "VAI, intervieni e apri la PR",
+        required=("levyra-mode", "levyra-pr-review", "levyra-humanizer"),
+        max_skills=3,
+    ),
+    EvalCase(
+        "owner-action-playback",
+        "VAI sistema il playback crash",
+        required=("levyra-mode", "levyra-real-engineering", "levyra-player"),
+        forbidden=("levyra-context-efficiency",),
+        max_skills=3,
+    ),
+    EvalCase(
+        "owner-mode-near-miss-edit",
+        "Modifica il README",
+        forbidden=("levyra-mode", "levyra-context-efficiency"),
+        max_skills=1,
+    ),
+    EvalCase(
+        "owner-mode-near-miss-compose",
+        "Implementa una piccola modifica Compose",
+        required=("levyra-compose",),
+        forbidden=("levyra-mode", "levyra-context-efficiency"),
+        max_skills=1,
+    ),
+    EvalCase(
+        "context-near-miss-analysis",
+        "Analyze this function",
+        forbidden=("levyra-context-efficiency", "levyra-mode"),
+        max_skills=1,
+    ),
     EvalCase(
         "playback-crash",
         "Fix a playback crash when skipping tracks",
