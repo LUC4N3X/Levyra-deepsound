@@ -1,76 +1,51 @@
 ---
 name: levyra-mode
-description: Automatically use when the owner gives a direct execution cue such as VAI, PROCEDI, INTERVIENI, FALLO TU, SISTEMA, RISOLVI, IMPLEMENTA, AGGIORNA, MODIFICA, or asks the agent to open/create a PR. Keep Levyra work action-first, bounded, low-noise, and stateful without weakening scope, evidence, safety, or publication controls.
+description: Use only for explicit owner execution cues such as VAI, PROCEDI, INTERVIENI, FAI TU, FALLO TU, or requests to open/create a PR. Keep execution fast and low-noise while preserving full Levyra engineering rigor.
 ---
 
 # Levyra mode
 
 ## Purpose
 
-Make owner-directed Levyra work fast to follow and easy to steer while the agent
-still performs the actual engineering work. This skill shapes execution and
-communication; it is not a replacement for `AGENTS.md`, always-on guards,
-domain skills, validation, review, or publication controls.
+Make owner-directed work faster to execute and easier to follow. Save tokens by
+removing redundant context and narration, never by reducing technical analysis.
+Root/scoped `AGENTS.md`, always-on guards, domain skills, validation, review, and
+publication controls remain authoritative.
 
-Load every other skill that genuinely matches the task. When this skill conflicts
-with a higher-priority repository or runtime rule, the higher-priority rule wins
-and the action-first shape remains where possible.
+## Full engineering rigor
 
-## Execution contract
+For every code, build, workflow, schema, or agent-config change:
 
-1. Start with the concrete action, current result, or blocker. Do not spend the
-   opening on generic preamble.
-2. For multi-step work, keep the visible path bounded to at most five concrete
-   steps and keep one step active at a time. Expand only when the work actually
-   requires it.
-3. Do the work the runtime can perform. Do not hand shell, edit, inspection,
-   review, or publication steps back to the owner when the runtime is already
-   authorized and capable of doing them.
-4. When the owner interrupts or changes a detail, answer the new instruction,
-   then re-anchor the active task with the current state and next concrete action.
-5. Finish the requested scope before chasing tangents. Surface unrelated findings
-   separately only when they are material to correctness, safety, or the owner's
-   next decision.
-6. Make completed work visible with concrete evidence: changed path, observable
-   behavior, validation result, commit state, PR state, or exact blocker.
-7. Report failures matter-of-factly: what failed, the evidence, and the revised
-   action. Do not dramatize routine errors or retry the same unchanged approach
-   past the repository retry limit.
-8. Never manufacture completion, confidence, or timing. Prefer Levyra's explicit
-   delivery states and `PASS` / `FAIL` / `BLOCKED` / `UNRUN` evidence over vague
-   progress language or speculative time estimates.
-9. Keep publication boundaries intact. Commit, push, PR creation, merge, release,
-   and deployment still require the exact authorization defined by the repository.
-10. If the owner asks for an explanation, comparison, or walkthrough, answer it
-    fully. Levyra mode changes the shape of the response, not the amount of
-    information required to answer the task correctly.
+1. inspect the current owner/control flow and nearby tests before editing;
+2. identify the root cause or exact implementation contract instead of stacking guesses;
+3. make the smallest coherent change and preserve lifecycle, cancellation, concurrency, data, security, and compatibility semantics that apply;
+4. run focused validation after the latest material edit and keep failures classified from evidence;
+5. inspect the complete final diff, run `git diff --check`, and perform the required code-review gate before delivery or publication.
 
-## Working-state updates
+Never skip source inspection, a necessary test, decisive diagnostics, security
+review, or final code review to save tokens. Token efficiency is allowed to
+remove repetition, not engineering depth.
 
-For longer work, keep updates compact and useful. State only what changed since
-the previous update, what is active now, and any decision or blocker the owner
-can actually act on. Do not narrate routine successful tool calls or repeat the
-full plan after every step.
+## Token discipline
 
-When a task is complete, report the exact delivery state rather than adding a
-closing pleasantry. If something remains open, end on the single next concrete
-action or blocker.
+- Load only skills that materially affect the current task.
+- Search symbols/paths first and read bounded source ranges before whole files.
+- Do not reread unchanged instructions, files, logs, or evidence already in context.
+- Compact routine successful command output; preserve or rerun raw when exact evidence can change the diagnosis.
+- Keep updates to new evidence, current action, and real blockers.
+- Carry forward compact verified handoffs, not exploratory chatter or disproved hypotheses.
 
-## Scope guard
+## Execution shape
 
-This skill must never:
-
-- weaken testing, security, privacy, signing, release, or evidence requirements;
-- convert an inspection-only request into implementation;
-- broaden `only this` / `solo questo` scope;
-- install unrelated tooling or external plugins;
-- infer permission to publish, merge, tag, release, or deploy;
-- store or infer personal medical information about the owner.
+- Start with the action, result, or blocker; avoid generic preamble.
+- Keep visible multi-step plans to at most five concrete steps.
+- Perform authorized tool/edit/review work directly instead of handing it back to the owner.
+- Finish the requested scope before unrelated cleanup.
+- Report exact delivery and validation state; never manufacture completion or timing.
+- Commit, push, PR, merge, release, deployment, version changes, and repository settings still require the authorization defined by Levyra.
 
 ## Provenance
 
-The interaction-shaping ideas are selectively adapted from
-`ayghri/i-have-adhd`, an MIT-licensed project. Levyra intentionally removes
-health-status assumptions, persistent personal-state framing, and time-estimate
-requirements. This repository-native skill is an execution ergonomics layer,
-not a diagnosis-specific profile and not an external runtime dependency.
+The action-first interaction ideas are selectively adapted from the MIT-licensed
+`ayghri/i-have-adhd` project. Levyra keeps only the execution ergonomics and does
+not add diagnosis-specific behavior or an external runtime dependency.
