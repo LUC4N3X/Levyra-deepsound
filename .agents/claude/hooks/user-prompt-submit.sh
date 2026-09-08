@@ -23,7 +23,7 @@ elif command -v python >/dev/null 2>&1; then
 elif command -v py >/dev/null 2>&1; then
   py=(py -3)
 else
-  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Levyra: obey root/scoped AGENTS and current repo evidence; exact scope; inspect code before edits; full validation and code-review; publication needs owner authorization."}}'
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Levyra hard contract (re-anchored on every prompt): obey root/scoped AGENTS and current repo evidence; exact scope; inspect code before edits; use the smallest coherent root-cause fix; full validation and code-review; publication needs owner authorization."}}'
   exit 0
 fi
 
@@ -34,7 +34,7 @@ route_context="$("${py[@]}" "$router" --prompt "$prompt" --plain 2>/dev/null || 
 import json
 import sys
 
-core = """Levyra: root/scoped AGENTS and current repository evidence are authoritative. Work only the requested scope; inspect current code/tests before edits; use the smallest root-cause fix and only routed skills. Save tokens only by removing redundant context/output, never engineering depth: keep focused validation, final diff review, code-review, and truthful PASS/FAIL/BLOCKED/UNRUN states. Publication/version actions require owner authorization."""
+core = """Levyra hard contract (re-anchored on every prompt): root/scoped AGENTS and current repository evidence are authoritative. Work only the requested scope; inspect current code/tests before edits; use the smallest coherent root-cause fix and only routed skills. Save tokens only by removing redundant context/output, never engineering depth: keep focused validation, final diff review, code-review, and truthful PASS/FAIL/BLOCKED/UNRUN states. Publication/version actions require owner authorization."""
 
 routed = sys.argv[1].strip()
 context = core if not routed else f"{core}\n{routed}"
