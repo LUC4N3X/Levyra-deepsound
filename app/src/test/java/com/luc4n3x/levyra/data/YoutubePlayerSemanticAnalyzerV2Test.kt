@@ -112,6 +112,29 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
+    fun semanticCandidatesRankBeforeLegacyPatternsWhileLegacyRemainsAvailable() {
+        val javascript = """
+            var decoded=decodeURIComponent(cipher.s);
+            var signed=SemanticSig(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+            x&&(y=LegacySig(4,decodeURIComponent(z)));
+            var throttle=query.get("n");
+            var rewritten=SemanticN(throttle);
+            query.set("n",rewritten);
+            a.get("n"))&&(b=LegacyN[2](b));
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+
+        assertTrue(candidates.isNotEmpty())
+        assertEquals("SemanticSig(INPUT)", candidates.first().signatureExpression)
+        assertEquals("SemanticN(INPUT)", candidates.first().nExpression)
+        assertTrue(candidates.any { it.signatureExpression == "LegacySig(4,INPUT)" })
+        assertTrue(candidates.any { it.nExpression == "LegacyN[2](INPUT)" })
+    }
+
+    @Test
     fun discoveryRemainsBoundedOnAnchorHeavyInput() {
         val javascript = buildString {
             repeat(80) { index ->
