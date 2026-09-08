@@ -112,15 +112,21 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
-    fun semanticCandidatesRankBeforeLegacyPatternsWhileLegacyRemainsAvailable() {
+    fun reservesCompleteLegacyPairWhenSemanticCandidatesSaturatePool() {
         val javascript = """
             var decoded=decodeURIComponent(cipher.s);
             var signed=SemanticSig(decoded);
             query.set(signatureKey,encodeURIComponent(signed));
+            var decoded2=decodeURIComponent(cipher.s);
+            var signed2=SemanticSig2(decoded2);
+            query.set(signatureKey,encodeURIComponent(signed2));
             x&&(y=LegacySig(4,decodeURIComponent(z)));
             var throttle=query.get("n");
             var rewritten=SemanticN(throttle);
             query.set("n",rewritten);
+            var throttle2=query.get("n");
+            var rewritten2=SemanticN2(throttle2);
+            query.set("n",rewritten2);
             a.get("n"))&&(b=LegacyN[2](b));
             var cfg={signatureTimestamp:20644};
         """.trimIndent()
@@ -130,8 +136,14 @@ class YoutubePlayerSemanticAnalyzerV2Test {
         assertTrue(candidates.isNotEmpty())
         assertEquals("SemanticSig(INPUT)", candidates.first().signatureExpression)
         assertEquals("SemanticN(INPUT)", candidates.first().nExpression)
-        assertTrue(candidates.any { it.signatureExpression == "LegacySig(4,INPUT)" })
-        assertTrue(candidates.any { it.nExpression == "LegacyN[2](INPUT)" })
+        assertTrue(candidates.any { it.signatureExpression == "SemanticSig2(INPUT)" })
+        assertTrue(candidates.any { it.nExpression == "SemanticN2(INPUT)" })
+        assertTrue(
+            candidates.any {
+                it.signatureExpression == "LegacySig(4,INPUT)" &&
+                    it.nExpression == "LegacyN[2](INPUT)"
+            }
+        )
     }
 
     @Test
