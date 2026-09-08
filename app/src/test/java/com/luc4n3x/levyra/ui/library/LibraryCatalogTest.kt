@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.library
 
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.LibrarySort
+import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
@@ -152,6 +154,76 @@ class LibraryCatalogTest {
 
         assertEquals(1, catalog.albums.size)
         assertEquals(2, catalog.albums.single().tracks.size)
+    }
+
+    @Test
+    fun filterLibraryOfflineItemsSortsRecentNewestAndOldest() {
+        val t1 = track(id = "1", title = "First")
+        val t2 = track(id = "2", title = "Second")
+        val items = listOf(
+            LibraryOfflineItem("1", t1, downloaded(100L, t1, "1.m4a")),
+            LibraryOfflineItem("2", t2, downloaded(200L, t2, "2.m4a"))
+        )
+
+        val newest = filterLibraryOfflineItems(items, "", LibrarySort.Recent, LibrarySortDirection.Descending)
+        assertEquals(listOf("2", "1"), newest.map { it.track.id })
+
+        val oldest = filterLibraryOfflineItems(items, "", LibrarySort.Recent, LibrarySortDirection.Ascending)
+        assertEquals(listOf("1", "2"), oldest.map { it.track.id })
+    }
+
+    @Test
+    fun filterLibraryOfflineItemsSortsTitleAscendingAndDescendingWithDiacritics() {
+        val t1 = track(id = "1", title = "Àlbero")
+        val t2 = track(id = "2", title = "Barca")
+        val t3 = track(id = "3", title = "Casa")
+        val items = listOf(
+            LibraryOfflineItem("3", t3, downloaded(3L, t3, "3.m4a")),
+            LibraryOfflineItem("1", t1, downloaded(1L, t1, "1.m4a")),
+            LibraryOfflineItem("2", t2, downloaded(2L, t2, "2.m4a"))
+        )
+
+        val az = filterLibraryOfflineItems(items, "", LibrarySort.Title, LibrarySortDirection.Ascending)
+        assertEquals(listOf("1", "2", "3"), az.map { it.track.id })
+
+        val za = filterLibraryOfflineItems(items, "", LibrarySort.Title, LibrarySortDirection.Descending)
+        assertEquals(listOf("3", "2", "1"), za.map { it.track.id })
+    }
+
+    @Test
+    fun filterLibraryOfflineItemsSortsArtistAndPutsEmptyAtEnd() {
+        val t1 = track(id = "1", title = "Song A", artist = "Adele")
+        val t2 = track(id = "2", title = "Song B", artist = "Coldplay")
+        val tEmpty = track(id = "3", title = "Song C", artist = "")
+        val items = listOf(
+            LibraryOfflineItem("3", tEmpty, downloaded(3L, tEmpty, "3.m4a")),
+            LibraryOfflineItem("2", t2, downloaded(2L, t2, "2.m4a")),
+            LibraryOfflineItem("1", t1, downloaded(1L, t1, "1.m4a"))
+        )
+
+        val az = filterLibraryOfflineItems(items, "", LibrarySort.Artist, LibrarySortDirection.Ascending)
+        assertEquals(listOf("1", "2", "3"), az.map { it.track.id })
+
+        val za = filterLibraryOfflineItems(items, "", LibrarySort.Artist, LibrarySortDirection.Descending)
+        assertEquals(listOf("2", "1", "3"), za.map { it.track.id })
+    }
+
+    @Test
+    fun filterLibraryOfflineItemsSortsDurationLongestAndShortest() {
+        val tShort = track(id = "1", title = "Short").copy(durationMs = 60_000L)
+        val tLong = track(id = "2", title = "Long").copy(durationMs = 300_000L)
+        val tZero = track(id = "3", title = "Zero").copy(durationMs = 0L)
+        val items = listOf(
+            LibraryOfflineItem("1", tShort, downloaded(1L, tShort, "1.m4a")),
+            LibraryOfflineItem("3", tZero, downloaded(3L, tZero, "3.m4a")),
+            LibraryOfflineItem("2", tLong, downloaded(2L, tLong, "2.m4a"))
+        )
+
+        val longest = filterLibraryOfflineItems(items, "", LibrarySort.Duration, LibrarySortDirection.Descending)
+        assertEquals(listOf("2", "1", "3"), longest.map { it.track.id })
+
+        val shortest = filterLibraryOfflineItems(items, "", LibrarySort.Duration, LibrarySortDirection.Ascending)
+        assertEquals(listOf("1", "2", "3"), shortest.map { it.track.id })
     }
 
     private fun downloaded(id: Long, track: Track, fileName: String) = DownloadedTrack(

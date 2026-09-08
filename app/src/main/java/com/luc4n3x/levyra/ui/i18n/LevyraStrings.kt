@@ -15,6 +15,14 @@ class LevyraStrings private constructor(
         return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
     }
 
+    val librarySortBy: String get() = value("librarySortBy")
+    val librarySortDirection: String get() = value("librarySortDirection")
+    val librarySortNewestFirst: String get() = value("librarySortNewestFirst")
+    val librarySortOldestFirst: String get() = value("librarySortOldestFirst")
+    val librarySortLongestFirst: String get() = value("librarySortLongestFirst")
+    val librarySortShortestFirst: String get() = value("librarySortShortestFirst")
+    val librarySortAscending: String get() = value("librarySortAscending")
+    val librarySortDescending: String get() = value("librarySortDescending")
     val ambientMode: String get() = value("ambientMode")
     val ambientModeSubtitle: String get() = value("ambientModeSubtitle")
     val ambientOpen: String get() = value("ambientOpen")
@@ -1498,8 +1506,8 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + queueSelectionLocalizationEntries(code)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + playerVisualKeys + queueSelectionKeys
+            val resolvedEntries = entries + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code)
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + motionArtworkKeys + canvasKeys + audioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + networkKeys + resonanceKeys + organizationKeys + similarSongsKeys + playerVisualKeys + queueSelectionKeys + librarySortKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }

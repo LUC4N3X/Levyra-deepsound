@@ -153,6 +153,7 @@ import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.domain.resonanceCommentsForTracks
 import com.luc4n3x.levyra.domain.videoViewCountBonus
+import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
 import com.luc4n3x.levyra.feature.motion.MotionTrackIdentity
@@ -8054,7 +8055,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun refreshMotionArtworkAround(current: Track) {
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) {
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) {
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
@@ -8065,25 +8066,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = expectedKey
         motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
+            val publishForExpectedTrack: (MotionArtwork?) -> Unit = { artwork ->
+                _state.update { current ->
+                    val activeTrack = current.currentTrack
+                    if (activeTrack != null && MotionArtworkIdentityKey.create(activeTrack) == expectedKey) {
+                        current.copy(
+                            motionArtwork = artwork,
+                            motionArtworkLoading = false
+                        )
+                    } else {
+                        current
+                    }
+                }
+            }
             try {
-                val resolved = runCatching {
-                    motionArtworkEngine.resolve(current, _state.value.interfaceSettings.canvasSource)
+                var stabilized: MotionArtwork? = null
+                runCatching {
+                    motionArtworkEngine
+                        .resolveProgressive(current, _state.value.interfaceSettings.canvasSource)
+                        .collect { artwork ->
+                            stabilized = artwork
+                            publishForExpectedTrack(artwork)
+                        }
                 }
                     .onFailure { error ->
                         if (error is CancellationException) throw error
                         Timber.d(error, "Motion artwork resolve failed for %s", current.id)
                     }
-                    .getOrNull()
                 if (!isActive) return@launch
-                val activeTrack = _state.value.currentTrack
-                if (activeTrack != null && MotionArtworkIdentityKey.create(activeTrack) == expectedKey) {
-                    _state.update {
-                        it.copy(
-                            motionArtwork = resolved,
-                            motionArtworkLoading = false
-                        )
-                    }
-                }
+                publishForExpectedTrack(stabilized)
                 prefetchNextMotionArtwork(current)
             } finally {
                 if (motionArtworkRequestKey == expectedKey) motionArtworkRequestKey = null

@@ -11,8 +11,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.lastOrNull
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
@@ -42,6 +48,10 @@ class MotionArtworkEngine(context: Context) {
 
     private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
 
+    fun close() {
+        lookupScope.cancel()
+    }
+
     suspend fun resolve(
         track: Track,
         source: LevyraCanvasSource = LevyraCanvasSource.Auto
@@ -60,6 +70,25 @@ class MotionArtworkEngine(context: Context) {
             resolveFresh(lookupTrack, identityKey, runtime.epoch, runtime.value, source)
         }
     }
+
+    fun resolveProgressive(
+        track: Track,
+        source: LevyraCanvasSource = LevyraCanvasSource.Auto
+    ): Flow<MotionArtwork> = flow {
+        if (!networkPolicy.canResolveCurrent()) return@flow
+        val lookupTrack = prepareLookupTrack(track)
+        val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(lookupTrack), source)
+        val runtime = MotionArtworkRuntime.snapshot()
+        when (val cached = repository.get(identityKey, runtime.epoch)) {
+            is MotionArtworkCacheResult.Hit -> {
+                emit(cached.artwork)
+                return@flow
+            }
+            MotionArtworkCacheResult.Negative -> return@flow
+            MotionArtworkCacheResult.Miss -> Unit
+        }
+        emitAll(resolveFreshProgressive(lookupTrack, identityKey, runtime.epoch, runtime.value, source))
+    }.flowOn(Dispatchers.IO)
 
     private suspend fun prepareLookupTrack(track: Track): Track {
         if (track.isrc.isNotBlank() && !isUnusableMotionAlbum(track.album)) return track
@@ -228,135 +257,143 @@ class MotionArtworkEngine(context: Context) {
         configEpoch: Long,
         config: MotionArtworkConfig,
         source: LevyraCanvasSource
-    ): MotionArtwork? {
+    ): MotionArtwork? = resolveFreshProgressive(track, identityKey, configEpoch, config, source).lastOrNull()
+
+    private fun resolveFreshProgressive(
+        track: Track,
+        identityKey: String,
+        configEpoch: Long,
+        config: MotionArtworkConfig,
+        source: LevyraCanvasSource
+    ): Flow<MotionArtwork> = flow {
         when (val cached = repository.get(identityKey, configEpoch)) {
-            is MotionArtworkCacheResult.Hit -> return cached.artwork
-            MotionArtworkCacheResult.Negative -> return null
+            is MotionArtworkCacheResult.Hit -> {
+                emit(cached.artwork)
+                return@flow
+            }
+            MotionArtworkCacheResult.Negative -> return@flow
             MotionArtworkCacheResult.Miss -> Unit
         }
         val identity = MotionTrackIdentity.from(track)
         val providerOrder = motionArtworkProviderOrder(config.providerOrder, source)
         val providers = providersFor(configEpoch, config).filter { it.id in providerOrder }
         val providerRanks = providerOrder.withIndex().associate { it.value to it.index }
-        val outcomes = supervisorScope {
-            providers.map { provider ->
-                async {
-                    val timeoutMs = motionArtworkProviderTimeoutMs(provider.id, config.requestTimeoutMs)
-                    try {
-                        val outcome = withTimeoutOrNull(timeoutMs) {
-                            provider.find(identity)
-                        }
-                        if (outcome == null) {
-                            Timber.d(
-                                "Motion provider %s TIMEOUT after %dms for %s / %s",
-                                provider.id,
-                                timeoutMs,
-                                identity.title,
-                                identity.artists.joinToString()
-                            )
-                            MotionArtworkProviderResult.Failed()
-                        } else {
-                            outcome
-                        }
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (error: Throwable) {
-                        Timber.d(error, "Motion provider %s failed", provider.id)
-                        MotionArtworkProviderResult.Failed(error)
-                    }
-                }
-            }.awaitAll()
-        }
-        val providerFailed = providers.isEmpty() || outcomes.any { it is MotionArtworkProviderResult.Failed }
-        val candidates = outcomes.flatMap { outcome ->
-            when (outcome) {
-                is MotionArtworkProviderResult.Found -> outcome.candidates
-                MotionArtworkProviderResult.NoMatch,
-                is MotionArtworkProviderResult.Failed -> emptyList()
-            }
-        }
+        val forcedSource = source != LevyraCanvasSource.Auto
 
-        outcomes.forEachIndexed { index, outcome ->
-            val provider = providers.getOrNull(index)?.id ?: "unknown"
-            val summary = when (outcome) {
-                is MotionArtworkProviderResult.Found -> "found=${outcome.candidates.size}"
-                MotionArtworkProviderResult.NoMatch -> "noMatch"
-                is MotionArtworkProviderResult.Failed -> "failed"
-            }
-            Timber.d(
-                "motion provider %s -> %s for %s / %s (album=%s)",
-                provider,
-                summary,
-                identity.title,
-                identity.artists.joinToString(),
-                identity.album
-            )
-        }
-
-        val ranked = candidates
-            .map { candidate -> candidate to CanonicalTrackMatcher.match(identity, candidate) }
-            .onEach { (candidate, match) ->
-                Timber.d(
-                    "motion candidate %s scope=%s score=%d accepted=%b minimum=%d album=%s",
-                    candidate.provider,
-                    candidate.scope,
-                    match.score,
-                    match.accepted,
-                    config.minimumConfidence,
-                    candidate.identity.album
-                )
-            }
-            .mapNotNull { (candidate, match) ->
-                if (!match.accepted || match.score < config.minimumConfidence) null
-                else MotionArtworkRankedCandidate(
-                    candidate,
-                    match.score,
-                    providerRanks[candidate.provider] ?: Int.MAX_VALUE
-                )
-            }
-            .sortedWith(
-                compareBy<MotionArtworkRankedCandidate> { it.providerRank }
-                    .thenByDescending { it.confidence }
-            )
-
-        var verified: MotionArtworkRankedCandidate? = null
+        var providerFailed = providers.isEmpty()
         var verifierFailed = false
-        val verificationPlan = buildMotionArtworkVerificationPlan(ranked)
-        for (rankedCandidate in verificationPlan.candidates) {
-            val candidate = rankedCandidate.candidate
-            when (val result = urlVerifier.verify(candidate)) {
-                MotionArtworkVerificationResult.Verified -> {
-                    Timber.d(
-                        "motion verifier VERIFIED provider=%s scope=%s title=%s",
-                        candidate.provider,
-                        candidate.scope,
-                        identity.title
-                    )
-                    verified = rankedCandidate
-                    break
-                }
-                MotionArtworkVerificationResult.Invalid -> {
-                    Timber.d(
-                        "motion verifier INVALID provider=%s scope=%s title=%s",
-                        candidate.provider,
-                        candidate.scope,
-                        identity.title
-                    )
-                }
-                is MotionArtworkVerificationResult.Failed -> {
-                    verifierFailed = true
-                    Timber.d(
-                        result.cause,
-                        "motion verifier FAILED provider=%s scope=%s title=%s",
-                        candidate.provider,
-                        candidate.scope,
-                        identity.title
+        var verificationExhaustive = true
+        var publishedArtwork: MotionArtwork? = null
+        var publishedCandidate: MotionArtworkRankedCandidate? = null
+        var upgradesUsed = 0
+
+        supervisorScope {
+            val lookupOutcomes = Channel<IndexedMotionProviderOutcome>(Channel.UNLIMITED)
+            val lookups = providers.mapIndexed { index, provider ->
+                launch {
+                    lookupOutcomes.send(
+                        IndexedMotionProviderOutcome(index, runProviderLookup(provider, identity, config))
                     )
                 }
             }
+            launch {
+                lookups.joinAll()
+                lookupOutcomes.close()
+            }
+            val pendingOutcomes = mutableListOf<IndexedMotionProviderOutcome>()
+            for (lookup in lookupOutcomes) {
+                pendingOutcomes.add(lookup)
+                while (true) {
+                    val next = lookupOutcomes.tryReceive().getOrNull() ?: break
+                    pendingOutcomes.add(next)
+                }
+                pendingOutcomes.sortBy { providerRanks[providers[it.index].id] ?: Int.MAX_VALUE }
+                while (pendingOutcomes.isNotEmpty()) {
+                    val currentLookup = pendingOutcomes.removeAt(0)
+                    val provider = providers[currentLookup.index]
+                    val outcome = currentLookup.outcome
+                    val summary = when (outcome) {
+                        is MotionArtworkProviderResult.Found -> "found=${outcome.candidates.size}"
+                        MotionArtworkProviderResult.NoMatch -> "noMatch"
+                        is MotionArtworkProviderResult.Failed -> "failed"
+                    }
+                    Timber.d(
+                        "motion provider %s -> %s for %s / %s (album=%s)",
+                        provider.id,
+                        summary,
+                        identity.title,
+                        identity.artists.joinToString(),
+                        identity.album
+                    )
+                    if (outcome is MotionArtworkProviderResult.Failed) providerFailed = true
+                    val candidates = (outcome as? MotionArtworkProviderResult.Found)?.candidates.orEmpty()
+                    if (candidates.isEmpty()) continue
+                    val providerRank = providerRanks[provider.id] ?: Int.MAX_VALUE
+                    if (
+                        !shouldPublishMotionUpgrade(
+                            publishedProviderRank = publishedCandidate?.providerRank,
+                            candidateProviderRank = providerRank,
+                            forcedSource = forcedSource,
+                            upgradesUsed = upgradesUsed
+                        )
+                    ) {
+                        verificationExhaustive = false
+                        continue
+                    }
+                    val ranked = rankMotionCandidates(identity, candidates, config, providerRanks)
+                    val verificationPlan = buildMotionArtworkVerificationPlan(ranked)
+                    if (!verificationPlan.exhaustive) verificationExhaustive = false
+                    var selected: MotionArtworkRankedCandidate? = null
+                    for ((index, rankedCandidate) in verificationPlan.candidates.withIndex()) {
+                        val candidate = rankedCandidate.candidate
+                        when (val result = urlVerifier.verify(candidate)) {
+                            MotionArtworkVerificationResult.Verified -> {
+                                Timber.d(
+                                    "motion verifier VERIFIED provider=%s scope=%s title=%s",
+                                    candidate.provider,
+                                    candidate.scope,
+                                    identity.title
+                                )
+                                selected = rankedCandidate
+                            }
+                            MotionArtworkVerificationResult.Invalid -> {
+                                Timber.d(
+                                    "motion verifier INVALID provider=%s scope=%s title=%s",
+                                    candidate.provider,
+                                    candidate.scope,
+                                    identity.title
+                                )
+                            }
+                            is MotionArtworkVerificationResult.Failed -> {
+                                verifierFailed = true
+                                Timber.d(
+                                    result.cause,
+                                    "motion verifier FAILED provider=%s scope=%s title=%s",
+                                    candidate.provider,
+                                    candidate.scope,
+                                    identity.title
+                                )
+                            }
+                        }
+                        if (selected != null) {
+                            if (index != verificationPlan.candidates.lastIndex) verificationExhaustive = false
+                            break
+                        }
+                    }
+                    val accepted = selected ?: continue
+                    if (publishedCandidate != null) upgradesUsed++
+                    publishedCandidate = accepted
+                    val artwork = motionArtworkFrom(accepted, identityKey, configEpoch, config)
+                    publishedArtwork = artwork
+                    repository.save(artwork)
+                    emit(artwork)
+                }
+            }
         }
-        if (verified == null) {
-            val conclusive = !providerFailed && !verifierFailed && verificationPlan.exhaustive
+
+        val stabilized = publishedArtwork
+        if (stabilized == null) {
+            val conclusive = !providerFailed && !verifierFailed && verificationExhaustive
             if (conclusive) {
                 Timber.d("motion resolve conclusive miss; saving negative cache title=%s source=%s", identity.title, source)
                 repository.saveNegative(
@@ -371,31 +408,99 @@ class MotionArtworkEngine(context: Context) {
                     source,
                     providerFailed,
                     verifierFailed,
-                    verificationPlan.exhaustive
+                    verificationExhaustive
                 )
             }
             repository.cleanup(configEpoch)
-            return null
+            return@flow
         }
 
+        repository.save(stabilized)
+        repository.cleanup(configEpoch)
+        Timber.d(
+            "motion resolved provider=%s scope=%s title=%s",
+            stabilized.provider,
+            publishedCandidate?.candidate?.scope,
+            identity.title
+        )
+    }
+
+    private suspend fun runProviderLookup(
+        provider: MotionArtworkProvider,
+        identity: MotionTrackIdentity,
+        config: MotionArtworkConfig
+    ): MotionArtworkProviderResult {
+        val timeoutMs = motionArtworkProviderTimeoutMs(provider.id, config.requestTimeoutMs)
+        return try {
+            withTimeoutOrNull(timeoutMs) { provider.find(identity) } ?: run {
+                Timber.d(
+                    "Motion provider %s TIMEOUT after %dms for %s / %s",
+                    provider.id,
+                    timeoutMs,
+                    identity.title,
+                    identity.artists.joinToString()
+                )
+                MotionArtworkProviderResult.Failed()
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.d(error, "Motion provider %s failed", provider.id)
+            MotionArtworkProviderResult.Failed(error)
+        }
+    }
+
+    private fun rankMotionCandidates(
+        identity: MotionTrackIdentity,
+        candidates: List<MotionArtworkCandidate>,
+        config: MotionArtworkConfig,
+        providerRanks: Map<String, Int>
+    ): List<MotionArtworkRankedCandidate> = candidates
+        .map { candidate -> candidate to CanonicalTrackMatcher.match(identity, candidate) }
+        .onEach { (candidate, match) ->
+            Timber.d(
+                "motion candidate %s scope=%s score=%d accepted=%b minimum=%d album=%s",
+                candidate.provider,
+                candidate.scope,
+                match.score,
+                match.accepted,
+                config.minimumConfidence,
+                candidate.identity.album
+            )
+        }
+        .mapNotNull { (candidate, match) ->
+            if (!match.accepted || match.score < config.minimumConfidence) null
+            else MotionArtworkRankedCandidate(
+                candidate,
+                match.score,
+                providerRanks[candidate.provider] ?: Int.MAX_VALUE
+            )
+        }
+        .sortedWith(
+            compareBy<MotionArtworkRankedCandidate> { it.providerRank }
+                .thenByDescending { it.confidence }
+        )
+
+    private fun motionArtworkFrom(
+        ranked: MotionArtworkRankedCandidate,
+        identityKey: String,
+        configEpoch: Long,
+        config: MotionArtworkConfig
+    ): MotionArtwork {
         val now = System.currentTimeMillis()
-        val candidate = verified.candidate
-        val artwork = MotionArtwork(
+        val candidate = ranked.candidate
+        return MotionArtwork(
             identityKey = identityKey,
             provider = candidate.provider,
             url = candidate.url,
             mimeType = candidate.mimeType,
             width = candidate.width,
             height = candidate.height,
-            confidence = verified.confidence,
+            confidence = ranked.confidence,
             expiresAtMs = minOf(candidate.expiresAtMs, now + config.positiveTtlMs),
             lastVerifiedAtMs = now,
             configEpoch = configEpoch
         )
-        repository.save(artwork)
-        repository.cleanup(configEpoch)
-        Timber.d("motion resolved provider=%s scope=%s title=%s", artwork.provider, candidate.scope, identity.title)
-        return artwork
     }
 
     private fun providersFor(epoch: Long, config: MotionArtworkConfig): List<MotionArtworkProvider> = synchronized(runtimeLock) {
@@ -408,6 +513,11 @@ class MotionArtworkEngine(context: Context) {
 }
 
 private class ArtistMotionLookup(val candidate: MotionArtworkCandidate?)
+
+private data class IndexedMotionProviderOutcome(
+    val index: Int,
+    val outcome: MotionArtworkProviderResult
+)
 
 private const val ARTIST_MOTION_CONFIDENCE = 100
 private const val ARTIST_MOTION_REQUEST_TIMEOUT_MS = 45_000L
@@ -467,4 +577,19 @@ internal fun buildMotionArtworkVerificationPlan(
         candidates = candidates,
         exhaustive = candidates.size == ranked.size
     )
+}
+
+internal const val MAX_MOTION_ARTWORK_UPGRADES = 1
+
+internal fun shouldPublishMotionUpgrade(
+    publishedProviderRank: Int?,
+    candidateProviderRank: Int,
+    forcedSource: Boolean,
+    upgradesUsed: Int,
+    maxUpgrades: Int = MAX_MOTION_ARTWORK_UPGRADES
+): Boolean {
+    if (publishedProviderRank == null) return true
+    if (forcedSource) return false
+    if (upgradesUsed >= maxUpgrades) return false
+    return candidateProviderRank < publishedProviderRank
 }
