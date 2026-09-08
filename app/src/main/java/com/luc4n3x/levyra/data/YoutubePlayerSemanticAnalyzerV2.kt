@@ -100,8 +100,12 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                     window.anchor in lexeme.start until lexeme.end
             }
             if (!isGetCallKey(lexemes, keyIndex)) return@forEach
-            val getClose = matchingParen(lexemes, keyIndex - 1) ?: return@forEach
-            val getStart = keyIndex - 3
+            val getOpen = keyIndex - 1
+            val getClose = matchingParen(lexemes, getOpen) ?: return@forEach
+            val getCall = callSite(lexemes, getOpen, getClose)
+                ?.takeIf { it.target.endsWith(".get") }
+                ?: return@forEach
+            val getStart = getCall.targetStart
 
             enclosingCalls(lexemes, getStart, getClose).forEach { call ->
                 if (isNonTransformTarget(call.target)) return@forEach
@@ -556,17 +560,16 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
 
     private fun scanSignatureWindows(javascript: String): List<ScanWindow> {
         val output = ArrayList<ScanWindow>()
-        val seen = HashSet<Long>()
+        val seenAnchors = HashSet<Int>()
         var cursor = 0
         while (cursor < javascript.length && output.size < MAX_ANCHORS_PER_KIND) {
             val anchor = javascript.indexOf("decodeURIComponent", cursor)
             if (anchor < 0) break
-            if (isSignatureDecodeAnchor(javascript, anchor)) {
+            if (isSignatureDecodeAnchor(javascript, anchor) && seenAnchors.add(anchor)) {
                 val start = (anchor - SIGNATURE_BEFORE_CHARS).coerceAtLeast(0)
                 val end = (anchor + "decodeURIComponent".length + SIGNATURE_AFTER_CHARS)
                     .coerceAtMost(javascript.length)
-                val identity = (start.toLong() shl 32) xor end.toLong()
-                if (seen.add(identity)) output += ScanWindow(start, end, anchor)
+                output += ScanWindow(start, end, anchor)
             }
             cursor = anchor + "decodeURIComponent".length
         }
@@ -589,7 +592,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
 
     private fun scanNWindows(javascript: String): List<ScanWindow> {
         val output = ArrayList<ScanWindow>()
-        val seen = HashSet<Long>()
+        val seenAnchors = HashSet<Int>()
         listOf("\"n\"", "'n'").forEach { needle ->
             var cursor = 0
             var foundForNeedle = 0
@@ -603,8 +606,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                 if (isNGetAnchor(javascript, anchor)) {
                     val start = (anchor - N_BEFORE_CHARS).coerceAtLeast(0)
                     val end = (anchor + needle.length + N_AFTER_CHARS).coerceAtMost(javascript.length)
-                    val identity = (start.toLong() shl 32) xor end.toLong()
-                    if (seen.add(identity)) output += ScanWindow(start, end, anchor)
+                    if (seenAnchors.add(anchor)) output += ScanWindow(start, end, anchor)
                     foundForNeedle++
                 }
                 cursor = anchor + needle.length
