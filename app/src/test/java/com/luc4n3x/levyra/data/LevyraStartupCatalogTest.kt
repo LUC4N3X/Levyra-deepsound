@@ -25,21 +25,23 @@ class LevyraStartupCatalogTest {
     }
 
     @Test
-    fun repairHomeSectionsDropsPersistedLegacyEnergyShelf() {
-        val locale = LevyraContentLocales.forLanguage("en")
-        val chartTracks = LevyraStartupCatalog.chartTracks("en")
-        val quickTrack = chartTracks.first { it.title == "Bohemian Rhapsody" }
-        val energyTrack = chartTracks.first { it.title == "Midnight City" }
+    fun repairHomeSectionsDropsPersistedLegacyEnergyShelfInAnyLanguage() {
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val locale = LevyraContentLocales.forLanguage(language.code)
+            val repaired = LevyraStartupCatalog.repairHomeSections(
+                listOf(
+                    HomeSection(locale.quickSectionTitle, emptyList()),
+                    HomeSection(locale.energySectionTitle, emptyList())
+                ),
+                language.code
+            )
 
-        val repaired = LevyraStartupCatalog.repairHomeSections(
-            listOf(
-                HomeSection(locale.quickSectionTitle, listOf(quickTrack)),
-                HomeSection(locale.energySectionTitle, listOf(energyTrack))
-            ),
-            "en"
-        )
-
-        assertEquals(listOf(locale.quickSectionTitle), repaired.map { it.title })
+            assertEquals(
+                "Legacy energy shelf still restored for ${language.code}",
+                listOf(locale.quickSectionTitle),
+                repaired.map { it.title }
+            )
+        }
     }
 
     @Test
