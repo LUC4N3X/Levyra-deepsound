@@ -73,6 +73,7 @@ name a skill. Claude/Codex hooks use `scripts/agent_skill_router.py`; compatible
 runtimes should follow the same routing behavior. Several skills may apply.
 
 Core automatic routes:
+- explicit owner execution cues such as `VAI`, `PROCEDI`, `INTERVIENI`, or `FAI TU` -> `levyra-mode`;
 - substantial or ambiguous engineering -> `levyra-real-engineering`;
 - Android playback/Media3/queue -> `levyra-player`;
 - extraction/InnerTube/network fallback -> `levyra-extractor`;
@@ -85,7 +86,7 @@ Core automatic routes:
 - Windows Desktop -> `levyra-desktop`;
 - CI/workflows/build tooling -> `levyra-ci-workflows`;
 - branch/commit/PR review -> `levyra-pr-review`;
-- PR creation or description -> `levyra-pr-review` plus `levyra-humanizer`;
+- PR creation or description -> `levyra-mode` plus `levyra-pr-review` plus `levyra-humanizer`;
 - release/pre-merge evidence -> `levyra-release-check`;
 - requirements/roadmap/task status -> `levyra-project-manager`;
 - genuine cross-domain orientation -> `levyra-engineering`;

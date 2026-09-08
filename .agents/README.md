@@ -95,6 +95,7 @@ active task matches them; never preload the whole tree.
 - `levyra-engineering`
 - `levyra-extractor`
 - `levyra-humanizer`
+- `levyra-mode`
 - `levyra-motion-artwork`
 - `levyra-openclaw-orchestrator`
 - `levyra-player`

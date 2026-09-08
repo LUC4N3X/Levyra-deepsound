@@ -34,6 +34,11 @@ ROUTES = (
         r"openclaw|levyra-worker|levyra-reviewer|levyra-ci|delegat.*(?:agent|runtime|review|ci)|orchestrat",
     ),
     route(
+        "levyra-mode",
+        "owner-directed action-first execution",
+        r"\blevyra[- ]mode\b|^\s*(?:(?:ok|okay|ora|adesso|dai)\s*[,;:.-]?\s*)*(?:vai|procedi|intervieni)\b|\bfai tu\b|\bfallo tu\b|\bfalla tu\b|(?:apri|crea|open|create).{0,30}\b(?:pr|pull request)\b",
+    ),
+    route(
         "levyra-real-engineering",
         "non-trivial engineering, debugging, requirements, or architecture",
         r"new feature|nuova funzionalit|architecture|architett|refactor|riprogett|redesign|\bspec\b|specifica|roadmap|multi.?step|cross.?domain|pi[uù].*modul|across.*module|grill-with-docs|wayfinder|to-spec|to-tickets|\bbug\b|debug|diagnos|regression|regressione|test failure|test fallit|build failure|build fallit|unexpected behavior|comportamento inaspett|\bcrash\b|race condition|concurrency bug|root cause|causa radice",
@@ -95,8 +100,8 @@ ROUTES = (
     ),
     route(
         "levyra-context-efficiency",
-        "repository exploration or high-volume context",
-        r"\bbuild\b|\bgradle\b|\btest\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup|analy[sz]|analizz|investigat|indag|inspect|esamina|repository|\brepo\b|codebase|root cause|causa radice|implement|refactor|riprogett|find.*(?:class|function|file)|trova.*(?:classe|funzione|file)",
+        "high-volume repository context or command output",
+        r"\bbuild\b|\bgradle\b|\btests?\b|\blint\b|logcat|\blogs?\b|git diff|git log|git status|github actions|\bgh\b|coderabbit|dependencies|dependency tree|broad search|ricerca ampia|setup|installazione ai|agent setup|full repo|entire repo|whole repo|across (?:the )?(?:repo|codebase)|(?:investigat|indag|analy[sz]|analizz|inspect|esamina).{0,35}(?:logs?|trace|build|tests?|repository|repo|codebase)",
     ),
     route(
         "levyra-security-review",
@@ -182,6 +187,8 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
     if "levyra-openclaw-orchestrator" in seen:
         add("levyra-context-efficiency", "compact delegation context")
         add("levyra-project-manager", "delegated acceptance criteria and handoff")
+    if "levyra-engineering" in seen:
+        add("levyra-context-efficiency", "cross-domain repository exploration")
     if "levyra-android-reverse-engineering" in seen:
         add("levyra-security-review", "artifact trust-boundary and exposed-sensitive-data review")
         if re.search(r"\br8\b|proguard|obfuscat|mapping\.txt|kotlin metadata", text):
@@ -192,23 +199,13 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
 
 def context_for(prompt: str) -> str:
     matched = route_prompt(prompt)
-    lines = [
-        "Levyra automatic skill routing is mandatory. The owner never needs to name a skill.",
-        "Use only matching skills; do not preload the whole skill tree.",
-    ]
     if not matched:
-        lines.append("No specialized Levyra skill matched this prompt; the always-on agent guards still apply.")
-        return "\n".join(lines)
+        return ""
 
-    lines.append("Mandatory skill load before broad repository reading, editing, or shell work:")
+    lines = ["Mandatory skill load (only these routed skills):"]
     for skill, topic in matched:
         lines.append(f"- {topic} -> {skill} -> .agents/skills/{skill}/SKILL.md")
-    lines.extend(
-        [
-            "Load every listed canonical skill automatically from the task itself. Do not wait for the owner to request it by name.",
-            "Claude may invoke its .claude/skills bridge/plugin first, but the canonical .agents skill and Levyra guardrails remain authoritative.",
-        ]
-    )
+    lines.append("Load only these skills; root/scoped AGENTS and always-on guards remain authoritative.")
     return "\n".join(lines)
 
 

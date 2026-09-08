@@ -23,7 +23,7 @@ elif command -v python >/dev/null 2>&1; then
 elif command -v py >/dev/null 2>&1; then
   py=(py -3)
 else
-  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Levyra hard contract: root CLAUDE.md imports AGENTS.md and both are mandatory. Work only inside requested scope; inspect current code before edits; make the smallest coherent change; do not perform unrelated refactors; publication actions require explicit owner authorization; keep validation claims truthful."}}'
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"Levyra hard contract (re-anchored on every prompt): obey root/scoped AGENTS and current repo evidence; exact scope; inspect code before edits; use the smallest coherent root-cause fix; full validation and code-review; publication needs owner authorization."}}'
   exit 0
 fi
 
@@ -34,27 +34,11 @@ route_context="$("${py[@]}" "$router" --prompt "$prompt" --plain 2>/dev/null || 
 import json
 import sys
 
-core = """Levyra hard contract (re-anchored on every prompt):
-- Root CLAUDE.md natively imports AGENTS.md; root/scoped instructions and current repository evidence are mandatory and outrank memory.
-- Execute implementation requests directly within the requested scope. 'only this' / 'solo questo' is a hard boundary; no unrelated cleanup, refactors, dependency churn, or version changes.
-- Before behavior changes, inspect the current implementation and nearby tests; prefer the smallest coherent root-cause fix and existing owners/abstractions.
-- Load detailed docs and skill bodies only when the active task requires them; keep the Levyra context budget small.
-- After material edits, run focused validation, inspect the final diff, and keep PASS/BLOCKED/UNRUN claims truthful.
-- Commit, push, PR creation, merge, tag, release, deployment, external messages, repository settings, and version changes require explicit owner authorization for that action and scope.
-"""
+core = """Levyra hard contract (re-anchored on every prompt): root/scoped AGENTS and current repository evidence are authoritative. Work only the requested scope; inspect current code/tests before edits; use the smallest coherent root-cause fix and only routed skills. Save tokens only by removing redundant context/output, never engineering depth: keep focused validation, final diff review, code-review, and truthful PASS/FAIL/BLOCKED/UNRUN states. Publication/version actions require owner authorization."""
 
 routed = sys.argv[1].strip()
 context = core if not routed else f"{core}\n{routed}"
-print(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "UserPromptSubmit",
-                "additionalContext": context,
-            }
-        }
-    )
-)
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}}))
 PY
 
 exit 0
