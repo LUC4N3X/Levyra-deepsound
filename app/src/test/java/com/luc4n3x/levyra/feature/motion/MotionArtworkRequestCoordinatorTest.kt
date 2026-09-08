@@ -33,10 +33,18 @@ class MotionArtworkRequestCoordinatorTest {
             year = "2026",
             albumBrowseId = "MPREb_real"
         )
+        val differentRecording = raw.copy(
+            id = "other-id",
+            durationMs = raw.durationMs + 5_000L
+        )
 
         assertEquals(
             motionArtworkInFlightKey(raw, LevyraCanvasSource.Auto),
             motionArtworkInFlightKey(enriched, LevyraCanvasSource.Auto)
+        )
+        assertNotEquals(
+            motionArtworkInFlightKey(raw, LevyraCanvasSource.Auto),
+            motionArtworkInFlightKey(differentRecording, LevyraCanvasSource.Auto)
         )
         assertNotEquals(
             motionArtworkInFlightKey(raw, LevyraCanvasSource.Auto),

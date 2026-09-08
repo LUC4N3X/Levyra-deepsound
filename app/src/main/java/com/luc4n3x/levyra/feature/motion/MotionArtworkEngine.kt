@@ -493,10 +493,12 @@ internal fun motionArtworkInFlightKey(track: Track, source: LevyraCanvasSource):
         .filter(String::isNotBlank)
         .sorted()
         .joinToString(",")
+    val durationSeconds = track.durationMs.coerceAtLeast(0L) / 1000L
     val identity = when {
-        title.isNotBlank() && artists.isNotBlank() -> "recording:$title|$artists"
+        title.isNotBlank() && artists.isNotBlank() && durationSeconds > 0L ->
+            "recording:$title|$artists|duration:$durationSeconds|explicit:${track.explicit}"
         track.id.isNotBlank() -> "track:${track.id.trim().lowercase(Locale.ROOT)}"
-        else -> "fallback:$title|$artists|${normalizeMotionText(track.album)}"
+        else -> "fallback:$title|$artists|${normalizeMotionText(track.album)}|explicit:${track.explicit}"
     }
     return "$identity#${source.name.lowercase(Locale.ROOT)}"
 }
