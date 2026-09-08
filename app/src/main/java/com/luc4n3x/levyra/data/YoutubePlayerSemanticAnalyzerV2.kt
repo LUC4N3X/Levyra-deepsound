@@ -11,15 +11,15 @@ internal data class YoutubeSemanticDiscoveryResult(
 )
 
 internal object YoutubePlayerSemanticAnalyzerV2 {
-    private enum class TokenKind {
+    private enum class LexemeKind {
         IDENTIFIER,
         NUMBER,
         STRING,
         SYMBOL
     }
 
-    private data class Token(
-        val kind: TokenKind,
+    private data class Lexeme(
+        val kind: LexemeKind,
         val text: String,
         val start: Int,
         val end: Int
@@ -53,31 +53,32 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         val output = ArrayList<YoutubeSemanticTransformCandidate>()
         scanWindows(javascript, listOf("decodeURIComponent"), SIGNATURE_BEFORE_CHARS, SIGNATURE_AFTER_CHARS)
             .forEach { window ->
-                val tokens = tokenize(javascript, window.start, window.end)
-                val decode = tokens.indexOfFirst { token ->
-                    token.kind == TokenKind.IDENTIFIER &&
-                        token.text == "decodeURIComponent" &&
-                        window.anchor in token.start until token.end
+                val lexemes = tokenize(javascript, window.start, window.end)
+                val decode = lexemes.indexOfFirst { lexeme ->
+                    lexeme.kind == LexemeKind.IDENTIFIER &&
+                        lexeme.text == "decodeURIComponent" &&
+                        window.anchor in lexeme.start until lexeme.end
                 }
-                if (decode < 0 || tokens.getOrNull(decode + 1)?.text != "(") return@forEach
-                val decodeClose = matchingParen(tokens, decode + 1) ?: return@forEach
-                val sourceEvidence = if (mentionsKey(tokens, decode + 2, decodeClose - 1, "s")) 30 else 0
+                if (decode < 0 || lexemes.getOrNull(decode + 1)?.text != "(") return@forEach
+                val decodeClose = matchingParen(lexemes, decode + 1) ?: return@forEach
+                val sourceEvidence = if (mentionsKey(lexemes, decode + 2, decodeClose - 1, "s")) 30 else 0
 
-                enclosingCalls(tokens, decode, decodeClose).forEach { call ->
-                    val expression = expressionForRange(tokens, call, decode, decodeClose) ?: return@forEach
-                    val outputVariable = assignedVariableForExpression(tokens, call.targetStart)
+                enclosingCalls(lexemes, decode, decodeClose).forEach { call ->
+                    if (isNonTransformTarget(call.target)) return@forEach
+                    val expression = expressionForRange(lexemes, call, decode, decodeClose) ?: return@forEach
+                    val outputVariable = assignedVariableForExpression(lexemes, call.targetStart)
                     val sinkEvidence = when {
-                        outputVariable != null -> signatureSinkScore(tokens, call.close + 1, outputVariable)
-                        isNestedInCallable(tokens, call.targetStart, call.close, "encodeURIComponent") -> 35
+                        outputVariable != null -> signatureSinkScore(lexemes, call.close + 1, outputVariable)
+                        isNestedInCallable(lexemes, call.targetStart, call.close, "encodeURIComponent") -> 35
                         else -> 0
                     }
                     addIfConfident(output, expression, 70 + sourceEvidence + sinkEvidence)
                 }
 
-                val sourceVariable = assignedVariableForExpression(tokens, decode)
+                val sourceVariable = assignedVariableForExpression(lexemes, decode)
                 if (sourceVariable != null) {
                     output += followVariableFlow(
-                        tokens = tokens,
+                        lexemes = lexemes,
                         startIndex = decodeClose + 1,
                         sourceVariable = sourceVariable,
                         baseConfidence = 70 + sourceEvidence,
@@ -92,31 +93,32 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         val output = ArrayList<YoutubeSemanticTransformCandidate>()
         scanWindows(javascript, listOf("\"n\"", "'n'"), N_BEFORE_CHARS, N_AFTER_CHARS)
             .forEach { window ->
-                val tokens = tokenize(javascript, window.start, window.end)
-                val keyIndex = tokens.indexOfFirst { token ->
-                    token.kind == TokenKind.STRING &&
-                        token.text == "n" &&
-                        window.anchor in token.start until token.end
+                val lexemes = tokenize(javascript, window.start, window.end)
+                val keyIndex = lexemes.indexOfFirst { lexeme ->
+                    lexeme.kind == LexemeKind.STRING &&
+                        lexeme.text == "n" &&
+                        window.anchor in lexeme.start until lexeme.end
                 }
-                if (!isGetCallKey(tokens, keyIndex)) return@forEach
-                val getClose = matchingParen(tokens, keyIndex - 1) ?: return@forEach
+                if (!isGetCallKey(lexemes, keyIndex)) return@forEach
+                val getClose = matchingParen(lexemes, keyIndex - 1) ?: return@forEach
                 val getStart = keyIndex - 3
 
-                enclosingCalls(tokens, getStart, getClose).forEach { call ->
-                    val expression = expressionForRange(tokens, call, getStart, getClose) ?: return@forEach
-                    val outputVariable = assignedVariableForExpression(tokens, call.targetStart)
+                enclosingCalls(lexemes, getStart, getClose).forEach { call ->
+                    if (isNonTransformTarget(call.target)) return@forEach
+                    val expression = expressionForRange(lexemes, call, getStart, getClose) ?: return@forEach
+                    val outputVariable = assignedVariableForExpression(lexemes, call.targetStart)
                     val sinkEvidence = when {
-                        outputVariable != null -> nSinkScore(tokens, call.close + 1, outputVariable)
-                        isNestedInNSet(tokens, call.targetStart, call.close) -> 45
+                        outputVariable != null -> nSinkScore(lexemes, call.close + 1, outputVariable)
+                        isNestedInNSet(lexemes, call.targetStart, call.close) -> 45
                         else -> 0
                     }
                     addIfConfident(output, expression, 70 + sinkEvidence)
                 }
 
-                val sourceVariable = assignedVariableForExpression(tokens, getStart)
+                val sourceVariable = assignedVariableForExpression(lexemes, getStart)
                 if (sourceVariable != null) {
                     output += followVariableFlow(
-                        tokens = tokens,
+                        lexemes = lexemes,
                         startIndex = getClose + 1,
                         sourceVariable = sourceVariable,
                         baseConfidence = 70,
@@ -128,53 +130,54 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
     }
 
     private fun followVariableFlow(
-        tokens: List<Token>,
+        lexemes: List<Lexeme>,
         startIndex: Int,
         sourceVariable: String,
         baseConfidence: Int,
-        sinkScore: (List<Token>, Int, String) -> Int
+        sinkScore: (List<Lexeme>, Int, String) -> Int
     ): List<YoutubeSemanticTransformCandidate> {
         val output = ArrayList<YoutubeSemanticTransformCandidate>()
         val tainted = LinkedHashSet<String>()
         tainted += sourceVariable
         var index = startIndex.coerceAtLeast(0)
-        val limit = minOf(tokens.size, index + MAX_FLOW_TOKENS)
+        val limit = minOf(lexemes.size, index + MAX_FLOW_TOKENS)
 
         while (index < limit) {
-            if (tokens[index].text != "=" || !isAssignmentOperator(tokens, index)) {
+            if (lexemes[index].text != "=" || !isAssignmentOperator(lexemes, index)) {
                 index++
                 continue
             }
-            val lhs = tokens.getOrNull(index - 1)
-                ?.takeIf { it.kind == TokenKind.IDENTIFIER }
+            val lhs = lexemes.getOrNull(index - 1)
+                ?.takeIf { it.kind == LexemeKind.IDENTIFIER }
                 ?.text
             if (lhs == null) {
                 index++
                 continue
             }
-            val statementEnd = statementEnd(tokens, index + 1, limit)
-            val rhs = (index + 1 until statementEnd).toList()
-            val identifiers = rhs
-                .mapNotNull { tokenIndex -> tokens[tokenIndex].takeIf { it.kind == TokenKind.IDENTIFIER }?.text }
+            val expressionEnd = statementEnd(lexemes, index + 1, limit)
+            val rhs = (index + 1 until expressionEnd).toList()
+            val identifiers = rhs.mapNotNull { lexemeIndex ->
+                lexemes[lexemeIndex].takeIf { it.kind == LexemeKind.IDENTIFIER }?.text
+            }
             if (identifiers.size == 1 && identifiers.first() in tainted) {
                 tainted += lhs
-                index = statementEnd + 1
+                index = expressionEnd + 1
                 continue
             }
 
-            callsBetween(tokens, index + 1, statementEnd).forEach { call ->
-                val expression = expressionForIdentifiers(tokens, call, tainted) ?: return@forEach
-                val confidence = baseConfidence + sinkScore(tokens, statementEnd + 1, lhs)
+            callsBetween(lexemes, index + 1, expressionEnd).forEach { call ->
+                val expression = expressionForIdentifiers(lexemes, call, tainted) ?: return@forEach
+                val confidence = baseConfidence + sinkScore(lexemes, expressionEnd + 1, lhs)
                 addIfConfident(output, expression, confidence)
                 tainted += lhs
             }
-            index = statementEnd + 1
+            index = expressionEnd + 1
         }
         return output
     }
 
     private fun expressionForRange(
-        tokens: List<Token>,
+        lexemes: List<Lexeme>,
         call: CallSite,
         sourceStart: Int,
         sourceEnd: Int
@@ -186,7 +189,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                 arguments += "INPUT"
                 replaced++
             } else {
-                arguments += safeConstantArgument(tokens, range) ?: return null
+                arguments += safeConstantArgument(lexemes, range) ?: return null
             }
         }
         if (replaced != 1) return null
@@ -194,45 +197,48 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
     }
 
     private fun expressionForIdentifiers(
-        tokens: List<Token>,
+        lexemes: List<Lexeme>,
         call: CallSite,
         tainted: Set<String>
     ): String? {
         var replaced = 0
         val arguments = ArrayList<String>(call.arguments.size)
         call.arguments.forEach { range ->
-            val names = range.mapNotNull { index ->
-                tokens[index].takeIf { it.kind == TokenKind.IDENTIFIER }?.text
+            val names = range.mapNotNull { lexemeIndex ->
+                lexemes[lexemeIndex].takeIf { it.kind == LexemeKind.IDENTIFIER }?.text
             }
             if (names.any { it in tainted }) {
                 if (names.count { it in tainted } != 1) return null
-                if (range.any { index ->
-                        val token = tokens[index]
-                        token.kind == TokenKind.IDENTIFIER && token.text !in tainted
+                if (range.any { lexemeIndex ->
+                        val lexeme = lexemes[lexemeIndex]
+                        lexeme.kind == LexemeKind.IDENTIFIER && lexeme.text !in tainted
                     }
                 ) return null
                 arguments += "INPUT"
                 replaced++
             } else {
-                arguments += safeConstantArgument(tokens, range) ?: return null
+                arguments += safeConstantArgument(lexemes, range) ?: return null
             }
         }
         if (replaced != 1) return null
         return "${call.target}(${arguments.joinToString(",")})"
     }
 
-    private fun safeConstantArgument(tokens: List<Token>, range: IntRange): String? {
+    private fun safeConstantArgument(lexemes: List<Lexeme>, range: IntRange): String? {
         if (range.isEmpty()) return null
-        val slice = range.map { tokens[it] }
+        val slice = range.map { lexemes[it] }
         return when {
-            slice.size == 1 && slice[0].kind == TokenKind.NUMBER -> slice[0].text
-            slice.size == 2 && slice[0].text == "-" && slice[1].kind == TokenKind.NUMBER -> "-${slice[1].text}"
+            slice.size == 1 && isSafeInteger(slice[0]) -> slice[0].text
+            slice.size == 2 && slice[0].text == "-" && isSafeInteger(slice[1]) -> "-${slice[1].text}"
             else -> null
         }
     }
 
+    private fun isSafeInteger(lexeme: Lexeme): Boolean =
+        lexeme.kind == LexemeKind.NUMBER && lexeme.text.isNotEmpty() && lexeme.text.all(Char::isDigit)
+
     private fun enclosingCalls(
-        tokens: List<Token>,
+        lexemes: List<Lexeme>,
         sourceStart: Int,
         sourceEnd: Int
     ): List<CallSite> {
@@ -240,14 +246,10 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         var index = sourceStart - 1
         var inspected = 0
         while (index >= 0 && inspected < MAX_PARENT_SCAN_TOKENS && output.size < MAX_ENCLOSING_CALLS) {
-            if (tokens[index].text == "(") {
-                val close = matchingParen(tokens, index)
+            if (lexemes[index].text == "(") {
+                val close = matchingParen(lexemes, index)
                 if (close != null && close >= sourceEnd) {
-                    callSite(tokens, index, close)?.let { call ->
-                        if (call.target != "decodeURIComponent" && call.target != "encodeURIComponent") {
-                            output += call
-                        }
-                    }
+                    callSite(lexemes, index, close)?.let(output::add)
                 }
             }
             index--
@@ -256,16 +258,16 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return output
     }
 
-    private fun callsBetween(tokens: List<Token>, start: Int, endExclusive: Int): List<CallSite> {
+    private fun callsBetween(lexemes: List<Lexeme>, start: Int, endExclusive: Int): List<CallSite> {
         val output = ArrayList<CallSite>()
         var index = start.coerceAtLeast(0)
-        val end = minOf(tokens.size, endExclusive)
+        val end = minOf(lexemes.size, endExclusive)
         while (index < end && output.size < MAX_CALLS_PER_FLOW) {
-            if (tokens[index].text == "(") {
-                val close = matchingParen(tokens, index)
+            if (lexemes[index].text == "(") {
+                val close = matchingParen(lexemes, index)
                 if (close != null && close < end) {
-                    callSite(tokens, index, close)?.let { call ->
-                        if (call.target !in NON_TRANSFORM_CALLS) output += call
+                    callSite(lexemes, index, close)?.let { call ->
+                        if (!isNonTransformTarget(call.target)) output += call
                     }
                 }
             }
@@ -274,35 +276,40 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return output
     }
 
-    private fun callSite(tokens: List<Token>, open: Int, close: Int): CallSite? {
-        val target = callableTarget(tokens, open) ?: return null
+    private fun isNonTransformTarget(target: String): Boolean =
+        target in NON_TRANSFORM_CALLS ||
+            target.endsWith(".get") ||
+            target.endsWith(".set")
+
+    private fun callSite(lexemes: List<Lexeme>, open: Int, close: Int): CallSite? {
+        val target = callableTarget(lexemes, open) ?: return null
         return CallSite(
             target = target.first,
             targetStart = target.second,
             open = open,
             close = close,
-            arguments = splitArguments(tokens, open + 1, close)
+            arguments = splitArguments(lexemes, open + 1, close)
         )
     }
 
-    private fun callableTarget(tokens: List<Token>, open: Int): Pair<String, Int>? {
+    private fun callableTarget(lexemes: List<Lexeme>, open: Int): Pair<String, Int>? {
         var index = open - 1
         if (index < 0) return null
         var target: String
         var start: Int
 
-        if (tokens[index].text == "]") {
+        if (lexemes[index].text == "]") {
             if (
                 index < 3 ||
-                tokens[index - 1].kind != TokenKind.NUMBER ||
-                tokens[index - 2].text != "[" ||
-                tokens[index - 3].kind != TokenKind.IDENTIFIER
+                !isSafeInteger(lexemes[index - 1]) ||
+                lexemes[index - 2].text != "[" ||
+                lexemes[index - 3].kind != LexemeKind.IDENTIFIER
             ) return null
-            target = "${tokens[index - 3].text}[${tokens[index - 1].text}]"
+            target = "${lexemes[index - 3].text}[${lexemes[index - 1].text}]"
             start = index - 3
             index -= 4
         } else {
-            val last = tokens[index].takeIf { it.kind == TokenKind.IDENTIFIER } ?: return null
+            val last = lexemes[index].takeIf { it.kind == LexemeKind.IDENTIFIER } ?: return null
             target = last.text
             start = index
             index--
@@ -310,10 +317,10 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
 
         while (
             index >= 1 &&
-            tokens[index].text == "." &&
-            tokens[index - 1].kind == TokenKind.IDENTIFIER
+            lexemes[index].text == "." &&
+            lexemes[index - 1].kind == LexemeKind.IDENTIFIER
         ) {
-            target = "${tokens[index - 1].text}.$target"
+            target = "${lexemes[index - 1].text}.$target"
             start = index - 1
             index -= 2
         }
@@ -321,7 +328,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return target to start
     }
 
-    private fun splitArguments(tokens: List<Token>, start: Int, close: Int): List<IntRange> {
+    private fun splitArguments(lexemes: List<Lexeme>, start: Int, close: Int): List<IntRange> {
         if (start >= close) return emptyList()
         val output = ArrayList<IntRange>()
         var argStart = start
@@ -330,7 +337,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         var brace = 0
         var index = start
         while (index < close) {
-            when (tokens[index].text) {
+            when (lexemes[index].text) {
                 "(" -> paren++
                 ")" -> paren--
                 "[" -> bracket++
@@ -350,15 +357,15 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return output
     }
 
-    private fun assignedVariableForExpression(tokens: List<Token>, expressionStart: Int): String? {
+    private fun assignedVariableForExpression(lexemes: List<Lexeme>, expressionStart: Int): String? {
         var index = expressionStart - 1
         var inspected = 0
         while (index >= 1 && inspected < MAX_ASSIGNMENT_SCAN_TOKENS) {
-            val symbol = tokens[index].text
-            if (symbol == ";" || symbol == "{" || symbol == "}") return null
-            if (symbol == "=" && isAssignmentOperator(tokens, index)) {
-                return tokens[index - 1]
-                    .takeIf { it.kind == TokenKind.IDENTIFIER }
+            val symbol = lexemes[index].text
+            if (symbol == ";" || symbol == "," || symbol == "{" || symbol == "}") return null
+            if (symbol == "=" && isAssignmentOperator(lexemes, index)) {
+                return lexemes[index - 1]
+                    .takeIf { it.kind == LexemeKind.IDENTIFIER }
                     ?.text
             }
             index--
@@ -367,28 +374,29 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return null
     }
 
-    private fun isAssignmentOperator(tokens: List<Token>, index: Int): Boolean {
-        return tokens.getOrNull(index - 1)?.text != "=" &&
-            tokens.getOrNull(index + 1)?.text != "=" &&
-            tokens.getOrNull(index - 1)?.text != "!" &&
-            tokens.getOrNull(index - 1)?.text != ">" &&
-            tokens.getOrNull(index - 1)?.text != "<"
+    private fun isAssignmentOperator(lexemes: List<Lexeme>, index: Int): Boolean {
+        return lexemes.getOrNull(index - 1)?.text != "=" &&
+            lexemes.getOrNull(index + 1)?.text != "=" &&
+            lexemes.getOrNull(index + 1)?.text != ">" &&
+            lexemes.getOrNull(index - 1)?.text != "!" &&
+            lexemes.getOrNull(index - 1)?.text != ">" &&
+            lexemes.getOrNull(index - 1)?.text != "<"
     }
 
-    private fun signatureSinkScore(tokens: List<Token>, start: Int, variable: String): Int {
+    private fun signatureSinkScore(lexemes: List<Lexeme>, start: Int, variable: String): Int {
         var score = 0
-        val end = minOf(tokens.size, start + MAX_SINK_SCAN_TOKENS)
+        val end = minOf(lexemes.size, start + MAX_SINK_SCAN_TOKENS)
         var index = start.coerceAtLeast(0)
         while (index < end) {
-            if (tokens[index].text == "encodeURIComponent" && tokens.getOrNull(index + 1)?.text == "(") {
-                val close = matchingParen(tokens, index + 1)
-                if (close != null && close < end && containsIdentifier(tokens, index + 2, close, variable)) {
+            if (lexemes[index].text == "encodeURIComponent" && lexemes.getOrNull(index + 1)?.text == "(") {
+                val close = matchingParen(lexemes, index + 1)
+                if (close != null && close < end && containsIdentifier(lexemes, index + 2, close, variable)) {
                     score = maxOf(score, 25)
                 }
             }
-            if (tokens[index].text == "set" && tokens.getOrNull(index - 1)?.text == "." && tokens.getOrNull(index + 1)?.text == "(") {
-                val close = matchingParen(tokens, index + 1)
-                if (close != null && close < end && containsIdentifier(tokens, index + 2, close, variable)) {
+            if (lexemes[index].text == "set" && lexemes.getOrNull(index - 1)?.text == "." && lexemes.getOrNull(index + 1)?.text == "(") {
+                val close = matchingParen(lexemes, index + 1)
+                if (close != null && close < end && containsIdentifier(lexemes, index + 2, close, variable)) {
                     score = maxOf(score, 40)
                 }
             }
@@ -397,18 +405,18 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         return score
     }
 
-    private fun nSinkScore(tokens: List<Token>, start: Int, variable: String): Int {
-        val end = minOf(tokens.size, start + MAX_SINK_SCAN_TOKENS)
+    private fun nSinkScore(lexemes: List<Lexeme>, start: Int, variable: String): Int {
+        val end = minOf(lexemes.size, start + MAX_SINK_SCAN_TOKENS)
         var index = start.coerceAtLeast(0)
         while (index < end) {
-            if (tokens[index].text == "set" && tokens.getOrNull(index - 1)?.text == "." && tokens.getOrNull(index + 1)?.text == "(") {
-                val close = matchingParen(tokens, index + 1)
+            if (lexemes[index].text == "set" && lexemes.getOrNull(index - 1)?.text == "." && lexemes.getOrNull(index + 1)?.text == "(") {
+                val close = matchingParen(lexemes, index + 1)
                 if (close != null && close < end) {
-                    val args = splitArguments(tokens, index + 2, close)
+                    val args = splitArguments(lexemes, index + 2, close)
                     if (
                         args.size >= 2 &&
-                        singleString(tokens, args[0]) == "n" &&
-                        containsIdentifier(tokens, args[1].first, args[1].last + 1, variable)
+                        singleString(lexemes, args[0]) == "n" &&
+                        containsIdentifier(lexemes, args[1].first, args[1].last + 1, variable)
                     ) return 45
                 }
             }
@@ -418,84 +426,84 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
     }
 
     private fun isNestedInCallable(
-        tokens: List<Token>,
+        lexemes: List<Lexeme>,
         sourceStart: Int,
         sourceEnd: Int,
         callable: String
     ): Boolean {
-        return enclosingCalls(tokens, sourceStart, sourceEnd).any { it.target == callable }
+        return enclosingCalls(lexemes, sourceStart, sourceEnd).any { it.target == callable }
     }
 
-    private fun isNestedInNSet(tokens: List<Token>, sourceStart: Int, sourceEnd: Int): Boolean {
-        return enclosingCalls(tokens, sourceStart, sourceEnd).any { call ->
+    private fun isNestedInNSet(lexemes: List<Lexeme>, sourceStart: Int, sourceEnd: Int): Boolean {
+        return enclosingCalls(lexemes, sourceStart, sourceEnd).any { call ->
             call.target.endsWith(".set") &&
-                call.arguments.firstOrNull()?.let { singleString(tokens, it) == "n" } == true
+                call.arguments.firstOrNull()?.let { singleString(lexemes, it) == "n" } == true
         }
     }
 
-    private fun isGetCallKey(tokens: List<Token>, keyIndex: Int): Boolean {
+    private fun isGetCallKey(lexemes: List<Lexeme>, keyIndex: Int): Boolean {
         if (keyIndex < 3) return false
-        return tokens[keyIndex - 1].text == "(" &&
-            tokens[keyIndex - 2].text == "get" &&
-            tokens[keyIndex - 3].text == "."
+        return lexemes[keyIndex - 1].text == "(" &&
+            lexemes[keyIndex - 2].text == "get" &&
+            lexemes[keyIndex - 3].text == "."
     }
 
-    private fun mentionsKey(tokens: List<Token>, start: Int, endInclusive: Int, key: String): Boolean {
+    private fun mentionsKey(lexemes: List<Lexeme>, start: Int, endInclusive: Int, key: String): Boolean {
         if (start > endInclusive) return false
-        for (index in start..minOf(endInclusive, tokens.lastIndex)) {
-            val token = tokens[index]
-            if (token.kind == TokenKind.STRING && token.text == key) return true
+        for (index in start..minOf(endInclusive, lexemes.lastIndex)) {
+            val lexeme = lexemes[index]
+            if (lexeme.kind == LexemeKind.STRING && lexeme.text == key) return true
             if (
-                token.kind == TokenKind.IDENTIFIER &&
-                token.text == key &&
-                tokens.getOrNull(index - 1)?.text == "."
+                lexeme.kind == LexemeKind.IDENTIFIER &&
+                lexeme.text == key &&
+                lexemes.getOrNull(index - 1)?.text == "."
             ) return true
         }
         return false
     }
 
-    private fun singleString(tokens: List<Token>, range: IntRange): String? {
+    private fun singleString(lexemes: List<Lexeme>, range: IntRange): String? {
         if (range.first != range.last) return null
-        return tokens[range.first].takeIf { it.kind == TokenKind.STRING }?.text
+        return lexemes[range.first].takeIf { it.kind == LexemeKind.STRING }?.text
     }
 
     private fun containsIdentifier(
-        tokens: List<Token>,
+        lexemes: List<Lexeme>,
         start: Int,
         endExclusive: Int,
         identifier: String
     ): Boolean {
-        for (index in start.coerceAtLeast(0) until minOf(endExclusive, tokens.size)) {
-            if (tokens[index].kind == TokenKind.IDENTIFIER && tokens[index].text == identifier) return true
+        for (index in start.coerceAtLeast(0) until minOf(endExclusive, lexemes.size)) {
+            if (lexemes[index].kind == LexemeKind.IDENTIFIER && lexemes[index].text == identifier) return true
         }
         return false
     }
 
-    private fun statementEnd(tokens: List<Token>, start: Int, limit: Int): Int {
+    private fun statementEnd(lexemes: List<Lexeme>, start: Int, limit: Int): Int {
         var paren = 0
         var bracket = 0
         var brace = 0
         var index = start
         while (index < limit) {
-            when (tokens[index].text) {
+            when (lexemes[index].text) {
                 "(" -> paren++
                 ")" -> if (paren > 0) paren--
                 "[" -> bracket++
                 "]" -> if (bracket > 0) bracket--
                 "{" -> brace++
                 "}" -> if (brace > 0) brace--
-                ";" -> if (paren == 0 && bracket == 0 && brace == 0) return index
+                ";", "," -> if (paren == 0 && bracket == 0 && brace == 0) return index
             }
             index++
         }
         return limit
     }
 
-    private fun matchingParen(tokens: List<Token>, open: Int): Int? {
-        if (tokens.getOrNull(open)?.text != "(") return null
+    private fun matchingParen(lexemes: List<Lexeme>, open: Int): Int? {
+        if (lexemes.getOrNull(open)?.text != "(") return null
         var depth = 0
-        for (index in open until tokens.size) {
-            when (tokens[index].text) {
+        for (index in open until lexemes.size) {
+            when (lexemes[index].text) {
                 "(" -> depth++
                 ")" -> {
                     depth--
@@ -516,21 +524,27 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         val seen = HashSet<Long>()
         needles.forEach { needle ->
             var cursor = 0
-            while (cursor < javascript.length && output.size < MAX_ANCHORS_PER_KIND) {
+            var foundForNeedle = 0
+            while (
+                cursor < javascript.length &&
+                foundForNeedle < MAX_ANCHORS_PER_NEEDLE &&
+                output.size < MAX_ANCHORS_PER_KIND
+            ) {
                 val anchor = javascript.indexOf(needle, cursor)
                 if (anchor < 0) break
                 val start = (anchor - before).coerceAtLeast(0)
                 val end = (anchor + needle.length + after).coerceAtMost(javascript.length)
                 val identity = (start.toLong() shl 32) xor end.toLong()
                 if (seen.add(identity)) output += ScanWindow(start, end, anchor)
+                foundForNeedle++
                 cursor = anchor + needle.length
             }
         }
         return output.sortedBy { it.anchor }
     }
 
-    private fun tokenize(source: String, start: Int, endExclusive: Int): List<Token> {
-        val output = ArrayList<Token>()
+    private fun tokenize(source: String, start: Int, endExclusive: Int): List<Lexeme> {
+        val output = ArrayList<Lexeme>()
         var index = start
         while (index < endExclusive && output.size < MAX_WINDOW_TOKENS) {
             val char = source[index]
@@ -550,7 +564,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                 }
                 char == '\'' || char == '"' -> {
                     val quote = char
-                    val tokenStart = index
+                    val lexemeStart = index
                     index++
                     val value = StringBuilder()
                     while (index < endExclusive) {
@@ -567,7 +581,7 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                         value.append(current)
                         index++
                     }
-                    output += Token(TokenKind.STRING, value.toString(), tokenStart, index)
+                    output += Lexeme(LexemeKind.STRING, value.toString(), lexemeStart, index)
                 }
                 char == '`' -> {
                     index++
@@ -584,19 +598,19 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
                     }
                 }
                 isIdentifierStart(char) -> {
-                    val tokenStart = index
+                    val lexemeStart = index
                     index++
                     while (index < endExclusive && isIdentifierPart(source[index])) index++
-                    output += Token(TokenKind.IDENTIFIER, source.substring(tokenStart, index), tokenStart, index)
+                    output += Lexeme(LexemeKind.IDENTIFIER, source.substring(lexemeStart, index), lexemeStart, index)
                 }
                 char.isDigit() -> {
-                    val tokenStart = index
+                    val lexemeStart = index
                     index++
                     while (index < endExclusive && (source[index].isDigit() || source[index] == '.')) index++
-                    output += Token(TokenKind.NUMBER, source.substring(tokenStart, index), tokenStart, index)
+                    output += Lexeme(LexemeKind.NUMBER, source.substring(lexemeStart, index), lexemeStart, index)
                 }
                 else -> {
-                    output += Token(TokenKind.SYMBOL, char.toString(), index, index + 1)
+                    output += Lexeme(LexemeKind.SYMBOL, char.toString(), index, index + 1)
                     index++
                 }
             }
@@ -642,8 +656,9 @@ internal object YoutubePlayerSemanticAnalyzerV2 {
         "set"
     )
 
-    private const val MIN_CONFIDENCE = 100
-    private const val MAX_ANCHORS_PER_KIND = 24
+    private const val MIN_CONFIDENCE = 110
+    private const val MAX_ANCHORS_PER_NEEDLE = 16
+    private const val MAX_ANCHORS_PER_KIND = 32
     private const val MAX_WINDOW_TOKENS = 900
     private const val MAX_FLOW_TOKENS = 260
     private const val MAX_SINK_SCAN_TOKENS = 180
