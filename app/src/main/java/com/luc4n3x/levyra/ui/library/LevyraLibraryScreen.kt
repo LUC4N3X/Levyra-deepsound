@@ -92,6 +92,7 @@ internal fun LevyraLibraryScreen(
     val strings = LocalLevyraStrings.current
     val catalog = remember(
         state.favorites,
+        state.favoriteTimestamps,
         state.playlists,
         state.downloads,
         state.recentListens,
@@ -104,7 +105,8 @@ internal fun LevyraLibraryScreen(
             downloads = state.downloads,
             recentListens = state.recentListens,
             followedArtists = state.followedArtists,
-            mostPlayedTracks = state.mostPlayedTracks
+            mostPlayedTracks = state.mostPlayedTracks,
+            favoriteTimestamps = state.favoriteTimestamps
         )
     }
 
@@ -167,8 +169,14 @@ internal fun LevyraLibraryScreen(
     val visibleArtists = remember(catalog.artists, query, sort, direction) {
         filterLibraryArtists(catalog.artists, query, sort, direction)
     }
-    val visibleTracks = remember(catalog.tracks, query, sort, direction) {
-        filterLibraryTracks(catalog.tracks, query, sort, direction)
+    val visibleTracks = remember(catalog.tracks, query, sort, direction, catalog.trackRecency) {
+        filterLibraryTracks(
+            tracks = catalog.tracks,
+            query = query,
+            sort = sort,
+            direction = direction,
+            recencyProvider = catalog::recencyOf
+        )
     }
     val visibleOffline = remember(catalog.offlineItems, query, sort, direction) {
         filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)

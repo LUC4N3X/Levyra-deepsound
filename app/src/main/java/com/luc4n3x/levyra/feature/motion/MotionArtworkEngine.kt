@@ -6,7 +6,6 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -42,8 +41,7 @@ class MotionArtworkEngine(context: Context) {
     private val runtimeLock = Any()
     private var activeEpoch = -1L
     private var activeProviders: List<MotionArtworkProvider> = emptyList()
-    private val inFlightMutex = Mutex()
-    private val inFlight = mutableMapOf<String, CompletableDeferred<MotionArtwork?>>()
+    private val inFlightSessions = mutableMapOf<String, MotionProgressiveSession>()
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
@@ -55,21 +53,7 @@ class MotionArtworkEngine(context: Context) {
     suspend fun resolve(
         track: Track,
         source: LevyraCanvasSource = LevyraCanvasSource.Auto
-    ): MotionArtwork? {
-        if (!networkPolicy.canResolveCurrent()) return null
-        val lookupTrack = prepareLookupTrack(track)
-        val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(lookupTrack), source)
-        val runtime = MotionArtworkRuntime.snapshot()
-        when (val cached = repository.get(identityKey, runtime.epoch)) {
-            is MotionArtworkCacheResult.Hit -> return cached.artwork
-            MotionArtworkCacheResult.Negative -> return null
-            MotionArtworkCacheResult.Miss -> Unit
-        }
-
-        return shared("${runtime.epoch}:$identityKey") {
-            resolveFresh(lookupTrack, identityKey, runtime.epoch, runtime.value, source)
-        }
-    }
+    ): MotionArtwork? = resolveProgressive(track, source).lastOrNull()
 
     fun resolveProgressive(
         track: Track,
@@ -87,7 +71,13 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Negative -> return@flow
             MotionArtworkCacheResult.Miss -> Unit
         }
-        emitAll(resolveFreshProgressive(lookupTrack, identityKey, runtime.epoch, runtime.value, source))
+        emitAll(
+            sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
+                resolveFreshProgressive(lookupTrack, identityKey, runtime.epoch, runtime.value, source).collect { artwork ->
+                    emit(artwork)
+                }
+            }
+        )
     }.flowOn(Dispatchers.IO)
 
     private suspend fun prepareLookupTrack(track: Track): Track {
@@ -127,9 +117,9 @@ class MotionArtworkEngine(context: Context) {
             MotionArtworkCacheResult.Miss -> Unit
         }
         Timber.d("Artist motion engine resolve start artist=%s source=%s", clean, source)
-        return shared("${runtime.epoch}:$identityKey") {
-            resolveArtistFresh(clean, identityKey, runtime.epoch, config)
-        }
+        return sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
+            resolveArtistFresh(clean, identityKey, runtime.epoch, config)?.let { emit(it) }
+        }.lastOrNull()
     }
 
     private suspend fun resolveArtistFresh(
@@ -215,32 +205,35 @@ class MotionArtworkEngine(context: Context) {
         return artwork
     }
 
-    private suspend fun shared(
+    private fun sharedProgressive(
         requestKey: String,
-        block: suspend () -> MotionArtwork?
-    ): MotionArtwork? {
-        val deferred = inFlightMutex.withLock {
-            inFlight[requestKey] ?: CompletableDeferred<MotionArtwork?>().also { pending ->
-                inFlight[requestKey] = pending
-                lookupScope.launch {
-                    try {
-                        pending.complete(block())
-                    } catch (error: CancellationException) {
-                        pending.completeExceptionally(error)
-                    } catch (error: Throwable) {
-                        Timber.d(error, "Motion artwork resolution failed")
-                        pending.complete(null)
-                    } finally {
-                        withContext(NonCancellable) {
-                            inFlightMutex.withLock {
-                                inFlight.remove(requestKey, pending)
+        block: suspend (emit: suspend (MotionArtwork) -> Unit) -> Unit
+    ): Flow<MotionArtwork> {
+        val session = synchronized(inFlightSessions) {
+            inFlightSessions.getOrPut(requestKey) {
+                MotionProgressiveSession().also { newSession ->
+                    lookupScope.launch {
+                        try {
+                            block { artwork ->
+                                newSession.emit(artwork)
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            Timber.d(error, "Motion artwork resolution failed")
+                        } finally {
+                            withContext(NonCancellable) {
+                                synchronized(inFlightSessions) {
+                                    inFlightSessions.remove(requestKey)
+                                }
+                                newSession.complete()
                             }
                         }
                     }
                 }
             }
         }
-        return deferred.await()
+        return session.openSubscription()
     }
 
     suspend fun prefetchNext(
@@ -250,14 +243,6 @@ class MotionArtworkEngine(context: Context) {
         if (track == null || !networkPolicy.canPrefetchNext()) return
         resolve(track, source)
     }
-
-    private suspend fun resolveFresh(
-        track: Track,
-        identityKey: String,
-        configEpoch: Long,
-        config: MotionArtworkConfig,
-        source: LevyraCanvasSource
-    ): MotionArtwork? = resolveFreshProgressive(track, identityKey, configEpoch, config, source).lastOrNull()
 
     private fun resolveFreshProgressive(
         track: Track,
@@ -592,4 +577,64 @@ internal fun shouldPublishMotionUpgrade(
     if (forcedSource) return false
     if (upgradesUsed >= maxUpgrades) return false
     return candidateProviderRank < publishedProviderRank
+}
+
+internal class MotionProgressiveSession {
+    private val mutex = Mutex()
+    private val collectors = mutableListOf<Channel<MotionArtwork>>()
+    private var currentArtwork: MotionArtwork? = null
+    private var isCompleted = false
+
+    suspend fun emit(artwork: MotionArtwork) {
+        val targets = mutex.withLock {
+            currentArtwork = artwork
+            collectors.toList()
+        }
+        for (target in targets) {
+            target.send(artwork)
+        }
+    }
+
+    suspend fun complete() {
+        val targets = mutex.withLock {
+            isCompleted = true
+            collectors.toList()
+        }
+        for (target in targets) {
+            target.close()
+        }
+    }
+
+    fun openSubscription(): Flow<MotionArtwork> = flow {
+        val channel = Channel<MotionArtwork>(Channel.UNLIMITED)
+        val initialArtwork: MotionArtwork?
+        val alreadyCompleted: Boolean
+        mutex.withLock {
+            alreadyCompleted = isCompleted
+            initialArtwork = currentArtwork
+            if (!isCompleted) {
+                collectors.add(channel)
+            }
+        }
+        var lastEmitted: MotionArtwork? = null
+        if (initialArtwork != null) {
+            lastEmitted = initialArtwork
+            emit(initialArtwork)
+        }
+        if (alreadyCompleted) {
+            return@flow
+        }
+        try {
+            for (artwork in channel) {
+                if (artwork != lastEmitted) {
+                    lastEmitted = artwork
+                    emit(artwork)
+                }
+            }
+        } finally {
+            mutex.withLock {
+                collectors.remove(channel)
+            }
+        }
+    }
 }

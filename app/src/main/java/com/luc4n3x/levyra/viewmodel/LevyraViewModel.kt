@@ -1077,6 +1077,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeJamState()
         observeSimilarSongsSeed()
         val favorites = favoritesStore.load()
+        val favoriteTimestamps = favoritesStore.loadTimestamps()
         val settings = startupSettings
         val repairedRecentSearches = settings.recentSearches
             .map(LevyraPersonalOrbit::withoutVideoArtwork)
@@ -1165,6 +1166,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 favorites = favorites,
                 favoriteIds = favorites.map { fav -> fav.id }.toSet(),
+                favoriteTimestamps = favoriteTimestamps,
                 recentSearches = repairedRecentSearches,
                 personalOrbitTracks = cachedOrbitTracks,
                 homeSections = startupHomeSections,
@@ -2985,8 +2987,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = positionMs,
                         bufferedPositionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                        motionArtwork = if (targetMode) null else it.motionArtwork,
+                        motionArtworkLoading = if (targetMode) false else it.motionArtworkLoading,
                         playerError = null
                     )
+                }
+                if (targetMode) {
+                    motionArtworkJob?.cancel()
+                    motionArtworkPrefetchJob?.cancel()
+                    motionArtworkRequestKey = null
+                } else {
+                    refreshMotionArtworkAround(resolved)
                 }
                 prefetchAlternateMode(resolved, targetMode)
                 refreshQueuePrefetch()
@@ -3003,8 +3014,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         pendingVideoMode = null,
                         isResolving = false,
                         isPlaying = player.isPlaying || snapshot.isPlaying,
+                        motionArtwork = if (sourceMode) null else it.motionArtwork,
+                        motionArtworkLoading = if (sourceMode) false else it.motionArtworkLoading,
                         playerError = cleanPlaybackError(error)
                     )
+                }
+                if (sourceMode) {
+                    motionArtworkJob?.cancel()
+                    motionArtworkPrefetchJob?.cancel()
+                    motionArtworkRequestKey = null
+                } else {
+                    refreshMotionArtworkAround(track)
                 }
             }
         }
@@ -3063,8 +3083,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = positionMs,
                         bufferedPositionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                        motionArtwork = if (videoMode) null else it.motionArtwork,
+                        motionArtworkLoading = if (videoMode) false else it.motionArtworkLoading,
                         playerError = null
                     )
+                }
+                if (videoMode) {
+                    motionArtworkJob?.cancel()
+                    motionArtworkPrefetchJob?.cancel()
+                    motionArtworkRequestKey = null
+                } else {
+                    refreshMotionArtworkAround(resolved)
                 }
                 prefetchAlternateMode(resolved, videoMode)
                 updateWidget()
@@ -4180,6 +4209,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun refreshAfterRestore() {
         val snapshot = withContext(Dispatchers.IO) { preferences.snapshot() }
         val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
+        val favoriteTimestamps = withContext(Dispatchers.IO) { favoritesStore.loadTimestampsSuspending() }
         val playlists = playlistStore.loadAll()
         val playlistTags = playlistStore.allTags()
         val followed = followedArtistsStore.load()
@@ -4196,6 +4226,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 favorites = favorites,
                 favoriteIds = favorites.map { track -> track.id }.toSet(),
+                favoriteTimestamps = favoriteTimestamps,
                 playlists = playlists,
                 playlistTags = playlistTags,
                 recentSearches = snapshot.recentSearches,
@@ -4898,11 +4929,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val (updated, isFavorite) = favoriteMutationMutex.withLock {
                 val updated = favoritesStore.toggleFavorite(track)
+                val timestamps = favoritesStore.loadTimestampsSuspending()
                 val isFavorite = areAllFavoriteTracks(updated, listOf(track))
                 _state.update { state ->
                     state.copy(
                         favorites = updated,
-                        favoriteIds = updated.map { favorite -> favorite.id }.toSet()
+                        favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
+                        favoriteTimestamps = timestamps
                     )
                 }
                 updated to isFavorite
@@ -4923,10 +4956,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         albumFavoriteJob = viewModelScope.launch {
             val updated = favoriteMutationMutex.withLock {
                 favoritesStore.toggleFavorites(tracks).also { favorites ->
+                    val timestamps = favoritesStore.loadTimestampsSuspending()
                     _state.update { state ->
                         state.copy(
                             favorites = favorites,
-                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet()
+                            favoriteIds = favorites.map { favorite -> favorite.id }.toSet(),
+                            favoriteTimestamps = timestamps
                         )
                     }
                 }
@@ -4946,7 +4981,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val current = _state.value.favorites
         val updated = current.filterNot { it.id in ids }
         if (updated.size == current.size) return
-        _state.update { it.copy(favorites = updated, favoriteIds = updated.map { favorite -> favorite.id }.toSet()) }
+        _state.update {
+            it.copy(
+                favorites = updated,
+                favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
+                favoriteTimestamps = it.favoriteTimestamps - ids
+            )
+        }
         viewModelScope.launch(Dispatchers.IO) { favoritesStore.saveSuspending(updated) }
         refreshForgottenFavorites()
         _state.update { it.copy(offlineExportMessage = "Rimossi dai preferiti: ${current.size - updated.size}") }
@@ -6755,8 +6796,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 positionMs = resumeMs,
                 bufferedPositionMs = resumeMs,
                 durationMs = effectiveDuration(restoredTrack),
+                motionArtwork = if (session.videoMode) null else it.motionArtwork,
+                motionArtworkLoading = if (session.videoMode) false else it.motionArtworkLoading,
                 playerError = null
             )
+        }
+        if (session.videoMode) {
+            motionArtworkJob?.cancel()
+            motionArtworkPrefetchJob?.cancel()
+            motionArtworkRequestKey = null
+        } else {
+            refreshMotionArtworkAround(restoredTrack)
         }
         refreshQueuePrefetch()
         updateWidget()
@@ -6782,7 +6832,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 bufferedPositionMs = 0L,
                 durationMs = track.durationMs,
                 motionArtwork = null,
-                motionArtworkLoading = it.animationsEnabled
+                motionArtworkLoading = it.animationsEnabled && !it.isVideoMode
             )
         }
         fetchLyrics(track)
@@ -8045,7 +8095,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         PlaybackService.clearPreparedQueueNextIfStale()
         val current = _state.value.currentTrack
         if (current != null && !isLocalPlaybackTrack(current)) prefetchLyricsAround(current)
-        if (current != null && !isLocalPlaybackTrack(current)) prefetchNextMotionArtwork(current)
+        if (current != null && !isLocalPlaybackTrack(current) && !_state.value.isVideoMode) prefetchNextMotionArtwork(current)
         if (
             _state.value.isPlaying &&
             current != null &&
@@ -8057,6 +8107,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun refreshMotionArtworkAround(current: Track) {
         if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) {
             motionArtworkJob?.cancel()
+            motionArtworkPrefetchJob?.cancel()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
             return
@@ -8104,7 +8155,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun prefetchNextMotionArtwork(current: Track) {
         motionArtworkPrefetchJob?.cancel()
-        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled) return
+        if (!_state.value.animationsEnabled || !_state.value.motionArtworkEnabled || _state.value.isVideoMode) return
         val generation = queueEngine.state.value.generation
         val currentKey = MotionArtworkIdentityKey.create(current)
         val next = queueEngine.upcoming(2)
@@ -8114,7 +8165,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             // Yield briefly to audible playback, then warm the next Canvas early enough that a
             // queue transition can usually enter the immersive layer with the real asset ready.
             delay(180L)
-            if (!isActive || queueEngine.state.value.generation != generation) return@launch
+            if (!isActive || queueEngine.state.value.generation != generation || _state.value.isVideoMode) return@launch
             val active = _state.value.currentTrack ?: return@launch
             if (MotionArtworkIdentityKey.create(active) != currentKey) return@launch
             runCatching {

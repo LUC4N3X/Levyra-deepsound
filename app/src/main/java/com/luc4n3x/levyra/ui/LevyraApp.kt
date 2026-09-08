@@ -6239,42 +6239,38 @@ private fun buildKaraokeGlyphPath(
         val right = layoutResult.getLineRight(line)
         val top = layoutResult.getLineTop(line)
         val bottom = layoutResult.getLineBottom(line)
-        if (right > left && bottom > top) {
-            path.addRect(Rect(left, top, right, bottom))
-        }
+        path.addRectangle(left, top, right, bottom)
     }
 
-    val lineStart = layoutResult.getLineStart(activeLine)
-    for (index in lineStart until completedCharacters) {
-        val bounds = layoutResult.getBoundingBox(index)
-        if (bounds.width > 0f && bounds.height > 0f) path.addRect(bounds)
-    }
+    val top = layoutResult.getLineTop(activeLine)
+    val bottom = layoutResult.getLineBottom(activeLine)
+    val isRtl = layoutResult.getParagraphDirection(layoutResult.getLineStart(activeLine)) == ResolvedTextDirection.Rtl
+    val startX = if (isRtl) layoutResult.getLineRight(activeLine) else layoutResult.getLineLeft(activeLine)
 
-    if (completedCharacters < textLength) {
+    if (completedCharacters >= textLength) {
+        val endX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
+        path.addRectangle(minOf(startX, endX), top, maxOf(startX, endX), bottom)
+    } else {
         val fraction = boundedProgress - completedCharacters
-        if (fraction > 0f) {
-            val bounds = layoutResult.getBoundingBox(completedCharacters)
-            if (bounds.width > 0f && bounds.height > 0f) {
-                val partialBounds = if (layoutResult.getBidiRunDirection(completedCharacters) == ResolvedTextDirection.Rtl) {
-                    Rect(
-                        left = bounds.right - bounds.width * fraction,
-                        top = bounds.top,
-                        right = bounds.right,
-                        bottom = bounds.bottom
-                    )
-                } else {
-                    Rect(
-                        left = bounds.left,
-                        top = bounds.top,
-                        right = bounds.left + bounds.width * fraction,
-                        bottom = bounds.bottom
-                    )
-                }
-                path.addRect(partialBounds)
-            }
+        val charStart = layoutResult.getHorizontalPosition(completedCharacters, usePrimaryDirection = true)
+        val charEnd = if (completedCharacters + 1 <= textLength) {
+            layoutResult.getHorizontalPosition(completedCharacters + 1, usePrimaryDirection = true)
+        } else {
+            charStart
         }
+        val currentX = charStart + (charEnd - charStart) * fraction
+        path.addRectangle(minOf(startX, currentX), top, maxOf(startX, currentX), bottom)
     }
     return path
+}
+
+private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Float) {
+    if (right <= left || bottom <= top) return
+    moveTo(left, top)
+    lineTo(right, top)
+    lineTo(right, bottom)
+    lineTo(left, bottom)
+    close()
 }
 
 

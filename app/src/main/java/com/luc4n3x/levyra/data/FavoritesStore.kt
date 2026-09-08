@@ -23,6 +23,22 @@ class FavoritesStore(context: Context) {
         mutationMutex.withLock { loadInternal() }
     }
 
+    fun loadTimestamps(): Map<String, Long> = runBlocking(Dispatchers.IO) {
+        mutationMutex.withLock {
+            runCatching {
+                dao.all().associate { it.id to it.createdAt }
+            }.getOrDefault(emptyMap())
+        }
+    }
+
+    suspend fun loadTimestampsSuspending(): Map<String, Long> = withContext(Dispatchers.IO) {
+        mutationMutex.withLock {
+            runCatching {
+                dao.all().associate { it.id to it.createdAt }
+            }.getOrDefault(emptyMap())
+        }
+    }
+
     fun save(tracks: List<Track>) {
         runBlocking(Dispatchers.IO) {
             mutationMutex.withLock { saveAndCompleteMigration(tracks) }
@@ -87,9 +103,12 @@ class FavoritesStore(context: Context) {
     }
 
     private suspend fun replaceAll(tracks: List<Track>) {
+        val existingTimestamps = runCatching { dao.all().associate { it.id to it.createdAt } }
+            .getOrDefault(emptyMap())
         val now = System.currentTimeMillis()
         dao.replaceAll(tracks.mapIndexed { index, track ->
-            track.toFavoriteTrackEntity(now - index)
+            val timestamp = existingTimestamps[track.id]?.takeIf { it > 0L } ?: (now - index)
+            track.toFavoriteTrackEntity(timestamp)
         })
     }
 
