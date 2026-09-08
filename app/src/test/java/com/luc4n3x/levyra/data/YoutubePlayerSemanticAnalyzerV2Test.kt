@@ -125,6 +125,19 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
+    fun doesNotTreatStringLiteralSAsSignatureProperty() {
+        val javascript = """
+            var decoded=decodeURIComponent(read("s"));
+            var signed=LooksReal(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+    }
+
+    @Test
     fun doesNotEraseOperatorsAroundTaintedArguments() {
         val javascript = """
             var decoded=decodeURIComponent(cipher.s);
@@ -132,6 +145,36 @@ class YoutubePlayerSemanticAnalyzerV2Test {
             query.set(signatureKey,encodeURIComponent(signed));
             var throttle=query.get("n");
             var rewritten=Throttle(throttle+1);
+            query.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+        assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
+    fun doesNotCollapseNestedTransformChains() {
+        val javascript = """
+            var signed=Outer(Inner(decodeURIComponent(cipher.s)));
+            query.set(signatureKey,encodeURIComponent(signed));
+            var rewritten=OuterN(InnerN(query.get("n")));
+            query.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+        assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
+    fun doesNotPromoteDirectTransformWithPostProcessing() {
+        val javascript = """
+            var signed=Actual(decodeURIComponent(cipher.s))+1;
+            query.set(signatureKey,encodeURIComponent(signed));
+            var rewritten=Throttle(query.get("n"))+1;
             query.set("n",rewritten);
         """.trimIndent()
 
@@ -158,6 +201,22 @@ class YoutubePlayerSemanticAnalyzerV2Test {
 
         assertTrue(result.signatures.isEmpty())
         assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
+    fun nDiscoveryIgnoresUnrelatedNStringNoise() {
+        val javascript = buildString {
+            repeat(100) { index ->
+                append("var noise$index=\"n\";")
+            }
+            append("var throttle=query.get(\"n\");")
+            append("var rewritten=SemanticN(throttle);")
+            append("query.set(\"n\",rewritten);")
+        }
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertEquals("SemanticN(INPUT)", result.nTransforms.first().expression)
     }
 
     @Test
