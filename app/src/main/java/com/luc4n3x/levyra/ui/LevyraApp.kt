@@ -6253,10 +6253,13 @@ private fun buildKaraokeGlyphPath(
     } else {
         val fraction = boundedProgress - completedCharacters
         val charStart = layoutResult.getHorizontalPosition(completedCharacters, usePrimaryDirection = true)
-        val charEnd = if (completedCharacters + 1 <= textLength) {
-            layoutResult.getHorizontalPosition(completedCharacters + 1, usePrimaryDirection = true)
+        val nextOffset = (completedCharacters + 1).coerceAtMost(textLength)
+        val charEnd = if (
+            nextOffset < textLength && layoutResult.getLineForOffset(nextOffset) != activeLine
+        ) {
+            if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
         } else {
-            charStart
+            layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
         }
         val currentX = charStart + (charEnd - charStart) * fraction
         path.addRectangle(minOf(startX, currentX), top, maxOf(startX, currentX), bottom)
