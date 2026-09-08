@@ -57,13 +57,6 @@ class YoutubePlayerSemanticAnalyzerV2Test {
         val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
 
         assertEquals("Actual(4,INPUT)", result.signatures.first().expression)
-        assertTrue(
-            result.signatures
-                .firstOrNull { it.expression == "Noise(INPUT)" }
-                ?.confidence
-                ?.let { it < result.signatures.first().confidence }
-                ?: true
-        )
     }
 
     @Test
@@ -97,24 +90,9 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
-    fun doesNotPromoteCallsWithoutSemanticSourceAndSinkEvidence() {
+    fun requiresExactSignatureSourceAndRejectsCompositeInputs() {
         val javascript = """
-            var decoded=decodeURIComponent(value);
-            var maybe=Random(decoded);
-            var unrelated=query.get("x");
-            var other=Throttle(unrelated);
-        """.trimIndent()
-
-        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
-
-        assertTrue(result.signatures.isEmpty())
-        assertTrue(result.nTransforms.isEmpty())
-    }
-
-    @Test
-    fun requiresSignatureSourceToComeFromSDespiteAValidLookingSink() {
-        val javascript = """
-            var decoded=decodeURIComponent(value);
+            var decoded=decodeURIComponent(prefix+cipher.s);
             var signed=LooksReal(decoded);
             query.set(signatureKey,encodeURIComponent(signed));
         """.trimIndent()
@@ -135,6 +113,70 @@ class YoutubePlayerSemanticAnalyzerV2Test {
         val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
 
         assertTrue(result.signatures.isEmpty())
+    }
+
+    @Test
+    fun sourceAssignmentMustBeTheWholeRightHandSide() {
+        val javascript = """
+            var decoded=decodeURIComponent(cipher.s)+suffix;
+            var signed=Wrong(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+            var throttle=query.get("n")+suffix;
+            var rewritten=WrongN(throttle);
+            query.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+        assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
+    fun propertyAssignmentDoesNotCreateALocalTaintedBinding() {
+        val javascript = """
+            obj.decoded=decodeURIComponent(cipher.s);
+            var signed=Wrong(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+    }
+
+    @Test
+    fun nSinkMustBelongToTheSameReceiverAsTheGet() {
+        val javascript = """
+            var throttle=query.get("n");
+            var rewritten=WrongN(throttle);
+            other.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.nTransforms.isEmpty())
+    }
+
+    @Test
+    fun variableFlowDoesNotCrossIntoNestedFunctions() {
+        val javascript = """
+            var decoded=decodeURIComponent(cipher.s);
+            function nested(decoded){
+                var signed=Wrong(decoded);
+                query.set(signatureKey,encodeURIComponent(signed));
+            }
+            var throttle=query.get("n");
+            function nestedN(throttle){
+                var rewritten=WrongN(throttle);
+                query.set("n",rewritten);
+            }
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertTrue(result.signatures.isEmpty())
+        assertTrue(result.nTransforms.isEmpty())
     }
 
     @Test
@@ -204,7 +246,7 @@ class YoutubePlayerSemanticAnalyzerV2Test {
     }
 
     @Test
-    fun signatureDiscoveryIgnoresUnrelatedDecodeNoise() {
+    fun discoveryIgnoresLargeAmountsOfUnrelatedAnchorNoise() {
         val javascript = buildString {
             repeat(100) { index ->
                 append("var noise$index=decodeURIComponent(value$index);")
@@ -212,18 +254,8 @@ class YoutubePlayerSemanticAnalyzerV2Test {
             append("var decoded=decodeURIComponent(cipher.s);")
             append("var signed=SemanticSig(decoded);")
             append("query.set(signatureKey,encodeURIComponent(signed));")
-        }
-
-        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
-
-        assertEquals("SemanticSig(INPUT)", result.signatures.first().expression)
-    }
-
-    @Test
-    fun nDiscoveryIgnoresUnrelatedNStringNoise() {
-        val javascript = buildString {
             repeat(100) { index ->
-                append("var noise$index=\"n\";")
+                append("var nNoise$index=\"n\";")
             }
             append("var throttle=query.get(\"n\");")
             append("var rewritten=SemanticN(throttle);")
@@ -232,26 +264,112 @@ class YoutubePlayerSemanticAnalyzerV2Test {
 
         val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
 
+        assertEquals("SemanticSig(INPUT)", result.signatures.first().expression)
         assertEquals("SemanticN(INPUT)", result.nTransforms.first().expression)
     }
 
     @Test
-    fun reservesCompleteLegacyPairWhenSemanticCandidatesSaturatePool() {
+    fun regexLiteralNoiseDoesNotCreateSemanticAnchors() {
+        val javascript = """
+            var fakeSignature=/decodeURIComponent(cipher.s)/;
+            var fakeN=/\.get\("n"\)/;
+            var decoded=decodeURIComponent(cipher.s);
+            var signed=Actual(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+            var throttle=query.get("n");
+            var rewritten=Throttle(throttle);
+            query.set("n",rewritten);
+        """.trimIndent()
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertEquals("Actual(INPUT)", result.signatures.first().expression)
+        assertEquals("Throttle(INPUT)", result.nTransforms.first().expression)
+    }
+
+    @Test
+    fun densePrefixCannotConsumeTheTokenBudgetBeforeTheRealAnchor() {
+        val javascript = buildString {
+            append("var signatureNoise=")
+            repeat(700) { append("a+") }
+            append("0,decoded=decodeURIComponent(cipher.s);")
+            append("var signed=SemanticSig(decoded);")
+            append("query.set(signatureKey,encodeURIComponent(signed));")
+            append("var nNoise=")
+            repeat(700) { append("a+") }
+            append("0,throttle=query.get(\"n\");")
+            append("var rewritten=SemanticN(throttle);")
+            append("query.set(\"n\",rewritten);")
+        }
+
+        val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
+
+        assertEquals("SemanticSig(INPUT)", result.signatures.first().expression)
+        assertEquals("SemanticN(INPUT)", result.nTransforms.first().expression)
+    }
+
+    @Test
+    fun existingLegacyCandidatesKeepTheirOriginalOrderAndCapacity() {
+        val javascript = """
+            x&&(a=LegacySig1(4,decodeURIComponent(z)));
+            x&&(a=LegacySig2(5,decodeURIComponent(z)));
+            x&&(a=LegacySig3(6,decodeURIComponent(z)));
+            a.get("n"))&&(b=LegacyN1(b));
+            a.get("n"))&&(b=LegacyN2(b));
+            a.get("n"))&&(b=LegacyN3(b));
+            var decoded=decodeURIComponent(cipher.s);
+            var signed=SemanticSig(decoded);
+            query.set(signatureKey,encodeURIComponent(signed));
+            var throttle=query.get("n");
+            var rewritten=SemanticN(throttle);
+            query.set("n",rewritten);
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+
+        assertEquals(6, candidates.size)
+        assertEquals(
+            listOf(
+                "LegacySig1(4,INPUT)" to "LegacyN1(INPUT)",
+                "LegacySig1(4,INPUT)" to "LegacyN2(INPUT)",
+                "LegacySig1(4,INPUT)" to "LegacyN3(INPUT)",
+                "LegacySig2(5,INPUT)" to "LegacyN1(INPUT)",
+                "LegacySig2(5,INPUT)" to "LegacyN2(INPUT)",
+                "LegacySig2(5,INPUT)" to "LegacyN3(INPUT)"
+            ),
+            candidates.map { it.signatureExpression to it.nExpression }
+        )
+        assertTrue(candidates.none { it.signatureExpression.contains("Semantic") })
+        assertTrue(candidates.none { it.nExpression.contains("Semantic") })
+    }
+
+    @Test
+    fun semanticDiscoveryOnlyFillsAKindTheLegacyAnalyzerCannotResolve() {
+        val javascript = """
+            x&&(a=LegacySig(4,decodeURIComponent(z)));
+            var throttle=query.get("n");
+            var rewritten=SemanticN(throttle);
+            query.set("n",rewritten);
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+
+        assertTrue(candidates.isNotEmpty())
+        assertTrue(candidates.all { it.signatureExpression == "LegacySig(4,INPUT)" })
+        assertEquals("SemanticN(INPUT)", candidates.first().nExpression)
+    }
+
+    @Test
+    fun semanticDiscoveryCanResolveBothKindsWhenLegacyHasNoCandidate() {
         val javascript = """
             var decoded=decodeURIComponent(cipher.s);
             var signed=SemanticSig(decoded);
             query.set(signatureKey,encodeURIComponent(signed));
-            var decoded2=decodeURIComponent(cipher.s);
-            var signed2=SemanticSig2(decoded2);
-            query.set(signatureKey,encodeURIComponent(signed2));
-            x&&(y=LegacySig(4,decodeURIComponent(z)));
             var throttle=query.get("n");
             var rewritten=SemanticN(throttle);
             query.set("n",rewritten);
-            var throttle2=query.get("n");
-            var rewritten2=SemanticN2(throttle2);
-            query.set("n",rewritten2);
-            a.get("n"))&&(b=LegacyN[2](b));
             var cfg={signatureTimestamp:20644};
         """.trimIndent()
 
@@ -260,28 +378,24 @@ class YoutubePlayerSemanticAnalyzerV2Test {
         assertTrue(candidates.isNotEmpty())
         assertEquals("SemanticSig(INPUT)", candidates.first().signatureExpression)
         assertEquals("SemanticN(INPUT)", candidates.first().nExpression)
-        assertTrue(candidates.any { it.signatureExpression == "SemanticSig2(INPUT)" })
-        assertTrue(candidates.any { it.nExpression == "SemanticN2(INPUT)" })
-        assertTrue(
-            candidates.any {
-                it.signatureExpression == "LegacySig(4,INPUT)" &&
-                    it.nExpression == "LegacyN[2](INPUT)"
-            }
-        )
     }
 
     @Test
     fun discoveryRemainsBoundedOnAnchorHeavyInput() {
         val javascript = buildString {
             repeat(80) { index ->
-                append("var d$index=decodeURIComponent(c.s);var o$index=F$index(d$index);q.set(k,encodeURIComponent(o$index));")
-                append("var n$index=q.get(\"n\");var r$index=N$index(n$index);q.set(\"n\",r$index);")
+                append("var d$index=decodeURIComponent(c.s);")
+                append("var o$index=F$index(d$index);")
+                append("q.set(k,encodeURIComponent(o$index));")
+                append("var n$index=q.get(\"n\");")
+                append("var r$index=N$index(n$index);")
+                append("q.set(\"n\",r$index);")
             }
         }
 
         val result = YoutubePlayerSemanticAnalyzerV2.discover(javascript)
 
-        assertTrue(result.signatures.size <= 4)
-        assertTrue(result.nTransforms.size <= 4)
+        assertTrue(result.signatures.size <= 2)
+        assertTrue(result.nTransforms.size <= 2)
     }
 }
