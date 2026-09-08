@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.model.videoId
 import java.nio.file.Files
 import java.nio.file.Path
+import com.luc4n3x.levyra.desktop.core.localmusic.resolveLocalFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -103,13 +104,10 @@ class YoutubeStreamResolver(
 
     private fun resolveOffline(track: Track): ResolvedAudio? {
         if (track.offlinePath.isBlank()) return null
-        val file = runCatching { Path.of(track.offlinePath) }.getOrNull()
-            ?: throw StreamResolutionException("Percorso offline non valido")
-        if (!Files.isRegularFile(file)) {
-            throw StreamResolutionException("File offline non disponibile")
-        }
+        val file = resolveLocalFile(track.offlinePath)
+            ?: throw StreamResolutionException("File offline non disponibile")
         return ResolvedAudio(
-            url = file.toUri().toString(),
+            url = file.toUri().toASCIIString(),
             label = track.offlineMediaLabel.ifBlank { "Offline" },
             expiresAtMillis = 0L,
             durationMs = track.durationMs,
