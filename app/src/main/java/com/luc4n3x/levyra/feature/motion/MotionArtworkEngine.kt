@@ -41,8 +41,8 @@ class MotionArtworkEngine(context: Context) {
     private val runtimeLock = Any()
     private var activeEpoch = -1L
     private var activeProviders: List<MotionArtworkProvider> = emptyList()
-    private val inFlightSessions = mutableMapOf<String, MotionProgressiveSession>()
     private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val requestCoordinator = MotionArtworkRequestCoordinator(lookupScope)
 
     private val artistMotionProvider by lazy { AppleMotionArtworkProvider(appContext) }
 
@@ -60,19 +60,12 @@ class MotionArtworkEngine(context: Context) {
         source: LevyraCanvasSource = LevyraCanvasSource.Auto
     ): Flow<MotionArtwork> = flow {
         if (!networkPolicy.canResolveCurrent()) return@flow
-        val lookupTrack = prepareLookupTrack(track)
-        val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(lookupTrack), source)
         val runtime = MotionArtworkRuntime.snapshot()
-        when (val cached = repository.get(identityKey, runtime.epoch)) {
-            is MotionArtworkCacheResult.Hit -> {
-                emit(cached.artwork)
-                return@flow
-            }
-            MotionArtworkCacheResult.Negative -> return@flow
-            MotionArtworkCacheResult.Miss -> Unit
-        }
+        val requestKey = "${runtime.epoch}:${motionArtworkInFlightKey(track, source)}"
         emitAll(
-            sharedProgressive("${runtime.epoch}:$identityKey") { emit ->
+            sharedProgressive(requestKey) { emit ->
+                val lookupTrack = prepareLookupTrack(track)
+                val identityKey = motionArtworkCacheKey(MotionArtworkIdentityKey.create(lookupTrack), source)
                 resolveFreshProgressive(lookupTrack, identityKey, runtime.epoch, runtime.value, source).collect { artwork ->
                     emit(artwork)
                 }
@@ -208,33 +201,7 @@ class MotionArtworkEngine(context: Context) {
     private fun sharedProgressive(
         requestKey: String,
         block: suspend (emit: suspend (MotionArtwork) -> Unit) -> Unit
-    ): Flow<MotionArtwork> {
-        val session = synchronized(inFlightSessions) {
-            inFlightSessions.getOrPut(requestKey) {
-                MotionProgressiveSession().also { newSession ->
-                    lookupScope.launch {
-                        try {
-                            block { artwork ->
-                                newSession.emit(artwork)
-                            }
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (error: Throwable) {
-                            Timber.d(error, "Motion artwork resolution failed")
-                        } finally {
-                            withContext(NonCancellable) {
-                                synchronized(inFlightSessions) {
-                                    inFlightSessions.remove(requestKey)
-                                }
-                                newSession.complete()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return session.openSubscription()
-    }
+    ): Flow<MotionArtwork> = requestCoordinator.share(requestKey, block)
 
     suspend fun prefetchNext(
         track: Track?,
@@ -519,6 +486,21 @@ internal fun motionArtworkProviderTimeoutMs(providerId: String, configuredTimeou
 internal fun motionArtworkCacheKey(identityKey: String, source: LevyraCanvasSource): String =
     if (source == LevyraCanvasSource.Auto) identityKey else "$identityKey#${source.name.lowercase()}"
 
+internal fun motionArtworkInFlightKey(track: Track, source: LevyraCanvasSource): String {
+    val title = normalizeMotionText(track.title)
+    val artists = splitArtists(track.artist)
+        .map(::normalizeMotionText)
+        .filter(String::isNotBlank)
+        .sorted()
+        .joinToString(",")
+    val identity = when {
+        title.isNotBlank() && artists.isNotBlank() -> "recording:$title|$artists"
+        track.id.isNotBlank() -> "track:${track.id.trim().lowercase(Locale.ROOT)}"
+        else -> "fallback:$title|$artists|${normalizeMotionText(track.album)}"
+    }
+    return "$identity#${source.name.lowercase(Locale.ROOT)}"
+}
+
 internal fun motionArtworkProviderOrder(
     configuredOrder: List<String>,
     source: LevyraCanvasSource
@@ -577,6 +559,45 @@ internal fun shouldPublishMotionUpgrade(
     if (forcedSource) return false
     if (upgradesUsed >= maxUpgrades) return false
     return candidateProviderRank < publishedProviderRank
+}
+
+internal class MotionArtworkRequestCoordinator(
+    private val scope: CoroutineScope
+) {
+    private val sessions = mutableMapOf<String, MotionProgressiveSession>()
+
+    fun share(
+        requestKey: String,
+        block: suspend (emit: suspend (MotionArtwork) -> Unit) -> Unit
+    ): Flow<MotionArtwork> {
+        val session = synchronized(sessions) {
+            sessions.getOrPut(requestKey) {
+                MotionProgressiveSession().also { newSession ->
+                    scope.launch {
+                        try {
+                            block { artwork ->
+                                newSession.emit(artwork)
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Throwable) {
+                            Timber.d(error, "Motion artwork resolution failed")
+                        } finally {
+                            withContext(NonCancellable) {
+                                synchronized(sessions) {
+                                    if (sessions[requestKey] === newSession) {
+                                        sessions.remove(requestKey)
+                                    }
+                                }
+                                newSession.complete()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return session.openSubscription()
+    }
 }
 
 internal class MotionProgressiveSession {
