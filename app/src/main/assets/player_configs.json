@@ -353,6 +353,7 @@
     "08af30d9": { "sig": "JY(4,6070,INPUT)", "nClass": "li", "sts": 20703, "aliases": ["141dc1c7"] },
     "94877f3c": { "sig": "JY(4,6070,INPUT)", "nClass": "li", "sts": 20703, "aliases": ["f91571b4"] },
     "63cb72e9": { "sig": "JY(4,6070,INPUT)", "nClass": "li", "sts": 20703, "aliases": ["cbd4c31d"] },
-    "562fcaf2": { "sig": "No(24,6806,INPUT)", "nClass": "Nm", "sts": 20704, "aliases": ["27790ec9"] }
+    "562fcaf2": { "sig": "No(24,6806,INPUT)", "nClass": "Nm", "sts": 20704, "aliases": ["27790ec9"] },
+    "c7aa6833": { "sig": "No(24,6806,INPUT)", "nClass": "Nm", "sts": 20704, "aliases": ["050ea2e3"] }
   }
 }
