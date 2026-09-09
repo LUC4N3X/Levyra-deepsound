@@ -157,13 +157,7 @@ internal fun shouldRememberPlaybackCacheHint(
     val clean = streamUrl.trim().lowercase()
     if (!clean.startsWith("https://") && !clean.startsWith("http://")) return false
     val normalizedMime = mimeType.orEmpty().substringBefore(';').trim().lowercase()
-    if (
-        normalizedMime == "application/x-mpegurl" ||
-        normalizedMime == "application/vnd.apple.mpegurl" ||
-        normalizedMime == "application/dash+xml"
-    ) {
-        return false
-    }
+    if (!normalizedMime.startsWith("audio/")) return false
     val path = clean.substringBefore('?').substringBefore('#')
     return !path.endsWith(".m3u8") &&
         !path.endsWith(".mpd") &&
