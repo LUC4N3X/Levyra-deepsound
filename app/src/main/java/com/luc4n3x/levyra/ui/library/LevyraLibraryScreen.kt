@@ -90,6 +90,7 @@ internal fun LevyraLibraryScreen(
     onOpenDownloads: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
     val catalog = remember(
         state.favorites,
         state.favoriteTimestamps,
@@ -776,7 +777,7 @@ internal fun LevyraLibraryScreen(
             text = { Text(download.title) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.deleteDownload(download)
+                    deleteOfflineDownloads(listOf(download))
                     selectedKeys = selectedKeys - "download:${download.id}"
                     pendingDownloadDelete = null
                 }) { Text(strings.delete) }
@@ -801,7 +802,7 @@ internal fun LevyraLibraryScreen(
                 TextButton(onClick = {
                     when (category) {
                         LibraryCategory.Playlists -> viewModel.deletePlaylists(selectedPlaylists.map { it.id })
-                        LibraryCategory.Offline -> viewModel.deleteDownloads(selectedDownloads)
+                        LibraryCategory.Offline -> deleteOfflineDownloads(selectedDownloads)
                         else -> viewModel.removeFavorites(selectedTracks)
                     }
                     selectedKeys = emptySet()
