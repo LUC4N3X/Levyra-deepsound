@@ -66,6 +66,7 @@ import android.media.AudioManager
 import android.content.Intent
 import com.luc4n3x.levyra.update.AppUpdateContract
 import android.net.Uri
+import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.DocumentsContract
@@ -1409,6 +1410,9 @@ fun LevyraApp(
     val restoreBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::previewRestore)
     }
+    val restoreMediaPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        viewModel.confirmRestore()
+    }
     val manageBackupsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let(viewModel::previewRestore)
@@ -2020,9 +2024,23 @@ fun LevyraApp(
             }
 
             state.backupPreview?.let { preview ->
+                val mediaPermission = when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> Manifest.permission.READ_MEDIA_AUDIO
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> Manifest.permission.READ_EXTERNAL_STORAGE
+                    else -> null
+                }
                 VaultRestorePreviewDialog(
                     preview = preview,
-                    onConfirm = viewModel::confirmRestore,
+                    onConfirm = {
+                        if (
+                            mediaPermission != null &&
+                            ContextCompat.checkSelfPermission(toastContext, mediaPermission) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            restoreMediaPermissionLauncher.launch(mediaPermission)
+                        } else {
+                            viewModel.confirmRestore()
+                        }
+                    },
                     onDismiss = viewModel::dismissRestorePreview
                 )
             }
