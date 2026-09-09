@@ -100,4 +100,45 @@ class PlaybackCacheHintStoreTest {
             )
         )
     }
+
+    @Test
+    fun lowQualityCacheCannotSatisfyHighOrAutoPlayback() {
+        val hint = hintForItag(139)
+
+        assertTrue(isPlaybackCacheHintQualityCompatible(hint, "Low"))
+        assertFalse(isPlaybackCacheHintQualityCompatible(hint, "High"))
+        assertFalse(isPlaybackCacheHintQualityCompatible(hint, "Auto"))
+    }
+
+    @Test
+    fun highQualityCacheCanSatisfyHighAndAutoButNotLowPlayback() {
+        val hint = hintForItag(251)
+
+        assertFalse(isPlaybackCacheHintQualityCompatible(hint, "Low"))
+        assertTrue(isPlaybackCacheHintQualityCompatible(hint, "High"))
+        assertTrue(isPlaybackCacheHintQualityCompatible(hint, "Auto"))
+    }
+
+    @Test
+    fun ambiguousOrUnknownCacheVariantsFallBackToNormalResolution() {
+        val mediumHint = hintForItag(140)
+        val directHint = PlaybackCacheHint(
+            sourceVideoId = "Audio123456",
+            cacheKey = "levyra:Audio123456:stream-v2:direct",
+            mimeType = "audio/mp4",
+            updatedAtMs = 1L
+        )
+
+        assertFalse(isPlaybackCacheHintQualityCompatible(mediumHint, "Low"))
+        assertFalse(isPlaybackCacheHintQualityCompatible(mediumHint, "High"))
+        assertFalse(isPlaybackCacheHintQualityCompatible(mediumHint, "Auto"))
+        assertFalse(isPlaybackCacheHintQualityCompatible(directHint, "High"))
+    }
+
+    private fun hintForItag(itag: Int) = PlaybackCacheHint(
+        sourceVideoId = "Audio123456",
+        cacheKey = "levyra:Audio123456:stream-v2:itag-$itag",
+        mimeType = "audio/webm",
+        updatedAtMs = 1L
+    )
 }
