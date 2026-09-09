@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -113,6 +114,37 @@ internal fun PlayerArtworkHero(
                     }
                 }
                 PlayerVisualMode.CanvasCard -> {
+                    if (motionArtwork != null && animationsEnabled) {
+                        val canvasBackdropModifier = Modifier
+                            .fillMaxSize()
+                            .blur(52.dp)
+                            .graphicsLayer {
+                                scaleX = 1.12f
+                                scaleY = 1.12f
+                                alpha = 0.60f
+                            }
+                        if (artworkUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(LevyraArtworkCache.large(artworkUrl))
+                                    .size(512, 512)
+                                    .crossfade(false)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                    .build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = canvasBackdropModifier
+                            )
+                        } else {
+                            InstantArtworkPlaceholder(track = track, modifier = canvasBackdropModifier)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(LevyraPlayerDesign.GlassFillSunken)
+                        )
+                    }
                     MotionArtworkLayer(
                         artwork = motionArtwork,
                         enabled = animationsEnabled,
