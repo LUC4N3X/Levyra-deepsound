@@ -15,22 +15,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun rememberOfflineDeleteHandler(
     viewModel: LibraryViewModel
 ): (List<DownloadedTrack>) -> Unit {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var pendingSystemDelete by remember { mutableStateOf<List<DownloadedTrack>>(emptyList()) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         val pending = pendingSystemDelete
         pendingSystemDelete = emptyList()
         if (result.resultCode == Activity.RESULT_OK && pending.isNotEmpty()) {
-            viewModel.deleteDownloads(pending)
+            scope.launch(Dispatchers.IO) {
+                val dao = LevyraDatabase.get(context.applicationContext).downloadedTracksDao()
+                pending.forEach { download ->
+                    runCatching { dao.deleteById(download.id) }
+                }
+            }
         }
     }
 
