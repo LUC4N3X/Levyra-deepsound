@@ -72,10 +72,11 @@ internal fun isPlaybackResourceFullyCached(cache: Cache, key: String): Boolean =
 }.getOrDefault(false)
 
 @UnstableApi
-internal fun fullyCachedPlaybackTrack(cache: Cache?, track: Track, videoMode: Boolean): Track? {
+internal suspend fun fullyCachedPlaybackTrack(cache: Cache?, track: Track, videoMode: Boolean): Track? {
     if (videoMode || cache == null) return null
     val hint = PlaybackCacheHintStore.find(track) ?: return null
     if (!isPlaybackResourceFullyCached(cache, hint.cacheKey)) return null
+    if (!PlaybackCacheHintStore.isCompatibleWithCurrentAudioQuality(hint)) return null
     return track.copy(
         streamUrl = playbackCacheOnlyUri(hint),
         videoStreamUrl = "",
