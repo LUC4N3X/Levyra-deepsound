@@ -1673,6 +1673,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         for (candidate in candidates) {
             val localErrors = Collections.synchronizedList(mutableListOf<String>())
             val resolved = runCatchingPreservingCancellation { resolveAudioFast(candidate, localErrors, preferMp4Audio, audioQuality) }.getOrNull()
+            if (resolved != null && !isResolvedPlaybackFallbackDurationCompatible(track, resolved)) {
+                errors += "Fallback ${candidate.id}: resolved duration ${resolved.durationMs}ms does not match ${track.durationMs}ms"
+                continue
+            }
             if (
                 resolved != null &&
                 resolved.streamUrl.isNotBlank() &&
@@ -1922,7 +1926,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .forEach { candidate ->
                     output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
                 }
-            if (output.isNotEmpty()) break
+            if (output.size >= 4) break
         }
         output.values
             .sortedByDescending { scoreAlternativeCandidate(track, it) }
