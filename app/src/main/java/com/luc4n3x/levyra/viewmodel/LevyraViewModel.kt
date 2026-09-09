@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.HomeInteractionGate
+import com.luc4n3x.levyra.data.HomeOfflinePolicy
 import com.luc4n3x.levyra.data.HomeRefreshStability
 import com.luc4n3x.levyra.data.HomeStartupWorkPlan
 import com.luc4n3x.levyra.data.HomeStartupWorkPolicy
@@ -173,6 +174,7 @@ import com.luc4n3x.levyra.feature.dearrow.VideoMetadataEnhancer
 import com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter
 import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
+import com.luc4n3x.levyra.data.network.LevyraNetworkIntelligence
 import com.luc4n3x.levyra.data.network.LevyraNetworkStore
 import com.luc4n3x.levyra.data.network.LevyraNetworkTester
 import com.luc4n3x.levyra.domain.LevyraNetworkSettings
@@ -1076,6 +1078,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeRecognitionHistory()
         observeJamState()
         observeSimilarSongsSeed()
+        observeConnectivity()
         val favorites = favoritesStore.load()
         val favoriteTimestamps = favoritesStore.loadTimestamps()
         val settings = startupSettings
@@ -1696,6 +1699,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refreshHomeArtists() {
+        if (!HomeOfflinePolicy.shouldAttemptRemoteRefresh(_state.value.isDeviceOffline)) {
+            homeArtistsJob?.cancel()
+            _state.update { current ->
+                if (current.homeArtistsLoading) current.copy(homeArtistsLoading = false) else current
+            }
+            return
+        }
         val startupSnapshot = _state.value
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
@@ -3341,7 +3351,78 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
     }
 
+    private fun observeConnectivity() {
+        val appContext = getApplication<Application>().applicationContext
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { LevyraNetworkIntelligence.initialize(appContext) }
+            LevyraNetworkIntelligence.internetAvailable
+                .map { available -> !available }
+                .distinctUntilChanged()
+                .collect(::applyDeviceOfflineState)
+        }
+    }
+
+    private fun applyDeviceOfflineState(offline: Boolean) {
+        val previouslyOffline = _state.value.isDeviceOffline
+        if (previouslyOffline == offline) return
+        if (offline) {
+            homeFeedJob?.cancel()
+            chartsJob?.cancel()
+            homeAlbumsJob?.cancel()
+            homeArtistsJob?.cancel()
+        }
+        _state.update { current ->
+            if (current.isDeviceOffline == offline) {
+                current
+            } else if (offline) {
+                current.copy(
+                    isDeviceOffline = true,
+                    isLoadingHome = false,
+                    isLoadingCharts = false,
+                    homeAlbumsLoading = false,
+                    homeArtistsLoading = false,
+                    homeError = null
+                )
+            } else {
+                current.copy(isDeviceOffline = false)
+            }
+        }
+        if (HomeOfflinePolicy.shouldRecoverOnReconnect(previouslyOffline, offline)) {
+            refreshRemoteHomeContent()
+        }
+    }
+
+    private fun clearRemoteHomeLoadingFlags() {
+        _state.update { current ->
+            if (!current.isLoadingHome && !current.homeAlbumsLoading) {
+                current
+            } else {
+                current.copy(isLoadingHome = false, homeAlbumsLoading = false)
+            }
+        }
+    }
+
+    private fun refreshRemoteHomeContent() {
+        loadHomeFeed()
+        loadCharts(_state.value.selectedChartId)
+        refreshHomeArtists()
+    }
+
+    fun retryHomeContent() {
+        LevyraNetworkIntelligence.refreshInternetAvailability()
+        val offline = !LevyraNetworkIntelligence.internetAvailable.value
+        val recovered = HomeOfflinePolicy.shouldRecoverOnReconnect(_state.value.isDeviceOffline, offline)
+        applyDeviceOfflineState(offline)
+        if (offline || recovered) return
+        refreshRemoteHomeContent()
+    }
+
     private fun loadHomeFeed(deferUntilHomeIdle: Boolean = false) {
+        if (!HomeOfflinePolicy.shouldAttemptRemoteRefresh(_state.value.isDeviceOffline)) {
+            homeFeedJob?.cancel()
+            clearRemoteHomeLoadingFlags()
+            return
+        }
         ensureMusicVideosLoaded()
         val requestGeneration = homeFeedRequestGeneration.incrementAndGet()
         homeFeedJob?.cancel()
@@ -3353,7 +3434,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
-                    isLoadingHome = !hasVisibleHome,
+                    isLoadingHome = HomeOfflinePolicy.remoteLoading(!hasVisibleHome, current.isDeviceOffline),
                     homeError = null
                 )
             }
@@ -3437,12 +3518,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 mergeResult.visible.flatMap { it.tracks }.distinctBy { it.id }
             }
             if (visibleTracks.isEmpty()) {
+                val unavailableMessage = LevyraStrings.forCode(languageCode).homeRemoteUnavailable
                 _state.update { current ->
                     if (current.languageCode == languageCode) {
                         current.copy(
                             isLoadingHome = false,
                             homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
-                                "Home non disponibile"
+                                HomeOfflinePolicy.homeErrorAfterRemoteFailure(
+                                    deviceOffline = current.isDeviceOffline,
+                                    fallback = unavailableMessage
+                                )
                             } else {
                                 current.homeError
                             }
@@ -4371,9 +4456,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeResonanceTracks = localizedSnapshot?.resonanceTracks.orEmpty(),
                 homeResonanceUpdatedAt = localizedSnapshot?.resonanceUpdatedAt ?: 0L,
                 homeResonanceComments = localizedSnapshot?.resonanceComments.orEmpty(),
-                homeArtistsLoading = localizedCachedArtists.isEmpty() && refreshRemote,
-                homeAlbumsLoading = instantAlbums.isEmpty() && refreshRemote,
-                isLoadingHome = refreshRemote && homeSections.isEmpty() && allTracks.isEmpty(),
+                homeArtistsLoading = HomeOfflinePolicy.remoteLoading(
+                    localizedCachedArtists.isEmpty() && refreshRemote,
+                    it.isDeviceOffline
+                ),
+                homeAlbumsLoading = HomeOfflinePolicy.remoteLoading(
+                    instantAlbums.isEmpty() && refreshRemote,
+                    it.isDeviceOffline
+                ),
+                isLoadingHome = HomeOfflinePolicy.remoteLoading(
+                    refreshRemote && homeSections.isEmpty() && allTracks.isEmpty(),
+                    it.isDeviceOffline
+                ),
                 homeError = null,
                 charts = chartTracks,
                 personalOrbitTracks = orbit,
@@ -4383,7 +4477,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchData = SearchResults(),
                 searchError = null,
                 isSearching = false,
-                isLoadingCharts = refreshRemote && chartTracks.isEmpty(),
+                isLoadingCharts = HomeOfflinePolicy.remoteLoading(
+                    refreshRemote && chartTracks.isEmpty(),
+                    it.isDeviceOffline
+                ),
                 exploreZoneId = null,
                 exploreTracks = emptyList()
             )
@@ -4750,7 +4847,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (!isActive || _state.value.languageCode != languageCode || _state.value.selectedChartId != regionId) return@launch
             _state.update { current ->
                 if (current.selectedChartId != regionId) current
-                else current.copy(isLoadingCharts = current.isLoadingCharts || !hasVisibleCharts)
+                else current.copy(
+                    isLoadingCharts = HomeOfflinePolicy.remoteLoading(
+                        current.isLoadingCharts || !hasVisibleCharts,
+                        current.isDeviceOffline
+                    )
+                )
             }
 
             if (isChartCacheFresh(cacheKey)) {
@@ -4778,6 +4880,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         }
                     }
                 }
+            }
+
+            if (!HomeOfflinePolicy.shouldAttemptRemoteRefresh(_state.value.isDeviceOffline)) {
+                _state.update { current ->
+                    if (current.isLoadingCharts) current.copy(isLoadingCharts = false) else current
+                }
+                return@launch
             }
 
             val region = ChartsCatalog.region(regionId)
@@ -8770,12 +8879,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ) return
 
         if (tracks.isEmpty()) {
+            val emptyMessage = LevyraStrings.forCode(languageCode).homeRemoteEmpty
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
                     isLoadingHome = false,
                     homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
-                        "Home remota vuota: prova una ricerca"
+                        HomeOfflinePolicy.homeErrorAfterRemoteFailure(
+                            deviceOffline = current.isDeviceOffline,
+                            fallback = emptyMessage
+                        )
                     } else {
                         current.homeError
                     }

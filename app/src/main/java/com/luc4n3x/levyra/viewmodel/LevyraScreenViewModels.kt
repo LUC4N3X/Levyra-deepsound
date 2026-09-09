@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.HomeContentAvailability
+import com.luc4n3x.levyra.data.HomeOfflineContent
+import com.luc4n3x.levyra.data.HomeOfflineContentBuilder
 import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
@@ -182,6 +184,8 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
     fun refreshHomeArtists() = root.refreshHomeArtists()
     fun refreshHomeResonanceComments(tracks: List<Track>) = root.refreshHomeResonanceComments(tracks)
+    fun retryHomeContent() = root.retryHomeContent()
+    fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
     fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
@@ -482,6 +486,8 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         homeAlbumsLoading = previous.homeAlbumsLoading,
         isLoadingHome = previous.isLoadingHome,
         homeError = previous.homeError,
+        isDeviceOffline = previous.isDeviceOffline,
+        downloads = previous.downloads,
         releaseRadar = previous.releaseRadar,
         similarArtists = previous.similarArtists
     )
@@ -508,7 +514,8 @@ internal data class HomeDerivedState(
     val editorialCollections: List<HomeEditorialCollection>,
     val chartChunks: List<List<Track>>,
     val contentAvailability: HomeContentAvailability,
-    val contentFingerprint: String
+    val contentFingerprint: String,
+    val offlineContent: HomeOfflineContent
 )
 
 private data class HomeDerivedInput(
@@ -525,6 +532,9 @@ private data class HomeDerivedInput(
     val similarArtists: List<ArtistHit>,
     val currentTrack: Track?,
     val selectedMood: Mood?,
+    val deviceOffline: Boolean,
+    val downloads: List<DownloadedTrack>,
+    val playlists: List<Playlist>,
     val showNewReleases: Boolean,
     val showPersonalOrbit: Boolean,
     val showResonance: Boolean,
@@ -607,6 +617,9 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.releaseRadar === current.releaseRadar &&
         previous.similarArtists === current.similarArtists &&
         previous.selectedMood == current.selectedMood &&
+        previous.isDeviceOffline == current.isDeviceOffline &&
+        previous.downloads === current.downloads &&
+        previous.playlists === current.playlists &&
         previous.interfaceSettings.showNewReleases == current.interfaceSettings.showNewReleases &&
         previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
         previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance &&
@@ -629,6 +642,9 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         similarArtists = similarArtists,
         currentTrack = currentTrack,
         selectedMood = selectedMood,
+        deviceOffline = isDeviceOffline,
+        downloads = downloads,
+        playlists = playlists,
         showNewReleases = interfaceSettings.showNewReleases,
         showPersonalOrbit = interfaceSettings.showPersonalOrbit,
         showResonance = interfaceSettings.showResonance,
@@ -714,7 +730,19 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         editorialCollections = editorialCollections,
         chartChunks = input.charts.chunked(4),
         contentAvailability = contentAvailability,
-        contentFingerprint = buildHomeContentFingerprint(input, contentAvailability)
+        contentFingerprint = buildHomeContentFingerprint(input, contentAvailability),
+        offlineContent = if (input.deviceOffline) {
+            HomeOfflineContentBuilder.build(
+                deviceOffline = true,
+                downloads = input.downloads,
+                playlists = input.playlists,
+                favorites = input.favorites,
+                recentListens = input.recentListens,
+                artworkPool = input.recentListens + input.favorites + input.personalOrbitTracks + input.tracks
+            )
+        } else {
+            HomeOfflineContent.Empty
+        }
     )
 }
 
@@ -967,6 +995,8 @@ private data class HomeProjection(
     val homeArtistsLoading: Boolean,
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
+    val downloads: List<DownloadedTrack>,
+    val isDeviceOffline: Boolean,
     val isLoadingCharts: Boolean,
     val isLoadingHome: Boolean,
     val isPlaying: Boolean,
@@ -1006,6 +1036,8 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     homeArtistsLoading = state.homeArtistsLoading,
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,
+    downloads = state.downloads,
+    isDeviceOffline = state.isDeviceOffline,
     isLoadingCharts = state.isLoadingCharts,
     isLoadingHome = state.isLoadingHome,
     isPlaying = state.isPlaying,

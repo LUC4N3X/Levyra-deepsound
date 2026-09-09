@@ -24,6 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.SSLException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.Call
 import okhttp3.Dns
 import okhttp3.EventListener
@@ -34,6 +37,11 @@ internal object LevyraNetworkIntelligence {
     private val routeEngine = LevyraRouteEngine()
     private val initialized = AtomicBoolean(false)
     private val networkSignature = AtomicReference("")
+    private val internetReachable = MutableStateFlow(true)
+    @Volatile private var connectivityManager: ConnectivityManager? = null
+    @Volatile private var defaultNetwork: Network? = null
+
+    val internetAvailable: StateFlow<Boolean> = internetReachable.asStateFlow()
 
     val dns: Dns = Dns { hostname ->
         val addresses = Dns.SYSTEM.lookup(hostname)
@@ -55,15 +63,21 @@ internal object LevyraNetworkIntelligence {
             initialized.set(false)
             return
         }
+        connectivityManager = connectivity
         runCatching {
             connectivity.registerDefaultNetworkCallback(
                 object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) {
                         refreshNetworkSignature(connectivity, network)
+                        defaultNetwork = network
+                        val capabilities = runCatching { connectivity.getNetworkCapabilities(network) }.getOrNull()
+                        internetReachable.value = capabilities?.hasInternet() ?: true
                     }
 
                     override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
                         refreshNetworkSignature(network, capabilities)
+                        defaultNetwork = network
+                        internetReachable.value = capabilities.hasInternet()
                     }
 
                     override fun onLost(network: Network) {
@@ -71,13 +85,32 @@ internal object LevyraNetworkIntelligence {
                         if (previous.startsWith("${network.hashCode()}|") && networkSignature.compareAndSet(previous, "")) {
                             routeEngine.resetVolatileState()
                         }
+                        if (defaultNetwork == null || defaultNetwork == network) {
+                            defaultNetwork = null
+                            internetReachable.value = false
+                        }
                     }
                 }
             )
         }.onFailure {
+            connectivityManager = null
             initialized.set(false)
         }
+        refreshInternetAvailability()
     }
+
+    fun refreshInternetAvailability() {
+        val connectivity = connectivityManager ?: return
+        val active = runCatching { connectivity.activeNetwork }.getOrNull()
+        defaultNetwork = active
+        internetReachable.value = runCatching {
+            val network = active ?: return@runCatching false
+            connectivity.getNetworkCapabilities(network)?.hasInternet() == true
+        }.getOrDefault(true)
+    }
+
+    private fun NetworkCapabilities.hasInternet(): Boolean =
+        hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
 
     internal fun diagnostics() = routeEngine.snapshot()
 
