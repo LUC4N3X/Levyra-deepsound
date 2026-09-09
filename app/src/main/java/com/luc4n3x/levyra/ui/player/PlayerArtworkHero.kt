@@ -123,7 +123,7 @@ internal fun PlayerArtworkHero(
                             .graphicsLayer {
                                 scaleX = 1.12f
                                 scaleY = 1.12f
-                                alpha = 0.32f
+                                alpha = 0.24f
                             }
                         if (artworkUrl.isNotBlank()) {
                             val canvasBackdropRequest = remember(context, artworkUrl) {
@@ -147,7 +147,7 @@ internal fun PlayerArtworkHero(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(LevyraPlayerDesign.GlassFillSunken)
+                                .background(Color.Black.copy(alpha = 0.58f))
                         )
                     }
                     MotionArtworkLayer(
