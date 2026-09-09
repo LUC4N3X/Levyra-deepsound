@@ -197,7 +197,7 @@ object HomeEditorialEngine {
                     parseReleaseDate(track.releaseDate)
                         ?.let(::localDate)
                         ?.let { releaseDate -> calendarDayAge(releaseDate, today) in 0..7 } == true
-            }.ifEmpty { visibleReleaseTracks.filter(::isReliableCandidate) }
+            }
         } else {
             emptyList()
         }
