@@ -2,10 +2,14 @@ package com.luc4n3x.levyra.player
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.domain.Track
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,6 +25,26 @@ internal data class PlaybackCacheReadSpec(
     val mimeType: String
 )
 
+private val PLAYBACK_CACHE_ITAG = Regex("(?:^|:)itag-(\\d+)$", RegexOption.IGNORE_CASE)
+private val HIGH_PLAYBACK_CACHE_ITAGS = setOf(141, 251)
+private val LOW_PLAYBACK_CACHE_ITAGS = setOf(139, 249)
+
+internal fun isPlaybackCacheHintQualityCompatible(
+    hint: PlaybackCacheHint,
+    requestedAudioQuality: String
+): Boolean {
+    val itag = PLAYBACK_CACHE_ITAG.find(hint.cacheKey)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?: return false
+    return when (requestedAudioQuality.trim().lowercase(Locale.ROOT)) {
+        "low" -> itag in LOW_PLAYBACK_CACHE_ITAGS
+        "auto", "high" -> itag in HIGH_PLAYBACK_CACHE_ITAGS
+        else -> false
+    }
+}
+
 internal object PlaybackCacheHintStore {
     private const val PREFS_NAME = "levyra.playback.cache.hints"
     private const val KEY_HINTS = "recent"
@@ -33,11 +57,16 @@ internal object PlaybackCacheHintStore {
     @Volatile
     private var preferences: SharedPreferences? = null
 
+    @Volatile
+    private var appContext: Context? = null
+
     fun initialize(context: Context) {
+        val applicationContext = context.applicationContext
+        appContext = applicationContext
         if (preferences != null) return
         synchronized(lock) {
             if (preferences != null) return
-            val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             hints.clear()
             decode(prefs.getString(KEY_HINTS, null)).forEach { hint ->
                 hints[hint.sourceVideoId] = hint
@@ -69,6 +98,14 @@ internal object PlaybackCacheHintStore {
         val sourceVideoId = sourceVideoId(track)
         if (sourceVideoId.isBlank()) return null
         return synchronized(lock) { hints[sourceVideoId] }
+    }
+
+    suspend fun isCompatibleWithCurrentAudioQuality(hint: PlaybackCacheHint): Boolean {
+        val context = appContext ?: return false
+        val requestedAudioQuality = withContext(Dispatchers.IO) {
+            LevyraPreferences(context).audioQuality()
+        }
+        return isPlaybackCacheHintQualityCompatible(hint, requestedAudioQuality)
     }
 
     private fun sourceVideoId(track: Track): String =
