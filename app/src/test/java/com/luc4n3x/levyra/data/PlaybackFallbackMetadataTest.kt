@@ -100,6 +100,191 @@ class PlaybackFallbackMetadataTest {
         )
     }
 
+    @Test
+    fun verifiedFallbackAcceptsSameRecordingWithFeaturedArtistsCollapsed() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val official = track(
+            id = "Q1XvQgDjgQk",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        val matches = trustedPlaybackFallbackCandidates(original, listOf(official))
+
+        assertEquals(listOf("Q1XvQgDjgQk"), matches.map { it.id })
+    }
+
+    @Test
+    fun verifiedFallbackRejectsWrongArtistEvenWithSameTitleAndDuration() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val wrong = track(
+            id = "wrong-video",
+            title = "DALE",
+            artist = "Another Artist",
+            durationMs = 188_000L
+        )
+
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(wrong)).isEmpty())
+    }
+
+    @Test
+    fun verifiedFallbackRejectsWrongDurationAndAlternateVariant() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val wrongDuration = track(
+            id = "wrong-duration",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 245_000L
+        )
+        val remix = track(
+            id = "remix",
+            title = "DALE Remix",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(wrongDuration, remix)).isEmpty())
+    }
+
+    @Test
+    fun verifiedFallbackPrefersExactIsrcOverMatchingMetadataWithDifferentIsrc() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L,
+            isrc = "ITABC2600001"
+        )
+        val metadataImpostor = track(
+            id = "metadata-impostor",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITXYZ2600002"
+        )
+        val official = track(
+            id = "official-audio",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 187_000L,
+            isrc = "itabc2600001"
+        )
+
+        assertEquals(
+            listOf("official-audio"),
+            trustedPlaybackFallbackCandidates(original, listOf(metadataImpostor, official)).map { it.id }
+        )
+    }
+
+    @Test
+    fun verifiedFallbackRejectsConflictingIsrcWhenExactMatchIsUnavailable() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITABC2600001"
+        )
+        val conflicting = track(
+            id = "conflicting-recording",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITXYZ2600002"
+        )
+
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(conflicting)).isEmpty())
+    }
+
+    @Test
+    fun verifiedFallbackDoesNotDowngradeKnownIsrcToMetadataOnlyCandidate() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITABC2600001"
+        )
+        val metadataOnly = track(
+            id = "metadata-only",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(metadataOnly)).isEmpty())
+    }
+
+    @Test
+    fun resolvedFallbackRejectsSourceWhoseRealDurationIsOnlyTwentyNineSeconds() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val falseResolvedSource = track(
+            id = "false-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 29_000L
+        )
+
+        assertFalse(isResolvedPlaybackFallbackDurationCompatible(original, falseResolvedSource))
+    }
+
+    @Test
+    fun resolvedFallbackAcceptsRealRecordingDurationWithinTolerance() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val officialResolvedSource = track(
+            id = "Q1XvQgDjgQk",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        assertTrue(isResolvedPlaybackFallbackDurationCompatible(original, officialResolvedSource))
+    }
+
+    @Test
+    fun resolvedFallbackRequiresKnownActualDurationWhenCatalogDurationIsKnown() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+        val unresolvedDuration = track(
+            id = "unknown-duration",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 0L
+        )
+
+        assertFalse(isResolvedPlaybackFallbackDurationCompatible(original, unresolvedDuration))
+    }
+
     private fun track(
         id: String,
         title: String,
