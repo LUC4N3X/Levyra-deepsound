@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-09T04:47:42Z",
+  "generatedAt": "2026-09-09T11:28:43Z",
   "items": [
     {
       "song": "CANZONE D'AMORE",
@@ -560,6 +560,13 @@
       "artist": "sombr",
       "album": "My Body Isn't Ready",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/39e83efadaca4f59b862c6bcdf37d859.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Midnight Sun",
+      "artist": "Zara Larsson",
+      "album": "Midnight Sun",
+      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/44aca684da05445f9ed023b580c39c7d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1960,6 +1967,13 @@
       "artist": "MIÜ, Zalia",
       "album": "Ü UP? mixtape",
       "url": "https://canvaz.scdn.co/upload/artist/5NpwJ9XcZH35RxF2PUIqs2/video/361bced176e648cc93e6c186e9c190c5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Cicho sza",
+      "artist": "sanah",
+      "album": "Cicho sza",
+      "url": "https://canvaz.scdn.co/upload/artist/0TMvoNR0AIJV138mHY6jdE/video/396585eb42ef4f88bfc2edb24c0a65ba.cnvs.mp4",
       "scope": "track"
     },
     {
