@@ -91,6 +91,7 @@ jobs:
 
           TAG="v${VERSION}"
           APK_NAME="LEVYRA-${VERSION}.apk"
+          DIRECT_APK_NAME="Levyra.apk"
           CHECKSUM_NAME="${APK_NAME}.sha256"
           PUBLISH="true"
 
@@ -112,6 +113,7 @@ jobs:
             echo "VERSION_CODE=${VERSION_CODE}"
             echo "TAG=${TAG}"
             echo "APK_NAME=${APK_NAME}"
+            echo "DIRECT_APK_NAME=${DIRECT_APK_NAME}"
             echo "CHECKSUM_NAME=${CHECKSUM_NAME}"
           } >> "${GITHUB_ENV}"
 
@@ -253,6 +255,7 @@ jobs:
           mkdir -p release-assets
           SOURCE_APK="app/build/outputs/apk/release/app-release.apk"
           APK_PATH="release-assets/${APK_NAME}"
+          DIRECT_APK_PATH="release-assets/${DIRECT_APK_NAME}"
           CHECKSUM_PATH="release-assets/${CHECKSUM_NAME}"
           test -f "${SOURCE_APK}"
 
@@ -268,10 +271,12 @@ jobs:
           test "${SIGNER_SHA256}" = "${LEVYRA_SIGNING_CERT_SHA256}"
 
           cp "${SOURCE_APK}" "${APK_PATH}"
+          cp "${SOURCE_APK}" "${DIRECT_APK_PATH}"
           (cd release-assets && sha256sum "${APK_NAME}" > "${CHECKSUM_NAME}")
 
           {
             echo "APK_PATH=${APK_PATH}"
+            echo "DIRECT_APK_PATH=${DIRECT_APK_PATH}"
             echo "CHECKSUM_PATH=${CHECKSUM_PATH}"
             echo "APK_SHA256=$(sha256sum "${APK_PATH}" | awk '{print $1}')"
           } >> "${GITHUB_ENV}"
@@ -299,6 +304,7 @@ jobs:
 
           gh release create "${TAG}" \
             "${APK_PATH}#LEVYRA Android APK" \
+            "${DIRECT_APK_PATH}#Latest Levyra Android APK" \
             "${CHECKSUM_PATH}#SHA-256 checksum" \
             "${RELEASE_FLAGS[@]}"
 
@@ -314,16 +320,20 @@ jobs:
 
           gh release download "${TAG}" \
             --pattern "${APK_NAME}" \
+            --pattern "${DIRECT_APK_NAME}" \
             --pattern "${CHECKSUM_NAME}" \
             --dir release-verification \
             --clobber \
             --repo "${GITHUB_REPOSITORY}"
 
           PUBLISHED_APK="release-verification/${APK_NAME}"
+          PUBLISHED_DIRECT_APK="release-verification/${DIRECT_APK_NAME}"
           PUBLISHED_CHECKSUM="release-verification/${CHECKSUM_NAME}"
           test -f "${PUBLISHED_APK}"
+          test -f "${PUBLISHED_DIRECT_APK}"
           test -f "${PUBLISHED_CHECKSUM}"
           test "$(sha256sum "${PUBLISHED_APK}" | awk '{print $1}')" = "${APK_SHA256}"
+          test "$(sha256sum "${PUBLISHED_DIRECT_APK}" | awk '{print $1}')" = "${APK_SHA256}"
           (
             cd release-verification
             sha256sum --check "${CHECKSUM_NAME}"
