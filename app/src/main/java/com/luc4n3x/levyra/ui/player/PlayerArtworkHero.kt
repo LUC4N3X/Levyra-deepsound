@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,7 +62,17 @@ internal fun PlayerArtworkHero(
         label = "player-artwork-hero-shadow"
     )
     val primary = Color(track.accentStart)
-    val artworkShape = RoundedCornerShape(cornerRadius)
+    val artworkShape = remember(cornerRadius) { RoundedCornerShape(cornerRadius) }
+    val artworkRequest = remember(context, artworkUrl) {
+        artworkUrl.takeIf { it.isNotBlank() }?.let { url ->
+            ImageRequest.Builder(context)
+                .data(LevyraArtworkCache.large(url))
+                .crossfade(true)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .build()
+        }
+    }
     val isImmersive = visualMode == PlayerVisualMode.CanvasImmersive
 
     Box(
@@ -96,14 +107,9 @@ internal fun PlayerArtworkHero(
         ) {
             when (visualMode) {
                 PlayerVisualMode.Artwork -> {
-                    if (artworkUrl.isNotBlank()) {
+                    if (artworkRequest != null) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(LevyraArtworkCache.large(artworkUrl))
-                                .crossfade(true)
-                                .diskCachePolicy(CachePolicy.ENABLED)
-                                .memoryCachePolicy(CachePolicy.ENABLED)
-                                .build(),
+                            model = artworkRequest,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -123,14 +129,9 @@ internal fun PlayerArtworkHero(
                         livingArtwork = livingArtwork,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        if (artworkUrl.isNotBlank()) {
+                        if (artworkRequest != null) {
                             AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(LevyraArtworkCache.large(artworkUrl))
-                                    .crossfade(true)
-                                    .diskCachePolicy(CachePolicy.ENABLED)
-                                    .memoryCachePolicy(CachePolicy.ENABLED)
-                                    .build(),
+                                model = artworkRequest,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
