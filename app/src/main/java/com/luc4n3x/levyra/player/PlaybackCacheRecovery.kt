@@ -4,6 +4,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.ContentMetadata
+import com.luc4n3x.levyra.domain.Track
 import java.io.EOFException
 import java.io.FileNotFoundException
 import java.net.ProtocolException
@@ -69,6 +70,19 @@ internal fun isPlaybackResourceFullyCached(cache: Cache, key: String): Boolean =
     }
     cache.getCachedSpans(key).all { span -> !span.isCached || span.file?.exists() == true }
 }.getOrDefault(false)
+
+@UnstableApi
+internal suspend fun fullyCachedPlaybackTrack(cache: Cache?, track: Track, videoMode: Boolean): Track? {
+    if (videoMode || cache == null) return null
+    val hint = PlaybackCacheHintStore.find(track) ?: return null
+    if (!isPlaybackResourceFullyCached(cache, hint.cacheKey)) return null
+    if (!PlaybackCacheHintStore.isCompatibleWithCurrentAudioQuality(hint)) return null
+    return track.copy(
+        streamUrl = playbackCacheOnlyUri(hint),
+        videoStreamUrl = "",
+        playbackManifest = null
+    )
+}
 
 @UnstableApi
 internal fun removePlaybackCacheResource(cache: Cache, key: String): Boolean = runCatching {

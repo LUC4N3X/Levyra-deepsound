@@ -8,6 +8,8 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.player.LevyraMediaCache
+import com.luc4n3x.levyra.player.fullyCachedPlaybackTrack
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -170,8 +172,14 @@ class CachedPlaybackProvider(
     override val id: String = "playback_cache"
     override val priority: Int = 0
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
         return resolver.cached(track, videoMode)
+            ?: fullyCachedPlaybackTrack(
+                cache = LevyraMediaCache.currentOrNull(),
+                track = track,
+                videoMode = videoMode
+            )
             ?: throw LevyraProviderMissException("Stream non presente in cache")
     }
 
