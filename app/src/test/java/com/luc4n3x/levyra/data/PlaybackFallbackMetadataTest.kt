@@ -189,6 +189,60 @@ class PlaybackFallbackMetadataTest {
         assertEquals(listOf("official-audio"), trustedPlaybackFallbackCandidates(original, listOf(wrong, official)).map { it.id })
     }
 
+    @Test
+    fun resolvedFallbackRejectsSourceWhoseRealDurationIsOnlyTwentyNineSeconds() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val falseResolvedSource = track(
+            id = "false-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 29_000L
+        )
+
+        assertFalse(isResolvedPlaybackFallbackDurationCompatible(original, falseResolvedSource))
+    }
+
+    @Test
+    fun resolvedFallbackAcceptsRealRecordingDurationWithinTolerance() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val officialResolvedSource = track(
+            id = "Q1XvQgDjgQk",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        assertTrue(isResolvedPlaybackFallbackDurationCompatible(original, officialResolvedSource))
+    }
+
+    @Test
+    fun resolvedFallbackRequiresKnownActualDurationWhenCatalogDurationIsKnown() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+        val unresolvedDuration = track(
+            id = "unknown-duration",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 0L
+        )
+
+        assertFalse(isResolvedPlaybackFallbackDurationCompatible(original, unresolvedDuration))
+    }
+
     private fun track(
         id: String,
         title: String,
