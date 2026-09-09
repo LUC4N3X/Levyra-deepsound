@@ -1,11 +1,16 @@
 package com.luc4n3x.levyra.data
 
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.room.withTransaction
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LEVYRA_DATABASE_VERSION
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.ListenEventEntity
@@ -42,6 +47,7 @@ import java.io.OutputStreamWriter
 import java.nio.file.Files
 import java.security.DigestOutputStream
 import java.security.MessageDigest
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -256,12 +262,13 @@ class LevyraBackupManager(private val context: Context) {
                 vaultSnapshot(entries)
             }
             val rollback = currentSnapshot()
+            val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads(), ::downloadUriReadable)
             try {
-                applySnapshot(target)
+                applySnapshot(target, downloads)
             } catch (restoreError: Throwable) {
                 withContext(NonCancellable) {
                     try {
-                        applySnapshot(rollback)
+                        applySnapshot(rollback, rollback.downloads)
                     } catch (rollbackError: Throwable) {
                         restoreError.addSuppressed(rollbackError)
                     }
@@ -307,6 +314,9 @@ class LevyraBackupManager(private val context: Context) {
             }
             sections[HISTORY_ENTRY] = writeJsonSection(zip, HISTORY_ENTRY) { writer ->
                 writeJsonArray(writer, database.listenEventsDao().all()) { listenEventToJson(it).toString() }
+            }
+            sections[DOWNLOADS_ENTRY] = writeJsonSection(zip, DOWNLOADS_ENTRY) { writer ->
+                writeJsonArray(writer, database.downloadedTracksDao().all()) { downloadToJson(it).toString() }
             }
             sections[SETTINGS_ENTRY] = writeJsonSection(zip, SETTINGS_ENTRY) { writer ->
                 writer.write(settingsToJson(preferences.snapshot()).toString())
@@ -423,6 +433,7 @@ class LevyraBackupManager(private val context: Context) {
             playlistTags = parsePlaylistTags(entries[ORGANIZATION_ENTRY].toJsonObject()),
             playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray()),
             history = parseHistory(entries[HISTORY_ENTRY].toJsonArray()),
+            downloads = parseDownloads(entries[DOWNLOADS_ENTRY].toJsonArray()),
             queueItems = parseQueueItems(queueJson),
             queueState = parseQueueState(queueJson)
         )
@@ -449,6 +460,7 @@ class LevyraBackupManager(private val context: Context) {
             playlistTags = emptyList(),
             playlists = parsePlaylists(root.optJSONArray("playlists") ?: JSONArray()),
             history = parseHistory(root.optJSONArray("history")),
+            downloads = emptyList(),
             queueItems = parseQueueItems(queue),
             queueState = parseQueueState(queue)
         )
@@ -493,12 +505,13 @@ class LevyraBackupManager(private val context: Context) {
             playlistTags = tagsDao.allTags().map(::toPlaylistTag),
             playlists = playlists,
             history = database.listenEventsDao().all(),
+            downloads = database.downloadedTracksDao().all(),
             queueItems = database.playbackQueueDao().items(),
             queueState = database.playbackQueueDao().state()
         )
     }
 
-    private suspend fun applySnapshot(payload: VaultSnapshot) {
+    private suspend fun applySnapshot(payload: VaultSnapshot, downloads: List<DownloadEntity>) {
         preferences.restoreSnapshot(payload.settings)
         followedArtistsStore.saveDurable(payload.followedArtists)
         excludedArtistsStore.replaceAll(payload.excludedArtists)
@@ -509,11 +522,91 @@ class LevyraBackupManager(private val context: Context) {
                 restorePlaylists(payload.playlists)
                 restorePlaylistTags(payload.playlistTags, payload.playlists)
                 database.listenEventsDao().replaceAll(payload.history)
+                database.downloadedTracksDao().replaceAll(downloads)
                 restoreQueue(payload.queueItems, payload.queueState)
             }
             invalidateFavoriteTimestampSnapshots()
         }
         AutomaticBackupScheduler.schedule(appContext, payload.settings.backupSettings)
+    }
+
+    private fun scanLevyraDownloads(): List<DownloadEntity> {
+        val resolver = appContext.contentResolver
+        val scoped = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        val collection = if (scoped) {
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
+        val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.MediaColumns.DATE_ADDED
+        )
+        val selection = if (scoped) {
+            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND ${MediaStore.MediaColumns.SIZE} > 0 AND ${MediaStore.MediaColumns.IS_PENDING} = 0"
+        } else {
+            "${MediaStore.MediaColumns.DATA} LIKE ? AND ${MediaStore.MediaColumns.SIZE} > 0"
+        }
+        val path = if (scoped) {
+            "${Environment.DIRECTORY_MUSIC}/Levyra/%"
+        } else {
+            "%${File.separator}${Environment.DIRECTORY_MUSIC}${File.separator}Levyra${File.separator}%"
+        }
+        return runCatching {
+            resolver.query(collection, projection, selection, arrayOf(path), null)?.use { cursor ->
+                val id = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val fileName = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+                val mimeType = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val title = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                val artist = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                val album = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+                val duration = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                val savedAt = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(fileName).orEmpty()
+                        val mediaTitle = cursor.getString(title)?.takeUnless { it.isBlank() || it == MediaStore.UNKNOWN_STRING }
+                            ?: name.substringBeforeLast('.').ifBlank { "Levyra Track" }
+                        add(
+                            DownloadEntity(
+                                trackId = "",
+                                title = mediaTitle,
+                                artist = cursor.getString(artist).orEmpty().takeUnless { it == MediaStore.UNKNOWN_STRING }.orEmpty(),
+                                album = cursor.getString(album).orEmpty().takeUnless { it == MediaStore.UNKNOWN_STRING }.orEmpty(),
+                                durationMs = cursor.getLong(duration).coerceAtLeast(0L),
+                                fileName = name,
+                                uri = ContentUris.withAppendedId(collection, cursor.getLong(id)).toString(),
+                                mimeType = cursor.getString(mimeType).orEmpty(),
+                                embeddedMetadata = false,
+                                downloadPreset = "",
+                                downloadQuality = "",
+                                savedAt = (cursor.getLong(savedAt) * 1_000L).coerceAtLeast(0L)
+                            )
+                        )
+                    }
+                }
+            }.orEmpty()
+        }.onFailure { error ->
+            Timber.w(error, "Offline MediaStore reconciliation failed")
+        }.getOrDefault(emptyList())
+    }
+
+    private fun downloadUriReadable(rawUri: String): Boolean {
+        if (rawUri.isBlank()) return false
+        return runCatching {
+            val uri = Uri.parse(rawUri)
+            when (uri.scheme?.lowercase(Locale.ROOT)) {
+                "content" -> appContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length != 0L } ?: false
+                "file" -> uri.path?.let(::File)?.let { it.isFile && it.length() > 0L } == true
+                else -> File(rawUri).let { it.isFile && it.length() > 0L }
+            }
+        }.getOrDefault(false)
     }
 
     private suspend fun restorePlaylists(playlists: List<PlaylistBackup>) {
@@ -999,6 +1092,7 @@ class LevyraBackupManager(private val context: Context) {
         val playlistTags: List<PlaylistTag>,
         val playlists: List<PlaylistBackup>,
         val history: List<ListenEventEntity>,
+        val downloads: List<DownloadEntity>,
         val queueItems: List<PlaybackQueueItemEntity>,
         val queueState: PlaybackQueueStateEntity?
     )
@@ -1033,6 +1127,7 @@ class LevyraBackupManager(private val context: Context) {
         const val FOLLOWED_ARTISTS_ENTRY = "data/followed_artists.json"
         const val PLAYLISTS_ENTRY = "data/playlists.json"
         const val HISTORY_ENTRY = "data/history.json"
+        const val DOWNLOADS_ENTRY = "data/downloads.json"
         const val QUEUE_ENTRY = "data/queue.json"
         const val ORGANIZATION_ENTRY = "data/library_organization.json"
         const val MAX_ZIP_ENTRIES = 16
@@ -1050,6 +1145,7 @@ class LevyraBackupManager(private val context: Context) {
             PLAYLISTS_ENTRY,
             ORGANIZATION_ENTRY,
             HISTORY_ENTRY,
+            DOWNLOADS_ENTRY,
             QUEUE_ENTRY,
             LEGACY_PAYLOAD_ENTRY
         )
@@ -1107,6 +1203,85 @@ internal fun automaticBackupFilesToDelete(fileNames: List<String>, retentionCoun
     .filter(::isAutomaticBackupName)
     .sortedDescending()
     .drop(retentionCount.coerceIn(1, 12))
+
+internal fun downloadToJson(value: DownloadEntity): JSONObject = JSONObject()
+    .put("trackId", value.trackId)
+    .put("title", value.title)
+    .put("artist", value.artist)
+    .put("album", value.album)
+    .put("durationMs", value.durationMs)
+    .put("fileName", value.fileName)
+    .put("uri", value.uri)
+    .put("mimeType", value.mimeType)
+    .put("embeddedMetadata", value.embeddedMetadata)
+    .put("downloadPreset", value.downloadPreset)
+    .put("downloadQuality", value.downloadQuality)
+    .put("savedAt", value.savedAt)
+
+internal fun parseDownloads(array: JSONArray?): List<DownloadEntity> {
+    if (array == null) return emptyList()
+    return buildList {
+        for (index in 0 until array.length()) {
+            val json = array.optJSONObject(index) ?: continue
+            val uri = json.optString("uri").trim()
+            if (uri.isBlank()) continue
+            add(
+                DownloadEntity(
+                    trackId = json.optString("trackId"),
+                    title = json.optString("title"),
+                    artist = json.optString("artist"),
+                    album = json.optString("album"),
+                    durationMs = json.optLong("durationMs").coerceAtLeast(0L),
+                    fileName = json.optString("fileName"),
+                    uri = uri,
+                    mimeType = json.optString("mimeType"),
+                    embeddedMetadata = json.optBoolean("embeddedMetadata"),
+                    downloadPreset = json.optString("downloadPreset"),
+                    downloadQuality = json.optString("downloadQuality"),
+                    savedAt = json.optLong("savedAt").coerceAtLeast(0L)
+                )
+            )
+        }
+    }
+}
+
+internal fun reconcileDownloadedTracks(
+    backedUp: List<DownloadEntity>,
+    discovered: List<DownloadEntity>,
+    isReadable: (String) -> Boolean
+): List<DownloadEntity> {
+    val unmatched = backedUp.sortedByDescending(DownloadEntity::savedAt).toMutableList()
+    val restored = buildList {
+        discovered.forEach { available ->
+            val exactIndex = unmatched.indexOfFirst { it.uri == available.uri }
+            val metadataIndex = if (exactIndex >= 0) exactIndex else unmatched.indexOfFirst {
+                it.fileName.restoreKey() == available.fileName.restoreKey() &&
+                    it.title.restoreKey() == available.title.restoreKey() &&
+                    it.artist.restoreKey() == available.artist.restoreKey() &&
+                    it.album.restoreKey() == available.album.restoreKey()
+            }
+            val backup = metadataIndex.takeIf { it >= 0 }?.let(unmatched::removeAt)
+            val candidate = backup?.copy(
+                id = 0L,
+                title = backup.title.ifBlank { available.title },
+                artist = backup.artist.ifBlank { available.artist },
+                album = backup.album.ifBlank { available.album },
+                durationMs = backup.durationMs.takeIf { it > 0L } ?: available.durationMs,
+                fileName = available.fileName.ifBlank { backup.fileName },
+                uri = available.uri,
+                mimeType = backup.mimeType.ifBlank { available.mimeType },
+                savedAt = backup.savedAt.takeIf { it > 0L } ?: available.savedAt
+            ) ?: available.copy(id = 0L)
+            if (isReadable(candidate.uri)) add(candidate)
+        }
+        unmatched.forEach { backup ->
+            if (isReadable(backup.uri)) add(backup.copy(id = 0L))
+        }
+    }
+    return restored.distinctBy(DownloadEntity::uri).sortedByDescending(DownloadEntity::savedAt)
+}
+
+private fun String.restoreKey(): String = trim().lowercase(Locale.ROOT)
 
 internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject = JSONObject()
     .put("equalizerEnabled", value.equalizerEnabled)
