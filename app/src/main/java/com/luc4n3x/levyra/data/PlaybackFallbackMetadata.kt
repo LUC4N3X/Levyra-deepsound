@@ -102,15 +102,13 @@ internal fun trustedPlaybackFallbackCandidates(
         .toList()
 
     if (originalIsrc.isNotBlank()) {
-        val exactIsrcMatches = eligible.filter { candidate ->
+        return eligible.filter { candidate ->
             candidate.isrc.trim().equals(originalIsrc, ignoreCase = true)
         }
-        if (exactIsrcMatches.isNotEmpty()) return exactIsrcMatches
     }
 
     return eligible.filter { candidate ->
-        (originalIsrc.isBlank() || candidate.isrc.isBlank()) &&
-            isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
+        isTrustedPlaybackRecordingMatch(original, candidate, originalTitle, originalArtist)
     }
 }
 
