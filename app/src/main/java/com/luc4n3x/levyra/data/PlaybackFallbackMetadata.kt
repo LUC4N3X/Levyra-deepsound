@@ -108,6 +108,14 @@ internal fun trustedPlaybackFallbackCandidates(
         .toList()
 }
 
+internal fun isResolvedPlaybackFallbackDurationCompatible(original: Track, resolved: Track): Boolean {
+    val expectedDurationMs = original.durationMs
+    if (expectedDurationMs <= 0L) return true
+    val resolvedDurationMs = resolved.durationMs
+    if (resolvedDurationMs <= 0L) return false
+    return abs(expectedDurationMs - resolvedDurationMs) <= CANONICAL_FALLBACK_DURATION_TOLERANCE_MS
+}
+
 private fun isTrustedPlaybackRecordingMatch(
     original: Track,
     candidate: Track,
