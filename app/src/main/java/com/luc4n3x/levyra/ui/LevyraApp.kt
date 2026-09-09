@@ -46,6 +46,7 @@ import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.CloudOff
 
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
@@ -386,6 +387,7 @@ import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ArtworkRequestSource
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
 import com.luc4n3x.levyra.data.HomeLoadingPolicy
+import com.luc4n3x.levyra.data.HomeOfflinePolicy
 import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.HomeSectionLayoutPolicy
 import com.luc4n3x.levyra.data.HomeSectionPresentation
@@ -643,6 +645,174 @@ private fun HomeSectionInset(content: @Composable () -> Unit) {
 private fun HomeSectionLead(compact: Boolean, content: @Composable () -> Unit) {
     Box(modifier = Modifier.padding(top = LevyraHomeDesign.sectionLead(compact))) {
         content()
+    }
+}
+
+@Composable
+private fun HomeOfflineNotice(
+    title: String,
+    message: String,
+    retryLabel: String,
+    onRetry: () -> Unit
+) {
+    Surface(
+        color = CinematicGlass.copy(alpha = 0.62f),
+        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.20f)),
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.CloudOff,
+                contentDescription = null,
+                tint = LevyraCyan.copy(alpha = 0.82f),
+                modifier = Modifier.size(22.dp)
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = LevyraText,
+                    fontSize = 15.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = message,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(12.sp),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .levyraPressable(
+                        onClick = onRetry,
+                        pressedScale = LevyraPressScale.Control,
+                        role = Role.Button,
+                        onClickLabel = retryLabel
+                    )
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = retryLabel,
+                    color = LevyraCyan,
+                    fontSize = 13.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeOfflinePlaylistRow(
+    playlists: List<com.luc4n3x.levyra.domain.Playlist>,
+    animationsEnabled: Boolean,
+    onOpen: (com.luc4n3x.levyra.domain.Playlist) -> Unit
+) {
+    if (playlists.isEmpty()) return
+    val strings = LocalLevyraStrings.current
+    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val cardWidth = rememberShelfItemWidth(maxWidth, LevyraHomeDesign.ArtworkCardWidth)
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+        ) {
+            items(
+                items = playlists,
+                key = { playlist -> "home-offline-playlist-" + playlist.id },
+                contentType = { "home-offline-playlist-card" }
+            ) { playlist ->
+                val interaction = remember { MutableInteractionSource() }
+                val isPressed by interaction.collectIsPressedAsState()
+                val scale by animateFloatAsState(
+                    targetValue = if (isPressed && effectiveAnimationsEnabled) 0.975f else 1f,
+                    animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+                    label = "homeOfflinePlaylistScale"
+                )
+                Column(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }
+                        .width(cardWidth)
+                        .clickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            onClick = { onOpen(playlist) }
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(LevyraHomeDesign.ArtworkShape)
+                            .background(Brush.linearGradient(listOf(LevyraPanel, LevyraInk))),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (playlist.coverUrl.isNotBlank()) {
+                            StableRemoteArtwork(
+                                url = playlist.coverUrl,
+                                contentDescription = playlist.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                                contentDescription = null,
+                                tint = LevyraCyan.copy(alpha = 0.78f),
+                                modifier = Modifier.size(42.dp)
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.heightIn(
+                            min = rememberCardCaptionHeight(
+                                titleSize = HOME_ALBUM_HIT_CAPTION_TITLE_SIZE,
+                                subtitleSize = HOME_ALBUM_CAPTION_SUBTITLE_SIZE,
+                                gap = HOME_CARD_CAPTION_GAP
+                            )
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(HOME_CARD_CAPTION_GAP)
+                    ) {
+                        Text(
+                            text = playlist.name,
+                            color = LevyraText,
+                            fontSize = HOME_ALBUM_HIT_CAPTION_TITLE_SIZE,
+                            lineHeight = LevyraTypeRhythm.lineHeight(HOME_ALBUM_HIT_CAPTION_TITLE_SIZE),
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = strings.formatTrackCount(playlist.size),
+                            color = LevyraMuted,
+                            fontSize = HOME_ALBUM_CAPTION_SUBTITLE_SIZE,
+                            lineHeight = LevyraTypeRhythm.lineHeight(HOME_ALBUM_CAPTION_SUBTITLE_SIZE),
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -6727,6 +6897,8 @@ private fun HomeScreen(
             .filter { it.tracks.isNotEmpty() }
     }
     val chartChunks = homeDerivedState.chartChunks
+    val offlineContent = homeDerivedState.offlineContent
+    val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
     val showDeferredHomeSections by deferredSectionsRevealed
@@ -6804,6 +6976,80 @@ private fun HomeScreen(
                     )
                 }
             }
+            if (offlineHomeVisible) {
+                item(key = "home-offline-notice", contentType = "home-card") {
+                    HomeSectionLead(compactHome) {
+                        HomeSectionInset {
+                            HomeOfflineNotice(
+                                title = strings.offlineHomeTitle,
+                                message = strings.offlineHomeMessage,
+                                retryLabel = strings.offlineHomeRetry,
+                                onRetry = viewModel::retryHomeContent
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.downloads.isNotEmpty()) {
+                    item(key = "home-offline-downloads", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeDownloads,
+                                tracks = offlineContent.downloads,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.downloads, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.playlists.isNotEmpty()) {
+                    item(key = "home-offline-playlists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists) }
+                        }
+                    }
+                    item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
+                        HomeOfflinePlaylistRow(
+                            playlists = offlineContent.playlists,
+                            animationsEnabled = state.animationsEnabled,
+                            onOpen = { playlist -> viewModel.openPlaylist(playlist.id) }
+                        )
+                    }
+                }
+                if (offlineContent.favorites.isNotEmpty()) {
+                    item(key = "home-offline-favorites", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeFavorites,
+                                tracks = offlineContent.favorites,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.favorites, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+                if (offlineContent.recentlyPlayed.isNotEmpty()) {
+                    item(key = "home-offline-recent", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
+                        HomeSectionLead(compactHome) {
+                            HomeQuickPicksShelf(
+                                title = strings.offlineHomeRecent,
+                                tracks = offlineContent.recentlyPlayed,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = { track -> viewModel.playFrom(offlineContent.recentlyPlayed, track) },
+                                onTrackActions = onTrackActions
+                            )
+                        }
+                    }
+                }
+            }
+
             spotlightCandidate?.let { candidate ->
                 val heroTrack = candidate.track
                 val matchingPortraits = soundtrackArtistPool.filter { artist ->
