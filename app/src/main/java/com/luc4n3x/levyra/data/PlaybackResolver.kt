@@ -726,7 +726,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             val origin = PlaybackStrategyOrigin(mode, strategy)
             listOf(track.streamUrl, track.videoStreamUrl)
                 .filter { it.isNotBlank() }
-                .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin }
+                .forEach { strategyOriginByUrl[strategyOriginKey(mode, it)] = origin
+                }
         }
     }
 
@@ -2580,9 +2581,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     private suspend fun resolveWithInnerTubeOnce(
         track: Track,
         profile: ClientProfile,
-        isVideoMode: Boolean = false,
-        preferMp4Audio: Boolean = false,
-        audioQuality: String = selectedAudioQuality
+        isVideoMode: Boolean,
+        preferMp4Audio: Boolean,
+        audioQuality: String
     ): DirectStream = withContext(Dispatchers.IO) {
         val resolutionStartedAtMs = System.currentTimeMillis()
         val sourceVideoId = PlaybackSourceIdentity.sourceVideoId(track)
