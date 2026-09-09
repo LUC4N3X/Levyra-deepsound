@@ -163,13 +163,20 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
-    fun verifiedFallbackPrefersIsrcIdentityWhenAvailable() {
+    fun verifiedFallbackPrefersExactIsrcOverMatchingMetadataWithDifferentIsrc() {
         val original = track(
             id = "chart-source",
             title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
             artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
             durationMs = 188_000L,
             isrc = "ITABC2600001"
+        )
+        val metadataImpostor = track(
+            id = "metadata-impostor",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITXYZ2600002"
         )
         val official = track(
             id = "official-audio",
@@ -178,15 +185,53 @@ class PlaybackFallbackMetadataTest {
             durationMs = 187_000L,
             isrc = "itabc2600001"
         )
-        val wrong = track(
-            id = "wrong",
+
+        assertEquals(
+            listOf("official-audio"),
+            trustedPlaybackFallbackCandidates(original, listOf(metadataImpostor, official)).map { it.id }
+        )
+    }
+
+    @Test
+    fun verifiedFallbackRejectsConflictingIsrcWhenExactMatchIsUnavailable() {
+        val original = track(
+            id = "chart-source",
             title = "DALE",
-            artist = "Another Artist",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITABC2600001"
+        )
+        val conflicting = track(
+            id = "conflicting-recording",
+            title = "DALE",
+            artist = "Yung Snapp",
             durationMs = 188_000L,
             isrc = "ITXYZ2600002"
         )
 
-        assertEquals(listOf("official-audio"), trustedPlaybackFallbackCandidates(original, listOf(wrong, official)).map { it.id })
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(conflicting)).isEmpty())
+    }
+
+    @Test
+    fun verifiedFallbackUsesMetadataWhenCandidateHasNoIsrcAndNoExactMatchExists() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L,
+            isrc = "ITABC2600001"
+        )
+        val metadataOnly = track(
+            id = "metadata-only",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        assertEquals(
+            listOf("metadata-only"),
+            trustedPlaybackFallbackCandidates(original, listOf(metadataOnly)).map { it.id }
+        )
     }
 
     @Test
