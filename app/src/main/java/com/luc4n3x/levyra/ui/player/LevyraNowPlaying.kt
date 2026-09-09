@@ -349,6 +349,19 @@ fun LevyraNowPlaying(
             levyraPlayerArtworkMaxWidthDp(playerPane, layoutMode).dp,
             maxContainedHeight
         )
+        val canvasCardArtworkSize = if (
+            visualMode == PlayerVisualMode.CanvasCard &&
+            playerPane != LevyraPlayerPane.SideBySide &&
+            !state.isVideoMode
+        ) {
+            minOf(
+                artworkSize * 1.10f,
+                phoneUsableWidth,
+                (maxHeight * (if (compactPlayer) 0.40f else 0.46f)).coerceAtLeast(180.dp)
+            )
+        } else {
+            artworkSize
+        }
         val detailMaxWidth = levyraContentMaxWidthDp(layoutMode).dp
 
         val artworkPreviewAvailable = !state.isVideoMode && artworkUrl.isNotBlank() && visualMode == PlayerVisualMode.Artwork
@@ -545,7 +558,7 @@ fun LevyraNowPlaying(
                         .size(width = artworkSize, height = artworkSize)
                         .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
                     else -> Modifier
-                        .size(width = artworkSize, height = artworkSize)
+                        .size(width = canvasCardArtworkSize, height = canvasCardArtworkSize)
                         .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
                 },
                 contentAlignment = Alignment.Center
