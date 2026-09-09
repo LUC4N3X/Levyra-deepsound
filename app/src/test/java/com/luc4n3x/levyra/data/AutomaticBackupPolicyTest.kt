@@ -63,6 +63,7 @@ class AutomaticBackupPolicyTest {
         assertTrue(vaultEntryAllowed("data/followed_artists.json"))
         assertTrue(vaultEntryAllowed("data/playlists.json"))
         assertTrue(vaultEntryAllowed("data/history.json"))
+        assertTrue(vaultEntryAllowed("data/downloads.json"))
         assertTrue(vaultEntryAllowed("data/queue.json"))
         assertTrue(vaultEntryAllowed("data/library_organization.json"))
         assertTrue(vaultEntryAllowed("payload.json"))
@@ -84,6 +85,7 @@ class AutomaticBackupPolicyTest {
             LevyraBackupManager.PLAYLISTS_ENTRY,
             LevyraBackupManager.ORGANIZATION_ENTRY,
             LevyraBackupManager.HISTORY_ENTRY,
+            LevyraBackupManager.DOWNLOADS_ENTRY,
             LevyraBackupManager.QUEUE_ENTRY
         )
         written.forEach { entry ->
@@ -97,6 +99,7 @@ class AutomaticBackupPolicyTest {
         val legacyEntries = REQUIRED_VAULT_ENTRIES + LevyraBackupManager.MANIFEST_ENTRY
         assertTrue(vaultStructureCompatible(legacyEntries))
         assertFalse(LevyraBackupManager.ORGANIZATION_ENTRY in REQUIRED_VAULT_ENTRIES)
+        assertFalse(LevyraBackupManager.DOWNLOADS_ENTRY in REQUIRED_VAULT_ENTRIES)
     }
 
     @Test
