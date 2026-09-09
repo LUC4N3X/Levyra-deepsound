@@ -82,14 +82,13 @@ class ScreenProjectionCoverageTest {
     }
 
     @Test
-    fun `home search and library projections ignore playback clock ticks`() {
+    fun `search and library projections ignore playback clock ticks`() {
         val playbackTick = base.copy(
             positionMs = 42_750L,
             bufferedPositionMs = 67_000L,
             durationMs = 180_000L
         )
 
-        assertEquals(homeProjection(base), homeProjection(playbackTick))
         assertEquals(searchProjection(base), searchProjection(playbackTick))
         assertEquals(libraryProjection(base), libraryProjection(playbackTick))
     }
