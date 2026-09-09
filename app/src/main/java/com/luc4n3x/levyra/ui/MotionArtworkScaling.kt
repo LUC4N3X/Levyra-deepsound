@@ -10,6 +10,9 @@ internal val MotionArtworkFitIdentity = MotionArtworkFit(1f, 1f)
 internal const val MotionArtworkCardMaxZoom = 2.6f
 internal const val MotionArtworkImmersiveMaxZoom = 1.32f
 
+private const val MotionArtworkCardCoverMinAspectDelta = 0.85f
+private const val MotionArtworkCardCoverMaxAspectDelta = 1.15f
+
 internal fun motionArtworkFit(
     videoWidth: Int,
     videoHeight: Int,
@@ -34,7 +37,16 @@ internal fun motionArtworkFit(
     val containScaleX = if (aspectRatioDelta >= 1f) 1f else aspectRatioDelta
     val containScaleY = if (aspectRatioDelta >= 1f) 1f / aspectRatioDelta else 1f
     val coverZoom = maxOf(aspectRatioDelta, 1f / aspectRatioDelta)
-    val zoom = coverZoom.coerceAtMost(maxZoom.coerceAtLeast(1f))
+    val requestedMaxZoom = maxZoom.coerceAtLeast(1f)
+    val effectiveMaxZoom = if (
+        requestedMaxZoom == MotionArtworkCardMaxZoom &&
+        aspectRatioDelta !in MotionArtworkCardCoverMinAspectDelta..MotionArtworkCardCoverMaxAspectDelta
+    ) {
+        1f
+    } else {
+        requestedMaxZoom
+    }
+    val zoom = coverZoom.coerceAtMost(effectiveMaxZoom)
     return MotionArtworkFit(
         scaleX = containScaleX * zoom,
         scaleY = containScaleY * zoom
