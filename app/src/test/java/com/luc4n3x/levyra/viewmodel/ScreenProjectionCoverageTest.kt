@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
@@ -78,6 +79,30 @@ class ScreenProjectionCoverageTest {
         val later = base.copy(downloadBatches = listOf(batch(completed = 2, progress = 50)))
 
         assertNotEquals(libraryProjection(early), libraryProjection(later))
+    }
+
+    @Test
+    fun `home search and library projections ignore playback clock ticks`() {
+        val playbackTick = base.copy(
+            positionMs = 42_750L,
+            bufferedPositionMs = 67_000L,
+            durationMs = 180_000L
+        )
+
+        assertEquals(homeProjection(base), homeProjection(playbackTick))
+        assertEquals(searchProjection(base), searchProjection(playbackTick))
+        assertEquals(libraryProjection(base), libraryProjection(playbackTick))
+    }
+
+    @Test
+    fun `player projection keeps playback clock updates`() {
+        val playbackTick = base.copy(
+            positionMs = 42_750L,
+            bufferedPositionMs = 67_000L,
+            durationMs = 180_000L
+        )
+
+        assertNotEquals(playerProjection(base), playerProjection(playbackTick))
     }
 
     @Test
