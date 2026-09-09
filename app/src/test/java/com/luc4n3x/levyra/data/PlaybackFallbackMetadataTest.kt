@@ -100,6 +100,95 @@ class PlaybackFallbackMetadataTest {
         )
     }
 
+    @Test
+    fun verifiedFallbackAcceptsSameRecordingWithFeaturedArtistsCollapsed() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val official = track(
+            id = "Q1XvQgDjgQk",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        val matches = trustedPlaybackFallbackCandidates(original, listOf(official))
+
+        assertEquals(listOf("Q1XvQgDjgQk"), matches.map { it.id })
+    }
+
+    @Test
+    fun verifiedFallbackRejectsWrongArtistEvenWithSameTitleAndDuration() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val wrong = track(
+            id = "wrong-video",
+            title = "DALE",
+            artist = "Another Artist",
+            durationMs = 188_000L
+        )
+
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(wrong)).isEmpty())
+    }
+
+    @Test
+    fun verifiedFallbackRejectsWrongDurationAndAlternateVariant() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L
+        )
+        val wrongDuration = track(
+            id = "wrong-duration",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 245_000L
+        )
+        val remix = track(
+            id = "remix",
+            title = "DALE Remix",
+            artist = "Yung Snapp",
+            durationMs = 188_000L
+        )
+
+        assertTrue(trustedPlaybackFallbackCandidates(original, listOf(wrongDuration, remix)).isEmpty())
+    }
+
+    @Test
+    fun verifiedFallbackPrefersIsrcIdentityWhenAvailable() {
+        val original = track(
+            id = "chart-source",
+            title = "DALE (feat. Frezza, G.Mineiro & R3versal)",
+            artist = "Yung Snapp, Frezza, G.Mineiro, R3versal",
+            durationMs = 188_000L,
+            isrc = "ITABC2600001"
+        )
+        val official = track(
+            id = "official-audio",
+            title = "DALE",
+            artist = "Yung Snapp",
+            durationMs = 187_000L,
+            isrc = "itabc2600001"
+        )
+        val wrong = track(
+            id = "wrong",
+            title = "DALE",
+            artist = "Another Artist",
+            durationMs = 188_000L,
+            isrc = "ITXYZ2600002"
+        )
+
+        assertEquals(listOf("official-audio"), trustedPlaybackFallbackCandidates(original, listOf(wrong, official)).map { it.id })
+    }
+
     private fun track(
         id: String,
         title: String,
